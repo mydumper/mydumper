@@ -21,6 +21,7 @@
 #include <string.h>
 #include <glib.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <glib/gstdio.h>
 
@@ -35,6 +36,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 void dump_table_data(MYSQL *, FILE *, char *, char *, char *, struct configuration *conf);
 void dump_database(MYSQL *, char *, struct configuration *conf);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
+guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 
 int main(int ac, char **av)
 {
@@ -47,6 +49,8 @@ int main(int ac, char **av)
 
 	struct configuration conf = { "output", 1000000, 1000, 1 };
 
+	
+	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
 	dump_database(conn, "test", &conf);
 	return (0);
 }
@@ -54,7 +58,7 @@ int main(int ac, char **av)
 GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 	
 	GList *chunks = NULL;
-	MYSQL_RES *indexes;
+	MYSQL_RES *indexes=NULL, *minmax=NULL, *total=NULL;
 	MYSQL_ROW row;
 	char *index = NULL, *field = NULL;
 	
@@ -76,7 +80,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) {
 		mysql_data_seek(indexes,0);
 		while ((row=mysql_fetch_row(indexes))) {
-			if(!strcmp(row[1],"1") && (!strcmp(row[3],"1"))) {
+			if(!strcmp(row[1],"0") && (!strcmp(row[3],"1"))) {
 				/* Again, first column of any unique index */
 				field=row[4];
 				index=row[2];
@@ -87,12 +91,13 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	/* Still unlucky? Pick any high-cardinality index */
 	if (!field && conf->use_any_index) {
 		guint64 max_cardinality=0;
-		guint64 cardinality;
+		guint64 cardinality=0;
 		
 		mysql_data_seek(indexes,0);
 		while ((row=mysql_fetch_row(indexes))) {
 			if(!strcmp(row[3],"1")) {
-				cardinality = strtoll(row[6],NULL,10);
+				if (row[6])
+					cardinality = strtoll(row[6],NULL,10);
 				if (cardinality>max_cardinality) {
 					field=row[4];
 					max_cardinality=cardinality;
@@ -103,12 +108,76 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	/* Oh well, no chunks today */
 	if (!field) goto cleanup;
 	
+	/* Get minimum/maximum */
+	mysql_query(conn,query=g_strdup_printf("SELECT MIN(%s),MAX(%s) FROM %s.%s", field, field, database, table));
+	g_free(query);
+	minmax=mysql_store_result(conn);
+	
+	/* Got total number of rows */
+	mysql_query(conn, query=g_strdup_printf("EXPLAIN SELECT * FROM %s.%s", database, table));
 	
 	
 	
 cleanup:	
-	mysql_free_result(indexes);
+	if (indexes) 
+		mysql_free_result(indexes);
+	if (minmax)
+		mysql_free_result(minmax);
+	if (total)
+		mysql_free_result(total);
 	return chunks;
+}
+
+/* Variable length simply because we may want various forms of estimates */
+guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to) {
+	char *querybase, *query;
+
+	g_assert(conn && database && table);
+	
+	querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM %s.%s", (field?field:"*"), database, table);
+	if (from || to) {
+		g_assert(field != NULL);
+		char *fromclause=NULL, *toclause=NULL;
+		char *escaped;
+		if (from) {
+			escaped=g_new(char,strlen(from)*2+1);
+			mysql_real_escape_string(conn,escaped,from,strlen(from));
+			fromclause = g_strdup_printf(" `%s` >= \"%s\" ", field, escaped);
+			g_free(escaped);
+		}
+		if (to) {
+			escaped=g_new(char,strlen(to)*2+1);
+			mysql_real_escape_string(conn,escaped,from,strlen(from));
+			toclause = g_strdup_printf( " `%s` <= \"%s\"", field, escaped);
+			g_free(escaped);
+		}
+		query = g_strdup_printf("%s WHERE %s %s %s", querybase, (from?fromclause:""), ((from&&to)?"AND":""), (to?toclause:""));
+		
+		if (toclause) g_free(toclause);
+		if (fromclause) g_free(fromclause);
+		mysql_query(conn,query);
+		g_free(querybase);
+		g_free(query);
+	} else {
+		mysql_query(conn,querybase);
+		g_free(querybase);
+	}
+	
+	MYSQL_RES * result = mysql_store_result(conn);
+	MYSQL_ROW row = NULL;
+	
+	guint64 count=0;
+	
+	if (result)
+		row = mysql_fetch_row(result);
+	
+	if (row && row[8])
+		count=strtoll(row[8],NULL,10);
+	
+	if (result)
+		mysql_free_result(result);
+	
+	return(count);
 }
 
 void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
@@ -140,8 +209,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		chunks = get_chunks_for_table(conn, database, table, conf); 
 
 	/* Poor man's file code */
-	char *filename = g_strdup_printf("%s/%s.%s.dumping", conf->directory, database, table);
-
+	char *filename = g_strdup_printf("%s/.%s.%s.dumping", conf->directory, database, table);
+	char *ffilename = g_strdup_printf("%s/%s.%s.sql", conf->directory, database, table);
+	
 	FILE *outfile = g_fopen(filename, "w");
 	if (!outfile) {
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
@@ -151,6 +221,10 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 	g_fprintf(outfile, (char *) "SET NAMES BINARY; \n");
 	
 	dump_table_data(conn, outfile, database, table, NULL, conf);
+	
+	fclose(outfile);
+	rename(filename,ffilename);
+	return;
 	
 	cleanup:
 		if(outfile)
