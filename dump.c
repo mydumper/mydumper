@@ -30,6 +30,25 @@ struct configuration {
 	guint statement_size;
 	guint rows_per_file;
 	char use_any_index;
+	int num_threads;
+	char *hostname;
+	char *username;
+	char *password;
+	GAsyncQueue* queue;
+	GCond* ready;
+	GMutex* mutex;
+	int done;
+};
+
+enum job_type { JOB_SHUTDOWN, JOB_DUMP };
+
+struct job {
+	enum job_type type;
+	char *database;
+	char *table;
+	char *filename;
+	char *where;
+	struct configuration *conf;
 };
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
@@ -37,21 +56,78 @@ void dump_table_data(MYSQL *, FILE *, char *, char *, char *, struct configurati
 void dump_database(MYSQL *, char *, struct configuration *conf);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
+void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
+
+void *process_queue(struct configuration * conf) {
+	mysql_thread_init();
+	MYSQL *thrconn = mysql_init(NULL);
+	mysql_real_connect(thrconn, conf->hostname, conf->username, conf->password, NULL, 3306, NULL, 0);
+	mysql_query(thrconn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	mysql_query(thrconn, "SET NAMES binary");
+
+	g_cond_signal(conf->ready);
+	
+	struct job* job;
+	for(;;) {
+		GTimeVal tv;
+		g_get_current_time(&tv);
+		g_time_val_add(&tv,1000*1000*1);
+		job=g_async_queue_pop(conf->queue);
+		g_debug("Got job %p: %d",job,job->type);
+		switch (job->type) {
+			case JOB_DUMP:
+				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename, job->conf);
+				break;
+			case JOB_SHUTDOWN:
+				return NULL;
+				break;
+		}
+		if(job->table) g_free(job->table);
+		if(job->where) g_free(job->where);
+		if(job->filename) g_free(job->filename);
+		g_free(job);
+	}
+	return NULL;
+}
 
 int main(int ac, char **av)
 {
+	mysql_thread_init();
+	struct configuration conf = { "output", 1000000, 50000, 1, 16, "localhost", "root", "", NULL, NULL, NULL, 0 };
+	
 	g_thread_init(NULL);
+	
 	MYSQL *conn;
 	conn = mysql_init(NULL);
-	mysql_real_connect(conn, "localhost", "root", "", NULL, 3306, NULL, 0);
+	mysql_real_connect(conn, conf.hostname, conf.username, conf.password, NULL, 3306, NULL, 0);
+	mysql_query(conn, "FLUSH TABLES WITH READ LOCK");
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(conn, "SET NAMES binary");
-
-	struct configuration conf = { "output", 1000000, 50000, 1 };
-
+	
+	conf.queue = g_async_queue_new();
+	conf.ready = g_cond_new();
+	conf.mutex = g_mutex_new();
+	
+	int n;
+	GThread **threads = g_new(GThread*,conf.num_threads);
+	for (n=0; n<conf.num_threads; n++) {
+		threads[n] = g_thread_create((GThreadFunc)process_queue,&conf,TRUE,NULL);
+		g_cond_wait(conf.ready, conf.mutex);
+	}
+	mysql_query(conn, "UNLOCK TABLES");
 	
 	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
 	dump_database(conn, "test", &conf);
+	for (n=0; n<conf.num_threads; n++) {
+		struct job *j = g_new0(struct job,1);
+		j->type = JOB_SHUTDOWN;
+		g_async_queue_push(conf.queue,j);
+	}
+	
+	for (n=0; n<conf.num_threads; n++) {
+		g_thread_join(threads[n]);
+	}
+
 	return (0);
 }
 
@@ -144,7 +220,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			/* static stepping */
 			nmin = strtoll(min,NULL,10);
 			nmax = strtoll(max,NULL,10);
-			estimated_step = (nmax-nmin)/estimated_chunks;
+			estimated_step = (nmax-nmin)/estimated_chunks+1;
 			cutoff = nmin;
 			while(cutoff<=nmax) {
 				chunks=g_list_append(chunks,g_strdup_printf("%s%s(%s >= %llu AND %s < %llu)", 
@@ -260,20 +336,28 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 	if (conf->rows_per_file)
 		chunks = get_chunks_for_table(conn, database, table, conf); 
 
+	
 	if (chunks) {
 		int nchunk=0;
 		for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
-			/* Poor man's file code */
-			char *filename = g_strdup_printf("%s/.%s.%s.%05d.dumping", conf->directory, database, table, nchunk);
-			dump_table_data_file(conn,database,table,(char *)chunks->data,filename,conf);
-			g_free(filename);
+			struct job *j = g_new0(struct job,1);
+			j->database=g_strdup(database);
+			j->table=g_strdup(table);
+			j->conf=conf;
+			j->type=JOB_DUMP;
+			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql", conf->directory, database, table, nchunk);
+			j->where=g_strdup((char*)chunks->data);
+			g_async_queue_push(conf->queue,j);
 			nchunk++;
 		}
 	} else {
-		/* Poor man's file code */
-		char *filename = g_strdup_printf("%s/.%s.%s.dumping", conf->directory, database, table);
-	
-		dump_table_data_file(conn, database, table, NULL, filename, conf);	
+		struct job *j = g_new0(struct job,1);
+		j->database=g_strdup(database);
+		j->table=g_strdup(table);
+		j->conf=conf;
+		j->type=JOB_DUMP;
+		j->filename = g_strdup_printf("%s/%s.%s.sql", conf->directory, database, table);
+		g_async_queue_push(conf->queue,j);
 		return;
 	}
 }
@@ -291,7 +375,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	g_fprintf(file, (char *) "SET NAMES BINARY; \n");
 
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT * FROM %s %s %s", table, where?"WHERE":"",where?where:"");
+ 	query = g_strdup_printf("SELECT * FROM %s.%s %s %s", database, table, where?"WHERE":"",where?where:"");
 	mysql_query(conn, query);
 
 	result = mysql_use_result(conn);
