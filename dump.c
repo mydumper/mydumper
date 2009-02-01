@@ -1,3 +1,21 @@
+/* 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+	Author: Domas Mituzas, Sun Microsystems ( domas at sun dot com )
+
+*/
+
 #include <mysql.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,11 +27,14 @@
 struct configuration {
 	char *directory;
 	guint statement_size;
+	guint rows_per_file;
+	char use_any_index;
 };
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
 void dump_table_data(MYSQL *, FILE *, char *, char *, char *, struct configuration *conf);
 void dump_database(MYSQL *, char *, struct configuration *conf);
+GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 
 int main(int ac, char **av)
 {
@@ -24,10 +45,70 @@ int main(int ac, char **av)
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(conn, "SET NAMES binary");
 
-	struct configuration conf = { "output", 1000000 };
+	struct configuration conf = { "output", 1000000, 1000, 1 };
 
 	dump_database(conn, "test", &conf);
 	return (0);
+}
+
+GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
+	
+	GList *chunks = NULL;
+	MYSQL_RES *indexes;
+	MYSQL_ROW row;
+	char *index = NULL, *field = NULL;
+	
+	/* first have to pick index, in future should be able to preset in configuration too */
+	gchar *query = g_strdup_printf("SHOW INDEX FROM %s.%s",database,table);
+	mysql_query(conn,query);
+	g_free(query);
+	indexes=mysql_store_result(conn);
+	
+	while ((row=mysql_fetch_row(indexes))) {
+		if (!strcmp(row[2],"PRIMARY") && (!strcmp(row[3],"1"))) {
+			/* Pick first column in PK, cardinality doesn't matter */
+			field=row[4];
+			index=row[2];
+		}
+	}
+
+	/* If no PK found, try using first UNIQUE index */
+	if (!field) {
+		mysql_data_seek(indexes,0);
+		while ((row=mysql_fetch_row(indexes))) {
+			if(!strcmp(row[1],"1") && (!strcmp(row[3],"1"))) {
+				/* Again, first column of any unique index */
+				field=row[4];
+				index=row[2];
+			}
+		}
+	}
+	
+	/* Still unlucky? Pick any high-cardinality index */
+	if (!field && conf->use_any_index) {
+		guint64 max_cardinality=0;
+		guint64 cardinality;
+		
+		mysql_data_seek(indexes,0);
+		while ((row=mysql_fetch_row(indexes))) {
+			if(!strcmp(row[3],"1")) {
+				cardinality = strtoll(row[6],NULL,10);
+				if (cardinality>max_cardinality) {
+					field=row[4];
+					max_cardinality=cardinality;
+				}
+			}
+		}
+	}
+	/* Oh well, no chunks today */
+	if (!field) goto cleanup;
+	
+	
+	
+	
+cleanup:	
+	mysql_free_result(indexes);
+	return chunks;
 }
 
 void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
@@ -51,9 +132,15 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
+
+	GList * chunks;
+
+	/* This code for now does nothing, and is in development */
+	if (conf->rows_per_file)
+		chunks = get_chunks_for_table(conn, database, table, conf); 
+
 	/* Poor man's file code */
 	char *filename = g_strdup_printf("%s/%s.%s.dumping", conf->directory, database, table);
-	
 
 	FILE *outfile = g_fopen(filename, "w");
 	if (!outfile) {
@@ -113,9 +200,11 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 			cw += g_fprintf(file, ",\n (");
 
 		for (i = 0; i < num_fields; i++) {
+			/* Don't escape safe formats, saves some time */
 			if (fields[i].flags & NUM_FLAG) {
 				cw += g_fprintf(file, "\"%s\"", row[i]);
 			} else {
+				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				if (lengths[i] > allocated[i]) {
 					escaped[i] = g_renew(gchar, escaped[i], lengths[i] * 2 + 1);
 					allocated[i] = lengths[i];
