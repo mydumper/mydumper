@@ -73,7 +73,6 @@ void *process_queue(struct configuration * conf) {
 		g_get_current_time(&tv);
 		g_time_val_add(&tv,1000*1000*1);
 		job=g_async_queue_pop(conf->queue);
-		g_debug("Got job %p: %d",job,job->type);
 		switch (job->type) {
 			case JOB_DUMP:
 				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename, job->conf);
