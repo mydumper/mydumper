@@ -1,5 +1,4 @@
 dump
 *~
-~.dSYM
-dump.dSYM
+*.dSYM
 output
