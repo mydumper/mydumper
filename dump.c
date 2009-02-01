@@ -47,7 +47,7 @@ int main(int ac, char **av)
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(conn, "SET NAMES binary");
 
-	struct configuration conf = { "output", 1000000, 1000, 1 };
+	struct configuration conf = { "output", 1000000, 50000, 1 };
 
 	
 	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
@@ -55,6 +55,9 @@ int main(int ac, char **av)
 	return (0);
 }
 
+/* Heuristic chunks building - based on estimates, produces list of ranges for datadumping 
+   WORK IN PROGRESS
+*/
 GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 	
 	GList *chunks = NULL;
@@ -73,6 +76,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			/* Pick first column in PK, cardinality doesn't matter */
 			field=row[4];
 			index=row[2];
+			break;
 		}
 	}
 
@@ -84,6 +88,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 				/* Again, first column of any unique index */
 				field=row[4];
 				index=row[2];
+				break;
 			}
 		}
 	}
@@ -105,7 +110,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			}
 		}
 	}
-	/* Oh well, no chunks today */
+	/* Oh well, no chunks today - no suitable index */
 	if (!field) goto cleanup;
 	
 	/* Get minimum/maximum */
@@ -113,10 +118,47 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	g_free(query);
 	minmax=mysql_store_result(conn);
 	
-	/* Got total number of rows */
-	mysql_query(conn, query=g_strdup_printf("EXPLAIN SELECT * FROM %s.%s", database, table));
+	if (!minmax)
+		goto cleanup;
 	
+	row=mysql_fetch_row(minmax);
+	MYSQL_FIELD * fields=mysql_fetch_fields(minmax);
+	char *min=row[0];
+	char *max=row[1];
 	
+	/* Got total number of rows, skip chunk logic if estimates are low */
+	guint64 rows = estimate_count(conn, database, table, field, NULL, NULL);
+	if (rows <= conf->rows_per_file)
+		goto cleanup;
+
+	/* This is estimate, not to use as guarantee! Every chunk would have eventual adjustments */
+	guint64 estimated_chunks = rows / conf->rows_per_file; 
+	guint64 estimated_step, nmin, nmax, cutoff;
+	int showed_nulls=0;
+	
+	/* Support just bigger INTs for now, very dumb, no verify approach */
+	switch (fields[0].type) {
+		case MYSQL_TYPE_LONG:
+		case MYSQL_TYPE_LONGLONG:
+		case MYSQL_TYPE_INT24:
+			/* static stepping */
+			nmin = strtoll(min,NULL,10);
+			nmax = strtoll(max,NULL,10);
+			estimated_step = (nmax-nmin)/estimated_chunks;
+			cutoff = nmin;
+			while(cutoff<=nmax) {
+				chunks=g_list_append(chunks,g_strdup_printf("%s%s(%s >= %llu AND %s < %llu)", 
+						!showed_nulls?field:"",
+						!showed_nulls?" IS NULL OR ":"",
+						field, cutoff, field, cutoff+estimated_step));
+				cutoff+=estimated_step;
+				showed_nulls=1;
+			}
+			
+		default:
+			goto cleanup;
+	}
+
 	
 cleanup:	
 	if (indexes) 
@@ -128,7 +170,7 @@ cleanup:
 	return chunks;
 }
 
-/* Variable length simply because we may want various forms of estimates */
+/* Try to get EXPLAIN'ed estimates of row in resultset */
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to) {
 	char *querybase, *query;
 
@@ -198,7 +240,6 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	}
 	mysql_free_result(result);
 }
-
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 
