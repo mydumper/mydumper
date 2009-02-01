@@ -4,7 +4,7 @@ LDFLAGS=`mysql_config --libs_r` `pkg-config --libs glib-2.0`
 all: dump
 
 clean:
-	rm dump *~ *BAK
+	rm -rf dump *~ *BAK *.dSYM
 
 indent:
 	gnuindent -ts4 -kr -l200 dump.c
