@@ -8,7 +8,7 @@ struct configuration {
 	guint chunksize;
 };
 
-void dump_table(MYSQL *, char *, char *, struct configuration *conf);
+void dump_table(MYSQL *, char *, char *, char *, struct configuration *conf);
 
 int main(int ac, char **av)
 {
@@ -19,11 +19,11 @@ int main(int ac, char **av)
 
 	struct configuration conf = { "output", 1000000 };
 
-	dump_table(conn, "test", "categorylinks", &conf);
+	dump_table(conn, "test", "categorylinks", NULL,  &conf);
 	return (0);
 }
 
-void dump_table(MYSQL * conn, char *database, char *table, struct configuration *conf)
+void dump_table(MYSQL * conn, char *database, char *table, char *where, struct configuration *conf)
 {
 	guint i;
 
@@ -34,7 +34,7 @@ void dump_table(MYSQL * conn, char *database, char *table, struct configuration 
 	g_fprintf(outfile, (char *) "SET NAMES BINARY; \n");
 
 	/* Poor man's database code */
-	char *query = g_strdup_printf("SELECT * FROM %s.%s", database, table);
+	char *query = g_strdup_printf("SELECT * FROM %s.%s %s %s", database, table, where?"WHERE":"",where?where:"");
 	mysql_query(conn, query);
 
 	MYSQL_RES *result = mysql_use_result(conn);
@@ -91,7 +91,22 @@ void dump_table(MYSQL * conn, char *database, char *table, struct configuration 
 		}
 	}
 	fprintf(outfile, ";\n");
-	fclose(outfile);
+	
+	
+// cleanup:
+	if (outfile)
+		fclose(outfile);
 	g_free(filename);
 	g_free(query);
+	
+	if (allocated)
+		g_free(allocated);
+			
+	if (escaped) {
+		for (i=0; i < num_fields; i++) {
+			if (escaped[i])
+				g_free(escaped[i]);
+		}
+		g_free(escaped);
+	}
 }
