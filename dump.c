@@ -1,5 +1,6 @@
 #include <mysql.h>
 #include <stdio.h>
+#include <string.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 
@@ -9,9 +10,11 @@ struct configuration {
 };
 
 void dump_table(MYSQL *, char *, char *, char *, struct configuration *conf);
+void dump_database(MYSQL *, char *, struct configuration *conf);
 
 int main(int ac, char **av)
 {
+	g_thread_init(NULL);
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 	mysql_real_connect(conn, "localhost", "root", "", NULL, 3306, NULL, 0);
@@ -19,8 +22,27 @@ int main(int ac, char **av)
 
 	struct configuration conf = { "output", 1000000 };
 
-	dump_table(conn, "test", "categorylinks", NULL,  &conf);
+	dump_database(conn, "test", &conf);
 	return (0);
+}
+
+void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
+	mysql_select_db(conn,database);
+	if (mysql_query(conn, "SHOW /*!50000 FULL */ TABLES")) {
+		fprintf(stderr,"Error: DB: %s - Could not execute query: %s\n", database, mysql_error(conn));
+		return; 
+	}
+	MYSQL_RES *result = mysql_store_result(conn);
+	guint num_fields = mysql_num_fields(result);
+	
+	MYSQL_ROW row;
+	while ((row = mysql_fetch_row(result))) {
+		/* We no care about views! */
+		if (num_fields>1 && strcmp(row[1],"BASE TABLE"))
+			continue;
+		dump_table(conn, database, row[0], NULL, conf);
+	}
+	mysql_free_result(result);
 }
 
 void dump_table(MYSQL * conn, char *database, char *table, char *where, struct configuration *conf)
@@ -31,6 +53,11 @@ void dump_table(MYSQL * conn, char *database, char *table, char *where, struct c
 	char *filename = g_strdup_printf("%s/%s.dumping", conf->directory, table);
 	mysql_query(conn, "SET NAMES binary");
 	FILE *outfile = g_fopen(filename, "w");
+
+	g_assert(outfile != NULL);
+	if (!outfile)
+		return;
+
 	g_fprintf(outfile, (char *) "SET NAMES BINARY; \n");
 
 	/* Poor man's database code */
