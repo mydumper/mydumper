@@ -241,35 +241,41 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	mysql_free_result(result);
 }
 
+void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf) {
+	FILE *outfile;
+	outfile = g_fopen(filename, "w");
+	if (!outfile) {
+		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
+		return;
+	}
+	dump_table_data(conn, outfile, database, table, where, conf);
+	fclose(outfile);
+
+}
+
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 
-	GList * chunks;
-
+	GList * chunks = NULL; 
 	/* This code for now does nothing, and is in development */
 	if (conf->rows_per_file)
 		chunks = get_chunks_for_table(conn, database, table, conf); 
 
-	/* Poor man's file code */
-	char *filename = g_strdup_printf("%s/.%s.%s.dumping", conf->directory, database, table);
-	char *ffilename = g_strdup_printf("%s/%s.%s.sql", conf->directory, database, table);
+	if (chunks) {
+		int nchunk=0;
+		for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
+			/* Poor man's file code */
+			char *filename = g_strdup_printf("%s/.%s.%s.%05d.dumping", conf->directory, database, table, nchunk);
+			dump_table_data_file(conn,database,table,(char *)chunks->data,filename,conf);
+			g_free(filename);
+			nchunk++;
+		}
+	} else {
+		/* Poor man's file code */
+		char *filename = g_strdup_printf("%s/.%s.%s.dumping", conf->directory, database, table);
 	
-	FILE *outfile = g_fopen(filename, "w");
-	if (!outfile) {
-		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
-		goto cleanup;
+		dump_table_data_file(conn, database, table, NULL, filename, conf);	
+		return;
 	}
-	
-	g_fprintf(outfile, (char *) "SET NAMES BINARY; \n");
-	
-	dump_table_data(conn, outfile, database, table, NULL, conf);
-	
-	fclose(outfile);
-	rename(filename,ffilename);
-	return;
-	
-	cleanup:
-		if(outfile)
-			fclose(outfile);
 }
 
 /* Do actual data chunk reading/writing magic */
@@ -282,7 +288,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
 	
-
+	g_fprintf(file, (char *) "SET NAMES BINARY; \n");
 
 	/* Poor man's database code */
  	query = g_strdup_printf("SELECT * FROM %s %s %s", table, where?"WHERE":"",where?where:"");
