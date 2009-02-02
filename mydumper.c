@@ -44,7 +44,7 @@ guint port=3306;
 
 /* Program options */
 guint num_threads = 4;
-gchar *directory = DIRECTORY;
+gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
 
@@ -56,7 +56,7 @@ static GOptionEntry entries[] =
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
-	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default: ./" DIRECTORY,  NULL },
+	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ NULL }
@@ -73,6 +73,8 @@ struct job {
 	struct configuration *conf;
 };
 
+struct tm tval;
+
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
 void dump_table_data(MYSQL *, FILE *, char *, char *, char *, struct configuration *conf);
 void dump_database(MYSQL *, char *, struct configuration *conf);
@@ -80,6 +82,54 @@ GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
 void create_backup_dir(char *directory);
+
+/* Write some stuff we know about snapshot, before it changes */
+void write_snapshot_info(MYSQL *conn, FILE *file) {
+	MYSQL_RES *master=NULL, *slave=NULL;
+	MYSQL_FIELD *fields;
+	MYSQL_ROW row;
+	
+	char *masterlog=NULL;
+	char *masterpos=NULL;
+	
+	char *slavehost=NULL;
+	char *slavelog=NULL;
+	char *slavepos=NULL;
+	
+	mysql_query(conn,"SHOW MASTER STATUS");
+	master=mysql_store_result(conn);
+	if ((row=mysql_fetch_row(master))) {
+		masterlog=row[0];
+		masterpos=row[1];
+	}
+	
+	mysql_query(conn, "SHOW SLAVE STATUS");
+	slave=mysql_store_result(conn);
+	int i;
+	if ((row=mysql_fetch_row(slave))) {
+		fields=mysql_fetch_fields(slave);
+		for (i=0; i<mysql_num_fields(slave);i++) {
+			if (!strcasecmp("exec_master_log_pos",fields[i].name)) {
+				slavepos=row[i];
+			} else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
+				slavelog=row[i];
+			} else if (!strcasecmp("master_host",fields[i].name)) {
+				slavehost=row[i];
+			}
+		}
+	}
+	
+	if (masterlog)
+		fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\n", masterlog, masterpos);
+	
+	if (slavehost)
+		fprintf(file, "SHOW SLAVE STATUS:\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\n", 
+			slavehost, slavelog, slavepos);
+
+	fflush(file);
+	mysql_free_result(master);
+	mysql_free_result(slave);
+}
 
 void *process_queue(struct configuration * conf) {
 	mysql_thread_init();
@@ -124,21 +174,35 @@ int main(int argc, char *argv[])
 	mysql_thread_init();
 	struct configuration conf = { 1, NULL, NULL, NULL, 0 };
 
-        GError *error = NULL;
-        GOptionContext *context;
-        context = g_option_context_new("multi-threaded MySQL dumping");
-        g_option_context_add_main_entries(context, entries, NULL);
-        if (!g_option_context_parse(context, &argc, &argv, &error))
-        {
-                g_print ("option parsing failed: %s, try --help\n", error->message);
-                exit (EXIT_FAILURE);
-        }
-        g_option_context_free(context);
-	
-	create_backup_dir(directory);
+	GError *error = NULL;
+	GOptionContext *context;
 
 	g_thread_init(NULL);
+
+	context = g_option_context_new("multi-threaded MySQL dumping");
+	g_option_context_add_main_entries(context, entries, NULL);
+	if (!g_option_context_parse(context, &argc, &argv, &error)) {
+		g_print ("option parsing failed: %s, try --help\n", error->message);
+		exit (EXIT_FAILURE);
+	}
+	g_option_context_free(context);
 	
+	time_t t;
+	time(&t);localtime_r(&t,&tval);
+
+	if (!directory)
+		directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
+			tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
+			tval.tm_hour, tval.tm_min, tval.tm_sec);
+		
+	create_backup_dir(directory);
+	
+	FILE* mdfile=g_fopen(g_strdup_printf("%s/.metadata",directory),"w");
+	if(!mdfile) {
+		g_critical("Couldn't write metadata file (%d)",errno);
+		exit(1);
+	}
+		
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
@@ -150,7 +214,14 @@ int main(int argc, char *argv[])
 	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK"))
 		g_warning("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	time(&t);localtime_r(&t,&tval);
+	fprintf(mdfile,"Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
+		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
+		tval.tm_hour, tval.tm_min, tval.tm_sec);
+	
 	mysql_query(conn, "/*!40101 SET NAMES binary*/");
+	
+	write_snapshot_info(conn, mdfile);
 	
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
@@ -163,8 +234,6 @@ int main(int argc, char *argv[])
 		g_async_queue_pop(conf.ready);
 	}
 	mysql_query(conn, "UNLOCK TABLES");
-	
-	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
 
 	if (db) {
 		dump_database(conn, db, &conf);
@@ -191,6 +260,11 @@ int main(int argc, char *argv[])
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
 	}
+	time(&t);localtime_r(&t,&tval);
+	fprintf(mdfile,"Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
+		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
+		tval.tm_hour, tval.tm_min, tval.tm_sec);
+	fclose(mdfile);
 	mysql_close(conn);
 	return (0);
 }
