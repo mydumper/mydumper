@@ -35,7 +35,7 @@ struct configuration {
 	char *username;
 	char *password;
 	GAsyncQueue* queue;
-	GCond* ready;
+	GAsyncQueue* ready;
 	GMutex* mutex;
 	int done;
 };
@@ -65,7 +65,7 @@ void *process_queue(struct configuration * conf) {
 	mysql_query(thrconn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(thrconn, "SET NAMES binary");
 
-	g_cond_signal(conf->ready);
+	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
 	struct job* job;
 	for(;;) {
@@ -104,14 +104,14 @@ int main(int ac, char **av)
 	mysql_query(conn, "SET NAMES binary");
 	
 	conf.queue = g_async_queue_new();
-	conf.ready = g_cond_new();
+	conf.ready = g_async_queue_new();
 	conf.mutex = g_mutex_new();
 	
 	int n;
 	GThread **threads = g_new(GThread*,conf.num_threads);
 	for (n=0; n<conf.num_threads; n++) {
 		threads[n] = g_thread_create((GThreadFunc)process_queue,&conf,TRUE,NULL);
-		g_cond_wait(conf.ready, conf.mutex);
+		g_async_queue_pop(conf.ready);
 	}
 	mysql_query(conn, "UNLOCK TABLES");
 	
