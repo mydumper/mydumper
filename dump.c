@@ -34,19 +34,19 @@ struct configuration {
 };
 
 /* Database options */
-char *hostname="";
-char *username="root";
-char *password;
-char *db="test";
+char *hostname=NULL;
+char *username=NULL;
+char *password=NULL;
+char *db=NULL;
 guint port=3306;
 
 #define DIRECTORY "export"
 
 /* Program options */
-guint num_threads = 16;
+guint num_threads = 4;
 gchar *directory = DIRECTORY;
 guint statement_size = 1000000;
-guint rows_per_file = 1000000;
+guint rows_per_file = 0;
 
 static GOptionEntry entries[] =
 {
@@ -84,9 +84,14 @@ void create_backup_dir(char *directory);
 void *process_queue(struct configuration * conf) {
 	mysql_thread_init();
 	MYSQL *thrconn = mysql_init(NULL);
-	mysql_real_connect(thrconn, hostname, username, password, db, port, NULL, 0);
+	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	
+	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, NULL, 0)) {
+		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
+		exit(EXIT_FAILURE);
+	}
 	mysql_query(thrconn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
-	mysql_query(thrconn, "SET NAMES binary");
+	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
@@ -101,6 +106,8 @@ void *process_queue(struct configuration * conf) {
 				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename, job->conf);
 				break;
 			case JOB_SHUTDOWN:
+				if (thrconn)
+					mysql_close(thrconn);
 				return NULL;
 				break;
 		}
@@ -124,7 +131,7 @@ int main(int argc, char *argv[])
         if (!g_option_context_parse(context, &argc, &argv, &error))
         {
                 g_print ("option parsing failed: %s\n", error->message);
-                exit (1);
+                exit (EXIT_FAILURE);
         }
         g_option_context_free(context);
 	
@@ -134,10 +141,16 @@ int main(int argc, char *argv[])
 	
 	MYSQL *conn;
 	conn = mysql_init(NULL);
-	mysql_real_connect(conn, hostname, username, password, db, port, NULL, 0);
-	mysql_query(conn, "FLUSH TABLES WITH READ LOCK");
+	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	
+	if (!mysql_real_connect(conn, hostname, username, password, db, port, NULL, 0)) {
+		g_critical("Error connecting to database: %s", mysql_error(conn));
+		exit(EXIT_FAILURE);
+	}
+	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK"))
+		g_warning("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
-	mysql_query(conn, "SET NAMES binary");
+	mysql_query(conn, "/*!40101 SET NAMES binary*/");
 	
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
@@ -152,7 +165,23 @@ int main(int argc, char *argv[])
 	mysql_query(conn, "UNLOCK TABLES");
 	
 	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
-	dump_database(conn, db, &conf);
+
+	if (db) {
+		dump_database(conn, db, &conf);
+	} else {
+		MYSQL_RES *databases;
+		MYSQL_ROW row;
+		if(mysql_query(conn,"SHOW DATABASES")) {
+			g_critical("Unable to list databases: %s",mysql_error(conn));
+		}
+		databases = mysql_store_result(conn);
+		while ((row=mysql_fetch_row(databases))) {
+			if (!strcmp(row[0],"information_schema"))
+				continue;
+			dump_database(conn, row[0], &conf);
+		}
+		
+	}
 	for (n=0; n<num_threads; n++) {
 		struct job *j = g_new0(struct job,1);
 		j->type = JOB_SHUTDOWN;
@@ -162,7 +191,7 @@ int main(int argc, char *argv[])
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
 	}
-
+	mysql_close(conn);
 	return (0);
 }
 
@@ -284,7 +313,8 @@ cleanup:
 /* Try to get EXPLAIN'ed estimates of row in resultset */
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to) {
 	char *querybase, *query;
-
+	int ret;
+	
 	g_assert(conn && database && table);
 	
 	querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM %s.%s", (field?field:"*"), database, table);
@@ -308,12 +338,16 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 		
 		if (toclause) g_free(toclause);
 		if (fromclause) g_free(fromclause);
-		mysql_query(conn,query);
+		ret=mysql_query(conn,query);
 		g_free(querybase);
 		g_free(query);
 	} else {
-		mysql_query(conn,querybase);
+		ret=mysql_query(conn,querybase);
 		g_free(querybase);
+	}
+	
+	if (ret) {
+		g_warning("Unable to get estimates for %s.%s: %s",database,table,mysql_error(conn));
 	}
 	
 	MYSQL_RES * result = mysql_store_result(conn);
@@ -388,7 +422,6 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 
 	GList * chunks = NULL; 
-	/* This code for now does nothing, and is in development */
 	if (rows_per_file)
 		chunks = get_chunks_for_table(conn, database, table, conf); 
 
@@ -428,11 +461,15 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
 	
-	g_fprintf(file, (char *) "SET NAMES BINARY; \n");
+	g_fprintf(file, (char *) "/*!40101 SET NAMES binary*/;\n");
 
 	/* Poor man's database code */
  	query = g_strdup_printf("SELECT * FROM %s.%s %s %s", database, table, where?"WHERE":"",where?where:"");
-	mysql_query(conn, query);
+	if (mysql_query(conn, query)) {
+		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+		g_free(query);
+		return;
+	}
 
 	result = mysql_use_result(conn);
 	num_fields = mysql_num_fields(result);
