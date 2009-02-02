@@ -34,17 +34,19 @@ struct configuration {
 };
 
 /* Database options */
-char *hostname;
-char *username;
+char *hostname="";
+char *username="root";
 char *password;
-char *db;
-guint port;
+char *db="test";
+guint port=3306;
+
+#define DIRECTORY "export"
 
 /* Program options */
-guint num_threads;
-gchar *directory;
-guint statement_size;
-guint rows_per_file;
+guint num_threads = 16;
+gchar *directory = DIRECTORY;
+guint statement_size = 1000000;
+guint rows_per_file = 1000000;
 
 static GOptionEntry entries[] =
 {
@@ -54,9 +56,9 @@ static GOptionEntry entries[] =
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
-	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to",  NULL },
-	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "", NULL},
-	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "", NULL},
+	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default: ./" DIRECTORY,  NULL },
+	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
+	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ NULL }
 };
 
