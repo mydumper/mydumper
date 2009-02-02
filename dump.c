@@ -281,6 +281,14 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	}
 	
 	MYSQL_RES * result = mysql_store_result(conn);
+	MYSQL_FIELD * fields = mysql_fetch_fields(result);
+
+	int i;
+	for (i=0; i<mysql_num_fields(result); i++)  {
+		if (!strcmp(fields[i].name,"rows"))
+			break;
+	}
+
 	MYSQL_ROW row = NULL;
 	
 	guint64 count=0;
@@ -288,8 +296,8 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	if (result)
 		row = mysql_fetch_row(result);
 	
-	if (row && row[8])
-		count=strtoll(row[8],NULL,10);
+	if (row && row[i])
+		count=strtoll(row[i],NULL,10);
 	
 	if (result)
 		mysql_free_result(result);
