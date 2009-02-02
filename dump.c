@@ -12,8 +12,8 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Author: Domas Mituzas, Sun Microsystems ( domas at sun dot com )
-
+	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
+			Mark Leith, Sun Microsystems (leith at sun dot com)
 */
 
 #include <mysql.h>
@@ -26,18 +26,38 @@
 #include <glib/gstdio.h>
 
 struct configuration {
-	char *directory;
-	guint statement_size;
-	guint rows_per_file;
 	char use_any_index;
-	int num_threads;
-	char *hostname;
-	char *username;
-	char *password;
 	GAsyncQueue* queue;
 	GAsyncQueue* ready;
 	GMutex* mutex;
 	int done;
+};
+
+/* Database options */
+char *hostname;
+char *username;
+char *password;
+char *db;
+guint port;
+
+/* Program options */
+guint num_threads;
+gchar *directory;
+guint statement_size;
+guint rows_per_file;
+
+static GOptionEntry entries[] =
+{
+	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
+	{ "user", 'u', 0, G_OPTION_ARG_STRING, &username, "Username with privileges to run the dump", NULL },
+	{ "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
+	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
+	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
+	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
+	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to",  NULL },
+	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "", NULL},
+	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "", NULL},
+	{ NULL }
 };
 
 enum job_type { JOB_SHUTDOWN, JOB_DUMP };
@@ -57,11 +77,12 @@ void dump_database(MYSQL *, char *, struct configuration *conf);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
+void create_backup_dir(char *directory);
 
 void *process_queue(struct configuration * conf) {
 	mysql_thread_init();
 	MYSQL *thrconn = mysql_init(NULL);
-	mysql_real_connect(thrconn, conf->hostname, conf->username, conf->password, NULL, 3306, NULL, 0);
+	mysql_real_connect(thrconn, hostname, username, password, db, port, NULL, 0);
 	mysql_query(thrconn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(thrconn, "SET NAMES binary");
 
@@ -89,16 +110,29 @@ void *process_queue(struct configuration * conf) {
 	return NULL;
 }
 
-int main(int ac, char **av)
+int main(int argc, char *argv[])
 {
 	mysql_thread_init();
-	struct configuration conf = { "output", 1000000, 50000, 1, 16, "localhost", "root", "", NULL, NULL, NULL, 0 };
+	struct configuration conf = { 1, NULL, NULL, NULL, 0 };
+
+        GError *error = NULL;
+        GOptionContext *context;
+        context = g_option_context_new("multi-threaded MySQL dumping");
+        g_option_context_add_main_entries(context, entries, NULL);
+        if (!g_option_context_parse(context, &argc, &argv, &error))
+        {
+                g_print ("option parsing failed: %s\n", error->message);
+                exit (1);
+        }
+        g_option_context_free(context);
 	
+	create_backup_dir(directory);
+
 	g_thread_init(NULL);
 	
 	MYSQL *conn;
 	conn = mysql_init(NULL);
-	mysql_real_connect(conn, conf.hostname, conf.username, conf.password, NULL, 3306, NULL, 0);
+	mysql_real_connect(conn, hostname, username, password, db, port, NULL, 0);
 	mysql_query(conn, "FLUSH TABLES WITH READ LOCK");
 	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
 	mysql_query(conn, "SET NAMES binary");
@@ -108,22 +142,22 @@ int main(int ac, char **av)
 	conf.mutex = g_mutex_new();
 	
 	int n;
-	GThread **threads = g_new(GThread*,conf.num_threads);
-	for (n=0; n<conf.num_threads; n++) {
+	GThread **threads = g_new(GThread*,num_threads);
+	for (n=0; n<num_threads; n++) {
 		threads[n] = g_thread_create((GThreadFunc)process_queue,&conf,TRUE,NULL);
 		g_async_queue_pop(conf.ready);
 	}
 	mysql_query(conn, "UNLOCK TABLES");
 	
 	/* XXX - need SHOW SLAVE STATUS and SHOW MASTER STATUS right around here */
-	dump_database(conn, "test", &conf);
-	for (n=0; n<conf.num_threads; n++) {
+	dump_database(conn, db, &conf);
+	for (n=0; n<num_threads; n++) {
 		struct job *j = g_new0(struct job,1);
 		j->type = JOB_SHUTDOWN;
 		g_async_queue_push(conf.queue,j);
 	}
 	
-	for (n=0; n<conf.num_threads; n++) {
+	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
 	}
 
@@ -203,11 +237,11 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	
 	/* Got total number of rows, skip chunk logic if estimates are low */
 	guint64 rows = estimate_count(conn, database, table, field, NULL, NULL);
-	if (rows <= conf->rows_per_file)
+	if (rows <= rows_per_file)
 		goto cleanup;
 
 	/* This is estimate, not to use as guarantee! Every chunk would have eventual adjustments */
-	guint64 estimated_chunks = rows / conf->rows_per_file; 
+	guint64 estimated_chunks = rows / rows_per_file; 
 	guint64 estimated_step, nmin, nmax, cutoff;
 	int showed_nulls=0;
 	
@@ -305,6 +339,19 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	return(count);
 }
 
+void create_backup_dir(char *directory) {
+	if (g_mkdir(directory, 0700) == -1)
+	{
+		if (errno != EEXIST)
+		{
+			g_critical("Unable to create `%s': %s",
+				directory,
+				g_strerror(errno));
+			exit(1);
+		}
+	}
+}
+
 void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	mysql_select_db(conn,database);
 	if (mysql_query(conn, "SHOW /*!50000 FULL */ TABLES")) {
@@ -340,7 +387,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 
 	GList * chunks = NULL; 
 	/* This code for now does nothing, and is in development */
-	if (conf->rows_per_file)
+	if (rows_per_file)
 		chunks = get_chunks_for_table(conn, database, table, conf); 
 
 	
@@ -352,7 +399,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->table=g_strdup(table);
 			j->conf=conf;
 			j->type=JOB_DUMP;
-			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql", conf->directory, database, table, nchunk);
+			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql", directory, database, table, nchunk);
 			j->where=g_strdup((char*)chunks->data);
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
@@ -363,7 +410,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->table=g_strdup(table);
 		j->conf=conf;
 		j->type=JOB_DUMP;
-		j->filename = g_strdup_printf("%s/%s.%s.sql", conf->directory, database, table);
+		j->filename = g_strdup_printf("%s/%s.%s.sql", directory, database, table);
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
@@ -431,7 +478,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 				g_fprintf(file, ",");
 			} else {
 				/* INSERT statement is closed once over limit */
-				if (cw > conf->statement_size) {
+				if (cw > statement_size) {
 					g_fprintf(file, ");\n");
 					cw = 0;
 				} else {
