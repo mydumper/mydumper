@@ -158,9 +158,12 @@ void *process_queue(struct configuration * conf) {
 			case JOB_SHUTDOWN:
 				if (thrconn)
 					mysql_close(thrconn);
+				g_free(job);
+				mysql_thread_end();
 				return NULL;
 				break;
 		}
+		if(job->database) g_free(job->database);
 		if(job->table) g_free(job->table);
 		if(job->where) g_free(job->where);
 		if(job->filename) g_free(job->filename);
@@ -197,7 +200,9 @@ int main(int argc, char *argv[])
 		
 	create_backup_dir(directory);
 	
-	FILE* mdfile=g_fopen(g_strdup_printf("%s/.metadata",directory),"w");
+	char *p;
+	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",directory),"w");
+	g_free(p);
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
 		exit(1);
@@ -225,7 +230,6 @@ int main(int argc, char *argv[])
 	
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
-	conf.mutex = g_mutex_new();
 	
 	int n;
 	GThread **threads = g_new(GThread*,num_threads);
@@ -233,6 +237,7 @@ int main(int argc, char *argv[])
 		threads[n] = g_thread_create((GThreadFunc)process_queue,&conf,TRUE,NULL);
 		g_async_queue_pop(conf.ready);
 	}
+	g_async_queue_unref(conf.ready);
 	mysql_query(conn, "UNLOCK TABLES");
 
 	if (db) {
@@ -249,6 +254,7 @@ int main(int argc, char *argv[])
 				continue;
 			dump_database(conn, row[0], &conf);
 		}
+		mysql_free_result(databases);
 		
 	}
 	for (n=0; n<num_threads; n++) {
@@ -260,12 +266,18 @@ int main(int argc, char *argv[])
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
 	}
+	g_async_queue_unref(conf.queue);
+
 	time(&t);localtime_r(&t,&tval);
 	fprintf(mdfile,"Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	fclose(mdfile);
+
 	mysql_close(conn);
+	mysql_thread_end();
+	mysql_library_end();
+	g_free(directory);
 	return (0);
 }
 
@@ -364,7 +376,8 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 				chunks=g_list_append(chunks,g_strdup_printf("%s%s(%s >= %llu AND %s < %llu)", 
 						!showed_nulls?field:"",
 						!showed_nulls?" IS NULL OR ":"",
-						field, cutoff, field, cutoff+estimated_step));
+						field, (unsigned long long)cutoff, 
+						field, (unsigned long long)cutoff+estimated_step));
 				cutoff+=estimated_step;
 				showed_nulls=1;
 			}
@@ -509,10 +522,11 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->conf=conf;
 			j->type=JOB_DUMP;
 			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql", directory, database, table, nchunk);
-			j->where=g_strdup((char*)chunks->data);
+			j->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
 		}
+		g_list_free(g_list_first(chunks));
 	} else {
 		struct job *j = g_new0(struct job,1);
 		j->database=g_strdup(database);
