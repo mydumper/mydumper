@@ -301,6 +301,7 @@ int main(int argc, char *argv[])
 	mysql_thread_end();
 	mysql_library_end();
 	g_free(directory);
+	g_free(threads);
 	return (0);
 }
 
