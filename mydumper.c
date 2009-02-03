@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <time.h>
 #include <glib/gstdio.h>
 
 struct configuration {
@@ -47,6 +48,8 @@ guint num_threads = 4;
 gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
+
+int need_dummy_read=0;
 
 static GOptionEntry entries[] =
 {
@@ -140,7 +143,16 @@ void *process_queue(struct configuration * conf) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
-	mysql_query(thrconn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	if (mysql_query(thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
+		g_critical("Failed to start consistent snapshot: %s",mysql_error(thrconn)); 
+	}
+	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
+	if (need_dummy_read) {
+		mysql_query(thrconn,"SELECT * FROM mysql.mydumperdummy");
+		MYSQL_RES *res=mysql_store_result(thrconn);
+		if (res)
+			mysql_free_result(res);
+	}
 	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
@@ -174,7 +186,6 @@ void *process_queue(struct configuration * conf) {
 
 int main(int argc, char *argv[])
 {
-	mysql_thread_init();
 	struct configuration conf = { 1, NULL, NULL, NULL, 0 };
 
 	GError *error = NULL;
@@ -218,7 +229,17 @@ int main(int argc, char *argv[])
 	}
 	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK"))
 		g_warning("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
-	mysql_query(conn, "START TRANSACTION WITH CONSISTENT SNAPSHOT");
+	if (mysql_get_server_version(conn)) {
+		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
+		need_dummy_read=1;
+	}
+	mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+	if (need_dummy_read) {
+		mysql_query(conn,"SELECT * FROM mysql.mydumperdummy");
+		MYSQL_RES *res=mysql_store_result(conn);
+		if (res)
+			mysql_free_result(res);
+	}
 	time(&t);localtime_r(&t,&tval);
 	fprintf(mdfile,"Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
