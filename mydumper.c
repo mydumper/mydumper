@@ -101,7 +101,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	
 	mysql_query(conn,"SHOW MASTER STATUS");
 	master=mysql_store_result(conn);
-	if ((row=mysql_fetch_row(master))) {
+	if (master && (row=mysql_fetch_row(master))) {
 		masterlog=row[0];
 		masterpos=row[1];
 	}
@@ -109,7 +109,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	mysql_query(conn, "SHOW SLAVE STATUS");
 	slave=mysql_store_result(conn);
 	int i;
-	if ((row=mysql_fetch_row(slave))) {
+	if (slave && (row=mysql_fetch_row(slave))) {
 		fields=mysql_fetch_fields(slave);
 		for (i=0; i<mysql_num_fields(slave);i++) {
 			if (!strcasecmp("exec_master_log_pos",fields[i].name)) {
@@ -130,8 +130,10 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 			slavehost, slavelog, slavepos);
 
 	fflush(file);
-	mysql_free_result(master);
-	mysql_free_result(slave);
+	if (master) 
+		mysql_free_result(master);
+	if (slave)
+		mysql_free_result(slave);
 }
 
 void *process_queue(struct configuration * conf) {
