@@ -3,6 +3,9 @@ LDFLAGS=`mysql_config --libs_r` `pkg-config --libs glib-2.0 gthread-2.0`
 
 all: mydumper
 
+mydumper: mydumper.o
+	$(CC) -g -o mydumper mydumper.o $(LDFLAGS)
+
 clean:
 	rm -rf mydumper dump *~ *BAK *.dSYM *.o
 
