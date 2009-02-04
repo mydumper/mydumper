@@ -611,7 +611,9 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
-			if (fields[i].flags & NUM_FLAG) {
+			if (!row[i]) {
+				cw += g_fprintf(file, "NULL");
+			} else if (fields[i].flags & NUM_FLAG) {
 				cw += g_fprintf(file, "\"%s\"", row[i]);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
