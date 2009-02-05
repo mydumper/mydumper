@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
+#include <zlib.h>
 #include <glib/gstdio.h>
 
 struct configuration {
@@ -50,6 +51,7 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 
 int need_dummy_read=0;
+int compress_output=0;
 
 static GOptionEntry entries[] =
 {
@@ -62,6 +64,7 @@ static GOptionEntry entries[] =
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
+	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
 	{ NULL }
 };
 
@@ -85,6 +88,7 @@ GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
 void create_backup_dir(char *directory);
+int write_data(void* file,gchar const *format, ...);
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
@@ -519,14 +523,22 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 }
 
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf) {
-	FILE *outfile;
-	outfile = g_fopen(filename, "w");
+	void *outfile;
+	
+	if (!compress_output)
+		outfile = g_fopen(filename, "w");
+	else
+		outfile = gzopen(filename, "w");
+		
 	if (!outfile) {
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
 		return;
 	}
 	dump_table_data(conn, outfile, database, table, where, conf);
-	fclose(outfile);
+	if (!compress_output)
+		fclose(outfile);
+	else
+		gzclose(outfile);
 
 }
 
@@ -545,7 +557,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->table=g_strdup(table);
 			j->conf=conf;
 			j->type=JOB_DUMP;
-			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql", directory, database, table, nchunk);
+			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", directory, database, table, nchunk,(compress_output?".gz":""));
 			j->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
@@ -557,7 +569,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->table=g_strdup(table);
 		j->conf=conf;
 		j->type=JOB_DUMP;
-		j->filename = g_strdup_printf("%s/%s.%s.sql", directory, database, table);
+		j->filename = g_strdup_printf("%s/%s.%s.sql%s", directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
@@ -573,7 +585,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
 	
-	g_fprintf(file, (char *) "/*!40101 SET NAMES binary*/;\n");
+	write_data(file, (char *) "/*!40101 SET NAMES binary*/;\n");
 
 	/* Poor man's database code */
  	query = g_strdup_printf("SELECT * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
@@ -605,16 +617,16 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 		gulong *lengths = mysql_fetch_lengths(result);
 
 		if (cw == 0)
-			cw += g_fprintf(file, "INSERT INTO `%s` VALUES\n (", table);
+			cw += write_data(file, "INSERT INTO `%s` VALUES\n (", table);
 		else
-			cw += g_fprintf(file, ",\n (");
+			cw += write_data(file, ",\n (");
 
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
 			if (!row[i]) {
-				cw += g_fprintf(file, "NULL");
+				cw += write_data(file, "NULL");
 			} else if (fields[i].flags & NUM_FLAG) {
-				cw += g_fprintf(file, "\"%s\"", row[i]);
+				cw += write_data(file, "\"%s\"", row[i]);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				if (lengths[i] > allocated[i]) {
@@ -625,22 +637,22 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 					allocated[i] = 0;
 				}
 				mysql_real_escape_string(conn, escaped[i], row[i], lengths[i]);
-				cw += g_fprintf(file, "\"%s\"", escaped[i]);
+				cw += write_data(file, "\"%s\"", escaped[i]);
 			}
 			if (i < num_fields - 1) {
-				g_fprintf(file, ",");
+				write_data(file, ",");
 			} else {
 				/* INSERT statement is closed once over limit */
 				if (cw > statement_size) {
-					g_fprintf(file, ");\n");
+					write_data(file, ");\n");
 					cw = 0;
 				} else {
-					cw += g_fprintf(file, ")");
+					cw += write_data(file, ")");
 				}
 			}
 		}
 	}
-	fprintf(file, ";\n");
+	write_data(file, ";\n");
 	
 // cleanup:
 	g_free(query);
@@ -659,4 +671,17 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	if (result) {
 		mysql_free_result(result);
 	}
+}
+
+int write_data(void* file,gchar const *format, ...) {
+	va_list args;
+	int ret;
+	va_start(args,format);
+	if (!compress_output)
+		ret=g_vfprintf((FILE *)file,format,args);
+	else
+		ret=gzprintf((gzFile)file,format,args);
+	va_end(args);
+	
+	return ret;
 }
