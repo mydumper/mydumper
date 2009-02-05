@@ -316,7 +316,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	char *index = NULL, *field = NULL;
 	
 	/* first have to pick index, in future should be able to preset in configuration too */
-	gchar *query = g_strdup_printf("SHOW INDEX FROM %s.%s",database,table);
+	gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`",database,table);
 	mysql_query(conn,query);
 	g_free(query);
 	indexes=mysql_store_result(conn);
@@ -364,7 +364,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 	
 	/* Get minimum/maximum */
-	mysql_query(conn,query=g_strdup_printf("SELECT MIN(%s),MAX(%s) FROM %s.%s", field, field, database, table));
+	mysql_query(conn,query=g_strdup_printf("SELECT MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
 	g_free(query);
 	minmax=mysql_store_result(conn);
 	
@@ -397,7 +397,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			estimated_step = (nmax-nmin)/estimated_chunks+1;
 			cutoff = nmin;
 			while(cutoff<=nmax) {
-				chunks=g_list_append(chunks,g_strdup_printf("%s%s(%s >= %llu AND %s < %llu)", 
+				chunks=g_list_append(chunks,g_strdup_printf("%s%s(`%s` >= %llu AND `%s` < %llu)", 
 						!showed_nulls?field:"",
 						!showed_nulls?" IS NULL OR ":"",
 						field, (unsigned long long)cutoff, 
@@ -428,7 +428,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	
 	g_assert(conn && database && table);
 	
-	querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM %s.%s", (field?field:"*"), database, table);
+	querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM `%s`.`%s`", (field?field:"*"), database, table);
 	if (from || to) {
 		g_assert(field != NULL);
 		char *fromclause=NULL, *toclause=NULL;
@@ -445,7 +445,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 			toclause = g_strdup_printf( " `%s` <= \"%s\"", field, escaped);
 			g_free(escaped);
 		}
-		query = g_strdup_printf("%s WHERE %s %s %s", querybase, (from?fromclause:""), ((from&&to)?"AND":""), (to?toclause:""));
+		query = g_strdup_printf("%s WHERE `%s` %s %s", querybase, (from?fromclause:""), ((from&&to)?"AND":""), (to?toclause:""));
 		
 		if (toclause) g_free(toclause);
 		if (fromclause) g_free(fromclause);
@@ -576,7 +576,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	g_fprintf(file, (char *) "/*!40101 SET NAMES binary*/;\n");
 
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT * FROM %s.%s %s %s", database, table, where?"WHERE":"",where?where:"");
+ 	query = g_strdup_printf("SELECT * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
 	if (mysql_query(conn, query)) {
 		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		g_free(query);
@@ -605,7 +605,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 		gulong *lengths = mysql_fetch_lengths(result);
 
 		if (cw == 0)
-			cw += g_fprintf(file, "INSERT INTO %s VALUES\n (", table);
+			cw += g_fprintf(file, "INSERT INTO `%s` VALUES\n (", table);
 		else
 			cw += g_fprintf(file, ",\n (");
 
