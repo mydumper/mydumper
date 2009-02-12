@@ -645,6 +645,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 			}
 		}
 	}
+	write_data(file, statement);
 	g_string_printf(statement,";\n");
 	write_data(file, statement);
 	
