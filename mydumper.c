@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <time.h>
 #include <zlib.h>
+#include <pcre.h>
 #include <glib/gstdio.h>
 
 struct configuration {
@@ -41,6 +42,8 @@ char *username=NULL;
 char *password=NULL;
 char *db=NULL;
 guint port=3306;
+
+char *regexstring=NULL;
 
 #define DIRECTORY "export"
 
@@ -65,6 +68,7 @@ static GOptionEntry entries[] =
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
+	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ NULL }
 };
 
@@ -89,6 +93,35 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
 void create_backup_dir(char *directory);
 int write_data(FILE *,GString*);
+gboolean check_regex(char *database, char *table);
+
+/* Check database.table string against regular expression */
+
+gboolean check_regex(char *database, char *table) {
+	/* This is not going to be used in threads */
+	static pcre *re = NULL;
+	int rc;
+	int ovector[9];
+	const char *error;
+	int erroroffset;
+
+	char *p;
+	
+	/* Let's compile the RE before we do anything */
+	if (!re) {
+		re = pcre_compile(regexstring,PCRE_CASELESS|PCRE_MULTILINE|PCRE_NEWLINE_ANY,&error,&erroroffset,NULL);
+		if(!re) {
+			g_critical("Regular expression fail: %s", error);
+			exit(EXIT_FAILURE);
+		}
+	}
+	
+	p=g_strdup_printf("%s.%s",database,table);
+	rc = pcre_exec(re,NULL,p,strlen(p),0,0,ovector,9);
+	g_free(p);
+	
+	return (rc>0)?TRUE:FALSE;
+}
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
@@ -517,7 +550,9 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 		/* We no care about views! */
 		if (num_fields>1 && strcmp(row[1],"BASE TABLE"))
 			continue;
-		dump_table(conn, database, row[0], conf);
+		
+		if(!regexstring || check_regex(database,row[0]))
+			dump_table(conn, database, row[0], conf);
 	}
 	mysql_free_result(result);
 }
