@@ -56,7 +56,7 @@ guint rows_per_file = 0;
 int need_dummy_read=0;
 int compress_output=0;
 
-gchar *ignore_engines = "FEDERATED,MRG_MYISAM,BLACKHOLE";
+gchar *ignore_engines;
 char **ignore;
 
 static GOptionEntry entries[] =
