@@ -56,6 +56,9 @@ guint rows_per_file = 0;
 int need_dummy_read=0;
 int compress_output=0;
 
+gchar *ignore_engines = "FEDERATED,MRG_MYISAM,BLACKHOLE";
+char **ignore;
+
 static GOptionEntry entries[] =
 {
 	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
@@ -69,6 +72,7 @@ static GOptionEntry entries[] =
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
+	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ NULL }
 };
 
@@ -257,6 +261,10 @@ int main(int argc, char *argv[])
 		g_critical("Couldn't write metadata file (%d)",errno);
 		exit(1);
 	}
+
+	/* Give ourselves an array of engines to ignore */
+	if (ignore_engines)
+		ignore = g_strsplit(ignore_engines, ",", 0);
 		
 	MYSQL *conn;
 	conn = mysql_init(NULL);
@@ -339,6 +347,7 @@ int main(int argc, char *argv[])
 	mysql_library_end();
 	g_free(directory);
 	g_free(threads);
+	g_strfreev(ignore);
 	return (0);
 }
 
@@ -538,21 +547,32 @@ void create_backup_dir(char *directory) {
 
 void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	mysql_select_db(conn,database);
-	if (mysql_query(conn, "SHOW /*!50000 FULL */ TABLES")) {
+	if (mysql_query(conn, "SHOW TABLE STATUS")) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 		return; 
 	}
 	MYSQL_RES *result = mysql_store_result(conn);
 	guint num_fields = mysql_num_fields(result);
-	
+
+	int i;
+	int dump;
 	MYSQL_ROW row;
 	while ((row = mysql_fetch_row(result))) {
 		/* We no care about views! */
-		if (num_fields>1 && strcmp(row[1],"BASE TABLE"))
-			continue;
-		
-		if(!regexstring || check_regex(database,row[0]))
-			dump_table(conn, database, row[0], conf);
+		if (num_fields>1 && g_strcmp0(row[1], NULL)) {
+                        /* Ignore any engines specified */
+                        dump = 1;
+                        if (ignore != NULL) {
+                                for (i = 0; ignore[i] != NULL; i++) {
+                                        if (g_ascii_strcasecmp(ignore[i], row[1]) == 0) {
+                                                dump = 0;
+                                        }
+                                }
+                        }
+
+                        if(dump && (!regexstring || check_regex(database,row[0])))
+                                dump_table(conn, database, row[0], conf);
+                }
 	}
 	mysql_free_result(result);
 }
