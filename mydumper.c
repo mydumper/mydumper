@@ -113,7 +113,7 @@ gboolean check_regex(char *database, char *table) {
 	
 	/* Let's compile the RE before we do anything */
 	if (!re) {
-		re = pcre_compile(regexstring,PCRE_CASELESS|PCRE_MULTILINE|PCRE_NEWLINE_ANY,&error,&erroroffset,NULL);
+		re = pcre_compile(regexstring,PCRE_CASELESS|PCRE_MULTILINE,&error,&erroroffset,NULL);
 		if(!re) {
 			g_critical("Regular expression fail: %s", error);
 			exit(EXIT_FAILURE);
