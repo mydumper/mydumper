@@ -24,6 +24,7 @@ One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PAT
 
 This is all done following best MySQL practices and traditions:
 
+* As a precaution, slow running queries on the server either abort the dump, or get killed
 * Global write lock is acquired ("FLUSH TABLES WITH READ LOCK")
 * Various metadata is read ("SHOW SLAVE STATUS","SHOW MASTER STATUS")
 * Other threads connect and establish snapshots ("START TRANSACTION WITH CONSISTENT SNAPSHOT")

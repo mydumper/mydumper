@@ -52,9 +52,11 @@ guint num_threads = 4;
 gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
+guint longquery = 60; 
 
 int need_dummy_read=0;
 int compress_output=0;
+int killqueries=0;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -73,6 +75,8 @@ static GOptionEntry entries[] =
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
+	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
+	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ NULL }
 };
 
@@ -274,6 +278,47 @@ int main(int argc, char *argv[])
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
+	
+	/* We check SHOW PROCESSLIST, and if there're queries 
+	   larger than preset value, we terminate the process.
+	
+	   This avoids stalling whole server with flush */
+	
+	if (mysql_query(conn, "SHOW PROCESSLIST")) {
+		g_warning("Could not check PROCESSLIST, no long query guard enabled: %s", mysql_error(conn));
+	} else {
+		MYSQL_RES *res = mysql_store_result(conn);
+		MYSQL_ROW row;
+		char *p;
+		
+		/* Just in case PROCESSLIST output column order changes */
+		MYSQL_FIELD *fields = mysql_fetch_fields(res);
+		int i, tcol=-1, ccol=-1, icol=-1;
+		for(i=0; i<mysql_num_fields(res); i++) {
+			if (!strcmp(fields[i].name,"Command")) ccol=i;
+			else if (!strcmp(fields[i].name,"Time")) tcol=i;
+			else if (!strcmp(fields[i].name,"Id")) icol=i;
+		}
+		
+		while (row=mysql_fetch_row(res)) {
+			if (row[ccol] && strcmp(row[ccol],"Query"))
+				continue;
+			if (row[tcol] && atoi(row[tcol])>longquery) {
+				if (killqueries) {
+					if (mysql_query(conn,p=g_strdup_printf("KILL %lu",atol(row[icol]))))
+						g_warning("Could not KILL slow query: %s",mysql_error(conn));
+					else 
+						g_warning("Killed a query that was running for %ss",row[tcol]);
+				} else {
+					g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
+						"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
+					exit(EXIT_FAILURE);
+				}
+			}
+		}
+		mysql_free_result(res);
+	}
+	
 	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK"))
 		g_warning("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
 	if (mysql_get_server_version(conn)) {
