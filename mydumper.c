@@ -309,6 +309,7 @@ int main(int argc, char *argv[])
 						g_warning("Could not KILL slow query: %s",mysql_error(conn));
 					else 
 						g_warning("Killed a query that was running for %ss",row[tcol]);
+					g_free(p);
 				} else {
 					g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
 						"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
