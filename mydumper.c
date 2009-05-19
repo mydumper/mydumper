@@ -52,7 +52,7 @@ guint num_threads = 4;
 gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
-guint longquery = 60; 
+int longquery = 60; 
 
 int need_dummy_read=0;
 int compress_output=0;
@@ -153,7 +153,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	
 	mysql_query(conn, "SHOW SLAVE STATUS");
 	slave=mysql_store_result(conn);
-	int i;
+	guint i;
 	if (slave && (row=mysql_fetch_row(slave))) {
 		fields=mysql_fetch_fields(slave);
 		for (i=0; i<mysql_num_fields(slave);i++) {
@@ -293,14 +293,15 @@ int main(int argc, char *argv[])
 		
 		/* Just in case PROCESSLIST output column order changes */
 		MYSQL_FIELD *fields = mysql_fetch_fields(res);
-		int i, tcol=-1, ccol=-1, icol=-1;
+		guint i;
+		int tcol=-1, ccol=-1, icol=-1;
 		for(i=0; i<mysql_num_fields(res); i++) {
 			if (!strcmp(fields[i].name,"Command")) ccol=i;
 			else if (!strcmp(fields[i].name,"Time")) tcol=i;
 			else if (!strcmp(fields[i].name,"Id")) icol=i;
 		}
 		
-		while (row=mysql_fetch_row(res)) {
+		while ((row=mysql_fetch_row(res))) {
 			if (row[ccol] && strcmp(row[ccol],"Query"))
 				continue;
 			if (row[tcol] && atoi(row[tcol])>longquery) {
@@ -345,7 +346,7 @@ int main(int argc, char *argv[])
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
 	
-	int n;
+	guint n;
 	GThread **threads = g_new(GThread*,num_threads);
 	for (n=0; n<num_threads; n++) {
 		threads[n] = g_thread_create((GThreadFunc)process_queue,&conf,TRUE,NULL);
@@ -556,7 +557,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	MYSQL_RES * result = mysql_store_result(conn);
 	MYSQL_FIELD * fields = mysql_fetch_fields(result);
 
-	int i;
+	guint i;
 	for (i=0; i<mysql_num_fields(result); i++)  {
 		if (!strcmp(fields[i].name,"rows"))
 			break;
