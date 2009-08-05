@@ -16,6 +16,9 @@
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 */
 
+#define _LARGEFILE64_SOURCE
+#define _FILE_OFFSET_BITS 64
+
 #include <mysql.h>
 #include <stdio.h>
 #include <string.h>
