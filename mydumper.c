@@ -284,8 +284,8 @@ int main(int argc, char *argv[])
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
-	if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
-		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+	if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
+		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
 	}
 	
 	/* We check SHOW PROCESSLIST, and if there're queries 
