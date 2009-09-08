@@ -80,7 +80,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
-	{ NULL }
+	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
 enum job_type { JOB_SHUTDOWN, JOB_DUMP };
@@ -97,11 +97,11 @@ struct job {
 struct tm tval;
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
-void dump_table_data(MYSQL *, FILE *, char *, char *, char *, struct configuration *conf);
+void dump_table_data(MYSQL *, FILE *, char *, char *, char *);
 void dump_database(MYSQL *, char *, struct configuration *conf);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf);
+void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename);
 void create_backup_dir(char *directory);
 int write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
@@ -218,7 +218,7 @@ void *process_queue(struct configuration * conf) {
 		job=(struct job *)g_async_queue_pop(conf->queue);
 		switch (job->type) {
 			case JOB_DUMP:
-				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename, job->conf);
+				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename);
 				break;
 			case JOB_SHUTDOWN:
 				if (thrconn)
@@ -651,7 +651,7 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	mysql_free_result(result);
 }
 
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename, struct configuration *conf) {
+void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename) {
 	void *outfile;
 	
 	if (!compress_output)
@@ -663,7 +663,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
 		return;
 	}
-	dump_table_data(conn, (FILE *)outfile, database, table, where, conf);
+	dump_table_data(conn, (FILE *)outfile, database, table, where);
 	if (!compress_output)
 		fclose((FILE *)outfile);
 	else
@@ -705,7 +705,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 }
 
 /* Do actual data chunk reading/writing magic */
-void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where, struct configuration *conf)
+void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where)
 {
 	guint i;
 	guint num_fields = 0;
