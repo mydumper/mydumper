@@ -57,6 +57,7 @@ gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
 int longquery = 60; 
+int build_empty_files=0;
 
 int need_dummy_read=0;
 int compress_output=0;
@@ -78,6 +79,7 @@ static GOptionEntry entries[] =
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
+	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
@@ -99,7 +101,7 @@ struct job {
 struct tm tval;
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
-void dump_table_data(MYSQL *, FILE *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *);
 void dump_database(MYSQL *, char *, struct configuration *conf);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
@@ -665,11 +667,19 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
 		return;
 	}
-	dump_table_data(conn, (FILE *)outfile, database, table, where);
+	guint64 rows_count = dump_table_data(conn, (FILE *)outfile, database, table, where);
 	if (!compress_output)
 		fclose((FILE *)outfile);
 	else
 		gzclose(outfile);
+
+	if (!rows_count && !build_empty_files) {
+        	// dropping the useless file
+		if (remove(filename)) {
+ 			g_warning("failed to remove empty file : %s\n", filename);
+ 			return;
+		}
+	}  
 
 }
 
@@ -707,10 +717,11 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 }
 
 /* Do actual data chunk reading/writing magic */
-void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where)
+guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where)
 {
 	guint i;
 	guint num_fields = 0;
+	guint64 num_rows = 0;
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
 
@@ -725,7 +736,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	if (mysql_query(conn, query)) {
 		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		g_free(query);
-		return;
+		return num_rows;
 	}
 
 	result = mysql_use_result(conn);
@@ -742,6 +753,7 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	/* Poor man's data dump code */
 	while ((row = mysql_fetch_row(result))) {
 		gulong *lengths = mysql_fetch_lengths(result);
+		num_rows++;
 
 		if (!statement->len)
 			g_string_printf(statement, "INSERT INTO `%s` VALUES\n(", table);
@@ -789,6 +801,8 @@ void dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char
 	if (result) {
 		mysql_free_result(result);
 	}
+
+	return num_rows;
 }
 
 int write_data(FILE* file,GString * data) {
