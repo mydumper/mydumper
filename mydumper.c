@@ -43,7 +43,7 @@ struct configuration {
 char *hostname=NULL;
 char *username=NULL;
 char *password=NULL;
-char *socket=NULL;
+char *socket_path=NULL;
 char *db=NULL;
 guint port=3306;
 
@@ -72,7 +72,7 @@ static GOptionEntry entries[] =
 	{ "user", 'u', 0, G_OPTION_ARG_STRING, &username, "Username with privileges to run the dump", NULL },
 	{ "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
-	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket, "UNIX domain socket file to use for connection", NULL },
+	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
@@ -193,7 +193,7 @@ void *process_queue(struct configuration * conf) {
 	MYSQL *thrconn = mysql_init(NULL);
 	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 	
-	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket, 0)) {
+	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
@@ -284,7 +284,7 @@ int main(int argc, char *argv[])
 	conn = mysql_init(NULL);
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 	
-	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket, 0)) {
+	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
