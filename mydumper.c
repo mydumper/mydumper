@@ -66,6 +66,9 @@ int killqueries=0;
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
 
+gchar *tables_list = NULL;
+char **tables = NULL;
+
 static GOptionEntry entries[] =
 {
 	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
@@ -74,6 +77,7 @@ static GOptionEntry entries[] =
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
+	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
@@ -280,6 +284,10 @@ int main(int argc, char *argv[])
 	if (ignore_engines)
 		ignore = g_strsplit(ignore_engines, ",", 0);
 		
+	/* Give ourselves an array of tables to dump */
+	if (tables_list)
+		tables = g_strsplit(tables_list, ",", 0);
+		
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
@@ -411,6 +419,7 @@ int main(int argc, char *argv[])
 	g_free(directory);
 	g_free(threads);
 	g_strfreev(ignore);
+	g_strfreev(tables);
 	return (0);
 }
 
@@ -641,6 +650,16 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 					break;
 				}
 			}
+		}
+		/* In case of table-list option is enabled, check if table is part of the list */
+		if (tables) {
+			int table_found=0;
+			for (i = 0; tables[i] != NULL; i++)
+				if (g_ascii_strcasecmp(tables[i], row[0]) == 0)
+					table_found = 1;
+
+			if (!table_found)
+				dump = 0;
 		}
 		if (!dump)
 			continue;
