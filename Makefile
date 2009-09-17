@@ -9,5 +9,5 @@ mydumper: mydumper.o
 clean:
 	rm -rf mydumper dump *~ *BAK *.dSYM *.o
 
-indent:
-	gnuindent -ts4 -kr -l200 dump.c
+install:
+	install -m 0755 mydumper $(DESTDIR)/usr/bin/mydumper
