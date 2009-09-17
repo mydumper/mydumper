@@ -77,7 +77,7 @@ static GOptionEntry entries[] =
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
-	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Tables list to dump (does not exclude regex option)", NULL },
+	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
@@ -653,13 +653,13 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 		}
         /* In case of table-list option is enabled, check if table is part of the list */
 		if (tables) {
-            int table_found=0;
+			int table_found=0;
 			for (i = 0; tables[i] != NULL; i++)
-                if (g_ascii_strcasecmp(tables[i], row[0]) == 0)
-                    table_found = 1;
+				if (g_ascii_strcasecmp(tables[i], row[0]) == 0)
+					table_found = 1;
 
-            if (!table_found)
-                dump = 0;
+			if (!table_found)
+				dump = 0;
 		}
 		if (!dump)
 			continue;
@@ -693,7 +693,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		gzclose(outfile);
 
 	if (!rows_count && !build_empty_files) {
-        // dropping the useless file
+        	// dropping the useless file
 		if (remove(filename)) {
  			g_warning("failed to remove empty file : %s\n", filename);
  			return;
