@@ -69,6 +69,8 @@ char **ignore = NULL;
 gchar *tables_list = NULL;
 char **tables = NULL;
 
+gboolean get_binlogs = FALSE;
+
 static GOptionEntry entries[] =
 {
 	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
@@ -88,18 +90,28 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
+	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &get_binlogs, "Get the binary logs as well as dump data",  NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
-enum job_type { JOB_SHUTDOWN, JOB_DUMP };
+enum job_type { JOB_SHUTDOWN, JOB_DUMP, JOB_BINLOG };
 
 struct job {
 	enum job_type type;
+        void *job_data;
+	struct configuration *conf;
+};
+
+struct table_job {
 	char *database;
 	char *table;
 	char *filename;
 	char *where;
-	struct configuration *conf;
+};
+
+struct binlog_job {
+	char *filename;
+	guit64 start_position;
 };
 
 struct tm tval;
@@ -219,14 +231,19 @@ void *process_queue(struct configuration * conf) {
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
 	struct job* job;
+	struct table_job* tj;
 	for(;;) {
 		GTimeVal tv;
 		g_get_current_time(&tv);
 		g_time_val_add(&tv,1000*1000*1);
 		job=(struct job *)g_async_queue_pop(conf->queue);
+		tj=(struct table_job *)job->job_data;
 		switch (job->type) {
 			case JOB_DUMP:
-				dump_table_data_file(thrconn, job->database, job->table, job->where, job->filename);
+				dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
+				break;
+			case JOB_BINLOG:
+				// Do binlog stuff here
 				break;
 			case JOB_SHUTDOWN:
 				if (thrconn)
@@ -236,10 +253,11 @@ void *process_queue(struct configuration * conf) {
 				return NULL;
 				break;
 		}
-		if(job->database) g_free(job->database);
-		if(job->table) g_free(job->table);
-		if(job->where) g_free(job->where);
-		if(job->filename) g_free(job->filename);
+		if(tj->database) g_free(tj->database);
+		if(tj->table) g_free(tj->table);
+		if(tj->where) g_free(tj->where);
+		if(tj->filename) g_free(tj->filename);
+		g_free(tj);
 		g_free(job);
 	}
 	return NULL;
@@ -713,23 +731,27 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		int nchunk=0;
 		for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
 			struct job *j = g_new0(struct job,1);
-			j->database=g_strdup(database);
-			j->table=g_strdup(table);
+			struct table_job *tj = g_new0(struct table_job,1);
+			j->job_data=(void*) tj;
+			tj->database=g_strdup(database);
+			tj->table=g_strdup(table);
 			j->conf=conf;
 			j->type=JOB_DUMP;
-			j->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", directory, database, table, nchunk,(compress_output?".gz":""));
-			j->where=(char *)chunks->data;
+			tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", directory, database, table, nchunk,(compress_output?".gz":""));
+			tj->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
 		}
 		g_list_free(g_list_first(chunks));
 	} else {
 		struct job *j = g_new0(struct job,1);
-		j->database=g_strdup(database);
-		j->table=g_strdup(table);
+		struct table_job *tj = g_new0(struct table_job,1);
+		j->job_data=(void*) tj;
+		tj->database=g_strdup(database);
+		tj->table=g_strdup(table);
 		j->conf=conf;
 		j->type=JOB_DUMP;
-		j->filename = g_strdup_printf("%s/%s.%s.sql%s", directory, database, table,(compress_output?".gz":""));
+		tj->filename = g_strdup_printf("%s/%s.%s.sql%s", directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
