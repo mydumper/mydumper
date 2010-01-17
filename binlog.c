@@ -1,9 +1,33 @@
+/* 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
+			Mark Leith, Sun Microsystems (leith at sun dot com)
+			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+
+	TODO:		Binlog closes connections at end (bad!), reconnect
+*/
+
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <my_global.h>
 #include <mysql.h>
 #include <string.h>
 #include "mydumper.h"
 #include "binlog.h"
+
+#define BINLOG_MAGIC        "\xfe\x62\x69\x6e"
 
 enum event_type {
 	ROTATE_EVENT= 4,
@@ -11,6 +35,7 @@ enum event_type {
 	EVENT_TOO_SHORT= 10000 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
 };
 
+extern gchar* binlog_directory;
 
 void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
@@ -25,14 +50,17 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		struct binlog_job *bj = g_new0(struct binlog_job,1);
 		j->job_data=(void*) bj;
 		bj->filename=g_strdup(row[0]);
-		bj->start_position=0;
+		bj->start_position=4;
 		j->conf=conf;
 		j->type=JOB_BINLOG;
+		g_async_queue_push(conf->queue,j);
 	}
 	mysql_free_result(result);
 }
 
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
+	// TODO: add compressed support
+
 	// set serverID = max serverID - threadID to try an eliminate conflicts, 0 is bad because mysqld will disconnect at the end of the last log (for mysqlbinlog).
 	// TODO: figure out a better way of doing this.
 	uchar buf[128];
@@ -40,20 +68,33 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 	NET* net;
 	net= &conn->net;
 	unsigned long len;
+	char* filename;
+	FILE* outfile;
 	unsigned int event_type;
 	gboolean read_error= FALSE;
-	unsigned int server_id = 4294967295 - mysql_thread_id(conn);
+	gboolean read_end= FALSE;
+	gboolean rotated= FALSE;
+//	unsigned int server_id = 4294967295 - mysql_thread_id(conn);
+
 	int4store(buf, (guint32)start_position);
 	// Binlog flags (2 byte int)
 	int2store(buf + 4, 0);
 	// ServerID
-	int4store(buf + 6, server_id);
+	int4store(buf + 6, 0);
 	memcpy(buf + 10, binlog_file, strlen(binlog_file));
-	simple_command(conn, COM_BINLOG_DUMP, buf, strlen(binlog_file) + 10, 1);
+	if (simple_command(conn, COM_BINLOG_DUMP, buf, strlen(binlog_file) + 10, 1)) {
+		g_critical("Error: binlog: Critical error whilst requesting binary log");
+	}
+	// TODO: add to its own function, return FILE pointer, write binlog header, error handling
+	filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
+	outfile = g_fopen(filename, "w");
+	fwrite(BINLOG_MAGIC, 1, 4, outfile);
 	while(1) {
 		len=my_net_read(net);
+		// TODO: I think we need to do something here if len == 0
 		if (len == ~(unsigned long) 0) {
 			g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
+			fclose(outfile);
 			return;
 		}
 		if (len < 8 && net->read_pos[0]) {
@@ -67,23 +108,30 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 				read_error= TRUE;
 				break;
 			case ROTATE_EVENT:
-				// rotate file
+				// TODO: first rotate needs to be an empty rotate but still recorded.
+				if (rotated) {
+					read_end= TRUE;
+				} else {
+					rotated= TRUE;
+				}
 				break;
 			default:
 				// if we get this far this is a normal event to record
 				break;
 		}
-		if (read_error)
-			break;
+		if (read_error) break;
+		fwrite(net->read_pos + 1, 1, len - 1, outfile);
+		if (read_end) break;
 	}
+	fclose(outfile);
 }
 
 
 unsigned int get_event(const char *buf, unsigned int len) {
-	// Event type offset is 9
+	// Event type offset is 4
 	if (len < 0)
 		return EVENT_TOO_SHORT;
-	return buf[9];
+	return buf[4];
 
 	// TODO: Would be good if we can check for valid event type, unfortunately this check can change from version to version
 }

@@ -15,8 +15,6 @@
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
-
-	TODO:		Make sure dump and binlog threads run in parallel
 */
 
 #define _LARGEFILE64_SOURCE
@@ -89,7 +87,7 @@ static GOptionEntry entries[] =
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
-	{ "binlog-outdir", 'u', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
+	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -222,10 +220,19 @@ void *process_queue(struct configuration * conf) {
 			case JOB_DUMP:
 				tj=(struct table_job *)job->job_data;
 				dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
+				if(tj->database) g_free(tj->database);
+				if(tj->table) g_free(tj->table);
+				if(tj->where) g_free(tj->where);
+				if(tj->filename) g_free(tj->filename);
+				g_free(tj);
+				g_free(job);
 				break;
 			case JOB_BINLOG:
 				bj=(struct binlog_job *)job->job_data;
 				get_binlog_file(thrconn, bj->filename, bj->start_position);
+				if(bj->filename) g_free(bj->filename);
+				g_free(bj);
+				g_free(job);
 				break;
 			case JOB_SHUTDOWN:
 				if (thrconn)
@@ -235,13 +242,6 @@ void *process_queue(struct configuration * conf) {
 				return NULL;
 				break;
 		}
-		//TODO: fix binlog leak
-		if(tj->database) g_free(tj->database);
-		if(tj->table) g_free(tj->table);
-		if(tj->where) g_free(tj->where);
-		if(tj->filename) g_free(tj->filename);
-		g_free(tj);
-		g_free(job);
 	}
 	return NULL;
 }
@@ -384,6 +384,10 @@ int main(int argc, char *argv[])
 	}
 	g_async_queue_unref(conf.ready);
 	mysql_query(conn, "UNLOCK TABLES");
+
+	if (need_binlogs) {
+		get_binlogs(conn, &conf);
+	}
 
 	if (db) {
 		dump_database(conn, db, &conf);
