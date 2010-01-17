@@ -14,6 +14,9 @@
 
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
+			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+
+	TODO:		Make sure dump and binlog threads run in parallel
 */
 
 #define _LARGEFILE64_SOURCE
@@ -30,14 +33,7 @@
 #include <zlib.h>
 #include <pcre.h>
 #include <glib/gstdio.h>
-
-struct configuration {
-	char use_any_index;
-	GAsyncQueue* queue;
-	GAsyncQueue* ready;
-	GMutex* mutex;
-	int done;
-};
+#include "binlog.h"
 
 /* Database options */
 char *hostname=NULL;
@@ -50,6 +46,7 @@ guint port=3306;
 char *regexstring=NULL;
 
 #define DIRECTORY "export"
+#define BINLOG_DIRECTORY "binlogs"
 
 /* Program options */
 guint num_threads = 4;
@@ -69,7 +66,8 @@ char **ignore = NULL;
 gchar *tables_list = NULL;
 char **tables = NULL;
 
-gboolean get_binlogs = FALSE;
+gboolean need_binlogs = FALSE;
+gchar *binlog_directory = NULL;
 
 static GOptionEntry entries[] =
 {
@@ -90,28 +88,9 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
-	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &get_binlogs, "Get the binary logs as well as dump data",  NULL },
+	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
+	{ "binlog-outdir", 'u', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
-};
-
-enum job_type { JOB_SHUTDOWN, JOB_DUMP, JOB_BINLOG };
-
-struct job {
-	enum job_type type;
-        void *job_data;
-	struct configuration *conf;
-};
-
-struct table_job {
-	char *database;
-	char *table;
-	char *filename;
-	char *where;
-};
-
-struct binlog_job {
-	char *filename;
-	guit64 start_position;
 };
 
 struct tm tval;
@@ -230,20 +209,23 @@ void *process_queue(struct configuration * conf) {
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
-	struct job* job;
-	struct table_job* tj;
+	struct job* job= NULL;
+	struct table_job* tj= NULL;
+	struct binlog_job* bj= NULL;
 	for(;;) {
 		GTimeVal tv;
 		g_get_current_time(&tv);
 		g_time_val_add(&tv,1000*1000*1);
 		job=(struct job *)g_async_queue_pop(conf->queue);
-		tj=(struct table_job *)job->job_data;
+		
 		switch (job->type) {
 			case JOB_DUMP:
+				tj=(struct table_job *)job->job_data;
 				dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
 				break;
 			case JOB_BINLOG:
-				// Do binlog stuff here
+				bj=(struct binlog_job *)job->job_data;
+				get_binlog_file(thrconn, bj->filename, bj->start_position);
 				break;
 			case JOB_SHUTDOWN:
 				if (thrconn)
@@ -253,6 +235,7 @@ void *process_queue(struct configuration * conf) {
 				return NULL;
 				break;
 		}
+		//TODO: fix binlog leak
 		if(tj->database) g_free(tj->database);
 		if(tj->table) g_free(tj->table);
 		if(tj->where) g_free(tj->where);
@@ -290,6 +273,11 @@ int main(int argc, char *argv[])
 		
 	create_backup_dir(directory);
 	
+	if (need_binlogs) {
+		binlog_directory = g_strdup_printf("%s/%s", directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
+		create_backup_dir(binlog_directory);
+	}
+
 	char *p;
 	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",directory),"w");
 	g_free(p);

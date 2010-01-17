@@ -3,8 +3,8 @@ LDFLAGS=`mysql_config --libs_r` `pkg-config --libs glib-2.0 gthread-2.0` `pcre-c
 
 all: mydumper
 
-mydumper: mydumper.o
-	$(CC) -g -o mydumper mydumper.o $(LDFLAGS)
+mydumper: mydumper.o binlog.o
+	$(CC) -g -o mydumper mydumper.o binlog.o $(LDFLAGS)
 
 clean:
 	rm -rf mydumper dump *~ *BAK *.dSYM *.o
