@@ -16,7 +16,6 @@
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
 
-	TODO:		Binlog closes connections at end (bad!), reconnect
 */
 
 #include <glib.h>
@@ -90,9 +89,9 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 	outfile = g_fopen(filename, "w");
 	fwrite(BINLOG_MAGIC, 1, 4, outfile);
 	while(1) {
-		len=my_net_read(net);
-		// TODO: I think we need to do something here if len == 0
-		if (len == ~(unsigned long) 0) {
+		len = 0;
+		if (net->vio != 0) len=my_net_read(net);
+		if ((len == 0) || (len == ~(unsigned long) 0)) {
 			g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
 			fclose(outfile);
 			return;
@@ -129,7 +128,7 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 
 unsigned int get_event(const char *buf, unsigned int len) {
 	// Event type offset is 4
-	if (len < 0)
+	if (len < 4)
 		return EVENT_TOO_SHORT;
 	return buf[4];
 

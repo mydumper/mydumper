@@ -46,6 +46,8 @@ char *regexstring=NULL;
 #define DIRECTORY "export"
 #define BINLOG_DIRECTORY "binlogs"
 
+static GMutex * init_mutex = NULL;
+
 /* Program options */
 guint num_threads = 4;
 gchar *directory = NULL;
@@ -182,10 +184,16 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 }
 
 void *process_queue(struct configuration * conf) {
-	mysql_thread_init();
-	MYSQL *thrconn = mysql_init(NULL);
-	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	// mysql_init is not thread safe
+	gboolean reconnect = TRUE;
 	
+	g_mutex_lock(init_mutex);
+	MYSQL *thrconn = mysql_init(NULL);
+	g_mutex_unlock(init_mutex);
+
+	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	mysql_options(thrconn,MYSQL_OPT_RECONNECT, &reconnect);  // needed for binlog options
+
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -254,6 +262,8 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 
 	g_thread_init(NULL);
+
+	init_mutex = g_mutex_new();
 
 	context = g_option_context_new("multi-threaded MySQL dumping");
 	g_option_context_add_main_entries(context, entries, NULL);
