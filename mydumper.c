@@ -184,15 +184,12 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 }
 
 void *process_queue(struct configuration * conf) {
-	// mysql_init is not thread safe
-	gboolean reconnect = TRUE;
-	
+	// mysql_init is not thread safe	
 	g_mutex_lock(init_mutex);
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
 	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
-	mysql_options(thrconn,MYSQL_OPT_RECONNECT, &reconnect);  // needed for binlog options
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
@@ -237,10 +234,20 @@ void *process_queue(struct configuration * conf) {
 				break;
 			case JOB_BINLOG:
 				bj=(struct binlog_job *)job->job_data;
-				get_binlog_file(thrconn, bj->filename, bj->start_position);
+				get_binlog_file(thrconn, bj->filename, bj->start_position, bj->stop_position);
 				if(bj->filename) g_free(bj->filename);
 				g_free(bj);
 				g_free(job);
+
+				// Connection needs resetting! - cannot find a way of stopping once we are a slave thread
+				mysql_close(thrconn);
+				g_mutex_lock(init_mutex);
+				thrconn = mysql_init(NULL);
+				g_mutex_unlock(init_mutex);
+				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+					g_critical("Failed to connect to database: %s", mysql_error(thrconn));
+					exit(EXIT_FAILURE);
+				}
 				break;
 			case JOB_SHUTDOWN:
 				if (thrconn)

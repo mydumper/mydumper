@@ -35,21 +35,44 @@ enum event_type {
 };
 
 extern gchar* binlog_directory;
+extern my_bool mysql_reconnect(MYSQL*);
 
 void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
+	MYSQL_RES *result;
+	MYSQL_ROW row;
+	char* last_filename;
+	guint64 last_position;
+
+	if (mysql_query(conn, "SHOW MASTER STATUS")) {
+		g_critical("Error: Could not execute query: %s", mysql_error(conn));
+		return;		
+	}
+
+	result = mysql_store_result(conn);
+	if ((row = mysql_fetch_row(result))) {
+		last_filename= g_strdup(row[0]);
+		last_position= strtoll(row[1], NULL, 10);
+	} else {
+		g_critical("Error: Could not obtain binary log stop position");
+		return;		
+	}
+	mysql_free_result(result);
+	
 	if (mysql_query(conn, "SHOW BINARY LOGS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
 		return;		
 	}
-	MYSQL_RES *result = mysql_store_result(conn);
-	MYSQL_ROW row;
+
+
+	result = mysql_store_result(conn);
 	while ((row = mysql_fetch_row(result))) {
 		struct job *j = g_new0(struct job,1);
 		struct binlog_job *bj = g_new0(struct binlog_job,1);
 		j->job_data=(void*) bj;
 		bj->filename=g_strdup(row[0]);
 		bj->start_position=4;
+		bj->stop_position= (!strcasecmp(row[0], last_filename)) ? last_position : 0;
 		j->conf=conf;
 		j->type=JOB_BINLOG;
 		g_async_queue_push(conf->queue,j);
@@ -57,11 +80,11 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	mysql_free_result(result);
 }
 
-void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
+void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position) {
 	// TODO: add compressed support
 
 	// set serverID = max serverID - threadID to try an eliminate conflicts, 0 is bad because mysqld will disconnect at the end of the last log (for mysqlbinlog).
-	// TODO: figure out a better way of doing this.
+	// TODO: maybe figure out a better way of doing this.
 	uchar buf[128];
 	// We need to read the raw network packets
 	NET* net;
@@ -73,18 +96,18 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 	gboolean read_error= FALSE;
 	gboolean read_end= FALSE;
 	gboolean rotated= FALSE;
-//	unsigned int server_id = 4294967295 - mysql_thread_id(conn);
+	unsigned int server_id = 4294967295 - mysql_thread_id(conn);
+	guint64 pos_counter = 0;
 
 	int4store(buf, (guint32)start_position);
 	// Binlog flags (2 byte int)
 	int2store(buf + 4, 0);
 	// ServerID
-	int4store(buf + 6, 0);
+	int4store(buf + 6, server_id);
 	memcpy(buf + 10, binlog_file, strlen(binlog_file));
 	if (simple_command(conn, COM_BINLOG_DUMP, buf, strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
-	// TODO: add to its own function, return FILE pointer, write binlog header, error handling
 	filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
 	outfile = g_fopen(filename, "w");
 	fwrite(BINLOG_MAGIC, 1, 4, outfile);
@@ -100,6 +123,7 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 			// end of data
 			break;
 		}
+		pos_counter += len;
 		event_type= get_event((const char*)net->read_pos + 1, len -1);
 		switch (event_type) {
 			case EVENT_TOO_SHORT:
@@ -121,6 +145,8 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position) {
 		if (read_error) break;
 		fwrite(net->read_pos + 1, 1, len - 1, outfile);
 		if (read_end) break;
+		// stop if we are at recorded end of last log
+		if ((stop_position > 0) && (pos_counter >= stop_position)) break;
 	}
 	fclose(outfile);
 }

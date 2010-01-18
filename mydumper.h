@@ -47,6 +47,7 @@ struct table_job {
 struct binlog_job {
 	char *filename;
 	guint64 start_position;
+	guint64 stop_position;
 };
 
 #endif
