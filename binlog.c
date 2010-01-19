@@ -35,7 +35,6 @@ enum event_type {
 };
 
 extern gchar* binlog_directory;
-extern my_bool mysql_reconnect(MYSQL*);
 
 void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
@@ -81,10 +80,11 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 }
 
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position) {
-	// TODO: add compressed support
+	// TODO: add compressed output support
 
-	// set serverID = max serverID - threadID to try an eliminate conflicts, 0 is bad because mysqld will disconnect at the end of the last log (for mysqlbinlog).
-	// TODO: maybe figure out a better way of doing this.
+	// set serverID = max serverID - threadID to try an eliminate conflicts,
+	// 0 is bad because mysqld will disconnect at the end of the last log
+	// dupes aren't too bad since it is up to the client to check for them
 	uchar buf[128];
 	// We need to read the raw network packets
 	NET* net;
@@ -131,10 +131,10 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 				read_error= TRUE;
 				break;
 			case ROTATE_EVENT:
-				// TODO: first rotate needs to be an empty rotate but still recorded.
 				if (rotated) {
 					read_end= TRUE;
 				} else {
+					len= 1;
 					rotated= TRUE;
 				}
 				break;

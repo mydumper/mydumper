@@ -184,7 +184,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 }
 
 void *process_queue(struct configuration * conf) {
-	// mysql_init is not thread safe	
+	// mysql_init is not thread safe, especially in Connector/C
 	g_mutex_lock(init_mutex);
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
@@ -240,10 +240,13 @@ void *process_queue(struct configuration * conf) {
 				g_free(job);
 
 				// Connection needs resetting! - cannot find a way of stopping once we are a slave thread
-				mysql_close(thrconn);
-				g_mutex_lock(init_mutex);
-				thrconn = mysql_init(NULL);
-				g_mutex_unlock(init_mutex);
+				if (thrconn) {
+					mysql_close(thrconn);
+					g_mutex_lock(init_mutex);
+					thrconn= mysql_init(NULL);
+					g_mutex_unlock(init_mutex);
+				}
+
 				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 					g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 					exit(EXIT_FAILURE);
@@ -258,6 +261,9 @@ void *process_queue(struct configuration * conf) {
 				break;
 		}
 	}
+	if (thrconn)
+		mysql_close(thrconn);
+	mysql_thread_end();
 	return NULL;
 }
 
