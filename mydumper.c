@@ -16,6 +16,8 @@
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 */
 
+#define VERSION 0.1.8
+
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
