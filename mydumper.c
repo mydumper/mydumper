@@ -16,7 +16,7 @@
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 */
 
-#define VERSION 0.1.8
+#define VERSION "0.1.8"
 
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
@@ -60,6 +60,7 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 int longquery = 60; 
 int build_empty_files=0;
+gboolean program_version = FALSE;
 
 int need_dummy_read=0;
 int compress_output=0;
@@ -90,6 +91,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
+  { "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -263,7 +265,12 @@ int main(int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 	g_option_context_free(context);
-	
+
+  if (program_version) {
+     g_print ("mydumper %s\n", VERSION);
+     exit (EXIT_SUCCESS);
+  }
+
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
 

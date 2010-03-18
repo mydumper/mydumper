@@ -5,7 +5,7 @@ OPTFLAGS=-O3 -g
 
 # Various defines
 NAME=mydumper
-VERSION = $(shell grep VERSION mydumper.c | cut -d' ' -f3)
+VERSION = $(shell grep 'define VERSION' mydumper.c | cut -d'"' -f2)
 CLEANFILES= $(NAME) dump *~ *BAK *.dSYM *.o
 DISTFILES = Makefile $(NAME).c README
 bindir = $(prefix)/bin
