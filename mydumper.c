@@ -14,8 +14,10 @@
 
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+			Andrew Hutchings, Oracle Corporation (andrew dot hutchings at oracle dot com)
 */
+
+#define VERSION "0.1.9"
 
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
@@ -55,6 +57,7 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 int longquery = 60; 
 int build_empty_files=0;
+gboolean program_version = FALSE;
 
 int need_dummy_read=0;
 int compress_output=0;
@@ -90,6 +93,7 @@ static GOptionEntry entries[] =
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
 	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
+	{ "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -285,7 +289,12 @@ int main(int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 	g_option_context_free(context);
-	
+
+	if (program_version) {
+		g_print ("mydumper %s\n", VERSION);
+		exit (EXIT_SUCCESS);
+	}
+
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
 
