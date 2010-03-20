@@ -92,12 +92,12 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 	unsigned long len;
 	char* filename;
 	FILE* outfile;
-	unsigned int event_type;
+	guint32 event_type;
 	gboolean read_error= FALSE;
 	gboolean read_end= FALSE;
 	gboolean rotated= FALSE;
-	unsigned int server_id = 4294967295 - mysql_thread_id(conn);
-	guint64 pos_counter = 0;
+	guint32 server_id= (~ (guint32) 0) - mysql_thread_id(conn);
+	guint64 pos_counter= 0;
 
 	int4store(buf, (guint32)start_position);
 	// Binlog flags (2 byte int)
@@ -105,11 +105,12 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 	// ServerID
 	int4store(buf + 6, server_id);
 	memcpy(buf + 10, binlog_file, strlen(binlog_file));
-	if (simple_command(conn, COM_BINLOG_DUMP, buf, strlen(binlog_file) + 10, 1)) {
+	if (simple_command(conn, COM_BINLOG_DUMP, buf, 
+		strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
 	filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
-	outfile = g_fopen(filename, "w");
+	outfile= g_fopen(filename, "w");
 	fwrite(BINLOG_MAGIC, 1, 4, outfile);
 	while(1) {
 		len = 0;
