@@ -16,8 +16,6 @@
 			Mark Leith, Sun Microsystems (leith at sun dot com)
 */
 
-#define VERSION "0.1.8"
-
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
@@ -32,6 +30,7 @@
 #include <zlib.h>
 #include <pcre.h>
 #include <glib/gstdio.h>
+#include "config.h"
 
 struct configuration {
 	char use_any_index;

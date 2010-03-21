@@ -10,6 +10,7 @@ It does not support schema dumping and leaves that to 'mysqldump --no-data'
 == How to build it? ==
 
 Run:
+ cmake .
  make
 
 One needs to install development versions of required libaries (MySQL, GLib, ZLib, PCRE):
