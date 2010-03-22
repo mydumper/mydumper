@@ -22,7 +22,7 @@ if (NOT WIN32)
   # in the FIND_PATH() and FIND_LIBRARY() calls
   find_package(PkgConfig)
 
-  pkg_check_modules(PC_PCRE QUIET libpcre)
+  pkg_check_modules(PC_PCRE REQUIRED libpcre)
 
   set(PCRE_DEFINITIONS ${PC_PCRE_CFLAGS_OTHER})
 
