@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 2.6)
-project(MYDUMPER)
+project(mydumper)
 set(VERSION 0.1.7)
+set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
@@ -29,3 +30,8 @@ target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD_L
 INSTALL(TARGETS mydumper
   RUNTIME DESTINATION bin
 )
+
+add_custom_target(dist
+  COMMAND bzr export --root=${ARCHIVE_NAME}
+    ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
