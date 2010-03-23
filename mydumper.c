@@ -17,7 +17,7 @@
 			Andrew Hutchings, Oracle Corporation (andrew dot hutchings at oracle dot com)
 */
 
-#define VERSION "0.1.9"
+#define VERSION "0.1.8"
 
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
