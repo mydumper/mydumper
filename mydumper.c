@@ -17,8 +17,6 @@
 			Andrew Hutchings, Oracle Corporation (andrew dot hutchings at oracle dot com)
 */
 
-#define VERSION "0.1.8"
-
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
@@ -34,6 +32,7 @@
 #include <pcre.h>
 #include <glib/gstdio.h>
 #include "binlog.h"
+#include "config.h"
 
 /* Database options */
 char *hostname=NULL;
