@@ -60,6 +60,7 @@ gboolean program_version = FALSE;
 
 int need_dummy_read=0;
 int compress_output=0;
+int compress_input=1;
 int killqueries=0;
 
 gchar *ignore_engines = NULL;
@@ -85,6 +86,7 @@ static GOptionEntry entries[] =
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
+	{ "compress-input", 'C', 0, G_OPTION_ARG_NONE, &compress_input, "Use compression on the MySQL connection", NULL },
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
@@ -194,6 +196,9 @@ void *process_queue(struct configuration * conf) {
 
 	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
+	if (compress_input)
+		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -249,7 +254,8 @@ void *process_queue(struct configuration * conf) {
 					thrconn= mysql_init(NULL);
 					g_mutex_unlock(init_mutex);
 				}
-
+				if (compress_input)
+					mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 					g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 					exit(EXIT_FAILURE);
