@@ -14,7 +14,7 @@
 
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Oracle Corporation (andrew dot hutchings at oracle dot com)
+			Andrew Hutchings (andrew at linuxjedi dot co dot uk)
 */
 
 #define _LARGEFILE64_SOURCE

@@ -14,7 +14,7 @@
 
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+			Andrew Hutchings (andrew at linuxjedi dot co dot uk)
 
 */
 
@@ -25,6 +25,6 @@
 void get_binlogs(MYSQL *conn, struct configuration *conf);
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position);
 unsigned int get_event(const char *buf, unsigned int len);
-
+void write_binlog(FILE* file, const char* data, guint64 len);
 
 #endif

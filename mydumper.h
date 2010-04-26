@@ -14,7 +14,7 @@
 
 	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
 			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+			Andrew Hutchings (andrew at linuxjedi dot co dot uk)
 
 */
 
