@@ -42,7 +42,7 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
 	MYSQL_RES *result;
 	MYSQL_ROW row;
-	char* last_filename;
+	char* last_filename = NULL;
 	guint64 last_position;
 
 	if (mysql_query(conn, "SHOW MASTER STATUS")) {
@@ -56,12 +56,16 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		last_position= strtoll(row[1], NULL, 10);
 	} else {
 		g_critical("Error: Could not obtain binary log stop position");
+		if (last_filename != NULL)
+			g_free(last_filename);
 		return;		
 	}
 	mysql_free_result(result);
 	
 	if (mysql_query(conn, "SHOW BINARY LOGS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
+		if (last_filename != NULL)
+			g_free(last_filename);
 		return;		
 	}
 
@@ -79,6 +83,8 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		g_async_queue_push(conf->queue,j);
 	}
 	mysql_free_result(result);
+	if (last_filename != NULL)
+		g_free(last_filename);
 }
 
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position) {
