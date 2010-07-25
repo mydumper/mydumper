@@ -71,6 +71,8 @@ char **ignore = NULL;
 gchar *tables_list = NULL;
 char **tables = NULL;
 
+int errors;
+
 static GOptionEntry entries[] =
 {
 	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
@@ -114,7 +116,7 @@ GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename);
 void create_backup_dir(char *directory);
-int write_data(FILE *,GString*);
+gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
 
 /* Check database.table string against regular expression */
@@ -209,6 +211,7 @@ void *process_queue(struct configuration * conf) {
         }
 	if (mysql_query(thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
 		g_critical("Failed to start consistent snapshot: %s",mysql_error(thrconn)); 
+		errors++;
 	}
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
 	if (need_dummy_read) {
@@ -285,7 +288,7 @@ int main(int argc, char *argv[])
 	g_free(p);
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	/* Give ourselves an array of engines to ignore */
@@ -353,8 +356,10 @@ int main(int argc, char *argv[])
 		mysql_free_result(res);
 	}
 	
-	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK"))
-		g_warning("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
+	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+		g_critical("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
+		errors++;
+	}
 	if (mysql_get_server_version(conn)) {
 		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
 		need_dummy_read=1;
@@ -366,7 +371,7 @@ int main(int argc, char *argv[])
 		if (res)
 			mysql_free_result(res);
 	}
-	time(&t);localtime_r(&t,&tval);
+	time(&t); localtime_r(&t,&tval);
 	fprintf(mdfile,"Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
@@ -392,10 +397,11 @@ int main(int argc, char *argv[])
 	} else {
 		MYSQL_RES *databases;
 		MYSQL_ROW row;
-		if(mysql_query(conn,"SHOW DATABASES")) {
+		if(mysql_query(conn,"SHOW DATABASES") || !(databases = mysql_store_result(conn))) {
 			g_critical("Unable to list databases: %s",mysql_error(conn));
+			exit(EXIT_FAILURE);
 		}
-		databases = mysql_store_result(conn);
+		
 		while ((row=mysql_fetch_row(databases))) {
 			if (!strcmp(row[0],"information_schema"))
 				continue;
@@ -428,7 +434,8 @@ int main(int argc, char *argv[])
 	g_free(threads);
 	g_strfreev(ignore);
 	g_strfreev(tables);
-	return (0);
+	
+	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping 
@@ -491,7 +498,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 	
 	/* Get minimum/maximum */
-	mysql_query(conn,query=g_strdup_printf("SELECT MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
+	mysql_query(conn, query=g_strdup_printf("SELECT MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
 	g_free(query);
 	minmax=mysql_store_result(conn);
 	
@@ -620,7 +627,7 @@ void create_backup_dir(char *directory) {
 			g_critical("Unable to create `%s': %s",
 				directory,
 				g_strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 }
@@ -630,10 +637,16 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	mysql_select_db(conn,database);
 	if (mysql_query(conn, (ignore?"SHOW TABLE STATUS":"SHOW /*!50000 FULL */ TABLES"))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
+		errors++;
 		return; 
 	}
 	
 	MYSQL_RES *result = mysql_store_result(conn);
+	if (!result) {
+		g_critical("Could not list tables for %s: %s", database, mysql_error(conn));
+		errors++;
+		return;
+	}
 	guint num_fields = mysql_num_fields(result);
 
 	int i;
@@ -692,6 +705,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		
 	if (!outfile) {
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
+		errors++;
 		return;
 	}
 	guint64 rows_count = dump_table_data(conn, (FILE *)outfile, database, table, where);
@@ -757,17 +771,21 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	
 	g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
 	g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-	write_data(file, statement);
 
-	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
-	if (mysql_query(conn, query)) {
-		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
-		g_free(query);
+	if (!write_data(file,statement)) {
+		g_critical("Could not write out data for %s.%s", database, table);
 		return num_rows;
 	}
 
-	result = mysql_use_result(conn);
+	/* Poor man's database code */
+ 	query = g_strdup_printf("SELECT * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
+	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
+		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+		g_free(query);
+		errors++;
+		return num_rows;
+	}
+
 	num_fields = mysql_num_fields(result);
 	MYSQL_FIELD *fields = mysql_fetch_fields(result);
 
@@ -808,7 +826,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* INSERT statement is closed once over limit */
 				if (statement->len > statement_size) {
 					g_string_append(statement,");\n");
-					write_data(file,statement);
+					if (!write_data(file,statement)) {
+						g_critical("Could not write out data for %s.%s", database, table);
+						goto cleanup;
+					}
 					g_string_set_size(statement,0);
 				} else {
 					g_string_append(statement,")");
@@ -816,11 +837,21 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			}
 		}
 	}
-	write_data(file, statement);
-	g_string_printf(statement,";\n");
-	write_data(file, statement);
+	if (mysql_errno(conn)) {
+		g_critical("Could not read data from %s.%s: %s", database, table, mysql_error(conn));
+	}
 	
-// cleanup:
+	if (!write_data(file,statement)) {
+		g_critical("Could not write out data for %s.%s", database, table);
+		goto cleanup;
+	}
+	g_string_printf(statement,";\n");
+	if (!write_data(file,statement)) {
+		g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
+		goto cleanup;
+	}
+	
+cleanup:
 	g_free(query);
 
 	g_string_free(escaped,TRUE);
@@ -833,10 +864,23 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	return num_rows;
 }
 
-int write_data(FILE* file,GString * data) {
-	if (!compress_output)
-		return write(fileno(file),data->str,data->len);
-	else
-		return gzwrite((gzFile)file,data->str,data->len);
+gboolean write_data(FILE* file,GString * data) {
+	ssize_t written=0, r=0;
+
+	while (written < data->len) {
+		if (!compress_output)
+			r = write(fileno(file), data->str + written, data->len);
+		else
+			r = gzwrite((gzFile)file, data->str + written, data->len);
+		
+		if (r < 0) {
+			g_critical("Couldn't write data to a file: %s", strerror(errno));
+			errors++;
+			return FALSE;
+		}
+		written += r;
+	}
+	
+	return TRUE;
 }
 
