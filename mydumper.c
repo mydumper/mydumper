@@ -206,9 +206,12 @@ void *process_queue(struct configuration * conf) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
-        if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
-                g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
-        }
+	if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
+		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+	}
+	if (mysql_query(thrconn, "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
+		g_warning("Failed to set isolation level: %s", mysql_error(thrconn));
+	}
 	if (mysql_query(thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
 		g_critical("Failed to start consistent snapshot: %s",mysql_error(thrconn)); 
 		errors++;
@@ -715,7 +718,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		gzclose(outfile);
 
 	if (!rows_count && !build_empty_files) {
-        	// dropping the useless file
+		// dropping the useless file
 		if (remove(filename)) {
  			g_warning("failed to remove empty file : %s\n", filename);
  			return;
