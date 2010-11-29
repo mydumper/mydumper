@@ -675,6 +675,9 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 				}
 			}
 		}
+		if (!dump)
+			continue;
+
 		/* In case of table-list option is enabled, check if table is part of the list */
 		if (tables) {
 			int table_found=0;
