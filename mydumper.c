@@ -20,6 +20,7 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <mysql.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <glib.h>
