@@ -450,7 +450,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	GList *chunks = NULL;
 	MYSQL_RES *indexes=NULL, *minmax=NULL, *total=NULL;
 	MYSQL_ROW row;
-	char *index = NULL, *field = NULL;
+	char *field = NULL;
 	int showed_nulls=0;
 	
 	/* first have to pick index, in future should be able to preset in configuration too */
@@ -463,7 +463,6 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 		if (!strcmp(row[2],"PRIMARY") && (!strcmp(row[3],"1"))) {
 			/* Pick first column in PK, cardinality doesn't matter */
 			field=row[4];
-			index=row[2];
 			break;
 		}
 	}
@@ -475,7 +474,6 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			if(!strcmp(row[1],"0") && (!strcmp(row[3],"1"))) {
 				/* Again, first column of any unique index */
 				field=row[4];
-				index=row[2];
 				break;
 			}
 		}
