@@ -357,7 +357,6 @@ int main(int argc, char *argv[])
 	} else {
 		MYSQL_RES *res = mysql_store_result(conn);
 		MYSQL_ROW row;
-		char *p;
 		
 		/* Just in case PROCESSLIST output column order changes */
 		MYSQL_FIELD *fields = mysql_fetch_fields(res);
@@ -654,13 +653,13 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	return(count);
 }
 
-void create_backup_dir(char *directory) {
-	if (g_mkdir(directory, 0700) == -1)
+void create_backup_dir(char *new_directory) {
+	if (g_mkdir(new_directory, 0700) == -1)
 	{
 		if (errno != EEXIST)
 		{
 			g_critical("Unable to create `%s': %s",
-				directory,
+				new_directory,
 				g_strerror(errno));
 			exit(EXIT_FAILURE);
 		}

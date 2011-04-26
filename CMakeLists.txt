@@ -12,7 +12,7 @@ find_package(PCRE)
 
 add_subdirectory(docs)
 
-set(CMAKE_C_FLAGS "-Wall -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Werror -O3 -g")
+set(CMAKE_C_FLAGS "-Wall -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Werror -Wshadow -O3 -g")
 
 include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})
 
