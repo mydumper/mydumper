@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(mydumper)
-set(VERSION 0.1.8)
+set(VERSION 0.2.0)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages
@@ -9,6 +9,8 @@ find_package(MySQL)
 find_package(ZLIB)
 find_package(GLIB2)
 find_package(PCRE)
+
+add_subdirectory(docs)
 
 set(CMAKE_C_FLAGS "-Wall -Werror -O3 -g")
 
@@ -22,7 +24,7 @@ MARK_AS_ADVANCED(CMAKE)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_BINARY_DIR}/config.h)
 
 add_executable(mydumper mydumper.c binlog.c)
-target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
+
 INSTALL(TARGETS mydumper
   RUNTIME DESTINATION bin
 )
