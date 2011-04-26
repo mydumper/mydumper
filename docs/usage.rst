@@ -100,3 +100,11 @@ The :program:`mydumper` tool has several available options:
 
    Show the program version and exit
 
+.. option:: --binlogs, -b
+
+   Get the binlogs from the server as well as the dump files
+
+.. option:: --binlog-outdir, -d
+
+   The directory to output the binlog files into, default 'binlogs' in the
+   export directory.
