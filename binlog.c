@@ -117,7 +117,6 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 		strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
-	filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
 	if (!compress_output) {
 		filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
 		outfile= g_fopen(filename, "w");
@@ -126,8 +125,11 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 		outfile= gzopen(filename, "w");
 	}
 
+
 	if (outfile == NULL)
 		g_critical("Error: binlog: Could not create filename '%s'", filename);
+
+	g_free(filename);
 
 	write_binlog(outfile, BINLOG_MAGIC, 4);
 	while(1) {
