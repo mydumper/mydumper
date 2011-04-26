@@ -106,7 +106,7 @@ if(GENERATE_DOC)
   add_dependencies(doc_man
     doc_html
   )
-  install(FILES "${SPHINX_MAN_DIR}/mydumper.1"
+  install(FILES "${SPHINX_MAN_DIR}/mysqldatadumper.1"
     DESTINATION "share/man/man1"
   )
 
