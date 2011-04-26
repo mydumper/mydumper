@@ -907,7 +907,8 @@ cleanup:
 }
 
 gboolean write_data(FILE* file,GString * data) {
-	ssize_t written=0, r=0;
+	size_t written= 0;
+	ssize_t r= 0;
 
 	while (written < data->len) {
 		if (!compress_output)
