@@ -1,0 +1,102 @@
+MySQL Data Dumper Usage
+=======================
+
+Synopsis
+--------
+
+:program:`mydumper`
+
+Description
+-----------
+
+:program:`mydumper` is a tool used for backing up MySQL database servers much
+faster than the mysqldump tool distributed with MySQL.
+
+Options
+-------
+
+The :program:`mydumper` tool has several available options:
+
+.. program:: mydumper
+
+.. option:: --help, -?
+
+   Show help text
+
+.. option:: --host, -h
+
+   Hostname of MySQL server to connect to (default localhost)
+
+.. option:: --user, -u
+
+   MySQL username with the correct privileges to execute the dump
+
+.. option:: --password, -p
+
+   The corresponding password for the MySQL user
+
+.. option:: --port, -P
+
+   The port for the MySQL connection.
+
+   .. note::
+
+      For localhost TCP connections use 127.0.0.1 for :option:`--host`.
+
+.. option:: --socket, -S
+
+   The UNIX domain socket file to use for the connection
+
+.. option:: --database, -B
+
+   Database to dump
+
+.. option:: --table-list, -T
+
+   A comma separated list of tables to dump
+
+.. option:: --threads, -t
+
+   The number of threads to use for dumping data, default is 4
+
+.. option:: --outputdir, -o
+
+   Output directory name, default is export-YYYYMMDD-HHMMSS
+
+.. option:: --statement-size, -s
+
+   The maximum size for an insert statement before breaking into a new
+   statement, default 1,000,000 bytes
+
+.. option:: --rows, -r
+
+   Split table into chunks of this many rows, default unlimited
+
+.. option:: --compress, -c
+
+   Compress the output files
+
+.. option:: --build-empty-files, -e
+
+   Create empty dump files if there is no data to dump
+
+.. option:: --regex, -x
+
+   A regular expression to match against database and table
+
+.. option:: --ignore-engines, -i
+
+   Comma separated list of storage engines to ignore
+
+.. option:: --long-query-guard, -l
+
+   Timeout for long query execution in seconds, default 60
+
+.. option:: --kill-long-queries, -k
+
+   Kill long running queries instead of aborting the dump
+
+.. option:: --version, -V
+
+   Show the program version and exit
+
