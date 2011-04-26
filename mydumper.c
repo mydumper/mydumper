@@ -218,7 +218,7 @@ void *process_queue(struct configuration * conf) {
 		if (res)
 			mysql_free_result(res);
 	}
-	mysql_query(thrconn, "/*!40101 SET NAMES utf8*/");
+	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	
-	mysql_query(conn, "/*!40101 SET NAMES utf8*/");
+	mysql_query(conn, "/*!40101 SET NAMES binary*/");
 	
 	write_snapshot_info(conn, mdfile);
 	
@@ -811,7 +811,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */	
 	GString* statement = g_string_sized_new(statement_size);
 	
-	g_string_printf(statement,"/*!40101 SET NAMES utf8*/;\n");
+	g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
 	g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
 
 	if (!write_data(file,statement)) {
@@ -854,21 +854,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				g_string_append(statement, "NULL");
 			} else if (fields[i].flags & NUM_FLAG) {
 				g_string_append(statement, row[i]);
-			} else if ((fields[i].charsetnr == 63) &&
-				(fields[i].type == MYSQL_TYPE_BIT ||
-				fields[i].type == MYSQL_TYPE_STRING ||
-				fields[i].type == MYSQL_TYPE_VAR_STRING ||
-				fields[i].type == MYSQL_TYPE_VARCHAR ||
-				fields[i].type == MYSQL_TYPE_BLOB ||
-				fields[i].type == MYSQL_TYPE_LONG_BLOB ||
-				fields[i].type == MYSQL_TYPE_MEDIUM_BLOB ||
-				fields[i].type == MYSQL_TYPE_TINY_BLOB)) {
-				/* Convert BLOB/BINARY to hex for human readable dumps
- 				Also, please god find a nicer way of writing the above */
-				g_string_set_size(escaped, lengths[i]*2+1);
-				mysql_hex_string(escaped->str, row[i], lengths[i]);
-				g_string_append(statement, "0x");
-				g_string_append(statement, escaped->str);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
