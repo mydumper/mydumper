@@ -34,7 +34,7 @@
 enum event_type {
 	ROTATE_EVENT= 4,
 	FORMAT_DESCRIPTION_EVENT= 15,
-	EVENT_TOO_SHORT= 10000 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
+	EVENT_TOO_SHORT= 254 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
 };
 
 extern gchar* binlog_directory;
@@ -187,10 +187,11 @@ unsigned int get_event(const char *buf, unsigned int len) {
 }
 
 void write_binlog(FILE* file, const char* data, guint64 len) {
-	int write_result;
 	int err;
 
 	if (len > 0) {
+		int write_result;
+
 		if (!compress_output)
 			write_result= write(fileno(file), data, len);
 		else
