@@ -10,6 +10,8 @@ find_package(ZLIB)
 find_package(GLIB2)
 find_package(PCRE)
 
+add_subdirectory(docs)
+
 set(CMAKE_C_FLAGS "-Wall -Werror -O3 -g")
 
 include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})
