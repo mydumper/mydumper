@@ -218,7 +218,7 @@ void *process_queue(struct configuration * conf) {
 		if (res)
 			mysql_free_result(res);
 	}
-	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, "/*!40101 SET NAMES utf8*/");
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 	
@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	
-	mysql_query(conn, "/*!40101 SET NAMES binary*/");
+	mysql_query(conn, "/*!40101 SET NAMES utf8*/");
 	
 	write_snapshot_info(conn, mdfile);
 	
@@ -811,7 +811,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */	
 	GString* statement = g_string_sized_new(statement_size);
 	
-	g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+	g_string_printf(statement,"/*!40101 SET NAMES utf8*/;\n");
 	g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
 
 	if (!write_data(file,statement)) {

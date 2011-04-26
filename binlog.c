@@ -22,6 +22,8 @@
 #include <glib/gstdio.h>
 #include <my_global.h>
 #include <mysql.h>
+#include <my_sys.h>
+#include <sql_common.h>
 #include <string.h>
 #include <zlib.h>
 #include "mydumper.h"
