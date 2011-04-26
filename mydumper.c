@@ -816,7 +816,22 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			if (!row[i]) {
 				g_string_append(statement, "NULL");
 			} else if (fields[i].flags & NUM_FLAG) {
-				g_string_append_printf(statement,"\"%s\"", row[i]);
+				g_string_append(statement, row[i]);
+			} else if ((fields[i].charsetnr == 63) &&
+				(fields[i].type == MYSQL_TYPE_BIT ||
+				fields[i].type == MYSQL_TYPE_STRING ||
+				fields[i].type == MYSQL_TYPE_VAR_STRING ||
+				fields[i].type == MYSQL_TYPE_VARCHAR ||
+				fields[i].type == MYSQL_TYPE_BLOB ||
+				fields[i].type == MYSQL_TYPE_LONG_BLOB ||
+				fields[i].type == MYSQL_TYPE_MEDIUM_BLOB ||
+				fields[i].type == MYSQL_TYPE_TINY_BLOB)) {
+				/* Convert BLOB/BINARY to hex for human readable dumps
+ 				Also, please god find a nicer way of writing the above */
+				g_string_set_size(escaped, lengths[i]*2+1);
+				mysql_hex_string(escaped->str, row[i], lengths[i]);
+				g_string_append(statement, "0x");
+				g_string_append(statement, escaped->str);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
