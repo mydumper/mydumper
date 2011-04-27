@@ -76,6 +76,10 @@ The :program:`mydumper` tool has several available options:
 
    Compress the output files
 
+.. option:: --compress-input, -C
+
+   Use client protocol compression for connections to the MySQL server
+
 .. option:: --build-empty-files, -e
 
    Create empty dump files if there is no data to dump
