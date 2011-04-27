@@ -12,9 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
-			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+	Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+			Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+			Andrew Hutchings, SkySQL (andrew at skysql dot com)
 
 */
 

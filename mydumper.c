@@ -12,9 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
-			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Oracle Corporation (andrew dot hutchings at oracle dot com)
+	Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+			Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+			Andrew Hutchings, SkySQL (andrew at skysql dot com)
 */
 
 #define _LARGEFILE64_SOURCE
@@ -263,6 +263,7 @@ void *process_queue(struct configuration * conf) {
 				}
 				if (compress_input)
 					mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
 				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 					g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 					exit(EXIT_FAILURE);
@@ -363,7 +364,6 @@ int main(int argc, char *argv[])
 	} else {
 		MYSQL_RES *res = mysql_store_result(conn);
 		MYSQL_ROW row;
-		char *p;
 		
 		/* Just in case PROCESSLIST output column order changes */
 		MYSQL_FIELD *fields = mysql_fetch_fields(res);
@@ -660,13 +660,13 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	return(count);
 }
 
-void create_backup_dir(char *directory) {
-	if (g_mkdir(directory, 0700) == -1)
+void create_backup_dir(char *new_directory) {
+	if (g_mkdir(new_directory, 0700) == -1)
 	{
 		if (errno != EEXIST)
 		{
 			g_critical("Unable to create `%s': %s",
-				directory,
+				new_directory,
 				g_strerror(errno));
 			exit(EXIT_FAILURE);
 		}
@@ -860,21 +860,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				g_string_append(statement, "NULL");
 			} else if (fields[i].flags & NUM_FLAG) {
 				g_string_append(statement, row[i]);
-			} else if ((fields[i].charsetnr == 63) &&
-				(fields[i].type == MYSQL_TYPE_BIT ||
-				fields[i].type == MYSQL_TYPE_STRING ||
-				fields[i].type == MYSQL_TYPE_VAR_STRING ||
-				fields[i].type == MYSQL_TYPE_VARCHAR ||
-				fields[i].type == MYSQL_TYPE_BLOB ||
-				fields[i].type == MYSQL_TYPE_LONG_BLOB ||
-				fields[i].type == MYSQL_TYPE_MEDIUM_BLOB ||
-				fields[i].type == MYSQL_TYPE_TINY_BLOB)) {
-				/* Convert BLOB/BINARY to hex for human readable dumps
- 				Also, please god find a nicer way of writing the above */
-				g_string_set_size(escaped, lengths[i]*2+1);
-				mysql_hex_string(escaped->str, row[i], lengths[i]);
-				g_string_append(statement, "0x");
-				g_string_append(statement, escaped->str);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
@@ -928,7 +913,8 @@ cleanup:
 }
 
 gboolean write_data(FILE* file,GString * data) {
-	ssize_t written=0, r=0;
+	size_t written= 0;
+	ssize_t r= 0;
 
 	while (written < data->len) {
 		if (!compress_output)

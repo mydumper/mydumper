@@ -12,9 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
-			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+	Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+			Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+			Andrew Hutchings, SkySQL (andrew at skysql dot com)
 
 */
 
@@ -25,6 +25,6 @@
 void get_binlogs(MYSQL *conn, struct configuration *conf);
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position);
 unsigned int get_event(const char *buf, unsigned int len);
-
+void write_binlog(FILE* file, const char* data, guint64 len);
 
 #endif

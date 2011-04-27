@@ -12,9 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-	Authors: 	Domas Mituzas, Sun Microsystems ( domas at sun dot com )
-			Mark Leith, Sun Microsystems (leith at sun dot com)
-			Andrew Hutchings, Sun Microsystem (andrew dot hutchings at sun dot com)
+	Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+			Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+			Andrew Hutchings, SkySQL (andrew at skysql dot com)
 
 */
 
@@ -22,7 +22,10 @@
 #include <glib/gstdio.h>
 #include <my_global.h>
 #include <mysql.h>
+#include <my_sys.h>
+#include <sql_common.h>
 #include <string.h>
+#include <zlib.h>
 #include "mydumper.h"
 #include "binlog.h"
 
@@ -31,16 +34,17 @@
 enum event_type {
 	ROTATE_EVENT= 4,
 	FORMAT_DESCRIPTION_EVENT= 15,
-	EVENT_TOO_SHORT= 10000 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
+	EVENT_TOO_SHORT= 254 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
 };
 
 extern gchar* binlog_directory;
+extern int compress_output;
 
 void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
 	MYSQL_RES *result;
 	MYSQL_ROW row;
-	char* last_filename;
+	char* last_filename = NULL;
 	guint64 last_position;
 
 	if (mysql_query(conn, "SHOW MASTER STATUS")) {
@@ -54,12 +58,16 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		last_position= strtoll(row[1], NULL, 10);
 	} else {
 		g_critical("Error: Could not obtain binary log stop position");
+		if (last_filename != NULL)
+			g_free(last_filename);
 		return;		
 	}
 	mysql_free_result(result);
 	
 	if (mysql_query(conn, "SHOW BINARY LOGS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
+		if (last_filename != NULL)
+			g_free(last_filename);
 		return;		
 	}
 
@@ -77,11 +85,11 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		g_async_queue_push(conf->queue,j);
 	}
 	mysql_free_result(result);
+	if (last_filename != NULL)
+		g_free(last_filename);
 }
 
 void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position) {
-	// TODO: add compressed output support
-
 	// set serverID = max serverID - threadID to try an eliminate conflicts,
 	// 0 is bad because mysqld will disconnect at the end of the last log
 	// dupes aren't too bad since it is up to the client to check for them
@@ -109,15 +117,30 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 		strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
-	filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
-	outfile= g_fopen(filename, "w");
-	fwrite(BINLOG_MAGIC, 1, 4, outfile);
+	if (!compress_output) {
+		filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
+		outfile= g_fopen(filename, "w");
+	} else {
+		filename= g_strdup_printf("%s/%s.gz", binlog_directory, binlog_file);
+		outfile= gzopen(filename, "w");
+	}
+
+
+	if (outfile == NULL)
+		g_critical("Error: binlog: Could not create filename '%s'", filename);
+
+	g_free(filename);
+
+	write_binlog(outfile, BINLOG_MAGIC, 4);
 	while(1) {
 		len = 0;
 		if (net->vio != 0) len=my_net_read(net);
 		if ((len == 0) || (len == ~(unsigned long) 0)) {
 			g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
-			fclose(outfile);
+			if (!compress_output)
+				fclose(outfile);
+			else
+				gzclose(outfile);
 			return;
 		}
 		if (len < 8 && net->read_pos[0]) {
@@ -144,12 +167,15 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 				break;
 		}
 		if (read_error) break;
-		fwrite(net->read_pos + 1, 1, len - 1, outfile);
+		write_binlog(outfile, (const char*)net->read_pos + 1, len - 1);
 		if (read_end) break;
 		// stop if we are at recorded end of last log
 		if ((stop_position > 0) && (pos_counter >= stop_position)) break;
 	}
-	fclose(outfile);
+	if (!compress_output)
+		fclose(outfile);
+	else
+		gzclose(outfile);
 }
 
 
@@ -160,4 +186,24 @@ unsigned int get_event(const char *buf, unsigned int len) {
 	return buf[4];
 
 	// TODO: Would be good if we can check for valid event type, unfortunately this check can change from version to version
+}
+
+void write_binlog(FILE* file, const char* data, guint64 len) {
+	int err;
+
+	if (len > 0) {
+		int write_result;
+
+		if (!compress_output)
+			write_result= write(fileno(file), data, len);
+		else
+			write_result= gzwrite((gzFile)file, data, len);
+	
+		if (write_result <= 0)	{
+			if (!compress_output)
+				g_critical("Error: binlog: Error writing binary log: %s", strerror(errno));
+			else
+				g_critical("Error: binlog: Error writing compressed binary log: %s", gzerror((gzFile)file, &err));
+		}
+	}
 }
