@@ -73,6 +73,8 @@ char **tables = NULL;
 gboolean need_binlogs = FALSE;
 gchar *binlog_directory = NULL;
 
+gboolean need_schemas= FALSE;
+
 int errors;
 
 static GOptionEntry entries[] =
@@ -93,6 +95,7 @@ static GOptionEntry entries[] =
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
+	{ "schemas", 'm', 0, G_OPTION_ARG_NONE, &need_schemas, "Dump table schemas as well as data", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer (60s by default)", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
@@ -103,6 +106,8 @@ static GOptionEntry entries[] =
 
 struct tm tval;
 
+void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
+void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *);
 void dump_database(MYSQL *, char *, struct configuration *conf);
@@ -229,6 +234,7 @@ void *process_queue(struct configuration * conf) {
 	
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
+	struct schema_job* sj= NULL;
 	struct binlog_job* bj= NULL;
 	for(;;) {
 		GTimeVal tv;
@@ -245,6 +251,15 @@ void *process_queue(struct configuration * conf) {
 				if(tj->where) g_free(tj->where);
 				if(tj->filename) g_free(tj->filename);
 				g_free(tj);
+				g_free(job);
+				break;
+			case JOB_SCHEMA:
+				sj=(struct schema_job *)job->job_data;
+				dump_schema_data(thrconn, sj->database, sj->table, sj->filename);
+				if(sj->database) g_free(sj->database);
+				if(sj->table) g_free(sj->table);
+				if(sj->filename) g_free(sj->filename);
+				g_free(sj);
 				g_free(job);
 				break;
 			case JOB_BINLOG:
@@ -446,7 +461,7 @@ int main(int argc, char *argv[])
 		}
 		
 		while ((row=mysql_fetch_row(databases))) {
-			if (!strcmp(row[0],"information_schema"))
+			if (!strcmp(row[0],"information_schema") || !strcmp(row[0], "performance_schema"))
 				continue;
 			dump_database(conn, row[0], &conf);
 		}
@@ -735,8 +750,72 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 		
 		/* Green light! */
 		dump_table(conn, database, row[0], conf);
+	        if (need_schemas) {
+        	        dump_schema(database, row[0], conf);
+        	}
 	}
 	mysql_free_result(result);
+}
+
+void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) {
+	void *outfile;
+	char *query = NULL;
+	MYSQL_RES *result = NULL;
+	MYSQL_ROW row;
+
+	if (!compress_output)
+		outfile= g_fopen(filename, "w");
+	else
+		outfile= gzopen(filename, "w");
+
+	if (!outfile) {
+		g_critical("Error: DB: %s Could not create output file %s (%d)", database, filename, errno);
+		errors++;
+		return;
+	}
+        GString* statement = g_string_sized_new(statement_size);
+
+        g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+        g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+
+	if (!write_data((FILE *)outfile,statement)) {
+		g_critical("Could not write schema data for %s.%s", database, table);
+		errors++;
+		return;
+	}
+
+	query= g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", database, table);
+	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
+		g_critical("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+		g_free(query);
+		errors++;
+		return;
+	}
+
+
+	g_string_set_size(statement, 0);
+
+	/* There should never be more than one row */
+	row = mysql_fetch_row(result);
+	g_string_append(statement, row[1]);
+	g_string_append(statement, "\n");
+	if (!write_data((FILE *)outfile, statement)) {
+		g_critical("Could not write schema for %s.%s", database, table);
+		errors++;
+	}
+	g_free(query);
+
+        if (!compress_output)
+                fclose((FILE *)outfile);
+        else
+                gzclose(outfile);
+
+
+	g_string_free(statement, TRUE);
+	if (result)
+		mysql_free_result(result);
+
+	return;
 }
 
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename) {
@@ -766,6 +845,19 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		}
 	}  
 
+}
+
+void dump_schema(char *database, char *table, struct configuration *conf) {
+	struct job *j = g_new0(struct job,1);
+	struct schema_job *sj = g_new0(struct schema_job,1);
+	j->job_data=(void*) sj;
+	sj->database=g_strdup(database);
+	sj->table=g_strdup(table);
+	j->conf=conf;
+	j->type=JOB_SCHEMA;
+	sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", directory, database, table, (compress_output?".gz":""));
+	g_async_queue_push(conf->queue,j);
+	return;
 }
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {

@@ -92,6 +92,10 @@ The :program:`mydumper` tool has several available options:
 
    Comma separated list of storage engines to ignore
 
+.. option:: --schemas, -m
+
+   Dump schemas as well as data
+
 .. option:: --long-query-guard, -l
 
    Timeout for long query execution in seconds, default 60
