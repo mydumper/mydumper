@@ -2,3 +2,17 @@ mydumper
 *~
 *.dSYM
 export
+CMakeCache.txt
+CMakeFiles/
+Makefile
+cmake_install.cmake
+config.h
+docs/CMakeFiles/
+docs/Makefile
+docs/_doctrees/
+docs/_sources/
+docs/cmake_install.cmake
+docs/html/
+docs/man/
+docs/_build/conf.py
+docs/_build/sources.cmake
