@@ -10,7 +10,11 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   authors
+   compiling
    usage
+   files
+   examples
 
 Indices and tables
 ==================
