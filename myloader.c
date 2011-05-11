@@ -61,6 +61,7 @@ static GOptionEntry entries[] =
 	{ "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
+	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of threads to use", NULL },
 	{ "directory", 'd', 0, G_OPTION_ARG_STRING, &directory, "Directory of the dump to import", NULL },
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction (default 1000)", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }

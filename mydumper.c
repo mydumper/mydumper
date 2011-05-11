@@ -801,7 +801,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	/* There should never be more than one row */
 	row = mysql_fetch_row(result);
 	g_string_append(statement, row[1]);
-	g_string_append(statement, "\n");
+	g_string_append(statement, ";\n");
 	if (!write_data((FILE *)outfile, statement)) {
 		g_critical("Could not write schema for %s.%s", database, table);
 		errors++;
