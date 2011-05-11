@@ -291,6 +291,9 @@ void *process_queue(struct configuration * conf) {
 				mysql_thread_end();
 				return NULL;
 				break;
+			default:
+				g_critical("Something very bad happened!");
+				exit(EXIT_FAILURE);
 		}
 	}
 	if (thrconn)

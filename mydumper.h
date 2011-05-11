@@ -21,7 +21,7 @@
 #ifndef _mydumper_h
 #define _mydumper_h
 
-enum job_type { JOB_SHUTDOWN, JOB_DUMP, JOB_SCHEMA, JOB_BINLOG };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_SCHEMA, JOB_BINLOG };
 
 struct configuration {
 	char use_any_index;
@@ -45,6 +45,12 @@ struct table_job {
 };
 
 struct schema_job {
+	char *database;
+	char *table;
+	char *filename;
+};
+
+struct restore_job {
 	char *database;
 	char *table;
 	char *filename;
