@@ -18,13 +18,12 @@
 
 */
 
-#ifndef _mydumper_h
-#define _mydumper_h
+#ifndef _myloader_h
+#define _myloader_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_SCHEMA, JOB_BINLOG };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE };
 
 struct configuration {
-	char use_any_index;
 	GAsyncQueue* queue;
 	GAsyncQueue* ready;
 	GMutex* mutex;
@@ -37,29 +36,10 @@ struct job {
 	struct configuration *conf;
 };
 
-struct table_job {
-	char *database;
-	char *table;
-	char *filename;
-	char *where;
-};
-
-struct schema_job {
-	char *database;
-	char *table;
-	char *filename;
-};
-
 struct restore_job {
 	char *database;
 	char *table;
 	char *filename;
-};
-
-struct binlog_job {
-	char *filename;
-	guint64 start_position;
-	guint64 stop_position;
 };
 
 #endif

@@ -33,15 +33,11 @@
 #include <pcre.h>
 #include <glib/gstdio.h>
 #include "binlog.h"
+#include "common.h"
 #include "config.h"
 
 /* Database options */
-char *hostname=NULL;
-char *username=NULL;
-char *password=NULL;
-char *socket_path=NULL;
 char *db=NULL;
-guint port=3306;
 
 char *regexstring=NULL;
 
@@ -51,17 +47,14 @@ char *regexstring=NULL;
 static GMutex * init_mutex = NULL;
 
 /* Program options */
-guint num_threads = 4;
 gchar *directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
 int longquery = 60; 
 int build_empty_files=0;
-gboolean program_version = FALSE;
 
 int need_dummy_read=0;
 int compress_output=0;
-int compress_input=1;
 int killqueries=0;
 
 gchar *ignore_engines = NULL;
@@ -79,11 +72,6 @@ int errors;
 
 static GOptionEntry entries[] =
 {
-	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
-	{ "user", 'u', 0, G_OPTION_ARG_STRING, &username, "Username with privileges to run the dump", NULL },
-	{ "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
-	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
-	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
 	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of parallel threads", NULL },
@@ -91,7 +79,6 @@ static GOptionEntry entries[] =
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
-	{ "compress-input", 'C', 0, G_OPTION_ARG_NONE, &compress_input, "Use compression on the MySQL connection", NULL },
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
@@ -100,7 +87,6 @@ static GOptionEntry entries[] =
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
 	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
-	{ "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -204,7 +190,7 @@ void *process_queue(struct configuration * conf) {
 
 	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
-	if (compress_input)
+	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
@@ -276,7 +262,7 @@ void *process_queue(struct configuration * conf) {
 					thrconn= mysql_init(NULL);
 					g_mutex_unlock(init_mutex);
 				}
-				if (compress_input)
+				if (compress_protocol)
 					mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
 				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
@@ -291,6 +277,9 @@ void *process_queue(struct configuration * conf) {
 				mysql_thread_end();
 				return NULL;
 				break;
+			default:
+				g_critical("Something very bad happened!");
+				exit(EXIT_FAILURE);
 		}
 	}
 	if (thrconn)
@@ -311,7 +300,10 @@ int main(int argc, char *argv[])
 	init_mutex = g_mutex_new();
 
 	context = g_option_context_new("multi-threaded MySQL dumping");
-	g_option_context_add_main_entries(context, entries, NULL);
+	GOptionGroup *main_group= g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
+	g_option_group_add_entries(main_group, entries);
+	g_option_group_add_entries(main_group, common_entries);
+	g_option_context_set_main_group(context, main_group);
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print ("option parsing failed: %s, try --help\n", error->message);
 		exit (EXIT_FAILURE);
@@ -798,7 +790,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	/* There should never be more than one row */
 	row = mysql_fetch_row(result);
 	g_string_append(statement, row[1]);
-	g_string_append(statement, "\n");
+	g_string_append(statement, ";\n");
 	if (!write_data((FILE *)outfile, statement)) {
 		g_critical("Could not write schema for %s.%s", database, table);
 		errors++;
