@@ -48,11 +48,11 @@ static GMutex *init_mutex= NULL;
 guint errors= 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof);
-void restore_data(MYSQL *conn, char *database, char *table, char *filename);
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename);
 void *process_queue(struct configuration *conf);
 void add_table(const gchar* filename, struct configuration *conf);
-void add_schema(const gchar* filename, struct configuration *conf);
-void restore_databases(struct configuration *conf);
+void add_schema(const gchar* filename, MYSQL *conn);
+void restore_databases(struct configuration *conf, MYSQL *conn);
 
 static GOptionEntry entries[] =
 {
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 	}
 	g_async_queue_unref(conf.ready);
 
-        restore_databases(&conf);
+        restore_databases(&conf, conn);
 
 	for (n= 0; n < num_threads; n++) {
 		struct job *j= g_new0(struct job, 1);
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 	return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-void restore_databases(struct configuration *conf) {
+void restore_databases(struct configuration *conf, MYSQL *conn) {
 	GError *error= NULL;
 	GDir* dir= g_dir_open(directory, 0, &error);
 
@@ -157,7 +157,7 @@ void restore_databases(struct configuration *conf) {
 
 	while((filename= g_dir_read_name(dir))) {
 		if (g_strrstr(filename, "-schema.sql")) {
-			add_schema(filename, conf);
+			add_schema(filename, conn);
 		}
 	}
 
@@ -172,16 +172,10 @@ void restore_databases(struct configuration *conf) {
 	g_dir_close(dir);
 }
 
-void add_schema(const gchar* filename, struct configuration *conf) {
-	struct job *j= g_new0(struct job, 1);
-	struct schema_job *sj= g_new0(struct schema_job, 1);
-	j->job_data= (void*) sj;
-	sj->filename= g_strdup(filename);
-	j->type= JOB_SCHEMA;
+void add_schema(const gchar* filename, MYSQL *conn) {
 	gchar** split_file= g_strsplit(filename, ".", 0);
-	sj->database= g_strdup(split_file[0]);
-	sj->table= g_strdup(split_file[1]);
-	g_async_queue_push(conf->queue, j);
+	restore_data(conn, split_file[0], split_file[1], filename);
+
 	return;
 }
 
@@ -219,21 +213,11 @@ void *process_queue(struct configuration *conf) {
 	g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
 	struct job* job= NULL;
-	struct schema_job* sj= NULL;
 	struct restore_job* rj= NULL;
 	for(;;) {
 		job= (struct job*)g_async_queue_pop(conf->queue);
 
 		switch (job->type) {
-			case JOB_SCHEMA:
-				sj= (struct schema_job *)job->job_data;
-				restore_data(thrconn, sj->database, sj->table, sj->filename);
-				if (sj->database) g_free(sj->database);
-				if (sj->table) g_free(sj->table);
-				if (sj->filename) g_free(sj->filename);
-				g_free(sj);
-				g_free(job);
-				break;
 			case JOB_RESTORE:
 				rj= (struct restore_job *)job->job_data;
 				restore_data(thrconn, rj->database, rj->table, rj->filename);
@@ -261,7 +245,7 @@ void *process_queue(struct configuration *conf) {
 	return NULL;
 }
 
-void restore_data(MYSQL *conn, char *database, char *table, char *filename) {
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename) {
 	void *infile;
 	gboolean is_compressed= FALSE;
 	gboolean eof= FALSE;
