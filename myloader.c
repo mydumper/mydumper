@@ -28,20 +28,12 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <zlib.h>
-#include "mydumper.h"
+#include "common.h"
+#include "myloader.h"
 #include "config.h"
 
-char *hostname= NULL;
-char *username= NULL;
-char *password= NULL;
-char *socket_path= NULL;
-guint port= 3306;
-
-guint num_threads= 4;
 guint commit_count= 1000;
 gchar *directory= NULL;
-gboolean program_version= FALSE;
-gboolean compress_protocol= FALSE;
 
 static GMutex *init_mutex= NULL;
 
@@ -56,19 +48,13 @@ void restore_databases(struct configuration *conf, MYSQL *conn);
 
 static GOptionEntry entries[] =
 {
-	{ "host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to", NULL },
-	{ "user", 'u', 0, G_OPTION_ARG_STRING, &username, "Username with privileges to restore the dump", NULL },
-	{ "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
-	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
-	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
-	{ "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of threads to use", NULL },
 	{ "directory", 'd', 0, G_OPTION_ARG_STRING, &directory, "Directory of the dump to import", NULL },
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction (default 1000)", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
 int main(int argc, char *argv[]) {
-	struct configuration conf= { 1, NULL, NULL, NULL, 0 };
+	struct configuration conf= { NULL, NULL, NULL, 0 };
 
 	GError *error= NULL;
 	GOptionContext *context;
@@ -78,7 +64,10 @@ int main(int argc, char *argv[]) {
 	init_mutex= g_mutex_new();
 
 	context= g_option_context_new("multi-threaded MySQL loader");
-	g_option_context_add_main_entries(context, entries, NULL);
+	GOptionGroup *main_group= g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
+	g_option_group_add_entries(main_group, entries);
+	g_option_group_add_entries(main_group, common_entries);
+	g_option_context_set_main_group(context, main_group);
 	if (!g_option_context_parse(context, &argc, &argv, &error)) {
 		g_print("option parsing failed: %s, try --help\n", error->message);
 		exit(EXIT_FAILURE);
