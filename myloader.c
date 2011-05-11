@@ -62,6 +62,7 @@ static GOptionEntry entries[] =
 	{ "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
 	{ "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
 	{ "directory", 'd', 0, G_OPTION_ARG_STRING, &directory, "Directory of the dump to import", NULL },
+	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction (default 1000)", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -282,8 +283,6 @@ void restore_data(MYSQL *conn, char *database, char *table, char *filename) {
 		return;
 	}
 
-	char* pos;
-
 	gchar *query= g_strdup_printf("USE `%s`", database);
 	if (mysql_query(conn, query)) {
 		g_critical("Error switching to database %s whilst restoring table %s", database, table);
@@ -299,8 +298,7 @@ void restore_data(MYSQL *conn, char *database, char *table, char *filename) {
 	while (eof == FALSE) {
 		if (read_data(infile, is_compressed, data, &eof)) {
 			// Search for ; in last 5 chars of line
-			if ((pos= g_strrstr(data->str, ";")) && 
-				(data->len - (pos - data->str) <= 5)) {
+			if (g_strrstr(&data->str[data->len-5], ";")) { 
 				if (mysql_query(conn, data->str)) {
 					g_critical("Error restoring %s.%s: %s", database, table, mysql_error(conn));
 					errors++;
