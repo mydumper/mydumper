@@ -330,7 +330,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *
 				}
 			}
 		} else {
-			if (gzgets((gzFile)file, buffer, 256)) {
+			if (!gzgets((gzFile)file, buffer, 256)) {
 				if (gzeof(file)) {
 					*eof= TRUE;
 				} else {
