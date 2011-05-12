@@ -299,8 +299,8 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 	while (eof == FALSE) {
 		if (read_data(infile, is_compressed, data, &eof)) {
 			// Search for ; in last 5 chars of line
-			if (g_strrstr(&data->str[data->len-5], ";")) { 
-				if (mysql_query(conn, data->str)) {
+			if (g_strrstr(&data->str[data->len-5], ";\n")) { 
+				if (mysql_real_query(conn, data->str, data->len)) {
 					g_critical("Error restoring %s.%s: %s", database, table, mysql_error(conn));
 					errors++;
 					return;
