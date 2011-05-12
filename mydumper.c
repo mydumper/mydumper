@@ -380,7 +380,10 @@ int main(int argc, char *argv[])
 			else if (!strcmp(fields[i].name,"Time")) tcol=i;
 			else if (!strcmp(fields[i].name,"Id")) icol=i;
 		}
-		
+		if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+			g_critical("Error obtaining information from processlist");
+			exit(EXIT_FAILURE);
+		}	
 		while ((row=mysql_fetch_row(res))) {
 			if (row[ccol] && strcmp(row[ccol],"Query"))
 				continue;

@@ -113,7 +113,11 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 	// ServerID
 	int4store(buf + 6, server_id);
 	memcpy(buf + 10, binlog_file, strlen(binlog_file));
-	if (simple_command(conn, COM_BINLOG_DUMP, buf, 
+#if MYSQL_VERSION_ID < 50100
+	if (simple_command(conn, COM_BINLOG_DUMP, (const char *)buf, 
+#else
+	if (simple_command(conn, COM_BINLOG_DUMP, buf,
+#endif
 		strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
