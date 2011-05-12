@@ -34,6 +34,7 @@
 
 guint commit_count= 1000;
 gchar *directory= NULL;
+gboolean overwrite_tables= FALSE;
 
 static GMutex *init_mutex= NULL;
 
@@ -50,6 +51,7 @@ static GOptionEntry entries[] =
 {
 	{ "directory", 'd', 0, G_OPTION_ARG_STRING, &directory, "Directory of the dump to import", NULL },
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction (default 1000)", NULL },
+	{ "overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables, "Drop tables if they already exist", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -98,7 +100,7 @@ int main(int argc, char *argv[]) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
-
+	mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
 	conf.queue= g_async_queue_new();
 	conf.ready= g_async_queue_new();
 
@@ -162,9 +164,34 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 }
 
 void add_schema(const gchar* filename, MYSQL *conn) {
+	// 0 is database, 1 is table with -schema on the end
 	gchar** split_file= g_strsplit(filename, ".", 0);
-	restore_data(conn, split_file[0], split_file[1], filename);
+	gchar* database= split_file[0];
+	// Remove the -schema from the table name
+	gchar** split_table= g_strsplit(split_file[1], "-", 0);
+	gchar* table= split_table[0];
 
+	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+	if (mysql_query(conn, query)) {
+		g_free(query);
+                query= g_strdup_printf("CREATE DATABASE `%s`", database);
+                mysql_query(conn, query);
+	} else {
+		// Need to clear the query
+		MYSQL_RES *result= mysql_store_result(conn);
+		mysql_free_result(result);
+	}
+	g_free(query);
+
+	if (overwrite_tables) {
+		query= g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`", database, table);
+		mysql_query(conn, query);
+		g_free(query);
+	}
+
+	restore_data(conn, database, table, filename);
+	g_strfreev(split_table);
+	g_strfreev(split_file);
 	return;
 }
 
