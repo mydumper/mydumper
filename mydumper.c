@@ -208,7 +208,7 @@ void *process_queue(struct configuration * conf) {
 	}
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
 	if (need_dummy_read) {
-		mysql_query(thrconn,"SELECT * FROM mysql.mydumperdummy");
+		mysql_query(thrconn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
 		MYSQL_RES *res=mysql_store_result(thrconn);
 		if (res)
 			mysql_free_result(res);
@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
 	}
 	mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
 	if (need_dummy_read) {
-		mysql_query(conn,"SELECT * FROM mysql.mydumperdummy");
+		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
 		MYSQL_RES *res=mysql_store_result(conn);
 		if (res)
 			mysql_free_result(res);
@@ -548,7 +548,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 	
 	/* Get minimum/maximum */
-	mysql_query(conn, query=g_strdup_printf("SELECT MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
+	mysql_query(conn, query=g_strdup_printf("SELECT /*!40001 SQL_NO_CACHE */ MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
 	g_free(query);
 	minmax=mysql_store_result(conn);
 	
@@ -912,7 +912,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
+ 	query = g_strdup_printf("SELECT /*!40001 SQL_NO_CACHE */ * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		g_free(query);

@@ -299,7 +299,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 	while (eof == FALSE) {
 		if (read_data(infile, is_compressed, data, &eof)) {
 			// Search for ; in last 5 chars of line
-			if (g_strrstr(&data->str[data->len-5], ";\n")) { 
+			if ((data->len >= 5) && (g_strrstr(&data->str[data->len-5], ";\n"))) { 
 				if (mysql_real_query(conn, data->str, data->len)) {
 					g_critical("Error restoring %s.%s: %s", database, table, mysql_error(conn));
 					errors++;
@@ -341,6 +341,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *
 			if (fgets(buffer, 256, file) == NULL) {
 				if (feof(file)) {
 					*eof= TRUE;
+					buffer[0]= '\0';
 				} else {
 					return FALSE;
 				}
@@ -349,6 +350,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *
 			if (!gzgets((gzFile)file, buffer, 256)) {
 				if (gzeof(file)) {
 					*eof= TRUE;
+					buffer[0]= '\0';
 				} else {
 					return FALSE;
 				}
