@@ -1,5 +1,5 @@
-MySQL Data Dumper Usage
-=======================
+Mydumper Usage
+==============
 
 Synopsis
 --------
