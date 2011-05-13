@@ -29,7 +29,7 @@ target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_
 add_executable(myloader myloader.c)
 target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
 
-INSTALL(TARGETS mydumper
+INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
 )
 
