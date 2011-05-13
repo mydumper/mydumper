@@ -12,7 +12,8 @@ Contents:
 
    authors
    compiling
-   usage
+   mydumper_usage
+   myloader_usage
    files
    examples
 
