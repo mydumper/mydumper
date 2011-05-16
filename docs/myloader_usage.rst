@@ -4,7 +4,7 @@ Myloader Usage
 Synopsis
 --------
 
-:program:`myloader` :option:`--directory <myloader --directory>` = /path/to/mydumper/backup [:ref:`OPTIONS <myloader-options-lavel>`]
+:program:`myloader` :option:`--directory <myloader --directory>` = /path/to/mydumper/backup [:ref:`OPTIONS <myloader-options-label>`]
 
 Description
 -----------
@@ -65,6 +65,17 @@ The :program:`myloader` tool has several available options:
 
    The directory of the mydumper backup to restore
 
+.. option:: --database, -B
+
+   An alternative database to load the dump into
+
+   .. note::
+
+      For use with single database dumps.  When using with multi-database dumps
+      that have duplicate table names in more than one database it may cause 
+      errors.  Alternatively this scenario may give unpredictable results with
+      :option:`--overwrite-tables`.
+
 .. option:: --queries-per-transaction, -q
 
    Number of INSERT queries to execute per transaction during restore, default
@@ -73,3 +84,8 @@ The :program:`myloader` tool has several available options:
 .. option:: --overwrite-tables, -o
 
    Drop any existing tables when restoring schemas
+
+.. option:: --verbose, -v
+
+   The verbosity of messages.  0 = silent, 1 = errors, 2 = warnings, 3 = info.
+   Default is 2.

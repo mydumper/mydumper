@@ -101,9 +101,9 @@ The :program:`mydumper` tool has several available options:
 
    Comma separated list of storage engines to ignore
 
-.. option:: --schemas, -m
+.. option:: --no-schemas, -m
 
-   Dump schemas as well as data
+   Do not dump schemas with the data
 
 .. option:: --long-query-guard, -l
 
@@ -116,6 +116,11 @@ The :program:`mydumper` tool has several available options:
 .. option:: --version, -V
 
    Show the program version and exit
+
+.. option:: --verbose, -v
+
+   The verbosity of messages.  0 = silent, 1 = errors, 2 = warnings, 3 = info.
+   Default is 2.
 
 .. option:: --binlogs, -b
 
