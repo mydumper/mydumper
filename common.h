@@ -35,10 +35,10 @@ GOptionEntry common_entries[] =
         { "password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL },
         { "port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to", NULL },
         { "socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path, "UNIX domain socket file to use for connection", NULL },
-        { "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of threads to use", NULL },
+        { "threads", 't', 0, G_OPTION_ARG_INT, &num_threads, "Number of threads to use, default 4", NULL },
         { "compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol, "Use compression on the MySQL connection", NULL },
 	{ "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
-	{ "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = off, 1 = errors, 2 = warnings, 3 = info.  Default 2", NULL },
+	{ "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
