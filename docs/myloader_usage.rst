@@ -85,6 +85,10 @@ The :program:`myloader` tool has several available options:
 
    Drop any existing tables when restoring schemas
 
+.. option:: --enable-binlog, -e
+
+   Log the data loading in the MySQL binary log if enabled (off by default)
+
 .. option:: --verbose, -v
 
    The verbosity of messages.  0 = silent, 1 = errors, 2 = warnings, 3 = info.
