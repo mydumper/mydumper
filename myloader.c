@@ -35,6 +35,7 @@
 guint commit_count= 1000;
 gchar *directory= NULL;
 gboolean overwrite_tables= FALSE;
+gboolean enable_binlog= FALSE;
 
 static GMutex *init_mutex= NULL;
 
@@ -55,6 +56,7 @@ static GOptionEntry entries[] =
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction, default 1000", NULL },
 	{ "overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables, "Drop tables if they already exist", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
+	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -103,7 +105,7 @@ int main(int argc, char *argv[]) {
 	g_option_context_free(context);
 
 	if (program_version) {
-		g_print("myloader %s\n", VERSION);
+		g_print("myloader %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -128,6 +130,9 @@ int main(int argc, char *argv[]) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
+	if (!enable_binlog)
+		mysql_query(conn, "SET SQL_LOG_BIN=0");
+
 	mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
 	conf.queue= g_async_queue_new();
 	conf.ready= g_async_queue_new();
@@ -261,6 +266,9 @@ void *process_queue(struct thread_data *td) {
 		g_critical("Failed to connect to MySQL server: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
+
+	if (!enable_binlog)
+		mysql_query(thrconn, "SET SQL_LOG_BIN=0");
 
 	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 	mysql_query(thrconn, "SET autocommit=0");
