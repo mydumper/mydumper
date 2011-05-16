@@ -21,6 +21,7 @@ char *hostname=NULL;
 char *username=NULL;
 char *password=NULL;
 char *socket_path=NULL;
+char *db=NULL;
 guint port=3306;
 guint num_threads= 4;
 gboolean compress_protocol= FALSE;

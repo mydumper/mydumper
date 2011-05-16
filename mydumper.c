@@ -36,9 +36,6 @@
 #include "common.h"
 #include "config.h"
 
-/* Database options */
-char *db=NULL;
-
 char *regexstring=NULL;
 
 #define DIRECTORY "export"

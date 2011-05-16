@@ -52,6 +52,7 @@ static GOptionEntry entries[] =
 	{ "directory", 'd', 0, G_OPTION_ARG_STRING, &directory, "Directory of the dump to import", NULL },
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction (default 1000)", NULL },
 	{ "overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables, "Drop tables if they already exist", NULL },
+	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -171,10 +172,10 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	gchar** split_table= g_strsplit(split_file[1], "-", 0);
 	gchar* table= split_table[0];
 
-	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
 	if (mysql_query(conn, query)) {
 		g_free(query);
-                query= g_strdup_printf("CREATE DATABASE `%s`", database);
+                query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
                 mysql_query(conn, query);
 	} else {
 		// Need to clear the query
@@ -184,7 +185,7 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	g_free(query);
 
 	if (overwrite_tables) {
-		query= g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`", database, table);
+		query= g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`", db ? db : database, table);
 		mysql_query(conn, query);
 		g_free(query);
 	}
@@ -284,9 +285,10 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		return;
 	}
 
-	gchar *query= g_strdup_printf("USE `%s`", database);
+	gchar *query= g_strdup_printf("USE `%s`", db ? db : database);
+
 	if (mysql_query(conn, query)) {
-		g_critical("Error switching to database %s whilst restoring table %s", database, table);
+		g_critical("Error switching to database %s whilst restoring table %s", db ? db : database, table);
 		g_free(query);
 		errors++;
 		return;
@@ -301,7 +303,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 			// Search for ; in last 5 chars of line
 			if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) { 
 				if (mysql_real_query(conn, data->str, data->len)) {
-					g_critical("Error restoring %s.%s: %s", database, table, mysql_error(conn));
+					g_critical("Error restoring %s.%s: %s", db ? db : database, table, mysql_error(conn));
 					errors++;
 					return;
 				}
@@ -309,7 +311,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 				if (query_counter == commit_count) {
 					query_counter= 0;
 					if (mysql_query(conn, "COMMIT")) {
-						g_critical("Error commiting data for %s.%s: %s", database, table, mysql_error(conn));
+						g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
 						errors++;
 						return;
 					}
@@ -325,7 +327,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		}
 	}
 	if (mysql_query(conn, "COMMIT")) {
-		g_critical("Error commiting data for %s.%s: %s", database, table, mysql_error(conn));
+		g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
 		errors++;
 	}
 

@@ -4,7 +4,7 @@ Myloader Usage
 Synopsis
 --------
 
-:program:`myloader` :option:`--directory <myloader --directory>` = /path/to/mydumper/backup [:ref:`OPTIONS <myloader-options-lavel>`]
+:program:`myloader` :option:`--directory <myloader --directory>` = /path/to/mydumper/backup [:ref:`OPTIONS <myloader-options-label>`]
 
 Description
 -----------
