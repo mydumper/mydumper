@@ -46,6 +46,8 @@ void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
+void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
+void set_verbose(guint verbosity);
 
 static GOptionEntry entries[] =
 {
@@ -55,6 +57,29 @@ static GOptionEntry entries[] =
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
+
+void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
+	(void) log_domain;
+	(void) log_level;
+	(void) message;
+	(void) user_data;
+}
+
+void set_verbose(guint verbosity) {
+	switch (verbosity) {
+		case 0:
+			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
+			break;
+		case 1:
+			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE), no_log, NULL);
+			break;
+		case 2:
+			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log, NULL);
+			break;
+		default:
+			break;
+	}
+}
 
 int main(int argc, char *argv[]) {
 	struct configuration conf= { NULL, NULL, NULL, 0 };
@@ -81,6 +106,8 @@ int main(int argc, char *argv[]) {
 		g_print("myloader %s\n", VERSION);
 		exit(EXIT_SUCCESS);
 	}
+
+	set_verbose(verbose);
 
 	if (!directory) {
 		g_critical("a directory needs to be specified, see --help\n");
