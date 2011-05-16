@@ -42,7 +42,7 @@ guint errors= 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof);
 void restore_data(MYSQL *conn, char *database, char *table, const char *filename);
-void *process_queue(struct configuration *conf);
+void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
@@ -107,11 +107,16 @@ int main(int argc, char *argv[]) {
 
 	guint n;
 	GThread **threads= g_new(GThread*, num_threads);
+	struct thread_data *td= g_new(struct thread_data, num_threads);
 	for (n= 0; n < num_threads; n++) {
-		threads[n]= g_thread_create((GThreadFunc)process_queue, &conf, TRUE, NULL);
+		td[n].conf= &conf;
+		td[n].thread_id= n+1;
+		threads[n]= g_thread_create((GThreadFunc)process_queue, &td[n], TRUE, NULL);
 		g_async_queue_pop(conf.ready);
 	}
 	g_async_queue_unref(conf.ready);
+
+	g_message("%d threads created", num_threads);
 
         restore_databases(&conf, conn);
 
@@ -130,6 +135,7 @@ int main(int argc, char *argv[]) {
 	mysql_thread_end();
 	mysql_library_end();
 	g_free(directory);
+	g_free(td);
 	g_free(threads);
 
 	return errors ? EXIT_FAILURE : EXIT_SUCCESS;
@@ -175,6 +181,7 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
 	if (mysql_query(conn, query)) {
 		g_free(query);
+		g_message("Creating database `%s`", db ? db : database);
                 query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
                 mysql_query(conn, query);
 	} else {
@@ -185,11 +192,13 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	g_free(query);
 
 	if (overwrite_tables) {
+		g_message("Dropping table (if exists) `%s`.`%s`", db ? db : database, table);
 		query= g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`", db ? db : database, table);
 		mysql_query(conn, query);
 		g_free(query);
 	}
 
+	g_message("Creating table `%s`.`%s`", db ? db : database, table);
 	restore_data(conn, database, table, filename);
 	g_strfreev(split_table);
 	g_strfreev(split_file);
@@ -205,11 +214,13 @@ void add_table(const gchar* filename, struct configuration *conf) {
 	gchar** split_file= g_strsplit(filename, ".", 0);
 	rj->database= g_strdup(split_file[0]);
 	rj->table= g_strdup(split_file[1]);
+	rj->part= g_ascii_strtoull(split_file[2], NULL, 10);
 	g_async_queue_push(conf->queue, j);
 	return;
 }
 
-void *process_queue(struct configuration *conf) {
+void *process_queue(struct thread_data *td) {
+	struct configuration *conf= td->conf;
 	g_mutex_lock(init_mutex);
 	MYSQL *thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
@@ -237,6 +248,7 @@ void *process_queue(struct configuration *conf) {
 		switch (job->type) {
 			case JOB_RESTORE:
 				rj= (struct restore_job *)job->job_data;
+				g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id, rj->database, rj->table, rj->part);
 				restore_data(thrconn, rj->database, rj->table, rj->filename);
 				if (rj->database) g_free(rj->database);
                                 if (rj->table) g_free(rj->table);
@@ -245,6 +257,7 @@ void *process_queue(struct configuration *conf) {
                                 g_free(job);
                                 break;
 			case JOB_SHUTDOWN:
+				g_message("Thread %d shutting down", td->thread_id);
 				if (thrconn)
 					mysql_close(thrconn);
 				g_free(job);
@@ -330,7 +343,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
 		errors++;
 	}
-
+	g_string_free(data, TRUE);
 	g_free(path);
 	return;
 }

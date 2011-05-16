@@ -30,6 +30,11 @@ struct configuration {
 	int done;
 };
 
+struct thread_data {
+	struct configuration *conf;
+	guint thread_id;
+};
+
 struct job {
 	enum job_type type;
         void *job_data;
@@ -40,6 +45,7 @@ struct restore_job {
 	char *database;
 	char *table;
 	char *filename;
+	guint part;
 };
 
 #endif
