@@ -211,6 +211,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'mysqldatadumper', u'@PROGRAM_DESC@',
+    ('mydumper_usage', 'mydumper', u'@PROGRAM_DESC@',
+     [u'Andrew Hutchings'], 1),
+    ('myloader_usage', 'myloader', u'@PROGRAM_DESC@',
      [u'Andrew Hutchings'], 1)
 ]
