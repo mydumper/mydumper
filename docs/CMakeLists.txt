@@ -149,5 +149,5 @@ if(GENERATE_DOC)
   )
 
 else(GENERATE_DOC)
-  message(WARNING "Missing required documentation tools")
+  message(WARNING "Missing python-sphinx documentation tools, docs will not be built")
 endif(GENERATE_DOC)
