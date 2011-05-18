@@ -1032,12 +1032,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
-				g_string_append(statement,"\"");
+				g_string_append_c(statement,'\"');
 				g_string_append(statement,escaped->str);
-				g_string_append(statement,"\"");
+				g_string_append_c(statement,'\"');
 			}
 			if (i < num_fields - 1) {
-				g_string_append(statement,",");
+				g_string_append_c(statement,',');
 			} else {
 				/* INSERT statement is closed once over limit */
 				if (statement->len > statement_size) {
@@ -1048,7 +1048,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					}
 					g_string_set_size(statement,0);
 				} else {
-					g_string_append(statement,")");
+					g_string_append_c(statement,')');
 				}
 			}
 		}
