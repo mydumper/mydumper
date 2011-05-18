@@ -42,7 +42,7 @@ static GMutex *init_mutex= NULL;
 guint errors= 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof);
-void restore_data(MYSQL *conn, char *database, char *table, const char *filename);
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
@@ -217,9 +217,17 @@ void add_schema(const gchar* filename, MYSQL *conn) {
                 query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
                 mysql_query(conn, query);
 	} else {
-		// Need to clear the query
 		MYSQL_RES *result= mysql_store_result(conn);
+		// In drizzle the query succeeds with no rows
+		my_ulonglong row_count= mysql_num_rows(result);
 		mysql_free_result(result);
+		if (row_count == 0) {
+			// TODO: Move this to a function, it is the same as above
+			g_free(query);
+			g_message("Creating database `%s`", db ? db : database);
+			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
+			mysql_query(conn, query);
+		}
 	}
 	g_free(query);
 
@@ -231,7 +239,7 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	}
 
 	g_message("Creating table `%s`.`%s`", db ? db : database, table);
-	restore_data(conn, database, table, filename);
+	restore_data(conn, database, table, filename, TRUE);
 	g_strfreev(split_table);
 	g_strfreev(split_file);
 	return;
@@ -284,7 +292,7 @@ void *process_queue(struct thread_data *td) {
 			case JOB_RESTORE:
 				rj= (struct restore_job *)job->job_data;
 				g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id, rj->database, rj->table, rj->part);
-				restore_data(thrconn, rj->database, rj->table, rj->filename);
+				restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE);
 				if (rj->database) g_free(rj->database);
                                 if (rj->table) g_free(rj->table);
                                 if (rj->filename) g_free(rj->filename);
@@ -310,7 +318,7 @@ void *process_queue(struct thread_data *td) {
 	return NULL;
 }
 
-void restore_data(MYSQL *conn, char *database, char *table, const char *filename) {
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema) {
 	void *infile;
 	gboolean is_compressed= FALSE;
 	gboolean eof= FALSE;
@@ -343,8 +351,9 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 	}
 
 	g_free(query);
-
-	mysql_query(conn, "START TRANSACTION");
+	
+	if (!is_schema)
+		mysql_query(conn, "START TRANSACTION");
 
 	while (eof == FALSE) {
 		if (read_data(infile, is_compressed, data, &eof)) {
@@ -356,7 +365,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 					return;
 				}
 				query_counter++;
-				if (query_counter == commit_count) {
+				if (!is_schema &&(query_counter == commit_count)) {
 					query_counter= 0;
 					if (mysql_query(conn, "COMMIT")) {
 						g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
@@ -374,7 +383,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 			return;
 		}
 	}
-	if (mysql_query(conn, "COMMIT")) {
+	if (!is_schema && mysql_query(conn, "COMMIT")) {
 		g_critical("Error commiting data for %s.%s from file %s: %s", db ? db : database, table, filename, mysql_error(conn));
 		errors++;
 	}

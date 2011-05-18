@@ -33,6 +33,7 @@
 #include <pcre.h>
 #include <glib/gstdio.h>
 #include "binlog.h"
+#include "server_detect.h"
 #include "common.h"
 #include "config.h"
 
@@ -44,24 +45,25 @@ char *regexstring=NULL;
 static GMutex * init_mutex = NULL;
 
 /* Program options */
-gchar *directory = NULL;
-guint statement_size = 1000000;
-guint rows_per_file = 0;
-int longquery = 60; 
-int build_empty_files=0;
+gchar *directory= NULL;
+guint statement_size= 1000000;
+guint rows_per_file= 0;
+int longquery= 60; 
+int build_empty_files= 0;
 
-int need_dummy_read=0;
-int compress_output=0;
-int killqueries=0;
+int need_dummy_read= 0;
+int compress_output= 0;
+int killqueries= 0;
+int detected_server= 0;
 
-gchar *ignore_engines = NULL;
-char **ignore = NULL;
+gchar *ignore_engines= NULL;
+char **ignore= NULL;
 
-gchar *tables_list = NULL;
-char **tables = NULL;
+gchar *tables_list= NULL;
+char **tables= NULL;
 
-gboolean need_binlogs = FALSE;
-gchar *binlog_directory = NULL;
+gboolean need_binlogs= FALSE;
+gchar *binlog_directory= NULL;
 
 gboolean no_schemas= FALSE;
 
@@ -223,7 +225,7 @@ void *process_queue(struct thread_data *td) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
-	if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
+	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
 	}
 	if (mysql_query(thrconn, "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
@@ -348,6 +350,8 @@ int main(int argc, char *argv[])
 		exit (EXIT_SUCCESS);
 	}
 
+	set_verbose(verbose);
+
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
 
@@ -387,13 +391,27 @@ int main(int argc, char *argv[])
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
-	if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
+	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
 	}
-	if (mysql_query(conn, "SET SESSION net_write_timeout = 2147483")){
+	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION net_write_timeout = 2147483")){
 		g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
 	}
-	
+
+	detected_server= detect_server(conn);
+	switch (detected_server) {
+		case SERVER_TYPE_MYSQL:
+			g_message("Connected to a MySQL server");
+			break;
+		case SERVER_TYPE_DRIZZLE:
+			g_message("Connected to a Drizzle server");
+			break;
+		default:
+			g_critical("Cannot detect server type");
+			exit(EXIT_FAILURE);
+			break;
+	}
+
 	/* We check SHOW PROCESSLIST, and if there're queries 
 	   larger than preset value, we terminate the process.
 	
@@ -410,9 +428,9 @@ int main(int argc, char *argv[])
 		guint i;
 		int tcol=-1, ccol=-1, icol=-1;
 		for(i=0; i<mysql_num_fields(res); i++) {
-			if (!strcmp(fields[i].name,"Command")) ccol=i;
-			else if (!strcmp(fields[i].name,"Time")) tcol=i;
-			else if (!strcmp(fields[i].name,"Id")) icol=i;
+			if (!strcasecmp(fields[i].name,"Command")) ccol=i;
+			else if (!strcasecmp(fields[i].name,"Time")) tcol=i;
+			else if (!strcasecmp(fields[i].name,"Id")) icol=i;
 		}
 		if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
 			g_critical("Error obtaining information from processlist");
@@ -462,9 +480,11 @@ int main(int argc, char *argv[])
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	
-	mysql_query(conn, "/*!40101 SET NAMES binary*/");
+	if (detected_server == SERVER_TYPE_MYSQL) {
+		mysql_query(conn, "/*!40101 SET NAMES binary*/");
 	
-	write_snapshot_info(conn, mdfile);
+		write_snapshot_info(conn, mdfile);
+	}
 	
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
@@ -496,7 +516,7 @@ int main(int argc, char *argv[])
 		}
 		
 		while ((row=mysql_fetch_row(databases))) {
-			if (!strcmp(row[0],"information_schema") || !strcmp(row[0], "performance_schema"))
+			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
 			dump_database(conn, row[0], &conf);
 		}
@@ -593,7 +613,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 	
 	/* Get minimum/maximum */
-	mysql_query(conn, query=g_strdup_printf("SELECT /*!40001 SQL_NO_CACHE */ MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", field, field, database, table));
+	mysql_query(conn, query=g_strdup_printf("SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", field, field, database, table));
 	g_free(query);
 	minmax=mysql_store_result(conn);
 	
@@ -729,12 +749,21 @@ void create_backup_dir(char *new_directory) {
 
 void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 
+	char *query;
 	mysql_select_db(conn,database);
-	if (mysql_query(conn, (ignore?"SHOW TABLE STATUS":"SHOW /*!50000 FULL */ TABLES"))) {
+	if (ignore) {
+		query= g_strdup("SHOW TABLE STATUS");
+	} else {
+		query= g_strdup_printf("SHOW %s TABLES", (detected_server == SERVER_TYPE_DRIZZLE) ? "" : "/*!50000 FULL */");
+	}
+
+	if (mysql_query(conn, (query))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 		errors++;
 		return; 
 	}
+
+	g_free(query);
 	
 	MYSQL_RES *result = mysql_store_result(conn);
 	if (!result) {
@@ -755,7 +784,7 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 			row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
 			row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
 		*/
-		if (num_fields>1 && ( row[1] == NULL || !strcmp(row[1],"VIEW") )) 
+		if ((detected_server == SERVER_TYPE_MYSQL) && num_fields>1 && ( row[1] == NULL || !strcmp(row[1],"VIEW") )) 
 			continue;
 		
 		/* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole :-) dumps */
@@ -814,8 +843,12 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	}
         GString* statement = g_string_sized_new(statement_size);
 
-        g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-        g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+	if (detected_server == SERVER_TYPE_MYSQL) {
+		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+	} else {
+		g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+	}
 
 	if (!write_data((FILE *)outfile,statement)) {
 		g_critical("Could not write schema data for %s.%s", database, table);
@@ -947,9 +980,13 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */	
 	GString* statement = g_string_sized_new(statement_size);
-	
-	g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-	g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+
+	if (detected_server == SERVER_TYPE_MYSQL) {	
+		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+	} else {
+		g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
+	}
 
 	if (!write_data(file,statement)) {
 		g_critical("Could not write out data for %s.%s", database, table);
@@ -957,7 +994,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT /*!40001 SQL_NO_CACHE */ * FROM `%s`.`%s` %s %s", database, table, where?"WHERE":"",where?where:"");
+ 	query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where?"WHERE":"",where?where:"");
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		g_free(query);
