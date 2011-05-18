@@ -1019,12 +1019,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	if (mysql_errno(conn)) {
 		g_critical("Could not read data from %s.%s: %s", database, table, mysql_error(conn));
 	}
-	
-	if (!write_data(file,statement)) {
-		g_critical("Could not write out data for %s.%s", database, table);
-		goto cleanup;
-	}
-	if (statement->len > 0) {
+
+	if (statement->len > 0) {	
+		if (!write_data(file,statement)) {
+			g_critical("Could not write out data for %s.%s", database, table);
+			goto cleanup;
+		}
 		g_string_printf(statement,";\n");
 		if (!write_data(file,statement)) {
 			g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
