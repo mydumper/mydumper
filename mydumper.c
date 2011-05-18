@@ -1024,10 +1024,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		g_critical("Could not write out data for %s.%s", database, table);
 		goto cleanup;
 	}
-	g_string_printf(statement,";\n");
-	if (!write_data(file,statement)) {
-		g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
-		goto cleanup;
+	if (statement->len > 0) {
+		g_string_printf(statement,";\n");
+		if (!write_data(file,statement)) {
+			g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
+			goto cleanup;
+		}
 	}
 	
 cleanup:
