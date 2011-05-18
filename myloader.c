@@ -351,7 +351,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 			// Search for ; in last 5 chars of line
 			if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) { 
 				if (mysql_real_query(conn, data->str, data->len)) {
-					g_critical("Error restoring %s.%s: %s", db ? db : database, table, mysql_error(conn));
+					g_critical("Error restoring %s.%s from file %s: %s", db ? db : database, table, filename, mysql_error(conn));
 					errors++;
 					return;
 				}
@@ -375,11 +375,16 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		}
 	}
 	if (mysql_query(conn, "COMMIT")) {
-		g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
+		g_critical("Error commiting data for %s.%s from file %s: %s", db ? db : database, table, filename, mysql_error(conn));
 		errors++;
 	}
 	g_string_free(data, TRUE);
 	g_free(path);
+	if (!is_compressed) {
+		fclose(infile);
+	} else {
+		gzclose(infile);
+	}	
 	return;
 }
 
