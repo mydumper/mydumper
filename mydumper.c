@@ -103,6 +103,7 @@ gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
+void reconnect_for_binlog(MYSQL *thrconn);
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
 	(void) log_domain;
@@ -282,27 +283,14 @@ void *process_queue(struct thread_data *td) {
 				g_free(job);
 				break;
 			case JOB_BINLOG:
+				reconnect_for_binlog(thrconn);
 				bj=(struct binlog_job *)job->job_data;
 				g_message("Thread %d dumping binary log file %s", td->thread_id, bj->filename);
 				get_binlog_file(thrconn, bj->filename, bj->start_position, bj->stop_position);
-				if(bj->filename) g_free(bj->filename);
+				if(bj->filename)
+					g_free(bj->filename);
 				g_free(bj);
 				g_free(job);
-
-				// Connection needs resetting! - cannot find a way of stopping once we are a slave thread
-				if (thrconn) {
-					mysql_close(thrconn);
-					g_mutex_lock(init_mutex);
-					thrconn= mysql_init(NULL);
-					g_mutex_unlock(init_mutex);
-				}
-				if (compress_protocol)
-					mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
-
-				if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
-					g_critical("Failed to connect to database: %s", mysql_error(thrconn));
-					exit(EXIT_FAILURE);
-				}
 				break;
 			case JOB_SHUTDOWN:
 				g_message("Thread %d shutting down", td->thread_id);
@@ -321,6 +309,22 @@ void *process_queue(struct thread_data *td) {
 		mysql_close(thrconn);
 	mysql_thread_end();
 	return NULL;
+}
+
+void reconnect_for_binlog(MYSQL *thrconn) {
+	if (thrconn) {
+		mysql_close(thrconn);
+		g_mutex_lock(init_mutex);
+		thrconn= mysql_init(NULL);
+		g_mutex_unlock(init_mutex);
+	}
+	if (compress_protocol)
+		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
+	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
+		exit(EXIT_FAILURE);
+	}
 }
 
 int main(int argc, char *argv[])
@@ -501,10 +505,6 @@ int main(int argc, char *argv[])
 	g_async_queue_unref(conf.ready);
 	mysql_query(conn, "UNLOCK TABLES");
 
-	if (need_binlogs) {
-		get_binlogs(conn, &conf);
-	}
-
 	if (db) {
 		dump_database(conn, db, &conf);
 	} else {
@@ -523,6 +523,12 @@ int main(int argc, char *argv[])
 		mysql_free_result(databases);
 		
 	}
+
+	if (need_binlogs) {
+		get_binlogs(conn, &conf);
+	}
+
+
 	for (n=0; n<num_threads; n++) {
 		struct job *j = g_new0(struct job,1);
 		j->type = JOB_SHUTDOWN;
