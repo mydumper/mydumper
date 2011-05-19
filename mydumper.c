@@ -67,6 +67,12 @@ gchar *binlog_directory= NULL;
 
 gboolean no_schemas= FALSE;
 
+GList *innodb_tables= NULL;
+GList *non_innodb_table= NULL;
+GList *table_schemas= NULL;
+gint non_innodb_table_counter= 0;
+gint non_innodb_done= 0;
+
 int errors;
 
 static GOptionEntry entries[] =
@@ -92,9 +98,9 @@ struct tm tval;
 
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
 void dump_schema(char *database, char *table, struct configuration *conf);
-void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf);
+void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *);
-void dump_database(MYSQL *, char *, struct configuration *conf);
+void dump_database(MYSQL *, char *);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename);
@@ -272,6 +278,23 @@ void *process_queue(struct thread_data *td) {
 				g_free(tj);
 				g_free(job);
 				break;
+			case JOB_DUMP_NON_INNODB:
+                                tj=(struct table_job *)job->job_data;
+                                if (tj->where)
+                                        g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
+                                else
+                                        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+                                dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
+                                if(tj->database) g_free(tj->database);
+                                if(tj->table) g_free(tj->table);
+                                if(tj->where) g_free(tj->where);
+                                if(tj->filename) g_free(tj->filename);
+                                g_free(tj);
+                                g_free(job);
+				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
+					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
+				}
+                                break;
 			case JOB_SCHEMA:
 				sj=(struct schema_job *)job->job_data;
 				g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id, sj->database, sj->table);
@@ -329,7 +352,7 @@ void reconnect_for_binlog(MYSQL *thrconn) {
 
 int main(int argc, char *argv[])
 {
-	struct configuration conf = { 1, NULL, NULL, NULL, 0 };
+	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
 
 	GError *error = NULL;
 	GOptionContext *context;
@@ -492,6 +515,7 @@ int main(int argc, char *argv[])
 	
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
+	conf.unlock_tables= g_async_queue_new();
 	
 	guint n;
 	GThread **threads = g_new(GThread*,num_threads);
@@ -503,10 +527,9 @@ int main(int argc, char *argv[])
 		g_async_queue_pop(conf.ready);
 	}
 	g_async_queue_unref(conf.ready);
-	mysql_query(conn, "UNLOCK TABLES");
 
 	if (db) {
-		dump_database(conn, db, &conf);
+		dump_database(conn, db);
 	} else {
 		MYSQL_RES *databases;
 		MYSQL_ROW row;
@@ -518,11 +541,35 @@ int main(int argc, char *argv[])
 		while ((row=mysql_fetch_row(databases))) {
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
-			dump_database(conn, row[0], &conf);
+			dump_database(conn, row[0]);
 		}
 		mysql_free_result(databases);
 		
 	}
+	struct db_table *dbt;
+	for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
+		dbt= (struct db_table*) non_innodb_table->data;
+		dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
+		g_atomic_int_inc(&non_innodb_table_counter);
+	}
+	g_list_free(g_list_first(non_innodb_table));
+
+	g_atomic_int_inc(&non_innodb_done);
+
+	for (innodb_tables= g_list_first(innodb_tables); innodb_tables; innodb_tables= g_list_next(innodb_tables)) {
+		dbt= (struct db_table*) innodb_tables->data;
+		dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
+	}
+	g_list_free(g_list_first(innodb_tables));
+
+	for (table_schemas= g_list_first(table_schemas); table_schemas; table_schemas= g_list_next(table_schemas)) {
+		dbt= (struct db_table*) table_schemas->data;
+		dump_schema(dbt->database, dbt->table, &conf);
+		g_free(dbt->table);
+		g_free(dbt->database);
+		g_free(dbt);
+	}
+	g_list_free(g_list_first(table_schemas));
 
 	if (need_binlogs) {
 		get_binlogs(conn, &conf);
@@ -534,6 +581,10 @@ int main(int argc, char *argv[])
 		j->type = JOB_SHUTDOWN;
 		g_async_queue_push(conf.queue,j);
 	}
+
+	g_async_queue_pop(conf.unlock_tables);
+	g_message("Non-InnoDB dump complete, unlocking tables");
+	mysql_query(conn, "UNLOCK TABLES");
 	
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
@@ -753,15 +804,11 @@ void create_backup_dir(char *new_directory) {
 	}
 }
 
-void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
+void dump_database(MYSQL * conn, char *database) {
 
 	char *query;
 	mysql_select_db(conn,database);
-	if (ignore) {
-		query= g_strdup("SHOW TABLE STATUS");
-	} else {
-		query= g_strdup_printf("SHOW %s TABLES", (detected_server == SERVER_TYPE_DRIZZLE) ? "" : "/*!50000 FULL */");
-	}
+	query= g_strdup("SHOW TABLE STATUS");
 
 	if (mysql_query(conn, (query))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
@@ -772,14 +819,20 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 	g_free(query);
 	
 	MYSQL_RES *result = mysql_store_result(conn);
+	MYSQL_FIELD *fields= mysql_fetch_fields(result);
+	guint i;
+	int ecol= -1, ccol= -1;
+	for (i=0; i<mysql_num_fields(result); i++) {
+		if (!strcasecmp(fields[i].name, "Engine")) ecol= i;
+		else if (!strcasecmp(fields[i].name, "Comment")) ccol= i;
+	}
+
 	if (!result) {
 		g_critical("Could not list tables for %s: %s", database, mysql_error(conn));
 		errors++;
 		return;
 	}
-	guint num_fields = mysql_num_fields(result);
 
-	int i;
 	MYSQL_ROW row;
 	while ((row = mysql_fetch_row(result))) {
 
@@ -790,13 +843,13 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 			row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
 			row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
 		*/
-		if ((detected_server == SERVER_TYPE_MYSQL) && num_fields>1 && ( row[1] == NULL || !strcmp(row[1],"VIEW") )) 
+		if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") )) 
 			continue;
 		
 		/* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole :-) dumps */
 		if (ignore) {
 			for (i = 0; ignore[i] != NULL; i++) {
-				if (g_ascii_strcasecmp(ignore[i], row[1]) == 0) {
+				if (g_ascii_strcasecmp(ignore[i], row[ecol]) == 0) {
 					dump = 0;
 					break;
 				}
@@ -823,9 +876,17 @@ void dump_database(MYSQL * conn, char *database, struct configuration *conf) {
 			continue;
 		
 		/* Green light! */
-		dump_table(conn, database, row[0], conf);
+		struct db_table *dbt = g_new(struct db_table, 1);
+		dbt->database= g_strdup(database);
+		dbt->table= g_strdup(row[0]);
+		if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+			innodb_tables= g_list_append(innodb_tables, dbt);
+
+		} else {
+			non_innodb_table= g_list_append(non_innodb_table, dbt);
+		}
 	        if (!no_schemas) {
-        	        dump_schema(database, row[0], conf);
+			table_schemas= g_list_append(table_schemas, dbt);
         	}
 	}
 	mysql_free_result(result);
@@ -938,7 +999,7 @@ void dump_schema(char *database, char *table, struct configuration *conf) {
 	return;
 }
 
-void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf) {
+void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb) {
 
 	GList * chunks = NULL; 
 	if (rows_per_file)
@@ -954,7 +1015,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			tj->database=g_strdup(database);
 			tj->table=g_strdup(table);
 			j->conf=conf;
-			j->type=JOB_DUMP;
+			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 			tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
@@ -968,7 +1029,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		tj->database=g_strdup(database);
 		tj->table=g_strdup(table);
 		j->conf=conf;
-		j->type=JOB_DUMP;
+		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 		tj->filename = g_strdup_printf("%s/%s.%s.sql%s", directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;

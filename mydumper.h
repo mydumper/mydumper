@@ -21,12 +21,13 @@
 #ifndef _mydumper_h
 #define _mydumper_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_SCHEMA, JOB_BINLOG };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_DUMP_NON_INNODB, JOB_SCHEMA, JOB_BINLOG };
 
 struct configuration {
 	char use_any_index;
 	GAsyncQueue* queue;
 	GAsyncQueue* ready;
+	GAsyncQueue* unlock_tables;
 	GMutex* mutex;
 	int done;
 };
@@ -65,6 +66,11 @@ struct binlog_job {
 	char *filename;
 	guint64 start_position;
 	guint64 stop_position;
+};
+
+struct db_table {
+	char* database;
+	char* table;
 };
 
 #endif
