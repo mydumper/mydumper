@@ -547,6 +547,10 @@ int main(int argc, char *argv[])
 		
 	}
 	struct db_table *dbt;
+	if (!non_innodb_table) {
+		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
+	}
+
 	for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
 		dbt= (struct db_table*) non_innodb_table->data;
 		dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
