@@ -812,7 +812,10 @@ void dump_database(MYSQL * conn, char *database) {
 
 	char *query;
 	mysql_select_db(conn,database);
-	query= g_strdup("SHOW TABLE STATUS");
+	if (detected_server == SERVER_TYPE_MYSQL)
+		query= g_strdup("SHOW TABLE STATUS");
+	else
+		query= g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'", database);
 
 	if (mysql_query(conn, (query))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
