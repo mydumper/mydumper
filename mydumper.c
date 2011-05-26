@@ -142,9 +142,54 @@ void set_verbose(guint verbosity) {
 	}
 }
 
+void clear_dump_directory()
+{
+	GError *error= NULL;
+	char* dump_directory= g_strdup_printf("%s/%d", output_directory, dump_number);
+	GDir* dir= g_dir_open(dump_directory, 0, &error);
+
+	if (error) {
+		g_critical("cannot open directory %s, %s\n", dump_directory, error->message);
+		errors++;
+		return;
+	}
+
+	const gchar* filename= NULL;
+
+	while((filename= g_dir_read_name(dir))) {
+		gchar* path= g_build_filename(dump_directory, filename, NULL);
+		if (g_unlink(path) == -1) {
+			g_critical("error removing file %s (%d)\n", path, errno);
+			errors++;
+			return;
+		}
+		g_free(path);
+	}
+
+	g_dir_close(dir);
+	g_free(dump_directory);
+}
+
 gboolean run_snapshot(MYSQL *conn)
 {
 	(void) conn;
+	
+	clear_dump_directory();
+	start_dump(conn);
+	
+	const char *dump_symlink_source= (dump_number == 0) ? "0" : "1";
+	char *dump_symlink_dest= g_strdup_printf("%s/last_dump", output_directory);
+	
+	// We don't care if this fails
+	g_unlink(dump_symlink_dest);
+	
+	if (symlink(dump_symlink_source, dump_symlink_dest) == -1) {
+		g_critical("error setting last good dump symlink %s, %d", dump_symlink_dest, errno);
+	}
+	g_free(dump_symlink_dest);
+	
+	dump_number= (dump_number == 1) ? 0 : 1;
+
 	return TRUE;
 }
 
@@ -400,6 +445,14 @@ int main(int argc, char *argv[])
 			tval.tm_hour, tval.tm_min, tval.tm_sec);
 		
 	create_backup_dir(output_directory);
+	if (daemon_mode) {
+		char *dump_directory= g_strdup_printf("%s/0", output_directory);
+		create_backup_dir(dump_directory);
+		g_free(dump_directory);
+		dump_directory= g_strdup_printf("%s/1", output_directory);
+		create_backup_dir(dump_directory);
+		g_free(dump_directory);
+	}
 	
 	if (need_binlogs) {
 		binlog_directory = g_strdup_printf("%s/%s", output_directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
@@ -469,7 +522,12 @@ void start_dump(MYSQL *conn)
 	char *p;
 	time_t t;
 
-	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",output_directory),"w");
+	if (daemon_mode)
+		p= g_strdup_printf("%s/%d/.metadata", output_directory, dump_number);
+	else
+		p= g_strdup_printf("%s/.metadata", output_directory);
+
+	FILE* mdfile=g_fopen(p,"w");
 	g_free(p);
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
@@ -1030,7 +1088,10 @@ void dump_schema(char *database, char *table, struct configuration *conf) {
 	sj->table=g_strdup(table);
 	j->conf=conf;
 	j->type=JOB_SCHEMA;
-	sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
+	if (daemon_mode)
+		sj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory, dump_number, database, table, (compress_output?".gz":""));
+	else
+		sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
 	g_async_queue_push(conf->queue,j);
 	return;
 }
@@ -1052,7 +1113,10 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			tj->table=g_strdup(table);
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-			tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
+			if (daemon_mode)
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
+			else
+				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
@@ -1066,7 +1130,10 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		tj->table=g_strdup(table);
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-		tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
+		if (daemon_mode)
+			tj->filename = g_strdup_printf("%s/%d/%s.%s.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
+		else
+			tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
