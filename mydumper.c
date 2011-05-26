@@ -45,7 +45,7 @@ char *regexstring=NULL;
 static GMutex * init_mutex = NULL;
 
 /* Program options */
-gchar *directory= NULL;
+gchar *output_directory= NULL;
 guint statement_size= 1000000;
 guint rows_per_file= 0;
 int longquery= 60; 
@@ -84,7 +84,7 @@ static GOptionEntry entries[] =
 {
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
-	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
+	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory, "Directory to output files to, default ./" DIRECTORY"-*/",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes, default 1000000", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
@@ -394,15 +394,15 @@ int main(int argc, char *argv[])
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
 
-	if (!directory)
-		directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
+	if (!output_directory)
+		output_directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
 			tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday, 
 			tval.tm_hour, tval.tm_min, tval.tm_sec);
 		
-	create_backup_dir(directory);
+	create_backup_dir(output_directory);
 	
 	if (need_binlogs) {
-		binlog_directory = g_strdup_printf("%s/%s", directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
+		binlog_directory = g_strdup_printf("%s/%s", output_directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
 		create_backup_dir(binlog_directory);
 	}
 
@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
 	mysql_close(conn);
 	mysql_thread_end();
 	mysql_library_end();
-	g_free(directory);
+	g_free(output_directory);
 	g_strfreev(ignore);
 	g_strfreev(tables);
 	
@@ -469,7 +469,7 @@ void start_dump(MYSQL *conn)
 	char *p;
 	time_t t;
 
-	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",directory),"w");
+	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",output_directory),"w");
 	g_free(p);
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
@@ -640,6 +640,7 @@ void start_dump(MYSQL *conn)
 	g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
+
 	g_free(td);
 	g_free(threads);
 }
@@ -738,7 +739,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 						!showed_nulls?field:"",
 						!showed_nulls?" IS NULL OR ":"",
 						field, (unsigned long long)cutoff, 
-						field, (unsigned long long)cutoff+estimated_step));
+						field, (unsigned long long)(cutoff+estimated_step)));
 				cutoff+=estimated_step;
 				showed_nulls=1;
 			}
@@ -1029,7 +1030,7 @@ void dump_schema(char *database, char *table, struct configuration *conf) {
 	sj->table=g_strdup(table);
 	j->conf=conf;
 	j->type=JOB_SCHEMA;
-	sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", directory, database, table, (compress_output?".gz":""));
+	sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
 	g_async_queue_push(conf->queue,j);
 	return;
 }
@@ -1051,7 +1052,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			tj->table=g_strdup(table);
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-			tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", directory, database, table, nchunk,(compress_output?".gz":""));
+			tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
@@ -1065,7 +1066,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		tj->table=g_strdup(table);
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-		tj->filename = g_strdup_printf("%s/%s.%s.sql%s", directory, database, table,(compress_output?".gz":""));
+		tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
