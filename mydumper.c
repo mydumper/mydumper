@@ -55,6 +55,8 @@ int need_dummy_read= 0;
 int compress_output= 0;
 int killqueries= 0;
 int detected_server= 0;
+guint snapshot_interval= 60;
+gboolean daemon_mode= FALSE;
 
 gchar *ignore_engines= NULL;
 char **ignore= NULL;
@@ -72,6 +74,9 @@ GList *non_innodb_table= NULL;
 GList *table_schemas= NULL;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
+
+// For daemon mode, 0 or 1
+guint dump_number= 0;
 
 int errors;
 
@@ -91,6 +96,8 @@ static GOptionEntry entries[] =
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL }, 
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
 	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
+	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
+	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -110,6 +117,7 @@ gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 void reconnect_for_binlog(MYSQL *thrconn);
+void start_dump(MYSQL *conn);
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
 	(void) log_domain;
@@ -132,6 +140,12 @@ void set_verbose(guint verbosity) {
 		default:
 			break;
 	}
+}
+
+gboolean run_snapshot(MYSQL *conn)
+{
+	(void) conn;
+	return TRUE;
 }
 
 /* Check database.table string against regular expression */
@@ -352,8 +366,6 @@ void reconnect_for_binlog(MYSQL *thrconn) {
 
 int main(int argc, char *argv[])
 {
-	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
-
 	GError *error = NULL;
 	GOptionContext *context;
 
@@ -394,14 +406,6 @@ int main(int argc, char *argv[])
 		create_backup_dir(binlog_directory);
 	}
 
-	char *p;
-	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",directory),"w");
-	g_free(p);
-	if(!mdfile) {
-		g_critical("Couldn't write metadata file (%d)",errno);
-		exit(EXIT_FAILURE);
-	}
-
 	/* Give ourselves an array of engines to ignore */
 	if (ignore_engines)
 		ignore = g_strsplit(ignore_engines, ",", 0);
@@ -439,6 +443,39 @@ int main(int argc, char *argv[])
 			break;
 	}
 
+	if (daemon_mode) {
+		GMainLoop *m1;
+		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, conn);
+		m1= g_main_loop_new(NULL, TRUE);
+		g_main_loop_run(m1);
+	} else {
+		start_dump(conn);
+	}
+
+	mysql_close(conn);
+	mysql_thread_end();
+	mysql_library_end();
+	g_free(directory);
+	g_strfreev(ignore);
+	g_strfreev(tables);
+	
+	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
+}
+
+
+void start_dump(MYSQL *conn)
+{
+	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
+	char *p;
+	time_t t;
+
+	FILE* mdfile=g_fopen(p=g_strdup_printf("%s/.metadata",directory),"w");
+	g_free(p);
+	if(!mdfile) {
+		g_critical("Couldn't write metadata file (%d)",errno);
+		exit(EXIT_FAILURE);
+	}
+	
 	/* We check SHOW PROCESSLIST, and if there're queries 
 	   larger than preset value, we terminate the process.
 	
@@ -603,17 +640,8 @@ int main(int argc, char *argv[])
 	g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
-
-	mysql_close(conn);
-	mysql_thread_end();
-	mysql_library_end();
-	g_free(directory);
 	g_free(td);
 	g_free(threads);
-	g_strfreev(ignore);
-	g_strfreev(tables);
-	
-	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping 
