@@ -116,9 +116,10 @@ gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
-void reconnect_for_binlog(MYSQL *thrconn);
+MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
+void *binlog_thread(void *data);
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
 	(void) log_domain;
@@ -241,7 +242,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	master=mysql_store_result(conn);
 	if (master && (row=mysql_fetch_row(master))) {
 		masterlog=row[0];
-		masterpos=row[1];
+		masterpos=row[1];		
 	}
 	
 	mysql_query(conn, "SHOW SLAVE STATUS");
@@ -293,7 +294,10 @@ void *process_queue(struct thread_data *td) {
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
+	} else {
+		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
+
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
 	}
@@ -368,10 +372,11 @@ void *process_queue(struct thread_data *td) {
 				g_free(job);
 				break;
 			case JOB_BINLOG:
-				reconnect_for_binlog(thrconn);
+				thrconn= reconnect_for_binlog(thrconn);
+				g_message("Thread %d connected using MySQL connection ID %lu (in binlog mode)", td->thread_id, mysql_thread_id(thrconn));
 				bj=(struct binlog_job *)job->job_data;
 				g_message("Thread %d dumping binary log file %s", td->thread_id, bj->filename);
-				get_binlog_file(thrconn, bj->filename, bj->start_position, bj->stop_position);
+				get_binlog_file(thrconn, bj->filename, bj->start_position, bj->stop_position, FALSE);
 				if(bj->filename)
 					g_free(bj->filename);
 				g_free(bj);
@@ -396,13 +401,14 @@ void *process_queue(struct thread_data *td) {
 	return NULL;
 }
 
-void reconnect_for_binlog(MYSQL *thrconn) {
+MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	if (thrconn) {
 		mysql_close(thrconn);
-		g_mutex_lock(init_mutex);
-		thrconn= mysql_init(NULL);
-		g_mutex_unlock(init_mutex);
 	}
+	g_mutex_lock(init_mutex);
+	thrconn= mysql_init(NULL);
+	g_mutex_unlock(init_mutex);
+
 	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
@@ -410,6 +416,7 @@ void reconnect_for_binlog(MYSQL *thrconn) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
+	return thrconn;
 }
 
 int main(int argc, char *argv[])
@@ -457,10 +464,8 @@ int main(int argc, char *argv[])
 		g_free(dump_directory);
 	}
 	
-	if (need_binlogs) {
-		binlog_directory = g_strdup_printf("%s/%s", output_directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
-		create_backup_dir(binlog_directory);
-	}
+	binlog_directory = g_strdup_printf("%s/%s", output_directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
+	create_backup_dir(binlog_directory);
 
 	/* Give ourselves an array of engines to ignore */
 	if (ignore_engines)
@@ -471,10 +476,18 @@ int main(int argc, char *argv[])
 		tables = g_strsplit(tables_list, ",", 0);		
 
 	if (daemon_mode) {
+		GError* terror;
+		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), TRUE, &terror);
+		if (bthread == NULL) {
+			g_critical("Could not create binlog thread: %s", terror->message);
+			g_error_free(terror);
+			exit(EXIT_FAILURE);
+		}
 		GMainLoop *m1;
 		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
 		m1= g_main_loop_new(NULL, TRUE);
 		g_main_loop_run(m1);
+		g_thread_join(bthread);
 	} else {
 		MYSQL *conn= create_main_connection();
 		start_dump(conn);
@@ -522,6 +535,39 @@ MYSQL *create_main_connection()
 	}
 	
 	return conn;	
+}
+
+void *binlog_thread(void *data) {
+	(void) data;
+	MYSQL_RES *master= NULL;
+	MYSQL_ROW row;
+	MYSQL *conn;
+	conn = mysql_init(NULL);
+	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	
+	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
+		g_critical("Error connecting to database: %s", mysql_error(conn));
+		exit(EXIT_FAILURE);
+	}
+
+	mysql_query(conn,"SHOW MASTER STATUS");
+	master= mysql_store_result(conn);
+	if (master && (row= mysql_fetch_row(master))) {		
+		MYSQL *binlog_connection= NULL;
+		binlog_connection= reconnect_for_binlog(binlog_connection);
+		guint64 start_position= g_ascii_strtoull(row[1], NULL, 10);
+		gchar* filename= strdup(row[0]);
+		mysql_free_result(master);
+		mysql_close(conn);
+		g_message("Continuous binlog thread connected using MySQL connection ID %lu", mysql_thread_id(binlog_connection));
+		get_binlog_file(binlog_connection, filename, start_position, 0, TRUE);
+		g_free(filename);
+	} else {
+		mysql_free_result(master);
+		mysql_close(conn);		
+	}
+
+	return NULL;
 }
 
 void start_dump(MYSQL *conn)
