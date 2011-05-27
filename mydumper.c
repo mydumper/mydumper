@@ -118,6 +118,7 @@ void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *mess
 void set_verbose(guint verbosity);
 void reconnect_for_binlog(MYSQL *thrconn);
 void start_dump(MYSQL *conn);
+MYSQL *create_main_connection();
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
 	(void) log_domain;
@@ -170,12 +171,14 @@ void clear_dump_directory()
 	g_free(dump_directory);
 }
 
-gboolean run_snapshot(MYSQL *conn)
+gboolean run_snapshot(gpointer *data)
 {
-	(void) conn;
+	(void) data;
 	
 	clear_dump_directory();
+	MYSQL *conn= create_main_connection();
 	start_dump(conn);
+	mysql_close(conn);
 	
 	const char *dump_symlink_source= (dump_number == 0) ? "0" : "1";
 	char *dump_symlink_dest= g_strdup_printf("%s/last_dump", output_directory);
@@ -465,8 +468,30 @@ int main(int argc, char *argv[])
 		
 	/* Give ourselves an array of tables to dump */
 	if (tables_list)
-		tables = g_strsplit(tables_list, ",", 0);
-		
+		tables = g_strsplit(tables_list, ",", 0);		
+
+	if (daemon_mode) {
+		GMainLoop *m1;
+		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
+		m1= g_main_loop_new(NULL, TRUE);
+		g_main_loop_run(m1);
+	} else {
+		MYSQL *conn= create_main_connection();
+		start_dump(conn);
+		mysql_close(conn);
+	}
+
+	mysql_thread_end();
+	mysql_library_end();
+	g_free(output_directory);
+	g_strfreev(ignore);
+	g_strfreev(tables);
+	
+	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
+}
+
+MYSQL *create_main_connection()
+{
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
@@ -495,26 +520,9 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 			break;
 	}
-
-	if (daemon_mode) {
-		GMainLoop *m1;
-		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, conn);
-		m1= g_main_loop_new(NULL, TRUE);
-		g_main_loop_run(m1);
-	} else {
-		start_dump(conn);
-	}
-
-	mysql_close(conn);
-	mysql_thread_end();
-	mysql_library_end();
-	g_free(output_directory);
-	g_strfreev(ignore);
-	g_strfreev(tables);
 	
-	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
+	return conn;	
 }
-
 
 void start_dump(MYSQL *conn)
 {
