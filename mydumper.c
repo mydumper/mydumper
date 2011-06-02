@@ -67,6 +67,9 @@ char **tables= NULL;
 gboolean need_binlogs= FALSE;
 gchar *binlog_directory= NULL;
 
+gchar *logfile= NULL;
+FILE *logoutfile= NULL;
+
 gboolean no_schemas= FALSE;
 
 GList *innodb_tables= NULL;
@@ -98,6 +101,7 @@ static GOptionEntry entries[] =
 	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to, default ./" DIRECTORY"/" BINLOG_DIRECTORY"/", NULL },
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
+	{ "logfile", 'l', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -120,6 +124,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
 void *binlog_thread(void *data);
+void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
 	(void) log_domain;
@@ -129,17 +134,31 @@ void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *mess
 }
 
 void set_verbose(guint verbosity) {
+	if (logfile) {
+		logoutfile = g_fopen(logfile, "w");
+		if (!logoutfile) {
+			g_critical("Could not open log file '%s' for writing: %d", logfile, errno);
+			exit(EXIT_FAILURE);
+		}
+	}
+
 	switch (verbosity) {
 		case 0:
 			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
 			break;
 		case 1:
 			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE), no_log, NULL);
+			if (logfile)
+				g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL), write_log_file, NULL);
 			break;
 		case 2:
 			g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log, NULL);
+			if (logfile)
+				g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR | G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL), write_log_file, NULL);
 			break;
 		default:
+			if (logfile)
+				g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), write_log_file, NULL);
 			break;
 	}
 }
@@ -478,6 +497,7 @@ int main(int argc, char *argv[])
 	if (daemon_mode) {
 		GError* terror;
 		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), TRUE, &terror);
+			
 		if (bthread == NULL) {
 			g_critical("Could not create binlog thread: %s", terror->message);
 			g_error_free(terror);
@@ -499,6 +519,10 @@ int main(int argc, char *argv[])
 	g_free(output_directory);
 	g_strfreev(ignore);
 	g_strfreev(tables);
+	
+	if (logoutfile) {
+		fclose(logoutfile);
+	}
 	
 	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
@@ -1327,3 +1351,34 @@ gboolean write_data(FILE* file,GString * data) {
 	return TRUE;
 }
 
+void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
+	(void) log_domain;
+	(void) user_data;
+
+	gchar date[20];
+	time_t rawtime;
+	struct tm timeinfo;
+
+	time(&rawtime);
+	localtime_r(&rawtime, &timeinfo);
+	strftime(date, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+	GString* message_out = g_string_new(date);
+	if (log_level & G_LOG_LEVEL_DEBUG) {
+		g_string_append(message_out, " [DEBUG] - ");
+	} else if ((log_level & G_LOG_LEVEL_INFO) 
+		|| (log_level & G_LOG_LEVEL_MESSAGE)) {
+		g_string_append(message_out, " [INFO] - ");
+	} else if (log_level & G_LOG_LEVEL_WARNING) {
+		g_string_append(message_out, " [WARNING] - ");
+	} else if ((log_level & G_LOG_LEVEL_ERROR)
+		|| (log_level & G_LOG_LEVEL_CRITICAL)) {
+		g_string_append(message_out, " [ERROR] - ");
+	}
+
+	g_string_append_printf(message_out, "%s\n", message);
+	if (write(fileno(logoutfile), message_out->str, message_out->len) <= 0) {
+		fprintf(stderr, "Cannot write to log file with error %d.  Exiting...", errno);
+	}
+	g_string_free(message_out, TRUE);
+}
