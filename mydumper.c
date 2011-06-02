@@ -35,6 +35,7 @@
 #include "binlog.h"
 #include "server_detect.h"
 #include "common.h"
+#include "g_unix_signal.h"
 #include "config.h"
 
 char *regexstring=NULL;
@@ -161,6 +162,13 @@ void set_verbose(guint verbosity) {
 				g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), write_log_file, NULL);
 			break;
 	}
+}
+
+gboolean sig_triggered(gpointer user_data) {
+	(void) user_data;
+	
+	g_critical("Ctrl-C triggered");
+	exit(EXIT_FAILURE);
 }
 
 void clear_dump_directory()
@@ -496,6 +504,7 @@ int main(int argc, char *argv[])
 
 	if (daemon_mode) {
 		GError* terror;
+				
 		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), TRUE, &terror);
 			
 		if (bthread == NULL) {
@@ -505,9 +514,11 @@ int main(int argc, char *argv[])
 		}
 		GMainLoop *m1;
 		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
+		guint sigsource= g_unix_signal_add(SIGINT, sig_triggered, NULL);
 		m1= g_main_loop_new(NULL, TRUE);
 		g_main_loop_run(m1);
 		g_thread_join(bthread);
+		g_source_remove(sigsource);
 	} else {
 		MYSQL *conn= create_main_connection();
 		start_dump(conn);
