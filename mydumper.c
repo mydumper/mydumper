@@ -81,6 +81,10 @@ gint non_innodb_done= 0;
 
 // For daemon mode, 0 or 1
 guint dump_number= 0;
+guint binlog_connect_id= 0;
+gboolean shutdown_triggered= FALSE;
+GAsyncQueue *start_scheduled_dump;
+GMainLoop *m1;
 
 int errors;
 
@@ -125,6 +129,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
 void *binlog_thread(void *data);
+void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data) {
@@ -167,8 +172,10 @@ void set_verbose(guint verbosity) {
 gboolean sig_triggered(gpointer user_data) {
 	(void) user_data;
 	
-	g_critical("Ctrl-C triggered");
-	exit(EXIT_FAILURE);
+	g_message("Shutting down gracefully");
+	shutdown_triggered= TRUE;
+	g_main_loop_quit(m1);
+	return FALSE;
 }
 
 void clear_dump_directory()
@@ -203,25 +210,9 @@ gboolean run_snapshot(gpointer *data)
 {
 	(void) data;
 	
-	clear_dump_directory();
-	MYSQL *conn= create_main_connection();
-	start_dump(conn);
-	mysql_close(conn);
-	
-	const char *dump_symlink_source= (dump_number == 0) ? "0" : "1";
-	char *dump_symlink_dest= g_strdup_printf("%s/last_dump", output_directory);
-	
-	// We don't care if this fails
-	g_unlink(dump_symlink_dest);
-	
-	if (symlink(dump_symlink_source, dump_symlink_dest) == -1) {
-		g_critical("error setting last good dump symlink %s, %d", dump_symlink_dest, errno);
-	}
-	g_free(dump_symlink_dest);
-	
-	dump_number= (dump_number == 1) ? 0 : 1;
+	g_async_queue_push(start_scheduled_dump,GINT_TO_POINTER(1));
 
-	return TRUE;
+	return (shutdown_triggered) ? FALSE : TRUE;
 }
 
 /* Check database.table string against regular expression */
@@ -355,6 +346,10 @@ void *process_queue(struct thread_data *td) {
 		g_get_current_time(&tv);
 		g_time_val_add(&tv,1000*1000*1);
 		job=(struct job *)g_async_queue_pop(conf->queue);
+
+		if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
+			continue;
+		}
 		
 		switch (job->type) {
 			case JOB_DUMP:
@@ -372,22 +367,22 @@ void *process_queue(struct thread_data *td) {
 				g_free(job);
 				break;
 			case JOB_DUMP_NON_INNODB:
-                                tj=(struct table_job *)job->job_data;
-                                if (tj->where)
-                                        g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
-                                else
-                                        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
-                                dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
-                                if(tj->database) g_free(tj->database);
-                                if(tj->table) g_free(tj->table);
-                                if(tj->where) g_free(tj->where);
-                                if(tj->filename) g_free(tj->filename);
-                                g_free(tj);
-                                g_free(job);
+				tj=(struct table_job *)job->job_data;
+				if (tj->where)
+					g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
+				else
+					g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+				dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
+				if(tj->database) g_free(tj->database);
+				if(tj->table) g_free(tj->table);
+				if(tj->where) g_free(tj->where);
+				if(tj->filename) g_free(tj->filename);
+				g_free(tj);
+				g_free(job);
 				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
-                                break;
+				break;
 			case JOB_SCHEMA:
 				sj=(struct schema_job *)job->job_data;
 				g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id, sj->database, sj->table);
@@ -438,6 +433,9 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 
 	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
+	int timeout= 1;
+	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, &timeout);
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
@@ -505,19 +503,26 @@ int main(int argc, char *argv[])
 	if (daemon_mode) {
 		GError* terror;
 				
-		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), TRUE, &terror);
-			
+		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), FALSE, &terror);
 		if (bthread == NULL) {
 			g_critical("Could not create binlog thread: %s", terror->message);
 			g_error_free(terror);
 			exit(EXIT_FAILURE);
 		}
-		GMainLoop *m1;
+
+		start_scheduled_dump= g_async_queue_new();
+		GThread *ethread= g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
+		if (ethread == NULL) {
+			g_critical("Could not create exec thread: %s", terror->message);
+			g_error_free(terror);
+			exit(EXIT_FAILURE);
+		}
+		
 		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
 		guint sigsource= g_unix_signal_add(SIGINT, sig_triggered, NULL);
+		sigsource= g_unix_signal_add(SIGTERM, sig_triggered, NULL);
 		m1= g_main_loop_new(NULL, TRUE);
 		g_main_loop_run(m1);
-		g_thread_join(bthread);
 		g_source_remove(sigsource);
 	} else {
 		MYSQL *conn= create_main_connection();
@@ -525,6 +530,7 @@ int main(int argc, char *argv[])
 		mysql_close(conn);
 	}
 
+	sleep(5);
 	mysql_thread_end();
 	mysql_library_end();
 	g_free(output_directory);
@@ -572,6 +578,31 @@ MYSQL *create_main_connection()
 	return conn;	
 }
 
+void *exec_thread(void *data) {
+	(void) data;
+	
+	while(1) {
+		g_async_queue_pop(start_scheduled_dump);
+		clear_dump_directory();
+		MYSQL *conn= create_main_connection();
+		start_dump(conn);
+		mysql_close(conn);
+		
+		const char *dump_symlink_source= (dump_number == 0) ? "0" : "1";
+		char *dump_symlink_dest= g_strdup_printf("%s/last_dump", output_directory);
+		
+		// We don't care if this fails
+		g_unlink(dump_symlink_dest);
+		
+		if (symlink(dump_symlink_source, dump_symlink_dest) == -1) {
+			g_critical("error setting last good dump symlink %s, %d", dump_symlink_dest, errno);
+		}
+		g_free(dump_symlink_dest);
+		
+		dump_number= (dump_number == 1) ? 0 : 1;		
+	}
+}
+
 void *binlog_thread(void *data) {
 	(void) data;
 	MYSQL_RES *master= NULL;
@@ -587,9 +618,10 @@ void *binlog_thread(void *data) {
 
 	mysql_query(conn,"SHOW MASTER STATUS");
 	master= mysql_store_result(conn);
-	if (master && (row= mysql_fetch_row(master))) {		
+	if (master && (row= mysql_fetch_row(master))) {
 		MYSQL *binlog_connection= NULL;
 		binlog_connection= reconnect_for_binlog(binlog_connection);
+		binlog_connect_id= mysql_thread_id(binlog_connection);
 		guint64 start_position= g_ascii_strtoull(row[1], NULL, 10);
 		gchar* filename= strdup(row[0]);
 		mysql_free_result(master);
@@ -597,11 +629,13 @@ void *binlog_thread(void *data) {
 		g_message("Continuous binlog thread connected using MySQL connection ID %lu", mysql_thread_id(binlog_connection));
 		get_binlog_file(binlog_connection, filename, start_position, 0, TRUE);
 		g_free(filename);
+		mysql_close(binlog_connection);
 	} else {
 		mysql_free_result(master);
 		mysql_close(conn);		
 	}
 
+	mysql_thread_end();
 	return NULL;
 }
 

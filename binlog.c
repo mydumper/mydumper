@@ -23,6 +23,7 @@
 #include <my_global.h>
 #include <mysql.h>
 #include <my_sys.h>
+#include <mysqld_error.h>
 #include <sql_common.h>
 #include <string.h>
 #include <zlib.h>
@@ -53,6 +54,7 @@ enum event_type {
 extern gchar* binlog_directory;
 extern int compress_output;
 extern gboolean daemon_mode;
+extern gboolean shutdown_triggered;
 
 FILE *new_binlog_file(char *binlog_file);
 void close_binlog_file(FILE *outfile);
@@ -151,9 +153,20 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 			len = 0;
 			if (net->vio != 0) len=my_net_read(net);
 			if ((len == 0) || (len == ~(unsigned long) 0)) {
-				g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
-				close_binlog_file(outfile);
-				return;
+				// Net timeout (set to 1 second)
+				if (mysql_errno(conn) == ER_NET_READ_INTERRUPTED) {
+					if (shutdown_triggered) {
+						close_binlog_file(outfile);
+						return;
+					} else {
+						continue;
+					}
+				// A real error
+				} else {
+					g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
+					close_binlog_file(outfile);
+					return;
+				}
 			}
 			if (len < 8 && net->read_pos[0]) {
 				// end of data
