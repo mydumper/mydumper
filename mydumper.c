@@ -107,7 +107,7 @@ static GOptionEntry entries[] =
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
-	{ "logfile", 'l', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
+	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 

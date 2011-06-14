@@ -68,6 +68,10 @@ The :program:`mydumper` tool has several available options:
 
    The number of threads to use for dumping data, default is 4
 
+   .. note::
+
+      Other threads are used in mydumper, this option does not control these
+
 .. option:: --outputdir, -o
 
    Output directory name, default is export-YYYYMMDD-HHMMSS
@@ -126,7 +130,16 @@ The :program:`mydumper` tool has several available options:
 
    Get the binlogs from the server as well as the dump files
 
-.. option:: --binlog-outdir, -d
+.. option::  --daemon, -D
 
-   The directory to output the binlog files into, default 'binlogs' in the
-   export directory.
+   Enable daemon mode
+
+.. option:: --snapshot-interval, -I
+
+   Interval between each dump snapshot (in minutes), requires
+   :option:`--daemon`, default 60 (minutes)
+
+.. option:: --logfile, -L
+
+   A file to log mydumper output to instead of console output.  Useful for
+   daemon mode.

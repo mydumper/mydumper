@@ -21,7 +21,7 @@ This is an example of the content of this file::
 
 Table Data
 ----------
-The data from every table is written into a separate file, also if the 
+The data from every table is written into a separate file, also if the
 :option:`--rows <mydumper --rows>` option is used then each chunk of table will
 be in a separate file.  The file names for this are in the format::
 
@@ -44,10 +44,17 @@ for this are in the following format::
 Binary Logs
 -----------
 Binary logs are retrieved when :option:`--binlogs <mydumper --binlogs>` option
-has been set.  This will store them in the the location specified in the
-:option:`--binlog-outdir <mydumper --binlog-outdir>` option, by default this is
-the ``binlogs/`` sub-directory inside the dump directory.
+has been set.  This will store them in the ``binlog_snapshot/`` sub-directory
+inside the dump directory.
 
 The binary log files have the same filename as the MySQL server that supplies them and will also have a .gz on the end if they are compressed.
 
+Daemon mode
+-----------
+Daemon mode does things a little differently.  There are the directories ``0``
+and ``1`` inside the dump directory.  These alternate when dumping so that if
+mydumper fails for any reason there is still a good snapshot.  When a snapshot
+dump is complete the ``last_dump`` symlink is updated to point to that dump.
 
+If binary logging is enabled mydumper will connect as if it is a slave server
+and constantly retreives the binary logs into the ``binlogs`` subdirectory.
