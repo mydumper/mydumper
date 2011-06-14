@@ -436,7 +436,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
 	int timeout= 1;
-	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, &timeout);
+	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
