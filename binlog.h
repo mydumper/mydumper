@@ -23,7 +23,7 @@
 #include "mydumper.h"
 
 void get_binlogs(MYSQL *conn, struct configuration *conf);
-void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position);
+void get_binlog_file(MYSQL *conn, char *binlog_file, const char *binlog_directory, guint64 start_position, guint64 stop_position, gboolean continuous);
 unsigned int get_event(const char *buf, unsigned int len);
 void write_binlog(FILE* file, const char* data, guint64 len);
 

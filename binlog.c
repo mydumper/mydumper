@@ -1,4 +1,4 @@
-/* 
+/*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -23,13 +23,27 @@
 #include <my_global.h>
 #include <mysql.h>
 #include <my_sys.h>
+#include <mysqld_error.h>
 #include <sql_common.h>
 #include <string.h>
 #include <zlib.h>
 #include "mydumper.h"
 #include "binlog.h"
 
-#define BINLOG_MAGIC        "\xfe\x62\x69\x6e"
+#define BINLOG_MAGIC "\xfe\x62\x69\x6e"
+
+#define EVENT_HEADER_LENGTH 19
+#define EVENT_ROTATE_FIXED_LENGTH 8
+
+enum event_postions {
+	EVENT_TIMESTAMP_POSITION= 0,
+	EVENT_TYPE_POSITION= 4,
+	EVENT_SERVERID_POSITION= 5,
+	EVENT_LENGTH_POSITION= 9,
+	EVENT_NEXT_POSITION= 13,
+	EVENT_FLAGS_POSITION= 17,
+	EVENT_EXTRA_FLAGS_POSITION= 19 // currently unused in v4 binlogs, but a good marker for end of header
+};
 
 enum event_type {
 	ROTATE_EVENT= 4,
@@ -37,8 +51,13 @@ enum event_type {
 	EVENT_TOO_SHORT= 254 // arbitrary high number, in 5.1 the max event type number is 27 so this should be fine for a while
 };
 
-extern gchar* binlog_directory;
 extern int compress_output;
+extern gboolean daemon_mode;
+extern gboolean shutdown_triggered;
+
+FILE *new_binlog_file(char *binlog_file, const char *binlog_dir);
+void close_binlog_file(FILE *outfile);
+char *rotate_file_name(const char *buf);
 
 void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	// TODO: find logs we already have, use start position based on position of last log.
@@ -47,9 +66,16 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	char* last_filename = NULL;
 	guint64 last_position;
 
+	// Only snapshot dump the binlogs once in daemon mode
+	static gboolean got_binlogs= FALSE;
+	if (got_binlogs)
+		return;
+	else
+		got_binlogs= TRUE;
+
 	if (mysql_query(conn, "SHOW MASTER STATUS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
-		return;		
+		return;
 	}
 
 	result = mysql_store_result(conn);
@@ -60,15 +86,15 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		g_critical("Error: Could not obtain binary log stop position");
 		if (last_filename != NULL)
 			g_free(last_filename);
-		return;		
+		return;
 	}
 	mysql_free_result(result);
-	
+
 	if (mysql_query(conn, "SHOW BINARY LOGS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
 		if (last_filename != NULL)
 			g_free(last_filename);
-		return;		
+		return;
 	}
 
 
@@ -89,7 +115,7 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 		g_free(last_filename);
 }
 
-void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, guint64 stop_position) {
+void get_binlog_file(MYSQL *conn, char *binlog_file, const char *binlog_directory, guint64 start_position, guint64 stop_position, gboolean continuous) {
 	// set serverID = max serverID - threadID to try an eliminate conflicts,
 	// 0 is bad because mysqld will disconnect at the end of the last log
 	// dupes aren't too bad since it is up to the client to check for them
@@ -98,13 +124,12 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 	NET* net;
 	net= &conn->net;
 	unsigned long len;
-	char* filename;
 	FILE* outfile;
 	guint32 event_type;
 	gboolean read_error= FALSE;
 	gboolean read_end= FALSE;
 	gboolean rotated= FALSE;
-	guint32 server_id= (~ (guint32) 0) - mysql_thread_id(conn);
+	guint32 server_id= G_MAXUINT32 - mysql_thread_id(conn);
 	guint64 pos_counter= 0;
 
 	int4store(buf, (guint32)start_position);
@@ -114,80 +139,126 @@ void get_binlog_file(MYSQL *conn, char *binlog_file, guint64 start_position, gui
 	int4store(buf + 6, server_id);
 	memcpy(buf + 10, binlog_file, strlen(binlog_file));
 #if MYSQL_VERSION_ID < 50100
-	if (simple_command(conn, COM_BINLOG_DUMP, (const char *)buf, 
+	if (simple_command(conn, COM_BINLOG_DUMP, (const char *)buf,
 #else
 	if (simple_command(conn, COM_BINLOG_DUMP, buf,
 #endif
 		strlen(binlog_file) + 10, 1)) {
 		g_critical("Error: binlog: Critical error whilst requesting binary log");
 	}
-	if (!compress_output) {
-		filename= g_strdup_printf("%s/%s", binlog_directory, binlog_file);
-		outfile= g_fopen(filename, "w");
-	} else {
-		filename= g_strdup_printf("%s/%s.gz", binlog_directory, binlog_file);
-		outfile= gzopen(filename, "w");
-	}
 
-
-	if (outfile == NULL)
-		g_critical("Error: binlog: Could not create filename '%s'", filename);
-
-	g_free(filename);
-
-	write_binlog(outfile, BINLOG_MAGIC, 4);
 	while(1) {
-		len = 0;
-		if (net->vio != 0) len=my_net_read(net);
-		if ((len == 0) || (len == ~(unsigned long) 0)) {
-			g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
-			if (!compress_output)
-				fclose(outfile);
-			else
-				gzclose(outfile);
+		outfile= new_binlog_file(binlog_file, binlog_directory);
+		if (outfile == NULL) {
+			g_critical("Error: binlog: Could not create binlog file '%s', %d", binlog_file, errno);
 			return;
 		}
-		if (len < 8 && net->read_pos[0]) {
-			// end of data
-			break;
-		}
-		pos_counter += len;
-		event_type= get_event((const char*)net->read_pos + 1, len -1);
-		switch (event_type) {
-			case EVENT_TOO_SHORT:
-				g_critical("Error: binlog: Event too short in binlog file: %s", binlog_file);
-				read_error= TRUE;
-				break;
-			case ROTATE_EVENT:
-				if (rotated) {
-					read_end= TRUE;
+
+		write_binlog(outfile, BINLOG_MAGIC, 4);
+		while(1) {
+			len = 0;
+			if (net->vio != 0) len=my_net_read(net);
+			if ((len == 0) || (len == ~(unsigned long) 0)) {
+				// Net timeout (set to 1 second)
+				if (mysql_errno(conn) == ER_NET_READ_INTERRUPTED) {
+					if (shutdown_triggered) {
+						close_binlog_file(outfile);
+						return;
+					} else {
+						continue;
+					}
+				// A real error
 				} else {
-					len= 1;
-					rotated= TRUE;
+					g_critical("Error: binlog: Network packet read error getting binlog file: %s", binlog_file);
+					close_binlog_file(outfile);
+					return;
 				}
+			}
+			if (len < 8 && net->read_pos[0]) {
+				// end of data
 				break;
-			default:
-				// if we get this far this is a normal event to record
-				break;
+			}
+			pos_counter += len;
+			event_type= get_event((const char*)net->read_pos + 1, len -1);
+			switch (event_type) {
+				case EVENT_TOO_SHORT:
+					g_critical("Error: binlog: Event too short in binlog file: %s", binlog_file);
+					read_error= TRUE;
+					break;
+				case ROTATE_EVENT:
+					if (rotated) {
+						read_end= TRUE;
+					} else {
+						len= 1;
+						rotated= TRUE;
+					}
+					break;
+				default:
+					// if we get this far this is a normal event to record
+					break;
+			}
+			if (read_error) break;
+			write_binlog(outfile, (const char*)net->read_pos + 1, len - 1);
+			if (read_end) {
+				if (!continuous) {
+					break;
+				} else {
+					g_free(binlog_file);
+					binlog_file= rotate_file_name((const char*)net->read_pos + 1);
+					break;
+				}
+			}
+			// stop if we are at requested end of last log
+			if ((stop_position > 0) && (pos_counter >= stop_position)) break;
 		}
-		if (read_error) break;
-		write_binlog(outfile, (const char*)net->read_pos + 1, len - 1);
-		if (read_end) break;
-		// stop if we are at recorded end of last log
-		if ((stop_position > 0) && (pos_counter >= stop_position)) break;
+		close_binlog_file(outfile);
+		if ((!continuous) || (!read_end)) break;
+
+		if (continuous && read_end) {
+			read_end= FALSE;
+			rotated= FALSE;
+		}
 	}
+}
+
+char *rotate_file_name(const char *buf) {
+	guint32 event_length= 0;
+
+	// event length is 4 bytes at position 9
+	event_length= uint4korr(&buf[EVENT_LENGTH_POSITION]);
+	// event length includes the header, plus a rotate event has a fixed 8byte part we don't need
+	event_length= event_length - EVENT_HEADER_LENGTH - EVENT_ROTATE_FIXED_LENGTH;
+
+	return g_strndup(&buf[EVENT_HEADER_LENGTH + EVENT_ROTATE_FIXED_LENGTH], event_length);
+}
+
+FILE *new_binlog_file(char *binlog_file, const char *binlog_dir) {
+	FILE *outfile;
+	char* filename;
+
+	if (!compress_output) {
+		filename= g_strdup_printf("%s/%s", binlog_dir, binlog_file);
+		outfile= g_fopen(filename, "w");
+	} else {
+		filename= g_strdup_printf("%s/%s.gz", binlog_dir, binlog_file);
+		outfile= gzopen(filename, "w");
+	}
+	g_free(filename);
+
+	return outfile;
+}
+
+void close_binlog_file(FILE *outfile) {
 	if (!compress_output)
 		fclose(outfile);
 	else
 		gzclose(outfile);
 }
 
-
 unsigned int get_event(const char *buf, unsigned int len) {
-	// Event type offset is 4
-	if (len < 4)
+	if (len < EVENT_TYPE_POSITION)
 		return EVENT_TOO_SHORT;
-	return buf[4];
+	return buf[EVENT_TYPE_POSITION];
 
 	// TODO: Would be good if we can check for valid event type, unfortunately this check can change from version to version
 }
@@ -202,7 +273,7 @@ void write_binlog(FILE* file, const char* data, guint64 len) {
 			write_result= write(fileno(file), data, len);
 		else
 			write_result= gzwrite((gzFile)file, data, len);
-	
+
 		if (write_result <= 0)	{
 			if (!compress_output)
 				g_critical("Error: binlog: Error writing binary log: %s", strerror(errno));
