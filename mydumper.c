@@ -104,8 +104,7 @@ static GOptionEntry entries[] =
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
-	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get the binary logs as well as dump data",  NULL },
-	{ "binlog-outdir", 'd', 0, G_OPTION_ARG_STRING, &binlog_directory, "Directory to output the binary logs to", NULL },
+	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ "logfile", 'l', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
@@ -483,6 +482,20 @@ int main(int argc, char *argv[])
 
 	create_backup_dir(output_directory);
 	if (daemon_mode) {
+		pid_t pid, sid;
+
+		pid= fork();
+		if (pid < 0)
+			exit(EXIT_FAILURE);
+		else if (pid > 0)
+			exit(EXIT_SUCCESS);
+
+		umask(0);
+		sid= setsid();
+
+		if (sid < 0)
+			exit(EXIT_FAILURE);
+
 		char *dump_directory= g_strdup_printf("%s/0", output_directory);
 		create_backup_dir(dump_directory);
 		g_free(dump_directory);
@@ -494,7 +507,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (need_binlogs) {
-		binlog_directory = g_strdup_printf("%s/%s", output_directory, (binlog_directory ? binlog_directory : BINLOG_DIRECTORY));
+		binlog_directory = g_strdup_printf("%s/%s", output_directory, BINLOG_DIRECTORY);
 		create_backup_dir(binlog_directory);
 	}
 

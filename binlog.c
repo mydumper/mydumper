@@ -66,6 +66,13 @@ void get_binlogs(MYSQL *conn, struct configuration *conf) {
 	char* last_filename = NULL;
 	guint64 last_position;
 
+	// Only snapshot dump the binlogs once in daemon mode
+	static gboolean got_binlogs= FALSE;
+	if (got_binlogs)
+		return;
+	else
+		got_binlogs= TRUE;
+
 	if (mysql_query(conn, "SHOW MASTER STATUS")) {
 		g_critical("Error: Could not execute query: %s", mysql_error(conn));
 		return;
