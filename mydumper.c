@@ -669,9 +669,9 @@ void start_dump(MYSQL *conn)
 	time_t t;
 
 	if (daemon_mode)
-		p= g_strdup_printf("%s/%d/.metadata", output_directory, dump_number);
+		p= g_strdup_printf("%s/%d/metadata", output_directory, dump_number);
 	else
-		p= g_strdup_printf("%s/.metadata", output_directory);
+		p= g_strdup_printf("%s/metadata", output_directory);
 
 	FILE* mdfile=g_fopen(p,"w");
 	g_free(p);
