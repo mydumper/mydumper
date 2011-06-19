@@ -74,6 +74,7 @@ gchar *logfile= NULL;
 FILE *logoutfile= NULL;
 
 gboolean no_schemas= FALSE;
+gboolean no_locks= FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
@@ -102,6 +103,7 @@ static GOptionEntry entries[] =
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
+	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
@@ -724,9 +726,13 @@ void start_dump(MYSQL *conn)
 		mysql_free_result(res);
 	}
 
-	if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
-		g_critical("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
-		errors++;
+	if (!no_locks) {
+		if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+			g_critical("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
+			errors++;
+		}
+	} else {
+		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
 	}
 	if (mysql_get_server_version(conn)) {
 		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
@@ -828,8 +834,10 @@ void start_dump(MYSQL *conn)
 	}
 
 	g_async_queue_pop(conf.unlock_tables);
-	g_message("Non-InnoDB dump complete, unlocking tables");
-	mysql_query(conn, "UNLOCK TABLES");
+	if (!no_locks) {
+		g_message("Non-InnoDB dump complete, unlocking tables");
+		mysql_query(conn, "UNLOCK TABLES");
+	}
 
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
