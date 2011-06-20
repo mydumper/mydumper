@@ -146,5 +146,8 @@ The :program:`mydumper` tool has several available options:
 
 .. option:: --no-locks, -k
 
-   Do not execute the temporary shared read lock.  WARNING: This will cause
-   inconsistent backups
+   Do not execute the temporary shared read lock.
+
+   .. warning::
+      
+      This will cause inconsistent backups.
