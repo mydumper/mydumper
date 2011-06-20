@@ -143,3 +143,11 @@ The :program:`mydumper` tool has several available options:
 
    A file to log mydumper output to instead of console output.  Useful for
    daemon mode.
+
+.. option:: --no-locks, -k
+
+   Do not execute the temporary shared read lock.
+
+   .. warning::
+      
+      This will cause inconsistent backups.
