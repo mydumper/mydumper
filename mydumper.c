@@ -538,7 +538,8 @@ int main(int argc, char *argv[])
 			g_error_free(terror);
 			exit(EXIT_FAILURE);
 		}
-
+		// Run initial snapshot
+		run_snapshot(NULL);
 		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
 		guint sigsource= g_unix_signal_add(SIGINT, sig_triggered, NULL);
 		sigsource= g_unix_signal_add(SIGTERM, sig_triggered, NULL);
