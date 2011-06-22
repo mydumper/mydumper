@@ -31,6 +31,7 @@
 #include <time.h>
 #include <zlib.h>
 #include <pcre.h>
+#include <signal.h>
 #include <glib/gstdio.h>
 #include "binlog.h"
 #include "server_detect.h"
@@ -540,7 +541,11 @@ int main(int argc, char *argv[])
 		}
 		// Run initial snapshot
 		run_snapshot(NULL);
+		#if GLIB_MINOR_VERSION < 14
+		g_timeout_add(snapshot_interval*60*1000, (GSourceFunc) run_snapshot, NULL);
+		#else
 		g_timeout_add_seconds(snapshot_interval*60, (GSourceFunc) run_snapshot, NULL);
+		#endif
 		guint sigsource= g_unix_signal_add(SIGINT, sig_triggered, NULL);
 		sigsource= g_unix_signal_add(SIGTERM, sig_triggered, NULL);
 		m1= g_main_loop_new(NULL, TRUE);
@@ -627,6 +632,7 @@ void *exec_thread(void *data) {
 			dump_number= (dump_number == 1) ? 0 : 1;
 		}
 	}
+	return NULL;
 }
 
 void *binlog_thread(void *data) {
