@@ -48,18 +48,18 @@ if(UNIX)
         set(MYSQL_ADD_LIBRARIES "")
 
         string(REGEX MATCHALL "-l[^ ]*" MYSQL_LIB_LIST "${MY_TMP}")
-        foreach(LIB ${MYSQL_LIB_LIST})
-            string(REGEX REPLACE "[ ]*-l([^ ]*)" "\\1" LIB "${LIB}")
-            list(APPEND MYSQL_ADD_LIBRARIES "${LIB}")
-        endforeach(LIB ${MYSQL_LIBS})
+        foreach(MY_LIB ${MYSQL_LIB_LIST})
+            string(REGEX REPLACE "[ ]*-l([^ ]*)" "\\1" MY_LIB "${MY_LIB}")
+            list(APPEND MYSQL_ADD_LIBRARIES "${MY_LIB}")
+        endforeach(MY_LIB ${MYSQL_LIBS})
 
         set(MYSQL_ADD_LIBRARY_PATH "")
 
         string(REGEX MATCHALL "-L[^ ]*" MYSQL_LIBDIR_LIST "${MY_TMP}")
-        foreach(LIB ${MYSQL_LIBDIR_LIST})
-            string(REGEX REPLACE "[ ]*-L([^ ]*)" "\\1" LIB "${LIB}")
-            list(APPEND MYSQL_ADD_LIBRARY_PATH "${LIB}")
-        endforeach(LIB ${MYSQL_LIBS})
+        foreach(MY_LIB ${MYSQL_LIBDIR_LIST})
+            string(REGEX REPLACE "[ ]*-L([^ ]*)" "\\1" MY_LIB "${MY_LIB}")
+            list(APPEND MYSQL_ADD_LIBRARY_PATH "${MY_LIB}")
+        endforeach(MY_LIB ${MYSQL_LIBS})
 
     else(MYSQL_CONFIG)
         set(MYSQL_ADD_LIBRARIES "")
@@ -71,28 +71,29 @@ else(UNIX)
 ENDIF(UNIX)
 
 find_path(MYSQL_INCLUDE_DIR mysql.h
+    ${MYSQL_ADD_INCLUDE_DIR}
     /usr/local/include
     /usr/local/include/mysql 
     /usr/local/mysql/include
     /usr/local/mysql/include/mysql
     /usr/include 
     /usr/include/mysql
-    ${MYSQL_ADD_INCLUDE_DIR}
 )
 
 set(TMP_MYSQL_LIBRARIES "")
 
-foreach(LIB ${MYSQL_ADD_LIBRARIES})
-    find_library("MYSQL_LIBRARIES_${LIB}" NAMES ${LIB}
-        PATHS
+foreach(MY_LIB ${MYSQL_ADD_LIBRARIES})
+    find_library("MYSQL_LIBRARIES_${MY_LIB}" NAMES ${MY_LIB}
+        HINTS
         ${MYSQL_ADD_LIBRARY_PATH}
         /usr/lib/mysql
+	/usr/lib
         /usr/local/lib
         /usr/local/lib/mysql
         /usr/local/mysql/lib
     )
-    list(APPEND TMP_MYSQL_LIBRARIES "${MYSQL_LIBRARIES_${LIB}}")
-endforeach(LIB ${MYSQL_ADD_LIBRARIES})
+    list(APPEND TMP_MYSQL_LIBRARIES "${MYSQL_LIBRARIES_${MY_LIB}}")
+endforeach(MY_LIB ${MYSQL_ADD_LIBRARIES})
 
 set(MYSQL_LIBRARIES ${TMP_MYSQL_LIBRARIES} CACHE FILEPATH INTERNAL)
 
