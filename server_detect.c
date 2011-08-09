@@ -24,7 +24,7 @@ int detect_server(MYSQL *conn) {
 	pcre *re= NULL;
 	const char *error;
 	int erroroffset;
-	int ovector[9];
+	int ovector[9]= {0};
 	int rc;
 	const char* db_version= mysql_get_server_info(conn);
 

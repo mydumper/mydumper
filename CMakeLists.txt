@@ -10,7 +10,11 @@ find_package(ZLIB)
 find_package(GLIB2)
 find_package(PCRE)
 
-add_subdirectory(docs)
+option(BUILD_DOCS "Build the documentation" ON)
+
+if (BUILD_DOCS)
+  add_subdirectory(docs)
+endif (BUILD_DOCS)
 
 set(CMAKE_C_FLAGS "-Wall -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -Werror -O3 -g ${MYSQL_CFLAGS}")
 
@@ -37,3 +41,22 @@ add_custom_target(dist
   COMMAND bzr export --root=${ARCHIVE_NAME}
     ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+
+OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
+
+IF(RUN_CPPCHECK)
+  include(CppcheckTargets)
+  add_cppcheck(mydumper)
+  add_cppcheck(myloader)
+ENDIF(RUN_CPPCHECK)
+
+
+MESSAGE(STATUS "------------------------------------------------")
+MESSAGE(STATUS "MYSQL_CONFIG = ${MYSQL_CONFIG}")
+MESSAGE(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
+MESSAGE(STATUS "BUILD_DOCS = ${BUILD_DOCS}")
+MESSAGE(STATUS "RUN_CPPCHECK = ${RUN_CPPCHECK}")
+MESSAGE(STATUS "Change a values with: cmake -D<Variable>=<Value>")
+MESSAGE(STATUS "------------------------------------------------")
+MESSAGE(STATUS)
+

@@ -225,7 +225,7 @@ gboolean check_regex(char *database, char *table) {
 	/* This is not going to be used in threads */
 	static pcre *re = NULL;
 	int rc;
-	int ovector[9];
+	int ovector[9]= {0};
 	const char *error;
 	int erroroffset;
 
@@ -655,7 +655,7 @@ void *binlog_thread(void *data) {
 		binlog_connection= reconnect_for_binlog(binlog_connection);
 		binlog_connect_id= mysql_thread_id(binlog_connection);
 		guint64 start_position= g_ascii_strtoull(row[1], NULL, 10);
-		gchar* filename= strdup(row[0]);
+		gchar* filename= g_strdup(row[0]);
 		mysql_free_result(master);
 		mysql_close(conn);
 		g_message("Continuous binlog thread connected using MySQL connection ID %lu", mysql_thread_id(binlog_connection));
