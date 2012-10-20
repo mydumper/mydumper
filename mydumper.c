@@ -1156,7 +1156,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	if (!compress_output)
 		outfile= g_fopen(filename, "w");
 	else
-		outfile= gzopen(filename, "w");
+		outfile= (void*) gzopen(filename, "w");
 
 	if (!outfile) {
 		g_critical("Error: DB: %s Could not create output file %s (%d)", database, filename, errno);
@@ -1202,7 +1202,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
         if (!compress_output)
                 fclose((FILE *)outfile);
         else
-                gzclose(outfile);
+                gzclose((gzFile)outfile);
 
 
 	g_string_free(statement, TRUE);
@@ -1218,7 +1218,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 	if (!compress_output)
 		outfile = g_fopen(filename, "w");
 	else
-		outfile = gzopen(filename, "w");
+		outfile = (void*) gzopen(filename, "w");
 
 	if (!outfile) {
 		g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)", database, table, filename, errno);
@@ -1229,7 +1229,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 	if (!compress_output)
 		fclose((FILE *)outfile);
 	else
-		gzclose(outfile);
+		gzclose((gzFile)outfile);
 
 	if (!rows_count && !build_empty_files) {
 		// dropping the useless file

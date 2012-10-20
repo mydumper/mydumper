@@ -241,7 +241,7 @@ FILE *new_binlog_file(char *binlog_file, const char *binlog_dir) {
 		outfile= g_fopen(filename, "w");
 	} else {
 		filename= g_strdup_printf("%s/%s.gz", binlog_dir, binlog_file);
-		outfile= gzopen(filename, "w");
+		outfile= (void*) gzopen(filename, "w");
 	}
 	g_free(filename);
 
@@ -252,7 +252,7 @@ void close_binlog_file(FILE *outfile) {
 	if (!compress_output)
 		fclose(outfile);
 	else
-		gzclose(outfile);
+		gzclose((gzFile) outfile);
 }
 
 unsigned int get_event(const char *buf, unsigned int len) {

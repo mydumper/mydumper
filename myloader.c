@@ -331,7 +331,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		infile= g_fopen(path, "r");
 		is_compressed= FALSE;
 	} else {
-		infile= gzopen(path, "r");
+		infile= (void*) gzopen(path, "r");
 		is_compressed= TRUE;
 	}
 
@@ -368,7 +368,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 				if (!is_schema &&(query_counter == commit_count)) {
 					query_counter= 0;
 					if (mysql_query(conn, "COMMIT")) {
-						g_critical("Error commiting data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
+						g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
 						errors++;
 						return;
 					}
@@ -384,7 +384,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		}
 	}
 	if (!is_schema && mysql_query(conn, "COMMIT")) {
-		g_critical("Error commiting data for %s.%s from file %s: %s", db ? db : database, table, filename, mysql_error(conn));
+		g_critical("Error committing data for %s.%s from file %s: %s", db ? db : database, table, filename, mysql_error(conn));
 		errors++;
 	}
 	g_string_free(data, TRUE);
@@ -392,7 +392,7 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 	if (!is_compressed) {
 		fclose(infile);
 	} else {
-		gzclose(infile);
+		gzclose((gzFile)infile);
 	}	
 	return;
 }
@@ -412,7 +412,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *
 			}
 		} else {
 			if (!gzgets((gzFile)file, buffer, 256)) {
-				if (gzeof(file)) {
+				if (gzeof((gzFile)file)) {
 					*eof= TRUE;
 					buffer[0]= '\0';
 				} else {

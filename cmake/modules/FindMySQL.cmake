@@ -47,7 +47,9 @@ if(UNIX)
 
         set(MYSQL_ADD_LIBRARIES "")
 
-        string(REGEX MATCHALL "-l[^ ]*" MYSQL_LIB_LIST "${MY_TMP}")
+        # prepend space in order to match separate words only (e.g. rather
+        # than "-linux" from within "-L/usr/lib/i386-linux-gnu")
+        string(REGEX MATCHALL " +-l[^ ]*" MYSQL_LIB_LIST " ${MY_TMP}")
         foreach(MY_LIB ${MYSQL_LIB_LIST})
             string(REGEX REPLACE "[ ]*-l([^ ]*)" "\\1" MY_LIB "${MY_LIB}")
             list(APPEND MYSQL_ADD_LIBRARIES "${MY_LIB}")
@@ -55,7 +57,7 @@ if(UNIX)
 
         set(MYSQL_ADD_LIBRARY_PATH "")
 
-        string(REGEX MATCHALL "-L[^ ]*" MYSQL_LIBDIR_LIST "${MY_TMP}")
+        string(REGEX MATCHALL " +-L[^ ]*" MYSQL_LIBDIR_LIST " ${MY_TMP}")
         foreach(MY_LIB ${MYSQL_LIBDIR_LIST})
             string(REGEX REPLACE "[ ]*-L([^ ]*)" "\\1" MY_LIB "${MY_LIB}")
             list(APPEND MYSQL_ADD_LIBRARY_PATH "${MY_LIB}")
