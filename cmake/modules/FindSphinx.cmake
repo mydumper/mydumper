@@ -4,6 +4,9 @@
 # This modules defines
 #  SPHINX_EXECUTABLE
 #  SPHINX_FOUND
+#  SPHINX_MAJOR_VERSION
+#  SPHINX_MINOR_VERSION
+#  SPHINX_VERSION
 
 #=============================================================================
 # Copyright 2002-2009 Kitware, Inc.
@@ -31,6 +34,23 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Sphinx DEFAULT_MSG
   SPHINX_EXECUTABLE
 )
+
+if (SPHINX_EXECUTABLE)
+  execute_process (
+    COMMAND "${SPHINX_EXECUTABLE}" -h
+    OUTPUT_VARIABLE _SPHINX_VERSION_OUTPUT
+    ERROR_VARIABLE _SPHINX_VERSION_OUTPUT
+  )
+  if (_SPHINX_VERSION_OUTPUT MATCHES "Sphinx v([0-9]+\\.[0-9]+\\.[0-9]+)")
+    set (SPHINX_VERSION "${CMAKE_MATCH_1}")
+    string (REPLACE "." ";" _SPHINX_VERSION_LIST "${SPHINX_VERSION}")
+    list (GET _SPHINX_VERSION_LIST 0 SPHINX_MAJOR_VERSION)
+    list (GET _SPHINX_VERSION_LIST 1 SPHINX_MINOR_VERSION)
+    # patch version meh :)
+  endif()
+endif()
+
+message("${SPHINX_MAJOR_VERSION}")
 
 mark_as_advanced(
   SPHINX_EXECUTABLE

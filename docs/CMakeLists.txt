@@ -10,6 +10,11 @@ if(NOT SPHINX_FOUND)
   set(GENERATE_DOC FALSE)
 endif(NOT SPHINX_FOUND)
 
+if(SPHINX_MAJOR_VERSION LESS 1)
+  message(WARNING "Sphinx is older than v1.0, not building docs")
+  set(GENERATE_DOC FALSE)
+endif(SPHINX_MAJOR_VERSION LESS 1)
+
 if(GENERATE_DOC)
   # documentation tools
   set(SOURCE_BUILD_DIR "${CMAKE_CURRENT_SOURCE_DIR}/_build")
@@ -148,6 +153,4 @@ if(GENERATE_DOC)
     ADDITIONAL_MAKE_CLEAN_FILES "${CLEAN_FILES}"
   )
 
-else(GENERATE_DOC)
-  message(WARNING "Missing python-sphinx documentation tools, docs will not be built")
 endif(GENERATE_DOC)
