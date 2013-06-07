@@ -53,7 +53,7 @@ guint statement_size= 1000000;
 guint rows_per_file= 0;
 int longquery= 60;
 int build_empty_files= 0;
-
+int skip_tz= 0;
 int need_dummy_read= 0;
 int compress_output= 0;
 int killqueries= 0;
@@ -79,6 +79,7 @@ gboolean no_locks= FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
+GList *non_innodb_table_block= NULL;
 GList *table_schemas= NULL;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
@@ -111,6 +112,8 @@ static GOptionEntry entries[] =
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
+	{ "tz-utc", 0, 0, G_OPTION_ARG_NONE, NULL, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
+	{ "skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -130,7 +133,7 @@ gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
-void start_dump(MYSQL *conn);
+void start_dump(MYSQL *conn, MYSQL *lock_conn);
 MYSQL *create_main_connection();
 void *binlog_thread(void *data);
 void *exec_thread(void *data);
@@ -330,6 +333,10 @@ void *process_queue(struct thread_data *td) {
 		g_critical("Failed to start consistent snapshot: %s",mysql_error(thrconn));
 		errors++;
 	}
+	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
+		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
+	}
+
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
 	if (need_dummy_read) {
 		mysql_query(thrconn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
@@ -553,8 +560,10 @@ int main(int argc, char *argv[])
 		g_source_remove(sigsource);
 	} else {
 		MYSQL *conn= create_main_connection();
-		start_dump(conn);
+		MYSQL *lock_conn= create_main_connection();
+		start_dump(conn, lock_conn);
 		mysql_close(conn);
+		mysql_close(lock_conn);
 	}
 
 	sleep(5);
@@ -612,8 +621,10 @@ void *exec_thread(void *data) {
 		g_async_queue_pop(start_scheduled_dump);
 		clear_dump_directory();
 		MYSQL *conn= create_main_connection();
-		start_dump(conn);
+		MYSQL *lock_conn= create_main_connection();
+		start_dump(conn,lock_conn);
 		mysql_close(conn);
+		mysql_close(lock_conn);
 		mysql_thread_end();
 
 		// Don't switch the symlink on shutdown because the dump is probably incomplete.
@@ -671,11 +682,13 @@ void *binlog_thread(void *data) {
 	return NULL;
 }
 
-void start_dump(MYSQL *conn)
+void start_dump(MYSQL *conn, MYSQL *lock_conn)
 {
 	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
 	char *p;
 	time_t t;
+	struct db_table *dbt;
+	int main_lock = 1;
 
 	if (daemon_mode)
 		p= g_strdup_printf("%s/%d/metadata", output_directory, dump_number);
@@ -800,9 +813,43 @@ void start_dump(MYSQL *conn)
 		mysql_free_result(databases);
 
 	}
-	struct db_table *dbt;
-	if (!non_innodb_table) {
-		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
+
+	if (!no_locks) {
+		GString *query = g_string_sized_new(1024);
+		gchar *dt = NULL;
+
+		if (!non_innodb_table) {
+			g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
+		}else{
+			int first = 1;
+			/* Create a read lock for non_innodb_table */
+			non_innodb_table_block = non_innodb_table;
+			for (non_innodb_table_block= g_list_first(non_innodb_table_block); non_innodb_table_block; non_innodb_table_block= g_list_next(non_innodb_table_block)) {
+				dbt= (struct db_table*) non_innodb_table_block->data;
+				if(!(strcasecmp(dbt->database,"mysql") == 0 && (strcasecmp(dbt->table,"general_log") ==0 || strcasecmp(dbt->table,"slow_log") ==0 ))){
+					dt = g_strjoin(".",dbt->database,dbt->table,NULL);
+					if(first){
+						g_string_printf(query, "LOCK TABLES ");
+						first = 0;
+					}else{
+						g_string_append(query, ", ");
+					}
+					g_string_append(query, dt);
+					g_string_append(query, " READ");
+				}
+			}
+			g_free(dt);
+			
+			/* if the LT fails do not realease the FTWRL */
+			if(mysql_query(lock_conn, query->str)){
+				g_critical("Could not execute query: %s", mysql_error(conn));
+			}else{
+				g_message("Unlocking Innodb tables");
+				mysql_query(conn, "UNLOCK TABLES");
+				main_lock = 0;
+			}
+		}
+		g_string_free(query, TRUE);
 	}
 
 	for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
@@ -833,7 +880,6 @@ void start_dump(MYSQL *conn)
 		get_binlogs(conn, &conf);
 	}
 
-
 	for (n=0; n<num_threads; n++) {
 		struct job *j = g_new0(struct job,1);
 		j->type = JOB_SHUTDOWN;
@@ -842,8 +888,10 @@ void start_dump(MYSQL *conn)
 
 	g_async_queue_pop(conf.unlock_tables);
 	if (!no_locks) {
+		mysql_query(lock_conn, "UNLOCK TABLES /* Non Innodb */");
 		g_message("Non-InnoDB dump complete, unlocking tables");
-		mysql_query(conn, "UNLOCK TABLES");
+		if(main_lock)
+			mysql_query(conn, "UNLOCK TABLES");
 	}
 
 	for (n=0; n<num_threads; n++) {
@@ -1315,6 +1363,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	if (detected_server == SERVER_TYPE_MYSQL) {
 		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
 		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+		if (!skip_tz) {
+		  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+		}
 	} else {
 		g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
 	}
