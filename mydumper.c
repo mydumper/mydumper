@@ -686,17 +686,18 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 {
 	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
 	char *p;
+	char *p2;
 	time_t t;
 	struct db_table *dbt;
 	int main_lock = 1;
 
 	if (daemon_mode)
-		p= g_strdup_printf("%s/%d/metadata", output_directory, dump_number);
+		p= g_strdup_printf("%s/%d/metadata.partial", output_directory, dump_number);
 	else
-		p= g_strdup_printf("%s/metadata", output_directory);
+		p= g_strdup_printf("%s/metadata.partial", output_directory);
+	p2 = g_strndup(p, (unsigned)strlen(p)-8);
 
 	FILE* mdfile=g_fopen(p,"w");
-	g_free(p);
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
 		exit(EXIT_FAILURE);
@@ -904,6 +905,9 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	fclose(mdfile);
+	g_rename(p, p2);
+	g_free(p);
+	g_free(p2);
 	g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
