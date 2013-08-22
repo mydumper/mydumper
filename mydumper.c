@@ -887,8 +887,8 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 		g_async_queue_push(conf.queue,j);
 	}
 
-	g_async_queue_pop(conf.unlock_tables);
 	if (!no_locks) {
+		g_async_queue_pop(conf.unlock_tables);
 		mysql_query(lock_conn, "UNLOCK TABLES /* Non Innodb */");
 		g_message("Non-InnoDB dump complete, unlocking tables");
 		if(main_lock)
