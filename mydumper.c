@@ -843,7 +843,7 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 			
 			/* if the LT fails do not realease the FTWRL */
 			if(mysql_query(lock_conn, query->str)){
-				g_critical("Could not execute query: %s", mysql_error(conn));
+				g_warning("MyISAM lock tables fail: %s", mysql_error(lock_conn));
 			}else{
 				g_message("Unlocking Innodb tables");
 				mysql_query(conn, "UNLOCK TABLES");
