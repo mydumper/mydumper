@@ -1363,7 +1363,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
-
+	GString* statement_row = g_string_sized_new(0);
+	
 	if (detected_server == SERVER_TYPE_MYSQL) {
 		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
 		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
@@ -1396,6 +1397,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 	MYSQL_ROW row;
 
+
 	g_string_set_size(statement,0);
 
 	/* Poor man's data dump code */
@@ -1404,37 +1406,46 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		num_rows++;
 
 		if (!statement->len)
-			g_string_printf(statement, "INSERT INTO `%s` VALUES\n(", table);
-		else
-			g_string_append(statement, ",\n(");
+			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+		
+		if (statement_row->len) {
+			g_string_append(statement, statement_row->str);
+			g_string_set_size(statement_row,0);
+		}
+		
+		g_string_append(statement_row, "\n(");
 
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
 			if (!row[i]) {
-				g_string_append(statement, "NULL");
+				g_string_append(statement_row, "NULL");
 			} else if (fields[i].flags & NUM_FLAG) {
-				g_string_append(statement, row[i]);
+				g_string_append(statement_row, row[i]);
 			} else {
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
-				g_string_append_c(statement,'\"');
-				g_string_append(statement,escaped->str);
-				g_string_append_c(statement,'\"');
+				g_string_append_c(statement_row,'\"');
+				g_string_append(statement_row,escaped->str);
+				g_string_append_c(statement_row,'\"');
 			}
 			if (i < num_fields - 1) {
-				g_string_append_c(statement,',');
+				g_string_append_c(statement_row,',');
 			} else {
-				/* INSERT statement is closed once over limit */
-				if (statement->len > statement_size) {
-					g_string_append(statement,");\n");
+				g_string_append_c(statement_row,')');
+				/* INSERT statement is closed before over limit */
+				if(statement->len+statement_row->len > statement_size) {
+					g_string_append(statement,";\n");
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
 						goto cleanup;
 					}
 					g_string_set_size(statement,0);
 				} else {
-					g_string_append_c(statement,')');
+					if(num_rows > 1)
+						g_string_append(statement,",");
+					g_string_append(statement, statement_row->str);
+					g_string_set_size(statement_row,0);
 				}
 			}
 		}
