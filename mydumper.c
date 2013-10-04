@@ -76,6 +76,7 @@ FILE *logoutfile= NULL;
 
 gboolean no_schemas= FALSE;
 gboolean no_locks= FALSE;
+gboolean less_locking = FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
@@ -106,6 +107,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
+	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables, WARNING: be carefull, please READ documentation first", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
@@ -815,7 +817,7 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 
 	}
 
-	if (!no_locks) {
+	if (!no_locks && less_locking) {
 		GString *query = g_string_sized_new(1024);
 		gchar *dt = NULL;
 
@@ -889,8 +891,10 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 
 	if (!no_locks) {
 		g_async_queue_pop(conf.unlock_tables);
-		mysql_query(lock_conn, "UNLOCK TABLES /* Non Innodb */");
-		g_message("Non-InnoDB dump complete, unlocking tables");
+		if(less_locking) {
+			mysql_query(lock_conn, "UNLOCK TABLES /* Non Innodb */");
+			g_message("Non-InnoDB dump complete, unlocking tables");
+		}
 		if(main_lock)
 			mysql_query(conn, "UNLOCK TABLES");
 	}
@@ -1358,6 +1362,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	guint i;
 	guint num_fields = 0;
 	guint64 num_rows = 0;
+	guint64 num_rows_st = 0;
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
 
@@ -1397,7 +1402,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 	MYSQL_ROW row;
 
-
 	g_string_set_size(statement,0);
 
 	/* Poor man's data dump code */
@@ -1405,12 +1409,15 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		gulong *lengths = mysql_fetch_lengths(result);
 		num_rows++;
 
-		if (!statement->len)
+		if (!statement->len){
 			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			num_rows_st = 0;
+		}
 		
 		if (statement_row->len) {
 			g_string_append(statement, statement_row->str);
 			g_string_set_size(statement_row,0);
+			num_rows_st++;
 		}
 		
 		g_string_append(statement_row, "\n(");
@@ -1434,8 +1441,14 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			} else {
 				g_string_append_c(statement_row,')');
 				/* INSERT statement is closed before over limit */
-				if(statement->len+statement_row->len > statement_size) {
+				if(statement->len+statement_row->len+1 > statement_size) {
+					if(num_rows_st == 0){
+						g_string_append(statement, statement_row->str);
+						g_string_set_size(statement_row,0);
+						g_critical("Row bigger than statement_size for %s.%s", database, table);
+					}
 					g_string_append(statement,";\n");
+
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
 						goto cleanup;
@@ -1445,6 +1458,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if(num_rows > 1)
 						g_string_append(statement,",");
 					g_string_append(statement, statement_row->str);
+					num_rows_st++;
 					g_string_set_size(statement_row,0);
 				}
 			}
