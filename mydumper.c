@@ -1445,7 +1445,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if(num_rows_st == 0){
 						g_string_append(statement, statement_row->str);
 						g_string_set_size(statement_row,0);
-						g_critical("Row bigger than statement_size for %s.%s", database, table);
+						g_warning("Row bigger than statement_size for %s.%s", database, table);
 					}
 					g_string_append(statement,";\n");
 

@@ -6,8 +6,9 @@ these are for the table data itself since every table has at least one file.
 
 Metadata
 --------
-When a dump is executed a file called ``.metadata`` is created in the output
-directory.  This contains the start and end time of the dump as well as the
+When a dump is executed a file called ``metadata.partial`` is created in the output
+directory and is renamed to ``metadata`` when mydumper finish without error.  
+This contains the start and end time of the dump as well as the
 master binary log positions if applicable.
 
 This is an example of the content of this file::

@@ -151,3 +151,21 @@ The :program:`mydumper` tool has several available options:
    .. warning::
       
       This will cause inconsistent backups.
+
+.. option:: --[skip-]tz-utc
+
+   SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data 
+   when a server has data in different time zones or data is being moved 
+   between servers with different time zones, defaults to on use --skip-tz-utc 
+   to disable.
+
+.. option:: --less-locking
+
+   Minimize locking time on InnoDB tables grabbing a LOCK TABLE ... READ 
+   on all non-innodb tables.
+
+   .. warning::
+
+      Do not use this option if you are UPDATING or DELETING MyISAM or Memory 
+      tables. This could cause mutual locks between mydumper and application 
+      threads. 
