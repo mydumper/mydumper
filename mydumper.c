@@ -1010,8 +1010,10 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 			estimated_step = (nmax-nmin)/estimated_chunks+1;
 			cutoff = nmin;
 			while(cutoff<=nmax) {
-				chunks=g_list_append(chunks,g_strdup_printf("%s%s(`%s` >= %llu AND `%s` < %llu)",
+				chunks=g_list_append(chunks,g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
+						!showed_nulls?"`":"",
 						!showed_nulls?field:"",
+						!showed_nulls?"`":"",
 						!showed_nulls?" IS NULL OR ":"",
 						field, (unsigned long long)cutoff,
 						field, (unsigned long long)(cutoff+estimated_step)));

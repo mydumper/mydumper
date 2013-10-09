@@ -207,7 +207,7 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	gchar** split_file= g_strsplit(filename, ".", 0);
 	gchar* database= split_file[0];
 	// Remove the -schema from the table name
-	gchar** split_table= g_strsplit(split_file[1], "-", 0);
+	gchar** split_table= g_strsplit(split_file[1], "-schema", 0);
 	gchar* table= split_table[0];
 
 	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
