@@ -689,6 +689,7 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
 	char *p;
 	char *p2;
+	char *p3;
 	time_t t;
 	struct db_table *dbt;
 	int main_lock = 1;
@@ -734,11 +735,11 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 				continue;
 			if (row[tcol] && atoi(row[tcol])>longquery) {
 				if (killqueries) {
-					if (mysql_query(conn,p=g_strdup_printf("KILL %lu",atol(row[icol]))))
+					if (mysql_query(conn,p3=g_strdup_printf("KILL %lu",atol(row[icol]))))
 						g_warning("Could not KILL slow query: %s",mysql_error(conn));
 					else
 						g_warning("Killed a query that was running for %ss",row[tcol]);
-					g_free(p);
+					g_free(p3);
 				} else {
 					g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
 						"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);

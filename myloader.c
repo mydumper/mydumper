@@ -280,6 +280,7 @@ void *process_queue(struct thread_data *td) {
 
 	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 	mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
+	mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
 	mysql_query(thrconn, "SET autocommit=0");
 
 	g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
