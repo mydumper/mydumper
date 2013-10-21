@@ -77,6 +77,7 @@ FILE *logoutfile= NULL;
 gboolean no_schemas= FALSE;
 gboolean no_locks= FALSE;
 gboolean less_locking = FALSE;
+gboolean success_on_1146 = FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
@@ -116,6 +117,7 @@ static GOptionEntry entries[] =
 	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
 	{ "tz-utc", 0, 0, G_OPTION_ARG_NONE, NULL, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
 	{ "skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL },
+	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -1239,9 +1241,13 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 
 	query= g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", database, table);
 	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
-		g_critical("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+		}else{
+			g_critical("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+			errors++;
+		}
 		g_free(query);
-		errors++;
 		return;
 	}
 
@@ -1391,9 +1397,14 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	/* Poor man's database code */
  	query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where?"WHERE":"",where?where:"");
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
-		g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+		//ERROR 1146 
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+		}else{
+			g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+			errors++;
+		}
 		g_free(query);
-		errors++;
 		return num_rows;
 	}
 
