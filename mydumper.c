@@ -51,6 +51,7 @@ static GMutex * init_mutex = NULL;
 gchar *output_directory= NULL;
 guint statement_size= 1000000;
 guint rows_per_file= 0;
+guint chunk_filesize = 0;
 int longquery= 60;
 int build_empty_files= 0;
 int skip_tz= 0;
@@ -101,7 +102,8 @@ static GOptionEntry entries[] =
 	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory, "Directory to output files to",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes, default 1000000", NULL},
-	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows", NULL},
+	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows. This option turns off --chunk-filesize", NULL},
+	{ "chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize, "Split tables into chunks of this output file size. This value is in bytes", NULL },
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
@@ -126,7 +128,7 @@ struct tm tval;
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
 void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
-guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
@@ -488,7 +490,11 @@ int main(int argc, char *argv[])
 
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
-
+	
+	//rows chunks have precedence over chunk_filesize 
+	if (rows_per_file > 0)
+		chunk_filesize = 0;
+	
 	if (!output_directory)
 		output_directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
 			tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
@@ -1290,11 +1296,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		errors++;
 		return;
 	}
-	guint64 rows_count = dump_table_data(conn, (FILE *)outfile, database, table, where);
-	if (!compress_output)
-		fclose((FILE *)outfile);
-	else
-		gzclose((gzFile)outfile);
+	guint64 rows_count = dump_table_data(conn, (FILE *)outfile, database, table, where, filename);
 
 	if (!rows_count && !build_empty_files) {
 		// dropping the useless file
@@ -1357,24 +1359,40 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 		if (daemon_mode)
-			tj->filename = g_strdup_printf("%s/%d/%s.%s.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
+			if (chunk_filesize)
+				tj->filename = g_strdup_printf("%s/%d/%s.%s.00001.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
+			else
+				tj->filename = g_strdup_printf("%s/%d/%s.%s.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
 		else
-			tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
+			if (chunk_filesize)	
+				tj->filename = g_strdup_printf("%s/%s.%s.00001.sql%s", output_directory, database, table,(compress_output?".gz":""));
+			else
+				tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
 }
 
 /* Do actual data chunk reading/writing magic */
-guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where)
+guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, char *where, char *filename)
 {
 	guint i;
+	guint fn = 1;
+	guint st_in_file = 0;
 	guint num_fields = 0;
 	guint64 num_rows = 0;
 	guint64 num_rows_st = 0;
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
-
+	gchar *fcfile = NULL;
+	gchar* filename_prefix = NULL;
+	
+	if(chunk_filesize){
+		gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
+		filename_prefix= split_filename[0];
+		g_free(split_filename);
+	}
+	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
@@ -1466,6 +1484,20 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
 						goto cleanup;
+					}else{
+						st_in_file++;
+						if(chunk_filesize && st_in_file*statement_size > chunk_filesize){
+							fn++;
+							fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
+							if (!compress_output){
+								fclose((FILE *)file);
+								file = g_fopen(fcfile, "w");
+                            } else {
+								gzclose((gzFile)file);
+                                file = (void*) gzopen(fcfile, "w");
+                            }
+							st_in_file = 0;
+						}
 					}
 					g_string_set_size(statement,0);
 				} else {
@@ -1483,15 +1515,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	if (statement->len > 0) {
-		if (!write_data(file,statement)) {
-			g_critical("Could not write out data for %s.%s", database, table);
-			goto cleanup;
-		}
-		g_string_printf(statement,";\n");
+		g_string_append(statement,";\n");
 		if (!write_data(file,statement)) {
 			g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
 			goto cleanup;
 		}
+		st_in_file++;
 	}
 
 cleanup:
@@ -1499,11 +1528,28 @@ cleanup:
 
 	g_string_free(escaped,TRUE);
 	g_string_free(statement,TRUE);
+	g_free(filename_prefix);
+	
 
 	if (result) {
 		mysql_free_result(result);
 	}
+	
+	if (!compress_output){
+		fclose((FILE *)file);
+	} else {
+		gzclose((gzFile)file);
+	}
+	
+	if (!st_in_file && !build_empty_files) {
+		// dropping the useless file
+		if (remove(fcfile)) {
+ 			g_warning("xxxfailed to remove empty file : %d : %s\n", st_in_file, fcfile);
+		}
+	}
 
+	g_free(fcfile);
+	
 	return num_rows;
 }
 
