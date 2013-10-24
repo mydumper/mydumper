@@ -492,8 +492,10 @@ int main(int argc, char *argv[])
 	time(&t);localtime_r(&t,&tval);
 	
 	//rows chunks have precedence over chunk_filesize 
-	if (rows_per_file > 0)
+	if (rows_per_file > 0){
 		chunk_filesize = 0;
+		g_warning("--chunk-filesize disabled by --rows option");
+	}
 	
 	if (!output_directory)
 		output_directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
@@ -1297,15 +1299,9 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		return;
 	}
 	guint64 rows_count = dump_table_data(conn, (FILE *)outfile, database, table, where, filename);
-
-	if (!rows_count && !build_empty_files) {
-		// dropping the useless file
-		if (remove(filename)) {
- 			g_warning("failed to remove empty file : %s\n", filename);
- 			return;
-		}
-	}
-
+	
+	if (!rows_count)
+		g_message("Empty table %s.%s", database,table);
 }
 
 void dump_schema(char *database, char *table, struct configuration *conf) {
@@ -1386,6 +1382,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	char *query = NULL;
 	gchar *fcfile = NULL;
 	gchar* filename_prefix = NULL;
+	
+	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
 		gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
@@ -1544,7 +1542,7 @@ cleanup:
 	if (!st_in_file && !build_empty_files) {
 		// dropping the useless file
 		if (remove(fcfile)) {
- 			g_warning("xxxfailed to remove empty file : %d : %s\n", st_in_file, fcfile);
+ 			g_warning("Failed to remove empty file : %s\n", fcfile);
 		}
 	}
 
