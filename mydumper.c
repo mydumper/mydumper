@@ -128,6 +128,7 @@ struct tm tval;
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
 void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
+void dump_tables(char *noninnodb_tables_list, struct configuration *conf);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
@@ -139,7 +140,7 @@ gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
-void start_dump(MYSQL *conn, MYSQL *lock_conn);
+void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
 void *binlog_thread(void *data);
 void *exec_thread(void *data);
@@ -316,7 +317,7 @@ void *process_queue(struct thread_data *td) {
 	g_mutex_lock(init_mutex);
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
-
+	
 	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
 	if (compress_protocol)
@@ -356,8 +357,16 @@ void *process_queue(struct thread_data *td) {
 
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
+	struct tables_job* mj=NULL;
 	struct schema_job* sj= NULL;
 	struct binlog_job* bj= NULL;
+	gchar **table;
+	gchar **file;
+	gchar **db_table;
+	uint i;
+	int first = 1;
+	GString *query= g_string_sized_new(1024);
+	
 	for(;;) {
 		GTimeVal tv;
 		g_get_current_time(&tv);
@@ -399,6 +408,34 @@ void *process_queue(struct thread_data *td) {
 				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
+				break;
+			case JOB_LOCK_DUMP_NON_INNODB:
+				mj=(struct tables_job *)job->job_data;
+				table = g_strsplit(mj->tables_list, ",",0);
+				file = g_strsplit(mj->filenames_list, ",",0);
+				for(i=0;i<g_strv_length(table);i++){
+					if(first){
+						g_string_printf(query, "LOCK TABLES ");
+						first = 0;
+					}else{
+						g_string_append(query, ", ");
+					}
+					g_string_append(query, table[i]);
+					g_string_append(query, " READ");
+				}
+				if(mysql_query(thrconn,query->str)){
+					g_critical("Non Innodb lock tables fail: %s", mysql_error(thrconn));
+					exit(EXIT_FAILURE);
+				}
+				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
+					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
+				}
+				
+				for(i=0;i<g_strv_length(table);i++){
+					db_table = g_strsplit(table[i], ".",0);
+					dump_table_data_file(thrconn, db_table[0], db_table[1], NULL, file[i]);
+				}
+				mysql_query(thrconn, "UNLOCK TABLES /* Non Innodb */");
 				break;
 			case JOB_SCHEMA:
 				sj=(struct schema_job *)job->job_data;
@@ -572,10 +609,8 @@ int main(int argc, char *argv[])
 		g_source_remove(sigsource);
 	} else {
 		MYSQL *conn= create_main_connection();
-		MYSQL *lock_conn= create_main_connection();
-		start_dump(conn, lock_conn);
+		start_dump(conn);
 		mysql_close(conn);
-		mysql_close(lock_conn);
 	}
 
 	sleep(5);
@@ -633,10 +668,8 @@ void *exec_thread(void *data) {
 		g_async_queue_pop(start_scheduled_dump);
 		clear_dump_directory();
 		MYSQL *conn= create_main_connection();
-		MYSQL *lock_conn= create_main_connection();
-		start_dump(conn,lock_conn);
+		start_dump(conn);
 		mysql_close(conn);
-		mysql_close(lock_conn);
 		mysql_thread_end();
 
 		// Don't switch the symlink on shutdown because the dump is probably incomplete.
@@ -694,16 +727,25 @@ void *binlog_thread(void *data) {
 	return NULL;
 }
 
-void start_dump(MYSQL *conn, MYSQL *lock_conn)
+void start_dump(MYSQL *conn)
 {
 	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
 	char *p;
 	char *p2;
 	char *p3;
+	GString *nitn[num_threads];
+	guint64 nits[num_threads];
+	int tn = 0;
+	guint64 min = 0;
 	time_t t;
 	struct db_table *dbt;
-	int main_lock = 1;
-
+	guint n;
+	
+	for(n=0;n<num_threads;n++){
+		nits[n] = 0;
+		nitn[n] = g_string_sized_new(1024);
+	}
+	
 	if (daemon_mode)
 		p= g_strdup_printf("%s/%d/metadata.partial", output_directory, dump_number);
 	else
@@ -798,7 +840,7 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 	conf.ready = g_async_queue_new();
 	conf.unlock_tables= g_async_queue_new();
 
-	guint n;
+	
 	GThread **threads = g_new(GThread*,num_threads);
 	struct thread_data *td= g_new(struct thread_data, num_threads);
 	for (n=0; n<num_threads; n++) {
@@ -835,43 +877,47 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 		if (!non_innodb_table) {
 			g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
 		}else{
-			int first = 1;
-			/* Create a read lock for non_innodb_table */
 			non_innodb_table_block = non_innodb_table;
 			for (non_innodb_table_block= g_list_first(non_innodb_table_block); non_innodb_table_block; non_innodb_table_block= g_list_next(non_innodb_table_block)) {
 				dbt= (struct db_table*) non_innodb_table_block->data;
-				if(!(strcasecmp(dbt->database,"mysql") == 0 && (strcasecmp(dbt->table,"general_log") ==0 || strcasecmp(dbt->table,"slow_log") ==0 ))){
-					dt = g_strjoin(".",dbt->database,dbt->table,NULL);
-					if(first){
-						g_string_printf(query, "LOCK TABLES ");
-						first = 0;
-					}else{
-						g_string_append(query, ", ");
+				tn = 0;
+				min = nits[0];
+				for (n=1; n<num_threads; n++) {
+					if(nits[n] < min){
+						min = nits[n];
+						tn = n;
 					}
-					g_string_append(query, dt);
-					g_string_append(query, " READ");
+				}
+				if(nits[tn] == 0) {
+					g_string_printf(nitn[tn], "%s.%s",dbt->database,dbt->table);
+				}else{
+					g_string_append_printf (nitn[tn], ",%s.%s",dbt->database,dbt->table);
+				}
+				nits[tn] += dbt->datalength;
+			}
+			
+			for (n=0; n<num_threads; n++) {
+				if(nits[n] > 0 && nitn[n]->len){
+					g_debug("Thread: %d dl: %" G_GUINT64_FORMAT " tl: %s",n, nits[n], nitn[n]->str);
+					dump_tables(nitn[n]->str, &conf);
+					g_atomic_int_inc(&non_innodb_table_counter);
 				}
 			}
+
+			g_list_free(g_list_first(non_innodb_table));
 			g_free(dt);
-			
-			/* if the LT fails do not realease the FTWRL */
-			if(mysql_query(lock_conn, query->str)){
-				g_warning("MyISAM lock tables fail: %s", mysql_error(lock_conn));
-			}else{
-				g_message("Unlocking Innodb tables");
-				mysql_query(conn, "UNLOCK TABLES");
-				main_lock = 0;
-			}
 		}
 		g_string_free(query, TRUE);
 	}
 
-	for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
-		dbt= (struct db_table*) non_innodb_table->data;
-		dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
-		g_atomic_int_inc(&non_innodb_table_counter);
+	if(!less_locking){
+		for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
+			dbt= (struct db_table*) non_innodb_table->data;
+			dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
+			g_atomic_int_inc(&non_innodb_table_counter);
+		}
+		g_list_free(g_list_first(non_innodb_table));
 	}
-	g_list_free(g_list_first(non_innodb_table));
 
 	g_atomic_int_inc(&non_innodb_done);
 
@@ -902,12 +948,7 @@ void start_dump(MYSQL *conn, MYSQL *lock_conn)
 
 	if (!no_locks) {
 		g_async_queue_pop(conf.unlock_tables);
-		if(less_locking) {
-			mysql_query(lock_conn, "UNLOCK TABLES /* Non Innodb */");
-			g_message("Non-InnoDB dump complete, unlocking tables");
-		}
-		if(main_lock)
-			mysql_query(conn, "UNLOCK TABLES");
+		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
 	}
 
 	for (n=0; n<num_threads; n++) {
@@ -1194,6 +1235,12 @@ void dump_database(MYSQL * conn, char *database) {
 		}
 		if (!dump)
 			continue;
+		
+		/* Special tables */
+		if(g_ascii_strcasecmp(database, "mysql") == 0 && (g_ascii_strcasecmp(row[0], "general_log") == 0 || g_ascii_strcasecmp(row[0], "slow_log") == 0)){
+			dump=0;
+			continue;
+		}
 
 		/* Checks PCRE expressions on 'database.table' string */
 		if (regexstring && !check_regex(database,row[0]))
@@ -1203,6 +1250,7 @@ void dump_database(MYSQL * conn, char *database) {
 		struct db_table *dbt = g_new(struct db_table, 1);
 		dbt->database= g_strdup(database);
 		dbt->table= g_strdup(row[0]);
+		dbt->datalength = (guint64)row[6];
 		if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
 			innodb_tables= g_list_append(innodb_tables, dbt);
 
@@ -1367,6 +1415,32 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
+}
+
+void dump_tables(char *noninnodb_tables_list, struct configuration *conf){
+	gchar **table;
+	uint i;
+	GString *filenames_list = g_string_sized_new(1024);
+	
+	struct job *j = g_new0(struct job,1);
+	struct tables_job *tj = g_new0(struct tables_job,1);
+	j->job_data=(void*) tj;
+	tj->tables_list=g_strdup(noninnodb_tables_list);
+	j->conf=conf;
+	j->type=JOB_LOCK_DUMP_NON_INNODB;
+	
+	table = g_strsplit(noninnodb_tables_list, ",",0);
+	for(i=0;i<g_strv_length(table);i++){
+		if (chunk_filesize)	
+			g_string_append_printf(filenames_list, "%s%s/%s.00001.sql%s",(i?",":""),output_directory, table[i],(compress_output?".gz":""));
+		else
+			g_string_append_printf(filenames_list, "%s%s/%s.sql%s",(i?",":""),output_directory, table[i],(compress_output?".gz":""));
+	}
+	tj->filenames_list = filenames_list->str;
+	g_debug("table filename %s", filenames_list->str);
+	g_async_queue_push(conf->queue,j);
+	g_strfreev(table);
+	return;
 }
 
 /* Do actual data chunk reading/writing magic */
