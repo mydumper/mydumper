@@ -110,7 +110,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
-	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables, WARNING: be carefull, please READ documentation first", NULL},
+	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
@@ -527,6 +527,12 @@ int main(int argc, char *argv[])
 
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
+	
+	/* TODO --rows should work with --less-locking */
+	if(less_locking){
+		rows_per_file = 0;
+		g_warning("--rows disabled by --less-locking option. You can use --chunk-filesize instead");
+	}
 	
 	//rows chunks have precedence over chunk_filesize 
 	if (rows_per_file > 0){

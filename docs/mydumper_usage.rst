@@ -164,8 +164,10 @@ The :program:`mydumper` tool has several available options:
    Minimize locking time on InnoDB tables grabbing a LOCK TABLE ... READ 
    on all non-innodb tables.
 
-   .. warning::
+.. option:: --chunk-filesize -F
 
-      Do not use this option if you are UPDATING or DELETING MyISAM or Memory 
-      tables. This could cause mutual locks between mydumper and application 
-      threads. 
+   Split tables into chunks of this output file size. This value is in bytes
+
+.. option:: --success-on-1146
+
+   Not increment error count and Warning instead of Critical in case of table doesn't exist
