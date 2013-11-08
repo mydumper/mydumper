@@ -529,7 +529,7 @@ int main(int argc, char *argv[])
 	time(&t);localtime_r(&t,&tval);
 	
 	/* TODO --rows should work with --less-locking */
-	if(less_locking){
+	if(less_locking && rows_per_file > 0){
 		rows_per_file = 0;
 		g_warning("--rows disabled by --less-locking option. You can use --chunk-filesize instead");
 	}
