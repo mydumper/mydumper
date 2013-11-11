@@ -535,7 +535,7 @@ int main(int argc, char *argv[])
 	}
 	
 	//rows chunks have precedence over chunk_filesize 
-	if (rows_per_file > 0){
+	if (rows_per_file > 0 && chunk_filesize > 0){
 		chunk_filesize = 0;
 		g_warning("--chunk-filesize disabled by --rows option");
 	}
