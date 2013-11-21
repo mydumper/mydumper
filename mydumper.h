@@ -51,8 +51,7 @@ struct table_job {
 };
 
 struct tables_job {
-	char *tables_list;
-	char *filenames_list;
+	GList* table_job_list;
 };
 
 struct schema_job {

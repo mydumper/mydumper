@@ -82,7 +82,6 @@ gboolean success_on_1146 = FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
-GList *non_innodb_table_block= NULL;
 GList *table_schemas= NULL;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
@@ -128,7 +127,7 @@ struct tm tval;
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
 void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
-void dump_tables(char *noninnodb_tables_list, struct configuration *conf);
+void dump_tables(MYSQL *, GList *, struct configuration *);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
@@ -360,19 +359,17 @@ void *process_queue(struct thread_data *td) {
 	struct tables_job* mj=NULL;
 	struct schema_job* sj= NULL;
 	struct binlog_job* bj= NULL;
-	gchar **table;
-	gchar **file;
-	gchar **db_table;
-	uint i;
+	GList* glj;
 	int first = 1;
 	GString *query= g_string_sized_new(1024);
+	GString *prev_table = g_string_sized_new(100);
+	GString *prev_database = g_string_sized_new(100);
 	
 	for(;;) {
 		GTimeVal tv;
 		g_get_current_time(&tv);
 		g_time_val_add(&tv,1000*1000*1);
 		job=(struct job *)g_async_queue_pop(conf->queue);
-
 		if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
 			continue;
 		}
@@ -411,18 +408,21 @@ void *process_queue(struct thread_data *td) {
 				break;
 			case JOB_LOCK_DUMP_NON_INNODB:
 				mj=(struct tables_job *)job->job_data;
-				table = g_strsplit(mj->tables_list, ",",0);
-				file = g_strsplit(mj->filenames_list, ",",0);
-				for(i=0;i<g_strv_length(table);i++){
+				glj = g_list_copy(mj->table_job_list);
+				for (glj= g_list_first(glj); glj; glj= g_list_next(glj)) {
+					tj = (struct table_job *)glj->data;
 					if(first){
-						g_string_printf(query, "LOCK TABLES ");
+						g_string_printf(query, "LOCK TABLES `%s`.`%s` READ",tj->database,tj->table);
 						first = 0;
 					}else{
-						g_string_append(query, ", ");
+						if(g_ascii_strcasecmp(prev_database->str, tj->database) || g_ascii_strcasecmp(prev_table->str, tj->table)){
+							g_string_append_printf(query, ", `%s`.`%s` READ",tj->database,tj->table);
+						}
 					}
-					g_string_append(query, table[i]);
-					g_string_append(query, " READ");
+					g_string_printf(prev_table, "%s", tj->table);
+					g_string_printf(prev_database, "%s", tj->database);
 				}
+				first = 1;
 				if(mysql_query(thrconn,query->str)){
 					g_critical("Non Innodb lock tables fail: %s", mysql_error(thrconn));
 					exit(EXIT_FAILURE);
@@ -430,12 +430,23 @@ void *process_queue(struct thread_data *td) {
 				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
-				
-				for(i=0;i<g_strv_length(table);i++){
-					db_table = g_strsplit(table[i], ".",0);
-					dump_table_data_file(thrconn, db_table[0], db_table[1], NULL, file[i]);
+				for (mj->table_job_list= g_list_first(mj->table_job_list); mj->table_job_list; mj->table_job_list= g_list_next(mj->table_job_list)) {
+					tj = (struct table_job *)mj->table_job_list->data;
+					if (tj->where)
+						g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
+					else
+						g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+					dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
+					if(tj->database) g_free(tj->database);
+					if(tj->table) g_free(tj->table);
+					if(tj->where) g_free(tj->where);
+					if(tj->filename) g_free(tj->filename);
+					g_free(tj);
 				}
 				mysql_query(thrconn, "UNLOCK TABLES /* Non Innodb */");
+				g_free(g_list_first(mj->table_job_list));
+				g_free(mj);
+				g_free(job);
 				break;
 			case JOB_SCHEMA:
 				sj=(struct schema_job *)job->job_data;
@@ -527,12 +538,6 @@ int main(int argc, char *argv[])
 
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
-	
-	/* TODO --rows should work with --less-locking */
-	if(less_locking && rows_per_file > 0){
-		rows_per_file = 0;
-		g_warning("--rows disabled by --less-locking option. You can use --chunk-filesize instead");
-	}
 	
 	//rows chunks have precedence over chunk_filesize 
 	if (rows_per_file > 0 && chunk_filesize > 0){
@@ -739,8 +744,8 @@ void start_dump(MYSQL *conn)
 	char *p;
 	char *p2;
 	char *p3;
-	GString *nitn[num_threads];
 	guint64 nits[num_threads];
+	GList* nitl[num_threads];
 	int tn = 0;
 	guint64 min = 0;
 	time_t t;
@@ -749,7 +754,7 @@ void start_dump(MYSQL *conn)
 	
 	for(n=0;n<num_threads;n++){
 		nits[n] = 0;
-		nitn[n] = g_string_sized_new(1024);
+		nitl[n] = NULL;
 	}
 	
 	if (daemon_mode)
@@ -878,14 +883,12 @@ void start_dump(MYSQL *conn)
 
 	if (!no_locks && less_locking) {
 		GString *query = g_string_sized_new(1024);
-		gchar *dt = NULL;
 
 		if (!non_innodb_table) {
 			g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
 		}else{
-			non_innodb_table_block = non_innodb_table;
-			for (non_innodb_table_block= g_list_first(non_innodb_table_block); non_innodb_table_block; non_innodb_table_block= g_list_next(non_innodb_table_block)) {
-				dbt= (struct db_table*) non_innodb_table_block->data;
+			for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
+				dbt= (struct db_table*) non_innodb_table->data;
 				tn = 0;
 				min = nits[0];
 				for (n=1; n<num_threads; n++) {
@@ -894,24 +897,17 @@ void start_dump(MYSQL *conn)
 						tn = n;
 					}
 				}
-				if(nits[tn] == 0) {
-					g_string_printf(nitn[tn], "%s.%s",dbt->database,dbt->table);
-				}else{
-					g_string_append_printf (nitn[tn], ",%s.%s",dbt->database,dbt->table);
-				}
+				nitl[tn]= g_list_append(nitl[tn], dbt);
 				nits[tn] += dbt->datalength;
 			}
 			
 			for (n=0; n<num_threads; n++) {
-				if(nits[n] > 0 && nitn[n]->len){
-					g_debug("Thread: %d dl: %" G_GUINT64_FORMAT " tl: %s",n, nits[n], nitn[n]->str);
-					dump_tables(nitn[n]->str, &conf);
+				if(nits[n] > 0){
 					g_atomic_int_inc(&non_innodb_table_counter);
+					dump_tables(conn, nitl[n], &conf);
 				}
 			}
-
 			g_list_free(g_list_first(non_innodb_table));
-			g_free(dt);
 		}
 		g_string_free(query, TRUE);
 	}
@@ -1423,30 +1419,49 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 	}
 }
 
-void dump_tables(char *noninnodb_tables_list, struct configuration *conf){
-	gchar **table;
-	uint i;
-	GString *filenames_list = g_string_sized_new(1024);
-	
+void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration *conf){
+	struct db_table* dbt;
+	GList * chunks = NULL;
+
 	struct job *j = g_new0(struct job,1);
-	struct tables_job *tj = g_new0(struct tables_job,1);
-	j->job_data=(void*) tj;
-	tj->tables_list=g_strdup(noninnodb_tables_list);
+	struct tables_job *tjs = g_new0(struct tables_job,1);
 	j->conf=conf;
 	j->type=JOB_LOCK_DUMP_NON_INNODB;
-	
-	table = g_strsplit(noninnodb_tables_list, ",",0);
-	for(i=0;i<g_strv_length(table);i++){
-		if (chunk_filesize)	
-			g_string_append_printf(filenames_list, "%s%s/%s.00001.sql%s",(i?",":""),output_directory, table[i],(compress_output?".gz":""));
-		else
-			g_string_append_printf(filenames_list, "%s%s/%s.sql%s",(i?",":""),output_directory, table[i],(compress_output?".gz":""));
+	j->job_data=(void*) tjs;
+
+	for (noninnodb_tables_list= g_list_first(noninnodb_tables_list); noninnodb_tables_list; noninnodb_tables_list= g_list_next(noninnodb_tables_list)) {
+		dbt = (struct db_table*) noninnodb_tables_list->data;
+
+		if (rows_per_file)
+			chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
+
+		if(chunks){
+			int nchunk=0;
+			for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
+				struct table_job *tj = g_new0(struct table_job,1);
+				tj->database = g_strdup_printf("%s",dbt->database);
+				tj->table = g_strdup_printf("%s",dbt->table);
+				if (daemon_mode)
+					tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+				else
+					tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+				tj->where=(char *)chunks->data;
+				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
+				nchunk++;
+			}
+		}else{
+			struct table_job *tj = g_new0(struct table_job,1);
+			tj->database = g_strdup_printf("%s",dbt->database);
+			tj->table = g_strdup_printf("%s",dbt->table);
+			if (daemon_mode)
+				tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory, dump_number, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			else
+				tj->filename = g_strdup_printf("%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			tj->where = NULL;
+			tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
+		}
 	}
-	tj->filenames_list = filenames_list->str;
-	g_debug("table filename %s", filenames_list->str);
 	g_async_queue_push(conf->queue,j);
-	g_strfreev(table);
-	return;
 }
 
 /* Do actual data chunk reading/writing magic */
@@ -1475,21 +1490,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
 	
-	if (detected_server == SERVER_TYPE_MYSQL) {
-		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-		if (!skip_tz) {
-		  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
-		}
-	} else {
-		g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
-	}
-
-	if (!write_data(file,statement)) {
-		g_critical("Could not write out data for %s.%s", database, table);
-		return num_rows;
-	}
-
 	/* Poor man's database code */
  	query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where?"WHERE":"",where?where:"");
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
@@ -1520,6 +1520,20 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		num_rows++;
 
 		if (!statement->len){
+			if (detected_server == SERVER_TYPE_MYSQL) {
+				g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+				g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+				if (!skip_tz) {
+				  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+				}
+			} else {
+				g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
+			}
+
+			if (!write_data(file,statement)) {
+				g_critical("Could not write out data for %s.%s", database, table);
+				return num_rows;
+			}
 			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
 			num_rows_st = 0;
 		}
