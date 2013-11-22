@@ -166,7 +166,7 @@ The :program:`mydumper` tool has several available options:
 
 .. option:: --chunk-filesize -F
 
-   Split tables into chunks of this output file size. This value is in bytes
+   Split tables into chunks of this output file size. This value is in MB
 
 .. option:: --success-on-1146
 

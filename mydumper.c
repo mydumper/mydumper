@@ -102,7 +102,7 @@ static GOptionEntry entries[] =
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory, "Directory to output files to",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes, default 1000000", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows. This option turns off --chunk-filesize", NULL},
-	{ "chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize, "Split tables into chunks of this output file size. This value is in bytes", NULL },
+	{ "chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize, "Split tables into chunks of this output file size. This value is in MB", NULL },
 	{ "compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output, "Compress output files", NULL},
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
@@ -1578,7 +1578,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						goto cleanup;
 					}else{
 						st_in_file++;
-						if(chunk_filesize && st_in_file*statement_size > chunk_filesize){
+						if(chunk_filesize && st_in_file*statement_size/1024/1024 > chunk_filesize){
 							fn++;
 							fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
 							if (!compress_output){
