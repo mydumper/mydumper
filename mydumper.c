@@ -38,6 +38,7 @@
 #include "common.h"
 #include "g_unix_signal.h"
 #include "config.h"
+#include <math.h>
 
 char *regexstring=NULL;
 
@@ -1485,6 +1486,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		filename_prefix= split_filename[0];
 		g_free(split_filename);
 	}
+
 	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
@@ -1520,19 +1522,21 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		num_rows++;
 
 		if (!statement->len){
-			if (detected_server == SERVER_TYPE_MYSQL) {
-				g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-				g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-				if (!skip_tz) {
-				  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+			if(!st_in_file){
+				if (detected_server == SERVER_TYPE_MYSQL) {
+					g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+					if (!skip_tz) {
+					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+					}
+				} else {
+					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
 				}
-			} else {
-				g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
-			}
 
-			if (!write_data(file,statement)) {
-				g_critical("Could not write out data for %s.%s", database, table);
-				return num_rows;
+				if (!write_data(file,statement)) {
+					g_critical("Could not write out data for %s.%s", database, table);
+					return num_rows;
+				}
 			}
 			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
 			num_rows_st = 0;
@@ -1578,7 +1582,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						goto cleanup;
 					}else{
 						st_in_file++;
-						if(chunk_filesize && st_in_file*statement_size/1024/1024 > chunk_filesize){
+						if(chunk_filesize && st_in_file*(guint)ceil((float)statement_size/1024/1024) > chunk_filesize){
 							fn++;
 							fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
 							if (!compress_output){
