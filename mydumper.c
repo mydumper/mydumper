@@ -920,6 +920,7 @@ void start_dump(MYSQL *conn)
 			g_atomic_int_inc(&non_innodb_table_counter);
 		}
 		g_list_free(g_list_first(non_innodb_table));
+		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
 	}
 
 	g_atomic_int_inc(&non_innodb_done);
@@ -1597,7 +1598,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					}
 					g_string_set_size(statement,0);
 				} else {
-					if(num_rows > 1)
+					if(num_rows > 2)
 						g_string_append(statement,",");
 					g_string_append(statement, statement_row->str);
 					num_rows_st++;
