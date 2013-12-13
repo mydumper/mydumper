@@ -1598,8 +1598,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					}
 					g_string_set_size(statement,0);
 				} else {
-					if(num_rows > 1)
-						g_string_append(statement,",");
+					if(num_rows_st)
+						g_string_append_c(statement,',');
 					g_string_append(statement, statement_row->str);
 					num_rows_st++;
 					g_string_set_size(statement_row,0);
