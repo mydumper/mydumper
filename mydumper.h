@@ -15,6 +15,7 @@
 	Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
 			Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
 			Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                        Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
 
 */
 
