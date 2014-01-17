@@ -650,6 +650,9 @@ MYSQL *create_main_connection()
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
+
+	detected_server= detect_server(conn);
+
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
 	}
@@ -657,7 +660,6 @@ MYSQL *create_main_connection()
 		g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
 	}
 
-	detected_server= detect_server(conn);
 	switch (detected_server) {
 		case SERVER_TYPE_MYSQL:
 			g_message("Connected to a MySQL server");
@@ -823,7 +825,7 @@ void start_dump(MYSQL *conn)
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
 	}
-	if (mysql_get_server_version(conn)) {
+	if (mysql_get_server_version(conn) < 40108) {
 		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
 		need_dummy_read=1;
 	}

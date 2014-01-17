@@ -80,6 +80,7 @@ find_path(MYSQL_INCLUDE_DIR mysql.h
     /usr/local/mysql/include/mysql
     /usr/include 
     /usr/include/mysql
+    /usr/include/mysql/private
 )
 
 set(TMP_MYSQL_LIBRARIES "")
