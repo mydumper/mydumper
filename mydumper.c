@@ -1410,15 +1410,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 		if (daemon_mode)
-			if (chunk_filesize)
-				tj->filename = g_strdup_printf("%s/%d/%s.%s.00001.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
-			else
-				tj->filename = g_strdup_printf("%s/%d/%s.%s.sql%s", output_directory, dump_number, database, table,(compress_output?".gz":""));
+			tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 		else
-			if (chunk_filesize)	
-				tj->filename = g_strdup_printf("%s/%s.%s.00001.sql%s", output_directory, database, table,(compress_output?".gz":""));
-			else
-				tj->filename = g_strdup_printf("%s/%s.%s.sql%s", output_directory, database, table,(compress_output?".gz":""));
+			tj->filename = g_strdup_printf("%s/%s.%s%s.sql%s", output_directory, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
@@ -1628,8 +1622,6 @@ cleanup:
 
 	g_string_free(escaped,TRUE);
 	g_string_free(statement,TRUE);
-	g_free(filename_prefix);
-	
 
 	if (result) {
 		mysql_free_result(result);
@@ -1646,8 +1638,12 @@ cleanup:
 		if (remove(fcfile)) {
  			g_warning("Failed to remove empty file : %s\n", fcfile);
 		}
+	}else if(chunk_filesize && fn == 1){
+		fcfile = g_strdup_printf("%s.sql%s", filename_prefix,(compress_output?".gz":""));
+		g_rename(filename, fcfile);
 	}
-
+	
+	g_free(filename_prefix);
 	g_free(fcfile);
 	
 	return num_rows;
