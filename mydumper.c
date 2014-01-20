@@ -1257,7 +1257,7 @@ void dump_database(MYSQL * conn, char *database) {
 		struct db_table *dbt = g_new(struct db_table, 1);
 		dbt->database= g_strdup(database);
 		dbt->table= g_strdup(row[0]);
-		dbt->datalength = (guint64)row[6];
+		dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
 		if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
 			innodb_tables= g_list_append(innodb_tables, dbt);
 
