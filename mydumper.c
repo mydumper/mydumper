@@ -623,7 +623,6 @@ int main(int argc, char *argv[])
 	} else {
 		MYSQL *conn= create_main_connection();
 		start_dump(conn);
-		mysql_close(conn);
 	}
 
 	sleep(5);
@@ -957,6 +956,9 @@ void start_dump(MYSQL *conn)
 		g_async_queue_pop(conf.unlock_tables);
 		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
 	}
+	
+	// close main connection 
+	mysql_close(conn); 
 
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
