@@ -358,14 +358,8 @@ void *process_queue(struct thread_data *td) {
 
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
-	struct tables_job* mj=NULL;
 	struct schema_job* sj= NULL;
 	struct binlog_job* bj= NULL;
-	GList* glj;
-	int first = 1;
-	GString *query= g_string_sized_new(1024);
-	GString *prev_table = g_string_sized_new(100);
-	GString *prev_database = g_string_sized_new(100);
 	
 	for(;;) {
 		GTimeVal tv;
@@ -408,6 +402,95 @@ void *process_queue(struct thread_data *td) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
 				break;
+			case JOB_SCHEMA:
+				sj=(struct schema_job *)job->job_data;
+				g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id, sj->database, sj->table);
+				dump_schema_data(thrconn, sj->database, sj->table, sj->filename);
+				if(sj->database) g_free(sj->database);
+				if(sj->table) g_free(sj->table);
+				if(sj->filename) g_free(sj->filename);
+				g_free(sj);
+				g_free(job);
+				break;
+			case JOB_BINLOG:
+				thrconn= reconnect_for_binlog(thrconn);
+				g_message("Thread %d connected using MySQL connection ID %lu (in binlog mode)", td->thread_id, mysql_thread_id(thrconn));
+				bj=(struct binlog_job *)job->job_data;
+				g_message("Thread %d dumping binary log file %s", td->thread_id, bj->filename);
+				get_binlog_file(thrconn, bj->filename, binlog_directory, bj->start_position, bj->stop_position, FALSE);
+				if(bj->filename)
+					g_free(bj->filename);
+				g_free(bj);
+				g_free(job);
+				break;
+			case JOB_SHUTDOWN:
+				g_message("Thread %d shutting down", td->thread_id);
+				if (thrconn)
+					mysql_close(thrconn);
+				g_free(job);
+				mysql_thread_end();
+				return NULL;
+				break;
+			default:
+				g_critical("Something very bad happened!");
+				exit(EXIT_FAILURE);
+		}
+	}
+	if (thrconn)
+		mysql_close(thrconn);
+	mysql_thread_end();
+	return NULL;
+}
+
+void *process_queue_non_innodb(struct thread_data *td) {
+	struct configuration *conf= td->conf;
+	// mysql_init is not thread safe, especially in Connector/C
+	g_mutex_lock(init_mutex);
+	MYSQL *thrconn = mysql_init(NULL);
+	g_mutex_unlock(init_mutex);
+	
+	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+
+	if (compress_protocol)
+		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
+	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
+		exit(EXIT_FAILURE);
+	} else {
+		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
+	}
+
+	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
+		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+	}
+	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
+		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
+	}
+	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+
+	g_async_queue_push(conf->ready_non_innodb,GINT_TO_POINTER(1));
+
+	struct job* job= NULL;
+	struct table_job* tj= NULL;
+	struct tables_job* mj=NULL;
+	struct schema_job* sj= NULL;
+	GList* glj;
+	int first = 1;
+	GString *query= g_string_sized_new(1024);
+	GString *prev_table = g_string_sized_new(100);
+	GString *prev_database = g_string_sized_new(100);
+	
+	for(;;) {
+		GTimeVal tv;
+		g_get_current_time(&tv);
+		g_time_val_add(&tv,1000*1000*1);
+		job=(struct job *)g_async_queue_pop(conf->queue_non_innodb);
+		if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
+			continue;
+		}
+
+		switch (job->type) {
 			case JOB_LOCK_DUMP_NON_INNODB:
 				mj=(struct tables_job *)job->job_data;
 				glj = g_list_copy(mj->table_job_list);
@@ -458,17 +541,6 @@ void *process_queue(struct thread_data *td) {
 				if(sj->table) g_free(sj->table);
 				if(sj->filename) g_free(sj->filename);
 				g_free(sj);
-				g_free(job);
-				break;
-			case JOB_BINLOG:
-				thrconn= reconnect_for_binlog(thrconn);
-				g_message("Thread %d connected using MySQL connection ID %lu (in binlog mode)", td->thread_id, mysql_thread_id(thrconn));
-				bj=(struct binlog_job *)job->job_data;
-				g_message("Thread %d dumping binary log file %s", td->thread_id, bj->filename);
-				get_binlog_file(thrconn, bj->filename, binlog_directory, bj->start_position, bj->stop_position, FALSE);
-				if(bj->filename)
-					g_free(bj->filename);
-				g_free(bj);
 				g_free(job);
 				break;
 			case JOB_SHUTDOWN:
@@ -546,6 +618,9 @@ int main(int argc, char *argv[])
 		chunk_filesize = 0;
 		g_warning("--chunk-filesize disabled by --rows option");
 	}
+	
+	if(no_locks)
+		less_locking = 0;
 	
 	if (!output_directory)
 		output_directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
@@ -743,7 +818,7 @@ void *binlog_thread(void *data) {
 
 void start_dump(MYSQL *conn)
 {
-	struct configuration conf = { 1, NULL, NULL, NULL, NULL, 0 };
+	struct configuration conf = { 1, NULL, NULL, NULL, NULL, NULL, NULL, 0 };
 	char *p;
 	char *p2;
 	char *p3;
@@ -853,18 +928,30 @@ void start_dump(MYSQL *conn)
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
 	conf.unlock_tables= g_async_queue_new();
-
 	
-	GThread **threads = g_new(GThread*,num_threads);
-	struct thread_data *td= g_new(struct thread_data, num_threads);
+	GThread **threads = g_new(GThread*,num_threads*(less_locking+1));
+	struct thread_data *td= g_new(struct thread_data, num_threads*(less_locking+1));
 	for (n=0; n<num_threads; n++) {
 		td[n].conf= &conf;
 		td[n].thread_id= n+1;
 		threads[n] = g_thread_create((GThreadFunc)process_queue,&td[n],TRUE,NULL);
 		g_async_queue_pop(conf.ready);
 	}
+	
 	g_async_queue_unref(conf.ready);
-
+	
+	if(less_locking){
+		conf.queue_non_innodb = g_async_queue_new();
+		conf.ready_non_innodb = g_async_queue_new();
+		for (n=num_threads; n<num_threads*2; n++) {
+			td[n].conf= &conf;
+			td[n].thread_id= n+1;
+			threads[n] = g_thread_create((GThreadFunc)process_queue_non_innodb,&td[n],TRUE,NULL);
+			g_async_queue_pop(conf.ready_non_innodb);
+		}
+		g_async_queue_unref(conf.ready_non_innodb);
+	}
+	
 	if (db) {
 		dump_database(conn, db);
 	} else {
@@ -884,7 +971,7 @@ void start_dump(MYSQL *conn)
 
 	}
 
-	if (!no_locks && less_locking) {
+	if (less_locking) {
 		GString *query = g_string_sized_new(1024);
 
 		if (!non_innodb_table) {
@@ -913,9 +1000,15 @@ void start_dump(MYSQL *conn)
 			g_list_free(g_list_first(non_innodb_table));
 		}
 		g_string_free(query, TRUE);
-	}
-
-	if(!less_locking){
+		
+		g_atomic_int_inc(&non_innodb_done);
+		
+		for (n=0; n<num_threads; n++) {
+			struct job *j = g_new0(struct job,1);
+			j->type = JOB_SHUTDOWN;
+			g_async_queue_push(conf.queue_non_innodb,j);
+		}
+	}else{
 		for (non_innodb_table= g_list_first(non_innodb_table); non_innodb_table; non_innodb_table= g_list_next(non_innodb_table)) {
 			dbt= (struct db_table*) non_innodb_table->data;
 			dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
@@ -923,10 +1016,21 @@ void start_dump(MYSQL *conn)
 		}
 		g_list_free(g_list_first(non_innodb_table));
 		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
+		g_atomic_int_inc(&non_innodb_done);
 	}
-
-	g_atomic_int_inc(&non_innodb_done);
-
+	
+	if (!no_locks) {
+		g_async_queue_pop(conf.unlock_tables);
+		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
+	}
+	
+	if(less_locking){
+		for (n=num_threads; n<num_threads*2; n++) {
+			g_thread_join(threads[n]);
+		}
+		g_async_queue_unref(conf.queue_non_innodb);
+	}
+	
 	for (innodb_tables= g_list_first(innodb_tables); innodb_tables; innodb_tables= g_list_next(innodb_tables)) {
 		dbt= (struct db_table*) innodb_tables->data;
 		dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
@@ -945,20 +1049,15 @@ void start_dump(MYSQL *conn)
 	if (need_binlogs) {
 		get_binlogs(conn, &conf);
 	}
+	
+	// close main connection 
+	mysql_close(conn);
 
 	for (n=0; n<num_threads; n++) {
 		struct job *j = g_new0(struct job,1);
 		j->type = JOB_SHUTDOWN;
 		g_async_queue_push(conf.queue,j);
 	}
-
-	if (!no_locks) {
-		g_async_queue_pop(conf.unlock_tables);
-		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-	}
-	
-	// close main connection 
-	mysql_close(conn); 
 
 	for (n=0; n<num_threads; n++) {
 		g_thread_join(threads[n]);
@@ -1462,7 +1561,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 			tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 		}
 	}
-	g_async_queue_push(conf->queue,j);
+	g_async_queue_push(conf->queue_non_innodb,j);
 }
 
 /* Do actual data chunk reading/writing magic */

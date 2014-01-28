@@ -27,7 +27,9 @@ enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_DUMP_NON_INNODB, JOB_SC
 struct configuration {
 	char use_any_index;
 	GAsyncQueue* queue;
+	GAsyncQueue* queue_non_innodb;
 	GAsyncQueue* ready;
+	GAsyncQueue* ready_non_innodb;
 	GAsyncQueue* unlock_tables;
 	GMutex* mutex;
 	int done;
