@@ -171,3 +171,7 @@ The :program:`mydumper` tool has several available options:
 .. option:: --success-on-1146
 
    Not increment error count and Warning instead of Critical in case of table doesn't exist
+
+.. option:: --use-savepoints
+
+   Use savepoints to reduce metadata locking issues, needs SUPER privilege
