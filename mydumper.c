@@ -531,11 +531,11 @@ void *process_queue_less_locking(struct thread_data *td) {
 				for (glj= g_list_first(glj); glj; glj= g_list_next(glj)) {
 					tj = (struct table_job *)glj->data;
 					if(first){
-						g_string_printf(query, "LOCK TABLES `%s`.`%s` READ",tj->database,tj->table);
+						g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",tj->database,tj->table);
 						first = 0;
 					}else{
 						if(g_ascii_strcasecmp(prev_database->str, tj->database) || g_ascii_strcasecmp(prev_table->str, tj->table)){
-							g_string_append_printf(query, ", `%s`.`%s` READ",tj->database,tj->table);
+							g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",tj->database,tj->table);
 						}
 					}
 					g_string_printf(prev_table, "%s", tj->table);
