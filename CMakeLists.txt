@@ -28,10 +28,10 @@ MARK_AS_ADVANCED(CMAKE)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
 add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c)
-target_link_libraries(mydumper ${MYSQL_LIBRARIES_mysqlclient_r} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
+target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
 
 add_executable(myloader myloader.c)
-target_link_libraries(myloader ${MYSQL_LIBRARIES_mysqlclient_r} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
+target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
 
 INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
