@@ -34,18 +34,24 @@
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
+#include "config.h"
+#ifdef WITH_BINLOG
 #include "binlog.h"
+#else
+#include "mydumper.h"
+#endif
 #include "server_detect.h"
 #include "common.h"
 #include "g_unix_signal.h"
-#include "config.h"
 #include <math.h>
 
 char *regexstring=NULL;
 
 const char DIRECTORY[]= "export";
+#ifdef WITH_BINLOG
 const char BINLOG_DIRECTORY[]= "binlog_snapshot";
 const char DAEMON_BINLOGS[]= "binlogs";
+#endif
 
 static GMutex * init_mutex = NULL;
 
@@ -70,9 +76,11 @@ char **ignore= NULL;
 gchar *tables_list= NULL;
 char **tables= NULL;
 
+#ifdef WITH_BINLOG
 gboolean need_binlogs= FALSE;
 gchar *binlog_directory= NULL;
 gchar *daemon_binlog_directory= NULL;
+#endif
 
 gchar *logfile= NULL;
 FILE *logoutfile= NULL;
@@ -118,7 +126,9 @@ static GOptionEntry entries[] =
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'k', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
+#ifdef WITH_BINLOG
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
+#endif
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
@@ -145,10 +155,12 @@ gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
+#ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
+void *binlog_thread(void *data);
+#endif
 void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
-void *binlog_thread(void *data);
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 
@@ -368,8 +380,9 @@ void *process_queue(struct thread_data *td) {
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
 	struct schema_job* sj= NULL;
+	#ifdef WITH_BINLOG
 	struct binlog_job* bj= NULL;
-	
+	#endif
 	/* if less locking we need to wait until that threads finish
 	    progressively waking up this threads */
 	if(less_locking){
@@ -446,6 +459,7 @@ void *process_queue(struct thread_data *td) {
 				g_free(sj);
 				g_free(job);
 				break;
+			#ifdef WITH_BINLOG
 			case JOB_BINLOG:
 				thrconn= reconnect_for_binlog(thrconn);
 				g_message("Thread %d connected using MySQL connection ID %lu (in binlog mode)", td->thread_id, mysql_thread_id(thrconn));
@@ -457,6 +471,7 @@ void *process_queue(struct thread_data *td) {
 				g_free(bj);
 				g_free(job);
 				break;
+			#endif
 			case JOB_SHUTDOWN:
 				g_message("Thread %d shutting down", td->thread_id);
 				if (thrconn)
@@ -599,7 +614,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	mysql_thread_end();
 	return NULL;
 }
-
+#ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	if (thrconn) {
 		mysql_close(thrconn);
@@ -620,7 +635,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	}
 	return thrconn;
 }
-
+#endif
 int main(int argc, char *argv[])
 {
 	GError *error = NULL;
@@ -697,15 +712,17 @@ int main(int argc, char *argv[])
 		dump_directory= g_strdup_printf("%s/1", output_directory);
 		create_backup_dir(dump_directory);
 		g_free(dump_directory);
+		#ifdef WITH_BINLOG
 		daemon_binlog_directory= g_strdup_printf("%s/%s", output_directory, DAEMON_BINLOGS);
 		create_backup_dir(daemon_binlog_directory);
+		#endif
 	}
-
+	#ifdef WITH_BINLOG
 	if (need_binlogs) {
 		binlog_directory = g_strdup_printf("%s/%s", output_directory, BINLOG_DIRECTORY);
 		create_backup_dir(binlog_directory);
 	}
-
+	#endif
 	/* Give ourselves an array of engines to ignore */
 	if (ignore_engines)
 		ignore = g_strsplit(ignore_engines, ",", 0);
@@ -716,14 +733,14 @@ int main(int argc, char *argv[])
 
 	if (daemon_mode) {
 		GError* terror;
-
+		#ifdef WITH_BINLOG
 		GThread *bthread= g_thread_create(binlog_thread, GINT_TO_POINTER(1), FALSE, &terror);
 		if (bthread == NULL) {
 			g_critical("Could not create binlog thread: %s", terror->message);
 			g_error_free(terror);
 			exit(EXIT_FAILURE);
 		}
-
+		#endif
 		start_scheduled_dump= g_async_queue_new();
 		GThread *ethread= g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
 		if (ethread == NULL) {
@@ -827,7 +844,7 @@ void *exec_thread(void *data) {
 	}
 	return NULL;
 }
-
+#ifdef WITH_BINLOG
 void *binlog_thread(void *data) {
 	(void) data;
 	MYSQL_RES *master= NULL;
@@ -863,7 +880,7 @@ void *binlog_thread(void *data) {
 	mysql_thread_end();
 	return NULL;
 }
-
+#endif
 void start_dump(MYSQL *conn)
 {
 	struct configuration conf = { 1, NULL, NULL, NULL, NULL, NULL, NULL, 0 };
@@ -1089,11 +1106,11 @@ void start_dump(MYSQL *conn)
 		g_message("Non-InnoDB dump complete, unlocking tables");
 		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
 	}
-	
+	#ifdef WITH_BINLOG
 	if (need_binlogs) {
 		get_binlogs(conn, &conf);
 	}
-	
+	#endif
 	// close main connection 
 	mysql_close(conn);
 	

@@ -24,6 +24,8 @@ NOTE: you must use the correspondent mysql devel package.
 
 One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH
 
+Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
+
 == How does consistent snapshot work? ==
 
 This is all done following best MySQL practices and traditions:

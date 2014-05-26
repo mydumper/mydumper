@@ -2,5 +2,6 @@
 #define CONFIG_H
 
 #cmakedefine VERSION "@VERSION@"
+#cmakedefine WITH_BINLOG
 
 #endif

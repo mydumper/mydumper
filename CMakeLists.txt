@@ -16,6 +16,8 @@ if (BUILD_DOCS)
   add_subdirectory(docs)
 endif (BUILD_DOCS)
 
+option(WITH_BINLOG "Build binlog dump options" OFF)
+
 set(CMAKE_C_FLAGS "-Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -Werror -O3 -g ${MYSQL_CFLAGS}")
 
 include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})
@@ -27,8 +29,14 @@ MARK_AS_ADVANCED(CMAKE)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
-add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c)
-target_link_libraries(mydumper ${MYSQL_LIBRARIES_mysqlclient_r} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
+
+if (WITH_BINLOG)
+  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c)
+else (WITH_BINLOG)
+  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c)
+endif (WITH_BINLOG)
+target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
+
 
 add_executable(myloader myloader.c)
 target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES})
@@ -55,6 +63,7 @@ MESSAGE(STATUS "------------------------------------------------")
 MESSAGE(STATUS "MYSQL_CONFIG = ${MYSQL_CONFIG}")
 MESSAGE(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "BUILD_DOCS = ${BUILD_DOCS}")
+MESSAGE(STATUS "WITH_BINLOG = ${WITH_BINLOG}")
 MESSAGE(STATUS "RUN_CPPCHECK = ${RUN_CPPCHECK}")
 MESSAGE(STATUS "Change a values with: cmake -D<Variable>=<Value>")
 MESSAGE(STATUS "------------------------------------------------")

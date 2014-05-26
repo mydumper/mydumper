@@ -128,7 +128,7 @@ The :program:`mydumper` tool has several available options:
 
 .. option:: --binlogs, -b
 
-   Get the binlogs from the server as well as the dump files
+   Get the binlogs from the server as well as the dump files (You need to compile with -DWITH_BINLOG=ON)
 
 .. option::  --daemon, -D
 
