@@ -1048,9 +1048,11 @@ void start_dump(MYSQL *conn)
 			}
 		}
 		g_list_free(g_list_first(non_innodb_table));
-
 		
-		g_atomic_int_inc(&non_innodb_done);
+		if(g_atomic_int_get(&non_innodb_table_counter))
+			g_atomic_int_inc(&non_innodb_done);
+		else
+			g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
 		
 		for (n=0; n<num_threads; n++) {
 			struct job *j = g_new0(struct job,1);
