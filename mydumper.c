@@ -64,6 +64,7 @@ int longquery= 60;
 int build_empty_files= 0;
 int skip_tz= 0;
 int need_dummy_read= 0;
+int need_dummy_toku_read = 0;
 int compress_output= 0;
 int killqueries= 0;
 int detected_server= 0;
@@ -369,6 +370,12 @@ void *process_queue(struct thread_data *td) {
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
 	if (need_dummy_read) {
 		mysql_query(thrconn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
+		MYSQL_RES *res=mysql_store_result(thrconn);
+		if (res)
+			mysql_free_result(res);
+	}
+	if(need_dummy_toku_read){
+		mysql_query(thrconn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy");
 		MYSQL_RES *res=mysql_store_result(thrconn);
 		if (res)
 			mysql_free_result(res);
@@ -968,9 +975,26 @@ void start_dump(MYSQL *conn)
 		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
 		need_dummy_read=1;
 	}
+	
+	//tokudb do not support consistent snapshot
+	mysql_query(conn,"SHOW VARIABLES LIKE 'tokudb_version';");
+	MYSQL_RES *rest = mysql_store_result(conn);
+	if(rest){
+		mysql_free_result(rest);
+		g_message("TokuDB detected, creating dummy table for CS");
+		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB");
+		need_dummy_toku_read=1;
+	}
+	
 	mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
 	if (need_dummy_read) {
 		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
+		MYSQL_RES *res=mysql_store_result(conn);
+		if (res)
+			mysql_free_result(res);
+	}
+	if(need_dummy_toku_read){
+		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy");
 		MYSQL_RES *res=mysql_store_result(conn);
 		if (res)
 			mysql_free_result(res);
@@ -1429,7 +1453,8 @@ void dump_database(MYSQL * conn, char *database) {
 		dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
 		if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
 			innodb_tables= g_list_append(innodb_tables, dbt);
-
+		}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+			innodb_tables= g_list_append(innodb_tables, dbt);
 		} else {
 			non_innodb_table= g_list_append(non_innodb_table, dbt);
 		}

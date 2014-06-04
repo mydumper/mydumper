@@ -113,7 +113,7 @@ The :program:`mydumper` tool has several available options:
 
    Timeout for long query execution in seconds, default 60
 
-.. option:: --kill-long-queries, -k
+.. option:: --kill-long-queries
 
    Kill long running queries instead of aborting the dump
 
