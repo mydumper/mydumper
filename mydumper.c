@@ -68,6 +68,7 @@ int need_dummy_toku_read = 0;
 int compress_output= 0;
 int killqueries= 0;
 int detected_server= 0;
+int lock_all_tables=0;
 guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
 
@@ -137,6 +138,7 @@ static GOptionEntry entries[] =
 	{ "skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL },
 	{ "use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints, "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL },
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
+	{ "lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables, "Use LOCK TABLE for all, instead of FTWRL", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -772,7 +774,7 @@ int main(int argc, char *argv[])
 		start_dump(conn);
 	}
 
-	sleep(5);
+	//sleep(5);
 	mysql_thread_end();
 	mysql_library_end();
 	g_free(output_directory);
@@ -894,6 +896,7 @@ void start_dump(MYSQL *conn)
 	char *p;
 	char *p2;
 	char *p3;
+	
 	guint64 nits[num_threads];
 	GList* nitl[num_threads];
 	int tn = 0;
@@ -964,9 +967,74 @@ void start_dump(MYSQL *conn)
 	}
 
 	if (!no_locks) {
-		if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
-			g_critical("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
-			errors++;
+		if(lock_all_tables){
+			// LOCK ALL TABLES
+			GString *query= g_string_sized_new(16777216);
+			GList *tables_lock = NULL;
+			GList *iter = NULL;
+			guint success = 0;
+			guint retry = 0;
+			
+			// TODO : Add support to list of tables and regex
+			if(db){
+				g_string_printf(query, "SELECT CONCAT('`',TABLE_SCHEMA,'`.`',TABLE_NAME,'`') FROM information_schema.TABLES WHERE TABLE_SCHEMA = '%s' AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))", db);
+			}else{
+				g_string_printf(query, "SELECT CONCAT('`',TABLE_SCHEMA,'`.`',TABLE_NAME,'`') FROM information_schema.TABLES WHERE TABLE_SCHEMA NOT IN ('information_schema', 'performance_schema', 'data_dictionary') AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))");
+			}
+			if(mysql_query(conn, query->str)){
+				g_critical("Couldn't get table list for lock all tables: %s",mysql_error(conn));
+				errors++;
+			}else{
+				MYSQL_RES *res = mysql_store_result(conn);
+				MYSQL_ROW row;
+
+				while ((row=mysql_fetch_row(res))) {
+					tables_lock = g_list_append(tables_lock, row[0]);
+				}
+				// Try three times to get the lock, this is in case of tmp tables disappearing
+				while(!success && retry < 4){
+					n = 0;
+					iter = tables_lock;
+					for (iter= g_list_first(iter); iter; iter= g_list_next(iter)) {
+						if(n == 0){
+							g_string_printf(query, "LOCK TABLE %s READ", (char *) iter->data);
+							n = 1;
+						}else{
+							g_string_append_printf(query, ", %s READ",(char *) iter->data);
+						}
+					}
+					if(mysql_query(conn,query->str)){
+						gchar *failed_table = NULL;
+						gchar **tmp_fail;
+						
+						tmp_fail = g_strsplit(mysql_error(conn), "'",0);
+						tmp_fail =  g_strsplit(tmp_fail[1], ".", 0);
+						failed_table = g_strdup_printf("`%s`.`%s`", tmp_fail[0], tmp_fail[1]);
+						iter = tables_lock;
+						for (iter= g_list_first(iter); iter; iter= g_list_next(iter)) {
+							if(strcmp (iter->data, failed_table) == 0){
+								tables_lock = g_list_remove(tables_lock, iter->data);
+							}
+						}
+						g_free(tmp_fail);
+						g_free(failed_table);
+					}else{
+						success = 1;
+					}
+					retry += 1;
+				}
+				if(!success){
+					g_critical("Lock all tables fail: %s", mysql_error(conn));
+					exit(EXIT_FAILURE);
+				}
+			}
+			g_free(query->str);
+			g_list_free(tables_lock);
+		}else{ 
+			if(mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+				g_critical("Couldn't acquire global lock, snapshots will not be consistent: %s",mysql_error(conn));
+				errors++;
+			}
 		}
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
