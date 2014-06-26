@@ -99,6 +99,7 @@ GList *table_schemas= NULL;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
 guint less_locking_threads = 0;
+guint updated_since = 0;
 
 // For daemon mode, 0 or 1
 guint dump_number= 0;
@@ -139,6 +140,7 @@ static GOptionEntry entries[] =
 	{ "use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints, "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL },
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
 	{ "lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables, "Use LOCK TABLE for all, instead of FTWRL", NULL},
+	//{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL}
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -970,16 +972,18 @@ void start_dump(MYSQL *conn)
 		if(lock_all_tables){
 			// LOCK ALL TABLES
 			GString *query= g_string_sized_new(16777216);
+			gchar *dbtb = NULL;
 			GList *tables_lock = NULL;
 			GList *iter = NULL;
 			guint success = 0;
 			guint retry = 0;
+			guint lock = 1;
+			int i = 0;
 			
-			// TODO : Add support to list of tables and regex
 			if(db){
-				g_string_printf(query, "SELECT CONCAT('`',TABLE_SCHEMA,'`.`',TABLE_NAME,'`') FROM information_schema.TABLES WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE ='BASE TABLE' AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))", db);
+				g_string_printf(query, "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE ='BASE TABLE' AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))", db);
 			}else{
-				g_string_printf(query, "SELECT CONCAT('`',TABLE_SCHEMA,'`.`',TABLE_NAME,'`') FROM information_schema.TABLES WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN ('information_schema', 'performance_schema', 'data_dictionary') AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))");
+				g_string_printf(query, "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN ('information_schema', 'performance_schema', 'data_dictionary') AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR TABLE_NAME = 'general_log'))");
 			}
 			if(mysql_query(conn, query->str)){
 				g_critical("Couldn't get table list for lock all tables: %s",mysql_error(conn));
@@ -987,9 +991,24 @@ void start_dump(MYSQL *conn)
 			}else{
 				MYSQL_RES *res = mysql_store_result(conn);
 				MYSQL_ROW row;
-
+				
 				while ((row=mysql_fetch_row(res))) {
-					tables_lock = g_list_append(tables_lock, row[0]);
+					lock = 1;
+					if (tables) {
+						int table_found=0;
+						for (i = 0; tables[i] != NULL; i++)
+							if (g_ascii_strcasecmp(tables[i], row[1]) == 0)
+								table_found = 1;
+						if (!table_found)
+							lock = 0;
+					}
+					if (lock && regexstring && !check_regex(row[0],row[1]))
+						continue;
+					
+					if(lock) {					
+						dbtb = g_strdup_printf("`%s`.`%s`",row[0],row[1]);
+						tables_lock = g_list_append(tables_lock,dbtb);
+					}
 				}
 				// Try three times to get the lock, this is in case of tmp tables disappearing
 				while(!success && retry < 4){
