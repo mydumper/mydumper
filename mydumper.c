@@ -1937,10 +1937,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 							if (!compress_output){
 								fclose((FILE *)file);
 								file = g_fopen(fcfile, "w");
-                            } else {
+							} else {
 								gzclose((gzFile)file);
-                                file = (void*) gzopen(fcfile, "w");
-                            }
+								file = (void*) gzopen(fcfile, "w");
+							}
 							st_in_file = 0;
 						}
 					}
@@ -1957,6 +1957,18 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 	if (mysql_errno(conn)) {
 		g_critical("Could not read data from %s.%s: %s", database, table, mysql_error(conn));
+	}
+	
+	if (statement_row->len > 0) {
+		/* this last row has not been written out */
+		if (statement->len > 0) {
+			/* strange, should not happen */
+			g_string_append(statement, statement_row->str);
+		}
+		else {
+			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			g_string_append(statement, statement_row->str);
+		}
 	}
 
 	if (statement->len > 0) {
