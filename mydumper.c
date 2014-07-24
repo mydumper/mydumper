@@ -77,6 +77,7 @@ char **ignore= NULL;
 
 gchar *tables_list= NULL;
 char **tables= NULL;
+GList *no_updated_tables=NULL;
 
 #ifdef WITH_BINLOG
 gboolean need_binlogs= FALSE;
@@ -140,7 +141,7 @@ static GOptionEntry entries[] =
 	{ "use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints, "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL },
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
 	{ "lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables, "Use LOCK TABLE for all, instead of FTWRL", NULL},
-	//{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL}
+	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -151,8 +152,9 @@ void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
-void dump_database(MYSQL *, char *);
+void dump_database(MYSQL *, char *, FILE *);
 void get_tables(MYSQL * conn);
+void get_not_updated(MYSQL *conn);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename);
@@ -899,6 +901,7 @@ void start_dump(MYSQL *conn)
 	char *p;
 	char *p2;
 	char *p3;
+	char *u;
 	
 	guint64 nits[num_threads];
 	GList* nitl[num_threads];
@@ -907,6 +910,7 @@ void start_dump(MYSQL *conn)
 	time_t t;
 	struct db_table *dbt;
 	guint n;
+	FILE* nufile = NULL;
 	
 	for(n=0;n<num_threads;n++){
 		nits[n] = 0;
@@ -923,6 +927,19 @@ void start_dump(MYSQL *conn)
 	if(!mdfile) {
 		g_critical("Couldn't write metadata file (%d)",errno);
 		exit(EXIT_FAILURE);
+	}
+	
+	if(updated_since > 0){
+		if (daemon_mode)
+			u= g_strdup_printf("%s/%d/not_updated_tables", output_directory, dump_number);
+		else
+			u= g_strdup_printf("%s/not_updated_tables", output_directory);
+		nufile=g_fopen(u,"w");
+		if(!nufile) {
+			g_critical("Couldn't write not_updated_tables file (%d)",errno);
+			exit(EXIT_FAILURE);
+		}
+		get_not_updated(conn);
 	}
 
 	/* We check SHOW PROCESSLIST, and if there're queries
@@ -1143,7 +1160,7 @@ void start_dump(MYSQL *conn)
 	g_async_queue_unref(conf.ready);
 	
 	if (db) {
-		dump_database(conn, db);
+		dump_database(conn, db, nufile);
 	} else if (tables) {
 		get_tables(conn);
 	} else {
@@ -1157,7 +1174,7 @@ void start_dump(MYSQL *conn)
 		while ((row=mysql_fetch_row(databases))) {
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
-			dump_database(conn, row[0]);
+			dump_database(conn, row[0], nufile);
 		}
 		mysql_free_result(databases);
 
@@ -1262,6 +1279,8 @@ void start_dump(MYSQL *conn)
 		tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 	fclose(mdfile);
+	if(updated_since > 0)
+		fclose(nufile);
 	g_rename(p, p2);
 	g_free(p);
 	g_free(p2);
@@ -1271,6 +1290,19 @@ void start_dump(MYSQL *conn)
 
 	g_free(td);
 	g_free(threads);
+}
+
+void get_not_updated(MYSQL *conn){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+	
+	gchar *query = g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM information_schema.TABLES WHERE UPDATE_TIME < NOW() - INTERVAL %d DAY",updated_since);
+	mysql_query(conn,query);
+	g_free(query);
+	
+	res = mysql_store_result(conn);
+	while((row = mysql_fetch_row(res)))
+		no_updated_tables = g_list_append(no_updated_tables, row[0]);
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
@@ -1467,8 +1499,9 @@ void create_backup_dir(char *new_directory) {
 	}
 }
 
-void dump_database(MYSQL * conn, char *database) {
+void dump_database(MYSQL * conn, char *database, FILE *file) {
 
+	GList *iter = NULL;
 	char *query;
 	mysql_select_db(conn,database);
 	if (detected_server == SERVER_TYPE_MYSQL)
@@ -1547,6 +1580,20 @@ void dump_database(MYSQL * conn, char *database) {
 		if (regexstring && !check_regex(database,row[0]))
 			continue;
 
+		/* Check if the table was recently updated */
+		if(no_updated_tables){
+			iter = no_updated_tables;
+			for (iter= g_list_first(iter); iter; iter= g_list_next(iter)) {
+				if(g_ascii_strcasecmp (iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0){
+					g_message("NO UPDATED TABLE: %s.%s", database, row[0]);
+					fprintf(file, "%s.%s\n", database, row[0]);
+					dump=0;
+				}
+			}
+		}
+		if (!dump)
+			continue;
+		
 		/* Green light! */
 		struct db_table *dbt = g_new(struct db_table, 1);
 		dbt->database= g_strdup(database);
@@ -1564,6 +1611,8 @@ void dump_database(MYSQL * conn, char *database) {
         	}
 	}
 	mysql_free_result(result);
+	if(file)	
+		fflush(file);
 }
 
 void get_tables(MYSQL * conn) {
