@@ -1797,6 +1797,8 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			else
 				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
+			if (!is_innodb && nchunk)
+                                g_atomic_int_inc(&non_innodb_table_counter);
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
 		}
