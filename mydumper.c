@@ -101,6 +101,7 @@ gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
 guint less_locking_threads = 0;
 guint updated_since = 0;
+guint trx_consistency_only = 0;
 
 // For daemon mode, 0 or 1
 guint dump_number= 0;
@@ -142,6 +143,7 @@ static GOptionEntry entries[] =
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
 	{ "lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables, "Use LOCK TABLE for all, instead of FTWRL", NULL},
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
+	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -152,7 +154,7 @@ void dump_schema(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
-void dump_database(MYSQL *, char *, FILE *);
+void dump_database(MYSQL *, char *, FILE *,  struct configuration *);
 void get_tables(MYSQL * conn);
 void get_not_updated(MYSQL *conn);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
@@ -398,7 +400,7 @@ void *process_queue(struct thread_data *td) {
 	struct binlog_job* bj= NULL;
 	#endif
 	/* if less locking we need to wait until that threads finish
-	    progressively waking up this threads */
+	    progressively waking up these threads */
 	if(less_locking){
 		g_mutex_lock(ll_mutex);
 		
@@ -689,7 +691,7 @@ int main(int argc, char *argv[])
 	}
 	
 	//until we have an unique option on lock types we need to ensure this
-	if(no_locks)
+	if(no_locks || trx_consistency_only)
 		less_locking = 0;
 	
 	/* savepoints workaround to avoid metadata locking issues 
@@ -699,6 +701,10 @@ int main(int argc, char *argv[])
 		g_warning("--use-savepoints disabled by --rows");
 	}
 	
+	//clarify binlog coordinates with trx_consistency_only
+	if(trx_consistency_only)
+		g_warning("Using trx_consistency_only, binlog coordinates will not be accurate if you are writing to non transactional tables.");
+
 	if (!output_directory)
 		output_directory = g_strdup_printf("%s-%04d%02d%02d-%02d%02d%02d",DIRECTORY,
 			tval.tm_year+1900, tval.tm_mon+1, tval.tm_mday,
@@ -1159,8 +1165,13 @@ void start_dump(MYSQL *conn)
 	
 	g_async_queue_unref(conf.ready);
 	
+	if (trx_consistency_only){
+		g_message("Transactions started, unlocking tables");
+		mysql_query(conn, "UNLOCK TABLES /* trx-only */");
+	}
+
 	if (db) {
-		dump_database(conn, db, nufile);
+		dump_database(conn, db, nufile, &conf);
 	} else if (tables) {
 		get_tables(conn);
 	} else {
@@ -1174,7 +1185,7 @@ void start_dump(MYSQL *conn)
 		while ((row=mysql_fetch_row(databases))) {
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
-			dump_database(conn, row[0], nufile);
+			dump_database(conn, row[0], nufile, &conf);
 		}
 		mysql_free_result(databases);
 
@@ -1243,7 +1254,7 @@ void start_dump(MYSQL *conn)
 	}
 	g_list_free(g_list_first(table_schemas));
 
-	if (!no_locks) {
+	if (!no_locks && !trx_consistency_only) {
 		g_async_queue_pop(conf.unlock_tables);
 		g_message("Non-InnoDB dump complete, unlocking tables");
 		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
@@ -1499,7 +1510,7 @@ void create_backup_dir(char *new_directory) {
 	}
 }
 
-void dump_database(MYSQL * conn, char *database, FILE *file) {
+void dump_database(MYSQL * conn, char *database, FILE *file, struct configuration *conf) {
 
 	GList *iter = NULL;
 	char *query;
@@ -1599,7 +1610,10 @@ void dump_database(MYSQL * conn, char *database, FILE *file) {
 		dbt->database= g_strdup(database);
 		dbt->table= g_strdup(row[0]);
 		dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
-		if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+		// with trx_consistency_only we dump all as innodb_tables
+		if (trx_consistency_only) {
+			dump_table(conn, dbt->database, dbt->table, conf, TRUE);
+		}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
 			innodb_tables= g_list_append(innodb_tables, dbt);
 		}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
 			innodb_tables= g_list_append(innodb_tables, dbt);
