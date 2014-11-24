@@ -46,7 +46,9 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
+//void add_schema_post(const gchar* filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
+//void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 
@@ -150,7 +152,7 @@ int main(int argc, char *argv[]) {
 
 	g_message("%d threads created", num_threads);
 
-        restore_databases(&conf, conn);
+	restore_databases(&conf, conn);
 
 	for (n= 0; n < num_threads; n++) {
 		struct job *j= g_new0(struct job, 1);
@@ -161,6 +163,8 @@ int main(int argc, char *argv[]) {
 	for (n= 0; n < num_threads; n++) {
 		g_thread_join(threads[n]);
 	}
+
+	//restore_schema_post(conn);
 
 	g_async_queue_unref(conf.queue);
 	mysql_close(conn);
@@ -194,13 +198,45 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	g_dir_rewind(dir);
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!g_strrstr(filename, "-schema.sql") && g_strrstr(filename, ".sql")) {
+		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && g_strrstr(filename, ".sql")) {
 			add_table(filename, conf);
+		}
+	}
+
+	g_dir_rewind(dir);
+
+	while((filename= g_dir_read_name(dir))) {
+		if (g_strrstr(filename, "-schema-view.sql")) {
+			add_schema(filename, conn);
 		}
 	}
 
 	g_dir_close(dir);
 }
+
+/*
+void restore_schema_post(MYSQL *conn){
+	GError *error= NULL;
+	GDir* dir= g_dir_open(directory, 0, &error);
+
+	if (error) {
+		g_critical("cannot open directory %s, %s\n", directory, error->message);
+		errors++;
+		return;
+	}
+
+	const gchar* filename= NULL;
+
+	while((filename= g_dir_read_name(dir))) {
+			if (g_strrstr(filename, "-schema-view.sql")) {
+				add_schema_post(filename, conn);
+			}
+		}
+
+
+	g_dir_close(dir);
+}
+*/
 
 void add_schema(const gchar* filename, MYSQL *conn) {
 	// 0 is database, 1 is table with -schema on the end
@@ -232,8 +268,10 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	g_free(query);
 
 	if (overwrite_tables) {
-		g_message("Dropping table (if exists) `%s`.`%s`", db ? db : database, table);
+		g_message("Dropping table or view (if exists) `%s`.`%s`", db ? db : database, table);
 		query= g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`", db ? db : database, table);
+		mysql_query(conn, query);
+		query= g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database, table);
 		mysql_query(conn, query);
 		g_free(query);
 	}

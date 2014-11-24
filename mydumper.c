@@ -89,6 +89,7 @@ gchar *logfile= NULL;
 FILE *logoutfile= NULL;
 
 gboolean no_schemas= FALSE;
+gboolean no_data= FALSE;
 gboolean no_locks= FALSE;
 gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
@@ -97,6 +98,7 @@ gboolean success_on_1146 = FALSE;
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
 GList *table_schemas= NULL;
+GList *view_schemas= NULL;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
 guint less_locking_threads = 0;
@@ -127,6 +129,7 @@ static GOptionEntry entries[] =
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
+	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
@@ -150,12 +153,14 @@ static GOptionEntry entries[] =
 struct tm tval;
 
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
+void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, char *filename2);
 void dump_schema(char *database, char *table, struct configuration *conf);
+void dump_view(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *, FILE *,  struct configuration *);
-void get_tables(MYSQL * conn);
+void get_tables(MYSQL * conn,  struct configuration *);
 void get_not_updated(MYSQL *conn);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
@@ -396,6 +401,7 @@ void *process_queue(struct thread_data *td) {
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
 	struct schema_job* sj= NULL;
+	struct view_job* vj= NULL;
 	#ifdef WITH_BINLOG
 	struct binlog_job* bj= NULL;
 	#endif
@@ -475,6 +481,17 @@ void *process_queue(struct thread_data *td) {
 				g_free(sj);
 				g_free(job);
 				break;
+			case JOB_VIEW:
+				vj=(struct view_job *)job->job_data;
+				g_message("Thread %d dumping view for `%s`.`%s`", td->thread_id, vj->database, vj->table);
+				dump_view_data(thrconn, vj->database, vj->table, vj->filename, vj->filename2);
+				if(vj->database) g_free(vj->database);
+				if(vj->table) g_free(vj->table);
+				if(vj->filename) g_free(vj->filename);
+				if(vj->filename2) g_free(vj->filename2);
+				g_free(vj);
+				g_free(job);
+				break;
 			#ifdef WITH_BINLOG
 			case JOB_BINLOG:
 				thrconn= reconnect_for_binlog(thrconn);
@@ -540,6 +557,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	struct table_job* tj= NULL;
 	struct tables_job* mj=NULL;
 	struct schema_job* sj= NULL;
+	struct view_job* vj= NULL;
 	GList* glj;
 	int first = 1;
 	GString *query= g_string_sized_new(1024);
@@ -606,6 +624,17 @@ void *process_queue_less_locking(struct thread_data *td) {
 				if(sj->table) g_free(sj->table);
 				if(sj->filename) g_free(sj->filename);
 				g_free(sj);
+				g_free(job);
+				break;
+			case JOB_VIEW:
+				vj=(struct view_job *)job->job_data;
+				g_message("Thread %d dumping view for `%s`.`%s`", td->thread_id, sj->database, sj->table);
+				dump_view_data(thrconn, vj->database, vj->table, vj->filename, vj->filename2);
+				if(vj->database) g_free(vj->database);
+				if(vj->table) g_free(vj->table);
+				if(vj->filename) g_free(vj->filename);
+				if(vj->filename2) g_free(vj->filename2);
+				g_free(vj);
 				g_free(job);
 				break;
 			case JOB_SHUTDOWN:
@@ -1173,7 +1202,7 @@ void start_dump(MYSQL *conn)
 	if (db) {
 		dump_database(conn, db, nufile, &conf);
 	} else if (tables) {
-		get_tables(conn);
+		get_tables(conn, &conf);
 	} else {
 		MYSQL_RES *databases;
 		MYSQL_ROW row;
@@ -1253,6 +1282,15 @@ void start_dump(MYSQL *conn)
 		g_free(dbt);
 	}
 	g_list_free(g_list_first(table_schemas));
+
+	for (view_schemas= g_list_first(view_schemas); view_schemas; view_schemas= g_list_next(view_schemas)) {
+		dbt= (struct db_table*) view_schemas->data;
+		dump_view(dbt->database, dbt->table, &conf);
+		g_free(dbt->table);
+		g_free(dbt->database);
+		g_free(dbt);
+	}
+	g_list_free(g_list_first(view_schemas));
 
 	if (!no_locks && !trx_consistency_only) {
 		g_async_queue_pop(conf.unlock_tables);
@@ -1547,17 +1585,18 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	while ((row = mysql_fetch_row(result))) {
 
 		int dump=1;
+		int is_view=0;
 
-		/* We no care about views!
+		/* We now do care about views!
 			num_fields>1 kicks in only in case of 5.0 SHOW FULL TABLES or SHOW TABLE STATUS
 			row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
 			row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
 		*/
 		if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
-			continue;
+			is_view = 1;
 
 		/* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole :-) dumps */
-		if (ignore) {
+		if (ignore && !is_view) {
 			for (i = 0; ignore[i] != NULL; i++) {
 				if (g_ascii_strcasecmp(ignore[i], row[ecol]) == 0) {
 					dump = 0;
@@ -1592,7 +1631,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			continue;
 
 		/* Check if the table was recently updated */
-		if(no_updated_tables){
+		if(no_updated_tables && !is_view){
 			iter = no_updated_tables;
 			for (iter= g_list_first(iter); iter; iter= g_list_next(iter)) {
 				if(g_ascii_strcasecmp (iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0){
@@ -1609,27 +1648,42 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		struct db_table *dbt = g_new(struct db_table, 1);
 		dbt->database= g_strdup(database);
 		dbt->table= g_strdup(row[0]);
-		dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
-		// with trx_consistency_only we dump all as innodb_tables
-		if (trx_consistency_only) {
-			dump_table(conn, dbt->database, dbt->table, conf, TRUE);
-		}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
-			innodb_tables= g_list_append(innodb_tables, dbt);
-		}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
-			innodb_tables= g_list_append(innodb_tables, dbt);
-		} else {
-			non_innodb_table= g_list_append(non_innodb_table, dbt);
+		if(!row[6])
+			dbt->datalength = 0;
+		else
+			dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
+		//if is a view we care only about schema
+		if(!is_view){
+			// with trx_consistency_only we dump all as innodb_tables
+			// and we can start right now
+			if(!no_data){
+				if (trx_consistency_only) {
+					dump_table(conn, dbt->database, dbt->table, conf, TRUE);
+				}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+					innodb_tables= g_list_append(innodb_tables, dbt);
+				}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+					innodb_tables= g_list_append(innodb_tables, dbt);
+				} else {
+					non_innodb_table= g_list_append(non_innodb_table, dbt);
+				}
+			}
+			if (!no_schemas){
+				table_schemas= g_list_append(table_schemas, dbt);
+			}
+		}else{
+			if (!no_schemas){
+				view_schemas= g_list_append(view_schemas, dbt);
+			}
 		}
-	        if (!no_schemas) {
-			table_schemas= g_list_append(table_schemas, dbt);
-        	}
+
+
 	}
 	mysql_free_result(result);
 	if(file)	
 		fflush(file);
 }
 
-void get_tables(MYSQL * conn) {
+void get_tables(MYSQL * conn, struct configuration *conf) {
 	
 	gchar **dt= NULL;
 	char *query=NULL;
@@ -1663,21 +1717,36 @@ void get_tables(MYSQL * conn) {
 		MYSQL_ROW row;
 		while ((row = mysql_fetch_row(result))) {
 			
+			int is_view=0;
+
 			if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
-			continue;
+				is_view=1;
 			
 			/* Green light! */
 			struct db_table *dbt = g_new(struct db_table, 1);
 			dbt->database= g_strdup(dt[0]);
 			dbt->table= g_strdup(dt[1]);
-			dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
-			if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
-				innodb_tables= g_list_append(innodb_tables, dbt);
-			} else {
-				non_innodb_table= g_list_append(non_innodb_table, dbt);
-			}
-			if (!no_schemas) {
-			table_schemas= g_list_append(table_schemas, dbt);
+			if(!row[6])
+				dbt->datalength = 0;
+			else
+				dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
+			if(!is_view){
+				if (trx_consistency_only) {
+					dump_table(conn, dbt->database, dbt->table, conf, TRUE);
+				}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+					innodb_tables= g_list_append(innodb_tables, dbt);
+				}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+					innodb_tables= g_list_append(innodb_tables, dbt);
+				} else {
+					non_innodb_table= g_list_append(non_innodb_table, dbt);
+				}
+				if (!no_schemas) {
+					table_schemas= g_list_append(table_schemas, dbt);
+				}
+			}else{
+				if (!no_schemas){
+					view_schemas= g_list_append(view_schemas, dbt);
+				}
 			}
 		}	
 	}
@@ -1754,6 +1823,115 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	return;
 }
 
+void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, char *filename2) {
+	void *outfile, *outfile2;
+	char *query = NULL;
+	MYSQL_RES *result = NULL;
+	MYSQL_ROW row;
+	GString* statement = g_string_sized_new(statement_size);
+
+	mysql_select_db(conn,database);
+
+	if (!compress_output){
+		outfile= g_fopen(filename, "w");
+		outfile2= g_fopen(filename2, "w");
+	}else{
+		outfile= (void*) gzopen(filename, "w");
+		outfile2= (void*) gzopen(filename2, "w");
+	}
+
+	if (!outfile || !outfile2) {
+		g_critical("Error: DB: %s Could not create output file (%d)", database, errno);
+		errors++;
+		return;
+	}
+
+	if (detected_server == SERVER_TYPE_MYSQL) {
+		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+	}
+
+	if (!write_data((FILE *)outfile,statement)) {
+		g_critical("Could not write schema data for %s.%s", database, table);
+		errors++;
+		return;
+	}
+
+	g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", table);
+	g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", table);
+
+	if (!write_data((FILE *)outfile2,statement)) {
+		g_critical("Could not write schema data for %s.%s", database, table);
+		errors++;
+		return;
+	}
+
+	//we create myisam tables as workaround
+	//for view dependencies
+	query= g_strdup_printf("SHOW FIELDS FROM `%s`.`%s`", database, table);
+	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+		}else{
+			g_critical("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+			errors++;
+		}
+		g_free(query);
+		return;
+	}
+	g_string_set_size(statement, 0);
+	g_string_append_printf(statement, "CREATE TABLE `%s`(\n", table);
+	row = mysql_fetch_row(result);
+	g_string_append_printf(statement, "`%s` int", row[0]);
+	while ((row = mysql_fetch_row(result))) {
+		g_string_append(statement, ",\n");
+		g_string_append_printf(statement, "`%s` int", row[0]);
+	}
+	g_string_append(statement, "\n)ENGINE=MyISAM;\n");
+
+	if (!write_data((FILE *)outfile, statement)) {
+		g_critical("Could not write view schema for %s.%s", database, table);
+		errors++;
+	}
+
+	//real view
+	query= g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", database, table);
+	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+		}else{
+			g_critical("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
+			errors++;
+		}
+		g_free(query);
+		return;
+	}
+	g_string_set_size(statement, 0);
+
+	/* There should never be more than one row */
+	row = mysql_fetch_row(result);
+    g_string_append(statement, row[1]);
+	g_string_append(statement, ";\n");
+	if (!write_data((FILE *)outfile2, statement)) {
+		g_critical("Could not write schema for %s.%s", database, table);
+		errors++;
+	}
+	g_free(query);
+
+	if (!compress_output){
+		fclose((FILE *)outfile);
+		fclose((FILE *)outfile2);
+	}else{
+		gzclose((gzFile)outfile);
+		gzclose((gzFile)outfile2);
+	}
+
+	g_string_free(statement, TRUE);
+	if (result)
+		mysql_free_result(result);
+
+	return;
+}
+
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename) {
 	void *outfile;
 
@@ -1785,6 +1963,25 @@ void dump_schema(char *database, char *table, struct configuration *conf) {
 		sj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory, dump_number, database, table, (compress_output?".gz":""));
 	else
 		sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
+	g_async_queue_push(conf->queue,j);
+	return;
+}
+
+void dump_view(char *database, char *table, struct configuration *conf) {
+	struct job *j = g_new0(struct job,1);
+	struct view_job *vj = g_new0(struct view_job,1);
+	j->job_data=(void*) vj;
+	vj->database=g_strdup(database);
+	vj->table=g_strdup(table);
+	j->conf=conf;
+	j->type=JOB_VIEW;
+	if (daemon_mode){
+		vj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory, dump_number, database, table, (compress_output?".gz":""));
+		vj->filename2 = g_strdup_printf("%s/%d/%s.%s-schema-view.sql%s", output_directory, dump_number, database, table, (compress_output?".gz":""));
+	}else{
+		vj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
+		vj->filename2 = g_strdup_printf("%s/%s.%s-schema-view.sql%s", output_directory, database, table, (compress_output?".gz":""));
+	}
 	g_async_queue_push(conf->queue,j);
 	return;
 }
