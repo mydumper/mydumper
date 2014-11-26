@@ -46,9 +46,8 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
-//void add_schema_post(const gchar* filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
-//void restore_schema_post(MYSQL *conn);
+void restore_schema_view(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 
@@ -164,7 +163,7 @@ int main(int argc, char *argv[]) {
 		g_thread_join(threads[n]);
 	}
 
-	//restore_schema_post(conn);
+	restore_schema_view(conn);
 
 	g_async_queue_unref(conf.queue);
 	mysql_close(conn);
@@ -203,19 +202,11 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 		}
 	}
 
-	g_dir_rewind(dir);
-
-	while((filename= g_dir_read_name(dir))) {
-		if (g_strrstr(filename, "-schema-view.sql")) {
-			add_schema(filename, conn);
-		}
-	}
-
 	g_dir_close(dir);
 }
 
-/*
-void restore_schema_post(MYSQL *conn){
+
+void restore_schema_view(MYSQL *conn){
 	GError *error= NULL;
 	GDir* dir= g_dir_open(directory, 0, &error);
 
@@ -228,15 +219,13 @@ void restore_schema_post(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-			if (g_strrstr(filename, "-schema-view.sql")) {
-				add_schema_post(filename, conn);
-			}
+		if (g_strrstr(filename, "-schema-view.sql")) {
+			add_schema(filename, conn);
 		}
-
+	}
 
 	g_dir_close(dir);
 }
-*/
 
 void add_schema(const gchar* filename, MYSQL *conn) {
 	// 0 is database, 1 is table with -schema on the end
