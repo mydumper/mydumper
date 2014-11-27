@@ -91,6 +91,7 @@ FILE *logoutfile= NULL;
 gboolean no_schemas= FALSE;
 gboolean no_data= FALSE;
 gboolean no_locks= FALSE;
+gboolean dump_triggers= FALSE;
 gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
@@ -130,6 +131,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
+	{ "triggers", 0, 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
@@ -153,8 +155,9 @@ static GOptionEntry entries[] =
 struct tm tval;
 
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename);
+void dump_triggers_data(MYSQL *conn, char *database, char *table, char *filename);
 void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, char *filename2);
-void dump_schema(char *database, char *table, struct configuration *conf);
+void dump_schema(MYSQL *conn, char *database, char *table, struct configuration *conf);
 void dump_view(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
@@ -492,6 +495,16 @@ void *process_queue(struct thread_data *td) {
 				g_free(vj);
 				g_free(job);
 				break;
+			case JOB_TRIGGERS:
+				sj=(struct schema_job *)job->job_data;
+				g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id, sj->database, sj->table);
+				dump_triggers_data(thrconn, sj->database, sj->table, sj->filename);
+				if(sj->database) g_free(sj->database);
+				if(sj->table) g_free(sj->table);
+				if(sj->filename) g_free(sj->filename);
+				g_free(sj);
+				g_free(job);
+				break;
 			#ifdef WITH_BINLOG
 			case JOB_BINLOG:
 				thrconn= reconnect_for_binlog(thrconn);
@@ -637,6 +650,29 @@ void *process_queue_less_locking(struct thread_data *td) {
 				g_free(vj);
 				g_free(job);
 				break;
+			case JOB_TRIGGERS:
+				sj=(struct schema_job *)job->job_data;
+				g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id, sj->database, sj->table);
+				dump_triggers_data(thrconn, sj->database, sj->table, sj->filename);
+				if(sj->database) g_free(sj->database);
+				if(sj->table) g_free(sj->table);
+				if(sj->filename) g_free(sj->filename);
+				g_free(sj);
+				g_free(job);
+				break;
+			#ifdef WITH_BINLOG
+			case JOB_BINLOG:
+				thrconn= reconnect_for_binlog(thrconn);
+				g_message("Thread %d connected using MySQL connection ID %lu (in binlog mode)", td->thread_id, mysql_thread_id(thrconn));
+				bj=(struct binlog_job *)job->job_data;
+				g_message("Thread %d dumping binary log file %s", td->thread_id, bj->filename);
+				get_binlog_file(thrconn, bj->filename, binlog_directory, bj->start_position, bj->stop_position, FALSE);
+				if(bj->filename)
+					g_free(bj->filename);
+				g_free(bj);
+				g_free(job);
+				break;
+			#endif
 			case JOB_SHUTDOWN:
 				g_message("Thread %d shutting down", td->thread_id);
 				g_mutex_lock(ll_mutex);
@@ -1276,7 +1312,7 @@ void start_dump(MYSQL *conn)
 
 	for (table_schemas= g_list_first(table_schemas); table_schemas; table_schemas= g_list_next(table_schemas)) {
 		dbt= (struct db_table*) table_schemas->data;
-		dump_schema(dbt->database, dbt->table, &conf);
+		dump_schema(conn, dbt->database, dbt->table, &conf);
 		g_free(dbt->table);
 		g_free(dbt->database);
 		g_free(dbt);
@@ -1753,7 +1789,87 @@ void get_tables(MYSQL * conn, struct configuration *conf) {
 	g_free(query);
 }
 
+void dump_triggers_data(MYSQL *conn, char *database, char *table, char *filename){
+	void *outfile;
+	char *query = NULL;
+	MYSQL_RES *result = NULL;
+	MYSQL_RES *result2 = NULL;
+	MYSQL_ROW row;
+	MYSQL_ROW row2;
 
+	if (!compress_output)
+		outfile= g_fopen(filename, "w");
+	else
+		outfile= (void*) gzopen(filename, "w");
+
+	if (!outfile) {
+		g_critical("Error: DB: %s Could not create output file %s (%d)", database, filename, errno);
+		errors++;
+		return;
+	}
+
+	GString* statement = g_string_sized_new(statement_size);
+/*
+	g_string_printf(statement,"DELIMITER ;;\n");
+
+	if (!write_data((FILE *)outfile,statement)) {
+		g_critical("Could not write schema data for %s.%s", database, table);
+		errors++;
+		return;
+	}
+
+	g_string_set_size(statement, 0);
+*/
+	// get triggers
+	query= g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", database, table);
+	if (mysql_query(conn, query) || !(result= mysql_store_result(conn))) {
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping triggers (%s.%s): %s", database, table, mysql_error(conn));
+		}else{
+			g_critical("Error dumping triggers (%s.%s): %s", database, table, mysql_error(conn));
+			errors++;
+		}
+		g_free(query);
+		return;
+	}
+
+	while ((row = mysql_fetch_row(result))) {
+		query= g_strdup_printf("SHOW CREATE TRIGGER `%s`.`%s`", database, row[0]);
+		mysql_query(conn, query);
+		result2= mysql_store_result(conn);
+		row2 = mysql_fetch_row(result2);
+		g_string_printf(statement,"%s;\n",row2[2]);
+		if (!write_data((FILE *)outfile,statement)) {
+			g_critical("Could not write triggers data for %s.%s", database, table);
+			errors++;
+			return;
+		}
+		g_string_set_size(statement, 0);
+	}
+
+	/*
+	g_string_printf(statement,"DELIMITER ;\n");
+	if (!write_data((FILE *)outfile,statement)) {
+		g_critical("Could not write triggers data for %s.%s", database, table);
+		errors++;
+		return;
+	}
+
+	if (!compress_output)
+			fclose((FILE *)outfile);
+	else
+			gzclose((gzFile)outfile);
+*/
+	g_free(query);
+
+	g_string_free(statement, TRUE);
+	if (result)
+		mysql_free_result(result);
+	if (result2)
+		mysql_free_result(result2);
+
+	return;
+}
 void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) {
 	void *outfile;
 	char *query = NULL;
@@ -1770,7 +1886,8 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 		errors++;
 		return;
 	}
-        GString* statement = g_string_sized_new(statement_size);
+
+	GString* statement = g_string_sized_new(statement_size);
 
 	if (detected_server == SERVER_TYPE_MYSQL) {
 		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
@@ -1951,7 +2068,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 		g_message("Empty table %s.%s", database,table);
 }
 
-void dump_schema(char *database, char *table, struct configuration *conf) {
+void dump_schema(MYSQL *conn, char *database, char *table, struct configuration *conf) {
 	struct job *j = g_new0(struct job,1);
 	struct schema_job *sj = g_new0(struct schema_job,1);
 	j->job_data=(void*) sj;
@@ -1964,6 +2081,36 @@ void dump_schema(char *database, char *table, struct configuration *conf) {
 	else
 		sj->filename = g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database, table, (compress_output?".gz":""));
 	g_async_queue_push(conf->queue,j);
+
+	if(dump_triggers){
+		char *query = NULL;
+		MYSQL_RES *result = NULL;
+
+		query= g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", database, table);
+		if (mysql_query(conn, query) || !(result= mysql_store_result(conn))) {
+			g_critical("Error Checking triggers for %s.%s. Err: %s", database, table, mysql_error(conn));
+			errors++;
+		}else{
+			if(mysql_num_rows(result)){
+				struct job *t = g_new0(struct job,1);
+				struct schema_job *st = g_new0(struct schema_job,1);
+				t->job_data=(void*) st;
+				st->database=g_strdup(database);
+				st->table=g_strdup(table);
+				t->conf=conf;
+				t->type=JOB_TRIGGERS;
+				if (daemon_mode)
+					st->filename = g_strdup_printf("%s/%d/%s.%s-schema-triggers.sql%s", output_directory, dump_number, database, table, (compress_output?".gz":""));
+				else
+					st->filename = g_strdup_printf("%s/%s.%s-schema-triggers.sql%s", output_directory, database, table, (compress_output?".gz":""));
+				g_async_queue_push(conf->queue,t);
+			}
+		}
+		g_free(query);
+		if (result) {
+			mysql_free_result(result);
+		}
+	}
 	return;
 }
 

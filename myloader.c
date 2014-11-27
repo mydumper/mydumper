@@ -48,6 +48,7 @@ void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
+void restore_schema_triggers(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 
@@ -165,6 +166,8 @@ int main(int argc, char *argv[]) {
 
 	restore_schema_view(conn);
 
+	restore_schema_triggers(conn);
+
 	g_async_queue_unref(conf.queue);
 	mysql_close(conn);
 	mysql_thread_end();
@@ -197,7 +200,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	g_dir_rewind(dir);
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && g_strrstr(filename, ".sql")) {
+		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && g_strrstr(filename, ".sql")) {
 			add_table(filename, conf);
 		}
 	}
@@ -224,6 +227,37 @@ void restore_schema_view(MYSQL *conn){
 		}
 	}
 
+	g_dir_close(dir);
+}
+
+void restore_schema_triggers(MYSQL *conn){
+	GError *error= NULL;
+	GDir* dir= g_dir_open(directory, 0, &error);
+	gchar** split_file= NULL;
+	gchar* database=NULL;
+	gchar** split_table= NULL;
+	gchar* table= NULL;
+
+	if (error) {
+		g_critical("cannot open directory %s, %s\n", directory, error->message);
+		errors++;
+		return;
+	}
+
+	const gchar* filename= NULL;
+
+	while((filename= g_dir_read_name(dir))) {
+		if (g_strrstr(filename, "-schema-triggers.sql")) {
+			split_file= g_strsplit(filename, ".", 0);
+			database= split_file[0];
+			split_table= g_strsplit(split_file[1], "-schema", 0);
+			table= split_table[0];
+			restore_data(conn, database, table, filename, TRUE);
+		}
+	}
+
+	g_strfreev(split_table);
+	g_strfreev(split_file);
 	g_dir_close(dir);
 }
 
