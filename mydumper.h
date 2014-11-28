@@ -72,7 +72,6 @@ struct view_job {
 
 struct schema_post_job {
 	char *database;
-	char *table;
 	char *filename;
 };
 
@@ -94,6 +93,8 @@ struct db_table {
 	guint64 datalength;
 };
 
-
+struct schema_post {
+	char* database;
+};
 
 #endif
