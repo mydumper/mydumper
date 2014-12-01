@@ -1777,7 +1777,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 
 		if(!post_dump){
 			//FUNCTIONS
-			query = g_strdup_printf("SHOW FUNCTION STATES WHERE Db = '%s'", database);
+			query = g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = '%s'", database);
 			if (mysql_query(conn, (query))) {
 				g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 				errors++;
