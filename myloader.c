@@ -42,7 +42,7 @@ static GMutex *init_mutex= NULL;
 guint errors= 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof);
-void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema);
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema, gboolean need_use);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar* filename, struct configuration *conf);
 void add_schema(const gchar* filename, MYSQL *conn);
@@ -52,6 +52,7 @@ void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
+void create_database(MYSQL *conn, gchar *database);
 
 static GOptionEntry entries[] =
 {
@@ -203,7 +204,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	g_dir_rewind(dir);
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && !g_strrstr(filename, "-schema-post.sql") && g_strrstr(filename, ".sql")) {
+		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && !g_strrstr(filename, "-schema-post.sql") && !g_strrstr(filename, "-schema-create.sql") && g_strrstr(filename, ".sql")) {
 			add_table(filename, conf);
 		}
 	}
@@ -255,7 +256,7 @@ void restore_schema_triggers(MYSQL *conn){
 			database= split_file[0];
 			split_table= g_strsplit(split_file[1], "-schema", 0);
 			table= split_table[0];
-			restore_data(conn, database, table, filename, TRUE);
+			restore_data(conn, database, table, filename, TRUE, TRUE);
 		}
 	}
 
@@ -285,12 +286,39 @@ void restore_schema_post(MYSQL *conn){
 			split_file= g_strsplit(filename, "-schema-post.sql", 0);
 			database= split_file[0];
 			//table= split_file[0]; //NULL
-			restore_data(conn, database, NULL, filename, TRUE);
+			restore_data(conn, database, NULL, filename, TRUE, TRUE);
 		}
 	}
 
 	g_strfreev(split_file);
 	g_dir_close(dir);
+}
+
+void create_database(MYSQL *conn, gchar *database){
+	/*
+	GError *error= NULL;
+	GDir* dir= g_dir_open(directory, 0, &error);
+
+	if (error) {
+		g_critical("cannot open directory %s, %s\n", directory, error->message);
+		errors++;
+		return;
+	}
+*/
+	const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
+	const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
+
+	if (!g_file_test (filename, G_FILE_TEST_EXISTS)){
+		restore_data(conn, database, NULL, filename, TRUE, FALSE);
+	}else if (!g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
+		restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
+	}else{
+		gchar* query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
+		mysql_query(conn, query);
+		g_free(query);
+	}
+
+	return;
 }
 
 void add_schema(const gchar* filename, MYSQL *conn) {
@@ -305,19 +333,14 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	if (mysql_query(conn, query)) {
 		g_free(query);
 		g_message("Creating database `%s`", db ? db : database);
-                query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-                mysql_query(conn, query);
+                create_database(conn, database);
 	} else {
 		MYSQL_RES *result= mysql_store_result(conn);
 		// In drizzle the query succeeds with no rows
 		my_ulonglong row_count= mysql_num_rows(result);
 		mysql_free_result(result);
 		if (row_count == 0) {
-			// TODO: Move this to a function, it is the same as above
-			g_free(query);
-			g_message("Creating database `%s`", db ? db : database);
-			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-			mysql_query(conn, query);
+			create_database(conn, database);
 		}
 	}
 	g_free(query);
@@ -332,7 +355,7 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 	}
 
 	g_message("Creating table `%s`.`%s`", db ? db : database, table);
-	restore_data(conn, database, table, filename, TRUE);
+	restore_data(conn, database, table, filename, TRUE, TRUE);
 	g_strfreev(split_table);
 	g_strfreev(split_file);
 	return;
@@ -387,7 +410,7 @@ void *process_queue(struct thread_data *td) {
 			case JOB_RESTORE:
 				rj= (struct restore_job *)job->job_data;
 				g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id, rj->database, rj->table, rj->part);
-				restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE);
+				restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE);
 				if (rj->database) g_free(rj->database);
                                 if (rj->table) g_free(rj->table);
                                 if (rj->filename) g_free(rj->filename);
@@ -413,7 +436,7 @@ void *process_queue(struct thread_data *td) {
 	return NULL;
 }
 
-void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema) {
+void restore_data(MYSQL *conn, char *database, char *table, const char *filename, gboolean is_schema, gboolean need_use) {
 	void *infile;
 	gboolean is_compressed= FALSE;
 	gboolean eof= FALSE;
@@ -436,16 +459,20 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 		return;
 	}
 
-	gchar *query= g_strdup_printf("USE `%s`", db ? db : database);
 
-	if (mysql_query(conn, query)) {
-		g_critical("Error switching to database %s whilst restoring table %s", db ? db : database, table);
+	if(need_use){
+		gchar *query= g_strdup_printf("USE `%s`", db ? db : database);
+
+		if (mysql_query(conn, query)) {
+			g_critical("Error switching to database %s whilst restoring table %s", db ? db : database, table);
+			g_free(query);
+			errors++;
+			return;
+		}
+
 		g_free(query);
-		errors++;
-		return;
 	}
 
-	g_free(query);
 	
 	if (!is_schema)
 		mysql_query(conn, "START TRANSACTION");

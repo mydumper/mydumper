@@ -134,7 +134,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
-	{ "triggers", 0, 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
+	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
 	{ "events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events", NULL },
 	{ "routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines, "Dump stored procedures and functions", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
@@ -167,9 +167,12 @@ void dump_view(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
 void dump_schema_post(char *database, struct configuration *conf);
+void restore_charset(GString* statement);
+void set_charset(GString* statement, char *character_set, char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *, FILE *,  struct configuration *);
+void dump_create_database(MYSQL *conn, char *database);
 void get_tables(MYSQL * conn,  struct configuration *);
 void get_not_updated(MYSQL *conn);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
@@ -1265,6 +1268,7 @@ void start_dump(MYSQL *conn)
 
 	if (db) {
 		dump_database(conn, db, nufile, &conf);
+		dump_create_database(conn, db);
 	} else if (tables) {
 		get_tables(conn, &conf);
 	} else {
@@ -1279,6 +1283,7 @@ void start_dump(MYSQL *conn)
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
 			dump_database(conn, row[0], nufile, &conf);
+			dump_create_database(conn, row[0]);
 		}
 		mysql_free_result(databases);
 
@@ -1411,6 +1416,67 @@ void start_dump(MYSQL *conn)
 
 	g_free(td);
 	g_free(threads);
+}
+
+void dump_create_database(MYSQL *conn, char *database){
+	void* outfile = NULL;
+	char* filename;
+	char *query = NULL;
+	MYSQL_RES *result = NULL;
+	MYSQL_ROW row;
+
+	if (daemon_mode)
+		filename = g_strdup_printf("%s/%d/%s-schema-create.sql%s", output_directory, dump_number, database, (compress_output?".gz":""));
+	else
+		filename = g_strdup_printf("%s/%s-schema-create.sql%s", output_directory, database, (compress_output?".gz":""));
+
+	if (!compress_output)
+		outfile= g_fopen(filename, "w");
+	else
+		outfile= (void*) gzopen(filename, "w");
+
+	if (!outfile) {
+		g_critical("Error: DB: %s Could not create output file %s (%d)", database, filename, errno);
+		errors++;
+		return;
+	}
+
+	GString* statement = g_string_sized_new(statement_size);
+
+	query= g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
+		if(success_on_1146 && mysql_errno(conn) == 1146){
+			g_warning("Error dumping create database (%s): %s", database, mysql_error(conn));
+		}else{
+			g_critical("Error dumping create database (%s): %s", database, mysql_error(conn));
+			errors++;
+		}
+		g_free(query);
+		return;
+	}
+
+	/* There should never be more than one row */
+	row = mysql_fetch_row(result);
+	g_string_append(statement, row[1]);
+	g_string_append(statement, ";\n");
+	if (!write_data((FILE *)outfile, statement)) {
+		g_critical("Could not write create database for %s", database);
+		errors++;
+	}
+	g_free(query);
+
+	if (!compress_output)
+		fclose((FILE *)outfile);
+	else
+		gzclose((gzFile)outfile);
+
+
+	g_string_free(statement, TRUE);
+	if (result)
+		mysql_free_result(result);
+
+	g_free(filename);
+	return;
 }
 
 void get_not_updated(MYSQL *conn){
@@ -1635,8 +1701,6 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		errors++;
 		return;
 	}
-
-
 
 	MYSQL_RES *result = mysql_store_result(conn);
 	MYSQL_FIELD *fields= mysql_fetch_fields(result);
@@ -1896,6 +1960,22 @@ void get_tables(MYSQL * conn, struct configuration *conf) {
 	g_free(query);
 }
 
+void set_charset(GString* statement, char *character_set, char *collation_connection){
+	g_string_printf(statement,"SET @PREV_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT;\n");
+	g_string_append(statement,"SET @PREV_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS;\n");
+	g_string_append(statement,"SET @PREV_COLLATION_CONNECTION=@@COLLATION_CONNECTION;\n");
+
+	g_string_append_printf(statement, "SET character_set_client = %s;\n", character_set);
+	g_string_append_printf(statement, "SET character_set_results = %s;\n", character_set);
+	g_string_append_printf(statement, "SET collation_connection = %s;\n", collation_connection);
+}
+
+void restore_charset(GString* statement){
+	g_string_append(statement,"SET character_set_client = @PREV_CHARACTER_SET_CLIENT;\n");
+	g_string_append(statement,"SET character_set_results = @PREV_CHARACTER_SET_RESULTS;\n");
+	g_string_append(statement,"SET collation_connection = @PREV_COLLATION_CONNECTION;\n");
+}
+
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 	void *outfile;
 	char *query = NULL;
@@ -1933,7 +2013,8 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 		}
 
 		while((row = mysql_fetch_row(result))){
-			g_string_printf(statement,"DROP PROCEDURE IF EXISTS `%s`;\n",row[1]);
+			set_charset(&statement, row[8], row[9]);
+			g_string_append_printf(statement,"DROP PROCEDURE IF EXISTS `%s`;\n",row[1]);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
@@ -1948,6 +2029,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 			splited_st = g_strsplit(statement->str,";\n",0);
 			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
 			g_string_append(statement, ";\n");
+			restore_charset(&statement);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
