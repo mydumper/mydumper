@@ -2013,7 +2013,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 		}
 
 		while((row = mysql_fetch_row(result))){
-			set_charset(&statement, row[8], row[9]);
+			set_charset(statement, row[8], row[9]);
 			g_string_append_printf(statement,"DROP PROCEDURE IF EXISTS `%s`;\n",row[1]);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
@@ -2029,7 +2029,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 			splited_st = g_strsplit(statement->str,";\n",0);
 			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
 			g_string_append(statement, ";\n");
-			restore_charset(&statement);
+			restore_charset(statement);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
@@ -2052,7 +2052,8 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 		}
 
 		while((row = mysql_fetch_row(result))){
-			g_string_printf(statement,"DROP FUNCTION IF EXISTS `%s`;\n",row[1]);
+			set_charset(statement, row[8], row[9]);
+			g_string_append_printf(statement,"DROP FUNCTION IF EXISTS `%s`;\n",row[1]);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
@@ -2067,6 +2068,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 			splited_st = g_strsplit(statement->str,";\n",0);
 			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
 			g_string_append(statement, ";\n");
+			restore_charset(statement);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write function data for %s.%s", database,row[1] );
 				errors++;
@@ -2091,7 +2093,8 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 		}
 
 		while((row = mysql_fetch_row(result))){
-			g_string_printf(statement,"DROP EVENT IF EXISTS `%s`;\n",row[1]);
+			set_charset(statement, row[12], row[13]);
+			g_string_append_printf(statement,"DROP EVENT IF EXISTS `%s`;\n",row[1]);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
@@ -2106,6 +2109,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 			splited_st = g_strsplit(statement->str,";\n",0);
 			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
 			g_string_append(statement, ";\n");
+			restore_charset(statement);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write event data for %s.%s", database,row[1] );
 				errors++;
@@ -2163,14 +2167,22 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table, char *filename
 	}
 
 	while ((row = mysql_fetch_row(result))) {
+		set_charset(statement, row[8], row[9]);
+		if (!write_data((FILE *)outfile,statement)) {
+			g_critical("Could not write triggers data for %s.%s", database, table);
+			errors++;
+			return;
+		}
+		g_string_set_size(statement, 0);
 		query= g_strdup_printf("SHOW CREATE TRIGGER `%s`.`%s`", database, row[0]);
 		mysql_query(conn, query);
 		result2= mysql_store_result(conn);
 		row2 = mysql_fetch_row(result2);
-		g_string_printf(statement,"%s",row2[2]);
+		g_string_append_printf(statement,"%s",row2[2]);
 		splited_st = g_strsplit(statement->str,";\n",0);
 		g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
 		g_string_append(statement, ";\n");
+		restore_charset(statement);
 		if (!write_data((FILE *)outfile,statement)) {
 			g_critical("Could not write triggers data for %s.%s", database, table);
 			errors++;
@@ -2331,7 +2343,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 	}
 
 	//real view
-	query= g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", database, table);
+	query= g_strdup_printf("SHOW CREATE VIEW `%s`.`%s`", database, table);
 	if (mysql_query(conn, query) || !(result= mysql_use_result(conn))) {
 		if(success_on_1146 && mysql_errno(conn) == 1146){
 			g_warning("Error dumping schemas (%s.%s): %s", database, table, mysql_error(conn));
@@ -2346,8 +2358,10 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 
 	/* There should never be more than one row */
 	row = mysql_fetch_row(result);
+	set_charset(statement, row[2], row[3]);
     g_string_append(statement, row[1]);
 	g_string_append(statement, ";\n");
+	restore_charset(statement);
 	if (!write_data((FILE *)outfile2, statement)) {
 		g_critical("Could not write schema for %s.%s", database, table);
 		errors++;
@@ -2702,6 +2716,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 	if (mysql_errno(conn)) {
 		g_critical("Could not read data from %s.%s: %s", database, table, mysql_error(conn));
+		errors++;
 	}
 	
 	if (statement_row->len > 0) {
