@@ -1793,14 +1793,16 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			// with trx_consistency_only we dump all as innodb_tables
 			// and we can start right now
 			if(!no_data){
-				if (trx_consistency_only) {
-					dump_table(conn, dbt->database, dbt->table, conf, TRUE);
-				}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
-					innodb_tables= g_list_append(innodb_tables, dbt);
-				}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
-					innodb_tables= g_list_append(innodb_tables, dbt);
-				} else {
-					non_innodb_table= g_list_append(non_innodb_table, dbt);
+				if(g_ascii_strcasecmp("MRG_MYISAM", row[ecol])){
+					if (trx_consistency_only) {
+						dump_table(conn, dbt->database, dbt->table, conf, TRUE);
+					}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+						innodb_tables= g_list_append(innodb_tables, dbt);
+					}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+						innodb_tables= g_list_append(innodb_tables, dbt);
+					} else {
+						non_innodb_table= g_list_append(non_innodb_table, dbt);
+					}
 				}
 			}
 			if (!no_schemas){
