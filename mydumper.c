@@ -1757,7 +1757,10 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			continue;
 		
 		/* Special tables */
-		if(g_ascii_strcasecmp(database, "mysql") == 0 && (g_ascii_strcasecmp(row[0], "general_log") == 0 || g_ascii_strcasecmp(row[0], "slow_log") == 0)){
+		if(g_ascii_strcasecmp(database, "mysql") == 0 && (g_ascii_strcasecmp(row[0], "general_log") == 0 ||
+															g_ascii_strcasecmp(row[0], "slow_log") == 0 ||
+															g_ascii_strcasecmp(row[0], "innodb_index_stats") == 0 ||
+															g_ascii_strcasecmp(row[0], "innodb_table_stats") == 0)){
 			dump=0;
 			continue;
 		}
@@ -1793,12 +1796,12 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			// with trx_consistency_only we dump all as innodb_tables
 			// and we can start right now
 			if(!no_data){
-				if(g_ascii_strcasecmp("MRG_MYISAM", row[ecol])){
+				if(row[ecol] != NULL && g_ascii_strcasecmp("MRG_MYISAM", row[ecol])){
 					if (trx_consistency_only) {
 						dump_table(conn, dbt->database, dbt->table, conf, TRUE);
-					}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+					}else if (row[ecol] != NULL && !g_ascii_strcasecmp("InnoDB", row[ecol])) {
 						innodb_tables= g_list_append(innodb_tables, dbt);
-					}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+					}else if(row[ecol] != NULL && !g_ascii_strcasecmp("TokuDB", row[ecol])){
 						innodb_tables= g_list_append(innodb_tables, dbt);
 					} else {
 						non_innodb_table= g_list_append(non_innodb_table, dbt);
