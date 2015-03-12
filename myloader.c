@@ -36,7 +36,7 @@ guint commit_count= 1000;
 gchar *directory= NULL;
 gboolean overwrite_tables= FALSE;
 gboolean enable_binlog= FALSE;
-
+gchar *source_db= NULL;
 static GMutex *init_mutex= NULL;
 
 guint errors= 0;
@@ -60,6 +60,7 @@ static GOptionEntry entries[] =
 	{ "queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count, "Number of queries per transaction, default 1000", NULL },
 	{ "overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables, "Drop tables if they already exist", NULL },
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
+	{ "source-db", 's', 0, G_OPTION_ARG_STRING, &source_db, "Database to restore", NULL },
 	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
@@ -96,6 +97,10 @@ int main(int argc, char *argv[]) {
 	g_thread_init(NULL);
 
 	init_mutex= g_mutex_new();
+
+	if(db == NULL && source_db != NULL){
+		db = g_strdup(source_db);
+	}
 
 	context= g_option_context_new("multi-threaded MySQL loader");
 	GOptionGroup *main_group= g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
@@ -196,16 +201,20 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (g_strrstr(filename, "-schema.sql")) {
-			add_schema(filename, conn);
+		if (!source_db || g_str_has_prefix(filename, source_db)){
+			if (g_strrstr(filename, "-schema.sql")) {
+				add_schema(filename, conn);
+			}
 		}
 	}
 
 	g_dir_rewind(dir);
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && !g_strrstr(filename, "-schema-post.sql") && !g_strrstr(filename, "-schema-create.sql") && g_strrstr(filename, ".sql")) {
-			add_table(filename, conf);
+		if (!source_db || g_str_has_prefix(filename, source_db)){
+			if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && !g_strrstr(filename, "-schema-post.sql") && !g_strrstr(filename, "-schema-create.sql") && g_strrstr(filename, ".sql")) {
+				add_table(filename, conf);
+			}
 		}
 	}
 
@@ -226,8 +235,10 @@ void restore_schema_view(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (g_strrstr(filename, "-schema-view.sql")) {
-			add_schema(filename, conn);
+		if (!source_db || g_str_has_prefix(filename, source_db)){
+			if (g_strrstr(filename, "-schema-view.sql")) {
+				add_schema(filename, conn);
+			}
 		}
 	}
 
@@ -251,12 +262,15 @@ void restore_schema_triggers(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (g_strrstr(filename, "-schema-triggers.sql")) {
-			split_file= g_strsplit(filename, ".", 0);
-			database= split_file[0];
-			split_table= g_strsplit(split_file[1], "-schema", 0);
-			table= split_table[0];
-			restore_data(conn, database, table, filename, TRUE, TRUE);
+		if (!source_db || g_str_has_prefix(filename, source_db)){
+			if (g_strrstr(filename, "-schema-triggers.sql")) {
+				split_file= g_strsplit(filename, ".", 0);
+				database= split_file[0];
+				split_table= g_strsplit(split_file[1], "-schema", 0);
+				table= split_table[0];
+				g_message("Restoring triggers for `%s`.`%s`", database, table);
+				restore_data(conn, database, table, filename, TRUE, TRUE);
+			}
 		}
 	}
 
@@ -282,11 +296,14 @@ void restore_schema_post(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (g_strrstr(filename, "-schema-post.sql")) {
-			split_file= g_strsplit(filename, "-schema-post.sql", 0);
-			database= split_file[0];
-			//table= split_file[0]; //NULL
-			restore_data(conn, database, NULL, filename, TRUE, TRUE);
+		if (!source_db || g_str_has_prefix(filename, source_db)){
+			if (g_strrstr(filename, "-schema-post.sql")) {
+				split_file= g_strsplit(filename, "-schema-post.sql", 0);
+				database= split_file[0];
+				//table= split_file[0]; //NULL
+				g_message("Restoring routines and events for `%s`", database);
+				restore_data(conn, database, NULL, filename, TRUE, TRUE);
+			}
 		}
 	}
 
@@ -295,29 +312,27 @@ void restore_schema_post(MYSQL *conn){
 }
 
 void create_database(MYSQL *conn, gchar *database){
-	/*
-	GError *error= NULL;
-	GDir* dir= g_dir_open(directory, 0, &error);
 
-	if (error) {
-		g_critical("cannot open directory %s, %s\n", directory, error->message);
-		errors++;
-		return;
-	}
-*/
-	const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
-	const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
+	gchar* query = NULL;
 
-	if (!g_file_test (filename, G_FILE_TEST_EXISTS)){
-		restore_data(conn, database, NULL, filename, TRUE, FALSE);
-	}else if (!g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
-		restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
+	if(!(db != NULL && g_ascii_strcasecmp(db, source_db))){
+		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
+		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
+
+		if (!g_file_test (filename, G_FILE_TEST_EXISTS)){
+			restore_data(conn, database, NULL, filename, TRUE, FALSE);
+		}else if (!g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
+			restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
+		}else{
+			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
+			mysql_query(conn, query);
+		}
 	}else{
-		gchar* query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
+		query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
 		mysql_query(conn, query);
-		g_free(query);
 	}
 
+	g_free(query);
 	return;
 }
 
