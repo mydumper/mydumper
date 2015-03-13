@@ -108,12 +108,28 @@ The :program:`mydumper` tool has several available options:
 .. option:: --no-schemas, -m
 
    Do not dump schemas with the data
+   
+.. option:: --no-data, -d
+
+   Do not dump table data
+   
+.. option:: --triggers, -G
+
+   Dump triggers
+
+.. option:: --events, -E
+
+   Dump events
+
+.. option:: --routines, -R
+
+   Dump stored procedures and functions
 
 .. option:: --long-query-guard, -l
 
    Timeout for long query execution in seconds, default 60
 
-.. option:: --kill-long-queries
+.. option:: --kill-long-queries, -K
 
    Kill long running queries instead of aborting the dump
 

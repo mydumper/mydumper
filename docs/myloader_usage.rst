@@ -76,6 +76,10 @@ The :program:`myloader` tool has several available options:
       errors.  Alternatively this scenario may give unpredictable results with
       :option:`--overwrite-tables`.
 
+.. option:: --source-db, -s
+
+   Database to restore, useful in combination with --database
+   
 .. option:: --queries-per-transaction, -q
 
    Number of INSERT queries to execute per transaction during restore, default
