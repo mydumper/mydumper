@@ -1283,7 +1283,10 @@ void start_dump(MYSQL *conn)
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
 			dump_database(conn, row[0], nufile, &conf);
-			dump_create_database(conn, row[0]);
+			/* Checks PCRE expressions on 'database' string */
+			if (regexstring == NULL || check_regex(row[0],NULL))
+				dump_create_database(conn, row[0]);
+
 		}
 		mysql_free_result(databases);
 
