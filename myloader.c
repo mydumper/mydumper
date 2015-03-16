@@ -315,7 +315,7 @@ void create_database(MYSQL *conn, gchar *database){
 
 	gchar* query = NULL;
 
-	if(!(db != NULL && g_ascii_strcasecmp(db, source_db))){
+	if(!(source_db != NULL && g_ascii_strcasecmp(db, source_db))){
 		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
 		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
 
@@ -346,7 +346,6 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 
 	gchar* query= g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
 	if (mysql_query(conn, query)) {
-		g_free(query);
 		g_message("Creating database `%s`", db ? db : database);
                 create_database(conn, database);
 	} else {
@@ -358,7 +357,6 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 			create_database(conn, database);
 		}
 	}
-	g_free(query);
 
 	if (overwrite_tables) {
 		g_message("Dropping table or view (if exists) `%s`.`%s`", db ? db : database, table);
@@ -366,8 +364,9 @@ void add_schema(const gchar* filename, MYSQL *conn) {
 		mysql_query(conn, query);
 		query= g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database, table);
 		mysql_query(conn, query);
-		g_free(query);
 	}
+
+	g_free(query);
 
 	g_message("Creating table `%s`.`%s`", db ? db : database, table);
 	restore_data(conn, database, table, filename, TRUE, TRUE);
