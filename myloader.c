@@ -315,7 +315,7 @@ void create_database(MYSQL *conn, gchar *database){
 
 	gchar* query = NULL;
 
-	if(!(source_db != NULL && g_ascii_strcasecmp(db, source_db))){
+	if((db == NULL && source_db == NULL) || (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))){
 		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
 		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
 
