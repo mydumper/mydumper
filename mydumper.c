@@ -1268,7 +1268,8 @@ void start_dump(MYSQL *conn)
 
 	if (db) {
 		dump_database(conn, db, nufile, &conf);
-		dump_create_database(conn, db);
+		if(!no_schemas)
+			dump_create_database(conn, db);
 	} else if (tables) {
 		get_tables(conn, &conf);
 	} else {
@@ -1284,7 +1285,7 @@ void start_dump(MYSQL *conn)
 				continue;
 			dump_database(conn, row[0], nufile, &conf);
 			/* Checks PCRE expressions on 'database' string */
-			if (regexstring == NULL || check_regex(row[0],NULL))
+			if (!no_schemas && (regexstring == NULL || check_regex(row[0],NULL)))
 				dump_create_database(conn, row[0]);
 
 		}
