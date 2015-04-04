@@ -2130,6 +2130,11 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 
 	g_free(query);
 
+	 if (!compress_output)
+		fclose((FILE *)outfile);
+	else
+		gzclose((gzFile)outfile);
+
 	g_string_free(statement, TRUE);
 	g_strfreev(splited_st);
 	if (result)
@@ -2201,6 +2206,11 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table, char *filename
 	}
 
 	g_free(query);
+
+	 if (!compress_output)
+		fclose((FILE *)outfile);
+	else
+		gzclose((gzFile)outfile);
 
 	g_string_free(statement, TRUE);
 	g_strfreev(splited_st);
