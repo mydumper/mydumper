@@ -268,7 +268,7 @@ void restore_schema_triggers(MYSQL *conn){
 				database= split_file[0];
 				split_table= g_strsplit(split_file[1], "-schema", 0);
 				table= split_table[0];
-				g_message("Restoring triggers for `%s`.`%s`", database, table);
+				g_message("Restoring triggers for `%s`.`%s`", db ? db : database, table);
 				restore_data(conn, database, table, filename, TRUE, TRUE);
 			}
 		}
@@ -301,7 +301,7 @@ void restore_schema_post(MYSQL *conn){
 				split_file= g_strsplit(filename, "-schema-post.sql", 0);
 				database= split_file[0];
 				//table= split_file[0]; //NULL
-				g_message("Restoring routines and events for `%s`", database);
+				g_message("Restoring routines and events for `%s`", db ? db : database);
 				restore_data(conn, database, NULL, filename, TRUE, TRUE);
 			}
 		}
