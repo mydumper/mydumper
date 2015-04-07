@@ -319,9 +319,9 @@ void create_database(MYSQL *conn, gchar *database){
 		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
 		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
 
-		if (!g_file_test (filename, G_FILE_TEST_EXISTS)){
+		if (g_file_test (filename, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filename, TRUE, FALSE);
-		}else if (!g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
+		}else if (g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
 		}else{
 			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
