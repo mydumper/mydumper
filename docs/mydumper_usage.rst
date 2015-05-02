@@ -60,7 +60,7 @@ The :program:`mydumper` tool has several available options:
 
    Database to dump
 
-.. option:: --table-list, -T
+.. option:: --tables-list, -T
 
    A comma separated list of tables to dump
 
