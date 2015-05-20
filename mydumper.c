@@ -1195,7 +1195,7 @@ void start_dump(MYSQL *conn)
 	}
 	
 	//tokudb do not support consistent snapshot
-	mysql_query(conn,"SHOW VARIABLES LIKE 'tokudb_version';");
+	mysql_query(conn,"SELECT @@tokudb_version");
 	MYSQL_RES *rest = mysql_store_result(conn);
 	if(rest != NULL && mysql_num_rows(rest)){
 		mysql_free_result(rest);
