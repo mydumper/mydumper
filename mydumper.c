@@ -312,9 +312,12 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	char *masterlog=NULL;
 	char *masterpos=NULL;
 
+	char *connname=NULL;
 	char *slavehost=NULL;
 	char *slavelog=NULL;
 	char *slavepos=NULL;
+	guint isms;
+	guint i;
 
 	mysql_query(conn,"SHOW MASTER STATUS");
 	master=mysql_store_result(conn);
@@ -323,12 +326,31 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 		masterpos=row[1];
 	}
 
-	mysql_query(conn, "SHOW SLAVE STATUS");
+	if (masterlog) {
+		fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\n", masterlog, masterpos);
+		g_message("Written master status");
+	}
+
+	isms = 0;
+	mysql_query(conn,"SELECT @@default_master_connection");
+	MYSQL_RES *rest = mysql_store_result(conn);
+	if(rest != NULL && mysql_num_rows(rest)){
+		mysql_free_result(rest);
+		g_message("Multisource slave detected.");
+		isms = 1;
+	}
+
+	if (isms)
+		mysql_query(conn, "SHOW ALL SLAVES STATUS");
+	else
+		mysql_query(conn, "SHOW SLAVE STATUS");
+
 	slave=mysql_store_result(conn);
-	guint i;
-	if (slave && (row=mysql_fetch_row(slave))) {
+	while (slave && (row=mysql_fetch_row(slave))) {
 		fields=mysql_fetch_fields(slave);
 		for (i=0; i<mysql_num_fields(slave);i++) {
+			if (isms && !strcasecmp("connection_name",fields[i].name))
+				connname=row[i];
 			if (!strcasecmp("exec_master_log_pos",fields[i].name)) {
 				slavepos=row[i];
 			} else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
@@ -337,17 +359,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 				slavehost=row[i];
 			}
 		}
-	}
-
-	if (masterlog) {
-		fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\n", masterlog, masterpos);
-		g_message("Written master status");
-	}
-
-	if (slavehost) {
-		fprintf(file, "SHOW SLAVE STATUS:\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\n",
-			slavehost, slavelog, slavepos);
-		g_message("Written slave status");
+		if (slavehost) {
+			fprintf(file, "SHOW SLAVE STATUS:");
+			if (isms)
+				fprintf(file, "\n\tConnection name: %s",connname);
+			fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\n",slavehost, slavelog, slavepos);
+			g_message("Written slave status");
+		}
 	}
 
 	fflush(file);
