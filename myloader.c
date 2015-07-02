@@ -171,11 +171,11 @@ int main(int argc, char *argv[]) {
 		g_thread_join(threads[n]);
 	}
 
+	restore_schema_post(conn);
+
 	restore_schema_view(conn);
 
 	restore_schema_triggers(conn);
-
-	restore_schema_post(conn);
 
 	g_async_queue_unref(conf.queue);
 	mysql_close(conn);

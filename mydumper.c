@@ -71,6 +71,7 @@ int detected_server= 0;
 int lock_all_tables=0;
 guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
+gboolean have_snapshot_cloning= FALSE;
 
 gchar *ignore_engines= NULL;
 char **ignore= NULL;
@@ -2026,45 +2027,6 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 	GString* statement = g_string_sized_new(statement_size);
 
 	if(dump_routines){
-		// get sp
-		query= g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = '%s'", database);
-		if (mysql_query(conn, query) || !(result= mysql_store_result(conn))) {
-			if(success_on_1146 && mysql_errno(conn) == 1146){
-				g_warning("Error dumping stored procedures from %s: %s", database, mysql_error(conn));
-			}else{
-				g_critical("Error dumping stored procedures from %s: %s", database, mysql_error(conn));
-				errors++;
-			}
-			g_free(query);
-			return;
-		}
-
-		while((row = mysql_fetch_row(result))){
-			set_charset(statement, row[8], row[9]);
-			g_string_append_printf(statement,"DROP PROCEDURE IF EXISTS `%s`;\n",row[1]);
-			if (!write_data((FILE *)outfile,statement)) {
-				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
-				errors++;
-				return;
-			}
-			g_string_set_size(statement, 0);
-			query= g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database, row[1]);
-			mysql_query(conn, query);
-			result2= mysql_store_result(conn);
-			row2 = mysql_fetch_row(result2);
-			g_string_printf(statement,"%s",row2[2]);
-			splited_st = g_strsplit(statement->str,";\n",0);
-			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-			g_string_append(statement, ";\n");
-			restore_charset(statement);
-			if (!write_data((FILE *)outfile,statement)) {
-				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
-				errors++;
-				return;
-			}
-			g_string_set_size(statement, 0);
-		}
-
 		// get functions
 		query= g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = '%s'", database);
 		if (mysql_query(conn, query) || !(result= mysql_store_result(conn))) {
@@ -2098,6 +2060,45 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename){
 			restore_charset(statement);
 			if (!write_data((FILE *)outfile,statement)) {
 				g_critical("Could not write function data for %s.%s", database,row[1] );
+				errors++;
+				return;
+			}
+			g_string_set_size(statement, 0);
+		}
+
+		// get sp
+		query= g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = '%s'", database);
+		if (mysql_query(conn, query) || !(result= mysql_store_result(conn))) {
+			if(success_on_1146 && mysql_errno(conn) == 1146){
+				g_warning("Error dumping stored procedures from %s: %s", database, mysql_error(conn));
+			}else{
+				g_critical("Error dumping stored procedures from %s: %s", database, mysql_error(conn));
+				errors++;
+			}
+			g_free(query);
+			return;
+		}
+
+		while((row = mysql_fetch_row(result))){
+			set_charset(statement, row[8], row[9]);
+			g_string_append_printf(statement,"DROP PROCEDURE IF EXISTS `%s`;\n",row[1]);
+			if (!write_data((FILE *)outfile,statement)) {
+				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
+				errors++;
+				return;
+			}
+			g_string_set_size(statement, 0);
+			query= g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database, row[1]);
+			mysql_query(conn, query);
+			result2= mysql_store_result(conn);
+			row2 = mysql_fetch_row(result2);
+			g_string_printf(statement,"%s",row2[2]);
+			splited_st = g_strsplit(statement->str,";\n",0);
+			g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+			g_string_append(statement, ";\n");
+			restore_charset(statement);
+			if (!write_data((FILE *)outfile,statement)) {
+				g_critical("Could not write stored procedure data for %s.%s", database,row[1] );
 				errors++;
 				return;
 			}
