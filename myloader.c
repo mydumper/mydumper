@@ -139,6 +139,11 @@ int main(int argc, char *argv[]) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
+
+	if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
+		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
+	}
+
 	if (!enable_binlog)
 		mysql_query(conn, "SET SQL_LOG_BIN=0");
 
@@ -405,6 +410,10 @@ void *process_queue(struct thread_data *td) {
 		exit(EXIT_FAILURE);
 	}
 
+	if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
+		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+	}
+
 	if (!enable_binlog)
 		mysql_query(thrconn, "SET SQL_LOG_BIN=0");
 
@@ -426,11 +435,11 @@ void *process_queue(struct thread_data *td) {
 				g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id, rj->database, rj->table, rj->part);
 				restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE);
 				if (rj->database) g_free(rj->database);
-                                if (rj->table) g_free(rj->table);
-                                if (rj->filename) g_free(rj->filename);
-                                g_free(rj);
-                                g_free(job);
-                                break;
+				if (rj->table) g_free(rj->table);
+				if (rj->filename) g_free(rj->filename);
+				g_free(rj);
+				g_free(job);
+				break;
 			case JOB_SHUTDOWN:
 				g_message("Thread %d shutting down", td->thread_id);
 				if (thrconn)
