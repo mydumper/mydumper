@@ -206,7 +206,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, source_db)){
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)){
 			if (g_strrstr(filename, "-schema.sql")) {
 				add_schema(filename, conn);
 			}
@@ -216,8 +216,13 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	g_dir_rewind(dir);
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, source_db)){
-			if (!g_strrstr(filename, "-schema.sql") && !g_strrstr(filename, "-schema-view.sql") && !g_strrstr(filename, "-schema-triggers.sql") && !g_strrstr(filename, "-schema-post.sql") && !g_strrstr(filename, "-schema-create.sql") && g_strrstr(filename, ".sql")) {
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
+			if (!g_strrstr(filename, "-schema.sql")
+			 && !g_strrstr(filename, "-schema-view.sql")
+			 && !g_strrstr(filename, "-schema-triggers.sql")
+			 && !g_strrstr(filename, "-schema-post.sql")
+			 && !g_strrstr(filename, "-schema-create.sql")
+			 && g_strrstr(filename, ".sql")) {
 				add_table(filename, conf);
 			}
 		}
