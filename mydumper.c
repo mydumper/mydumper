@@ -611,6 +611,9 @@ void *process_queue_less_locking(struct thread_data *td) {
 	struct schema_job* sj= NULL;
 	struct view_job* vj= NULL;
 	struct schema_post_job* sp= NULL;
+        #ifdef WITH_BINLOG
+        struct binlog_job* bj= NULL;
+        #endif
 	GList* glj;
 	int first = 1;
 	GString *query= g_string_sized_new(1024);
