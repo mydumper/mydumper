@@ -206,7 +206,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)){
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (g_strrstr(filename, "-schema.sql")) {
 				add_schema(filename, conn);
 			}
