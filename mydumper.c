@@ -312,11 +312,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 
 	char *masterlog=NULL;
 	char *masterpos=NULL;
+	char *mastergtid=NULL;
 
 	char *connname=NULL;
 	char *slavehost=NULL;
 	char *slavelog=NULL;
 	char *slavepos=NULL;
+	char *slavegtid=NULL;
 	guint isms;
 	guint i;
 
@@ -325,10 +327,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 	if (master && (row=mysql_fetch_row(master))) {
 		masterlog=row[0];
 		masterpos=row[1];
+		/* Oracle/Percona GTID */
+		if(mysql_num_fields(master) == 5)
+			mastergtid=row[4];
 	}
 
 	if (masterlog) {
-		fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\n", masterlog, masterpos);
+		fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n", masterlog, masterpos,mastergtid);
 		g_message("Written master status");
 	}
 
@@ -358,13 +363,15 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 				slavelog=row[i];
 			} else if (!strcasecmp("master_host",fields[i].name)) {
 				slavehost=row[i];
+			} else if (!strcasecmp("Executed_Gtid_Set",fields[i].name)) {
+				slavegtid=row[i];
 			}
 		}
 		if (slavehost) {
 			fprintf(file, "SHOW SLAVE STATUS:");
 			if (isms)
 				fprintf(file, "\n\tConnection name: %s",connname);
-			fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\n",slavehost, slavelog, slavepos);
+			fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",slavehost, slavelog, slavepos,slavegtid);
 			g_message("Written slave status");
 		}
 	}
