@@ -1764,8 +1764,14 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
 			is_view = 1;
 
+		/* Check for broken tables, i.e. mrg with missing source tbl */
+		if ( !is_view && row[ecol] == NULL ) {
+			g_warning("Broken table detected, please review: %s.%s", database, row[0]);
+			dump = 0;
+		}
+
 		/* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole :-) dumps */
-		if (ignore && !is_view) {
+		if (dump && ignore && !is_view) {
 			for (i = 0; ignore[i] != NULL; i++) {
 				if (g_ascii_strcasecmp(ignore[i], row[ecol]) == 0) {
 					dump = 0;
