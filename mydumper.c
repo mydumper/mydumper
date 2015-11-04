@@ -306,7 +306,7 @@ gboolean check_regex(char *database, char *table) {
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
-	MYSQL_RES *master=NULL, *slave=NULL;
+	MYSQL_RES *master=NULL, *slave=NULL, *mdb=NULL;
 	MYSQL_FIELD *fields;
 	MYSQL_ROW row;
 
@@ -328,8 +328,16 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 		masterlog=row[0];
 		masterpos=row[1];
 		/* Oracle/Percona GTID */
-		if(mysql_num_fields(master) == 5)
+		if(mysql_num_fields(master) == 5) {
 			mastergtid=row[4];
+		} else {
+			/* Let's try with MariaDB 10.x */
+			mysql_query(conn, "SELECT @@gtid_current_pos");
+			mdb=mysql_store_result(conn);
+			if (mdb && (row=mysql_fetch_row(mdb))) {
+				mastergtid=row[0];
+			}
+		}
 	}
 
 	if (masterlog) {
@@ -363,7 +371,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 				slavelog=row[i];
 			} else if (!strcasecmp("master_host",fields[i].name)) {
 				slavehost=row[i];
-			} else if (!strcasecmp("Executed_Gtid_Set",fields[i].name)) {
+			} else if (!strcasecmp("Executed_Gtid_Set",fields[i].name) || !strcasecmp("Gtid_Slave_Pos",fields[i].name)) {
 				slavegtid=row[i];
 			}
 		}
@@ -381,6 +389,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 		mysql_free_result(master);
 	if (slave)
 		mysql_free_result(slave);
+	if (mdb)
+		mysql_free_result(mdb);
 }
 
 void *process_queue(struct thread_data *td) {
