@@ -5,8 +5,6 @@
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
-It does not support schema dumping and leaves that to 'mysqldump --no-data'
-
 == How to build it? ==
 
 Run:
@@ -47,6 +45,4 @@ Once can use --regex functionality, for example not to dump mysql and test datab
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
 
-== How to exclude MERGE or Federated tables ==
 
-Use same --regex exclusion syntax. Again, engine-specific behaviors are targetted for 0.2
