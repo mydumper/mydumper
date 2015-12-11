@@ -1602,6 +1602,11 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 
 	row=mysql_fetch_row(minmax);
 	MYSQL_FIELD * fields=mysql_fetch_fields(minmax);
+
+	/* Check if all values are NULL */
+	if (row[0] == NULL)
+		goto cleanup;
+
 	char *min=row[0];
 	char *max=row[1];
 
