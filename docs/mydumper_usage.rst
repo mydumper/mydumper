@@ -125,6 +125,10 @@ The :program:`mydumper` tool has several available options:
 
    Dump stored procedures and functions
 
+.. option:: --no-views, -W
+
+   Do not dump views
+
 .. option:: --long-query-guard, -l
 
    Timeout for long query execution in seconds, default 60
