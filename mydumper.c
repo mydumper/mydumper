@@ -95,6 +95,7 @@ gboolean no_locks= FALSE;
 gboolean dump_triggers= FALSE;
 gboolean dump_events= FALSE;
 gboolean dump_routines= FALSE;
+gboolean no_dump_views= FALSE;
 gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
@@ -138,6 +139,7 @@ static GOptionEntry entries[] =
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
 	{ "events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events", NULL },
 	{ "routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines, "Dump stored procedures and functions", NULL },
+	{ "no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
@@ -1794,6 +1796,11 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 				}
 			}
 		}
+
+		/* Skip views */
+		if (is_view && no_dump_views)
+			dump = 0;
+
 		if (!dump)
 			continue;
 
