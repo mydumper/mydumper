@@ -22,6 +22,7 @@ char *username=NULL;
 char *password=NULL;
 char *socket_path=NULL;
 char *db=NULL;
+char *defaults_file=NULL;
 guint port=3306;
 guint num_threads= 4;
 guint verbose=2;
@@ -39,6 +40,7 @@ GOptionEntry common_entries[] =
         { "compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol, "Use compression on the MySQL connection", NULL },
 	{ "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
 	{ "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL },
+	{ "defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file, "Use a specific defaults file",  NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
