@@ -25,6 +25,10 @@ The :program:`myloader` tool has several available options:
 
    Show help text
 
+.. option:: --defaults-file
+
+   Use the given option file. If the file does not exist or is otherwise inaccessible, no failure occurs
+
 .. option:: --host, -h
 
    Hostname of MySQL server to connect to (default localhost)
