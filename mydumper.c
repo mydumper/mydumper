@@ -424,11 +424,12 @@ void *process_queue(struct thread_data *td) {
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
 	}
 	if (mysql_query(thrconn, "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
-		g_warning("Failed to set isolation level: %s", mysql_error(thrconn));
+		g_critical("Failed to set isolation level: %s", mysql_error(thrconn));
+		exit(EXIT_FAILURE);
 	}
 	if (mysql_query(thrconn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
 		g_critical("Failed to start consistent snapshot: %s",mysql_error(thrconn));
-		errors++;
+		exit(EXIT_FAILURE);
 	}
 	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
 		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
