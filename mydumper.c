@@ -99,6 +99,7 @@ gboolean no_dump_views= FALSE;
 gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
+gboolean no_backup_locks = FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
@@ -141,6 +142,7 @@ static GOptionEntry entries[] =
 	{ "routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines, "Dump stored procedures and functions", NULL },
 	{ "no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs", NULL },
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
+	{ "no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks, "Do not use Percona backup locks", NULL},
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
@@ -1062,6 +1064,7 @@ void start_dump(MYSQL *conn)
 	struct schema_post *sp;
 	guint n;
 	FILE* nufile = NULL;
+	guint have_backup_locks = 0;
 	
 	for(n=0;n<num_threads;n++){
 		nits[n] = 0;
@@ -1138,7 +1141,28 @@ void start_dump(MYSQL *conn)
 	}
 
 	if (!no_locks) {
-		if(lock_all_tables){
+		// Percona Backup Locks
+		if(!no_backup_locks){
+			mysql_query(conn,"SELECT @@have_backup_locks");
+			MYSQL_RES *rest = mysql_store_result(conn);
+			if(rest != NULL && mysql_num_rows(rest)){
+				mysql_free_result(rest);
+				g_message("Using Percona Backup Locks");
+				have_backup_locks=1;
+			}
+		}
+
+		if(have_backup_locks){
+			if(mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
+				g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will not be consistent: %s",mysql_error(conn));
+				errors++;
+			}
+
+			if(mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
+				g_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will not be consistent: %s",mysql_error(conn));
+				errors++;
+			}
+		}else if(lock_all_tables){
 			// LOCK ALL TABLES
 			GString *query= g_string_sized_new(16777216);
 			gchar *dbtb = NULL;
@@ -1313,6 +1337,8 @@ void start_dump(MYSQL *conn)
 	if (trx_consistency_only){
 		g_message("Transactions started, unlocking tables");
 		mysql_query(conn, "UNLOCK TABLES /* trx-only */");
+		if(have_backup_locks)
+			mysql_query(conn, "UNLOCK BINLOG");
 	}
 
 	if (db) {
@@ -1426,6 +1452,8 @@ void start_dump(MYSQL *conn)
 		g_async_queue_pop(conf.unlock_tables);
 		g_message("Non-InnoDB dump complete, unlocking tables");
 		mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
+		if(have_backup_locks)
+			mysql_query(conn, "UNLOCK BINLOG");
 	}
 	#ifdef WITH_BINLOG
 	if (need_binlogs) {

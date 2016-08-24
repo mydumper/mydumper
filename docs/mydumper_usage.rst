@@ -176,6 +176,10 @@ The :program:`mydumper` tool has several available options:
       
       This will cause inconsistent backups.
 
+.. option:: --no-backup-locks
+
+	Do not use Percona Backup Locks
+
 .. option:: --[skip-]tz-utc
 
    SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data 
