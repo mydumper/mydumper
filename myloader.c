@@ -31,6 +31,7 @@
 #include "common.h"
 #include "myloader.h"
 #include "config.h"
+#include "getPassword.h"
 
 guint commit_count= 1000;
 gchar *directory= NULL;
@@ -113,6 +114,11 @@ int main(int argc, char *argv[]) {
 	}
 	g_option_context_free(context);
 
+	//prompt for password if it's NULL
+	if ( sizeof(password) == 0 || ( password == NULL && askPassword ) ){
+		password = passwordPrompt();
+	}
+
 	if (program_version) {
 		g_print("myloader %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
 		exit(EXIT_SUCCESS);
@@ -129,14 +135,16 @@ int main(int argc, char *argv[]) {
 			g_critical("the specified directory is not a mydumper backup\n");
 			exit(EXIT_FAILURE);
 		}
-	}
+	}	
 
 	MYSQL *conn;
 	conn= mysql_init(NULL);
     if (defaults_file != NULL)
     	mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
 	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
-
+	
+	
+	
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
