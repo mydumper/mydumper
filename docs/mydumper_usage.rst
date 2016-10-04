@@ -203,3 +203,7 @@ The :program:`mydumper` tool has several available options:
 .. option:: --use-savepoints
 
    Use savepoints to reduce metadata locking issues, needs SUPER privilege
+   
+.. option:: --complete-insert
+
+   Use complete INSERT statements that include column names.
