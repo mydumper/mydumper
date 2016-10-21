@@ -101,6 +101,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 
+
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
 GList *table_schemas= NULL;
@@ -111,6 +112,7 @@ gint non_innodb_done= 0;
 guint less_locking_threads = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
+guint complete_insert = 0;
 
 // For daemon mode, 0 or 1
 guint dump_number= 0;
@@ -159,6 +161,7 @@ static GOptionEntry entries[] =
 	{ "lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables, "Use LOCK TABLE for all, instead of FTWRL", NULL},
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
+	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -2762,7 +2765,18 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			if (complete_insert) {
+				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				for (i = 0; i < num_fields; ++i) {
+					if (i > 0) {
+						g_string_append_c(statement, ',');
+					}
+					g_string_append_printf(statement, "`%s`", fields[i].name);
+				}
+				g_string_append(statement, ") VALUES");
+			} else {
+				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			}
 			num_rows_st = 0;
 		}
 		
@@ -2842,7 +2856,18 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_string_append(statement, statement_row->str);
 		}
 		else {
-			g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			if (complete_insert) {
+				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				for (i = 0; i < num_fields; ++i) {
+					if (i > 0) {
+						g_string_append_c(statement, ',');
+					}
+					g_string_append_printf(statement, "`%s`", fields[i].name);
+				}
+				g_string_append(statement, ") VALUES");
+			} else {
+				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			}
 			g_string_append(statement, statement_row->str);
 		}
 	}
