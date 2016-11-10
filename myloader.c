@@ -133,9 +133,9 @@ int main(int argc, char *argv[]) {
 
 	MYSQL *conn;
 	conn= mysql_init(NULL);
+	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
 	if (defaults_file != NULL) {
 		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-		mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
 	}
 
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
@@ -408,9 +408,9 @@ void *process_queue(struct thread_data *td) {
 	MYSQL *thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
+	mysql_options(thrconn, MYSQL_READ_DEFAULT_GROUP, "myloader");
 	if (defaults_file != NULL) {
 		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-		mysql_options(thrconn, MYSQL_READ_DEFAULT_GROUP, "myloader");
 	}
 
 	if (compress_protocol)
