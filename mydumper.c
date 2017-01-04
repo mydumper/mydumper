@@ -1023,8 +1023,9 @@ void *binlog_thread(void *data) {
 	MYSQL_ROW row;
 	MYSQL *conn;
 	conn = mysql_init(NULL);
-    if (defaults_file != NULL)
-    	mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
+	if (defaults_file != NULL) {
+		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
+	}
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
 	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
