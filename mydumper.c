@@ -339,7 +339,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 			mastergtid=row[4];
 		} else {
 			/* Let's try with MariaDB 10.x */
-			mysql_query(conn, "SELECT @@gtid_current_pos");
+			/* Use gtid_binlog_pos due to issue with gtid_current_pos with galera cluster, gtid_binlog_pos works as well with normal mariadb server https://jira.mariadb.org/browse/MDEV-10279 */
+			mysql_query(conn, "SELECT @@gtid_binlog_pos");
 			mdb=mysql_store_result(conn);
 			if (mdb && (row=mysql_fetch_row(mdb))) {
 				mastergtid=row[0];
