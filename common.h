@@ -26,6 +26,7 @@ char *defaults_file=NULL;
 guint port=3306;
 guint num_threads= 4;
 guint verbose=2;
+guint ssl= 0;
 gboolean compress_protocol= FALSE;
 gboolean program_version= FALSE;
 
@@ -41,6 +42,7 @@ GOptionEntry common_entries[] =
         { "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
         { "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL },
         { "defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file, "Use a specific defaults file",  NULL },
+        { "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
         { NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 

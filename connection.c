@@ -1,0 +1,45 @@
+/* 
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+    Authors:        Aaron Brady, Shopify (insom)
+*/
+
+#include <pcre.h>
+#include <glib.h>
+#include <string.h>
+#include "connection.h"
+
+extern char *defaults_file;
+extern guint ssl;
+extern guint compress_protocol;
+
+void configure_connection(MYSQL *conn, const char *name) {
+	if (defaults_file != NULL) {
+		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
+	}
+	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
+
+	if (compress_protocol)
+		mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
+
+	unsigned int i;
+	if (ssl == 1) {
+		i = SSL_MODE_REQUIRED;
+	} else {
+		i = SSL_MODE_DISABLED;
+	}
+
+	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
+	mysql_ssl_set(conn,NULL,NULL,NULL,NULL,NULL);
+}

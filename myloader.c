@@ -30,6 +30,7 @@
 #include <zlib.h>
 #include "common.h"
 #include "myloader.h"
+#include "connection.h"
 #include "config.h"
 
 guint commit_count= 1000;
@@ -37,7 +38,6 @@ gchar *directory= NULL;
 gboolean overwrite_tables= FALSE;
 gboolean enable_binlog= FALSE;
 gchar *source_db= NULL;
-int ssl= 0;
 static GMutex *init_mutex= NULL;
 
 guint errors= 0;
@@ -63,7 +63,6 @@ static GOptionEntry entries[] =
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ "source-db", 's', 0, G_OPTION_ARG_STRING, &source_db, "Database to restore", NULL },
 	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
-	{ "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -136,20 +135,7 @@ int main(int argc, char *argv[]) {
 	MYSQL *conn;
 	conn= mysql_init(NULL);
 
-	if (defaults_file != NULL) {
-		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
-
-	unsigned int i;
-	if (ssl == 1) {
-		i = SSL_MODE_REQUIRED;
-	} else {
-		i = SSL_MODE_DISABLED;
-	}
-
-	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
-	mysql_ssl_set(conn,NULL,NULL,NULL,NULL,NULL);
+	configure_connection(conn,"myloader");
 
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
@@ -421,23 +407,7 @@ void *process_queue(struct thread_data *td) {
 	MYSQL *thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn, MYSQL_READ_DEFAULT_GROUP, "myloader");
-
-	if (compress_protocol)
-		mysql_options(thrconn, MYSQL_OPT_COMPRESS, NULL);
-
-	unsigned int i;
-	if (ssl == 1) {
-		i = SSL_MODE_REQUIRED;
-	} else {
-		i = SSL_MODE_DISABLED;
-	}
-
-	mysql_options(thrconn,MYSQL_OPT_SSL_MODE,&i);
-	mysql_ssl_set(thrconn,NULL,NULL,NULL,NULL,NULL);
+	configure_connection(thrconn,"myloader");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to MySQL server: %s", mysql_error(thrconn));
