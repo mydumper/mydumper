@@ -69,6 +69,7 @@ int compress_output= 0;
 int killqueries= 0;
 int detected_server= 0;
 int lock_all_tables=0;
+int ssl= 0;
 guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
 gboolean have_snapshot_cloning= FALSE;
@@ -162,6 +163,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+	{ "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -415,6 +417,16 @@ void *process_queue(struct thread_data *td) {
 	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
+	unsigned int i;
+	if (ssl == 1) {
+		i = SSL_MODE_REQUIRED;
+	} else {
+		i = SSL_MODE_DISABLED;
+	}
+
+	mysql_options(thrconn,MYSQL_OPT_SSL_MODE,&i);
+	mysql_ssl_set(thrconn,NULL,NULL,NULL,NULL,NULL);
+
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -619,6 +631,16 @@ void *process_queue_less_locking(struct thread_data *td) {
 	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
 
+	unsigned int i;
+	if (ssl == 1) {
+		i = SSL_MODE_REQUIRED;
+	} else {
+		i = SSL_MODE_DISABLED;
+	}
+
+	mysql_options(thrconn,MYSQL_OPT_SSL_MODE,&i);
+	mysql_ssl_set(thrconn,NULL,NULL,NULL,NULL,NULL);
+
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -789,6 +811,16 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 
 	if (compress_protocol)
 		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+
+	unsigned int i;
+	if (ssl == 1) {
+		i = SSL_MODE_REQUIRED;
+	} else {
+		i = SSL_MODE_DISABLED;
+	}
+
+	mysql_options(thrconn,MYSQL_OPT_SSL_MODE,&i);
+	mysql_ssl_set(thrconn,NULL,NULL,NULL,NULL,NULL);
 
 	int timeout= 1;
 	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);
