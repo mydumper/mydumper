@@ -23,6 +23,11 @@ char *password=NULL;
 char *socket_path=NULL;
 char *db=NULL;
 char *defaults_file=NULL;
+char *key=NULL;
+char *cert=NULL;
+char *ca=NULL;
+char *capath=NULL;
+char *cipher=NULL;
 guint port=3306;
 guint num_threads= 4;
 guint verbose=2;
@@ -43,6 +48,11 @@ GOptionEntry common_entries[] =
         { "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL },
         { "defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file, "Use a specific defaults file",  NULL },
         { "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
+        { "key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file", NULL },
+        { "cert", 0, 0, G_OPTION_ARG_STRING, &cert, "The path name to the certificate file", NULL },
+        { "ca", 0, 0, G_OPTION_ARG_STRING, &ca, "The path name to the certificate authority file", NULL },
+        { "capath", 0, 0, G_OPTION_ARG_STRING, &capath, "The path name to a directory that contains trusted SSL CA certificates in PEM format", NULL },
+        { "cipher", 0, 0, G_OPTION_ARG_STRING, &cipher, "A list of permissible ciphers to use for SSL encryption", NULL },
         { NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 

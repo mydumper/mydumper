@@ -21,6 +21,11 @@
 #include "connection.h"
 
 extern char *defaults_file;
+extern char *key;
+extern char *cert;
+extern char *ca;
+extern char *capath;
+extern char *cipher;
 extern guint ssl;
 extern guint compress_protocol;
 
@@ -41,5 +46,5 @@ void configure_connection(MYSQL *conn, const char *name) {
 	}
 
 	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
-	mysql_ssl_set(conn,NULL,NULL,NULL,NULL,NULL);
+	mysql_ssl_set(conn,key,cert,ca,capath,cipher);
 }
