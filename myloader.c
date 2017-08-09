@@ -135,16 +135,12 @@ int main(int argc, char *argv[]) {
 			g_critical("the specified directory is not a mydumper backup\n");
 			exit(EXIT_FAILURE);
 		}
-	}	
-
+	}
 	MYSQL *conn;
 	conn= mysql_init(NULL);
     if (defaults_file != NULL)
     	mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
 	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
-	
-	
-	
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
