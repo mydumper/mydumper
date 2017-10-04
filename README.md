@@ -1,15 +1,18 @@
-== What is mydumper? Why? ==
+# What is mydumper? Why?
 
 * Parallelism (hence, speed) and performance (avoids expensive character set conversion routines, efficient code overall)
 * Easier to manage output (separate files for tables, dump metadata, etc, easy to view/parse data)
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
-== How to build it? ==
+## How to build it?
 
 Run:
- cmake .
- make
+
+```bash
+cmake .
+make
+```
 
 One needs to install development versions of required libaries (MySQL, GLib, ZLib, PCRE):
 NOTE: you must use the correspondent mysql devel package.
@@ -24,7 +27,7 @@ One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PAT
 
 Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
 
-== How does consistent snapshot work? ==
+## How does consistent snapshot work?
 
 This is all done following best MySQL practices and traditions:
 
@@ -37,11 +40,13 @@ This is all done following best MySQL practices and traditions:
 
 This for now does not provide consistent snapshots for non-transactional engines - support for that is expected in 0.2 :)
 
-== How to exclude (or include) databases? ==
+## How to exclude (or include) databases?
 
 Once can use --regex functionality, for example not to dump mysql and test databases:
 
+```bash
  mydumper --regex '^(?!(mysql|test))'
+```
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
 
