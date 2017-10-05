@@ -2457,7 +2457,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 		g_string_append(statement, ",\n");
 		g_string_append_printf(statement, "`%s` int", row[0]);
 	}
-	g_string_append(statement, "\n)ENGINE=MyISAM;\n");
+	g_string_append(statement, "\n);\n");
 
 	if (!write_data((FILE *)outfile, statement)) {
 		g_critical("Could not write view schema for %s.%s", database, table);
