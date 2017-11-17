@@ -2811,9 +2811,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, "CONVERT(");
 				g_string_append_c(statement_row,'\"');
 				g_string_append(statement_row,escaped->str);
 				g_string_append_c(statement_row,'\"');
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, " USING UTF8MB4)");
 			}
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
