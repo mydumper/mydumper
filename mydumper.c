@@ -100,6 +100,7 @@ gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
+gboolean insert_ignore = FALSE;
 
 
 GList *innodb_tables= NULL;
@@ -137,6 +138,7 @@ static GOptionEntry entries[] =
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
+	{ "insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore, "Dump rows with INSERT IGNORE", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
@@ -2769,7 +2771,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 			}
 			if (complete_insert) {
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2778,7 +2784,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			num_rows_st = 0;
 		}
@@ -2860,7 +2870,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		}
 		else {
 			if (complete_insert) {
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2869,7 +2883,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			g_string_append(statement, statement_row->str);
 		}
