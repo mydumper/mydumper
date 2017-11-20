@@ -58,6 +58,11 @@ const char BINLOG_DIRECTORY[]= "binlog_snapshot";
 const char DAEMON_BINLOGS[]= "binlogs";
 #endif
 
+/* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
+#ifndef MYSQL_TYPE_JSON
+#define MYSQL_TYPE_JSON 245
+#endif
+
 static GMutex * init_mutex = NULL;
 
 /* Program options */
