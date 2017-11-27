@@ -77,6 +77,8 @@ gchar *ignore_engines= NULL;
 char **ignore= NULL;
 
 gchar *tables_list= NULL;
+GSequence *tables_skiplist= NULL;
+gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
 GList *no_updated_tables=NULL;
 
@@ -130,6 +132,7 @@ static GOptionEntry entries[] =
 {
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
+	{ "omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file, "File containing a list of database.table entries to skip, one per line (skips before applying regex option)", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory, "Directory to output files to",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes, default 1000000", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows. This option turns off --chunk-filesize", NULL},
@@ -191,6 +194,9 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
+gboolean check_skiplist(char *database, char *table);
+int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
+void read_tables_skiplist(const gchar * filename);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 #ifdef WITH_BINLOG
@@ -312,6 +318,68 @@ gboolean check_regex(char *database, char *table) {
 
 	return (rc>0)?TRUE:FALSE;
 }
+
+/* Check database.table string against skip list; returns TRUE if found */
+
+gboolean check_skiplist(char *database, char *table) {
+	if (g_sequence_lookup(
+		tables_skiplist,
+		g_strdup_printf("%s.%s", database, table),
+		tables_skiplist_cmp,
+		NULL
+	)) {
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	};
+}
+
+/* Comparison function for skiplist sort and lookup */
+
+int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
+	/* Not using user_data, but needed for function prototype, shutting up
+	 * compiler warnings about unused variable */
+	(void)user_data;
+	/* Any sorting function would work, as long as its usage is consistent
+	 * between sort and lookup.  strcmp should be one of the fastest. */
+	return strcmp(a, b);
+};
+
+/* Read the list of tables to skip from the given filename, and prepares them
+ * for future lookups. */
+
+void read_tables_skiplist(const gchar * filename) {
+	GIOChannel * tables_skiplist_channel = NULL;
+	gchar      * buf                     = NULL;
+	GError     * error                   = NULL;
+	/* Create skiplist if it does not exist */
+	if (!tables_skiplist) {
+		tables_skiplist = g_sequence_new(NULL);
+	};
+	tables_skiplist_channel = g_io_channel_new_file(filename, "r", &error);
+
+	/* Error opening/reading the file? bail out. */
+	if (!tables_skiplist_channel) {
+		g_critical("cannot read/open file %s, %s\n", filename, error->message);
+		errors++;
+		return;
+	};
+
+	/* Read lines, push them to the list */
+	do {
+		g_io_channel_read_line(tables_skiplist_channel, &buf, NULL, NULL, NULL);
+		if (buf) {
+			g_strchomp(buf);
+			g_sequence_append(tables_skiplist, buf);
+		};
+	} while (buf);
+	g_io_channel_shutdown(tables_skiplist_channel, FALSE, NULL);
+	/* Sort the list, so that lookups work */
+	g_sequence_sort(tables_skiplist, tables_skiplist_cmp, NULL);
+	g_message("Omit list file contains %d tables to skip\n", g_sequence_get_length(tables_skiplist));
+	return;
+};
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
@@ -902,6 +970,10 @@ int main(int argc, char *argv[])
 	if (tables_list)
 		tables = g_strsplit(tables_list, ",", 0);
 
+	/* Process list of tables to omit if specified */
+	if (tables_skiplist_file)
+		read_tables_skiplist(tables_skiplist_file);
+
 	if (daemon_mode) {
 		GError* terror;
 		#ifdef WITH_BINLOG
@@ -1216,6 +1288,8 @@ void start_dump(MYSQL *conn)
 							if (!table_found)
 								lock = 0;
 						}
+						if (lock && tables_skiplist_file && check_skiplist(row[0],row[1]))
+							continue;
 						if (lock && regexstring && !check_regex(row[0],row[1]))
 							continue;
 					
@@ -1874,6 +1948,10 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			continue;
 		}
 
+		/* Checks skip list on 'database.table' string */
+		if (tables_skiplist && check_skiplist(database,row[0]))
+			continue;
+
 		/* Checks PCRE expressions on 'database.table' string */
 		if (regexstring && !check_regex(database,row[0]))
 			continue;
@@ -1946,6 +2024,10 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		}
 		result = mysql_store_result(conn);
 		while ((row = mysql_fetch_row(result)) && !post_dump){
+			/* Checks skip list on 'database.sp' string */
+			if (tables_skiplist && check_skiplist(database,row[1]))
+				continue;
+
 			/* Checks PCRE expressions on 'database.sp' string */
 			if (regexstring && !check_regex(database,row[1]))
 				continue;
@@ -1963,6 +2045,9 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			}
 			result = mysql_store_result(conn);
 			while ((row = mysql_fetch_row(result)) && !post_dump){
+				/* Checks skip list on 'database.sp' string */
+				if (tables_skiplist_file && check_skiplist(database,row[1]))
+					continue;
 				/* Checks PCRE expressions on 'database.sp' string */
 				if (regexstring && !check_regex(database,row[1]))
 					continue;
@@ -1982,6 +2067,9 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		}
 		result = mysql_store_result(conn);
 		while ((row = mysql_fetch_row(result)) && !post_dump){
+			/* Checks skip list on 'database.sp' string */
+			if (tables_skiplist_file && check_skiplist(database,row[1]))
+				continue;
 			/* Checks PCRE expressions on 'database.sp' string */
 			if (regexstring && !check_regex(database,row[1]))
 				continue;
