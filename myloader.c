@@ -36,6 +36,7 @@ guint commit_count= 1000;
 gchar *directory= NULL;
 gboolean overwrite_tables= FALSE;
 gboolean enable_binlog= FALSE;
+gboolean purge_data= FALSE;
 gchar *source_db= NULL;
 static GMutex *init_mutex= NULL;
 
@@ -62,6 +63,7 @@ static GOptionEntry entries[] =
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ "source-db", 's', 0, G_OPTION_ARG_STRING, &source_db, "Database to restore", NULL },
 	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
+	{ "purge-data", 0, 0, G_OPTION_ARG_NONE, &purge_data, "Purge data before insert", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -511,6 +513,12 @@ void restore_data(MYSQL *conn, char *database, char *table, const char *filename
 	
 	if (!is_schema)
 		mysql_query(conn, "START TRANSACTION");
+
+	if(!is_schema && purge_data){
+		g_message("Purging data on `%s`.`%s`", db ? db : database, table);
+		gchar *query= g_strdup_printf("DELETE FROM `%s`.`%s`", db ? db : database, table);
+		mysql_query(conn, query);
+	}
 
 	while (eof == FALSE) {
 		if (read_data(infile, is_compressed, data, &eof)) {
