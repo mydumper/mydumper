@@ -36,6 +36,7 @@ guint commit_count= 1000;
 gchar *directory= NULL;
 gboolean overwrite_tables= FALSE;
 gboolean enable_binlog= FALSE;
+gboolean disable_fk= FALSE;
 gchar *source_db= NULL;
 static GMutex *init_mutex= NULL;
 
@@ -62,6 +63,7 @@ static GOptionEntry entries[] =
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ "source-db", 's', 0, G_OPTION_ARG_STRING, &source_db, "Database to restore", NULL },
 	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
+	{ "disable-fk", 0, 0, G_OPTION_ARG_NONE, &disable_fk, "Disable foreign-key checks", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -428,6 +430,10 @@ void *process_queue(struct thread_data *td) {
 
 	if (!enable_binlog)
 		mysql_query(thrconn, "SET SQL_LOG_BIN=0");
+
+	if(disable_fk){
+		mysql_query(thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0 */");
+	}
 
 	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 	mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
