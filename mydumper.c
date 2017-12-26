@@ -637,6 +637,15 @@ void *process_queue_less_locking(struct thread_data *td) {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
 
+    if ( snapstring ) {
+            char *snap = NULL;
+            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
+                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
+                    exit(EXIT_FAILURE);
+            }
+    }
+
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
 	}
@@ -968,7 +977,7 @@ MYSQL *create_main_connection()
 	}
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
-	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
+	if (!mysql_real_connect(conn, hostname, username, password, "", port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
