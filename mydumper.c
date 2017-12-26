@@ -46,6 +46,7 @@
 #include <math.h>
 
 char *regexstring=NULL;
+char *snapstring=NULL;
 
 const char DIRECTORY[]= "export";
 #ifdef WITH_BINLOG
@@ -162,6 +163,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+    { "tidb-mvcc-snapshot", 'z', 0, G_OPTION_ARG_STRING, &snapstring, "TiDB mvcc snapshot for 'db.table' matching", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -422,6 +424,24 @@ void *process_queue(struct thread_data *td) {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
 	
+    if ( thrconn && snapstring ) {
+            char *snap = NULL;
+            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
+                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
+                    exit(EXIT_FAILURE);
+            }
+    }
+
+    if ( thrconn && db ) {
+            char *runsql = NULL;
+            runsql = g_strdup_printf( "use %s ;", db );
+            //g_warning("use database: %s", runsql);
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)runsql)){
+                    g_warning("Failed to use database in thread: %s", mysql_error(thrconn));
+            }
+    }
+
 	if(use_savepoints && mysql_query(thrconn, "SET SQL_LOG_BIN = 0")){
 		g_critical("Failed to disable binlog for the thread: %s",mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -963,6 +983,25 @@ MYSQL *create_main_connection()
 	}
 
 	detected_server= detect_server(conn);
+
+    if ( conn && snapstring ) {
+            char *snap = NULL;
+            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
+            g_warning("set snapshot: %s", snap);
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, (const char *)snap)){
+                    g_warning("Failed to set snapshot in main: %s", mysql_error(conn));
+                    exit(EXIT_FAILURE);
+            }
+    }
+
+    if ( conn && db ) {
+            char *runsql = NULL;
+            runsql = g_strdup_printf( "use %s ;", db );
+            g_warning("use database: %s", runsql);
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, (const char *)runsql)){
+                    g_warning("Failed to use database in main: %s", mysql_error(conn));
+            }
+    }
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
