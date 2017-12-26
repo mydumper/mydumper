@@ -424,21 +424,12 @@ void *process_queue(struct thread_data *td) {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
 	
-    if ( thrconn && snapstring ) {
+    if ( snapstring ) {
             char *snap = NULL;
             snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
             if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
                     g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
                     exit(EXIT_FAILURE);
-            }
-    }
-
-    if ( thrconn && db ) {
-            char *runsql = NULL;
-            runsql = g_strdup_printf( "use %s ;", db );
-            //g_warning("use database: %s", runsql);
-            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)runsql)){
-                    g_warning("Failed to use database in thread: %s", mysql_error(thrconn));
             }
     }
 
@@ -984,7 +975,7 @@ MYSQL *create_main_connection()
 
 	detected_server= detect_server(conn);
 
-    if ( conn && snapstring ) {
+    if ( snapstring ) {
             char *snap = NULL;
             snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
             g_warning("set snapshot: %s", snap);
@@ -994,7 +985,7 @@ MYSQL *create_main_connection()
             }
     }
 
-    if ( conn && db ) {
+    if ( db ) {
             char *runsql = NULL;
             runsql = g_strdup_printf( "use %s ;", db );
             g_warning("use database: %s", runsql);
