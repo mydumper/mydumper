@@ -22,6 +22,11 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <mysql.h>
+
+#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
+	#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
