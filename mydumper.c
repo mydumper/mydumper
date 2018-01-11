@@ -22,6 +22,11 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <mysql.h>
+
+#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
+	#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -100,6 +105,7 @@ gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
+gboolean insert_ignore = FALSE;
 
 
 GList *innodb_tables= NULL;
@@ -137,6 +143,7 @@ static GOptionEntry entries[] =
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
+	{ "insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore, "Dump rows with INSERT IGNORE", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
@@ -154,7 +161,7 @@ static GOptionEntry entries[] =
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
-	{ "tz-utc", 0, 0, G_OPTION_ARG_NONE, NULL, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
+	{ "tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
 	{ "skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL },
 	{ "use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints, "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL },
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
@@ -339,7 +346,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 			mastergtid=row[4];
 		} else {
 			/* Let's try with MariaDB 10.x */
-			mysql_query(conn, "SELECT @@gtid_current_pos");
+			/* Use gtid_binlog_pos due to issue with gtid_current_pos with galera cluster, gtid_binlog_pos works as well with normal mariadb server https://jira.mariadb.org/browse/MDEV-10279 */
+			mysql_query(conn, "SELECT @@gtid_binlog_pos");
 			mdb=mysql_store_result(conn);
 			if (mdb && (row=mysql_fetch_row(mdb))) {
 				mastergtid=row[0];
@@ -2769,7 +2777,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 			}
 			if (complete_insert) {
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2778,7 +2790,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			num_rows_st = 0;
 		}
@@ -2801,9 +2817,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, "CONVERT(");
 				g_string_append_c(statement_row,'\"');
 				g_string_append(statement_row,escaped->str);
 				g_string_append_c(statement_row,'\"');
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, " USING UTF8MB4)");
 			}
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
@@ -2860,7 +2878,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		}
 		else {
 			if (complete_insert) {
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2869,7 +2891,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			g_string_append(statement, statement_row->str);
 		}
