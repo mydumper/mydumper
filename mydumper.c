@@ -1117,44 +1117,46 @@ void start_dump(MYSQL *conn)
 	   larger than preset value, we terminate the process.
 
 	   This avoids stalling whole server with flush */
+		 
+	if(!no_locks) {
+		if (mysql_query(conn, "SHOW PROCESSLIST")) {
+			g_warning("Could not check PROCESSLIST, no long query guard enabled: %s", mysql_error(conn));
+		} else {
+			MYSQL_RES *res = mysql_store_result(conn);
+			MYSQL_ROW row;
 
-	if (mysql_query(conn, "SHOW PROCESSLIST")) {
-		g_warning("Could not check PROCESSLIST, no long query guard enabled: %s", mysql_error(conn));
-	} else {
-		MYSQL_RES *res = mysql_store_result(conn);
-		MYSQL_ROW row;
-
-		/* Just in case PROCESSLIST output column order changes */
-		MYSQL_FIELD *fields = mysql_fetch_fields(res);
-		guint i;
-		int tcol=-1, ccol=-1, icol=-1;
-		for(i=0; i<mysql_num_fields(res); i++) {
-			if (!strcasecmp(fields[i].name,"Command")) ccol=i;
-			else if (!strcasecmp(fields[i].name,"Time")) tcol=i;
-			else if (!strcasecmp(fields[i].name,"Id")) icol=i;
-		}
-		if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-			g_critical("Error obtaining information from processlist");
-			exit(EXIT_FAILURE);
-		}
-		while ((row=mysql_fetch_row(res))) {
-			if (row[ccol] && strcmp(row[ccol],"Query"))
-				continue;
-			if (row[tcol] && atoi(row[tcol])>longquery) {
-				if (killqueries) {
-					if (mysql_query(conn,p3=g_strdup_printf("KILL %lu",atol(row[icol]))))
-						g_warning("Could not KILL slow query: %s",mysql_error(conn));
-					else
-						g_warning("Killed a query that was running for %ss",row[tcol]);
-					g_free(p3);
-				} else {
-					g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
-						"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
-					exit(EXIT_FAILURE);
+			/* Just in case PROCESSLIST output column order changes */
+			MYSQL_FIELD *fields = mysql_fetch_fields(res);
+			guint i;
+			int tcol=-1, ccol=-1, icol=-1;
+			for(i=0; i<mysql_num_fields(res); i++) {
+				if (!strcasecmp(fields[i].name,"Command")) ccol=i;
+				else if (!strcasecmp(fields[i].name,"Time")) tcol=i;
+				else if (!strcasecmp(fields[i].name,"Id")) icol=i;
+			}
+			if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+				g_critical("Error obtaining information from processlist");
+				exit(EXIT_FAILURE);
+			}
+			while ((row=mysql_fetch_row(res))) {
+				if (row[ccol] && strcmp(row[ccol],"Query"))
+					continue;
+				if (row[tcol] && atoi(row[tcol])>longquery) {
+					if (killqueries) {
+						if (mysql_query(conn,p3=g_strdup_printf("KILL %lu",atol(row[icol]))))
+							g_warning("Could not KILL slow query: %s",mysql_error(conn));
+						else
+							g_warning("Killed a query that was running for %ss",row[tcol]);
+						g_free(p3);
+					} else {
+						g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
+							"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
+						exit(EXIT_FAILURE);
+					}
 				}
 			}
+			mysql_free_result(res);
 		}
-		mysql_free_result(res);
 	}
 
 	if (!no_locks) {
