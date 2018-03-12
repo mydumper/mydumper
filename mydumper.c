@@ -2761,7 +2761,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
 	
-	query_tidb_rowid = g_strdup_printf("SELECT `_tidb_rowid` FROM `%s`.`%s` LIMIT 1", database, table);
+	query_tidb_rowid = g_strdup_printf("SELECT `_tidb_rowid` FROM `%s`.`%s` LIMIT 0", database, table);
 	no_tidb_rowid = (mysql_query(conn, query_tidb_rowid) || !(result = mysql_use_result(conn)));
 	if (no_tidb_rowid) {
 		if (mysql_errno(conn) == 1054) {
