@@ -2916,6 +2916,7 @@ cleanup:
 
 	g_string_free(escaped,TRUE);
 	g_string_free(statement,TRUE);
+	g_string_free(statement_row,TRUE);
 
 	if (result) {
 		mysql_free_result(result);
