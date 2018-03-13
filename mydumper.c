@@ -1804,6 +1804,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	if (mysql_query(conn, (query))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 		errors++;
+		g_free(query);
 		return;
 	}
 
@@ -1934,6 +1935,8 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		}
 	}
 
+	mysql_free_result(result);
+
 	//Store Procedures and Events
 	//As these are not attached to tables we need to define when we need to dump or not
 	//Having regex filter make this hard because we dont now if a full schema is filtered or not
@@ -1949,6 +1952,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		if (mysql_query(conn, (query))) {
 			g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 			errors++;
+			g_free(query);
 			return;
 		}
 		result = mysql_store_result(conn);
@@ -1966,6 +1970,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			if (mysql_query(conn, (query))) {
 				g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 				errors++;
+				g_free(query);
 				return;
 			}
 			result = mysql_store_result(conn);
@@ -1977,6 +1982,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 				post_dump = 1;
 			}
 		}
+		mysql_free_result(result);
 	}
 
 	if(dump_events && !post_dump){
@@ -1985,6 +1991,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		if (mysql_query(conn, (query))) {
 			g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 			errors++;
+			g_free(query);
 			return;
 		}
 		result = mysql_store_result(conn);
@@ -1995,6 +2002,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 
 			post_dump = 1;
 		}
+		mysql_free_result(result);
 	}
 
 	if(post_dump){
@@ -2004,7 +2012,6 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	}
 
 	g_free(query);
-	mysql_free_result(result);
 	if(file)
 		fflush(file);
 
