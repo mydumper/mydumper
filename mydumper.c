@@ -49,6 +49,7 @@ char *regexstring=NULL;
 char *snapstring=NULL;
 
 const char DIRECTORY[]= "export";
+const char tidb_rowid[] = "_tidb_rowid";
 #ifdef WITH_BINLOG
 const char BINLOG_DIRECTORY[]= "binlog_snapshot";
 const char DAEMON_BINLOGS[]= "binlogs";
@@ -2761,14 +2762,14 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
 	
-	query_tidb_rowid = g_strdup_printf("SELECT `_tidb_rowid` FROM `%s`.`%s` LIMIT 0", database, table);
+	query_tidb_rowid = g_strdup_printf("SELECT `%s` FROM `%s`.`%s` LIMIT 0", tidb_rowid, database, table);
 	no_tidb_rowid = (mysql_query(conn, query_tidb_rowid) || !(result = mysql_use_result(conn)));
 	if (no_tidb_rowid) {
 		// error code 1054 means unknown column in field list.
 		if (mysql_errno(conn) == 1054) {
-			g_message("table (%s.%s) doesn't contain _tidb_rowid: %s", database, table, mysql_error(conn));
+			g_message("table (%s.%s) doesn't contain %s: %s", database, table, tidb_rowid, mysql_error(conn));
 		} else {
-			g_critical("Error query table (%s.%s) for _tidb_rowid: %s", database, table, mysql_error(conn));
+			g_critical("Error query table (%s.%s) for %s: %s", database, table, tidb_rowid, mysql_error(conn));
 		}
 	} 
 	mysql_free_result(result);
@@ -2777,7 +2778,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	if (no_tidb_rowid) {
 		query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where ? "WHERE" : "", where ? where : "");
 	} else {
-		query = g_strdup_printf("SELECT %s *, `_tidb_rowid` FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where ? "WHERE" : "", where ? where : "");
+		query = g_strdup_printf("SELECT %s *, `%s` FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", tidb_rowid, database, table, where ? "WHERE" : "", where ? where : "");
 	}
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
