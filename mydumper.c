@@ -2764,6 +2764,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	query_tidb_rowid = g_strdup_printf("SELECT `_tidb_rowid` FROM `%s`.`%s` LIMIT 0", database, table);
 	no_tidb_rowid = (mysql_query(conn, query_tidb_rowid) || !(result = mysql_use_result(conn)));
 	if (no_tidb_rowid) {
+		// error code 1054 means unknown column in field list.
 		if (mysql_errno(conn) == 1054) {
 			g_message("table (%s.%s) doesn't contain _tidb_rowid: %s", database, table, mysql_error(conn));
 		} else {
