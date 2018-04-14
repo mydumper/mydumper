@@ -39,6 +39,8 @@
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
+#include <glib/gerror.h>
+#include <gio/gio.h>
 #include "config.h"
 #ifdef WITH_BINLOG
 #include "binlog.h"
@@ -81,6 +83,7 @@ int compress_output = 0;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
+guint snapshot_count= 2;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
@@ -135,7 +138,7 @@ guint updated_since = 0;
 guint trx_consistency_only = 0;
 guint complete_insert = 0;
 
-// For daemon mode, 0 or 1
+// For daemon mode
 guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
@@ -205,6 +208,7 @@ static GOptionEntry entries[] = {
 #endif
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
+    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
     {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
      "Interval between each dump snapshot (in minutes), requires --daemon, "
      "default 60",
@@ -1202,12 +1206,34 @@ int main(int argc, char *argv[]) {
     if (sid < 0)
       exit(EXIT_FAILURE);
 
-    char *dump_directory = g_strdup_printf("%s/0", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
-    dump_directory = g_strdup_printf("%s/1", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
+    char *dump_directory;
+    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
+        dump_directory= g_strdup_printf("%s/%d", output_directory, dump_number);
+        create_backup_dir(dump_directory);
+        g_free(dump_directory);
+    }
+    
+    GFile *last_dump = g_file_new_for_path(
+        g_strdup_printf("%s/last_dump", output_directory)
+    );
+    GFileInfo *last_dump_i = g_file_query_info(
+        last_dump,
+        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
+        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+        NULL, NULL
+    );
+    if (last_dump_i != NULL &&
+        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
+        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
+        if (dump_number >= snapshot_count-1) dump_number = 0;
+        else dump_number++;
+        g_object_unref(last_dump_i);
+    } else {
+        dump_number = 0;
+    }
+    g_object_unref(last_dump);
+
 #ifdef WITH_BINLOG
     daemon_binlog_directory =
         g_strdup_printf("%s/%s", output_directory, DAEMON_BINLOGS);
@@ -1342,7 +1368,7 @@ void *exec_thread(void *data) {
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.
     if (!shutdown_triggered) {
-      const char *dump_symlink_source = (dump_number == 0) ? "0" : "1";
+      char *dump_symlink_source= g_strdup_printf("%d", dump_number);
       char *dump_symlink_dest =
           g_strdup_printf("%s/last_dump", output_directory);
 
@@ -1355,7 +1381,8 @@ void *exec_thread(void *data) {
       }
       g_free(dump_symlink_dest);
 
-      dump_number = (dump_number == 1) ? 0 : 1;
+      if (dump_number >= snapshot_count-1) dump_number = 0;
+      else dump_number++;
     }
   }
   return NULL;
