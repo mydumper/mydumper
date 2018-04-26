@@ -49,6 +49,7 @@
 #include "common.h"
 #include "g_unix_signal.h"
 #include <math.h>
+#include "getPassword.h"
 
 char *regexstring=NULL;
 
@@ -801,6 +802,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	int timeout= 1;
 	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);
 
+	
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -808,6 +810,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	return thrconn;
 }
 #endif
+
 int main(int argc, char *argv[])
 {
 	GError *error = NULL;
@@ -829,6 +832,13 @@ int main(int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 	g_option_context_free(context);
+	
+	//prompt for password if it's NULL
+	if ( sizeof(password) == 0 || ( password == NULL && askPassword ) ){
+		password = passwordPrompt();
+	}
+
+	//printf("your password is %s and the size is %d \n",password,sizeof(password));
 
 	if (program_version) {
 		g_print("mydumper %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
