@@ -841,7 +841,7 @@ int main(int argc, char *argv[])
 	//printf("your password is %s and the size is %d \n",password,sizeof(password));
 
 	if (program_version) {
-		g_print("mydumper %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
+		g_print("mydumper %s, built against MySQL %s\n", VERSION, MYSQL_VERSION_STR);
 		exit (EXIT_SUCCESS);
 	}
 
