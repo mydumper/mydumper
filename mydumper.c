@@ -1682,6 +1682,52 @@ void get_not_updated(MYSQL *conn){
 		no_updated_tables = g_list_append(no_updated_tables, row[0]);
 }
 
+gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	gboolean result = FALSE;
+
+	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	if((row = mysql_fetch_row(res))) {
+		result = TRUE;
+	}
+	mysql_free_result(res);
+
+	return result;
+}
+
+
+GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	GString *field_list = g_string_new("");
+
+	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra not like '%%GENERATED%%'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	gboolean first = TRUE;
+	while ((row = mysql_fetch_row(res))) {
+		if(first) {
+			first = FALSE;
+		} else {
+			g_string_append(field_list, ",");
+		}
+		
+		g_string_append(field_list, row[0]);
+	}
+	mysql_free_result(res);
+	
+	return field_list;
+}
+
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
    WORK IN PROGRESS
 */
@@ -2830,13 +2876,23 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		g_free(split_filename);
 	}
 
+	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
 	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
 	
+	GString* select_fields;
+
+	if (has_generated_fields) {
+		select_fields = get_insertable_fields(conn, database, table);
+	} else {
+		select_fields = g_string_new("*");
+	}
+
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where?"WHERE":"",where?where:"");
+ 	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+ 	g_string_free(select_fields, TRUE);
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
 		if(success_on_1146 && mysql_errno(conn) == 1146){
@@ -2881,7 +2937,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			if (complete_insert) {
+			if (complete_insert || has_generated_fields) {
 				if (insert_ignore) {
 					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
 				} else {
