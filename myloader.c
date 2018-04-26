@@ -341,10 +341,12 @@ void create_database(MYSQL *conn, gchar *database){
 	if((db == NULL && source_db == NULL) || (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))){
 		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
 		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
+		const gchar* filepath= g_strdup_printf("%s/%s-schema-create.sql", directory, db ? db : database);
+		const gchar* filepathgz= g_strdup_printf("%s/%s-schema-create.sql.gz", directory, db ? db : database);
 
-		if (g_file_test (filename, G_FILE_TEST_EXISTS)){
+		if (g_file_test (filepath, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filename, TRUE, FALSE);
-		}else if (g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
+		}else if (g_file_test (filepathgz, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
 		}else{
 			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
