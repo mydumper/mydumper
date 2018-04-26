@@ -454,7 +454,13 @@ void *process_queue(struct thread_data *td) {
 			case JOB_RESTORE:
 				rj= (struct restore_job *)job->job_data;
 				g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id, rj->database, rj->table, rj->part);
+
+				GTimer * timer = g_timer_new();
 				restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE);
+				gdouble elapsed = g_timer_elapsed(timer, NULL);
+				g_timer_destroy(timer);
+				g_message("Table %s.%s (Thread %d) took %f seconds", rj->database, rj->table, td->thread_id, elapsed);
+
 				if (rj->database) g_free(rj->database);
 				if (rj->table) g_free(rj->table);
 				if (rj->filename) g_free(rj->filename);
