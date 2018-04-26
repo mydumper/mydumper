@@ -46,6 +46,7 @@
 #include "mydumper.h"
 #endif
 #include "server_detect.h"
+#include "connection.h"
 #include "common.h"
 #include "g_unix_signal.h"
 #include <math.h>
@@ -489,13 +490,7 @@ void *process_queue(struct thread_data *td) {
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
-
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
@@ -693,13 +688,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
-
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
@@ -869,8 +858,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	int timeout= 1;
 	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);

@@ -35,6 +35,7 @@
 #include <zlib.h>
 #include "common.h"
 #include "myloader.h"
+#include "connection.h"
 #include "config.h"
 #include "getPassword.h"
 
@@ -144,10 +145,7 @@ int main(int argc, char *argv[]) {
 	MYSQL *conn;
 	conn= mysql_init(NULL);
 
-	if (defaults_file != NULL) {
-		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "myloader");
+	configure_connection(conn,"myloader");
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
@@ -420,13 +418,7 @@ void *process_queue(struct thread_data *td) {
 	MYSQL *thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn, MYSQL_READ_DEFAULT_GROUP, "myloader");
-
-	if (compress_protocol)
-		mysql_options(thrconn, MYSQL_OPT_COMPRESS, NULL);
+	configure_connection(thrconn,"myloader");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to MySQL server: %s", mysql_error(thrconn));
