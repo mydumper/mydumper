@@ -1090,7 +1090,8 @@ void *exec_thread(void *data) {
 		clear_dump_directory();
 		MYSQL *conn= create_main_connection();
 		start_dump(conn);
-		mysql_close(conn);
+		// start_dump already closes mysql
+		// mysql_close(conn);
 		mysql_thread_end();
 
 		// Don't switch the symlink on shutdown because the dump is probably incomplete.
