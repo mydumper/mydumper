@@ -19,6 +19,11 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <mysql.h>
+
+#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
+	#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -32,6 +37,7 @@
 #include "myloader.h"
 #include "connection.h"
 #include "config.h"
+#include "getPassword.h"
 
 guint commit_count= 1000;
 gchar *directory= NULL;
@@ -114,8 +120,13 @@ int main(int argc, char *argv[]) {
 	}
 	g_option_context_free(context);
 
+	//prompt for password if it's NULL
+	if ( sizeof(password) == 0 || ( password == NULL && askPassword ) ){
+		password = passwordPrompt();
+	}
+
 	if (program_version) {
-		g_print("myloader %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
+		g_print("myloader %s, built against MySQL %s\n", VERSION, MYSQL_VERSION_STR);
 		exit(EXIT_SUCCESS);
 	}
 
@@ -131,12 +142,10 @@ int main(int argc, char *argv[]) {
 			exit(EXIT_FAILURE);
 		}
 	}
-
 	MYSQL *conn;
 	conn= mysql_init(NULL);
 
 	configure_connection(conn,"myloader");
-
 	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
@@ -330,10 +339,12 @@ void create_database(MYSQL *conn, gchar *database){
 	if((db == NULL && source_db == NULL) || (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))){
 		const gchar* filename= g_strdup_printf("%s-schema-create.sql", db ? db : database);
 		const gchar* filenamegz= g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
+		const gchar* filepath= g_strdup_printf("%s/%s-schema-create.sql", directory, db ? db : database);
+		const gchar* filepathgz= g_strdup_printf("%s/%s-schema-create.sql.gz", directory, db ? db : database);
 
-		if (g_file_test (filename, G_FILE_TEST_EXISTS)){
+		if (g_file_test (filepath, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filename, TRUE, FALSE);
-		}else if (g_file_test (filenamegz, G_FILE_TEST_EXISTS)){
+		}else if (g_file_test (filepathgz, G_FILE_TEST_EXISTS)){
 			restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
 		}else{
 			query= g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
