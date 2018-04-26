@@ -30,7 +30,7 @@ char *capath=NULL;
 char *cipher=NULL;
 
 gboolean askPassword=FALSE;
-guint port=3306;
+guint port=0;
 guint num_threads= 4;
 guint verbose=2;
 guint ssl= 0;
