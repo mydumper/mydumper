@@ -45,7 +45,19 @@ This for now does not provide consistent snapshots for non-transactional engines
 Once can use --regex functionality, for example not to dump mysql and test databases:
 
 ```bash
- mydumper --regex '^(?!(mysql|test))'
+ mydumper --regex '^(?!(mysql\.|test\.))'
+```
+
+To dump only mysql and test databases:
+
+```bash
+ mydumper --regex '^(mysql\.|test\.)'
+```
+
+To not dump all databases starting with test:
+
+```bash
+ mydumper --regex '^(?!(test))'
 ```
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
