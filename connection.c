@@ -21,12 +21,14 @@
 #include "connection.h"
 
 extern char *defaults_file;
+#ifdef WITH_SSL
 extern char *key;
 extern char *cert;
 extern char *ca;
 extern char *capath;
 extern char *cipher;
 extern guint ssl;
+#endif
 extern guint compress_protocol;
 
 void configure_connection(MYSQL *conn, const char *name) {
