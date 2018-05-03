@@ -21,12 +21,14 @@
 #include "connection.h"
 
 extern char *defaults_file;
+#ifdef WITH_SSL
 extern char *key;
 extern char *cert;
 extern char *ca;
 extern char *capath;
 extern char *cipher;
 extern guint ssl;
+#endif
 extern guint compress_protocol;
 
 void configure_connection(MYSQL *conn, const char *name) {
@@ -38,6 +40,7 @@ void configure_connection(MYSQL *conn, const char *name) {
 	if (compress_protocol)
 		mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
 
+#ifdef WITH_SSL
 	unsigned int i;
 	if (ssl == 1) {
 		i = SSL_MODE_REQUIRED;
@@ -47,4 +50,5 @@ void configure_connection(MYSQL *conn, const char *name) {
 
 	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
 	mysql_ssl_set(conn,key,cert,ca,capath,cipher);
+#endif
 }
