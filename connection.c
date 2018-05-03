@@ -27,7 +27,7 @@ extern char *cert;
 extern char *ca;
 extern char *capath;
 extern char *cipher;
-extern guint ssl;
+extern gboolean ssl;
 #endif
 extern guint compress_protocol;
 
@@ -42,13 +42,13 @@ void configure_connection(MYSQL *conn, const char *name) {
 
 #ifdef WITH_SSL
 	unsigned int i;
-	if (ssl == 1) {
+	if (ssl) {
 		i = SSL_MODE_REQUIRED;
 	} else {
 		i = SSL_MODE_DISABLED;
 	}
 
-	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
 	mysql_ssl_set(conn,key,cert,ca,capath,cipher);
+	mysql_options(conn,MYSQL_OPT_SSL_MODE,&i);
 #endif
 }

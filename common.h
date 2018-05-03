@@ -35,7 +35,7 @@ gboolean askPassword=FALSE;
 guint port=0;
 guint num_threads= 4;
 guint verbose=2;
-guint ssl= 0;
+gboolean ssl= FALSE;
 gboolean compress_protocol= FALSE;
 gboolean program_version= FALSE;
 

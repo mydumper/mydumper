@@ -1035,10 +1035,7 @@ MYSQL *create_main_connection()
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 
-	if (defaults_file != NULL) {
-		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	configure_connection(conn,"mydumper");
 
 	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
