@@ -5,6 +5,23 @@
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
+## How to install mydumper/myloader?
+
+First get the correct url from the [releases section](https://github.com/maxbube/mydumper/releases) then:
+
+### RedHat / Centos
+
+```bash
+yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper-0.9.5-1.el7.x86_64.rpm
+```
+
+### Ubuntu / Debian
+
+```bash
+wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-1.xenial_amd64.deb
+dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
+```
+
 ## How to build it?
 
 Run:
@@ -26,6 +43,8 @@ NOTE: you must use the correspondent mysql devel package.
 One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH
 
 Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
+
+To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
 
 ## How does consistent snapshot work?
 
