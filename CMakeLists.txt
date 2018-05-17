@@ -22,7 +22,7 @@ option(WITH_SSL "Build SSL support" ON)
 
 set(CMAKE_C_FLAGS "-Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -Werror -O3 -g ${MYSQL_CFLAGS}")
 
-include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS} ${LIBYAML_INCLUDE_DIR}))
+include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS} ${LIBYAML_INCLUDE_DIR})
 
 if (NOT CMAKE_INSTALL_PREFIX)
   SET(CMAKE_INSTALL_PREFIX "/usr/local" CACHE STRING "Install path" FORCE)
@@ -34,15 +34,15 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DI
 
 if (WITH_BINLOG)
 
-  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c anonymizer.c))
+  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c anonymizer.c)
 else (WITH_BINLOG)
-  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c anonymizer.c))
+  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c anonymizer.c)
 endif (WITH_BINLOG)
-target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++  ${LIBYAML_LIBRARIES)
+target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++  ${LIBYAML_LIBRARIES})
 
 
 add_executable(myloader myloader.c connection.c getPassword.c anonymizer.c)
-target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++  ${LIBYAML_LIBRARIES)
+target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++  ${LIBYAML_LIBRARIES})
 
 INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
