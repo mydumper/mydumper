@@ -46,6 +46,7 @@
 #include "mydumper.h"
 #endif
 #include "server_detect.h"
+#include "anonymizer.h"
 #include "connection.h"
 #include "common.h"
 #include "g_unix_signal.h"
@@ -102,6 +103,7 @@ gchar *daemon_binlog_directory= NULL;
 
 gchar *logfile= NULL;
 FILE *logoutfile= NULL;
+gchar *anonymize_configfile=NULL;
 
 gboolean no_schemas= FALSE;
 gboolean no_data= FALSE;
@@ -179,6 +181,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+	{ "anonymize", 0, 0, G_OPTION_ARG_FILENAME, &anonymize_configfile, "Data anonymization configuration file", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -908,6 +911,13 @@ int main(int argc, char *argv[])
 
 	set_verbose(verbose);
 
+	if (anonymize_configfile != NULL) {
+	    if (!read_anonymizer_config(anonymize_configfile)) {
+	        g_critical("Could not read anonymizer configuration from %s", anonymize_configfile);
+            exit(EXIT_FAILURE);
+	    }
+	}
+
 	time_t t;
 	time(&t);localtime_r(&t,&tval);
 	
@@ -1025,6 +1035,10 @@ int main(int argc, char *argv[])
 
 	if (logoutfile) {
 		fclose(logoutfile);
+	}
+
+	if (anonymize_configfile != NULL) {
+	    free_anonymizer_config();
 	}
 
 	exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
@@ -2661,6 +2675,17 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename) {
 	void *outfile;
+	GNode *table_cfg;
+
+    if (anonymize) {
+        table_cfg = get_table_anonymization(database, table);
+        if (table_cfg != NULL) {
+            if (should_truncate_table(table_cfg)) {
+                g_warning("Anonymizer: Not dumping table %s.%s", database, table);
+                return;
+            }
+        }
+    }
 
 	if (!compress_output)
 		outfile = g_fopen(filename, "w");
@@ -2862,7 +2887,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	char *query = NULL;
 	gchar *fcfile = NULL;
 	gchar* filename_prefix = NULL;
-	
+	GNode *table_cfg = NULL;
+	gboolean anonymize_columns = FALSE;
+
 	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
@@ -2906,14 +2933,29 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	/* Buffer for escaping field values */
 	GString *escaped = g_string_sized_new(3000);
 
-	MYSQL_ROW row;
+	MYSQL_ROW row, origrow = NULL;
 
 	g_string_set_size(statement,0);
+
+	if (anonymize) {
+	    table_cfg = get_table_anonymization(database, table);
+	    if (table_cfg != NULL) {
+	        anonymize_columns = has_columns_to_anonymize(table_cfg);
+	    }
+	}
 
 	/* Poor man's data dump code */
 	while ((row = mysql_fetch_row(result))) {
 		gulong *lengths = mysql_fetch_lengths(result);
 		num_rows++;
+
+		if (anonymize_columns) {
+		    // allocate new row
+		    origrow = row;
+		    row = (MYSQL_ROW)malloc(sizeof(char *) * num_fields);
+		    memcpy((void *)row, (void *)origrow, sizeof(char *) * num_fields);
+		    anonymize_table_columns(table_cfg, fields, num_fields, row, lengths);
+		}
 
 		if (!statement->len){
 			if(!st_in_file){
@@ -3020,6 +3062,18 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 			}
 		}
+
+       if (anonymize_columns) {
+            // free any rows that were changed
+            for (i = 0; i < num_fields; i++) {
+                if (origrow[i] != row[i]) {
+                    g_free(row[i]);
+                }
+            }
+            // This is our allocation
+            g_free(row);
+       }
+
 	}
 	if (mysql_errno(conn)) {
 		g_critical("Could not read data from %s.%s: %s", database, table, mysql_error(conn));

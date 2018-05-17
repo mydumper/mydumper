@@ -82,3 +82,52 @@ To not dump all databases starting with test:
 Of course, regex functionality can be used to describe pretty much any list of tables.
 
 
+## How to anonymize tables
+
+You can specifying a YAML configuration file to the --anonymize flag. Anonymization
+configuration supports truncation of tables, column editing (replace contents,
+randomize with wordlists, randomized date/time/datetime).
+
+Example of all operations currently implemented:
+```yaml
+ anonymizer_settings:
+   randomize:
+     # wordlist_id: file_with_words_one_per_line.txt
+     firstname: firstnames.txt
+     lastname: lastnames.txt
+     fullname: fullnames.txt
+    
+ database_name:
+   table_name_1:
+     truncate: yes
+  
+   table_name_2:
+     edit:
+       - when: {folder: '^config$', path: '^secret/key1'}
+         set: {value: ''}
+       - when: {folder: '^config$', path: '^secret/key2'}
+         set: {value: ''}
+   
+   table_name_3:
+     edit:
+       - when: {}
+         set: {customer_name: 'John {{user_id}}', customer_address: 'Fixed Street 1'}
+
+   table_name_4:
+     randomize:
+       column_name:
+         type: 'fullname'
+       datetime_column_name:
+         type: 'datetime'
+       time_column_name:
+         type: 'time'
+       date_column_name:
+         type: 'date'
+	
+   # Modifiers are separated with |, currently only md5 supported. Additionally you can 
+   # specify a ":n" after the modifier to only take n amount of characters.
+   table_name_5:
+     edit:
+       - when: {email: '.+'}
+         set: {email: '{{id_user|md5:10}}@anonymized.com', name: '{{name|md5}}'}
+```
