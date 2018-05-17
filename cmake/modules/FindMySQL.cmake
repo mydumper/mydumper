@@ -90,7 +90,9 @@ foreach(MY_LIB ${MYSQL_ADD_LIBRARIES})
         HINTS
         ${MYSQL_ADD_LIBRARY_PATH}
         /usr/lib/mysql
-	/usr/lib
+        /usr/lib64/mysql
+        /usr/lib
+        /usr/lib64
         /usr/local/lib
         /usr/local/lib/mysql
         /usr/local/mysql/lib
