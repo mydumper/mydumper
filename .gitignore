@@ -1,1 +1,14 @@
+# IDE's
 .idea/
+.vscode/
+
+# CMake junk
+CMakeCache.txt
+config.h
+CMakeFiles/
+docs/CMakeFiles/
+
+# generated bins
+mydumper
+myloader
+*~
