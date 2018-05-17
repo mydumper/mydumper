@@ -1,0 +1,35 @@
+Source: mydumper
+Section: database
+Priority: extra
+Maintainer: Sardorbek Pulatov <sardorbek.pulatov@jumia.com>
+Build-Depends: debhelper (>= 8.0.0), cmake, quilt, libmysqlclient-dev, libglib2.0-dev, libpcre3-dev, zlib1g-dev, python-sphinx (>= 1.0.7+dfsg), python-docutils, libyaml-dev
+Standards-Version: 3.9.5
+Homepage: https://github.com/JumiaAIG/mydumper
+#Vcs-Git: https://github.com/JumiaAIG/mydumper.git
+#Vcs-Browser: https://github.com/JumiaAIG/mydumper
+
+Package: mydumper
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Recommends: ${sphinxdoc:Depends}
+Description: High-performance MySQL backup tool with anonymization support
+ Mydumper-anon is a fork of mydumper with in-line anonymization.
+ Mydumper (aka. MySQL Data Dumper) is a high-performance multi-threaded
+ backup (and restore) toolset for MySQL and Drizzle.  The main developers
+ originally worked as Support Engineers at MySQL (one has moved to
+ Facebook and another to SkySQL) and this is how they would envisage
+ mysqldump based on years of user feedback.
+ .
+ Mydumper features
+ .
+  Lightweight C source
+  Up to 10x faster dumps compared to mysqldump
+  Consistent snapshots for transactional and non-transactional tables
+  File compression on-the-fly
+  Binary log dumps
+  Multi-threaded restore utility
+  Daemon mode for timed snapshots and continuous binary logs
+  In-line anonymization of data.
+ .
+ Mydumper is still under active development but is well tested/used in
+ production on some large installations.

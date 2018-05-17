@@ -53,6 +53,11 @@ add_custom_target(dist
     ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
+add_custom_target(
+    archive
+    COMMAND tar -czvf $ENV{PACKAGE_NAME}.tar.gz mydumper myloader
+)
+
 OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
 
 IF(RUN_CPPCHECK)
