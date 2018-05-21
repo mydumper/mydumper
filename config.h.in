@@ -3,6 +3,7 @@
 
 #cmakedefine VERSION "@VERSION@"
 #cmakedefine WITH_BINLOG
+#cmakedefine WITH_MYSSL
 
 #if   defined(LIBMYSQL_VERSION)
 #define MYSQL_VERSION_STR LIBMYSQL_VERSION

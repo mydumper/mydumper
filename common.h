@@ -23,7 +23,7 @@ char *password=NULL;
 char *socket_path=NULL;
 char *db=NULL;
 char *defaults_file=NULL;
-#ifdef WITH_SSL
+#ifdef WITH_MYSSL
 char *key=NULL;
 char *cert=NULL;
 char *ca=NULL;
@@ -52,8 +52,8 @@ GOptionEntry common_entries[] =
         { "version", 'V', 0, G_OPTION_ARG_NONE, &program_version, "Show the program version and exit", NULL },
         { "verbose", 'v', 0, G_OPTION_ARG_INT, &verbose, "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL },
         { "defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file, "Use a specific defaults file",  NULL },
-#ifdef WITH_SSL
-		{ "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
+#ifdef WITH_MYSSL
+	{ "ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
         { "key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file", NULL },
         { "cert", 0, 0, G_OPTION_ARG_STRING, &cert, "The path name to the certificate file", NULL },
         { "ca", 0, 0, G_OPTION_ARG_STRING, &ca, "The path name to the certificate authority file", NULL },
