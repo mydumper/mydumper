@@ -2911,6 +2911,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	g_string_set_size(statement,0);
 
 	/* Poor man's data dump code */
+	int first_iter = 1;
 	while ((row = mysql_fetch_row(result))) {
 		gulong *lengths = mysql_fetch_lengths(result);
 		num_rows++;
@@ -2930,9 +2931,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_string_set_size(statement_row,0);
 			num_rows_st++;
 		}
-		
-		g_string_append(statement_row, "\n");
-
+		if (first_iter) {
+		    first_iter = 0;
+		}
+		else {
+		    g_string_append(statement_row, "\n");
+		}
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
 			if (!row[i]) {
