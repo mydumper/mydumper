@@ -2917,39 +2917,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 		if (!statement->len){
 			if(!st_in_file){
-				if (detected_server == SERVER_TYPE_MYSQL) {
-					g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-					if (!skip_tz) {
-					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
-					}
-				} else {
-					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
-				}
-
 				if (!write_data(file,statement)) {
 					g_critical("Could not write out data for %s.%s", database, table);
 					return num_rows;
-				}
-			}
-			if (complete_insert || has_generated_fields) {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` (", table);
-				}
-				for (i = 0; i < num_fields; ++i) {
-					if (i > 0) {
-						g_string_append_c(statement, ',');
-					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
-				}
-				g_string_append(statement, ") VALUES");
-			} else {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
 				}
 			}
 			num_rows_st = 0;
@@ -2961,7 +2931,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			num_rows_st++;
 		}
 		
-		g_string_append(statement_row, "\n(");
+		g_string_append(statement_row, "\n");
 
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
@@ -2973,11 +2943,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
-                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, "CONVERT(");
 				g_string_append_c(statement_row,'\"');
 				g_string_append(statement_row,escaped->str);
 				g_string_append_c(statement_row,'\"');
-                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, " USING UTF8MB4)");
 			}
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
@@ -2990,7 +2958,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						g_string_set_size(statement_row,0);
 						g_warning("Row bigger than statement_size for %s.%s", database, table);
 					}
-					g_string_append(statement,";\n");
+					g_string_append(statement,"\n");
 
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
@@ -3033,32 +3001,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_string_append(statement, statement_row->str);
 		}
 		else {
-			if (complete_insert) {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` (", table);
-				}
-				for (i = 0; i < num_fields; ++i) {
-					if (i > 0) {
-						g_string_append_c(statement, ',');
-					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
-				}
-				g_string_append(statement, ") VALUES");
-			} else {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
-				}
-			}
 			g_string_append(statement, statement_row->str);
 		}
 	}
 
 	if (statement->len > 0) {
-		g_string_append(statement,";\n");
+		g_string_append(statement,"\n");
 		if (!write_data(file,statement)) {
 			g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
 			goto cleanup;
