@@ -2950,7 +2950,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
 			} else {
-				g_string_append_c(statement_row,')');
 				/* INSERT statement is closed before over limit */
 				if(statement->len+statement_row->len+1 > statement_size) {
 					if(num_rows_st == 0){
