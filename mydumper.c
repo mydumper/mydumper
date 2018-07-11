@@ -2777,9 +2777,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 			if (daemon_mode)
-				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.csv%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
-				tj->filename=g_strdup_printf("%s/%s.%s.%05d.csv%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
@@ -2931,6 +2931,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			num_rows_st++;
 		}
 		
+		g_string_append(statement_row, "\n");
 
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
