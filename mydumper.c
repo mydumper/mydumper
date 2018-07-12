@@ -2796,9 +2796,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 		if (daemon_mode)
-			tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			tj->filename = g_strdup_printf("%s/%d/%s.%s%s.csv%s", output_directory, dump_number, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 		else
-			tj->filename = g_strdup_printf("%s/%s.%s%s.sql%s", output_directory, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			tj->filename = g_strdup_printf("%s/%s.%s%s.csv%s", output_directory, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
@@ -2839,9 +2839,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 			tj->database = g_strdup_printf("%s",dbt->database);
 			tj->table = g_strdup_printf("%s",dbt->table);
 			if (daemon_mode)
-				tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory, dump_number, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+				tj->filename = g_strdup_printf("%s/%d/%s.%s%s.csv%s", output_directory, dump_number, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 			else
-				tj->filename = g_strdup_printf("%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+				tj->filename = g_strdup_printf("%s/%s.%s%s.csv%s", output_directory, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
 			tj->where = NULL;
 			tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 		}
@@ -2866,7 +2866,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
-		gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
+		gchar** split_filename= g_strsplit(filename, ".00001.csv", 0);
 		filename_prefix= split_filename[0];
 		g_free(split_filename);
 	}
@@ -3039,7 +3039,7 @@ cleanup:
  			g_warning("Failed to remove empty file : %s\n", fcfile);
 		}
 	}else if(chunk_filesize && fn == 1){
-		fcfile = g_strdup_printf("%s.sql%s", filename_prefix,(compress_output?".gz":""));
+		fcfile = g_strdup_printf("%s.csv%s", filename_prefix,(compress_output?".gz":""));
 		g_rename(filename, fcfile);
 	}
 	
