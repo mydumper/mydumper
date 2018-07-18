@@ -84,6 +84,7 @@ int lock_all_tables=0;
 guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
 gboolean have_snapshot_cloning= FALSE;
+gboolean csv_output= FALSE;
 
 gchar *ignore_engines= NULL;
 char **ignore= NULL;
@@ -179,6 +180,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+	{"csv-output", 0, 0, G_OPTION_ARG_NONE, &csv_output, "Output table data to csv file", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -2796,9 +2798,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 		j->conf=conf;
 		j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 		if (daemon_mode)
-			tj->filename = g_strdup_printf("%s/%d/%s.%s%s.csv%s", output_directory, dump_number, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+		  tj->filename = g_strdup_printf("%s/%d/%s.%s%s%s%s", output_directory, dump_number, database, table,(chunk_filesize?".00001":""),(csv_output?".csv":".sql"),(compress_output?".gz":""));
 		else
-			tj->filename = g_strdup_printf("%s/%s.%s%s.csv%s", output_directory, database, table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+		  tj->filename = g_strdup_printf("%s/%s.%s%s%s%s", output_directory, database, table,(chunk_filesize?".00001":""),(csv_output?".csv":".sql"),(compress_output?".gz":""));
 		g_async_queue_push(conf->queue,j);
 		return;
 	}
@@ -2839,9 +2841,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 			tj->database = g_strdup_printf("%s",dbt->database);
 			tj->table = g_strdup_printf("%s",dbt->table);
 			if (daemon_mode)
-				tj->filename = g_strdup_printf("%s/%d/%s.%s%s.csv%s", output_directory, dump_number, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			  tj->filename = g_strdup_printf("%s/%d/%s.%s%s%s%s", output_directory, dump_number, dbt->database, dbt->table,(chunk_filesize?".00001":""),(csv_output?".csv":".sql"),(compress_output?".gz":""));
 			else
-				tj->filename = g_strdup_printf("%s/%s.%s%s.csv%s", output_directory, dbt->database, dbt->table,(chunk_filesize?".00001":""),(compress_output?".gz":""));
+			  tj->filename = g_strdup_printf("%s/%s.%s%s%s%s", output_directory, dbt->database, dbt->table,(chunk_filesize?".00001":""),(csv_output?".csv":".sql"),(compress_output?".gz":""));
 			tj->where = NULL;
 			tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 		}
@@ -2866,7 +2868,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
-		gchar** split_filename= g_strsplit(filename, ".00001.csv", 0);
+	    if(csv_output){
+	        gchar** split_filename= g_strsplit(filename, ".00001.csv", 0);
+	  }
+	  else{
+	        gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
+	  }
 		filename_prefix= split_filename[0];
 		g_free(split_filename);
 	}
@@ -2918,9 +2925,39 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 		if (!statement->len){
 			if(!st_in_file){
+			  if (!csv_output && detected_server == SERVER_TYPE_MYSQL) {
+					g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+					if (!skip_tz) {
+					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+					}
+				} else {
+					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
+				}
+
 				if (!write_data(file,statement)) {
 					g_critical("Could not write out data for %s.%s", database, table);
 					return num_rows;
+				}
+			}
+			if (!csv_output && (complete_insert || has_generated_fields)) {
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
+				for (i = 0; i < num_fields; ++i) {
+					if (i > 0) {
+						g_string_append_c(statement, ',');
+					}
+					g_string_append_printf(statement, "`%s`", fields[i].name);
+				}
+				g_string_append(statement, ") VALUES");
+			} else {
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
 				}
 			}
 			num_rows_st = 0;
@@ -2931,11 +2968,16 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_string_set_size(statement_row,0);
 			num_rows_st++;
 		}
-		if (first_iter) {
-		    first_iter = 0;
+		if (!csv_output) {
+		  g_string_append(statement_row, "\n(");
 		}
 		else {
+		  if (first_iter) {
+		    first_iter = 0;
+		  }
+		  else {
 		    g_string_append(statement_row, "\n");
+		  }
 		}
 		for (i = 0; i < num_fields; i++) {
 			/* Don't escape safe formats, saves some time */
@@ -2947,21 +2989,26 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
+				if (!csv_output && fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, "CONVERT(");
 				g_string_append_c(statement_row,'\"');
 				g_string_append(statement_row,escaped->str);
 				g_string_append_c(statement_row,'\"');
+				if (!csv_output && fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, " USING UTF8MB4)");
 			}
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
 			} else {
-				/* INSERT statement is closed before over limit */
+			  if (!csv_output)
+			    g_string_append_c(statement_row,')');
+			  /* INSERT statement is closed before over limit */
 				if(statement->len+statement_row->len+1 > statement_size) {
 					if(num_rows_st == 0){
 						g_string_append(statement, statement_row->str);
 						g_string_set_size(statement_row,0);
 						g_warning("Row bigger than statement_size for %s.%s", database, table);
 					}
-					//g_string_append(statement,"\n");
+					if(!csv_output)
+					  g_string_append(statement,";\n");
 
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
@@ -2983,7 +3030,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					}
 					g_string_set_size(statement,0);
 				} else {
-				        
+				        if(!csv_output && num_rows_st)
+-						g_string_append_c(statement,',');
 					g_string_append(statement, statement_row->str);
 					num_rows_st++;
 					g_string_set_size(statement_row,0);
@@ -3003,12 +3051,34 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_string_append(statement, statement_row->str);
 		}
 		else {
-			g_string_append(statement, statement_row->str);
+		  if (!csv_output) {
+		  if (complete_insert) {
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
+				for (i = 0; i < num_fields; ++i) {
+					if (i > 0) {
+						g_string_append_c(statement, ',');
+					}
+					g_string_append_printf(statement, "`%s`", fields[i].name);
+				}
+				g_string_append(statement, ") VALUES");
+			} else {
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
+			}
+		  }
+		  g_string_append(statement, statement_row->str);
 		}
 	}
 
 	if (statement->len > 0) {
-		g_string_append(statement,"\n");
+	  g_string_append(statement,csv_output?"\n":";\n");
 		if (!write_data(file,statement)) {
 			g_critical("Could not write out closing newline for %s.%s, now this is sad!", database, table);
 			goto cleanup;
@@ -3039,7 +3109,7 @@ cleanup:
  			g_warning("Failed to remove empty file : %s\n", fcfile);
 		}
 	}else if(chunk_filesize && fn == 1){
-		fcfile = g_strdup_printf("%s.csv%s", filename_prefix,(compress_output?".gz":""));
+	  fcfile = g_strdup_printf("%s%s%s", filename_prefix,(csv_output?".csv":".sql"),(compress_output?".gz":""));
 		g_rename(filename, fcfile);
 	}
 	
