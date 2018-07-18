@@ -2961,7 +2961,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						g_string_set_size(statement_row,0);
 						g_warning("Row bigger than statement_size for %s.%s", database, table);
 					}
-					g_string_append(statement,"\n");
+					//g_string_append(statement,"\n");
 
 					if (!write_data(file,statement)) {
 						g_critical("Could not write out data for %s.%s", database, table);
