@@ -2868,11 +2868,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
-	    if(csv_output){
-	        gchar** split_filename= g_strsplit(filename, ".00001.csv", 0);
+	  gchar** split_filename;
+	  if(csv_output){
+	        split_filename= g_strsplit(filename, ".00001.csv", 0);
 	  }
 	  else{
-	        gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
+	        split_filename= g_strsplit(filename, ".00001.sql", 0);
 	  }
 		filename_prefix= split_filename[0];
 		g_free(split_filename);
@@ -3031,7 +3032,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					g_string_set_size(statement,0);
 				} else {
 				        if(!csv_output && num_rows_st)
--						g_string_append_c(statement,',');
+					  g_string_append_c(statement,',');
 					g_string_append(statement, statement_row->str);
 					num_rows_st++;
 					g_string_set_size(statement_row,0);
