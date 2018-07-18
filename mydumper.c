@@ -2495,16 +2495,17 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	}
 
 	GString* statement = g_string_sized_new(statement_size);
-
+        
 	if (detected_server == SERVER_TYPE_MYSQL) {
-		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
-		if (!skip_tz) {
-			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
-		}
+	  g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+	  g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+	  if (!skip_tz) {
+	    g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+	  }
 	} else {
-		g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
-	}
+	  g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+	  }
+
 
 	if (!write_data((FILE *)outfile,statement)) {
 		g_critical("Could not write schema data for %s.%s", database, table);
@@ -2926,40 +2927,43 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 		if (!statement->len){
 			if(!st_in_file){
-			  if (!csv_output && detected_server == SERVER_TYPE_MYSQL) {
-					g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
-					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-					if (!skip_tz) {
-					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
-					}
-				} else {
-					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
-				}
-
+			  if (!csv_output) {
+			    if (detected_server == SERVER_TYPE_MYSQL) {
+			      g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+			      g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+			      if (!skip_tz) {
+				g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+			      }
+			    } else {
+			      g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
+			    }
+			  }
 				if (!write_data(file,statement)) {
 					g_critical("Could not write out data for %s.%s", database, table);
 					return num_rows;
 				}
 			}
-			if (!csv_output && (complete_insert || has_generated_fields)) {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` (", table);
-				}
-				for (i = 0; i < num_fields; ++i) {
-					if (i > 0) {
-						g_string_append_c(statement, ',');
-					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
-				}
-				g_string_append(statement, ") VALUES");
-			} else {
-				if (insert_ignore) {
-					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
-				} else {
-					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
-				}
+			if (!csv_output) {
+			  if (complete_insert || has_generated_fields) {
+			    if (insert_ignore) {
+			      g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+			    } else {
+			      g_string_printf(statement, "INSERT INTO `%s` (", table);
+			    }
+			    for (i = 0; i < num_fields; ++i) {
+			      if (i > 0) {
+				g_string_append_c(statement, ',');
+			      }
+			      g_string_append_printf(statement, "`%s`", fields[i].name);
+			    }
+			    g_string_append(statement, ") VALUES");
+			  } else {
+			    if (insert_ignore) {
+			      g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+			    } else {
+			      g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+			    }
+			  }
 			}
 			num_rows_st = 0;
 		}
