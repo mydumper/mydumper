@@ -105,6 +105,7 @@ FILE *logoutfile= NULL;
 
 gboolean no_schemas= FALSE;
 gboolean no_data= FALSE;
+gboolean no_create= FALSE;
 gboolean no_locks= FALSE;
 gboolean dump_triggers= FALSE;
 gboolean dump_events= FALSE;
@@ -155,6 +156,7 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore, "Dump rows with INSERT IGNORE", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
+	{ "no-create", 0, 0, G_OPTION_ARG_NONE, &no_create, "Suppress the CREATE DATABASE ... IF EXISTS file creation.", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
 	{ "events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events", NULL },
@@ -1437,7 +1439,7 @@ void start_dump(MYSQL *conn)
 
 	if (db) {
 		dump_database(conn, db, nufile, &conf);
-		if(!no_schemas)
+		if(!no_schemas && !no_create)
 			dump_create_database(conn, db);
 	} else if (tables) {
 		get_tables(conn, &conf);
@@ -1454,7 +1456,7 @@ void start_dump(MYSQL *conn)
 				continue;
 			dump_database(conn, row[0], nufile, &conf);
 			/* Checks PCRE expressions on 'database' string */
-			if (!no_schemas && (regexstring == NULL || check_regex(row[0],NULL)))
+			if (!no_schemas && !no_create && (regexstring == NULL || check_regex(row[0],NULL)))
 				dump_create_database(conn, row[0]);
 
 		}
