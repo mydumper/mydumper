@@ -156,7 +156,6 @@ static GOptionEntry entries[] =
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
 	{ "insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore, "Dump rows with INSERT IGNORE", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
-	{ "no-create", 0, 0, G_OPTION_ARG_NONE, &no_create, "Suppress the CREATE DATABASE ... IF EXISTS file creation.", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
 	{ "events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events", NULL },
@@ -165,6 +164,7 @@ static GOptionEntry entries[] =
 	{ "no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks, "Do not execute the temporary shared read lock.  WARNING: This will cause inconsistent backups", NULL },
 	{ "no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks, "Do not use Percona backup locks", NULL},
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
+	{ "no-create", 0, 0, G_OPTION_ARG_NONE, &no_create, "Suppress the CREATE DATABASE ... IF EXISTS file creation.", NULL },
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
 	{ "kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
 #ifdef WITH_BINLOG
