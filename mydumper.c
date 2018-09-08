@@ -531,7 +531,7 @@ void *process_queue(struct thread_data *td) {
 		if (res)
 			mysql_free_result(res);
 	}
-	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, "/*!40101 SET NAMES utf8mb4*/");
 
 	g_async_queue_push(conf->ready,GINT_TO_POINTER(1));
 
@@ -703,7 +703,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
 		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
 	}
-	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, "/*!40101 SET NAMES utf8mb4*/");
 
 	g_async_queue_push(conf->ready_less_locking,GINT_TO_POINTER(1));
 
@@ -1394,7 +1394,7 @@ void start_dump(MYSQL *conn)
 		tval.tm_hour, tval.tm_min, tval.tm_sec);
 
 	if (detected_server == SERVER_TYPE_MYSQL) {
-		mysql_query(conn, "/*!40101 SET NAMES binary*/");
+		mysql_query(conn, "/*!40101 SET NAMES utf8mb4*/");
 
 		write_snapshot_info(conn, mdfile);
 	}
@@ -2495,7 +2495,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	GString* statement = g_string_sized_new(statement_size);
 
 	if (detected_server == SERVER_TYPE_MYSQL) {
-		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+		g_string_printf(statement,"/*!40101 SET NAMES utf8mb4*/;\n");
 		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
 		if (!skip_tz) {
 			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -2572,7 +2572,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 	}
 
 	if (detected_server == SERVER_TYPE_MYSQL) {
-		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+		g_string_printf(statement,"/*!40101 SET NAMES utf8mb4*/;\n");
 	}
 
 	if (!write_data((FILE *)outfile,statement)) {
@@ -2918,7 +2918,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		if (!statement->len){
 			if(!st_in_file){
 				if (detected_server == SERVER_TYPE_MYSQL) {
-					g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
+					g_string_printf(statement,"/*!40101 SET NAMES utf8mb4*/;\n");
 					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
 					if (!skip_tz) {
 					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
