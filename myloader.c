@@ -432,7 +432,7 @@ void *process_queue(struct thread_data *td) {
 	if (!enable_binlog)
 		mysql_query(thrconn, "SET SQL_LOG_BIN=0");
 
-	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, "/*!40101 SET NAMES utf8mb4*/");
 	mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
 	mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
 	mysql_query(thrconn, "SET autocommit=0");
