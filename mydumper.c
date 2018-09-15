@@ -1411,7 +1411,6 @@ void start_dump(MYSQL *conn)
 
 	g_string_free(query, TRUE);
 
-
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
 	}
@@ -1800,7 +1799,6 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	
 	return field_list;
 }
-
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
    WORK IN PROGRESS
@@ -2987,7 +2985,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_warning("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		}else{
 			g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
-			g_warning("%s", query);
 			errors++;
 		}
 		g_free(query);

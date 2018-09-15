@@ -31,7 +31,6 @@ int detect_server(MYSQL *conn) {
 	// debug the version
 	g_message("Server version reported as: %s", db_version);
 
-
 	re= pcre_compile(DETECT_TIDB_REGEX, 0, &error, &erroroffset, NULL);
 	if (!re) {
 		g_critical("Regular expression fail: %s", error);
@@ -44,7 +43,6 @@ int detect_server(MYSQL *conn) {
 	if (rc > 0) {
 		return SERVER_TYPE_TIDB;
 	}
-
 
 	re= pcre_compile(DETECT_MYSQL_REGEX, 0, &error, &erroroffset, NULL);
 	if (!re) {
