@@ -534,6 +534,9 @@ void *process_queue(struct thread_data *td) {
  			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
  			exit(EXIT_FAILURE);
  		}
+
+		g_string_free(query, TRUE);
+
  	}
 
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
