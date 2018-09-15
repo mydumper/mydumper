@@ -520,24 +520,22 @@ void *process_queue(struct thread_data *td) {
 		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
 	}
 
- 	if (detected_server == SERVER_TYPE_TIDB) {
+	if (detected_server == SERVER_TYPE_TIDB) {
 
- 		// Worker threads must set their tidb_snapshot in order to be safe
- 		// Because no locking has been used.
+		// Worker threads must set their tidb_snapshot in order to be safe
+		// Because no locking has been used.
  
- 		GString *query= g_string_sized_new(1024);
- 		g_string_append_printf(query, "SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
- 
- 		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
- 
- 		if (mysql_query(thrconn, query->str)) {
- 			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
- 			exit(EXIT_FAILURE);
- 		}
+		GString *query= g_string_sized_new(1024);
+		g_string_append_printf(query, "SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
 
+		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
+
+		if (mysql_query(thrconn, query->str)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
+			exit(EXIT_FAILURE);
+		}
 		g_string_free(query, TRUE);
-
- 	}
+	}
 
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
 	if (need_dummy_read) {
@@ -1400,7 +1398,18 @@ void start_dump(MYSQL *conn)
  
 		}
  
-		g_message("Using tidb_snapshot of '%s'", tidb_snapshot);
+	// Need to set the @@tidb_snapshot for the master thread
+	GString *query= g_string_sized_new(1024);
+	g_string_append_printf(query, "SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+	g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+
+	if (mysql_query(conn, query->str)) {
+		g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+		exit(EXIT_FAILURE);
+	}
+
+	g_string_free(query, TRUE);
 
 
 	} else {
@@ -1736,6 +1745,35 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
 	return result;
 }
 
+gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
+	MYSQL_RES *result = NULL;
+	gboolean has_rowid = FALSE;
+
+	/*
+	 TiDB has a hidden column on non integer primary keys
+	 If the server is detected as TiDB, we need to check if this
+	 table has one.  If it is not TiDB, the default is
+	 has_tidb_rowid = FALSE.
+	*/
+
+	if (detected_server == SERVER_TYPE_TIDB) {
+
+		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
+		mysql_query(conn,query);
+		g_free(query);
+
+		result = mysql_store_result(conn);
+		if (result) {
+			has_rowid = TRUE;
+		}
+
+		mysql_free_result(result);
+
+	}
+
+	return has_rowid;
+
+}
 
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	MYSQL_RES *res=NULL;
@@ -1762,6 +1800,7 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	
 	return field_list;
 }
+
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
    WORK IN PROGRESS
@@ -2827,9 +2866,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 			if (daemon_mode)
-				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
-				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
@@ -2877,9 +2916,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 				tj->database = g_strdup_printf("%s",dbt->database);
 				tj->table = g_strdup_printf("%s",dbt->table);
 				if (daemon_mode)
-					tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				else
-					tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				tj->where=(char *)chunks->data;
 				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 				nchunk++;
@@ -2922,6 +2961,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
+	gboolean has_tidb_rowid = detect_tidb_rowid(conn, database, table);
 	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
@@ -2934,16 +2974,20 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	} else {
 		select_fields = g_string_new("*");
 	}
-
-	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
- 	g_string_free(select_fields, TRUE);
+ 
+	if (has_tidb_rowid) { // TiDB has no query cache
+		query = g_strdup_printf("SELECT %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+	} else {
+		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+	}
+	g_string_free(select_fields, TRUE);
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
 		if(success_on_1146 && mysql_errno(conn) == 1146){
 			g_warning("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 		}else{
 			g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
+			g_warning("%s", query);
 			errors++;
 		}
 		g_free(query);
@@ -2982,7 +3026,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			if (complete_insert || has_generated_fields) {
+			if (complete_insert || has_generated_fields || has_tidb_rowid) {
 				if (insert_ignore) {
 					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
 				} else {
