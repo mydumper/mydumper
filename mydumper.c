@@ -1386,7 +1386,7 @@ void start_dump(MYSQL *conn)
 
 			if(mysql_query(conn, "SELECT NOW()-INTERVAL 1 SECOND")){
 				g_critical("Couldn't generate @@tidb_snapshot: %s",mysql_error(conn));
-				errors++;
+				exit(EXIT_FAILURE);
 			}else{
  
 				MYSQL_RES *result = mysql_store_result(conn);
