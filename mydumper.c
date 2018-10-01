@@ -1764,14 +1764,11 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 	if (detected_server == SERVER_TYPE_TIDB) {
 
 		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
-		mysql_query(conn,query);
-		g_free(query);
-
-		result = mysql_store_result(conn);
-		if (result) {
+		if (mysql_query(conn,query) == 0) {
 			has_rowid = TRUE;
 		}
 
+		g_free(query);
 		mysql_free_result(result);
 
 	}

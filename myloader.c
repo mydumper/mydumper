@@ -442,7 +442,9 @@ void *process_queue(struct thread_data *td) {
 	mysql_query(thrconn, "SET autocommit=0");
 
 	// TiDB specific, ignored by other servers
-	mysql_query(thrconn, "SET @@tidb_skip_constraint_check=1");
+	if (mysql_query(thrconn, "SET @tidb_skip_constraint_check=1")) {
+		g_warning("Could not set tidb_skip_constraint_check: %s", mysql_error(thrconn));
+	}
 
 	g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
