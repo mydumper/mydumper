@@ -89,7 +89,7 @@ gchar *ignore_engines= NULL;
 char **ignore= NULL;
 
 gchar *tables_list= NULL;
-gchar *tidb_snapshot= NULL;
+char *tidb_snapshot= NULL;
 GSequence *tables_skiplist= NULL;
 gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
@@ -1056,12 +1056,19 @@ MYSQL *create_main_connection()
 
 	configure_connection(conn,"mydumper");
 
-	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
+	if (!mysql_real_connect(conn, hostname, username, password, "", port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
 
 	detected_server= detect_server(conn);
+
+	// We should not set a DB in TiDB until after a tidb_snapshot is set.
+	// This preserves the use-case of restoring a dropped database
+	if ((detected_server != SERVER_TYPE_TIDB) && db) {
+		g_message("Selecting database: %s", db);
+		mysql_select_db(conn, db);
+	}
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
@@ -1376,10 +1383,7 @@ void start_dump(MYSQL *conn)
 			}
 		}
 	} else if (detected_server == SERVER_TYPE_TIDB) {
-
 		g_message("Skipping locks because of TiDB");
- 
- 
 		if (!tidb_snapshot) {
  
 			// Generate a @@tidb_snapshot to use for the worker threads since
@@ -1408,8 +1412,13 @@ void start_dump(MYSQL *conn)
 		g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
-
 	g_string_free(query, TRUE);
+
+	// select the db if applicable
+	if (db) {
+		g_message("Selecting database: %s", db);
+		mysql_select_db(conn, db);
+	}
 
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
@@ -2864,9 +2873,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 			if (daemon_mode)
-				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
-				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
@@ -2914,9 +2923,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 				tj->database = g_strdup_printf("%s",dbt->database);
 				tj->table = g_strdup_printf("%s",dbt->table);
 				if (daemon_mode)
-					tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				else
-					tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				tj->where=(char *)chunks->data;
 				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 				nchunk++;
@@ -3090,7 +3099,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						st_in_file++;
 						if(chunk_filesize && st_in_file*(guint)ceil((float)statement_size/1024/1024) > chunk_filesize){
 							fn++;
-							fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
+							fcfile = g_strdup_printf("%s.%09d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
 							if (!compress_output){
 								fclose((FILE *)file);
 								file = g_fopen(fcfile, "w");
