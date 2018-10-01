@@ -2864,9 +2864,9 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 			j->conf=conf;
 			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
 			if (daemon_mode)
-				tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
-				tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
+				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
 			tj->where=(char *)chunks->data;
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
@@ -2914,9 +2914,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 				tj->database = g_strdup_printf("%s",dbt->database);
 				tj->table = g_strdup_printf("%s",dbt->table);
 				if (daemon_mode)
-					tj->filename=g_strdup_printf("%s/%d/%s.%s.%09d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				else
-					tj->filename=g_strdup_printf("%s/%s.%s.%09d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
+					tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				tj->where=(char *)chunks->data;
 				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 				nchunk++;
