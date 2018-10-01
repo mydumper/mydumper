@@ -89,7 +89,7 @@ gchar *ignore_engines= NULL;
 char **ignore= NULL;
 
 gchar *tables_list= NULL;
-char *tidb_snapshot= NULL;
+gchar *tidb_snapshot= NULL;
 GSequence *tables_skiplist= NULL;
 gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
@@ -1413,10 +1413,9 @@ void start_dump(MYSQL *conn)
 		exit(EXIT_FAILURE);
 	}
 	g_string_free(query, TRUE);
-
+	
 	// select the db if applicable
 	if (db) {
-		g_message("Selecting database: %s", db);
 		mysql_select_db(conn, db);
 	}
 
