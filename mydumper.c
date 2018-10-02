@@ -1751,6 +1751,7 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
 	return result;
 }
 
+
 gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 	MYSQL_RES *result = NULL;
 	gboolean has_rowid = FALSE;
@@ -1765,11 +1766,14 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 	if (detected_server == SERVER_TYPE_TIDB) {
 
 		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
-		if (mysql_query(conn,query) == 0) {
+		mysql_query(conn,query);
+		g_free(query);
+
+		result = mysql_store_result(conn);
+		if (result) {
 			has_rowid = TRUE;
 		}
 
-		g_free(query);
 		mysql_free_result(result);
 
 	}
