@@ -527,13 +527,14 @@ void *process_queue(struct thread_data *td) {
  
 		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
 
-		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
-
 		if (mysql_query(thrconn, query)) {
 			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
 			exit(EXIT_FAILURE);
 		}
 		g_free(query);
+
+		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
+
 	}
 
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
