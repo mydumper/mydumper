@@ -53,8 +53,10 @@
 #include "getPassword.h"
 
 char *regexstring=NULL;
+char *snapstring=NULL;
 
 const char DIRECTORY[]= "export";
+const char tidb_rowid[] = "_tidb_rowid";
 #ifdef WITH_BINLOG
 const char BINLOG_DIRECTORY[]= "binlog_snapshot";
 const char DAEMON_BINLOGS[]= "binlogs";
@@ -181,6 +183,7 @@ static GOptionEntry entries[] =
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
 	{ "tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot, "Snapshot to use for TiDB", NULL },
+  { "tidb-mvcc-snapshot", 'z', 0, G_OPTION_ARG_STRING, &snapstring, "TiDB mvcc snapshot for 'db.table' matching", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -501,6 +504,15 @@ void *process_queue(struct thread_data *td) {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
 	
+    if ( snapstring ) {
+            char *snap = NULL;
+            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
+                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
+                    exit(EXIT_FAILURE);
+            }
+    }
+
 	if(use_savepoints && mysql_query(thrconn, "SET SQL_LOG_BIN = 0")){
 		g_critical("Failed to disable binlog for the thread: %s",mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -715,6 +727,15 @@ void *process_queue_less_locking(struct thread_data *td) {
 	} else {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
+
+    if ( snapstring ) {
+            char *snap = NULL;
+            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
+            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
+                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
+                    exit(EXIT_FAILURE);
+            }
+    }
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
@@ -2955,6 +2976,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	guint64 num_rows_st = 0;
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
+	char *query_tidb_rowid = NULL;
+	gboolean no_tidb_rowid = FALSE;
 	gchar *fcfile = NULL;
 	gchar* filename_prefix = NULL;
 	
@@ -2987,6 +3010,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
 	}
 	g_string_free(select_fields, TRUE);
+
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
 		if(success_on_1146 && mysql_errno(conn) == 1146){
@@ -3167,6 +3191,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 cleanup:
 	g_free(query);
+	g_free(query_tidb_rowid);
 
 	g_string_free(escaped,TRUE);
 	g_string_free(statement,TRUE);

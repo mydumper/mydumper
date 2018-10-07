@@ -160,6 +160,7 @@ int main(int argc, char *argv[]) {
 		mysql_query(conn, "SET SQL_LOG_BIN=0");
 
 	mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
+	mysql_query(conn, "set @@session.tidb_skip_constraint_check=1;");
 	conf.queue= g_async_queue_new();
 	conf.ready= g_async_queue_new();
 
@@ -439,6 +440,7 @@ void *process_queue(struct thread_data *td) {
 	mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
 	mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
 	mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
+	mysql_query(thrconn, "set @@session.tidb_skip_constraint_check=1;");
 	mysql_query(thrconn, "SET autocommit=0");
 
 	// TiDB specific, ignored by other servers
