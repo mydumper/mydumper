@@ -1402,21 +1402,21 @@ void start_dump(MYSQL *conn)
  
 		}
  
-	// Need to set the @@tidb_snapshot for the master thread
-	gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
-
-	g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
-
-	if (mysql_query(conn, query)) {
-		g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
-		exit(EXIT_FAILURE);
-	}
-	g_free(query);
-
-	// select the db if applicable
-	if (db) {
-		mysql_select_db(conn, db);
-	}
+		// Need to set the @@tidb_snapshot for the master thread
+		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+	
+		g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+	
+		if (mysql_query(conn, query)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+			exit(EXIT_FAILURE);
+		}
+		g_free(query);
+	
+		// select the db if applicable
+		if (db) {
+			mysql_select_db(conn, db);
+		}
 
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
