@@ -213,7 +213,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 	// restore schema in sort
 	count = scandir(directory, &namelist, 0, alphasort);
 	if (count < 0) {
-		g_critical("cannot open directory %s, error: %s\n", directory, strerror(count));
+		g_critical("cannot open directory %s, error: %s\n", directory, strerror(errno));
 		assert(0);
 	}
 	n = 0;
