@@ -13,7 +13,7 @@ To use :program:`mydumper`'s regex feature simply use the
 :option:`--regex <mydumper --regex>` option.  In the following example mydumper
 will ignore the ``test`` and ``mysql`` databases::
 
-  mydumper --regex '^(?!(mysql|test))'
+  mydumper --regex '^(?!(mysql\.|test\.))'
 
 Restoring a dump
 ----------------

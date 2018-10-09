@@ -22,6 +22,11 @@
 #define _FILE_OFFSET_BITS 64
 
 #include <mysql.h>
+
+#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
+	#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
+#endif
+
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -41,18 +46,23 @@
 #include "mydumper.h"
 #endif
 #include "server_detect.h"
+#include "connection.h"
 #include "common.h"
 #include "g_unix_signal.h"
 #include <math.h>
+#include "getPassword.h"
 
 char *regexstring=NULL;
-char *snapstring=NULL;
 
 const char DIRECTORY[]= "export";
-const char tidb_rowid[] = "_tidb_rowid";
 #ifdef WITH_BINLOG
 const char BINLOG_DIRECTORY[]= "binlog_snapshot";
 const char DAEMON_BINLOGS[]= "binlogs";
+#endif
+
+/* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
+#ifndef MYSQL_TYPE_JSON
+#define MYSQL_TYPE_JSON 245
 #endif
 
 static GMutex * init_mutex = NULL;
@@ -79,6 +89,9 @@ gchar *ignore_engines= NULL;
 char **ignore= NULL;
 
 gchar *tables_list= NULL;
+gchar *tidb_snapshot= NULL;
+GSequence *tables_skiplist= NULL;
+gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
 GList *no_updated_tables=NULL;
 
@@ -102,6 +115,7 @@ gboolean less_locking = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
+gboolean insert_ignore = FALSE;
 
 
 GList *innodb_tables= NULL;
@@ -131,6 +145,7 @@ static GOptionEntry entries[] =
 {
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL },
 	{ "tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list, "Comma delimited table list to dump (does not exclude regex option)", NULL },
+	{ "omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file, "File containing a list of database.table entries to skip, one per line (skips before applying regex option)", NULL },
 	{ "outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory, "Directory to output files to",  NULL },
 	{ "statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size, "Attempted size of INSERT statement in bytes, default 1000000", NULL},
 	{ "rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file, "Try to split tables into chunks of this many rows. This option turns off --chunk-filesize", NULL},
@@ -139,6 +154,7 @@ static GOptionEntry entries[] =
 	{ "build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files, "Build dump files even if no data available from table", NULL},
 	{ "regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring, "Regular expression for 'db.table' matching", NULL},
 	{ "ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines, "Comma delimited list of storage engines to ignore", NULL },
+	{ "insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore, "Dump rows with INSERT IGNORE", NULL },
 	{ "no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas, "Do not dump table schemas with the data", NULL },
 	{ "no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data", NULL },
 	{ "triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers", NULL },
@@ -156,7 +172,7 @@ static GOptionEntry entries[] =
 	{ "daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode", NULL },
 	{ "snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval, "Interval between each dump snapshot (in minutes), requires --daemon, default 60", NULL },
 	{ "logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile, "Log file name to use, by default stdout is used", NULL },
-	{ "tz-utc", 0, 0, G_OPTION_ARG_NONE, NULL, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
+	{ "tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz, "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.", NULL },
 	{ "skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL },
 	{ "use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints, "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL },
 	{ "success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146, "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
@@ -164,7 +180,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
-    { "tidb-mvcc-snapshot", 'z', 0, G_OPTION_ARG_STRING, &snapstring, "TiDB mvcc snapshot for 'db.table' matching", NULL},
+	{ "tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot, "Snapshot to use for TiDB", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -192,6 +208,9 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *,GString*);
 gboolean check_regex(char *database, char *table);
+gboolean check_skiplist(char *database, char *table);
+int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
+void read_tables_skiplist(const gchar * filename);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level, const gchar *message, gpointer user_data);
 void set_verbose(guint verbosity);
 #ifdef WITH_BINLOG
@@ -314,6 +333,68 @@ gboolean check_regex(char *database, char *table) {
 	return (rc>0)?TRUE:FALSE;
 }
 
+/* Check database.table string against skip list; returns TRUE if found */
+
+gboolean check_skiplist(char *database, char *table) {
+	if (g_sequence_lookup(
+		tables_skiplist,
+		g_strdup_printf("%s.%s", database, table),
+		tables_skiplist_cmp,
+		NULL
+	)) {
+		return TRUE;
+	}
+	else {
+		return FALSE;
+	};
+}
+
+/* Comparison function for skiplist sort and lookup */
+
+int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
+	/* Not using user_data, but needed for function prototype, shutting up
+	 * compiler warnings about unused variable */
+	(void)user_data;
+	/* Any sorting function would work, as long as its usage is consistent
+	 * between sort and lookup.  strcmp should be one of the fastest. */
+	return strcmp(a, b);
+};
+
+/* Read the list of tables to skip from the given filename, and prepares them
+ * for future lookups. */
+
+void read_tables_skiplist(const gchar * filename) {
+	GIOChannel * tables_skiplist_channel = NULL;
+	gchar      * buf                     = NULL;
+	GError     * error                   = NULL;
+	/* Create skiplist if it does not exist */
+	if (!tables_skiplist) {
+		tables_skiplist = g_sequence_new(NULL);
+	};
+	tables_skiplist_channel = g_io_channel_new_file(filename, "r", &error);
+
+	/* Error opening/reading the file? bail out. */
+	if (!tables_skiplist_channel) {
+		g_critical("cannot read/open file %s, %s\n", filename, error->message);
+		errors++;
+		return;
+	};
+
+	/* Read lines, push them to the list */
+	do {
+		g_io_channel_read_line(tables_skiplist_channel, &buf, NULL, NULL, NULL);
+		if (buf) {
+			g_strchomp(buf);
+			g_sequence_append(tables_skiplist, buf);
+		};
+	} while (buf);
+	g_io_channel_shutdown(tables_skiplist_channel, FALSE, NULL);
+	/* Sort the list, so that lookups work */
+	g_sequence_sort(tables_skiplist, tables_skiplist_cmp, NULL);
+	g_message("Omit list file contains %d tables to skip\n", g_sequence_get_length(tables_skiplist));
+	return;
+};
+
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
 	MYSQL_RES *master=NULL, *slave=NULL, *mdb=NULL;
@@ -342,7 +423,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 			mastergtid=row[4];
 		} else {
 			/* Let's try with MariaDB 10.x */
-			mysql_query(conn, "SELECT @@gtid_current_pos");
+			/* Use gtid_binlog_pos due to issue with gtid_current_pos with galera cluster, gtid_binlog_pos works as well with normal mariadb server https://jira.mariadb.org/browse/MDEV-10279 */
+			mysql_query(conn, "SELECT @@gtid_binlog_pos");
 			mdb=mysql_store_result(conn);
 			if (mdb && (row=mysql_fetch_row(mdb))) {
 				mastergtid=row[0];
@@ -410,13 +492,7 @@ void *process_queue(struct thread_data *td) {
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
-
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
@@ -425,15 +501,6 @@ void *process_queue(struct thread_data *td) {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
 	
-    if ( snapstring ) {
-            char *snap = NULL;
-            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
-            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
-                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
-                    exit(EXIT_FAILURE);
-            }
-    }
-
 	if(use_savepoints && mysql_query(thrconn, "SET SQL_LOG_BIN = 0")){
 		g_critical("Failed to disable binlog for the thread: %s",mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -451,6 +518,23 @@ void *process_queue(struct thread_data *td) {
 	}
 	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
 		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
+	}
+
+	if (detected_server == SERVER_TYPE_TIDB) {
+
+		// Worker threads must set their tidb_snapshot in order to be safe
+		// Because no locking has been used.
+ 
+		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+		if (mysql_query(thrconn, query)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
+			exit(EXIT_FAILURE);
+		}
+		g_free(query);
+
+		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
+
 	}
 
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
@@ -623,13 +707,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	MYSQL *thrconn = mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (defaults_file != NULL) {
-		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(thrconn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
-
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
@@ -637,15 +715,6 @@ void *process_queue_less_locking(struct thread_data *td) {
 	} else {
 		g_message("Thread %d connected using MySQL connection ID %lu", td->thread_id, mysql_thread_id(thrconn));
 	}
-
-    if ( snapstring ) {
-            char *snap = NULL;
-            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
-            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, (const char *)snap)){
-                    g_warning("Failed to set snapshot in thread: %s", mysql_error(thrconn));
-                    exit(EXIT_FAILURE);
-            }
-    }
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
@@ -808,12 +877,12 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	thrconn= mysql_init(NULL);
 	g_mutex_unlock(init_mutex);
 
-	if (compress_protocol)
-		mysql_options(thrconn,MYSQL_OPT_COMPRESS,NULL);
+	configure_connection(thrconn,"mydumper");
 
 	int timeout= 1;
 	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);
 
+	
 	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
@@ -821,6 +890,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	return thrconn;
 }
 #endif
+
 int main(int argc, char *argv[])
 {
 	GError *error = NULL;
@@ -842,9 +912,16 @@ int main(int argc, char *argv[])
 		exit (EXIT_FAILURE);
 	}
 	g_option_context_free(context);
+	
+	//prompt for password if it's NULL
+	if ( sizeof(password) == 0 || ( password == NULL && askPassword ) ){
+		password = passwordPrompt();
+	}
+
+	//printf("your password is %s and the size is %d \n",password,sizeof(password));
 
 	if (program_version) {
-		g_print("mydumper %s, built against MySQL %s\n", VERSION, MYSQL_SERVER_VERSION);
+		g_print("mydumper %s, built against MySQL %s\n", VERSION, MYSQL_VERSION_STR);
 		exit (EXIT_SUCCESS);
 	}
 
@@ -920,6 +997,10 @@ int main(int argc, char *argv[])
 	if (tables_list)
 		tables = g_strsplit(tables_list, ",", 0);
 
+	/* Process list of tables to omit if specified */
+	if (tables_skiplist_file)
+		read_tables_skiplist(tables_skiplist_file);
+
 	if (daemon_mode) {
 		GError* terror;
 		#ifdef WITH_BINLOG
@@ -973,10 +1054,7 @@ MYSQL *create_main_connection()
 	MYSQL *conn;
 	conn = mysql_init(NULL);
 
-	if (defaults_file != NULL) {
-		mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
-	}
-	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
+	configure_connection(conn,"mydumper");
 
 	if (!mysql_real_connect(conn, hostname, username, password, "", port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
@@ -985,24 +1063,12 @@ MYSQL *create_main_connection()
 
 	detected_server= detect_server(conn);
 
-    if ( snapstring ) {
-            char *snap = NULL;
-            snap = g_strdup_printf( "set @@tidb_snapshot='%s';", snapstring );
-            g_warning("set snapshot: %s", snap);
-            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, (const char *)snap)){
-                    g_warning("Failed to set snapshot in main: %s", mysql_error(conn));
-                    exit(EXIT_FAILURE);
-            }
-    }
-
-    if ( db ) {
-            char *runsql = NULL;
-            runsql = g_strdup_printf( "use %s ;", db );
-            g_warning("use database: %s", runsql);
-            if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, (const char *)runsql)){
-                    g_warning("Failed to use database in main: %s", mysql_error(conn));
-            }
-    }
+	// We should not set a DB in TiDB until after a tidb_snapshot is set.
+	// This preserves the use-case of restoring a dropped database
+	if ((detected_server != SERVER_TYPE_TIDB) && db) {
+		g_message("Selecting database: %s", db);
+		mysql_select_db(conn, db);
+	}
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
@@ -1017,6 +1083,9 @@ MYSQL *create_main_connection()
 			break;
 		case SERVER_TYPE_DRIZZLE:
 			g_message("Connected to a Drizzle server");
+			break;
+		case SERVER_TYPE_TIDB:
+			g_message("Connected to a TiDB server");
 			break;
 		default:
 			g_critical("Cannot detect server type");
@@ -1035,7 +1104,8 @@ void *exec_thread(void *data) {
 		clear_dump_directory();
 		MYSQL *conn= create_main_connection();
 		start_dump(conn);
-		mysql_close(conn);
+		// start_dump already closes mysql
+		// mysql_close(conn);
 		mysql_thread_end();
 
 		// Don't switch the symlink on shutdown because the dump is probably incomplete.
@@ -1063,8 +1133,9 @@ void *binlog_thread(void *data) {
 	MYSQL_ROW row;
 	MYSQL *conn;
 	conn = mysql_init(NULL);
-    if (defaults_file != NULL)
-    	mysql_options(conn,MYSQL_READ_DEFAULT_FILE,defaults_file);
+	if (defaults_file != NULL) {
+		mysql_options(thrconn,MYSQL_READ_DEFAULT_FILE,defaults_file);
+	}
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
 	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
@@ -1148,47 +1219,49 @@ void start_dump(MYSQL *conn)
 	   larger than preset value, we terminate the process.
 
 	   This avoids stalling whole server with flush */
+		 
+	if(!no_locks) {
+		if (mysql_query(conn, "SHOW PROCESSLIST")) {
+			g_warning("Could not check PROCESSLIST, no long query guard enabled: %s", mysql_error(conn));
+		} else {
+			MYSQL_RES *res = mysql_store_result(conn);
+			MYSQL_ROW row;
 
-	if (mysql_query(conn, "SHOW PROCESSLIST")) {
-		g_warning("Could not check PROCESSLIST, no long query guard enabled: %s", mysql_error(conn));
-	} else {
-		MYSQL_RES *res = mysql_store_result(conn);
-		MYSQL_ROW row;
-
-		/* Just in case PROCESSLIST output column order changes */
-		MYSQL_FIELD *fields = mysql_fetch_fields(res);
-		guint i;
-		int tcol=-1, ccol=-1, icol=-1;
-		for(i=0; i<mysql_num_fields(res); i++) {
-			if (!strcasecmp(fields[i].name,"Command")) ccol=i;
-			else if (!strcasecmp(fields[i].name,"Time")) tcol=i;
-			else if (!strcasecmp(fields[i].name,"Id")) icol=i;
-		}
-		if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-			g_critical("Error obtaining information from processlist");
-			exit(EXIT_FAILURE);
-		}
-		while ((row=mysql_fetch_row(res))) {
-			if (row[ccol] && strcmp(row[ccol],"Query"))
-				continue;
-			if (row[tcol] && atoi(row[tcol])>longquery) {
-				if (killqueries) {
-					if (mysql_query(conn,p3=g_strdup_printf("KILL %lu",atol(row[icol]))))
-						g_warning("Could not KILL slow query: %s",mysql_error(conn));
-					else
-						g_warning("Killed a query that was running for %ss",row[tcol]);
-					g_free(p3);
-				} else {
-					g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
-						"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
-					exit(EXIT_FAILURE);
+			/* Just in case PROCESSLIST output column order changes */
+			MYSQL_FIELD *fields = mysql_fetch_fields(res);
+			guint i;
+			int tcol=-1, ccol=-1, icol=-1;
+			for(i=0; i<mysql_num_fields(res); i++) {
+				if (!strcasecmp(fields[i].name,"Command")) ccol=i;
+				else if (!strcasecmp(fields[i].name,"Time")) tcol=i;
+				else if (!strcasecmp(fields[i].name,"Id")) icol=i;
+			}
+			if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+				g_critical("Error obtaining information from processlist");
+				exit(EXIT_FAILURE);
+			}
+			while ((row=mysql_fetch_row(res))) {
+				if (row[ccol] && strcmp(row[ccol],"Query"))
+					continue;
+				if (row[tcol] && atoi(row[tcol])>longquery) {
+					if (killqueries) {
+						if (mysql_query(conn,p3=g_strdup_printf("KILL %lu",atol(row[icol]))))
+							g_warning("Could not KILL slow query: %s",mysql_error(conn));
+						else
+							g_warning("Killed a query that was running for %ss",row[tcol]);
+						g_free(p3);
+					} else {
+						g_critical("There are queries in PROCESSLIST running longer than %us, aborting dump,\n\t"
+							"use --long-query-guard to change the guard value, kill queries (--kill-long-queries) or use \n\tdifferent server for dump", longquery);
+						exit(EXIT_FAILURE);
+					}
 				}
 			}
+			mysql_free_result(res);
 		}
-		mysql_free_result(res);
 	}
 
-	if (!no_locks) {
+	if (!no_locks && (detected_server != SERVER_TYPE_TIDB)) {
 		// Percona Backup Locks
 		if(!no_backup_locks){
 			mysql_query(conn,"SELECT @@have_backup_locks");
@@ -1252,6 +1325,8 @@ void start_dump(MYSQL *conn)
 							if (!table_found)
 								lock = 0;
 						}
+						if (lock && tables_skiplist_file && check_skiplist(row[0],row[1]))
+							continue;
 						if (lock && regexstring && !check_regex(row[0],row[1]))
 							continue;
 					
@@ -1307,6 +1382,42 @@ void start_dump(MYSQL *conn)
 				errors++;
 			}
 		}
+	} else if (detected_server == SERVER_TYPE_TIDB) {
+		g_message("Skipping locks because of TiDB");
+		if (!tidb_snapshot) {
+ 
+			// Generate a @@tidb_snapshot to use for the worker threads since
+			// the tidb-snapshot argument was not specified when starting mydumper
+
+			if(mysql_query(conn, "SELECT NOW()-INTERVAL 1 SECOND")){
+				g_critical("Couldn't generate @@tidb_snapshot: %s",mysql_error(conn));
+				exit(EXIT_FAILURE);
+			}else{
+ 
+				MYSQL_RES *result = mysql_store_result(conn);
+				MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */ 
+				tidb_snapshot = g_strdup(row[0]);
+				mysql_free_result(result);
+			}
+ 
+		}
+ 
+		// Need to set the @@tidb_snapshot for the master thread
+		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+	
+		g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+	
+		if (mysql_query(conn, query)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+			exit(EXIT_FAILURE);
+		}
+		g_free(query);
+	
+		// select the db if applicable
+		if (db) {
+			mysql_select_db(conn, db);
+		}
+
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
 	}
@@ -1621,6 +1732,82 @@ void get_not_updated(MYSQL *conn){
 		no_updated_tables = g_list_append(no_updated_tables, row[0]);
 }
 
+gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	gboolean result = FALSE;
+
+	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	if((row = mysql_fetch_row(res))) {
+		result = TRUE;
+	}
+	mysql_free_result(res);
+
+	return result;
+}
+
+
+gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
+	MYSQL_RES *result = NULL;
+	gboolean has_rowid = FALSE;
+
+	/*
+	 TiDB has a hidden column on non integer primary keys
+	 If the server is detected as TiDB, we need to check if this
+	 table has one.  If it is not TiDB, the default is
+	 has_tidb_rowid = FALSE.
+	*/
+
+	if (detected_server == SERVER_TYPE_TIDB) {
+
+		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
+		mysql_query(conn,query);
+		g_free(query);
+
+		result = mysql_store_result(conn);
+		if (result) {
+			has_rowid = TRUE;
+		}
+
+		mysql_free_result(result);
+
+	}
+
+	return has_rowid;
+
+}
+
+GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	GString *field_list = g_string_new("");
+
+	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra not like '%%GENERATED%%'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	gboolean first = TRUE;
+	while ((row = mysql_fetch_row(res))) {
+		if(first) {
+			first = FALSE;
+		} else {
+			g_string_append(field_list, ",");
+		}
+		
+		g_string_append(field_list, row[0]);
+	}
+	mysql_free_result(res);
+	
+	return field_list;
+}
+
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
    WORK IN PROGRESS
 */
@@ -1825,7 +2012,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	GList *iter = NULL;
 	char *query;
 	mysql_select_db(conn,database);
-	if (detected_server == SERVER_TYPE_MYSQL)
+	if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_TIDB)
 		query= g_strdup("SHOW TABLE STATUS");
 	else
 		query= g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'", database);
@@ -1833,6 +2020,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	if (mysql_query(conn, (query))) {
 		g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 		errors++;
+		g_free(query);
 		return;
 	}
 
@@ -1910,6 +2098,10 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			continue;
 		}
 
+		/* Checks skip list on 'database.table' string */
+		if (tables_skiplist && check_skiplist(database,row[0]))
+			continue;
+
 		/* Checks PCRE expressions on 'database.table' string */
 		if (regexstring && !check_regex(database,row[0]))
 			continue;
@@ -1963,6 +2155,8 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		}
 	}
 
+	mysql_free_result(result);
+
 	//Store Procedures and Events
 	//As these are not attached to tables we need to define when we need to dump or not
 	//Having regex filter make this hard because we dont now if a full schema is filtered or not
@@ -1978,10 +2172,15 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		if (mysql_query(conn, (query))) {
 			g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 			errors++;
+			g_free(query);
 			return;
 		}
 		result = mysql_store_result(conn);
 		while ((row = mysql_fetch_row(result)) && !post_dump){
+			/* Checks skip list on 'database.sp' string */
+			if (tables_skiplist && check_skiplist(database,row[1]))
+				continue;
+
 			/* Checks PCRE expressions on 'database.sp' string */
 			if (regexstring && !check_regex(database,row[1]))
 				continue;
@@ -1995,10 +2194,14 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			if (mysql_query(conn, (query))) {
 				g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 				errors++;
+				g_free(query);
 				return;
 			}
 			result = mysql_store_result(conn);
 			while ((row = mysql_fetch_row(result)) && !post_dump){
+				/* Checks skip list on 'database.sp' string */
+				if (tables_skiplist_file && check_skiplist(database,row[1]))
+					continue;
 				/* Checks PCRE expressions on 'database.sp' string */
 				if (regexstring && !check_regex(database,row[1]))
 					continue;
@@ -2006,6 +2209,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 				post_dump = 1;
 			}
 		}
+		mysql_free_result(result);
 	}
 
 	if(dump_events && !post_dump){
@@ -2014,16 +2218,21 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		if (mysql_query(conn, (query))) {
 			g_critical("Error: DB: %s - Could not execute query: %s", database, mysql_error(conn));
 			errors++;
+			g_free(query);
 			return;
 		}
 		result = mysql_store_result(conn);
 		while ((row = mysql_fetch_row(result)) && !post_dump){
+			/* Checks skip list on 'database.sp' string */
+			if (tables_skiplist_file && check_skiplist(database,row[1]))
+				continue;
 			/* Checks PCRE expressions on 'database.sp' string */
 			if (regexstring && !check_regex(database,row[1]))
 				continue;
 
 			post_dump = 1;
 		}
+		mysql_free_result(result);
 	}
 
 	if(post_dump){
@@ -2033,7 +2242,6 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	}
 
 	g_free(query);
-	mysql_free_result(result);
 	if(file)
 		fflush(file);
 
@@ -2384,6 +2592,9 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	if (detected_server == SERVER_TYPE_MYSQL) {
 		g_string_printf(statement,"/*!40101 SET NAMES binary*/;\n");
 		g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+		if (!skip_tz) {
+			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+		}
 	} else {
 		g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
 	}
@@ -2744,8 +2955,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	guint64 num_rows_st = 0;
 	MYSQL_RES *result = NULL;
 	char *query = NULL;
-	char *query_tidb_rowid = NULL;
-	gboolean no_tidb_rowid = FALSE;
 	gchar *fcfile = NULL;
 	gchar* filename_prefix = NULL;
 	
@@ -2757,29 +2966,28 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		g_free(split_filename);
 	}
 
+	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
+	gboolean has_tidb_rowid = detect_tidb_rowid(conn, database, table);
 	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
 	GString* statement_row = g_string_sized_new(0);
 	
-	query_tidb_rowid = g_strdup_printf("SELECT `%s` FROM `%s`.`%s` LIMIT 0", tidb_rowid, database, table);
-	no_tidb_rowid = (mysql_query(conn, query_tidb_rowid) || !(result = mysql_use_result(conn)));
-	if (no_tidb_rowid) {
-		// error code 1054 means unknown column in field list.
-		if (mysql_errno(conn) == 1054) {
-			g_message("table (%s.%s) doesn't contain %s: %s", database, table, tidb_rowid, mysql_error(conn));
-		} else {
-			g_critical("Error query table (%s.%s) for %s: %s", database, table, tidb_rowid, mysql_error(conn));
-		}
-	} 
-	mysql_free_result(result);
+	GString* select_fields;
 
-	/* Poor man's database code */
-	if (no_tidb_rowid) {
-		query = g_strdup_printf("SELECT %s * FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", database, table, where ? "WHERE" : "", where ? where : "");
+	if (has_generated_fields) {
+		select_fields = get_insertable_fields(conn, database, table);
 	} else {
-		query = g_strdup_printf("SELECT %s *, `%s` FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", tidb_rowid, database, table, where ? "WHERE" : "", where ? where : "");
+		select_fields = g_string_new("*");
 	}
+ 
+	if (has_tidb_rowid) { // TiDB has no query cache
+		query = g_strdup_printf("SELECT %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+	} else {
+		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+	}
+	g_string_free(select_fields, TRUE);
+
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
 		if(success_on_1146 && mysql_errno(conn) == 1146){
@@ -2824,8 +3032,12 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			if (complete_insert || !no_tidb_rowid){
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+			if (complete_insert || has_generated_fields || has_tidb_rowid) {
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2834,7 +3046,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			num_rows_st = 0;
 		}
@@ -2857,9 +3073,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				/* We reuse buffers for string escaping, growing is expensive just at the beginning */
 				g_string_set_size(escaped, lengths[i]*2+1);
 				mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, "CONVERT(");
 				g_string_append_c(statement_row,'\"');
 				g_string_append(statement_row,escaped->str);
 				g_string_append_c(statement_row,'\"');
+                                if (fields[i].type == MYSQL_TYPE_JSON) g_string_append(statement_row, " USING UTF8MB4)");
 			}
 			if (i < num_fields - 1) {
 				g_string_append_c(statement_row,',');
@@ -2916,7 +3134,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		}
 		else {
 			if (complete_insert) {
-				g_string_printf(statement, "INSERT INTO `%s` (", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` (", table);
+				}
 				for (i = 0; i < num_fields; ++i) {
 					if (i > 0) {
 						g_string_append_c(statement, ',');
@@ -2925,7 +3147,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
-				g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				if (insert_ignore) {
+					g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+				} else {
+					g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+				}
 			}
 			g_string_append(statement, statement_row->str);
 		}
@@ -2942,10 +3168,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 cleanup:
 	g_free(query);
-	g_free(query_tidb_rowid);
 
 	g_string_free(escaped,TRUE);
 	g_string_free(statement,TRUE);
+	g_string_free(statement_row,TRUE);
 
 	if (result) {
 		mysql_free_result(result);
