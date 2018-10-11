@@ -5,21 +5,25 @@
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
+## What is changed in this fork from upstream mydumper?
+
+This fork contains additional fixes to work better with TiDB.  See the [PingCAP documentation for more](https://pingcap.com/docs/tools/mydumper/).
+
 ## How to install mydumper/myloader?
 
-First get the correct url from the [releases section](https://github.com/maxbube/mydumper/releases) then:
+The best way to install, is via TiDB Enterprise Tools:
 
-### RedHat / Centos
-
-```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper-0.9.5-1.el7.x86_64.rpm
 ```
+# Download the tool package.
+wget http://download.pingcap.org/tidb-enterprise-tools-latest-linux-amd64.tar.gz
+wget http://download.pingcap.org/tidb-enterprise-tools-latest-linux-amd64.sha256
 
-### Ubuntu / Debian
+# Check the file integrity. If the result is OK, the file is correct.
+sha256sum -c tidb-enterprise-tools-latest-linux-amd64.sha256
 
-```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-1.xenial_amd64.deb
-dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
+# Extract the package.
+tar -xzf tidb-enterprise-tools-latest-linux-amd64.tar.gz
+cd tidb-enterprise-tools-latest-linux-amd64
 ```
 
 ## How to build it?
@@ -48,16 +52,7 @@ To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
 
 ## How does consistent snapshot work?
 
-This is all done following best MySQL practices and traditions:
-
-* As a precaution, slow running queries on the server either abort the dump, or get killed
-* Global write lock is acquired ("FLUSH TABLES WITH READ LOCK")
-* Various metadata is read ("SHOW SLAVE STATUS","SHOW MASTER STATUS")
-* Other threads connect and establish snapshots ("START TRANSACTION WITH CONSISTENT SNAPSHOT")
-** On pre-4.1.8 it creates dummy InnoDB table, and reads from it.
-* Once all worker threads announce the snapshot establishment, master executes "UNLOCK TABLES" and starts queueing jobs.
-
-This for now does not provide consistent snapshots for non-transactional engines - support for that is expected in 0.2 :)
+Support for a consistent snapshot in TiDB *differs* from MySQL.  Instead of using `FLUSH TABLES WITH READ LOCK`, a `tidb_snapshot` is set for all sessions to ensure that they export data from the same point in time.
 
 ## How to exclude (or include) databases?
 

@@ -76,7 +76,7 @@ static void finalize(GSource *source)
 	g_free(signal_source->data);
 
 }
-static GSourceFuncs SourceFuncs = 
+static GSourceFuncs SourceFuncs =
 {
 	.prepare  = prepare,
 	.check    = check,
@@ -98,7 +98,7 @@ static void g_unix_signal_source_init(GSource *source, gint signum)
 	g_ptr_array_add(signal_data, signal_source->data);
 }
 
-GSource *g_unix_signal_source_new(gint signum)
+GSource *gg_unix_signal_source_new(gint signum)
 {
 	GSource *source = g_source_new(&SourceFuncs, sizeof(GUnixSignalSource));
 	g_unix_signal_source_init(source, signum);
@@ -110,10 +110,10 @@ GSource *g_unix_signal_source_new(gint signum)
 	return source;
 }
 
-guint g_unix_signal_add_full(gint priority, gint signum, GSourceFunc function, gpointer data, GDestroyNotify notify)
+guint gg_unix_signal_add_full(gint priority, gint signum, GSourceFunc function, gpointer data, GDestroyNotify notify)
 {
 	g_return_val_if_fail(function != NULL, 0);
-	GSource *source = g_unix_signal_source_new(signum);
+	GSource *source = gg_unix_signal_source_new(signum);
 	if (priority != G_PRIORITY_DEFAULT)
 		g_source_set_priority (source, priority);
 	g_source_set_callback(source, function, data, notify);
@@ -122,7 +122,7 @@ guint g_unix_signal_add_full(gint priority, gint signum, GSourceFunc function, g
 	return id;
 }
 
-guint g_unix_signal_add(gint signum, GSourceFunc function, gpointer data)
+guint gg_unix_signal_add(gint signum, GSourceFunc function, gpointer data)
 {
-	return g_unix_signal_add_full(G_PRIORITY_DEFAULT, signum, function, data, NULL);
+	return gg_unix_signal_add_full(G_PRIORITY_DEFAULT, signum, function, data, NULL);
 }

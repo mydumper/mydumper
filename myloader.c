@@ -33,6 +33,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <zlib.h>
+#include <assert.h>
 #include "common.h"
 #include "myloader.h"
 #include "connection.h"
@@ -205,28 +206,31 @@ int main(int argc, char *argv[]) {
 }
 
 void restore_databases(struct configuration *conf, MYSQL *conn) {
-	GError *error= NULL;
-	GDir* dir= g_dir_open(directory, 0, &error);
+	int count, n;
+	struct dirent **namelist;
+	char *filename;
 
-	if (error) {
-		g_critical("cannot open directory %s, %s\n", directory, error->message);
-		errors++;
-		return;
+	// restore schema in sort
+	count = scandir(directory, &namelist, 0, alphasort);
+	if (count < 0) {
+		g_critical("cannot open directory %s, error: %s\n", directory, strerror(errno));
+		assert(0);
 	}
-
-	const gchar* filename= NULL;
-
-	while((filename= g_dir_read_name(dir))) {
+	n = 0;
+	while (n < count) {
+		filename = namelist[n]->d_name;
 		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (g_strrstr(filename, "-schema.sql")) {
 				add_schema(filename, conn);
 			}
 		}
+		n++;
 	}
 
-	g_dir_rewind(dir);
-
-	while((filename= g_dir_read_name(dir))) {
+	// restore data in sort
+	n = 0;
+	while (n < count) {
+		filename = namelist[n]->d_name;
 		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (!g_strrstr(filename, "-schema.sql")
 			 && !g_strrstr(filename, "-schema-view.sql")
@@ -237,11 +241,11 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
 				add_table(filename, conf);
 			}
 		}
+		free(namelist[n]);
+		n++;
 	}
-
-	g_dir_close(dir);
+	free(namelist);
 }
-
 
 void restore_schema_view(MYSQL *conn){
 	GError *error= NULL;
