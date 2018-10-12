@@ -2595,6 +2595,10 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 		if (!skip_tz) {
 			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
 		}
+	} elseif (detected_server == SERVER_TYPE_TIDB) {
+		if (!skip_tz) {
+			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+		}
 	} else {
 		g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
 	}
