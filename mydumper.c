@@ -1382,14 +1382,14 @@ void start_dump(MYSQL *conn)
 			// Generate a @@tidb_snapshot to use for the worker threads since
 			// the tidb-snapshot argument was not specified when starting mydumper
 
-			if(mysql_query(conn, "SELECT NOW()-INTERVAL 1 SECOND")){
+			if(mysql_query(conn, "SHOW MASTER STATUS")){
 				g_critical("Couldn't generate @@tidb_snapshot: %s",mysql_error(conn));
 				exit(EXIT_FAILURE);
 			}else{
  
 				MYSQL_RES *result = mysql_store_result(conn);
 				MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */ 
-				tidb_snapshot = g_strdup(row[0]);
+				tidb_snapshot = g_strdup(row[1]);
 				mysql_free_result(result);
 			}
  
