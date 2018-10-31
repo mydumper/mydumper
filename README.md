@@ -18,7 +18,7 @@ yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumpe
 ### Ubuntu / Debian
 
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-1.xenial_amd64.deb
+wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-2.xenial_amd64.deb
 dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
 ```
 
