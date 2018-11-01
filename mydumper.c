@@ -116,7 +116,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
-
+gboolean enable_tidb_rowid = FALSE;
 
 GList *innodb_tables= NULL;
 GList *non_innodb_table= NULL;
@@ -181,6 +181,7 @@ static GOptionEntry entries[] =
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
 	{ "tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot, "Snapshot to use for TiDB", NULL },
+	{ "tidb-rowid", 0, 0, G_OPTION_ARG_NONE, &enable_tidb_rowid, "Dump _tidb_rowid from a TiDB database", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -1766,7 +1767,7 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 	 has_tidb_rowid = FALSE.
 	*/
 
-	if (detected_server == SERVER_TYPE_TIDB) {
+	if (detected_server == SERVER_TYPE_TIDB && enable_tidb_rowid) {
 
 		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
 		mysql_query(conn,query);
