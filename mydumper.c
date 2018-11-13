@@ -2579,6 +2579,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 	char *query = NULL;
 	MYSQL_RES *result = NULL;
 	MYSQL_ROW row;
+	unsigned long *lengths;
 
 	if (!compress_output)
 		outfile= g_fopen(filename, "w");
@@ -2630,7 +2631,30 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 
 	/* There should never be more than one row */
 	row = mysql_fetch_row(result);
-	g_string_append(statement, row[1]);
+	lengths = mysql_fetch_lengths(result);
+	g_string_append_len(statement, row[1], lengths[1]);
+
+	if (result)
+		mysql_free_result(result);
+
+	/* If we enable _tidb_rowid, ensure the base is recorded in the CREATE TABLE statement */
+	if (detected_server == SERVER_TYPE_TIDB && enable_tidb_rowid) {
+		/* Only query if the original statement does not contain the AUTO_INCREMENT= option */
+		if (g_strstr_len(row[1], lengths[1], "AUTO_INCREMENT=") == NULL) {
+			char *next_row_query = g_strdup_printf("ADMIN SHOW `%s`.`%s` NEXT_ROW_ID", database, table);
+			MYSQL_RES *next_row_result = NULL;
+			if (mysql_query(conn, next_row_query) || !(next_row_result = mysql_use_result(conn))) {
+				g_warning("Error getting max row ID (%s.%s): %s", database, table, mysql_error(conn));
+			} else {
+				MYSQL_ROW next_row = mysql_fetch_row(next_row_result);
+				g_string_append(statement, " AUTO_INCREMENT=");
+				g_string_append(statement, next_row[3]);
+				mysql_free_result(next_row_result);
+			}
+			g_free(next_row_query);
+		}
+	}
+
 	g_string_append(statement, ";\n");
 	if (!write_data((FILE *)outfile, statement)) {
 		g_critical("Could not write schema for %s.%s", database, table);
@@ -2645,8 +2669,6 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 
 
 	g_string_free(statement, TRUE);
-	if (result)
-		mysql_free_result(result);
 
 	return;
 }
