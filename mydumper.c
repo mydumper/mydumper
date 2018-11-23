@@ -2940,10 +2940,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	} else {
 		select_fields = g_string_new("*");
 	}
- 
-	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
-	
-	g_string_free(select_fields, TRUE);
+
+	/* Poor man's database code */
+ 	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+ 	g_string_free(select_fields, TRUE);
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
 		if(success_on_1146 && mysql_errno(conn) == 1146){
