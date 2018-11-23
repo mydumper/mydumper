@@ -1739,36 +1739,6 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
 	return result;
 }
 
-gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
-	MYSQL_RES *result = NULL;
-	gboolean has_rowid = FALSE;
-
-	/*
-	 TiDB has a hidden column on non integer primary keys
-	 If the server is detected as TiDB, we need to check if this
-	 table has one.  If it is not TiDB, the default is
-	 has_tidb_rowid = FALSE.
-	*/
-
-	if (detected_server == SERVER_TYPE_TIDB) {
-
-		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
-		mysql_query(conn,query);
-		g_free(query);
-
-		result = mysql_store_result(conn);
-		if (result) {
-			has_rowid = TRUE;
-		}
-
-		mysql_free_result(result);
-
-	}
-
-	return has_rowid;
-
-}
-
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	MYSQL_RES *res=NULL;
 	MYSQL_ROW row;
@@ -2958,7 +2928,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
-	gboolean has_tidb_rowid = detect_tidb_rowid(conn, database, table);
 	
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
@@ -2972,11 +2941,8 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		select_fields = g_string_new("*");
 	}
  
-	if (has_tidb_rowid) { // TiDB has no query cache
-		query = g_strdup_printf("SELECT %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_fields->str, database, table, where?"WHERE":"", where?where:"");
-	} else {
-		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
-	}
+	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+	
 	g_string_free(select_fields, TRUE);
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
@@ -3026,7 +2992,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			if (complete_insert || has_generated_fields || has_tidb_rowid) {
+			if (complete_insert || has_generated_fields) {
 				if (insert_ignore) {
 					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
 				} else {
