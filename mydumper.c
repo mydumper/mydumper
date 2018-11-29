@@ -1736,21 +1736,48 @@ void get_not_updated(MYSQL *conn){
 		no_updated_tables = g_list_append(no_updated_tables, row[0]);
 }
 
-gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
-	MYSQL_RES *res=NULL;
-	MYSQL_ROW row;
-
-	gboolean result = FALSE;
-
-	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'", database, table);
-	mysql_query(conn,query);
-	g_free(query);
-
-	res = mysql_store_result(conn);
-	if((row = mysql_fetch_row(res))) {
-		result = TRUE;
+MYSQL_STMT *execute_detect_fields_stmt(MYSQL *conn, char *database, char *table, const char *query) {
+	MYSQL_STMT *stmt = mysql_stmt_init(conn);
+	if (!stmt) {
+		return stmt;
 	}
-	mysql_free_result(res);
+
+	mysql_stmt_prepare(stmt, query, strlen(query));
+
+	MYSQL_BIND bind[2];
+	memset(bind, 0, sizeof(bind));
+	bind[0].buffer_type = MYSQL_TYPE_STRING;
+	bind[0].buffer = database;
+	bind[0].buffer_length = strlen(database);
+	bind[1].buffer_type = MYSQL_TYPE_STRING;
+	bind[1].buffer = table;
+	bind[1].buffer_length = strlen(table);
+	mysql_stmt_bind_param(stmt, bind);
+
+	if (mysql_stmt_execute(stmt) != 0) {
+		mysql_stmt_close(stmt);
+		return NULL;
+	}
+	return stmt;
+}
+
+gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
+	const char* query = "select 1 from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra like '%GENERATED%'";
+	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
+	if (!stmt) {
+		return FALSE;
+	}
+
+	long dummy;
+	MYSQL_BIND bind;
+	memset(&bind, 0, sizeof(bind));
+	bind.buffer_type = MYSQL_TYPE_LONG;
+	bind.buffer = &dummy;
+	bind.buffer_length = sizeof(dummy);
+
+	mysql_stmt_bind_result(stmt, &bind);
+	gboolean result = !mysql_stmt_fetch(stmt);
+	mysql_stmt_close(stmt);
 
 	return result;
 }
@@ -1787,27 +1814,36 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 }
 
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
-	MYSQL_RES *res=NULL;
-	MYSQL_ROW row;
+	const char* query = "select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra not like '%GENERATED%'";
+	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
+	if (!stmt) {
+		return NULL;
+	}
 
 	GString *field_list = g_string_new("");
 
-	gchar *query = g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra not like '%%GENERATED%%'", database, table);
-	mysql_query(conn,query);
-	g_free(query);
+	gchar col_name[512];
+	unsigned long col_len;
+	MYSQL_BIND bind;
+	memset(&bind, 0, sizeof(bind));
+	bind.buffer_type = MYSQL_TYPE_STRING;
+	bind.buffer = col_name;
+	bind.buffer_length = sizeof(col_name);
+	bind.length = &col_len;
 
-	res = mysql_store_result(conn);
+	mysql_stmt_bind_result(stmt, &bind);
+	mysql_stmt_store_result(stmt);
 	gboolean first = TRUE;
-	while ((row = mysql_fetch_row(res))) {
+	while (!mysql_stmt_fetch(stmt)) {
 		if(first) {
 			first = FALSE;
 		} else {
 			g_string_append(field_list, ",");
 		}
 
-		g_string_append(field_list, row[0]);
+		g_string_append_len(field_list, bind.buffer, *bind.length);
 	}
-	mysql_free_result(res);
+	mysql_stmt_close(stmt);
 
 	return field_list;
 }
