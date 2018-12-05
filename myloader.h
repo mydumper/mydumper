@@ -45,7 +45,7 @@ struct restore_job {
 	char *database;
 	char *table;
 	char *filename;
-	guint part;
+	char *part;
 };
 
 #endif

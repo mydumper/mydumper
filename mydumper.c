@@ -115,6 +115,8 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean split_partitions = FALSE;
+
 
 
 GList *innodb_tables= NULL;
@@ -179,6 +181,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+	{ "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions, "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -568,10 +571,7 @@ void *process_queue(struct thread_data *td) {
 		switch (job->type) {
 			case JOB_DUMP:
 				tj=(struct table_job *)job->job_data;
-				if (tj->where)
-					g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
-				else
-					g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+				g_message("Thread %d dumping data for `%s`.`%s`%s", td->thread_id, tj->database, tj->table, tj->where ? tj->where : "");
 				if(use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")){
 					g_critical("Savepoint failed: %s",mysql_error(thrconn));
 				}
@@ -588,10 +588,7 @@ void *process_queue(struct thread_data *td) {
 				break;
 			case JOB_DUMP_NON_INNODB:
 				tj=(struct table_job *)job->job_data;
-				if (tj->where)
-					g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
-				else
-					g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+				g_message("Thread %d dumping data for `%s`.`%s`%s", td->thread_id, tj->database, tj->table, tj->where ? tj->where : "");
 				if(use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")){
 					g_critical("Savepoint failed: %s",mysql_error(thrconn));
 				}
@@ -758,10 +755,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 				}
 				for (mj->table_job_list= g_list_first(mj->table_job_list); mj->table_job_list; mj->table_job_list= g_list_next(mj->table_job_list)) {
 					tj = (struct table_job *)mj->table_job_list->data;
-					if (tj->where)
-						g_message("Thread %d dumping data for `%s`.`%s` where %s", td->thread_id, tj->database, tj->table, tj->where);
-					else
-						g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id, tj->database, tj->table);
+					g_message("Thread %d dumping data for `%s`.`%s`%s", td->thread_id, tj->database, tj->table, (tj->where == NULL) ? "" : tj->where);
 					dump_table_data_file(thrconn, tj->database, tj->table, tj->where, tj->filename);
 					if(tj->database) g_free(tj->database);
 					if(tj->table) g_free(tj->table);
@@ -1711,6 +1705,28 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	mysql_free_result(res);
 	
 	return field_list;
+}
+
+GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	GList *partition_list = NULL;
+
+	gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	if (res == NULL)
+		//partitioning is not supported
+		return partition_list;
+	while ((row = mysql_fetch_row(res))) {
+		partition_list = g_list_append(partition_list, strdup(row[0]));
+	}
+	mysql_free_result(res);
+
+	return partition_list;
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for datadumping
@@ -2761,12 +2777,38 @@ void dump_schema_post(char *database, struct configuration *conf) {
 
 void dump_table(MYSQL *conn, char *database, char *table, struct configuration *conf, gboolean is_innodb) {
 
+	GList * partitions = NULL;
+	if (split_partitions)
+		partitions = get_partitions_for_table(conn, database, table);
+
 	GList * chunks = NULL;
 	if (rows_per_file)
 		chunks = get_chunks_for_table(conn, database, table, conf);
 
-
-	if (chunks) {
+	//For simplicity, row-based chunk processing is disabled for partitioned tables
+	if(partitions) {
+		int npartition=0;
+		for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+			struct job *j = g_new0(struct job,1);
+			struct table_job *tj = g_new0(struct table_job,1);
+			j->job_data=(void*) tj;
+			tj->database=g_strdup(database);
+			tj->table=g_strdup(table);
+			j->conf=conf;
+			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+			if (daemon_mode)
+				tj->filename=g_strdup_printf("%s/%d/%s.%s.%s%s.sql%s", output_directory, dump_number, database, table, (char *)partitions->data, (chunk_filesize?".00001":""), (compress_output?".gz":""));
+			else
+				tj->filename=g_strdup_printf("%s/%s.%s.%s%s.sql%s", output_directory, database, table, (char *)partitions->data, (chunk_filesize?".00001":""), (compress_output?".gz":""));
+			//this is not
+			tj->where=g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data);
+			if (!is_innodb && npartition)
+								g_atomic_int_inc(&non_innodb_table_counter);
+			g_async_queue_push(conf->queue,j);
+			npartition++;
+		}
+		g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
+	} else if (chunks) {
 		int nchunk=0;
 		for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
 			struct job *j = g_new0(struct job,1);
@@ -2780,13 +2822,13 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
 				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
-			tj->where=(char *)chunks->data;
+			tj->where=g_strdup_printf(" WHERE (%s) ", (char *)chunks->data);
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
 			g_async_queue_push(conf->queue,j);
 			nchunk++;
 		}
-		g_list_free(g_list_first(chunks));
+		g_list_free_full(g_list_first(chunks), (GDestroyNotify)g_free);
 	} else {
 		struct job *j = g_new0(struct job,1);
 		struct table_job *tj = g_new0(struct table_job,1);
@@ -2807,6 +2849,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration *conf){
 	struct db_table* dbt;
 	GList * chunks = NULL;
+	GList * partitions = NULL;
 
 	struct job *j = g_new0(struct job,1);
 	struct tables_job *tjs = g_new0(struct tables_job,1);
@@ -2817,10 +2860,26 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 	for (noninnodb_tables_list= g_list_first(noninnodb_tables_list); noninnodb_tables_list; noninnodb_tables_list= g_list_next(noninnodb_tables_list)) {
 		dbt = (struct db_table*) noninnodb_tables_list->data;
 
+		if (split_partitions)
+			partitions = get_partitions_for_table(conn, dbt->database, dbt->table);
+
 		if (rows_per_file)
 			chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
 
-		if(chunks){
+		if(partitions) {
+			for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+				struct table_job *tj = g_new0(struct table_job,1);
+				tj->database = g_strdup_printf("%s",dbt->database);
+				tj->table = g_strdup_printf("%s",dbt->table);
+				if (daemon_mode)
+					tj->filename=g_strdup_printf("%s/%d/%s.%s.%s%s.sql%s", output_directory, dump_number, dbt->database, dbt->table, (char *)partitions->data, (chunk_filesize?".00001":""), (compress_output?".gz":""));
+				else
+					tj->filename=g_strdup_printf("%s/%s.%s.%s%s.sql%s", output_directory, dbt->database, dbt->table, (char *)partitions->data, (chunk_filesize?".00001":""),(compress_output?".gz":""));
+				tj->where=g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data);
+				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
+			}
+			g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
+		} else if(chunks){
 			int nchunk=0;
 			for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
 				struct table_job *tj = g_new0(struct table_job,1);
@@ -2830,11 +2889,12 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 					tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
 				else
 					tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database, dbt->table, nchunk,(compress_output?".gz":""));
-				tj->where=(char *)chunks->data;
+				tj->where=g_strdup_printf(" WHERE (%s) ", (char *)chunks->data);
 				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 				nchunk++;
 			}
-		}else{
+			g_list_free_full(g_list_first(chunks), (GDestroyNotify)g_free);
+		} else {
 			struct table_job *tj = g_new0(struct table_job,1);
 			tj->database = g_strdup_printf("%s",dbt->database);
 			tj->table = g_strdup_printf("%s",dbt->table);
@@ -2886,7 +2946,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	/* Poor man's database code */
- 	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+ 	query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?where:"");
  	g_string_free(select_fields, TRUE);
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146 
@@ -3151,3 +3211,4 @@ void write_log_file(const gchar *log_domain, GLogLevelFlags log_level, const gch
 	}
 	g_string_free(message_out, TRUE);
 }
+
