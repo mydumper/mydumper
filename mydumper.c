@@ -536,6 +536,14 @@ void *process_queue(struct thread_data *td) {
 		}
 		g_free(query);
 
+        if (tidb_force_priority) {
+            query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
+            if (mysql_query(thrconn, query)){
+                g_warning("Failed to set tidb_force_priority: %s", mysql_error(thrconn));
+            }
+            g_free(query);
+        }
+
 		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
 
 	}
@@ -1075,10 +1083,11 @@ MYSQL *create_main_connection()
 
     if (tidb_force_priority) {
         if (detected_server == SERVER_TYPE_TIDB) {
-            char *query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
+			gchar *query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
             if (mysql_query(conn, query)){
                 g_warning("Failed to set tidb_force_priority: %s", mysql_error(conn));
             }
+			g_free(query);
         }else{
             g_warning("The connected server is not TiDB, tidb_force_priority is invalid");
         }
