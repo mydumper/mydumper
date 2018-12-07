@@ -1075,7 +1075,7 @@ MYSQL *create_main_connection()
 
     if (tidb_force_priority) {
         if (detected_server == SERVER_TYPE_TIDB) {
-            char *query = g_strdup_printf("SET SESSION tidb_force_priority = \"%s\"", tidb_force_priority);
+            char *query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
             if (mysql_query(conn, query)){
                 g_warning("Failed to set tidb_force_priority: %s", mysql_error(conn));
             }
