@@ -1081,18 +1081,6 @@ MYSQL *create_main_connection()
         mysql_select_db(conn, db);
     }
 
-    if (tidb_force_priority) {
-        if (detected_server == SERVER_TYPE_TIDB) {
-			gchar *query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
-            if (mysql_query(conn, query)){
-                g_warning("Failed to set tidb_force_priority: %s", mysql_error(conn));
-            }
-			g_free(query);
-        }else{
-            g_warning("The connected server is not TiDB, tidb_force_priority is invalid");
-        }
-    }
-
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
 	}
