@@ -84,6 +84,7 @@ int lock_all_tables=0;
 guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
 gboolean have_snapshot_cloning= FALSE;
+gchar *tidb_force_priority= NULL;
 
 gchar *ignore_engines= NULL;
 char **ignore= NULL;
@@ -165,7 +166,8 @@ static GOptionEntry entries[] =
 	{ "no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks, "Do not use Percona backup locks", NULL},
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
-	{ "kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
+    { "kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
+    { "tidb-force-priority", 0, 0, G_OPTION_ARG_STRING, &tidb_force_priority, "Change the default priority for statements executed on a TiDB server, set the value of this variable to NO_PRIORITY, LOW_PRIORITY, DELAYED or HIGH_PRIORITY", NULL },
 #ifdef WITH_BINLOG
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
 #endif
@@ -533,6 +535,14 @@ void *process_queue(struct thread_data *td) {
 			exit(EXIT_FAILURE);
 		}
 		g_free(query);
+
+        if (tidb_force_priority) {
+            query = g_strdup_printf("SET SESSION tidb_force_priority = '%s'", tidb_force_priority);
+            if (mysql_query(thrconn, query)){
+                g_warning("Failed to set tidb_force_priority: %s", mysql_error(thrconn));
+            }
+            g_free(query);
+        }
 
 		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
 
@@ -1066,10 +1076,10 @@ MYSQL *create_main_connection()
 
 	// We should not set a DB in TiDB until after a tidb_snapshot is set.
 	// This preserves the use-case of restoring a dropped database
-	if ((detected_server != SERVER_TYPE_TIDB) && db) {
-		g_message("Selecting database: %s", db);
-		mysql_select_db(conn, db);
-	}
+    if ((detected_server != SERVER_TYPE_TIDB) && db) {
+        g_message("Selecting database: %s", db);
+        mysql_select_db(conn, db);
+    }
 
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION wait_timeout = 2147483")){
 		g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
