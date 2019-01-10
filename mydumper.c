@@ -197,7 +197,8 @@ void set_charset(GString* statement, char *character_set, char *collation_connec
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
 void dump_database(MYSQL *, char *, FILE *,  struct configuration *);
-void dump_create_database(MYSQL *conn, char *database);
+void dump_create_database(char *, struct configuration *);
+void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL * conn,  struct configuration *);
 void get_not_updated(MYSQL *conn);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
@@ -537,6 +538,7 @@ void *process_queue(struct thread_data *td) {
 
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
+	struct create_database_job* cdj= NULL;
 	struct schema_job* sj= NULL;
 	struct view_job* vj= NULL;
 	struct schema_post_job* sp= NULL;
@@ -608,6 +610,15 @@ void *process_queue(struct thread_data *td) {
 				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
+				break;
+			case JOB_CREATE_DATABASE:
+				cdj=(struct create_database_job *)job->job_data;
+				g_message("Thread %d dumping schema create for `%s`", td->thread_id, cdj->database);
+				dump_create_database_data(thrconn, cdj->database, cdj->filename);
+				if(cdj->database) g_free(cdj->database);
+				if(cdj->filename) g_free(cdj->filename);
+				g_free(cdj);
+				g_free(job);
 				break;
 			case JOB_SCHEMA:
 				sj=(struct schema_job *)job->job_data;
@@ -710,6 +721,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
 	struct tables_job* mj=NULL;
+	struct create_database_job* cdj= NULL;
 	struct schema_job* sj= NULL;
 	struct view_job* vj= NULL;
 	struct schema_post_job* sp= NULL;
@@ -771,6 +783,15 @@ void *process_queue_less_locking(struct thread_data *td) {
 				mysql_query(thrconn, "UNLOCK TABLES /* Non Innodb */");
 				g_list_free(mj->table_job_list);
 				g_free(mj);
+				g_free(job);
+				break;
+			case JOB_CREATE_DATABASE:
+				cdj=(struct create_database_job *)job->job_data;
+				g_message("Thread %d dumping schema create for `%s`", td->thread_id, cdj->database);
+				dump_create_database_data(thrconn, cdj->database, cdj->filename);
+				if(cdj->database) g_free(cdj->database);
+				if(cdj->filename) g_free(cdj->filename);
+				g_free(cdj);
 				g_free(job);
 				break;
 			case JOB_SCHEMA:
@@ -1439,7 +1460,7 @@ void start_dump(MYSQL *conn)
 	if (db) {
 		dump_database(conn, db, nufile, &conf);
 		if(!no_schemas)
-			dump_create_database(conn, db);
+			dump_create_database(db, &conf);
 	} else if (tables) {
 		get_tables(conn, &conf);
 	} else {
@@ -1456,7 +1477,7 @@ void start_dump(MYSQL *conn)
 			dump_database(conn, row[0], nufile, &conf);
 			/* Checks PCRE expressions on 'database' string */
 			if (!no_schemas && (regexstring == NULL || check_regex(row[0],NULL)))
-				dump_create_database(conn, row[0]);
+				dump_create_database(row[0], &conf);
 
 		}
 		mysql_free_result(databases);
@@ -1596,17 +1617,28 @@ void start_dump(MYSQL *conn)
 	g_free(threads);
 }
 
-void dump_create_database(MYSQL *conn, char *database){
+void dump_create_database(char *database, struct configuration *conf) {
+	struct job *j = g_new0(struct job,1);
+	struct create_database_job *cdj = g_new0(struct create_database_job,1);
+	j->job_data=(void*) cdj;
+	cdj->database=g_strdup(database);
+	j->conf=conf;
+	j->type=JOB_CREATE_DATABASE;
+
+	if (daemon_mode)
+		cdj->filename = g_strdup_printf("%s/%d/%s-schema-create.sql%s", output_directory, dump_number, database, (compress_output?".gz":""));
+	else
+		cdj->filename = g_strdup_printf("%s/%s-schema-create.sql%s", output_directory, database, (compress_output?".gz":""));
+
+	g_async_queue_push(conf->queue,j);
+	return;
+}
+
+void dump_create_database_data(MYSQL *conn, char *database, char *filename){
 	void* outfile = NULL;
-	char* filename;
 	char *query = NULL;
 	MYSQL_RES *result = NULL;
 	MYSQL_ROW row;
-
-	if (daemon_mode)
-		filename = g_strdup_printf("%s/%d/%s-schema-create.sql%s", output_directory, dump_number, database, (compress_output?".gz":""));
-	else
-		filename = g_strdup_printf("%s/%s-schema-create.sql%s", output_directory, database, (compress_output?".gz":""));
 
 	if (!compress_output)
 		outfile= g_fopen(filename, "w");
@@ -1653,7 +1685,6 @@ void dump_create_database(MYSQL *conn, char *database){
 	if (result)
 		mysql_free_result(result);
 
-	g_free(filename);
 	return;
 }
 
