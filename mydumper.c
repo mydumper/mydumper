@@ -122,6 +122,7 @@ GList *non_innodb_table= NULL;
 GList *table_schemas= NULL;
 GList *view_schemas= NULL;
 GList *schema_post= NULL;
+gint database_counter= 0;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
 guint less_locking_threads = 0;
@@ -196,11 +197,12 @@ void restore_charset(GString* statement);
 void set_charset(GString* statement, char *character_set, char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
 guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
-void dump_database(MYSQL *, char *, FILE *,  struct configuration *);
+void dump_database(char *, struct configuration *);
+void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL * conn,  struct configuration *);
-void get_not_updated(MYSQL *conn);
+void get_not_updated(MYSQL *conn, FILE *);
 GList * get_chunks_for_table(MYSQL *, char *, char*,  struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename);
@@ -538,6 +540,7 @@ void *process_queue(struct thread_data *td) {
 
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
+	struct dump_database_job* ddj= NULL;
 	struct create_database_job* cdj= NULL;
 	struct schema_job* sj= NULL;
 	struct view_job* vj= NULL;
@@ -610,6 +613,17 @@ void *process_queue(struct thread_data *td) {
 				if (g_atomic_int_dec_and_test(&non_innodb_table_counter) && g_atomic_int_get(&non_innodb_done)) {
 					g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
 				}
+				break;
+			case JOB_DUMP_DATABASE:
+				ddj=(struct dump_database_job *)job->job_data;
+				g_message("Thread %d dumping db information for `%s`", td->thread_id, ddj->database);
+				dump_database_thread(thrconn, ddj->database);
+				if(ddj->database) g_free(ddj->database);
+				g_free(ddj);
+				g_free(job);
+				if (g_atomic_int_dec_and_test(&database_counter)) {
+                                        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+                                }
 				break;
 			case JOB_CREATE_DATABASE:
 				cdj=(struct create_database_job *)job->job_data;
@@ -721,6 +735,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 	struct job* job= NULL;
 	struct table_job* tj= NULL;
 	struct tables_job* mj=NULL;
+	struct dump_database_job* ddj= NULL;
 	struct create_database_job* cdj= NULL;
 	struct schema_job* sj= NULL;
 	struct view_job* vj= NULL;
@@ -784,6 +799,17 @@ void *process_queue_less_locking(struct thread_data *td) {
 				g_list_free(mj->table_job_list);
 				g_free(mj);
 				g_free(job);
+				break;
+			case JOB_DUMP_DATABASE:
+				ddj=(struct dump_database_job *)job->job_data;
+				g_message("Thread %d dumping db information for `%s`", td->thread_id, ddj->database);
+				dump_database_thread(thrconn, ddj->database);
+				if(ddj->database) g_free(ddj->database);
+				g_free(ddj);
+				g_free(job);
+				if (g_atomic_int_dec_and_test(&database_counter)) {
+                                        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+                                }
 				break;
 			case JOB_CREATE_DATABASE:
 				cdj=(struct create_database_job *)job->job_data;
@@ -1163,7 +1189,7 @@ void *binlog_thread(void *data) {
 #endif
 void start_dump(MYSQL *conn)
 {
-	struct configuration conf = { 1, NULL, NULL, NULL, NULL, NULL, NULL, 0 };
+	struct configuration conf = { 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0 };
 	char *p;
 	char *p2;
 	char *p3;
@@ -1207,7 +1233,7 @@ void start_dump(MYSQL *conn)
 			g_critical("Couldn't write not_updated_tables file (%d)",errno);
 			exit(EXIT_FAILURE);
 		}
-		get_not_updated(conn);
+		get_not_updated(conn, nufile);
 	}
 
 	/* We check SHOW PROCESSLIST, and if there're queries
@@ -1440,6 +1466,7 @@ void start_dump(MYSQL *conn)
 	conf.queue = g_async_queue_new();
 	conf.ready = g_async_queue_new();
 	conf.unlock_tables= g_async_queue_new();
+	conf.ready_database_dump= g_async_queue_new();
 	
 	for (n=0; n<num_threads; n++) {
 		td[n].conf= &conf;
@@ -1458,7 +1485,7 @@ void start_dump(MYSQL *conn)
 	}
 
 	if (db) {
-		dump_database(conn, db, nufile, &conf);
+		dump_database(db, &conf);
 		if(!no_schemas)
 			dump_create_database(db, &conf);
 	} else if (tables) {
@@ -1474,7 +1501,7 @@ void start_dump(MYSQL *conn)
 		while ((row=mysql_fetch_row(databases))) {
 			if (!strcasecmp(row[0],"information_schema") || !strcasecmp(row[0], "performance_schema") || (!strcasecmp(row[0], "data_dictionary")))
 				continue;
-			dump_database(conn, row[0], nufile, &conf);
+			dump_database(row[0], &conf);
 			/* Checks PCRE expressions on 'database' string */
 			if (!no_schemas && (regexstring == NULL || check_regex(row[0],NULL)))
 				dump_create_database(row[0], &conf);
@@ -1483,6 +1510,7 @@ void start_dump(MYSQL *conn)
 		mysql_free_result(databases);
 
 	}
+	g_async_queue_pop(conf.ready_database_dump);
 	
 	if (!non_innodb_table){
 		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
@@ -1688,17 +1716,20 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename){
 	return;
 }
 
-void get_not_updated(MYSQL *conn){
+void get_not_updated(MYSQL *conn, FILE *file){
 	MYSQL_RES *res=NULL;
 	MYSQL_ROW row;
 	
-	gchar *query = g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM information_schema.TABLES WHERE UPDATE_TIME < NOW() - INTERVAL %d DAY",updated_since);
+	gchar *query = g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM information_schema.TABLES WHERE TABLE_TYPE = 'BASE TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",updated_since);
 	mysql_query(conn,query);
 	g_free(query);
 	
 	res = mysql_store_result(conn);
-	while((row = mysql_fetch_row(res)))
+	while((row = mysql_fetch_row(res))) {
 		no_updated_tables = g_list_append(no_updated_tables, row[0]);
+		fprintf(file, "%s\n", row[0]);
+	}
+	fflush(file);
 }
 
 gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
@@ -1946,7 +1977,25 @@ void create_backup_dir(char *new_directory) {
 	}
 }
 
-void dump_database(MYSQL * conn, char *database, FILE *file, struct configuration *conf) {
+void dump_database(char *database, struct configuration *conf) {
+
+	g_atomic_int_inc(&database_counter);
+
+	struct job *j = g_new0(struct job,1);
+	struct dump_database_job *ddj = g_new0(struct dump_database_job,1);
+	j->job_data=(void*) ddj;
+	ddj->database=g_strdup(database);
+	j->conf=conf;
+	j->type=JOB_DUMP_DATABASE;
+
+	if (less_locking)
+		g_async_queue_push(conf->queue_less_locking,j);
+	else
+		g_async_queue_push(conf->queue,j);
+	return;
+}
+
+void dump_database_thread(MYSQL * conn, char *database) {
 
 	char *query;
 	mysql_select_db(conn,database);
@@ -2049,7 +2098,6 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			for (GList *iter = no_updated_tables; iter != NULL; iter = iter->next) {
 				if(g_ascii_strcasecmp (iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0){
 					g_message("NO UPDATED TABLE: %s.%s", database, row[0]);
-					fprintf(file, "%s.%s\n", database, row[0]);
 					dump=0;
 				}
 			}
@@ -2070,12 +2118,9 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 		//if is a view we care only about schema
 		if(!is_view){
 			// with trx_consistency_only we dump all as innodb_tables
-			// and we can start right now
 			if(!no_data){
 				if(row[ecol] != NULL && g_ascii_strcasecmp("MRG_MYISAM", row[ecol])){
-					if (trx_consistency_only) {
-						dump_table(conn, dbt->database, dbt->table, conf, TRUE);
-					}else if (row[ecol] != NULL && !g_ascii_strcasecmp("InnoDB", row[ecol])) {
+					if (trx_consistency_only || (row[ecol] != NULL && !g_ascii_strcasecmp("InnoDB", row[ecol]))) {
 						innodb_tables= g_list_append(innodb_tables, dbt);
 					}else if(row[ecol] != NULL && !g_ascii_strcasecmp("TokuDB", row[ecol])){
 						innodb_tables= g_list_append(innodb_tables, dbt);
@@ -2181,8 +2226,6 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	}
 
 	g_free(query);
-	if(file)
-		fflush(file);
 
 	return;
 }
