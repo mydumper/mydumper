@@ -1522,7 +1522,8 @@ void start_dump(MYSQL *conn)
 	non_innodb_table= g_list_reverse(non_innodb_table);
 	if (less_locking) {
 
-		for (GList *iter = non_innodb_table; iter != NULL; iter = iter->next) {
+		GList *iter;
+		for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
 			dbt= (struct db_table*) iter->data;
 			tn = 0;
 			min = nits[0];
@@ -1557,7 +1558,8 @@ void start_dump(MYSQL *conn)
 			g_async_queue_push(conf.queue_less_locking,j);
 		}
 	}else{
-		for (GList *iter = non_innodb_table; iter != NULL; iter = iter->next) {
+		GList *iter;
+		for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
 			dbt= (struct db_table*) iter->data;
 			dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
 			g_atomic_int_inc(&non_innodb_table_counter);
@@ -1567,14 +1569,15 @@ void start_dump(MYSQL *conn)
 	}
 	
 	innodb_tables = g_list_reverse(innodb_tables);
-	for (GList *iter = innodb_tables; iter != NULL; iter = iter->next) {
+	GList *iter;
+	for (iter = innodb_tables; iter != NULL; iter = iter->next) {
 		dbt= (struct db_table*) iter->data;
 		dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
 	}
 	g_list_free(innodb_tables);
 
 	table_schemas = g_list_reverse(table_schemas);
-	for (GList *iter = table_schemas; iter != NULL; iter = iter->next) {
+	for (iter = table_schemas; iter != NULL; iter = iter->next) {
 		dbt= (struct db_table*) iter->data;
 		dump_schema(conn, dbt->database, dbt->table, &conf);
 		g_free(dbt->table);
@@ -1584,7 +1587,7 @@ void start_dump(MYSQL *conn)
 	g_list_free(table_schemas);
 
 	view_schemas = g_list_reverse(view_schemas);
-	for (GList *iter = view_schemas; iter != NULL; iter = iter->next) {
+	for (iter = view_schemas; iter != NULL; iter = iter->next) {
 		dbt= (struct db_table*) iter->data;
 		dump_view(dbt->database, dbt->table, &conf);
 		g_free(dbt->table);
@@ -1594,7 +1597,7 @@ void start_dump(MYSQL *conn)
 	g_list_free(view_schemas);
 
 	schema_post = g_list_reverse(schema_post);
-	for (GList *iter = schema_post; iter != NULL; iter = iter->next) {
+	for (iter = schema_post; iter != NULL; iter = iter->next) {
 		sp= (struct schema_post*) iter->data;
 		dump_schema_post(sp->database, &conf);
 		g_free(sp->database);
@@ -2106,7 +2109,8 @@ void dump_database_thread(MYSQL * conn, char *database) {
 
 		/* Check if the table was recently updated */
 		if(no_updated_tables && !is_view){
-			for (GList *iter = no_updated_tables; iter != NULL; iter = iter->next) {
+			GList *iter;
+			for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
 				if(g_ascii_strcasecmp (iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0){
 					g_message("NO UPDATED TABLE: %s.%s", database, row[0]);
 					dump=0;
@@ -2860,7 +2864,8 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 
 	if (chunks) {
 		int nchunk=0;
-		for (GList *iter = chunks; iter != NULL; iter = iter->next) {
+		GList *iter;
+		for (iter = chunks; iter != NULL; iter = iter->next) {
 			struct job *j = g_new0(struct job,1);
 			struct table_job *tj = g_new0(struct table_job,1);
 			j->job_data=(void*) tj;
@@ -2906,7 +2911,8 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 	j->type=JOB_LOCK_DUMP_NON_INNODB;
 	j->job_data=(void*) tjs;
 
-	for (GList *iter = noninnodb_tables_list; iter != NULL; iter = iter->next) {
+	GList *iter;
+	for (iter = noninnodb_tables_list; iter != NULL; iter = iter->next) {
 		dbt = (struct db_table*) iter->data;
 
 		if (rows_per_file)
@@ -2914,7 +2920,8 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 
 		if(chunks){
 			int nchunk=0;
-			for (GList *citer = chunks; citer != NULL; citer = citer->next) {
+			GList *citer;
+			for (citer = chunks; citer != NULL; citer = citer->next) {
 				struct table_job *tj = g_new0(struct table_job,1);
 				tj->database = g_strdup_printf("%s",dbt->database);
 				tj->table = g_strdup_printf("%s",dbt->table);
