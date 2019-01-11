@@ -1511,6 +1511,7 @@ void start_dump(MYSQL *conn)
 
 	}
 	g_async_queue_pop(conf.ready_database_dump);
+	g_async_queue_unref(conf.ready_database_dump);
 	
 	if (!non_innodb_table){
 		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
@@ -2915,6 +2916,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list, struct configuration
 				tjs->table_job_list= g_list_append(tjs->table_job_list, tj);
 				nchunk++;
 			}
+			g_list_free(chunks);
 		}else{
 			struct table_job *tj = g_new0(struct table_job,1);
 			tj->database = g_strdup_printf("%s",dbt->database);
@@ -2943,13 +2945,15 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	char *query = NULL;
 	gchar *fcfile = NULL;
 	gchar* filename_prefix = NULL;
-	
+	/* Buffer for escaping field values */
+	GString *escaped = g_string_sized_new(3000);
+
 	fcfile = g_strdup (filename);
 	
 	if(chunk_filesize){
 		gchar** split_filename= g_strsplit(filename, ".00001.sql", 0);
-		filename_prefix= split_filename[0];
-		g_free(split_filename);
+		filename_prefix= g_strdup(split_filename[0]);
+		g_strfreev(split_filename);
 	}
 
 	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
@@ -2978,14 +2982,11 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			errors++;
 		}
 		g_free(query);
-		return num_rows;
+		goto cleanup;
 	}
 
 	num_fields = mysql_num_fields(result);
 	MYSQL_FIELD *fields = mysql_fetch_fields(result);
-
-	/* Buffer for escaping field values */
-	GString *escaped = g_string_sized_new(3000);
 
 	MYSQL_ROW row;
 
@@ -3010,7 +3011,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 
 				if (!write_data(file,statement)) {
 					g_critical("Could not write out data for %s.%s", database, table);
-					return num_rows;
+					goto cleanup;
 				}
 			}
 			if (complete_insert || has_generated_fields) {
@@ -3080,6 +3081,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 						st_in_file++;
 						if(chunk_filesize && st_in_file*(guint)ceil((float)statement_size/1024/1024) > chunk_filesize){
 							fn++;
+							g_free(fcfile);
 							fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix,fn,(compress_output?".gz":""));
 							if (!compress_output){
 								fclose((FILE *)file);
@@ -3170,6 +3172,7 @@ cleanup:
  			g_warning("Failed to remove empty file : %s\n", fcfile);
 		}
 	}else if(chunk_filesize && fn == 1){
+		g_free(fcfile);
 		fcfile = g_strdup_printf("%s.sql%s", filename_prefix,(compress_output?".gz":""));
 		g_rename(filename, fcfile);
 	}
