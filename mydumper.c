@@ -2849,7 +2849,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 
 	if (chunks) {
 		int nchunk=0;
-		for (chunks = g_list_first(chunks); chunks; chunks=g_list_next(chunks)) {
+		for (GList *iter = chunks; iter != NULL; iter = iter->next) {
 			struct job *j = g_new0(struct job,1);
 			struct table_job *tj = g_new0(struct table_job,1);
 			j->job_data=(void*) tj;
@@ -2861,7 +2861,7 @@ void dump_table(MYSQL *conn, char *database, char *table, struct configuration *
 				tj->filename=g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database, table, nchunk,(compress_output?".gz":""));
 			else
 				tj->filename=g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database, table, nchunk,(compress_output?".gz":""));
-			tj->where=(char *)chunks->data;
+			tj->where=(char *)iter->data;
 			if (!is_innodb && nchunk)
                                 g_atomic_int_inc(&non_innodb_table_counter);
 			g_async_queue_push(conf->queue,j);
