@@ -85,6 +85,7 @@ guint snapshot_interval= 60;
 gboolean daemon_mode= FALSE;
 gboolean have_snapshot_cloning= FALSE;
 gchar *tidb_force_priority= NULL;
+gchar *select_hint= NULL;
 
 gchar *ignore_engines= NULL;
 char **ignore= NULL;
@@ -167,7 +168,7 @@ static GOptionEntry entries[] =
 	{ "less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking, "Minimize locking time on InnoDB tables.", NULL},
 	{ "long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery, "Set long query timer in seconds, default 60", NULL },
     { "kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries, "Kill long running queries (instead of aborting)", NULL },
-    { "tidb-force-priority", 0, 0, G_OPTION_ARG_STRING, &tidb_force_priority, "Change the default priority for statements executed on a TiDB server, set the value of this variable to NO_PRIORITY, LOW_PRIORITY, DELAYED or HIGH_PRIORITY", NULL },
+    { "tidb-force-priority", 0, 0, G_OPTION_ARG_STRING, &tidb_force_priority, "Change the default priority for statements executed on a TiDB server, set the value of this variable to LOW_PRIORITY, DELAYED or HIGH_PRIORITY", NULL },
 #ifdef WITH_BINLOG
 	{ "binlogs", 'b', 0, G_OPTION_ARG_NONE, &need_binlogs, "Get a snapshot of the binary logs as well as dump data",  NULL },
 #endif
@@ -924,6 +925,14 @@ int main(int argc, char *argv[])
 	}
 	g_option_context_free(context);
 
+	//check tidb_force_priority LOW_PRIORITY, DELAYED or HIGH_PRIORITY
+	if (tidb_force_priority != NULL && strcmp(tidb_force_priority,"LOW_PRIORITY")!=0 &&
+		strcmp(tidb_force_priority,"DELAYED")!=0 &&
+		strcmp(tidb_force_priority,"HIGH_PRIORITY")!=0 ){
+		g_print ("option parsing failed: %s, try --help\n", "wrong tidb-force-priority value");
+		exit (EXIT_FAILURE);
+	}
+
 	//prompt for password if it's NULL
 	if ( sizeof(password) == 0 || ( password == NULL && askPassword ) ){
 		password = passwordPrompt();
@@ -1086,6 +1095,12 @@ MYSQL *create_main_connection()
 	}
 	if ((detected_server == SERVER_TYPE_MYSQL) && mysql_query(conn, "SET SESSION net_write_timeout = 2147483")){
 		g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
+	}
+
+	if (detected_server == SERVER_TYPE_TIDB){
+		select_hint = g_strdup_printf("/*!40001 %s SQL_NO_CACHE */", tidb_force_priority?tidb_force_priority:"");
+	}else{
+		select_hint = g_strdup_printf("/*!40001 SQL_NO_CACHE */");
 	}
 
 	switch (detected_server) {
@@ -1448,17 +1463,22 @@ void start_dump(MYSQL *conn)
 	}
 
 	mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+	gchar *query;
 	if (need_dummy_read) {
-		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
+		query = g_strdup_printf("SELECT %s * FROM mysql.mydumperdummy", select_hint);
+		mysql_query(conn,query);
 		MYSQL_RES *res=mysql_store_result(conn);
 		if (res)
 			mysql_free_result(res);
+		g_free(query);
 	}
 	if(need_dummy_toku_read){
-		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy");
+		query = g_strdup_printf("SELECT %s * FROM mysql.tokudbdummy", select_hint);
+		mysql_query(conn,query);
 		MYSQL_RES *res=mysql_store_result(conn);
 		if (res)
 			mysql_free_result(res);
+		g_free(query);
 	}
 	time(&t); localtime_r(&t,&tval);
 	fprintf(mdfile,"Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
@@ -1916,7 +1936,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 
 	/* Get minimum/maximum */
-	mysql_query(conn, query=g_strdup_printf("SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", field, field, database, table));
+	mysql_query(conn, query=g_strdup_printf("SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", select_hint, field, field, database, table));
 	g_free(query);
 	minmax=mysql_store_result(conn);
 
@@ -3058,9 +3078,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	if (has_tidb_rowid) { // TiDB has no query cache
-		query = g_strdup_printf("SELECT %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+		query = g_strdup_printf("SELECT %s %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
 	} else {
-		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", select_fields->str, database, table, where?"WHERE":"", where?where:"");
+		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
 	}
 	g_string_free(select_fields, TRUE);
 
