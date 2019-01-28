@@ -2756,7 +2756,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename, ch
 }
 
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where, char *filename) {
-	void *outfile;
+	void *outfile = NULL;
 
 	if (!compress_output)
 		outfile = g_fopen(filename, "w");
@@ -3177,11 +3177,13 @@ cleanup:
 	if (result) {
 		mysql_free_result(result);
 	}
-	
-	if (!compress_output){
-		fclose((FILE *)file);
-	} else {
-		gzclose((gzFile)file);
+
+	if (file) {
+		if (!compress_output) {
+			fclose((FILE *)file);
+		} else {
+			gzclose((gzFile)file);
+		}
 	}
 	
 	if (!st_in_file && !build_empty_files) {
