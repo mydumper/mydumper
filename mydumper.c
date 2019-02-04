@@ -2999,7 +2999,6 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 			g_critical("Error dumping table (%s.%s) data: %s ",database, table, mysql_error(conn));
 			errors++;
 		}
-		g_free(query);
 		goto cleanup;
 	}
 
