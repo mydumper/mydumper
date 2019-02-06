@@ -118,10 +118,15 @@ gboolean insert_ignore = FALSE;
 
 
 GList *innodb_tables= NULL;
+GMutex *innodb_tables_mutex = NULL;
 GList *non_innodb_table= NULL;
+GMutex *non_innodb_table_mutex= NULL;
 GList *table_schemas= NULL;
+GMutex *table_schemas_mutex= NULL;
 GList *view_schemas= NULL;
+GMutex *view_schemas_mutex= NULL;
 GList *schema_post= NULL;
+GMutex *schema_post_mutex= NULL;
 gint database_counter= 0;
 gint non_innodb_table_counter= 0;
 gint non_innodb_done= 0;
@@ -359,7 +364,7 @@ int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
 	/* Any sorting function would work, as long as its usage is consistent
 	 * between sort and lookup.  strcmp should be one of the fastest. */
 	return strcmp(a, b);
-};
+}
 
 /* Read the list of tables to skip from the given filename, and prepares them
  * for future lookups. */
@@ -394,7 +399,7 @@ void read_tables_skiplist(const gchar * filename) {
 	g_sequence_sort(tables_skiplist, tables_skiplist_cmp, NULL);
 	g_message("Omit list file contains %d tables to skip\n", g_sequence_get_length(tables_skiplist));
 	return;
-};
+}
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
@@ -930,6 +935,11 @@ int main(int argc, char *argv[])
 	g_thread_init(NULL);
 
 	init_mutex = g_mutex_new();
+	innodb_tables_mutex = g_mutex_new();
+	non_innodb_table_mutex = g_mutex_new();
+	table_schemas_mutex = g_mutex_new();
+	view_schemas_mutex = g_mutex_new();
+	schema_post_mutex = g_mutex_new();
 	ll_mutex = g_mutex_new();
 	ll_cond = g_cond_new();
 
@@ -1515,6 +1525,8 @@ void start_dump(MYSQL *conn)
 	g_async_queue_pop(conf.ready_database_dump);
 	g_async_queue_unref(conf.ready_database_dump);
 	
+	g_list_free(no_updated_tables);
+
 	if (!non_innodb_table){
 		g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
 	}
@@ -2117,7 +2129,6 @@ void dump_database_thread(MYSQL * conn, char *database) {
 				}
 			}
 		}
-		g_list_free(no_updated_tables);
 
 		if (!dump)
 			continue;
@@ -2136,20 +2147,30 @@ void dump_database_thread(MYSQL * conn, char *database) {
 			if(!no_data){
 				if(row[ecol] != NULL && g_ascii_strcasecmp("MRG_MYISAM", row[ecol])){
 					if (trx_consistency_only || (row[ecol] != NULL && !g_ascii_strcasecmp("InnoDB", row[ecol]))) {
+						g_mutex_lock(innodb_tables_mutex);
 						innodb_tables= g_list_prepend(innodb_tables, dbt);
+						g_mutex_unlock(innodb_tables_mutex);
 					}else if(row[ecol] != NULL && !g_ascii_strcasecmp("TokuDB", row[ecol])){
+						g_mutex_lock(innodb_tables_mutex);
 						innodb_tables= g_list_prepend(innodb_tables, dbt);
+						g_mutex_unlock(innodb_tables_mutex);
 					} else {
+						g_mutex_lock(non_innodb_table_mutex);
 						non_innodb_table= g_list_prepend(non_innodb_table, dbt);
+						g_mutex_unlock(non_innodb_table_mutex);
 					}
 				}
 			}
 			if (!no_schemas){
+				g_mutex_lock(table_schemas_mutex);
 				table_schemas= g_list_prepend(table_schemas, dbt);
+				g_mutex_unlock(table_schemas_mutex);
 			}
 		}else{
 			if (!no_schemas){
+				g_mutex_lock(view_schemas_mutex);
 				view_schemas= g_list_prepend(view_schemas, dbt);
+				g_mutex_unlock(view_schemas_mutex);
 			}
 		}
 	}
@@ -2296,18 +2317,28 @@ void get_tables(MYSQL * conn, struct configuration *conf) {
 				if (trx_consistency_only) {
 					dump_table(conn, dbt->database, dbt->table, conf, TRUE);
 				}else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
+					g_mutex_lock(innodb_tables_mutex);
 					innodb_tables= g_list_prepend(innodb_tables, dbt);
+					g_mutex_unlock(innodb_tables_mutex);
 				}else if(!g_ascii_strcasecmp("TokuDB", row[ecol])){
+					g_mutex_lock(innodb_tables_mutex);
 					innodb_tables= g_list_prepend(innodb_tables, dbt);
+					g_mutex_unlock(innodb_tables_mutex);
 				} else {
+					g_mutex_lock(non_innodb_table_mutex);
 					non_innodb_table= g_list_prepend(non_innodb_table, dbt);
+					g_mutex_unlock(non_innodb_table_mutex);
 				}
 				if (!no_schemas) {
+					g_mutex_lock(table_schemas_mutex);
 					table_schemas= g_list_prepend(table_schemas, dbt);
+					g_mutex_unlock(table_schemas_mutex);
 				}
 			}else{
 				if (!no_schemas){
+					g_mutex_lock(view_schemas_mutex);
 					view_schemas= g_list_prepend(view_schemas, dbt);
+					g_mutex_unlock(view_schemas_mutex);
 				}
 			}
 		}
