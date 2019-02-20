@@ -12,14 +12,14 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper-0.9.5-1.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper-0.9.5-2.el7.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
 
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-1.xenial_amd64.deb
-dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
+wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-2.xenial_amd64.deb
+dpkg -i mydumper_0.9.5-2.xenial_amd64.deb
 ```
 
 ## How to build it?
