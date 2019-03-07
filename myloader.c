@@ -256,7 +256,7 @@ void restore_schema_view(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, source_db)){
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (g_strrstr(filename, "-schema-view.sql")) {
 				add_schema(filename, conn);
 			}
@@ -283,7 +283,7 @@ void restore_schema_triggers(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, source_db)){
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (g_strrstr(filename, "-schema-triggers.sql")) {
 				split_file= g_strsplit(filename, ".", 0);
 				database= split_file[0];
@@ -317,7 +317,7 @@ void restore_schema_post(MYSQL *conn){
 	const gchar* filename= NULL;
 
 	while((filename= g_dir_read_name(dir))) {
-		if (!source_db || g_str_has_prefix(filename, source_db)){
+		if (!source_db || g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))){
 			if (g_strrstr(filename, "-schema-post.sql")) {
 				split_file= g_strsplit(filename, "-schema-post.sql", 0);
 				database= split_file[0];
