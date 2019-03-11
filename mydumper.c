@@ -2043,8 +2043,23 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	MYSQL_FIELD * fields = mysql_fetch_fields(result);
 
 	guint i;
+	const char* field_name = "rows";
+	if (detected_server == SERVER_TYPE_TIDB) {
+		// result of `EXPLAIN SELECT` for TiDB is different than MySQL, we fetch the first row's `count` is enough.
+		// the string format of `count` is `f`, so we can treat it as guint64.
+		/*
+		 * mysql> EXPLAIN select * from trips;
+		  +-------------------+------------+------+--------------------------------------------------+
+		  | id                | count      | task | operator info                                    |
+		  +-------------------+------------+------+--------------------------------------------------+
+		  | TableReader_5     | 1537777.00 | root | data:TableScan_4                                 |
+		  | └─TableScan_4     | 1537777.00 | cop  | table:trips, range:[-inf,+inf], keep order:false |
+		  +-------------------+------------+------+--------------------------------------------------+
+		 */
+		field_name = "count";
+	}
 	for (i=0; i<mysql_num_fields(result); i++)  {
-		if (!strcmp(fields[i].name,"rows"))
+		if (!strcmp(fields[i].name,field_name))
 			break;
 	}
 
