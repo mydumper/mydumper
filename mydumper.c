@@ -2135,7 +2135,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 			row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
 			row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
 		*/
-		if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
+		if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_TIDB) && row[ecol] == NULL && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
 			is_view = 1;
 
 		/* Check for broken tables, i.e. mrg with missing source tbl */
@@ -2369,7 +2369,7 @@ void get_tables(MYSQL * conn, struct configuration *conf) {
 
 			int is_view=0;
 
-			if ((detected_server == SERVER_TYPE_MYSQL) && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
+			if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_TIDB) && row[ecol] == NULL && ( row[ccol] == NULL || !strcmp(row[ccol],"VIEW") ))
 				is_view=1;
 
 			/* Green light! */
