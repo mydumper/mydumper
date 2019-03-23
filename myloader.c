@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if (program_version) {
-		g_print("myloader %s, built against MySQL %s\n", VERSION, MYSQL_VERSION_STR);
+		g_print("myloader %s (%s), built against MySQL %s\n", VERSION, GIT_COMMIT_HASH, MYSQL_VERSION_STR);
 		exit(EXIT_SUCCESS);
 	}
 

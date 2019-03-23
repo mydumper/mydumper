@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 #cmakedefine VERSION "@VERSION@"
+#cmakedefine GIT_COMMIT_HASH "@GIT_COMMIT_HASH@"
 #cmakedefine WITH_BINLOG
 #cmakedefine WITH_SSL
 
