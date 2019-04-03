@@ -131,6 +131,10 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_SUCCESS);
 	}
 
+	// resolve hostname if possible
+	resolve_ips = g_array_new(FALSE, FALSE, sizeof(char *));
+	pre_resolve_host(hostname);
+
 	set_verbose(verbose);
 
 	if (!directory) {
@@ -147,7 +151,7 @@ int main(int argc, char *argv[]) {
 	conn= mysql_init(NULL);
 
 	configure_connection(conn,"myloader");
-	if (!mysql_real_connect(conn, hostname, username, password, NULL, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(conn, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Error connection to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
@@ -424,7 +428,7 @@ void *process_queue(struct thread_data *td) {
 
 	configure_connection(thrconn,"myloader");
 
-	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(thrconn, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to MySQL server: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}

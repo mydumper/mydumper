@@ -1,4 +1,4 @@
-/* 
+/*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -19,4 +19,7 @@
 #include <mysql.h>
 
 void configure_connection(MYSQL *conn, const char* name);
+void pre_resolve_host(const char *host);
+MYSQL *mysql_connect_wrap(MYSQL *mysql, const char *user, const char *passwd, const char *db, unsigned int port,
+                          const char *unix_socket, unsigned long client_flag);
 #endif

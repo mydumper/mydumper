@@ -498,7 +498,7 @@ void *process_queue(struct thread_data *td) {
 
 	configure_connection(thrconn,"mydumper");
 
-	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(thrconn, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	} else {
@@ -721,7 +721,7 @@ void *process_queue_less_locking(struct thread_data *td) {
 
 	configure_connection(thrconn,"mydumper");
 
-	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(thrconn, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	} else {
@@ -895,7 +895,7 @@ MYSQL *reconnect_for_binlog(MYSQL *thrconn) {
 	mysql_options(thrconn, MYSQL_OPT_READ_TIMEOUT, (const char*)&timeout);
 
 
-	if (!mysql_real_connect(thrconn, hostname, username, password, NULL, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(thrconn, username, password, NULL, port, socket_path, 0)) {
 		g_critical("Failed to re-connect to database: %s", mysql_error(thrconn));
 		exit(EXIT_FAILURE);
 	}
@@ -944,6 +944,10 @@ int main(int argc, char *argv[])
 		g_print("mydumper %s (%s), built against MySQL %s\n", VERSION, GIT_COMMIT_HASH, MYSQL_VERSION_STR);
 		exit (EXIT_SUCCESS);
 	}
+
+	// resolve hostname if possible
+	resolve_ips = g_array_new(FALSE, FALSE, sizeof(char *));
+	pre_resolve_host(hostname);
 
 	set_verbose(verbose);
 
@@ -1076,7 +1080,7 @@ MYSQL *create_main_connection()
 
 	configure_connection(conn,"mydumper");
 
-	if (!mysql_real_connect(conn, hostname, username, password, "", port, socket_path, 0)) {
+	if (!mysql_connect_wrap(conn, username, password, "", port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
@@ -1164,7 +1168,7 @@ void *binlog_thread(void *data) {
 	}
 	mysql_options(conn,MYSQL_READ_DEFAULT_GROUP,"mydumper");
 
-	if (!mysql_real_connect(conn, hostname, username, password, db, port, socket_path, 0)) {
+	if (!mysql_connect_wrap(conn, username, password, db, port, socket_path, 0)) {
 		g_critical("Error connecting to database: %s", mysql_error(conn));
 		exit(EXIT_FAILURE);
 	}
