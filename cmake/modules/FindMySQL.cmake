@@ -85,6 +85,10 @@ find_path(MYSQL_INCLUDE_DIR mysql.h
 
 set(TMP_MYSQL_LIBRARIES "")
 set(CMAKE_FIND_LIBRARY_SUFFIXES .so .a .lib .so.1 .dylib)
+if (APPLE)
+    list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES .dylib)
+endif (APPLE)
+
 foreach(MY_LIB ${MYSQL_ADD_LIBRARIES})
     find_library("MYSQL_LIBRARIES_${MY_LIB}" NAMES ${MY_LIB}
         HINTS
