@@ -22,6 +22,13 @@ wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5
 dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
 ```
 
+### OSX
+By using [Homebrew](https://brew.sh/)
+
+```bash
+brew install mydumper
+```
+
 ## How to build it?
 
 Run:
@@ -37,8 +44,7 @@ NOTE: you must use the correspondent mysql devel package.
 * Ubuntu or Debian: apt-get install libglib2.0-dev libmysqlclient15-dev zlib1g-dev libpcre3-dev libssl-dev
 * Fedora, RedHat and CentOS: yum install glib2-devel mysql-devel zlib-devel pcre-devel openssl-devel
 * openSUSE: zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
-* MacOSX: port install glib2 mysql5 pcre pkgconfig cmake
- (You may want to run 'port select mysql mysql5' afterwards)
+* MacOSX: brew install glib mysql-client pcre pkgconfig cmake openssl gettext libffi gdbm readline xz python sqlite
 
 One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH
 
