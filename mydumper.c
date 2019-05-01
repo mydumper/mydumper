@@ -1423,8 +1423,13 @@ void start_dump(MYSQL *conn)
 		mysql_query(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB");
 		need_dummy_toku_read=1;
 	}
-	
-	mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+
+	// Do not start a transaction when lock all tables instead of FTWRL,
+	// since it can implicitly release read locks we hold
+	if (!lock_all_tables) {
+		mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+	}
+
 	if (need_dummy_read) {
 		mysql_query(conn,"SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
 		MYSQL_RES *res=mysql_store_result(conn);
