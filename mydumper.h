@@ -22,7 +22,7 @@
 #ifndef _mydumper_h
 #define _mydumper_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_DUMP_NON_INNODB, JOB_SCHEMA, JOB_VIEW, JOB_TRIGGERS, JOB_SCHEMA_POST, JOB_BINLOG, JOB_LOCK_DUMP_NON_INNODB };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_DUMP, JOB_DUMP_NON_INNODB, JOB_SCHEMA, JOB_VIEW, JOB_TRIGGERS, JOB_SCHEMA_POST, JOB_BINLOG, JOB_LOCK_DUMP_NON_INNODB, JOB_CREATE_DATABASE, JOB_DUMP_DATABASE };
 
 struct configuration {
 	char use_any_index;
@@ -30,6 +30,7 @@ struct configuration {
 	GAsyncQueue* queue_less_locking;
 	GAsyncQueue* ready;
 	GAsyncQueue* ready_less_locking;
+	GAsyncQueue* ready_database_dump;
 	GAsyncQueue* unlock_tables;
 	GMutex* mutex;
 	int done;
@@ -55,6 +56,15 @@ struct table_job {
 
 struct tables_job {
 	GList* table_job_list;
+};
+
+struct dump_database_job {
+	char *database;
+};
+
+struct create_database_job {
+	char *database;
+	char *filename;
 };
 
 struct schema_job {
