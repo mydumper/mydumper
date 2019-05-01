@@ -89,6 +89,7 @@ gchar *ignore_engines= NULL;
 char **ignore= NULL;
 
 gchar *tables_list= NULL;
+gchar *tidb_snapshot= NULL;
 GSequence *tables_skiplist= NULL;
 gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
@@ -179,6 +180,7 @@ static GOptionEntry entries[] =
 	{ "updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since, "Use Update_time to dump only tables updated in the last U days", NULL},
 	{ "trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only, "Transactional consistency only", NULL},
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
+	{ "tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot, "Snapshot to use for TiDB", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -516,6 +518,23 @@ void *process_queue(struct thread_data *td) {
 	}
 	if(!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")){
 		g_critical("Failed to set time zone: %s",mysql_error(thrconn));
+	}
+
+	if (detected_server == SERVER_TYPE_TIDB) {
+
+		// Worker threads must set their tidb_snapshot in order to be safe
+		// Because no locking has been used.
+ 
+		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+		if (mysql_query(thrconn, query)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(thrconn));
+			exit(EXIT_FAILURE);
+		}
+		g_free(query);
+
+		g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id, tidb_snapshot);
+
 	}
 
 	/* Unfortunately version before 4.1.8 did not support consistent snapshot transaction starts, so we cheat */
@@ -1058,6 +1077,9 @@ MYSQL *create_main_connection()
 		case SERVER_TYPE_DRIZZLE:
 			g_message("Connected to a Drizzle server");
 			break;
+		case SERVER_TYPE_TIDB:
+			g_message("Connected to a TiDB server");
+			break;
 		default:
 			g_critical("Cannot detect server type");
 			exit(EXIT_FAILURE);
@@ -1232,7 +1254,7 @@ void start_dump(MYSQL *conn)
 		}
 	}
 
-	if (!no_locks) {
+	if (!no_locks && (detected_server != SERVER_TYPE_TIDB)) {
 		// Percona Backup Locks
 		if(!no_backup_locks){
 			mysql_query(conn,"SELECT @@have_backup_locks");
@@ -1353,6 +1375,37 @@ void start_dump(MYSQL *conn)
 				errors++;
 			}
 		}
+	} else if (detected_server == SERVER_TYPE_TIDB) {
+		g_message("Skipping locks because of TiDB");
+		if (!tidb_snapshot) {
+ 
+			// Generate a @@tidb_snapshot to use for the worker threads since
+			// the tidb-snapshot argument was not specified when starting mydumper
+
+			if(mysql_query(conn, "SHOW MASTER STATUS")){
+				g_critical("Couldn't generate @@tidb_snapshot: %s",mysql_error(conn));
+				exit(EXIT_FAILURE);
+			}else{
+ 
+				MYSQL_RES *result = mysql_store_result(conn);
+				MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */ 
+				tidb_snapshot = g_strdup(row[1]);
+				mysql_free_result(result);
+			}
+ 
+		}
+ 
+		// Need to set the @@tidb_snapshot for the master thread
+		gchar *query= g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+		g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+
+		if (mysql_query(conn, query)) {
+			g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+			exit(EXIT_FAILURE);
+		}
+		g_free(query);
+
 	} else {
 		g_warning("Executing in no-locks mode, snapshot will notbe consistent");
 	}
@@ -1686,7 +1739,6 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
 	return result;
 }
 
-
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	MYSQL_RES *res=NULL;
 	MYSQL_ROW row;
@@ -1917,7 +1969,7 @@ void dump_database(MYSQL * conn, char *database, FILE *file, struct configuratio
 	GList *iter = NULL;
 	char *query;
 	mysql_select_db(conn,database);
-	if (detected_server == SERVER_TYPE_MYSQL)
+	if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_TIDB)
 		query= g_strdup("SHOW TABLE STATUS");
 	else
 		query= g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'", database);
@@ -2500,6 +2552,10 @@ void dump_schema_data(MYSQL *conn, char *database, char *table, char *filename) 
 		if (!skip_tz) {
 			g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
 		}
+	} else if (detected_server == SERVER_TYPE_TIDB) {
+		if (!skip_tz) {
+			g_string_printf(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+		}
 	} else {
 		g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
 	}
@@ -2922,6 +2978,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					g_string_append(statement,"/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
 					if (!skip_tz) {
 					  g_string_append(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
+					}
+				} else if (detected_server == SERVER_TYPE_TIDB) {
+					if (!skip_tz) {
+						g_string_printf(statement,"/*!40103 SET TIME_ZONE='+00:00' */;\n");
 					}
 				} else {
 					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");

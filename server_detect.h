@@ -22,7 +22,8 @@
 #define DETECT_MYSQL_REGEX "^([3-9]\\.[0-9]+\\.[0-9]+)"
 #define DETECT_DRIZZLE_REGEX "^(20[0-9]{2}\\.(0[1-9]|1[012])\\.[0-9]+)"
 #define DETECT_MARIADB_REGEX "^([0-9]{1,2}\\.[0-9]+\\.[0-9]+)"
+#define DETECT_TIDB_REGEX "TiDB"
 
-enum server_type { SERVER_TYPE_UNKNOWN, SERVER_TYPE_MYSQL, SERVER_TYPE_DRIZZLE };
+enum server_type { SERVER_TYPE_UNKNOWN, SERVER_TYPE_MYSQL, SERVER_TYPE_DRIZZLE, SERVER_TYPE_TIDB };
 int detect_server(MYSQL *conn);
 #endif
