@@ -1315,6 +1315,19 @@ void start_dump(MYSQL *conn)
 	}
 
 	if (!no_locks && (detected_server != SERVER_TYPE_TIDB)) {
+		// Percona Server 8 removed LOCK BINLOG so backup locks is useless for mydumper now
+		// and we need to fail back to FTWRL
+		mysql_query(conn,"SELECT @@version_comment, @@version");
+		MYSQL_RES *res2 = mysql_store_result(conn);
+		MYSQL_ROW ver;
+		while ((ver=mysql_fetch_row(res2))) {
+			if (!g_str_has_prefix("Percona", ver[0]) && !g_str_has_prefix("8.", ver[1])){
+				g_message("Disabling Percona Backup Locks for Percona Server 8");
+				no_backup_locks = 1;
+			}
+		}
+		mysql_free_result(res2);
+
 		// Percona Backup Locks
 		if(!no_backup_locks){
 			mysql_query(conn,"SELECT @@have_backup_locks");
