@@ -1,4 +1,4 @@
-/* 
+/*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -21,67 +21,67 @@
 #include "server_detect.h"
 
 int detect_server(MYSQL *conn) {
-	pcre *re= NULL;
-	const char *error;
-	int erroroffset;
-	int ovector[9]= {0};
-	int rc;
-	const char* db_version= mysql_get_server_info(conn);
+  pcre *re = NULL;
+  const char *error;
+  int erroroffset;
+  int ovector[9] = {0};
+  int rc;
+  const char *db_version = mysql_get_server_info(conn);
 
-	// debug the version
-	g_message("Server version reported as: %s", db_version);
+  // debug the version
+  g_message("Server version reported as: %s", db_version);
 
-	re= pcre_compile(DETECT_TIDB_REGEX, 0, &error, &erroroffset, NULL);
-	if (!re) {
-		g_critical("Regular expression fail: %s", error);
-		exit(EXIT_FAILURE);
-	}
+  re = pcre_compile(DETECT_TIDB_REGEX, 0, &error, &erroroffset, NULL);
+  if (!re) {
+    g_critical("Regular expression fail: %s", error);
+    exit(EXIT_FAILURE);
+  }
 
-	rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-	pcre_free(re);
+  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
+  pcre_free(re);
 
-	if (rc > 0) {
-		return SERVER_TYPE_TIDB;
-	}
+  if (rc > 0) {
+    return SERVER_TYPE_TIDB;
+  }
 
-	re= pcre_compile(DETECT_MYSQL_REGEX, 0, &error, &erroroffset, NULL);
-	if (!re) {
-		g_critical("Regular expression fail: %s", error);
-		exit(EXIT_FAILURE);
-	}
+  re = pcre_compile(DETECT_MYSQL_REGEX, 0, &error, &erroroffset, NULL);
+  if (!re) {
+    g_critical("Regular expression fail: %s", error);
+    exit(EXIT_FAILURE);
+  }
 
-	rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-	pcre_free(re);
+  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
+  pcre_free(re);
 
-	if (rc > 0) {
-		return SERVER_TYPE_MYSQL;
-	}
+  if (rc > 0) {
+    return SERVER_TYPE_MYSQL;
+  }
 
-	re= pcre_compile(DETECT_DRIZZLE_REGEX, 0, &error, &erroroffset, NULL);
-	if (!re) {
-		g_critical("Regular expression fail: %s", error);
-		exit(EXIT_FAILURE);
-	}
+  re = pcre_compile(DETECT_DRIZZLE_REGEX, 0, &error, &erroroffset, NULL);
+  if (!re) {
+    g_critical("Regular expression fail: %s", error);
+    exit(EXIT_FAILURE);
+  }
 
-	rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);     
- 	pcre_free(re);
+  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
+  pcre_free(re);
 
-	if (rc > 0) {
-		return SERVER_TYPE_DRIZZLE;
-	}
+  if (rc > 0) {
+    return SERVER_TYPE_DRIZZLE;
+  }
 
-	re= pcre_compile(DETECT_MARIADB_REGEX, 0, &error, &erroroffset, NULL);
-        if (!re) {
-                g_critical("Regular expression fail: %s", error);
-                exit(EXIT_FAILURE);
-        }
+  re = pcre_compile(DETECT_MARIADB_REGEX, 0, &error, &erroroffset, NULL);
+  if (!re) {
+    g_critical("Regular expression fail: %s", error);
+    exit(EXIT_FAILURE);
+  }
 
-        rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-        pcre_free(re);
+  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
+  pcre_free(re);
 
-        if (rc > 0) {
-                return SERVER_TYPE_MYSQL;
-        }
+  if (rc > 0) {
+    return SERVER_TYPE_MYSQL;
+  }
 
-	return SERVER_TYPE_UNKNOWN;
+  return SERVER_TYPE_UNKNOWN;
 }
