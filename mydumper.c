@@ -12,10 +12,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
-                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
-                    Andrew Hutchings, SkySQL (andrew at skysql dot com)
-                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
+    Authors:
+    Domas Mituzas, Facebook ( domas at fb dot com )
+    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+    Andrew Hutchings, SkySQL (andrew at skysql dot com)
+    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
 */
 
 #define _LARGEFILE64_SOURCE
@@ -27,30 +28,30 @@
 #define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
 #endif
 
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-#include <glib.h>
-#include <stdlib.h>
-#include <stdarg.h>
+#include "config.h"
 #include <errno.h>
-#include <time.h>
-#include <zlib.h>
+#include <glib.h>
+#include <glib/gstdio.h>
 #include <pcre.h>
 #include <signal.h>
-#include <glib/gstdio.h>
-#include "config.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
+#include <zlib.h>
 #ifdef WITH_BINLOG
 #include "binlog.h"
 #else
 #include "mydumper.h"
 #endif
-#include "server_detect.h"
-#include "connection.h"
 #include "common.h"
+#include "connection.h"
 #include "g_unix_signal.h"
-#include <math.h>
 #include "getPassword.h"
+#include "server_detect.h"
+#include <math.h>
 
 char *regexstring = NULL;
 
@@ -589,8 +590,7 @@ void *process_queue(struct thread_data *td) {
                mysql_error(thrconn));
     exit(EXIT_FAILURE);
   }
-  if ((detected_server == SERVER_TYPE_MYSQL) &&
-      mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
+  if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
   }
   if (mysql_query(thrconn,
@@ -874,8 +874,7 @@ void *process_queue_less_locking(struct thread_data *td) {
               td->thread_id, mysql_thread_id(thrconn));
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL) &&
-      mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
+  if (mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
   }
   if (!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
@@ -1299,12 +1298,10 @@ MYSQL *create_main_connection() {
 
   detected_server = detect_server(conn);
 
-  if ((detected_server == SERVER_TYPE_MYSQL) &&
-      mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
+  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
   }
-  if ((detected_server == SERVER_TYPE_MYSQL) &&
-      mysql_query(conn, "SET SESSION net_write_timeout = 2147483")) {
+  if (mysql_query(conn, "SET SESSION net_write_timeout = 2147483")) {
     g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
   }
 
@@ -1312,8 +1309,8 @@ MYSQL *create_main_connection() {
   case SERVER_TYPE_MYSQL:
     g_message("Connected to a MySQL server");
     break;
-  case SERVER_TYPE_DRIZZLE:
-    g_message("Connected to a Drizzle server");
+  case SERVER_TYPE_MARIADB:
+    g_message("Connected to a MariaDB server");
     break;
   case SERVER_TYPE_TIDB:
     g_message("Connected to a TiDB server");
@@ -1748,11 +1745,8 @@ void start_dump(MYSQL *conn) {
             tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
             tval.tm_min, tval.tm_sec);
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    mysql_query(conn, "/*!40101 SET NAMES binary*/");
-
-    write_snapshot_info(conn, mdfile);
-  }
+  mysql_query(conn, "/*!40101 SET NAMES binary*/");
+  write_snapshot_info(conn, mdfile);
 
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
   struct thread_data *td =
@@ -2180,12 +2174,9 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
     goto cleanup;
 
   /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, field, database, table));
+  mysql_query(
+      conn, query = g_strdup_printf("SELECT MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
+                                    field, field, database, table));
   g_free(query);
   minmax = mysql_store_result(conn);
 
@@ -2353,14 +2344,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   char *query;
   mysql_select_db(conn, database);
-  if (detected_server == SERVER_TYPE_MYSQL ||
-      detected_server == SERVER_TYPE_TIDB)
-    query = g_strdup("SHOW TABLE STATUS");
-  else
-    query =
-        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
-                        "DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'",
-                        database);
+  query = g_strdup("SHOW TABLE STATUS");
 
   if (mysql_query(conn, (query))) {
     g_critical("Error: DB: %s - Could not execute query: %s", database,
@@ -2398,8 +2382,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL) &&
-        (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
+    if ((row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
@@ -2653,8 +2636,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
 
       int is_view = 0;
 
-      if ((detected_server == SERVER_TYPE_MYSQL) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
+      if ((row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
 
       /* Green light! */
@@ -2999,18 +2981,10 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
 
   GString *statement = g_string_sized_new(statement_size);
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
-    g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
-    if (!skip_tz) {
-      g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
-    if (!skip_tz) {
-      g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else {
-    g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+  g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+  g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
+  if (!skip_tz) {
+    g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
   }
 
   if (!write_data((FILE *)outfile, statement)) {
@@ -3082,9 +3056,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     return;
   }
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
-  }
+  g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
 
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", database, table);
@@ -3458,11 +3430,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
   }
 
   /* Poor man's database code */
-  query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s",
-      (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "");
+  query = g_strdup_printf("SELECT %s FROM `%s`.`%s` %s %s", select_fields->str,
+                          database, table, where ? "WHERE" : "",
+                          where ? where : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
@@ -3491,18 +3461,10 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
 
     if (!statement->len) {
       if (!st_in_file) {
-        if (detected_server == SERVER_TYPE_MYSQL) {
-          g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
-          g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-          if (!skip_tz) {
-            g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-          }
-        } else if (detected_server == SERVER_TYPE_TIDB) {
-          if (!skip_tz) {
-            g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-          }
-        } else {
-          g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+        g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+        g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+        if (!skip_tz) {
+          g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
         }
 
         if (!write_data(file, statement)) {
