@@ -1,4 +1,4 @@
-/* 
+/*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -18,5 +18,5 @@
 #define _connection_h
 #include <mysql.h>
 
-void configure_connection(MYSQL *conn, const char* name);
+void configure_connection(MYSQL *conn, const char *name);
 #endif

@@ -1,4 +1,4 @@
-/* 
+/*
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -24,6 +24,11 @@
 #define DETECT_MARIADB_REGEX "^([0-9]{1,2}\\.[0-9]+\\.[0-9]+)"
 #define DETECT_TIDB_REGEX "TiDB"
 
-enum server_type { SERVER_TYPE_UNKNOWN, SERVER_TYPE_MYSQL, SERVER_TYPE_DRIZZLE, SERVER_TYPE_TIDB };
+enum server_type {
+  SERVER_TYPE_UNKNOWN,
+  SERVER_TYPE_MYSQL,
+  SERVER_TYPE_DRIZZLE,
+  SERVER_TYPE_TIDB
+};
 int detect_server(MYSQL *conn);
 #endif
