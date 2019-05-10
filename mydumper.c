@@ -26,7 +26,6 @@
 #if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
 #define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
 #endif
-
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
@@ -78,6 +77,8 @@ int skip_tz = 0;
 int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int compress_output = 0;
+gchar *compress_command = NULL;
+gchar *compress_extension = NULL;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
@@ -168,6 +169,8 @@ static GOptionEntry entries[] = {
      NULL},
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
+    {"compress_command", 'C', 0, G_OPTION_ARG_STRING, &compress_command, "Compress command, mandatory if compress is active (e.g.: /bin/gzip --rsyncable", NULL},
+    {"compress_extension", 'X', 0, G_OPTION_ARG_STRING, &compress_extension, "Filename extension for compressed files, mandatory if compress is active (e.g.: gz)", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
     {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
@@ -1155,6 +1158,29 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  if(compress_output == 1) {
+      if(compress_command == NULL || compress_extension == NULL) {
+        g_print("compress_command (given: %s) or compress_extension (given: %s) missing, try --help\n", compress_command,compress_extension);
+        exit(EXIT_FAILURE);
+    }
+
+    // Split arguments off of command itself
+    gchar *compress_command_copy = g_strdup(compress_command);
+    gchar **compress_command_split = g_strsplit(compress_command_copy," ",0);
+    if(compress_command_split == NULL) {
+        g_print("split failed, got NULL vector (1)");
+        exit(EXIT_FAILURE);
+      }
+
+    // Check if command exists and is executable
+    if(access(compress_command_split[0], X_OK) == -1) {
+        g_print("%s not found, or not executable\n", compress_command_split[0]);
+        exit(EXIT_FAILURE);
+    }
+
+    compress_extension = g_strdup_printf(".%s", compress_extension);
+  }
+
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
@@ -1980,11 +2006,11 @@ void dump_create_database(char *database, struct configuration *conf) {
   if (daemon_mode)
     cdj->filename =
         g_strdup_printf("%s/%d/%s-schema-create.sql%s", output_directory,
-                        dump_number, database, (compress_output ? ".gz" : ""));
+                        dump_number, database, (compress_output ? compress_extension : ""));
   else
     cdj->filename =
         g_strdup_printf("%s/%s-schema-create.sql%s", output_directory, database,
-                        (compress_output ? ".gz" : ""));
+                        (compress_output ? compress_extension : ""));
 
   g_async_queue_push(conf->queue, j);
   return;
@@ -1998,9 +2024,13 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
 
   if (!compress_output)
     outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
-
+  else {
+      char *command = g_strdup_printf("%s > %s", compress_command,filename);
+        outfile = popen(command, "w");
+        /* g_critical("I was here");
+        errors++;
+        return; */
+  }
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
                filename, errno);
@@ -2037,7 +2067,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
   if (!compress_output)
     fclose((FILE *)outfile);
   else
-    gzclose((gzFile)outfile);
+    pclose((FILE *)outfile);
 
   g_string_free(statement, TRUE);
   if (result)
@@ -2725,19 +2755,20 @@ void restore_charset(GString *statement) {
 }
 
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
-  void *outfile;
-  char *query = NULL;
-  MYSQL_RES *result = NULL;
-  MYSQL_RES *result2 = NULL;
-  MYSQL_ROW row;
-  MYSQL_ROW row2;
-  gchar **splited_st = NULL;
+    void *outfile;
+    char *query = NULL;
+    MYSQL_RES *result = NULL;
+    MYSQL_RES *result2 = NULL;
+    MYSQL_ROW row;
+    MYSQL_ROW row2;
+    gchar **splited_st = NULL;
 
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
-
+    if (!compress_output)
+        outfile = g_fopen(filename, "w");
+    else {
+        char *command = g_strdup_printf("%s > %s", compress_command, filename);
+        outfile = popen(command, "w");
+    }
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
                filename, errno);
@@ -2887,7 +2918,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
   if (!compress_output)
     fclose((FILE *)outfile);
   else
-    gzclose((gzFile)outfile);
+    pclose((FILE *)outfile);
 
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
@@ -2910,9 +2941,10 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table,
 
   if (!compress_output)
     outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
-
+  else {
+      char *command = g_strdup_printf("%s > %s", compress_command, filename);
+      outfile = popen(command, "w");
+  }
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
                filename, errno);
@@ -2967,7 +2999,7 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table,
   if (!compress_output)
     fclose((FILE *)outfile);
   else
-    gzclose((gzFile)outfile);
+    pclose((FILE *)outfile);
 
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
@@ -2987,8 +3019,10 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
 
   if (!compress_output)
     outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  else {
+      char *command = g_strdup_printf("%s > %s", compress_command, filename);
+      outfile = popen(command, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
@@ -3048,7 +3082,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   if (!compress_output)
     fclose((FILE *)outfile);
   else
-    gzclose((gzFile)outfile);
+    pclose((FILE *)outfile);
 
   g_string_free(statement, TRUE);
   if (result)
@@ -3071,8 +3105,10 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     outfile = g_fopen(filename, "w");
     outfile2 = g_fopen(filename2, "w");
   } else {
-    outfile = (void *)gzopen(filename, "w");
-    outfile2 = (void *)gzopen(filename2, "w");
+      char *command = g_strdup_printf("%s > %s", compress_command, filename);
+      char *command2 = g_strdup_printf("%s > %s", compress_command, filename2);
+      outfile = popen(command, "w");
+      outfile2 = popen(command2, "w");
   }
 
   if (!outfile || !outfile2) {
@@ -3167,8 +3203,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     fclose((FILE *)outfile);
     fclose((FILE *)outfile2);
   } else {
-    gzclose((gzFile)outfile);
-    gzclose((gzFile)outfile2);
+    pclose((FILE *)outfile);
+    pclose((FILE *)outfile2);
   }
 
   g_string_free(statement, TRUE);
@@ -3184,8 +3220,10 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
 
   if (!compress_output)
     outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  else {
+      char *command = g_strdup_printf("%s > %s", compress_command, filename);
+      outfile = popen(command, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3212,11 +3250,11 @@ void dump_schema(MYSQL *conn, char *database, char *table,
   if (daemon_mode)
     sj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory,
                                    dump_number, database, table,
-                                   (compress_output ? ".gz" : ""));
+                                   (compress_output ? compress_extension : ""));
   else
     sj->filename =
         g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database,
-                        table, (compress_output ? ".gz" : ""));
+                        table, (compress_output ? compress_extension : ""));
   g_async_queue_push(conf->queue, j);
 
   if (dump_triggers) {
@@ -3241,11 +3279,11 @@ void dump_schema(MYSQL *conn, char *database, char *table,
         if (daemon_mode)
           st->filename = g_strdup_printf(
               "%s/%d/%s.%s-schema-triggers.sql%s", output_directory,
-              dump_number, database, table, (compress_output ? ".gz" : ""));
+              dump_number, database, table, (compress_output ? compress_extension : ""));
         else
           st->filename = g_strdup_printf("%s/%s.%s-schema-triggers.sql%s",
                                          output_directory, database, table,
-                                         (compress_output ? ".gz" : ""));
+                                         (compress_output ? compress_extension : ""));
         g_async_queue_push(conf->queue, t);
       }
     }
@@ -3268,17 +3306,17 @@ void dump_view(char *database, char *table, struct configuration *conf) {
   if (daemon_mode) {
     vj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory,
                                    dump_number, database, table,
-                                   (compress_output ? ".gz" : ""));
+                                   (compress_output ? compress_extension : ""));
     vj->filename2 = g_strdup_printf("%s/%d/%s.%s-schema-view.sql%s",
                                     output_directory, dump_number, database,
-                                    table, (compress_output ? ".gz" : ""));
+                                    table, (compress_output ? compress_extension : ""));
   } else {
     vj->filename =
         g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, database,
-                        table, (compress_output ? ".gz" : ""));
+                        table, (compress_output ? compress_extension : ""));
     vj->filename2 =
         g_strdup_printf("%s/%s.%s-schema-view.sql%s", output_directory,
-                        database, table, (compress_output ? ".gz" : ""));
+                        database, table, (compress_output ? compress_extension : ""));
   }
   g_async_queue_push(conf->queue, j);
   return;
@@ -3294,10 +3332,10 @@ void dump_schema_post(char *database, struct configuration *conf) {
   if (daemon_mode) {
     sp->filename =
         g_strdup_printf("%s/%d/%s-schema-post.sql%s", output_directory,
-                        dump_number, database, (compress_output ? ".gz" : ""));
+                        dump_number, database, (compress_output ? compress_extension : ""));
   } else {
     sp->filename = g_strdup_printf("%s/%s-schema-post.sql%s", output_directory,
-                                   database, (compress_output ? ".gz" : ""));
+                                   database, (compress_output ? compress_extension : ""));
   }
   g_async_queue_push(conf->queue, j);
   return;
@@ -3324,11 +3362,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
       if (daemon_mode)
         tj->filename = g_strdup_printf(
             "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database,
-            table, nchunk, (compress_output ? ".gz" : ""));
+            table, nchunk, (compress_output ? compress_extension : ""));
       else
         tj->filename =
             g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
-                            table, nchunk, (compress_output ? ".gz" : ""));
+                            table, nchunk, (compress_output ? compress_extension : ""));
       tj->where = (char *)iter->data;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
@@ -3347,11 +3385,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
     if (daemon_mode)
       tj->filename = g_strdup_printf(
           "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? compress_extension : ""));
     else
       tj->filename = g_strdup_printf(
           "%s/%s.%s%s.sql%s", output_directory, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? compress_extension : ""));
     g_async_queue_push(conf->queue, j);
     return;
   }
@@ -3386,11 +3424,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
           tj->filename =
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
                               dump_number, dbt->database, dbt->table, nchunk,
-                              (compress_output ? ".gz" : ""));
+                              (compress_output ? compress_extension : ""));
         else
           tj->filename = g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
-              dbt->table, nchunk, (compress_output ? ".gz" : ""));
+              dbt->table, nchunk, (compress_output ? compress_extension : ""));
         tj->where = (char *)citer->data;
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
@@ -3404,11 +3442,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
         tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
                                        dump_number, dbt->database, dbt->table,
                                        (chunk_filesize ? ".00001" : ""),
-                                       (compress_output ? ".gz" : ""));
+                                       (compress_output ? compress_extension : ""));
       else
         tj->filename = g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
-            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+            (chunk_filesize ? ".00001" : ""), (compress_output ? compress_extension : ""));
       tj->where = NULL;
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
@@ -3585,13 +3623,14 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
               fn++;
               g_free(fcfile);
               fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix, fn,
-                                       (compress_output ? ".gz" : ""));
+                                       (compress_output ? compress_extension : ""));
               if (!compress_output) {
                 fclose((FILE *)file);
                 file = g_fopen(fcfile, "w");
               } else {
-                gzclose((gzFile)file);
-                file = (void *)gzopen(fcfile, "w");
+                pclose((FILE *)file);
+                char *command = g_strdup_printf("%s > %s", compress_command, fcfile);
+                file = popen(command, "w");
               }
               st_in_file = 0;
             }
@@ -3669,7 +3708,7 @@ cleanup:
     if (!compress_output) {
       fclose((FILE *)file);
     } else {
-      gzclose((gzFile)file);
+      pclose((FILE *)file);
     }
   }
 
@@ -3681,7 +3720,7 @@ cleanup:
   } else if (chunk_filesize && fn == 1) {
     g_free(fcfile);
     fcfile = g_strdup_printf("%s.sql%s", filename_prefix,
-                             (compress_output ? ".gz" : ""));
+                             (compress_output ? compress_extension : ""));
     g_rename(filename, fcfile);
   }
 
@@ -3699,7 +3738,7 @@ gboolean write_data(FILE *file, GString *data) {
     if (!compress_output)
       r = write(fileno(file), data->str + written, data->len);
     else
-      r = gzwrite((gzFile)file, data->str + written, data->len);
+      r = write(fileno(file), data->str + written, data->len);
 
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
