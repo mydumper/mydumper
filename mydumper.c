@@ -2267,13 +2267,13 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     if (from) {
       escaped = g_new(char, strlen(from) * 2 + 1);
       mysql_real_escape_string(conn, escaped, from, strlen(from));
-      fromclause = g_strdup_printf(" `%s` >= \"%s\" ", field, escaped);
+      fromclause = g_strdup_printf(" `%s` >= '%s' ", field, escaped);
       g_free(escaped);
     }
     if (to) {
       escaped = g_new(char, strlen(to) * 2 + 1);
       mysql_real_escape_string(conn, escaped, from, strlen(from));
-      toclause = g_strdup_printf(" `%s` <= \"%s\"", field, escaped);
+      toclause = g_strdup_printf(" `%s` <= '%s'", field, escaped);
       g_free(escaped);
     }
     query = g_strdup_printf("%s WHERE `%s` %s %s", querybase,
@@ -3554,9 +3554,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
         mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, "CONVERT(");
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         g_string_append(statement_row, escaped->str);
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, " USING UTF8MB4)");
       }
