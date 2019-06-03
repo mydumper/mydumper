@@ -60,8 +60,10 @@ void restore_data(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
+void checksum_table(const gchar *filename, MYSQL *conn);
 void add_schema(const gchar *filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
+void checksum_databases(MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
@@ -220,6 +222,9 @@ int main(int argc, char *argv[]) {
   restore_schema_triggers(conn);
 
   g_async_queue_unref(conf.queue);
+
+  checksum_databases(conn);
+
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -283,6 +288,31 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
     }
   }
 
+  g_dir_close(dir);
+}
+
+void checksum_databases(MYSQL *conn) {
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory, error->message);
+    errors++;
+    return;
+  }
+
+  g_message("Starting table checksum verification");
+
+  const gchar *filename = NULL;
+
+  while ((filename = g_dir_read_name(dir))) {
+    if (!source_db ||
+        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      if (g_strrstr(filename, ".checksum")) {
+        checksum_table(filename, conn);
+      }
+    }
+  }
   g_dir_close(dir);
 }
 
@@ -484,6 +514,57 @@ void add_table(const gchar *filename, struct configuration *conf) {
 
   g_async_queue_push(conf->queue, j);
   return;
+}
+
+void checksum_table(const gchar *filename, MYSQL *conn) {
+  // 0 is database, 1 is table
+  gchar **split_file = g_strsplit(filename, ".", 0);
+  gchar *database = split_file[0];
+  gchar *table = split_file[1];
+  void *infile;
+  char checksum[256];
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row;
+
+  gchar *query =
+      g_strdup_printf("CHECKSUM TABLE `%s`.`%s`", db ? db : database, table);
+  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+    g_critical("Error calculating checksum (%s.%s): %s", db ? db : database, table,
+           mysql_error(conn));
+    errors++;
+    g_free(query);
+    return;
+  }
+
+  /* There should never be more than one row */
+  row = mysql_fetch_row(result);
+  g_free(query);
+  if (result) {
+    mysql_free_result(result);
+  }
+
+  gchar *path = g_build_filename(directory, filename, NULL);
+  infile = g_fopen(path, "r");
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+
+  if (fgets(checksum, 256, infile) != NULL) {
+    checksum[strcspn(checksum, "\n")] = 0;
+    if(strcmp(checksum, row[1]) != 0) {
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row[1], checksum);
+    }
+    else {
+      g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);
+    }
+  } else {
+    g_critical("error reading file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
 }
 
 void *process_queue(struct thread_data *td) {

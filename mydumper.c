@@ -106,6 +106,7 @@ gchar *daemon_binlog_directory = NULL;
 #endif
 
 gboolean no_schemas = FALSE;
+gboolean no_checksums = FALSE;
 gboolean no_data = FALSE;
 gboolean no_locks = FALSE;
 gboolean dump_triggers = FALSE;
@@ -180,6 +181,8 @@ static GOptionEntry entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
      "Do not dump table schemas with the data", NULL},
+    {"no-checksums", 'U', 0, G_OPTION_ARG_NONE, &no_checksums,
+     "Do not dump table checksums with the data", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
      NULL},
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers",
@@ -254,6 +257,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
                     char *filename2);
 void dump_schema(MYSQL *conn, char *database, char *table,
                  struct configuration *conf);
+void dump_checksum(char *database, char *table,
+                 struct configuration *conf);
 void dump_view(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table,
                 struct configuration *conf, gboolean is_innodb);
@@ -276,6 +281,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
                           char *filename);
+void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
 gboolean check_regex(char *database, char *table);
@@ -602,6 +608,7 @@ void *process_queue(struct thread_data *td) {
 
   struct job *job = NULL;
   struct table_job *tj = NULL;
+  struct table_checksum_job *tcj = NULL;
   struct dump_database_job *ddj = NULL;
   struct create_database_job *cdj = NULL;
   struct schema_job *sj = NULL;
@@ -659,6 +666,27 @@ void *process_queue(struct thread_data *td) {
       if (tj->filename)
         g_free(tj->filename);
       g_free(tj);
+      g_free(job);
+      break;
+     case JOB_CHECKSUM:
+      tcj = (struct table_checksum_job *)job->job_data;
+        g_message("Thread %d dumping checksum for `%s`.`%s`", td->thread_id,
+                  tcj->database, tcj->table);
+      if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
+        g_critical("Savepoint failed: %s", mysql_error(thrconn));
+      }
+      dump_table_checksum(thrconn, tcj->database, tcj->table, tcj->filename);
+      if (use_savepoints &&
+          mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
+        g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
+      }
+      if (tcj->database)
+        g_free(tcj->database);
+      if (tcj->table)
+        g_free(tcj->table);
+      if (tcj->filename)
+        g_free(tcj->filename);
+      g_free(tcj);
       g_free(job);
       break;
     case JOB_DUMP_NON_INNODB:
@@ -1856,6 +1884,9 @@ void start_dump(MYSQL *conn) {
     GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
+      if (!no_checksums) {
+        dump_checksum(dbt->database, dbt->table, &conf);
+      }
       dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
       g_atomic_int_inc(&non_innodb_table_counter);
     }
@@ -1867,6 +1898,9 @@ void start_dump(MYSQL *conn) {
   GList *iter;
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
+    if (!no_checksums) {
+      dump_checksum(dbt->database, dbt->table, &conf);
+    }
     dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
   }
   g_list_free(innodb_tables);
@@ -3188,6 +3222,80 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
     g_message("Empty table %s.%s", database, table);
 }
 
+void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
+  void *outfile = NULL;
+  char *query = NULL;
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row;
+
+  outfile = g_fopen(filename, "w");
+
+  if (!outfile) {
+    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
+               database, table, filename, errno);
+    errors++;
+    return;
+  }
+
+  GString *statement = g_string_sized_new(statement_size);
+
+  query = g_strdup_printf("CHECKSUM TABLE `%s`.`%s`", database, table);
+  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+    if (success_on_1146 && mysql_errno(conn) == 1146) {
+      g_warning("Error dumping checksum (%s.%s): %s", database, table,
+          mysql_error(conn));
+    } else {
+    g_critical("Error dumping checksum (%s.%s): %s", database, table,
+           mysql_error(conn));
+    errors++;
+    }
+    g_free(query);
+    return;
+  }
+
+  g_string_set_size(statement, 0);
+
+  /* There should never be more than one row */
+  row = mysql_fetch_row(result);
+  g_string_append(statement, row[1]);
+  g_string_append(statement, "\n");
+
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema for %s.%s", database, table);
+    errors++;
+  }
+  g_free(query);
+  fclose((FILE *)outfile);
+
+  g_string_free(statement, TRUE);
+  if (result)
+    mysql_free_result(result);
+
+  return;
+}
+
+
+
+void dump_checksum(char *database, char *table,
+                 struct configuration *conf) {
+  struct job *j = g_new0(struct job, 1);
+  struct table_checksum_job *tcj = g_new0(struct table_checksum_job, 1);
+  j->job_data = (void *)tcj;
+  tcj->database = g_strdup(database);
+  tcj->table = g_strdup(table);
+  j->conf = conf;
+  j->type = JOB_CHECKSUM;
+  if (daemon_mode)
+    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum", output_directory,
+                                   dump_number, database, table);
+  else
+    tcj->filename =
+        g_strdup_printf("%s/%s.%s.checksum", output_directory, database,
+                        table);
+  g_async_queue_push(conf->queue, j);
+
+  return;
+}
 void dump_schema(MYSQL *conn, char *database, char *table,
                  struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
