@@ -1875,7 +1875,9 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 			g_string_append(field_list, ",");
 		}
 
+		g_string_append(field_list, "`");
 		g_string_append_len(field_list, bind.buffer, *bind.length);
+		g_string_append(field_list, "`");
 	}
 	mysql_stmt_close(stmt);
 
