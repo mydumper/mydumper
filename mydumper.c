@@ -1847,6 +1847,13 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 
 }
 
+gchar * replace_string(const gchar *str, const gchar *old, const gchar *new, gint n) {
+    gchar **split = g_strsplit(str, old, n);
+    gchar *text = g_strjoinv(new, split);
+    g_strfreev(split);
+    return text;
+}
+
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	const char* query = "select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra not like '%GENERATED%'";
 	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
@@ -1875,9 +1882,11 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 			g_string_append(field_list, ",");
 		}
 
-		g_string_append(field_list, "`");
-		g_string_append_len(field_list, bind.buffer, *bind.length);
-		g_string_append(field_list, "`");
+		GString *original = g_string_new_len(bind.buffer, *bind.length);
+		gchar *replaced = replace_string(original->str, "`", "``", -1);
+        g_string_free(original, TRUE);
+        g_string_append_printf(field_list, "`%s`", replaced);
+        g_free(replaced);
 	}
 	mysql_stmt_close(stmt);
 
