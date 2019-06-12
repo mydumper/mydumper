@@ -3172,7 +3172,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if (i > 0) {
 						g_string_append_c(statement, ',');
 					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
+                    gchar *escaped_name = replace_string(fields[i].name, "`", "``", -1);
+                    g_string_append_printf(statement, "`%s`", escaped_name);
+                    g_free(escaped_name);
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
@@ -3273,7 +3275,9 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if (i > 0) {
 						g_string_append_c(statement, ',');
 					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
+					gchar *escaped_name = replace_string(fields[i].name, "`", "``", -1);
+					g_string_append_printf(statement, "`%s`", escaped_name);
+                    g_free(escaped_name);
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
