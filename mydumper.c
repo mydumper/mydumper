@@ -1847,6 +1847,19 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 
 }
 
+gchar * replace_string(const gchar *str, const gchar *old, const gchar *new, gint n) {
+	gchar **split = g_strsplit(str, old, n);
+	gchar *text = g_strjoinv(new, split);
+	g_strfreev(split);
+	return text;
+}
+
+void append_escaped_identifier(GString *str, const gchar *identifier) {
+	gchar *replaced = replace_string(identifier, "`", "``", -1);
+	g_string_append_printf(str, "`%s`", replaced);
+	g_free(replaced);
+}
+
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 	const char* query = "select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra not like '%GENERATED%'";
 	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
@@ -1875,7 +1888,9 @@ GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
 			g_string_append(field_list, ",");
 		}
 
-		g_string_append_len(field_list, bind.buffer, *bind.length);
+		GString *original = g_string_new_len(bind.buffer, *bind.length);
+		append_escaped_identifier(field_list, original->str);
+		g_string_free(original, TRUE);
 	}
 	mysql_stmt_close(stmt);
 
@@ -3161,7 +3176,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if (i > 0) {
 						g_string_append_c(statement, ',');
 					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
+					append_escaped_identifier(statement, fields[i].name);
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
@@ -3262,7 +3277,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					if (i > 0) {
 						g_string_append_c(statement, ',');
 					}
-					g_string_append_printf(statement, "`%s`", fields[i].name);
+					append_escaped_identifier(statement, fields[i].name);
 				}
 				g_string_append(statement, ") VALUES");
 			} else {
