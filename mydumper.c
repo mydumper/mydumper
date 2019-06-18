@@ -1796,7 +1796,7 @@ MYSQL_STMT *execute_detect_fields_stmt(MYSQL *conn, char *database, char *table,
 }
 
 gboolean detect_generated_fields(MYSQL *conn, char *database, char *table){
-	const char* query = "select 1 from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra like '%GENERATED%'";
+	const char* query = "select 1 from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra REGEXP '(STORED|VIRTUAL) GENERATED'";
 	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
 	if (!stmt) {
 		return FALSE;
@@ -1861,7 +1861,7 @@ void append_escaped_identifier(GString *str, const gchar *identifier) {
 }
 
 GString * get_insertable_fields(MYSQL *conn, char *database, char *table){
-	const char* query = "select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra not like '%GENERATED%'";
+	const char* query = "select COLUMN_NAME from information_schema.COLUMNS where TABLE_SCHEMA=? and TABLE_NAME=? and extra NOT REGEXP '(STORED|VIRTUAL) GENERATED'";
 	MYSQL_STMT *stmt = execute_detect_fields_stmt(conn, database, table, query);
 	if (!stmt) {
 		return NULL;
