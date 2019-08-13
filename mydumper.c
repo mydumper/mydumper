@@ -1907,18 +1907,26 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	MYSQL_ROW row;
 	char *field = NULL;
 	int showed_nulls=0;
+	gchar *query = NULL;
 
-	/* first have to pick index, in future should be able to preset in configuration too */
-	gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`",database,table);
-	mysql_query(conn,query);
-	g_free(query);
-	indexes=mysql_store_result(conn);
+	/* If detected server is TiDB, try using _tidb_rowid*/
+	if (detect_tidb_rowid(conn,database,table)){
+		field = g_strdup("_tidb_rowid");
+	}
 
-	while ((row=mysql_fetch_row(indexes))) {
-		if (!strcmp(row[2],"PRIMARY") && (!strcmp(row[3],"1"))) {
-			/* Pick first column in PK, cardinality doesn't matter */
-			field=row[4];
-			break;
+	/* pick index, in future should be able to preset in configuration too */
+	if (!field) {
+		query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`",database,table);
+		mysql_query(conn,query);
+		g_free(query);
+
+		indexes=mysql_store_result(conn);
+		while ((row = mysql_fetch_row(indexes))) {
+			if (!strcmp(row[2], "PRIMARY") && (!strcmp(row[3], "1"))) {
+				/* Pick first column in PK, cardinality doesn't matter */
+				field = row[4];
+				break;
+			}
 		}
 	}
 
