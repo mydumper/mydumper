@@ -1828,7 +1828,7 @@ gboolean detect_tidb_rowid(MYSQL *conn, char *database, char *table) {
 	 has_tidb_rowid = FALSE.
 	*/
 
-	if (detected_server == SERVER_TYPE_TIDB && enable_tidb_rowid) {
+	if (detected_server == SERVER_TYPE_TIDB) {
 
 		gchar *query = g_strdup_printf("SELECT _tidb_rowid FROM `%s`.`%s` LIMIT 0", database, table);
 		mysql_query(conn,query);
@@ -3105,7 +3105,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	gboolean has_generated_fields = detect_generated_fields(conn, database, table);
-	gboolean has_tidb_rowid = detect_tidb_rowid(conn, database, table);
+	gboolean dump_tidb_rowid = enable_tidb_rowid && detect_tidb_rowid(conn, database, table);
 
 	/* Ghm, not sure if this should be statement_size - but default isn't too big for now */
 	GString* statement = g_string_sized_new(statement_size);
@@ -3119,7 +3119,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		select_fields = g_string_new("*");
 	}
 
-	if (has_tidb_rowid) { // TiDB has no query cache
+	if (dump_tidb_rowid) { // TiDB has no query cache
 		query = g_strdup_printf("SELECT %s %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
 	} else {
 		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
@@ -3174,7 +3174,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					return num_rows;
 				}
 			}
-			if (complete_insert || has_generated_fields || has_tidb_rowid) {
+			if (complete_insert || has_generated_fields || dump_tidb_rowid) {
 				if (insert_ignore) {
 					g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
 				} else {
