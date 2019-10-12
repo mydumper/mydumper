@@ -1970,7 +1970,7 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (where_clause) {
 		g_string_append_printf(query_string, " WHERE %s", where_clause);
 	}
-	query = g_string_free(query_string, false);
+	query = g_string_free(query_string, FALSE);
 	mysql_query(conn, query);
 	g_free(query);
 	minmax=mysql_store_result(conn);
@@ -2073,7 +2073,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 		g_string_append_printf(querybase, " %s (%s)", separator, where_clause);
 	}
 
-	query = g_string_free(querybase, false);
+	query = g_string_free(querybase, FALSE);
 	ret = mysql_query(conn, query);
 	g_free(query);
 
@@ -3154,7 +3154,7 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 	}
 
 	g_string_free(select_fields, TRUE);
-	query = g_string_free(query_string, false);
+	query = g_string_free(query_string, FALSE);
 
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146
