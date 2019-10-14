@@ -96,6 +96,7 @@ GSequence *tables_skiplist= NULL;
 gchar *tables_skiplist_file= NULL;
 char **tables= NULL;
 GList *no_updated_tables=NULL;
+gchar *where_clause= NULL;
 
 #ifdef WITH_BINLOG
 gboolean need_binlogs= FALSE;
@@ -185,6 +186,7 @@ static GOptionEntry entries[] =
 	{ "complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert, "Use complete INSERT statements that include column names", NULL},
 	{ "tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot, "Snapshot to use for TiDB", NULL },
 	{ "tidb-rowid", 0, 0, G_OPTION_ARG_NONE, &enable_tidb_rowid, "Dump _tidb_rowid from a TiDB database", NULL },
+	{ "where", 'w', 0, G_OPTION_ARG_STRING, &where_clause, "Dump only selected records", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE,   NULL, NULL, NULL }
 };
 
@@ -1963,7 +1965,13 @@ GList * get_chunks_for_table(MYSQL *conn, char *database, char *table, struct co
 	if (!field) goto cleanup;
 
 	/* Get minimum/maximum */
-	mysql_query(conn, query=g_strdup_printf("SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", select_hint, field, field, database, table));
+	GString* query_string = g_string_new(NULL);
+	g_string_printf(query_string, "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`", select_hint, field, field, database, table);
+	if (where_clause) {
+		g_string_append_printf(query_string, " WHERE %s", where_clause);
+	}
+	query = g_string_free(query_string, FALSE);
+	mysql_query(conn, query);
 	g_free(query);
 	minmax=mysql_store_result(conn);
 
@@ -2028,39 +2036,46 @@ cleanup:
 
 /* Try to get EXPLAIN'ed estimates of row in resultset */
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, char *from, char *to) {
-	char *querybase, *query;
+	char *query;
 	int ret;
 
 	g_assert(conn && database && table);
 
-	querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM `%s`.`%s`", (field?field:"*"), database, table);
-	if (from || to) {
-		g_assert(field != NULL);
-		char *fromclause=NULL, *toclause=NULL;
-		char *escaped;
-		if (from) {
-			escaped=g_new(char,strlen(from)*2+1);
-			mysql_real_escape_string(conn,escaped,from,strlen(from));
-			fromclause = g_strdup_printf(" `%s` >= '%s' ", field, escaped);
-			g_free(escaped);
-		}
-		if (to) {
-			escaped=g_new(char,strlen(to)*2+1);
-			mysql_real_escape_string(conn,escaped,from,strlen(from));
-			toclause = g_strdup_printf( " `%s` <= '%s'", field, escaped);
-			g_free(escaped);
-		}
-		query = g_strdup_printf("%s WHERE `%s` %s %s", querybase, (from?fromclause:""), ((from&&to)?"AND":""), (to?toclause:""));
-
-		if (toclause) g_free(toclause);
-		if (fromclause) g_free(fromclause);
-		ret=mysql_query(conn,query);
-		g_free(querybase);
-		g_free(query);
+	GString* querybase = g_string_new("EXPLAIN SELECT ");
+	if (field) {
+		append_escaped_identifier(querybase, field);
 	} else {
-		ret=mysql_query(conn,querybase);
-		g_free(querybase);
+		g_string_append_c(querybase, '*');
 	}
+	g_string_append(querybase, " FROM ");
+	append_escaped_identifier(querybase, database);
+	g_string_append_c(querybase, '.');
+	append_escaped_identifier(querybase, table);
+
+	const char* separator = "WHERE";
+	if (from) {
+		g_assert(field != NULL);
+		char* escaped=g_new(char,strlen(from)*2+1);
+		mysql_real_escape_string(conn,escaped,from,strlen(from));
+		g_string_append_printf(querybase, " %s `%s` >= '%s'", separator, field, escaped);
+		g_free(escaped);
+		separator = "AND";
+	}
+	if (to) {
+		g_assert(field != NULL);
+		char* escaped=g_new(char,strlen(to)*2+1);
+		mysql_real_escape_string(conn,escaped,to,strlen(to));
+		g_string_append_printf(querybase, " %s `%s` <= '%s'", separator, field, escaped);
+		g_free(escaped);
+		separator = "AND";
+	}
+	if (where_clause) {
+		g_string_append_printf(querybase, " %s (%s)", separator, where_clause);
+	}
+
+	query = g_string_free(querybase, FALSE);
+	ret = mysql_query(conn, query);
+	g_free(query);
 
 	if (ret) {
 		g_warning("Unable to get estimates for %s.%s: %s",database,table,mysql_error(conn));
@@ -3119,12 +3134,27 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 		select_fields = g_string_new("*");
 	}
 
+	GString* query_string = g_string_new(NULL);
+	g_string_printf(query_string, "SELECT %s %s", select_hint, select_fields->str);
 	if (dump_tidb_rowid) { // TiDB has no query cache
-		query = g_strdup_printf("SELECT %s %s, _tidb_rowid FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
-	} else {
-		query = g_strdup_printf("SELECT %s %s FROM `%s`.`%s` %s %s", select_hint, select_fields->str, database, table, where?"WHERE":"", where?where:"");
+		g_string_append(query_string, ", _tidb_rowid");
 	}
+	g_string_append(query_string, " FROM ");
+	append_escaped_identifier(query_string, database);
+	g_string_append_c(query_string, '.');
+	append_escaped_identifier(query_string, table);
+
+	const char* separator = "WHERE";
+	if (where) {
+		g_string_append_printf(query_string, " %s %s", separator, where);
+		separator = "AND";
+	}
+	if (where_clause) {
+		g_string_append_printf(query_string, " %s (%s)", separator, where_clause);
+	}
+
 	g_string_free(select_fields, TRUE);
+	query = g_string_free(query_string, FALSE);
 
 	if (mysql_query(conn, query) || !(result=mysql_use_result(conn))) {
 		//ERROR 1146
@@ -3167,6 +3197,10 @@ guint64 dump_table_data(MYSQL * conn, FILE *file, char *database, char *table, c
 					}
 				} else {
 					g_string_printf(statement,"SET FOREIGN_KEY_CHECKS=0;\n");
+				}
+
+				if (where_clause) {
+					g_string_append_printf(statement, "/* WHERE (%s) */\n", where_clause);
 				}
 
 				if (!write_data(file,statement)) {
