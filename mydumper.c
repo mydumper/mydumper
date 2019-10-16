@@ -3353,13 +3353,21 @@ cleanup:
 		mysql_free_result(result);
 	}
 
+	if (!st_in_file && where_clause) {
+		// nothing written out, maybe due to the WHERE clause
+		GString* msg = g_string_new(NULL);
+		g_string_printf(msg, "/* All data are filtered out by this condition: */\n/* WHERE (%s) */\n", where_clause);
+		write_data(file, msg);
+		g_string_free(msg, TRUE);
+	}
+
 	if (!compress_output){
 		fclose((FILE *)file);
 	} else {
 		gzclose((gzFile)file);
 	}
 
-	if (!st_in_file && !build_empty_files) {
+	if (!st_in_file && !build_empty_files && !where_clause) {
 		// dropping the useless file
 		if (remove(fcfile)) {
  			g_warning("Failed to remove empty file : %s\n", fcfile);
