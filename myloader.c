@@ -301,7 +301,7 @@ void restore_schema_triggers(MYSQL *conn) {
 
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+        g_str_has_prefix(filename, g_strdup_printf("%s-schema-post", source_db))) {
       if (g_strrstr(filename, "-schema-triggers.sql")) {
         split_file = g_strsplit(filename, ".", 0);
         database = split_file[0];
