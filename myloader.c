@@ -355,25 +355,22 @@ void create_database(MYSQL *conn, gchar *database) {
 
   gchar *query = NULL;
 
-  if ((db == NULL && source_db == NULL) ||
-      (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))) {
-    const gchar *filename =
-        g_strdup_printf("%s-schema-create.sql", db ? db : database);
-    const gchar *filenamegz =
-        g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
-    const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                            directory, db ? db : database);
-    const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                              directory, db ? db : database);
+  const gchar *filename =
+      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : db ? db : database);
+  const gchar *filenamegz =
+      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : db ? db : database);
+  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
+                                          directory, source_db ? source_db : db ? db : database);
+  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
+                                            directory, source_db ? source_db : db ? db : database);
 
-    if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data(conn, database, NULL, filename, TRUE, FALSE);
-    } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
-    } else {
-      query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-      mysql_query(conn, query);
-    }
+  g_message("path: %s/%s", filepath, filename);
+
+
+  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
+    restore_data(conn, db ? db : database, NULL, filename, TRUE, FALSE);
+  } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
+    restore_data(conn, db ? db : database, NULL, filenamegz, TRUE, FALSE);
   } else {
     query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
     mysql_query(conn, query);
@@ -552,7 +549,20 @@ void restore_data(MYSQL *conn, char *database, char *table,
     if (read_data(infile, is_compressed, data, &eof)) {
       // Search for ; in last 5 chars of line
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if (mysql_real_query(conn, data->str, data->len)) {
+        gchar *str;
+        
+        if (is_schema){
+          GError *err = NULL;
+          GRegex *r = g_regex_new("CREATE DATABASE `[^`]*`", 0, 0, &err);
+          gchar *replacement = 
+            g_strdup_printf("CREATE DATABASE `%s`", database);
+          str = g_regex_replace_literal(r, data->str, data->len, 0, replacement, 0, &err);
+        } else {
+          str = data->str;
+        }
+
+
+        if (mysql_real_query(conn, str, data->len)) {
           g_critical("Error restoring %s.%s from file %s: %s",
                      db ? db : database, table, filename, mysql_error(conn));
           errors++;
