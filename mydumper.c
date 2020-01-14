@@ -261,6 +261,7 @@ void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL *conn, struct configuration *);
+gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 void get_not_updated(MYSQL *conn, FILE *);
 GList *get_chunks_for_table(MYSQL *, char *, char *,
                             struct configuration *conf);
@@ -2117,6 +2118,51 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   mysql_free_result(res);
 
   return field_list;
+}
+
+gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  GString *field_list = g_string_new("");
+
+  gchar *query =
+          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
+                          "FROM information_schema.table_constraints t "
+                          "LEFT JOIN information_schema.key_column_usage k "
+                          "USING(constraint_name,table_schema,table_name) "
+                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
+                          "AND t.table_schema='%s' "
+                          "AND t.table_name='%s' "
+                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
+                          database, table);
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  gboolean first = TRUE;
+  while ((row = mysql_fetch_row(res))) {
+    if (first) {
+      first = FALSE;
+    } else if (atoi(row[1]) > 1) {
+      g_string_append(field_list, ",");
+    } else {
+      break;
+    }
+
+    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    g_string_append(field_list, tb);
+    g_free(tb);
+  }
+  mysql_free_result(res);
+  // Return NULL if we never found a PRIMARY or UNIQUE key
+  if (first) {
+    g_string_free(field_list, true);
+    return NULL;
+  } else {
+    gchar *order_string = g_string_free(field_list, false);
+    return order_string;
+  }
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for
