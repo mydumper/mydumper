@@ -116,6 +116,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean order_by_primary_key = FALSE;
 
 GList *innodb_tables = NULL;
 GMutex *innodb_tables_mutex = NULL;
@@ -179,6 +180,9 @@ static GOptionEntry entries[] = {
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
      "Do not dump table schemas with the data", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
+     NULL},
+    {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
+     "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers",
      NULL},
@@ -255,7 +259,7 @@ void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
-guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *, char *);
 void dump_database(char *, struct configuration *);
 void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
@@ -268,7 +272,7 @@ GList *get_chunks_for_table(MYSQL *, char *, char *,
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename);
+                          char *order_by, char *filename);
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
 gboolean check_regex(char *database, char *table);
@@ -691,7 +695,7 @@ void *process_queue(struct thread_data *td) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
       dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+                           tj->order_by, tj->filename);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -702,6 +706,8 @@ void *process_queue(struct thread_data *td) {
         g_free(tj->table);
       if (tj->where)
         g_free(tj->where);
+      if (tj->order_by)
+        g_free(tj->order_by);
       if (tj->filename)
         g_free(tj->filename);
       g_free(tj);
@@ -719,7 +725,7 @@ void *process_queue(struct thread_data *td) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
       dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+                           tj->order_by, tj->filename);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -730,6 +736,8 @@ void *process_queue(struct thread_data *td) {
         g_free(tj->table);
       if (tj->where)
         g_free(tj->where);
+      if (tj->order_by)
+        g_free(tj->order_by);
       if (tj->filename)
         g_free(tj->filename);
       g_free(tj);
@@ -943,19 +951,22 @@ void *process_queue_less_locking(struct thread_data *td) {
       for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
         tj = (struct table_job *)glj->data;
         if (tj->where)
-          g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                    td->thread_id, tj->database, tj->table, tj->where);
+          g_message("Thread %d dumping data for `%s`.`%s` where %s%s%s",
+                    td->thread_id, tj->database, tj->table, tj->where,
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
         else
-          g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                    tj->database, tj->table);
+          g_message("Thread %d dumping data for `%s`.`%s`%s%s", td->thread_id,
+                    tj->database, tj->table, tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
         dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                             tj->filename);
+                             tj->order_by, tj->filename);
         if (tj->database)
           g_free(tj->database);
         if (tj->table)
           g_free(tj->table);
         if (tj->where)
           g_free(tj->where);
+        if (tj->order_by)
+          g_free(tj->order_by);
         if (tj->filename)
           g_free(tj->filename);
         g_free(tj);
@@ -3225,7 +3236,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
 }
 
 void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename) {
+                          char *order_by, char *filename) {
   void *outfile = NULL;
 
   if (!compress_output)
@@ -3240,7 +3251,7 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
     return;
   }
   guint64 rows_count =
-      dump_table_data(conn, (FILE *)outfile, database, table, where, filename);
+      dump_table_data(conn, (FILE *)outfile, database, table, where, order_by, filename);
 
   if (!rows_count)
     g_message("Empty table %s.%s", database, table);
@@ -3356,6 +3367,9 @@ void dump_table(MYSQL *conn, char *database, char *table,
   if (rows_per_file)
     chunks = get_chunks_for_table(conn, database, table, conf);
 
+  char *order_by = NULL;
+  if (order_by_primary_key)
+    order_by = get_primary_key_string(conn, database, table);
   if (chunks) {
     int nchunk = 0;
     GList *iter;
@@ -3376,6 +3390,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
             g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
                             table, nchunk, (compress_output ? ".gz" : ""));
       tj->where = (char *)iter->data;
+      if (order_by) {
+        tj->order_by = g_strdup(order_by);
+      } else {
+        tj->order_by = NULL;
+      }
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
       g_async_queue_push(conf->queue, j);
@@ -3388,6 +3407,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
     j->job_data = (void *)tj;
     tj->database = g_strdup(database);
     tj->table = g_strdup(table);
+    if (order_by) {
+      tj->order_by = g_strdup(order_by);
+    } else {
+      tj->order_by = NULL;
+    }
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
     if (daemon_mode)
@@ -3399,8 +3423,8 @@ void dump_table(MYSQL *conn, char *database, char *table,
           "%s/%s.%s%s.sql%s", output_directory, database, table,
           (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
     g_async_queue_push(conf->queue, j);
-    return;
   }
+  g_free(order_by);
 }
 
 void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
@@ -3424,6 +3448,9 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
     if (chunks) {
       int nchunk = 0;
       GList *citer;
+      gchar *order_by = NULL;
+      if (order_by_primary_key)
+        order_by = get_primary_key_string(conn, dbt->database, dbt->table);
       for (citer = chunks; citer != NULL; citer = citer->next) {
         struct table_job *tj = g_new0(struct table_job, 1);
         tj->database = g_strdup_printf("%s", dbt->database);
@@ -3438,9 +3465,15 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
               dbt->table, nchunk, (compress_output ? ".gz" : ""));
         tj->where = (char *)citer->data;
+        if (order_by)
+          tj->order_by = g_strdup(order_by);
+        else
+          tj->order_by = NULL;
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }
+      if (order_by)
+        g_free(order_by);
       g_list_free(chunks);
     } else {
       struct table_job *tj = g_new0(struct table_job, 1);
@@ -3456,6 +3489,10 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
             (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
       tj->where = NULL;
+      if (order_by_primary_key)
+        tj->order_by = get_primary_key_string(conn, dbt->database, dbt->table);
+      else
+        tj->order_by = NULL;
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
   }
@@ -3465,7 +3502,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 
 /* Do actual data chunk reading/writing magic */
 guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
-                        char *where, char *filename) {
+                        char *where, char *order_by, char *filename) {
   guint i;
   guint fn = 1;
   guint st_in_file = 0;
@@ -3505,10 +3542,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s",
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
       select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "");
+      where ? where : "", order_by ? "ORDER BY" : "",
+      order_by ? order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
