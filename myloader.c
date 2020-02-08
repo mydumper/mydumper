@@ -38,6 +38,8 @@
 #include "connection.h"
 #include "config.h"
 #include "getPassword.h"
+#include "logging.h"
+#include "set_verbose.h"
 
 guint commit_count = 1000;
 gchar *directory = NULL;
@@ -61,7 +63,6 @@ void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data);
-void set_verbose(guint verbosity);
 void create_database(MYSQL *conn, gchar *database);
 
 static GOptionEntry entries[] = {
@@ -77,34 +78,9 @@ static GOptionEntry entries[] = {
      "Database to restore", NULL},
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
+    {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
+     "Log file name to use, by default stdout is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)log_level;
-  (void)message;
-  (void)user_data;
-}
-
-void set_verbose(guint verbosity) {
-  switch (verbosity) {
-  case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
-    break;
-  case 1:
-    g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    break;
-  case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
-    break;
-  default:
-    break;
-  }
-}
 
 int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, 0};

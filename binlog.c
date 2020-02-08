@@ -29,6 +29,7 @@
 #include <zlib.h>
 #include "mydumper.h"
 #include "binlog.h"
+#include "set_verbose.h"
 
 #define BINLOG_MAGIC "\xfe\x62\x69\x6e"
 
