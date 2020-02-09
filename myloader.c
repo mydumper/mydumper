@@ -192,6 +192,10 @@ int main(int argc, char *argv[]) {
   g_free(td);
   g_free(threads);
 
+  if (logoutfile) {
+    fclose(logoutfile);
+  }
+
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
