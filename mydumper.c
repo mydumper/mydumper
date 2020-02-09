@@ -273,8 +273,6 @@ gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
 int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
 void read_tables_skiplist(const gchar *filename);
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data);
 #ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void *binlog_thread(void *data);
