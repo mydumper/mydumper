@@ -18,6 +18,7 @@
 #include <pcre.h>
 #include <glib.h>
 #include <string.h>
+#include "config.h"
 #include "connection.h"
 
 extern char *defaults_file;

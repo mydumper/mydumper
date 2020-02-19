@@ -33,10 +33,10 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <zlib.h>
+#include "config.h"
 #include "common.h"
 #include "myloader.h"
 #include "connection.h"
-#include "config.h"
 #include "getPassword.h"
 
 guint commit_count = 1000;
