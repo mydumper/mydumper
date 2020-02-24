@@ -578,7 +578,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
       return;
     }
   }
-  if (!is_schema && mysql_query(conn, "COMMIT")) {
+  if (!is_schema && (commit_count > 1) && mysql_query(conn, "COMMIT")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
                db ? db : database, table, filename, mysql_error(conn));
     errors++;
