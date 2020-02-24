@@ -545,7 +545,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
     g_free(query);
   }
 
-  if (!is_schema)
+  if (!is_schema && (commit_count > 1) )
     mysql_query(conn, "START TRANSACTION");
 
   while (eof == FALSE) {
@@ -559,7 +559,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
           return;
         }
         query_counter++;
-        if (!is_schema && (query_counter == commit_count)) {
+        if (!is_schema && (commit_count > 1) && (query_counter == commit_count)) {
           query_counter = 0;
           if (mysql_query(conn, "COMMIT")) {
             g_critical("Error committing data for %s.%s: %s",
