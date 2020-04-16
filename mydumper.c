@@ -1368,7 +1368,7 @@ void *binlog_thread(void *data) {
   MYSQL *conn;
   conn = mysql_init(NULL);
   if (defaults_file != NULL) {
-    mysql_options(thrconn, MYSQL_READ_DEFAULT_FILE, defaults_file);
+    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, defaults_file);
   }
   mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "mydumper");
 
