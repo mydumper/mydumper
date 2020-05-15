@@ -2085,8 +2085,8 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 	MYSQL_FIELD * fields = mysql_fetch_fields(result);
 
 	guint i;
-	const char* field_name = "rows";
-	if (detected_server == SERVER_TYPE_TIDB) {
+	guint num_fields = mysql_num_fields(result);
+	for (i=0; i<num_fields; i++)  {
 		// result of `EXPLAIN SELECT` for TiDB is different than MySQL, we fetch the first row's `count` is enough.
 		// the string format of `count` is `f`, so we can treat it as guint64.
 		/*
@@ -2098,11 +2098,13 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field, ch
 		  | └─TableScan_4     | 1537777.00 | cop  | table:trips, range:[-inf,+inf], keep order:false |
 		  +-------------------+------------+------+--------------------------------------------------+
 		 */
-		field_name = "count";
-	}
-	for (i=0; i<mysql_num_fields(result); i++)  {
-		if (!strcmp(fields[i].name,field_name))
+		// starting from TiDB 4.0.0-beta.2, the column name "count" is renamed to "estRows"
+		if (!strcmp(fields[i].name, "rows") || !strcmp(fields[i].name, "count") || !strcmp(fields[i].name, "estRows"))
 			break;
+	}
+	if (i == num_fields) {
+		g_warning("Unable to get estimates: no estimated rows found from EXPLAIN");
+		return 0;
 	}
 
 	MYSQL_ROW row = NULL;
