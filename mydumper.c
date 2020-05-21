@@ -2169,7 +2169,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
     while ((row = mysql_fetch_row(indexes))) {
       if (!strcmp(row[3], "1")) {
         if (row[6])
-          cardinality = strtoll(row[6], NULL, 10);
+          cardinality = strtoul(row[6], NULL, 10);
         if (cardinality > max_cardinality) {
           field = row[4];
           max_cardinality = cardinality;
@@ -2220,15 +2220,16 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
     /* static stepping */
-    nmin = strtoll(min, NULL, 10);
-    nmax = strtoll(max, NULL, 10);
+    nmin = strtoul(min, NULL, 10);
+    nmax = strtoul(max, NULL, 10);
     estimated_step = (nmax - nmin) / estimated_chunks + 1;
     cutoff = nmin;
     while (cutoff <= nmax) {
       chunks = g_list_prepend(
           chunks,
           g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
-                          !showed_nulls ? "`" : "", !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
                           !showed_nulls ? "`" : "",
                           !showed_nulls ? " IS NULL OR " : "", field,
                           (unsigned long long)cutoff, field,
@@ -2316,7 +2317,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     row = mysql_fetch_row(result);
 
   if (row && row[i])
-    count = strtoll(row[i], NULL, 10);
+    count = strtoul(row[i], NULL, 10);
 
   if (result)
     mysql_free_result(result);
