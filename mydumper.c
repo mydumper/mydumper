@@ -2073,12 +2073,18 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
 
   gboolean result = FALSE;
 
+  char *escaped_database = g_new(char, strlen(database) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_database, database, strlen(database));
+  char *escaped_table = g_new(char, strlen(table) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_table, table, strlen(table));
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
       "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'",
-      database, table);
+      escaped_database, escaped_table);
   mysql_query(conn, query);
   g_free(query);
+  g_free(escaped_database);
+  g_free(escaped_table);
 
   res = mysql_store_result(conn);
   if ((row = mysql_fetch_row(res))) {
