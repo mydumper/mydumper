@@ -45,9 +45,10 @@ gboolean overwrite_tables = FALSE;
 gboolean enable_binlog = FALSE;
 gchar *source_db = NULL;
 static GMutex *init_mutex = NULL;
-
+static GMutex *progress_mutex = NULL;
 guint errors = 0;
-
+unsigned long long int total_data_sql_files = 0;
+unsigned long long int progress = 0;
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
 void restore_data(MYSQL *conn, char *database, char *table,
@@ -115,6 +116,7 @@ int main(int argc, char *argv[]) {
   g_thread_init(NULL);
 
   init_mutex = g_mutex_new();
+  progress_mutex = g_mutex_new();
 
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
@@ -239,9 +241,21 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
       }
     }
   }
-
   g_dir_rewind(dir);
-
+  while ((filename = g_dir_read_name(dir))) {
+    if (!source_db ||
+        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      if (!g_strrstr(filename, "-schema.sql") &&
+          !g_strrstr(filename, "-schema-view.sql") &&
+          !g_strrstr(filename, "-schema-triggers.sql") &&
+          !g_strrstr(filename, "-schema-post.sql") &&
+          !g_strrstr(filename, "-schema-create.sql") &&
+          g_strrstr(filename, ".sql")) {
+        total_data_sql_files++;
+      }
+    }
+  }
+  g_dir_rewind(dir);
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
@@ -436,6 +450,7 @@ void add_table(const gchar *filename, struct configuration *conf) {
   rj->database = g_strdup(split_file[0]);
   rj->table = g_strdup(split_file[1]);
   rj->part = g_ascii_strtoull(split_file[2], NULL, 10);
+
   g_async_queue_push(conf->queue, j);
   return;
 }
@@ -476,8 +491,11 @@ void *process_queue(struct thread_data *td) {
     switch (job->type) {
     case JOB_RESTORE:
       rj = (struct restore_job *)job->job_data;
-      g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id,
-                rj->database, rj->table, rj->part);
+      g_mutex_lock(progress_mutex);
+      progress++;
+      g_message("Thread %d restoring `%s`.`%s` part %d. Progress %llu of %llu .", td->thread_id,
+                rj->database, rj->table, rj->part, progress,total_data_sql_files);
+      g_mutex_unlock(progress_mutex);
       restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE);
       if (rj->database)
         g_free(rj->database);
