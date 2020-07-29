@@ -2223,6 +2223,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
     /* static stepping */
     nmin = strtoul(min, NULL, 10);
     nmax = strtoul(max, NULL, 10);
