@@ -3104,7 +3104,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     return;
   }
 
-  // we create myisam tables as workaround
+  // we create tables as workaround
   // for view dependencies
   query = g_strdup_printf("SHOW FIELDS FROM `%s`.`%s`", database, table);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
@@ -3128,7 +3128,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "`%s` int", row[0]);
   }
-  g_string_append(statement, "\n)ENGINE=MyISAM;\n");
+  g_string_append(statement, "\n);\n");
 
   if (result)
     mysql_free_result(result);
