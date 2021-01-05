@@ -2075,7 +2075,7 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
 
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'",
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
       database, table);
   mysql_query(conn, query);
   g_free(query);
