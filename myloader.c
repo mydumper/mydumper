@@ -553,8 +553,8 @@ void restore_data(MYSQL *conn, char *database, char *table,
     gchar *query = g_strdup_printf("USE `%s`", db ? db : database);
 
     if (mysql_query(conn, query)) {
-      g_critical("Error switching to database %s whilst restoring table %s",
-                 db ? db : database, table);
+      g_critical("Error switching to database %s whilst restoring table %s from file %s",
+                 db ? db : database, table, filename);
       g_free(query);
       errors++;
       return;
@@ -580,8 +580,8 @@ void restore_data(MYSQL *conn, char *database, char *table,
         if (!is_schema && (query_counter == commit_count)) {
           query_counter = 0;
           if (mysql_query(conn, "COMMIT")) {
-            g_critical("Error committing data for %s.%s: %s",
-                       db ? db : database, table, mysql_error(conn));
+            g_critical("Error committing data for %s.%s: from file %s: %s",
+                       db ? db : database, table, filename, mysql_error(conn));
             errors++;
             return;
           }
