@@ -1697,7 +1697,7 @@ void start_dump(MYSQL *conn) {
     g_free(query);
 
   } else {
-    g_warning("Executing in no-locks mode, snapshot will notbe consistent");
+    g_warning("Executing in no-locks mode, snapshot will not be consistent");
   }
   if (mysql_get_server_version(conn) < 40108) {
     mysql_query(
