@@ -21,7 +21,7 @@
 #ifndef _myloader_h
 #define _myloader_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE_FILENAME, JOB_RESTORE_STRING  };
 
 struct configuration {
   GAsyncQueue *queue;
@@ -45,6 +45,7 @@ struct restore_job {
   char *database;
   char *table;
   char *filename;
+  GString *statement;
   guint part;
 };
 

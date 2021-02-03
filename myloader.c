@@ -42,6 +42,7 @@
 guint commit_count = 1000;
 gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
+gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gchar *source_db = NULL;
 static GMutex *init_mutex = NULL;
@@ -50,11 +51,15 @@ guint errors = 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
-void restore_data(MYSQL *conn, char *database, char *table,
-                  const char *filename, gboolean is_schema, gboolean need_use);
+void restore_data_from_file(MYSQL *conn, char *database, char *table,
+                  const char *filename, gboolean is_schema, gboolean need_use, 
+		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue);
+void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table, 
+		  GString *data, const char *filename, gboolean is_schema, 
+		  guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
-void add_schema(const gchar *filename, MYSQL *conn);
+void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
@@ -77,6 +82,8 @@ static GOptionEntry entries[] = {
      "Database to restore", NULL},
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
+    {"innodb-optimize-keys", 0, 0, G_OPTION_ARG_NONE, &innodb_optimize_keys,
+     "Creates the table without the indexes and it adds them at the end", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
@@ -230,12 +237,13 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   }
 
   const gchar *filename = NULL;
+  GAsyncQueue *fast_index_creation_queue = g_async_queue_new();
 
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
-        add_schema(filename, conn);
+        add_schema(filename, fast_index_creation_queue, conn);
       }
     }
   }
@@ -256,6 +264,16 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
     }
   }
 
+
+  // move from a queue to the done query
+
+  struct job *job =(struct job *)g_async_queue_try_pop(fast_index_creation_queue);
+  while (job != NULL){
+	  g_async_queue_push(conf->queue, job);
+	  job =(struct job *)g_async_queue_try_pop(fast_index_creation_queue);
+  }
+ 
+
   g_dir_close(dir);
 }
 
@@ -275,7 +293,7 @@ void restore_schema_view(MYSQL *conn) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema-view.sql")) {
-        add_schema(filename, conn);
+        add_schema(filename, NULL, conn);
       }
     }
   }
@@ -309,7 +327,7 @@ void restore_schema_triggers(MYSQL *conn) {
         table = split_table[0];
         g_message("Restoring triggers for `%s`.`%s`", db ? db : database,
                   table);
-        restore_data(conn, database, table, filename, TRUE, TRUE);
+        restore_data_from_file(conn, database, table, filename, TRUE, TRUE, FALSE,NULL);
       }
     }
   }
@@ -342,7 +360,7 @@ void restore_schema_post(MYSQL *conn) {
         database = split_file[0];
         // table= split_file[0]; //NULL
         g_message("Restoring routines and events for `%s`", db ? db : database);
-        restore_data(conn, database, NULL, filename, TRUE, TRUE);
+        restore_data_from_file(conn, database, NULL, filename, TRUE, TRUE, FALSE,NULL);
       }
     }
   }
@@ -367,9 +385,9 @@ void create_database(MYSQL *conn, gchar *database) {
                                               directory, db ? db : database);
 
     if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data(conn, database, NULL, filename, TRUE, FALSE);
+      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
     } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data(conn, database, NULL, filenamegz, TRUE, FALSE);
+      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
     } else {
       query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
       mysql_query(conn, query);
@@ -383,7 +401,7 @@ void create_database(MYSQL *conn, gchar *database) {
   return;
 }
 
-void add_schema(const gchar *filename, MYSQL *conn) {
+void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn) {
   // 0 is database, 1 is table with -schema on the end
   gchar **split_file = g_strsplit(filename, ".", 0);
   gchar *database = split_file[0];
@@ -420,7 +438,7 @@ void add_schema(const gchar *filename, MYSQL *conn) {
   g_free(query);
 
   g_message("Creating table `%s`.`%s`", db ? db : database, table);
-  restore_data(conn, database, table, filename, TRUE, TRUE);
+  restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue);
   g_strfreev(split_table);
   g_strfreev(split_file);
   return;
@@ -431,7 +449,7 @@ void add_table(const gchar *filename, struct configuration *conf) {
   struct restore_job *rj = g_new(struct restore_job, 1);
   j->job_data = (void *)rj;
   rj->filename = g_strdup(filename);
-  j->type = JOB_RESTORE;
+  j->type = JOB_RESTORE_FILENAME;
   gchar **split_file = g_strsplit(filename, ".", 0);
   rj->database = g_strdup(split_file[0]);
   rj->table = g_strdup(split_file[1]);
@@ -474,11 +492,26 @@ void *process_queue(struct thread_data *td) {
     job = (struct job *)g_async_queue_pop(conf->queue);
 
     switch (job->type) {
-    case JOB_RESTORE:
+    case JOB_RESTORE_STRING:
+      rj = (struct restore_job *)job->job_data;
+      g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
+                rj->database, rj->table);
+      guint query_counter=0;
+      restore_data_in_gstring_from_file(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
+      if (rj->database)
+        g_free(rj->database);
+      if (rj->table)
+        g_free(rj->table);
+      if (rj->statement)
+        g_string_free(rj->statement,TRUE);
+      g_free(rj);
+      g_free(job);
+      break;
+    case JOB_RESTORE_FILENAME:
       rj = (struct restore_job *)job->job_data;
       g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id,
                 rj->database, rj->table, rj->part);
-      restore_data(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE);
+      restore_data_from_file(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE, FALSE,NULL);
       if (rj->database)
         g_free(rj->database);
       if (rj->table)
@@ -507,8 +540,32 @@ void *process_queue(struct thread_data *td) {
   return NULL;
 }
 
-void restore_data(MYSQL *conn, char *database, char *table,
-                  const char *filename, gboolean is_schema, gboolean need_use) {
+
+void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter)
+{
+                if (mysql_real_query(conn, data->str, data->len)) {
+
+                        g_critical("Error restoring %s.%s from file %s: %s \n%s", db ? db : database, table, filename, mysql_error(conn),data->str);
+                        errors++;
+                        return;
+                }
+                *query_counter=*query_counter+1;
+                if (!is_schema &&(*query_counter == commit_count)) {
+                        *query_counter= 0;
+                        if (mysql_query(conn, "COMMIT")) {
+                                g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
+                                errors++;
+                                return;
+                        }
+                        mysql_query(conn, "START TRANSACTION");
+                }
+                g_string_set_size(data, 0);
+}
+
+
+void restore_data_from_file(MYSQL *conn, char *database, char *table,
+                  const char *filename, gboolean is_schema, gboolean need_use, 
+		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue) {
   void *infile;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -550,27 +607,62 @@ void restore_data(MYSQL *conn, char *database, char *table,
 
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
-      // Search for ; in last 5 chars of line
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if (mysql_real_query(conn, data->str, data->len)) {
-          g_critical("Error restoring %s.%s from file %s: %s",
-                     db ? db : database, table, filename, mysql_error(conn));
-          errors++;
-          return;
+        if (is_create_table){
+          if (innodb_optimize_keys){
+            gboolean is_innodb_table=FALSE;
+            gchar** split_file= g_strsplit(data->str, "\n", -1);
+	    GString *table_without_indexes=g_string_sized_new(512);
+	    GString *alter_table_statement=g_string_sized_new(512);
+	    g_string_append(alter_table_statement,"ALTER TABLE `");
+            g_string_append(alter_table_statement,db ? db : database);
+            g_string_append(alter_table_statement,"`.`");
+	    g_string_append(alter_table_statement,table);
+	    g_string_append(alter_table_statement,"` ");
+	    gboolean first=TRUE;
+            for (int i=0; i < (int)g_strv_length(split_file);i++){
+              if (   g_strrstr(split_file[i],"  KEY")
+                  || g_strrstr(split_file[i],"  UNIQUE")
+                  || g_strrstr(split_file[i],"  SPATIAL")
+                  || g_strrstr(split_file[i],"  FULLTEXT")
+                  || g_strrstr(split_file[i],"  INDEX")
+                 ){
+		if (!first){
+		  g_string_append_c(alter_table_statement,',');
+		}
+	        first=FALSE; 
+		g_string_append(alter_table_statement,"\n ADD");
+                g_string_append(alter_table_statement, split_file[i]);  
+	        g_string_append_c(alter_table_statement,'\n');
+              }else{
+	  	g_string_append(table_without_indexes, split_file[i]);
+		g_string_append_c(table_without_indexes,'\n');
+	      }
+	      if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
+	        is_innodb_table=TRUE;
+	      }
+	    }
+	    g_string_append_c(alter_table_statement,';');
+	    if (is_innodb_table){
+              restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
+	      struct restore_job *rj = g_new(struct restore_job, 1);
+              rj->statement = alter_table_statement;
+              rj->database = g_strdup(database);
+              rj->table = g_strdup(table);
+              struct job *j = g_new0(struct job, 1);
+	      j->job_data = (void *)rj;
+	      j->type = JOB_RESTORE_STRING;
+	      g_async_queue_push(fast_index_creation_queue, j);
+	      g_string_set_size(data, 0);
+            }else{
+	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+  	    }
+	  }else{
+            restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+	  }
+        }else{
+          restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
         }
-        query_counter++;
-        if (!is_schema && (query_counter == commit_count)) {
-          query_counter = 0;
-          if (mysql_query(conn, "COMMIT")) {
-            g_critical("Error committing data for %s.%s: %s",
-                       db ? db : database, table, mysql_error(conn));
-            errors++;
-            return;
-          }
-          mysql_query(conn, "START TRANSACTION");
-        }
-
-        g_string_set_size(data, 0);
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);
