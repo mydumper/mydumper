@@ -1470,7 +1470,7 @@ void start_dump(MYSQL *conn) {
       /* Just in case PROCESSLIST output column order changes */
       MYSQL_FIELD *fields = mysql_fetch_fields(res);
       guint i;
-      int tcol = -1, ccol = -1, icol = -1;
+      int tcol = -1, ccol = -1, icol = -1, ucol = -1;
       for (i = 0; i < mysql_num_fields(res); i++) {
         if (!strcasecmp(fields[i].name, "Command"))
           ccol = i;
@@ -1478,6 +1478,8 @@ void start_dump(MYSQL *conn) {
           tcol = i;
         else if (!strcasecmp(fields[i].name, "Id"))
           icol = i;
+        else if (!strcasecmp(fields[i].name, "User"))
+          ucol = i;
       }
       if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
         g_critical("Error obtaining information from processlist");
@@ -1485,6 +1487,8 @@ void start_dump(MYSQL *conn) {
       }
       while ((row = mysql_fetch_row(res))) {
         if (row[ccol] && strcmp(row[ccol], "Query"))
+          continue;
+        if (row[ucol] && !strcmp(row[ucol], "system user"))
           continue;
         if (row[tcol] && atoi(row[tcol]) > longquery) {
           if (killqueries) {
@@ -2219,6 +2223,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
     /* static stepping */
     nmin = strtoul(min, NULL, 10);
     nmax = strtoul(max, NULL, 10);
