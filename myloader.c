@@ -619,21 +619,16 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
             g_string_append(alter_table_statement,"`.`");
 	    g_string_append(alter_table_statement,table);
 	    g_string_append(alter_table_statement,"` ");
-	    gboolean first=TRUE;
             for (int i=0; i < (int)g_strv_length(split_file);i++){
               if (   g_strrstr(split_file[i],"  KEY")
                   || g_strrstr(split_file[i],"  UNIQUE")
                   || g_strrstr(split_file[i],"  SPATIAL")
                   || g_strrstr(split_file[i],"  FULLTEXT")
                   || g_strrstr(split_file[i],"  INDEX")
+		  || g_strrstr(split_file[i],"  CONSTRAINT")
                  ){
-		if (!first){
-		  g_string_append_c(alter_table_statement,',');
-		}
-	        first=FALSE; 
 		g_string_append(alter_table_statement,"\n ADD");
                 g_string_append(alter_table_statement, split_file[i]);  
-	        g_string_append_c(alter_table_statement,'\n');
               }else{
 	  	g_string_append(table_without_indexes, split_file[i]);
 		g_string_append_c(table_without_indexes,'\n');
@@ -643,6 +638,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 	      }
 	    }
 	    g_string_append_c(alter_table_statement,';');
+	    g_message("ALTER TABLE: %s",alter_table_statement->str);
 	    if (is_innodb_table){
               restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
 	      struct restore_job *rj = g_new(struct restore_job, 1);
