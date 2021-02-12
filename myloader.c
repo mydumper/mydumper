@@ -57,6 +57,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table, 
 		  GString *data, const char *filename, gboolean is_schema, 
 		  guint *query_counter);
+void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
 void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
@@ -497,6 +498,7 @@ void *process_queue(struct thread_data *td) {
       g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
                 rj->database, rj->table);
       guint query_counter=0;
+      restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
       restore_data_in_gstring_from_file(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
       if (rj->database)
         g_free(rj->database);
@@ -562,6 +564,18 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
                 g_string_set_size(data, 0);
 }
 
+void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter)
+{
+  gchar** line=g_strsplit(data->str, ";\n", -1);
+  for (int i=0; i < (int)g_strv_length(line);i++){
+     if (strlen(line[i])>2){
+       GString *str=g_string_new(line[i]);
+       g_string_append_c(str,';');
+       restore_data_in_gstring_from_file(conn, database, table, str, filename, is_schema, query_counter);
+     }
+  }
+}
+
 
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
@@ -604,55 +618,66 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 
   if (!is_schema)
     mysql_query(conn, "START TRANSACTION");
-
+  GString *prealter_table_statement=g_string_sized_new(512);
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (is_create_table){
           if (innodb_optimize_keys){
-            gboolean is_innodb_table=FALSE;
-            gchar** split_file= g_strsplit(data->str, "\n", -1);
-	    GString *table_without_indexes=g_string_sized_new(512);
-	    GString *alter_table_statement=g_string_sized_new(512);
-	    g_string_append(alter_table_statement,"ALTER TABLE `");
-            g_string_append(alter_table_statement,db ? db : database);
-            g_string_append(alter_table_statement,"`.`");
-	    g_string_append(alter_table_statement,table);
-	    g_string_append(alter_table_statement,"` ");
-            for (int i=0; i < (int)g_strv_length(split_file);i++){
-              if (   g_strrstr(split_file[i],"  KEY")
+
+            // Check if it is a /*!40  SET 
+	    if (g_strrstr(data->str,"/*!40")){
+              g_string_append(prealter_table_statement,data->str);
+	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+	    }else{
+	      GString *alter_table_statement=g_string_sized_new(512);
+              gboolean is_innodb_table=FALSE;
+              gchar** split_file= g_strsplit(data->str, "\n", -1);
+  	      GString *table_without_indexes=g_string_sized_new(512);
+	      g_string_append(alter_table_statement,"ALTER TABLE `");
+              g_string_append(alter_table_statement,db ? db : database);
+              g_string_append(alter_table_statement,"`.`");
+	      g_string_append(alter_table_statement,table);
+	      g_string_append(alter_table_statement,"` ");
+              for (int i=0; i < (int)g_strv_length(split_file);i++){
+                if (   g_strrstr(split_file[i],"  KEY")
                   || g_strrstr(split_file[i],"  UNIQUE")
                   || g_strrstr(split_file[i],"  SPATIAL")
                   || g_strrstr(split_file[i],"  FULLTEXT")
                   || g_strrstr(split_file[i],"  INDEX")
 		  || g_strrstr(split_file[i],"  CONSTRAINT")
                  ){
-		g_string_append(alter_table_statement,"\n ADD");
-                g_string_append(alter_table_statement, split_file[i]);  
+		  g_string_append(alter_table_statement,"\n ADD");
+                  g_string_append(alter_table_statement, split_file[i]);  
+                }else{
+	  	  g_string_append(table_without_indexes, split_file[i]);
+		  g_string_append_c(table_without_indexes,'\n');
+	        }
+	        if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
+	          is_innodb_table=TRUE;
+	        }
+	      }
+              gchar * str=g_strrstr_len(alter_table_statement->str,alter_table_statement->len,",");
+	      if ((str - alter_table_statement->str) > (long int)(alter_table_statement->len - 5))
+                *str=';';
+	      else
+                g_string_append_c(alter_table_statement,';');
+	      if (is_innodb_table){
+                restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
+	        struct restore_job *rj = g_new(struct restore_job, 1);
+		rj->prestatement = prealter_table_statement;
+                rj->statement = alter_table_statement;
+                rj->database = g_strdup(database);
+                rj->table = g_strdup(table);
+                struct job *j = g_new0(struct job, 1);
+	        j->job_data = (void *)rj;
+	        j->type = JOB_RESTORE_STRING;
+	        g_async_queue_push(fast_index_creation_queue, j);
+	        g_string_set_size(data, 0);
               }else{
-	  	g_string_append(table_without_indexes, split_file[i]);
-		g_string_append_c(table_without_indexes,'\n');
-	      }
-	      if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
-	        is_innodb_table=TRUE;
-	      }
+	        restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+  	      }
 	    }
-	    g_string_append_c(alter_table_statement,';');
-	    g_message("ALTER TABLE: %s",alter_table_statement->str);
-	    if (is_innodb_table){
-              restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-	      struct restore_job *rj = g_new(struct restore_job, 1);
-              rj->statement = alter_table_statement;
-              rj->database = g_strdup(database);
-              rj->table = g_strdup(table);
-              struct job *j = g_new0(struct job, 1);
-	      j->job_data = (void *)rj;
-	      j->type = JOB_RESTORE_STRING;
-	      g_async_queue_push(fast_index_creation_queue, j);
-	      g_string_set_size(data, 0);
-            }else{
-	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
-  	    }
 	  }else{
             restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	  }
