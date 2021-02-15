@@ -498,8 +498,8 @@ void *process_queue(struct thread_data *td) {
       g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
                 rj->database, rj->table);
       guint query_counter=0;
-      restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
-      restore_data_in_gstring_from_file(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
+      //restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
+      restore_data_in_gstring(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
       if (rj->database)
         g_free(rj->database);
       if (rj->table)
@@ -577,6 +577,24 @@ void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *
 }
 
 
+void append_alter_table(GString * alter_table_statement, char *database, char *table){
+  g_string_append(alter_table_statement,"ALTER TABLE `");
+  g_string_append(alter_table_statement,db ? db : database);
+  g_string_append(alter_table_statement,"`.`");
+  g_string_append(alter_table_statement,table);
+  g_string_append(alter_table_statement,"` ");
+}
+
+void finish_alter_table(GString * alter_table_statement){
+  gchar * str=g_strrstr_len(alter_table_statement->str,alter_table_statement->len,",");
+  if ((str - alter_table_statement->str) > (long int)(alter_table_statement->len - 5)){
+    *str=';';
+    g_string_append_c(alter_table_statement,'\n');
+  }else
+    g_string_append(alter_table_statement,";\n");
+}
+
+
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
 		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue) {
@@ -618,7 +636,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 
   if (!is_schema)
     mysql_query(conn, "START TRANSACTION");
-  GString *prealter_table_statement=g_string_sized_new(512);
+  GString *alter_table_statement=g_string_sized_new(512);
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -627,26 +645,33 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 
             // Check if it is a /*!40  SET 
 	    if (g_strrstr(data->str,"/*!40")){
-              g_string_append(prealter_table_statement,data->str);
+              g_string_append(alter_table_statement,data->str);
 	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	    }else{
-	      GString *alter_table_statement=g_string_sized_new(512);
+              // Processing CREATE TABLE statement
               gboolean is_innodb_table=FALSE;
               gchar** split_file= g_strsplit(data->str, "\n", -1);
   	      GString *table_without_indexes=g_string_sized_new(512);
-	      g_string_append(alter_table_statement,"ALTER TABLE `");
-              g_string_append(alter_table_statement,db ? db : database);
-              g_string_append(alter_table_statement,"`.`");
-	      g_string_append(alter_table_statement,table);
-	      g_string_append(alter_table_statement,"` ");
+              append_alter_table(alter_table_statement,db ? db : database,table);
+	      int fulltext_counter=0;
               for (int i=0; i < (int)g_strv_length(split_file);i++){
-                if (   g_strrstr(split_file[i],"  KEY")
+                
+                if ( g_strrstr(split_file[i],"  KEY")
                   || g_strrstr(split_file[i],"  UNIQUE")
                   || g_strrstr(split_file[i],"  SPATIAL")
                   || g_strrstr(split_file[i],"  FULLTEXT")
                   || g_strrstr(split_file[i],"  INDEX")
 		  || g_strrstr(split_file[i],"  CONSTRAINT")
                  ){
+                  if (g_strrstr(split_file[i],"  FULLTEXT")){
+                    fulltext_counter++;
+		  }
+		  if (fulltext_counter>1){
+		    fulltext_counter=1;
+                    finish_alter_table(alter_table_statement);
+
+		    append_alter_table(alter_table_statement,db ? db : database,table);
+		  }
 		  g_string_append(alter_table_statement,"\n ADD");
                   g_string_append(alter_table_statement, split_file[i]);  
                 }else{
@@ -657,15 +682,11 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 	          is_innodb_table=TRUE;
 	        }
 	      }
-              gchar * str=g_strrstr_len(alter_table_statement->str,alter_table_statement->len,",");
-	      if ((str - alter_table_statement->str) > (long int)(alter_table_statement->len - 5))
-                *str=';';
-	      else
-                g_string_append_c(alter_table_statement,';');
+	      finish_alter_table(alter_table_statement);
 	      if (is_innodb_table){
+                g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
                 restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-	        struct restore_job *rj = g_new(struct restore_job, 1);
-		rj->prestatement = prealter_table_statement;
+                struct restore_job *rj = g_new(struct restore_job, 1);
                 rj->statement = alter_table_statement;
                 rj->database = g_strdup(database);
                 rj->table = g_strdup(table);

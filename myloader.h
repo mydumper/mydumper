@@ -46,7 +46,6 @@ struct restore_job {
   char *table;
   char *filename;
   GString *statement;
-  GString *prestatement;
   guint part;
 };
 
