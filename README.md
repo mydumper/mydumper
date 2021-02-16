@@ -57,7 +57,7 @@ To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
 This is all done following best MySQL practices and traditions:
 
 * As a precaution, slow running queries on the server either abort the dump, or get killed
-* Global write lock is acquired ("FLUSH TABLES WITH READ LOCK")
+* Global read lock is acquired ("FLUSH TABLES WITH READ LOCK")
 * Various metadata is read ("SHOW SLAVE STATUS","SHOW MASTER STATUS")
 * Other threads connect and establish snapshots ("START TRANSACTION WITH CONSISTENT SNAPSHOT")
 ** On pre-4.1.8 it creates dummy InnoDB table, and reads from it.
