@@ -1520,8 +1520,8 @@ void start_dump(MYSQL *conn) {
     MYSQL_RES *res2 = mysql_store_result(conn);
     MYSQL_ROW ver;
     while ((ver = mysql_fetch_row(res2))) {
-      if (!g_str_has_prefix("Percona", ver[0]) &&
-          !g_str_has_prefix("8.", ver[1])) {
+      if (g_str_has_prefix(ver[0], "Percona") &&
+          g_str_has_prefix(ver[1], "8.")) {
         g_message("Disabling Percona Backup Locks for Percona Server 8");
         no_backup_locks = 1;
       }
