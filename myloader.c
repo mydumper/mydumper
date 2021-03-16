@@ -151,6 +151,10 @@ int main(int argc, char *argv[]) {
     g_critical("a directory needs to be specified, see --help\n");
     exit(EXIT_FAILURE);
   } else {
+    if (!g_file_test(directory,G_FILE_TEST_IS_DIR)){
+      g_critical("the specified directory doesn't exists\n");
+      exit(EXIT_FAILURE);
+    }
     char *p = g_strdup_printf("%s/metadata", directory);
     if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
       g_critical("the specified directory is not a mydumper backup\n");
