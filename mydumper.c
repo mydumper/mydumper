@@ -1520,11 +1520,11 @@ void start_dump(MYSQL *conn) {
         else {
           if (longquery_retries == 0) {
             g_critical("There are queries in PROCESSLIST running longer than "
-                         "%us, aborting dump,\n\t"
-                         "use --long-query-guard to change the guard value, kill "
-                         "queries (--kill-long-queries) or use \n\tdifferent "
-                         "server for dump",
-                         longquery);
+                       "%us, aborting dump,\n\t"
+                       "use --long-query-guard to change the guard value, kill "
+                       "queries (--kill-long-queries) or use \n\tdifferent "
+                       "server for dump",
+                       longquery);
             exit(EXIT_FAILURE);
           }
           longquery_retries--;
