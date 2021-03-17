@@ -138,6 +138,14 @@ The :program:`mydumper` tool has several available options:
 
    Do not dump views
 
+.. option:: --long-query-retries
+
+   Retry checking for long queries, default 0 (do not retry)
+
+.. option:: --long-query-retry-interval
+
+   Time to wait before retrying the long query check in seconds, default 60
+
 .. option:: --long-query-guard, -l
 
    Timeout for long query execution in seconds, default 60
