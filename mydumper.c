@@ -1472,6 +1472,7 @@ void start_dump(MYSQL *conn) {
       if (mysql_query(conn, "SHOW PROCESSLIST")) {
         g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
                   mysql_error(conn));
+        break;
       } else {
        MYSQL_RES *res = mysql_store_result(conn);
         MYSQL_ROW row;
