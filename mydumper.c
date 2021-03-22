@@ -1467,7 +1467,7 @@ void start_dump(MYSQL *conn) {
 
   if (!no_locks) {
 
-    while (true) {
+    while (TRUE) {
       int longquery_count = 0;
       if (mysql_query(conn, "SHOW PROCESSLIST")) {
         g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
