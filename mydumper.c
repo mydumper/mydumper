@@ -73,6 +73,8 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 guint chunk_filesize = 0;
 int longquery = 60;
+int longquery_retries = 0;
+int longquery_retry_interval = 60;
 int build_empty_files = 0;
 int skip_tz = 0;
 int need_dummy_read = 0;
@@ -195,6 +197,10 @@ static GOptionEntry entries[] = {
      "Do not use Percona backup locks", NULL},
     {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
      "Minimize locking time on InnoDB tables.", NULL},
+    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
+     "Retry checking for long queries, default 0 (do not retry)", NULL},
+    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
+     "Time to wait before retrying the long query check in seconds, default 60", NULL},
     {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
      "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
@@ -1460,45 +1466,60 @@ void start_dump(MYSQL *conn) {
      This avoids stalling whole server with flush */
 
   if (!no_locks) {
-    if (mysql_query(conn, "SHOW PROCESSLIST")) {
-      g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
-                mysql_error(conn));
-    } else {
-      MYSQL_RES *res = mysql_store_result(conn);
-      MYSQL_ROW row;
 
-      /* Just in case PROCESSLIST output column order changes */
-      MYSQL_FIELD *fields = mysql_fetch_fields(res);
-      guint i;
-      int tcol = -1, ccol = -1, icol = -1, ucol = -1;
-      for (i = 0; i < mysql_num_fields(res); i++) {
+    while (TRUE) {
+      int longquery_count = 0;
+      if (mysql_query(conn, "SHOW PROCESSLIST")) {
+        g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
+                  mysql_error(conn));
+        break;
+      } else {
+       MYSQL_RES *res = mysql_store_result(conn);
+        MYSQL_ROW row;
+
+        /* Just in case PROCESSLIST output column order changes */
+        MYSQL_FIELD *fields = mysql_fetch_fields(res);
+        guint i;
+        int tcol = -1, ccol = -1, icol = -1, ucol = -1;
+        for (i = 0; i < mysql_num_fields(res); i++) {
         if (!strcasecmp(fields[i].name, "Command"))
-          ccol = i;
-        else if (!strcasecmp(fields[i].name, "Time"))
-          tcol = i;
-        else if (!strcasecmp(fields[i].name, "Id"))
-          icol = i;
-        else if (!strcasecmp(fields[i].name, "User"))
-          ucol = i;
-      }
-      if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-        g_critical("Error obtaining information from processlist");
-        exit(EXIT_FAILURE);
-      }
-      while ((row = mysql_fetch_row(res))) {
-        if (row[ccol] && strcmp(row[ccol], "Query"))
-          continue;
-        if (row[ucol] && !strcmp(row[ucol], "system user"))
-          continue;
-        if (row[tcol] && atoi(row[tcol]) > longquery) {
-          if (killqueries) {
-            if (mysql_query(conn,
-                            p3 = g_strdup_printf("KILL %lu", atol(row[icol]))))
-              g_warning("Could not KILL slow query: %s", mysql_error(conn));
-            else
-              g_warning("Killed a query that was running for %ss", row[tcol]);
-            g_free(p3);
-          } else {
+            ccol = i;
+          else if (!strcasecmp(fields[i].name, "Time"))
+            tcol = i;
+          else if (!strcasecmp(fields[i].name, "Id"))
+            icol = i;
+          else if (!strcasecmp(fields[i].name, "User"))
+            ucol = i;
+        }
+        if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+          g_critical("Error obtaining information from processlist");
+          exit(EXIT_FAILURE);
+        }
+        while ((row = mysql_fetch_row(res))) {
+          if (row[ccol] && strcmp(row[ccol], "Query"))
+            continue;
+          if (row[ucol] && !strcmp(row[ucol], "system user"))
+            continue;
+          if (row[tcol] && atoi(row[tcol]) > longquery) {
+            if (killqueries) {
+              if (mysql_query(conn,
+                              p3 = g_strdup_printf("KILL %lu", atol(row[icol])))) {
+                g_warning("Could not KILL slow query: %s", mysql_error(conn));
+                longquery_count++;
+              } else {
+                g_warning("Killed a query that was running for %ss", row[tcol]);
+              }
+              g_free(p3);
+            } else {
+              longquery_count++;
+            }
+          }
+        }
+        mysql_free_result(res);
+        if (longquery_count == 0)
+          break;
+        else {
+          if (longquery_retries == 0) {
             g_critical("There are queries in PROCESSLIST running longer than "
                        "%us, aborting dump,\n\t"
                        "use --long-query-guard to change the guard value, kill "
@@ -1507,9 +1528,13 @@ void start_dump(MYSQL *conn) {
                        longquery);
             exit(EXIT_FAILURE);
           }
+          longquery_retries--;
+          g_warning("There are queries in PROCESSLIST running longer than "
+                         "%us, retrying in %u seconds (%u left).",
+                         longquery, longquery_retry_interval, longquery_retries);
+          sleep(longquery_retry_interval);
         }
       }
-      mysql_free_result(res);
     }
   }
 
