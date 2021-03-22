@@ -1530,7 +1530,7 @@ void start_dump(MYSQL *conn) {
           }
           longquery_retries--;
           g_warning("There are queries in PROCESSLIST running longer than "
-                         "%us, retrying in %u seconds (%u left).\n\t",
+                         "%us, retrying in %u seconds (%u left).",
                          longquery, longquery_retry_interval, longquery_retries);
           sleep(longquery_retry_interval);
         }
