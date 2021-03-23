@@ -483,7 +483,8 @@ void *process_queue(struct thread_data *td) {
   mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
   mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
-  mysql_query(thrconn, "SET autocommit=0");
+  if (commit_count > 1)
+    mysql_query(thrconn, "SET autocommit=0");
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
@@ -567,7 +568,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
     g_free(query);
   }
 
-  if (!is_schema)
+  if (!is_schema && (commit_count > 1) )
     mysql_query(conn, "START TRANSACTION");
 
   while (eof == FALSE) {
@@ -581,7 +582,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
           return;
         }
         query_counter++;
-        if (!is_schema && (query_counter == commit_count)) {
+        if (!is_schema && (commit_count > 1) && (query_counter == commit_count)) {
           query_counter = 0;
           if (mysql_query(conn, "COMMIT")) {
             g_critical("Error committing data for %s.%s: from file %s: %s",
@@ -600,7 +601,7 @@ void restore_data(MYSQL *conn, char *database, char *table,
       return;
     }
   }
-  if (!is_schema && mysql_query(conn, "COMMIT")) {
+  if (!is_schema && (commit_count > 1) && mysql_query(conn, "COMMIT")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
                db ? db : database, table, filename, mysql_error(conn));
     errors++;
