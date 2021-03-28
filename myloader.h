@@ -22,6 +22,7 @@
 #define _myloader_h
 
 enum job_type { JOB_SHUTDOWN, JOB_RESTORE };
+enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 
 struct configuration {
 	GAsyncQueue* queue;
