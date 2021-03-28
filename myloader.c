@@ -167,8 +167,6 @@ int main(int argc, char *argv[]) {
     purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
   else purge_mode=NONE;
   
-
-
   if (!directory) {
     g_critical("a directory needs to be specified, see --help\n");
     exit(EXIT_FAILURE);

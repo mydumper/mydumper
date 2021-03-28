@@ -1,0 +1,18 @@
+Source: mydumper
+Section: utils
+Priority: optional
+Maintainer: Max Bubenick <maxbube@gmail.com>
+Homepage: https://github.com/maxbube/mydumper
+Package: mydumper
+Version: %{version}
+Architecture: amd64
+Description: mydumper and myloader MySQL backup tools
+ This package provides mydumper and myloader MySQL backup tools.
+ .
+ mydumper is a tool used for backing up MySQL database servers much
+ faster than the mysqldump tool distributed with MySQL.  It also has the
+ capability to retrieve the binary logs from the remote server at the same time
+ as the dump itself.  The advantages of mydumper are: parallelism,
+ easier to manage output, consistency, manageability.
+ .
+ myloader is a tool used for multi-threaded restoration of mydumper backups.
