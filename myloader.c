@@ -44,6 +44,8 @@ gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean enable_binlog = FALSE;
 gchar *source_db = NULL;
+gchar *purge_mode_str=NULL;
+enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
 static GMutex *progress_mutex = NULL;
 guint errors = 0;
@@ -78,6 +80,8 @@ static GOptionEntry entries[] = {
      "Database to restore", NULL},
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
+    { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
+      "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
@@ -147,6 +151,22 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  if (purge_mode_str){
+    if (!strcmp(purge_mode_str,"TRUNCATE")){
+      purge_mode=TRUNCATE;
+    } else if (!strcmp(purge_mode_str,"DROP")){
+      purge_mode=DROP;
+    } else if (!strcmp(purge_mode_str,"DELETE")){
+      purge_mode=DELETE;
+    } else if (!strcmp(purge_mode_str,"NONE")){
+      purge_mode=NONE;
+    } else {
+      g_error("Purge mode unknown");
+    }
+  } else if (overwrite_tables) 
+    purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
+  else purge_mode=NONE;
+  
   if (!directory) {
     g_critical("a directory needs to be specified, see --help\n");
     exit(EXIT_FAILURE);
@@ -423,22 +443,38 @@ void add_schema(const gchar *filename, MYSQL *conn) {
       create_database(conn, database);
     }
   }
-
+  int truncate_or_delete_failed=0;
   if (overwrite_tables) {
-    g_message("Dropping table or view (if exists) `%s`.`%s`",
-              db ? db : database, table);
-    query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
-                            db ? db : database, table);
-    mysql_query(conn, query);
-    query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database,
-                            table);
-    mysql_query(conn, query);
+    if (purge_mode == DROP) {	  
+      g_message("Dropping table or view (if exists) `%s`.`%s`",
+                db ? db : database, table);
+      query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
+                              db ? db : database, table);
+      mysql_query(conn, query);
+      query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database,
+                              table);
+      mysql_query(conn, query);
+    } else if (purge_mode == TRUNCATE) {
+      g_message("Truncating table `%s`.`%s`", db ? db : database, table);
+      query= g_strdup_printf("TRUNCATE TABLE `%s`.`%s`", db ? db : database, table);
+      truncate_or_delete_failed= mysql_query(conn, query);
+      if (truncate_or_delete_failed)
+        g_warning("Truncate failed, we are going to try to create table or view");
+    } else if (purge_mode == DELETE) {
+      g_message("Deleting content of table `%s`.`%s`", db ? db : database, table);
+      query= g_strdup_printf("DELETE FROM `%s`.`%s`", db ? db : database, table);
+      truncate_or_delete_failed= mysql_query(conn, query);
+      if (truncate_or_delete_failed)
+        g_warning("Delete failed, we are going to try to create table or view"); 
+    }
   }
 
   g_free(query);
 
-  g_message("Creating table `%s`.`%s`", db ? db : database, table);
-  restore_data(conn, database, table, filename, TRUE, TRUE);
+  if (purge_mode == DROP || purge_mode == NONE || (truncate_or_delete_failed && (purge_mode == TRUNCATE || purge_mode == DELETE ))){
+    g_message("Creating table `%s`.`%s`", db ? db : database, table);
+    restore_data(conn, database, table, filename, TRUE, TRUE);
+  }
   g_strfreev(split_table);
   g_strfreev(split_file);
   return;
