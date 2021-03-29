@@ -51,6 +51,8 @@
 #include "g_unix_signal.h"
 #include <math.h>
 #include "getPassword.h"
+#include "logging.h"
+#include "set_verbose.h"
 
 char *regexstring = NULL;
 
@@ -102,9 +104,6 @@ gboolean need_binlogs = FALSE;
 gchar *binlog_directory = NULL;
 gchar *daemon_binlog_directory = NULL;
 #endif
-
-gchar *logfile = NULL;
-FILE *logoutfile = NULL;
 
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
@@ -280,9 +279,6 @@ gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
 int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
 void read_tables_skiplist(const gchar *filename);
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data);
-void set_verbose(guint verbosity);
 #ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void *binlog_thread(void *data);
@@ -292,56 +288,6 @@ MYSQL *create_main_connection();
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
-
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)log_level;
-  (void)message;
-  (void)user_data;
-}
-
-void set_verbose(guint verbosity) {
-  if (logfile) {
-    logoutfile = g_fopen(logfile, "w");
-    if (!logoutfile) {
-      g_critical("Could not open log file '%s' for writing: %d", logfile,
-                 errno);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  switch (verbosity) {
-  case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
-    break;
-  case 1:
-    g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL,
-          (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  default:
-    if (logfile)
-      g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-                        write_log_file, NULL);
-    break;
-  }
-}
 
 gboolean sig_triggered(gpointer user_data) {
   (void)user_data;
@@ -3743,38 +3689,4 @@ gboolean write_data(FILE *file, GString *data) {
   }
 
   return TRUE;
-}
-
-void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)user_data;
-
-  gchar date[20];
-  time_t rawtime;
-  struct tm timeinfo;
-
-  time(&rawtime);
-  localtime_r(&rawtime, &timeinfo);
-  strftime(date, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-  GString *message_out = g_string_new(date);
-  if (log_level & G_LOG_LEVEL_DEBUG) {
-    g_string_append(message_out, " [DEBUG] - ");
-  } else if ((log_level & G_LOG_LEVEL_INFO) ||
-             (log_level & G_LOG_LEVEL_MESSAGE)) {
-    g_string_append(message_out, " [INFO] - ");
-  } else if (log_level & G_LOG_LEVEL_WARNING) {
-    g_string_append(message_out, " [WARNING] - ");
-  } else if ((log_level & G_LOG_LEVEL_ERROR) ||
-             (log_level & G_LOG_LEVEL_CRITICAL)) {
-    g_string_append(message_out, " [ERROR] - ");
-  }
-
-  g_string_append_printf(message_out, "%s\n", message);
-  if (write(fileno(logoutfile), message_out->str, message_out->len) <= 0) {
-    fprintf(stderr, "Cannot write to log file with error %d.  Exiting...",
-            errno);
-  }
-  g_string_free(message_out, TRUE);
 }
