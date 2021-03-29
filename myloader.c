@@ -451,7 +451,9 @@ void add_schema(const gchar *filename, MYSQL *conn) {
 
   g_free(query);
 
-  if (purge_mode == DROP || purge_mode == NONE || (truncate_or_delete_failed && (purge_mode == TRUNCATE || purge_mode == DELETE ))){
+  if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
+      g_message("Skipping table creation `%s`.`%s`", db ? db : database, table);
+  }else{
     g_message("Creating table `%s`.`%s`", db ? db : database, table);
     restore_data(conn, database, table, filename, TRUE, TRUE);
   }
