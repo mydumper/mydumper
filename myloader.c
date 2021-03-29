@@ -45,7 +45,7 @@ gboolean overwrite_tables= FALSE;
 gboolean enable_binlog= FALSE;
 gchar *source_db= NULL;
 static GMutex *init_mutex= NULL;
-
+gchar *set_names_str=NULL;
 guint errors= 0;
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof);
@@ -69,6 +69,7 @@ static GOptionEntry entries[] =
 	{ "database", 'B', 0, G_OPTION_ARG_STRING, &db, "An alternative database to restore into", NULL },
 	{ "source-db", 's', 0, G_OPTION_ARG_STRING, &source_db, "Database to restore", NULL },
 	{ "enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog, "Enable binary logging of the restore data", NULL },
+        { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, "Sets the names, use it at your own risk, default binary", NULL },
 	{ NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL }
 };
 
@@ -131,6 +132,11 @@ int main(int argc, char *argv[]) {
 	}
 
 	set_verbose(verbose);
+
+	if (set_names_str){
+		gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+		set_names_str=tmp_str;
+	} else set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
 	if (!directory) {
 		g_critical("a directory needs to be specified, see --help\n");
@@ -432,7 +438,7 @@ void *process_queue(struct thread_data *td) {
 	if (!enable_binlog)
 		mysql_query(thrconn, "SET SQL_LOG_BIN=0");
 
-	mysql_query(thrconn, "/*!40101 SET NAMES utf8mb4*/");
+	mysql_query(thrconn, set_names_str);
 	mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
 	mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
 	mysql_query(thrconn, "SET autocommit=0");
