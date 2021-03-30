@@ -5,6 +5,10 @@
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
+# How to use mydumper
+
+See [Usage](docs/mydumper_usage.rst)
+
 ## How to install mydumper/myloader?
 
 First get the correct url from the [releases section](https://github.com/maxbube/mydumper/releases) then:
