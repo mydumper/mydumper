@@ -38,6 +38,8 @@
 #include "myloader.h"
 #include "connection.h"
 #include "getPassword.h"
+#include "logging.h"
+#include "set_verbose.h"
 
 guint commit_count = 1000;
 gchar *directory = NULL;
@@ -45,10 +47,13 @@ gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gchar *source_db = NULL;
+gchar *purge_mode_str=NULL;
+enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
-
+static GMutex *progress_mutex = NULL;
 guint errors = 0;
-
+unsigned long long int total_data_sql_files = 0;
+unsigned long long int progress = 0;
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
@@ -67,7 +72,6 @@ void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data);
-void set_verbose(guint verbosity);
 void create_database(MYSQL *conn, gchar *database);
 
 static GOptionEntry entries[] = {
@@ -85,34 +89,11 @@ static GOptionEntry entries[] = {
      "Enable binary logging of the restore data", NULL},
     {"innodb-optimize-keys", 0, 0, G_OPTION_ARG_NONE, &innodb_optimize_keys,
      "Creates the table without the indexes and it adds them at the end", NULL},
+    {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
+     "Log file name to use, by default stdout is used", NULL},
+    { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
+      "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)log_level;
-  (void)message;
-  (void)user_data;
-}
-
-void set_verbose(guint verbosity) {
-  switch (verbosity) {
-  case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
-    break;
-  case 1:
-    g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    break;
-  case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
-    break;
-  default:
-    break;
-  }
-}
 
 int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, 0};
@@ -123,6 +104,7 @@ int main(int argc, char *argv[]) {
   g_thread_init(NULL);
 
   init_mutex = g_mutex_new();
+  progress_mutex = g_mutex_new();
 
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
@@ -153,10 +135,30 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  if (purge_mode_str){
+    if (!strcmp(purge_mode_str,"TRUNCATE")){
+      purge_mode=TRUNCATE;
+    } else if (!strcmp(purge_mode_str,"DROP")){
+      purge_mode=DROP;
+    } else if (!strcmp(purge_mode_str,"DELETE")){
+      purge_mode=DELETE;
+    } else if (!strcmp(purge_mode_str,"NONE")){
+      purge_mode=NONE;
+    } else {
+      g_error("Purge mode unknown");
+    }
+  } else if (overwrite_tables) 
+    purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
+  else purge_mode=NONE;
+  
   if (!directory) {
     g_critical("a directory needs to be specified, see --help\n");
     exit(EXIT_FAILURE);
   } else {
+    if (!g_file_test(directory,G_FILE_TEST_IS_DIR)){
+      g_critical("the specified directory doesn't exists\n");
+      exit(EXIT_FAILURE);
+    }
     char *p = g_strdup_printf("%s/metadata", directory);
     if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
       g_critical("the specified directory is not a mydumper backup\n");
@@ -224,6 +226,10 @@ int main(int argc, char *argv[]) {
   g_free(td);
   g_free(threads);
 
+  if (logoutfile) {
+    fclose(logoutfile);
+  }
+
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
@@ -248,9 +254,21 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
       }
     }
   }
-
   g_dir_rewind(dir);
-
+  while ((filename = g_dir_read_name(dir))) {
+    if (!source_db ||
+        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      if (!g_strrstr(filename, "-schema.sql") &&
+          !g_strrstr(filename, "-schema-view.sql") &&
+          !g_strrstr(filename, "-schema-triggers.sql") &&
+          !g_strrstr(filename, "-schema-post.sql") &&
+          !g_strrstr(filename, "-schema-create.sql") &&
+          g_strrstr(filename, ".sql")) {
+        total_data_sql_files++;
+      }
+    }
+  }
+  g_dir_rewind(dir);
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
@@ -424,22 +442,40 @@ void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, M
       create_database(conn, database);
     }
   }
-
+  int truncate_or_delete_failed=0;
   if (overwrite_tables) {
-    g_message("Dropping table or view (if exists) `%s`.`%s`",
-              db ? db : database, table);
-    query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
-                            db ? db : database, table);
-    mysql_query(conn, query);
-    query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database,
-                            table);
-    mysql_query(conn, query);
+    if (purge_mode == DROP) {	  
+      g_message("Dropping table or view (if exists) `%s`.`%s`",
+                db ? db : database, table);
+      query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
+                              db ? db : database, table);
+      mysql_query(conn, query);
+      query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", db ? db : database,
+                              table);
+      mysql_query(conn, query);
+    } else if (purge_mode == TRUNCATE) {
+      g_message("Truncating table `%s`.`%s`", db ? db : database, table);
+      query= g_strdup_printf("TRUNCATE TABLE `%s`.`%s`", db ? db : database, table);
+      truncate_or_delete_failed= mysql_query(conn, query);
+      if (truncate_or_delete_failed)
+        g_warning("Truncate failed, we are going to try to create table or view");
+    } else if (purge_mode == DELETE) {
+      g_message("Deleting content of table `%s`.`%s`", db ? db : database, table);
+      query= g_strdup_printf("DELETE FROM `%s`.`%s`", db ? db : database, table);
+      truncate_or_delete_failed= mysql_query(conn, query);
+      if (truncate_or_delete_failed)
+        g_warning("Delete failed, we are going to try to create table or view"); 
+    }
   }
 
   g_free(query);
 
-  g_message("Creating table `%s`.`%s`", db ? db : database, table);
-  restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue);
+  if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
+      g_message("Skipping table creation `%s`.`%s`", db ? db : database, table);
+  }else{
+    g_message("Creating table `%s`.`%s`", db ? db : database, table);
+    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue);
+  }
   g_strfreev(split_table);
   g_strfreev(split_file);
   return;
@@ -455,6 +491,7 @@ void add_table(const gchar *filename, struct configuration *conf) {
   rj->database = g_strdup(split_file[0]);
   rj->table = g_strdup(split_file[1]);
   rj->part = g_ascii_strtoull(split_file[2], NULL, 10);
+
   g_async_queue_push(conf->queue, j);
   return;
 }
@@ -483,7 +520,8 @@ void *process_queue(struct thread_data *td) {
   mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
   mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
-  mysql_query(thrconn, "SET autocommit=0");
+  if (commit_count > 1)
+    mysql_query(thrconn, "SET autocommit=0");
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
@@ -511,8 +549,11 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_RESTORE_FILENAME:
       rj = (struct restore_job *)job->job_data;
-      g_message("Thread %d restoring `%s`.`%s` part %d", td->thread_id,
-                rj->database, rj->table, rj->part);
+      g_mutex_lock(progress_mutex);
+      progress++;
+      g_message("Thread %d restoring `%s`.`%s` part %d. Progress %llu of %llu .", td->thread_id,
+                rj->database, rj->table, rj->part, progress,total_data_sql_files);
+      g_mutex_unlock(progress_mutex);
       restore_data_from_file(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE, FALSE,NULL);
       if (rj->database)
         g_free(rj->database);
@@ -552,7 +593,7 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
                         return;
                 }
                 *query_counter=*query_counter+1;
-                if (!is_schema &&(*query_counter == commit_count)) {
+                if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
                         *query_counter= 0;
                         if (mysql_query(conn, "COMMIT")) {
                                 g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
@@ -624,8 +665,8 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
     gchar *query = g_strdup_printf("USE `%s`", db ? db : database);
 
     if (mysql_query(conn, query)) {
-      g_critical("Error switching to database %s whilst restoring table %s",
-                 db ? db : database, table);
+      g_critical("Error switching to database %s whilst restoring table %s from file %s",
+                 db ? db : database, table, filename);
       g_free(query);
       errors++;
       return;
@@ -634,7 +675,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
     g_free(query);
   }
 
-  if (!is_schema)
+  if (!is_schema && (commit_count > 1) )
     mysql_query(conn, "START TRANSACTION");
   GString *alter_table_statement=g_string_sized_new(512);
   while (eof == FALSE) {
@@ -712,7 +753,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
       return;
     }
   }
-  if (!is_schema && mysql_query(conn, "COMMIT")) {
+  if (!is_schema && (commit_count > 1) && mysql_query(conn, "COMMIT")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
                db ? db : database, table, filename, mysql_error(conn));
     errors++;
