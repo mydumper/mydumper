@@ -3,8 +3,17 @@ FROM gcc
 RUN \
   apt-get update && \
   DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y lsb-release
+
+RUN \
+  wget https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb && \
+  dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb
+
+RUN \
+  apt-get update && \
+  DEBIAN_FRONTEND=noninteractive \
     apt-get install -y \
-      cmake \
+       libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev cmake g++ libperconaserverclient20-dev libperconaserverclient20 \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
