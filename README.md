@@ -7,7 +7,7 @@
 
 # How to use mydumper
 
-See [Usage](https://github.com/maxbube/mydumper/blob/master/docs/mydumper_usage.rst)
+See [Usage](docs/mydumper_usage.rst)
 
 ## How to install mydumper/myloader?
 
