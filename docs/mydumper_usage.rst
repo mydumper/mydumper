@@ -114,6 +114,10 @@ The :program:`mydumper` tool has several available options:
 
    Comma separated list of storage engines to ignore
 
+.. option:: --insert-ignore, -N
+
+   Dump rows with INSERT IGNORE INTO instead of INSERT INTO
+
 .. option:: --no-schemas, -m
 
    Do not dump schemas with the data
