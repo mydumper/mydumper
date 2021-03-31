@@ -7,18 +7,54 @@
 
 ## Dependencies for building mydumper
 
-One needs to install development versions of required libaries (MySQL, GLib, ZLib, PCRE):
-NOTE: you must use the correspondent mysql devel package.
-
-* Ubuntu or Debian: apt-get install libglib2.0-dev libmysqlclient15-dev zlib1g-dev libpcre3-dev libssl-dev
-* Fedora, RedHat and CentOS: `yum install -y cmake gcc gcc-c++ git glib2-devel make mysql-devel openssl-devel pcre-devel zlib-devel`
-* openSUSE: zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
-* MacOSX: port install glib2 mysql5 pcre pkgconfig cmake
- (You may want to run 'port select mysql mysql5' afterwards)
-
-NOTE 2:
-* CentOS 7 comes by default with MariaDB 5.5 libraries which are very old.
+One needs to install development tools:
+* Ubuntu or Debian: 
+```
+apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+```
+* Fedora, RedHat and CentOS:
+```
+yum install -y cmake gcc gcc-c++ git make
+```
+* MacOSX:
+```
+port install pkgconfig cmake
+```
+One needs to install development versions of GLib, ZLib and PCRE:
+* Ubuntu or Debian: 
+```
+apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+```
+* Fedora, RedHat and CentOS: 
+```
+yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel
+```
+* openSUSE: 
+```
+zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
+```
+* MacOSX: port install glib2 pcre 
+One needs to install MySQL/Percona/MariaDB development versions:
+* Ubuntu or Debian: 
+```
+apt-get install libmysqlclient-dev
+apt-get install libperconaserverclient20-dev
+apt-get install libmariadbclient-dev 
+```
+* Fedora, RedHat and CentOS: 
+```
+yum install -y mysql-devel
+yum install -y Percona-Server-devel-57
+yum install -y mariadb-devel
+```
+CentOS 7 comes by default with MariaDB 5.5 libraries which are very old.
   It might be better to download a newer version of these libraries (MariaDB, MySQL, Percona etc).
+* openSUSE: 
+```
+zypper install libmysqlclient-devel
+```
+* MacOSX: port install mysql5
+ (You may want to run 'port select mysql mysql5' afterwards)
 
 ## How to install mydumper/myloader?
 
