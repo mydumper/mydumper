@@ -356,14 +356,13 @@ void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : db ? db : database);
+      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : db ? db : database);
+      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : database);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                          directory, source_db ? source_db : db ? db : database);
+                                          directory, source_db ? source_db : database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                            directory, source_db ? source_db : db ? db : database);
-
+                                            directory, source_db ? source_db : database);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data(conn, db ? db : database, NULL, filename, TRUE, FALSE);
