@@ -364,8 +364,6 @@ void create_database(MYSQL *conn, gchar *database) {
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
                                             directory, source_db ? source_db : db ? db : database);
 
-  g_message("path: %s/%s", filepath, filename);
-
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data(conn, db ? db : database, NULL, filename, TRUE, FALSE);
