@@ -114,6 +114,10 @@ The :program:`mydumper` tool has several available options:
 
    Comma separated list of storage engines to ignore
 
+.. option:: --insert-ignore, -N
+
+   Dump rows with INSERT IGNORE INTO instead of INSERT INTO
+
 .. option:: --no-schemas, -m
 
    Do not dump schemas with the data
@@ -137,6 +141,14 @@ The :program:`mydumper` tool has several available options:
 .. option:: --no-views, -W
 
    Do not dump views
+
+.. option:: --long-query-retries
+
+   Retry checking for long queries, default 0 (do not retry)
+
+.. option:: --long-query-retry-interval
+
+   Time to wait before retrying the long query check in seconds, default 60
 
 .. option:: --long-query-guard, -l
 
