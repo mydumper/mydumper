@@ -135,6 +135,7 @@ guint less_locking_threads = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
 guint complete_insert = 0;
+gchar *set_names_str=NULL;
 
 // For daemon mode, 0 or 1
 guint dump_number = 0;
@@ -238,6 +239,8 @@ static GOptionEntry entries[] = {
      "Transactional consistency only", NULL},
     {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
      "Use complete INSERT statements that include column names", NULL},
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
+      "Sets the names, use it at your own risk, default binary", NULL },
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -593,7 +596,7 @@ void *process_queue(struct thread_data *td) {
     if (res)
       mysql_free_result(res);
   }
-  mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, set_names_str);
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
@@ -833,7 +836,7 @@ void *process_queue_less_locking(struct thread_data *td) {
   if (!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
     g_critical("Failed to set time zone: %s", mysql_error(thrconn));
   }
-  mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, set_names_str);
 
   g_async_queue_push(conf->ready_less_locking, GINT_TO_POINTER(1));
 
@@ -1095,6 +1098,12 @@ int main(int argc, char *argv[]) {
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
   }
+
+	 if (set_names_str){
+				gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+				set_names_str=tmp_str;
+		} else 
+				set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
   // printf("your password is %s and the size is %d
   // \n",password,sizeof(password));
@@ -1724,7 +1733,7 @@ void start_dump(MYSQL *conn) {
             tval.tm_min, tval.tm_sec);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    mysql_query(conn, "/*!40101 SET NAMES binary*/");
+				mysql_query(conn, set_names_str);
 
     write_snapshot_info(conn, mdfile);
   }
@@ -2979,7 +2988,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   GString *statement = g_string_sized_new(statement_size);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+				g_string_printf(statement,"%s;\n",set_names_str);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -3062,7 +3071,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   }
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+				g_string_printf(statement,"%s;\n",set_names_str);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
@@ -3471,7 +3480,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     if (!statement->len) {
       if (!st_in_file) {
         if (detected_server == SERVER_TYPE_MYSQL) {
-          g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+										g_string_printf(statement,"%s;\n",set_names_str);
           g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
           if (!skip_tz) {
             g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
