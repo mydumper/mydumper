@@ -56,6 +56,10 @@ zypper install libmysqlclient-devel
 * MacOSX: port install mysql5
  (You may want to run 'port select mysql mysql5' afterwards)
 
+# How to use mydumper
+
+See [Usage](docs/mydumper_usage.rst)
+
 ## How to install mydumper/myloader?
 
 First get the correct url from the [releases section](https://github.com/maxbube/mydumper/releases) then:
@@ -63,14 +67,22 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper-0.9.5-1.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
 
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.9.5/mydumper_0.9.5-1.xenial_amd64.deb
-dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
+wget https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
+```
+
+### OSX
+By using [Homebrew](https://brew.sh/)
+
+```bash
+brew install mydumper
 ```
 
 ## How to build it?
@@ -93,7 +105,7 @@ To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
 This is all done following best MySQL practices and traditions:
 
 * As a precaution, slow running queries on the server either abort the dump, or get killed
-* Global write lock is acquired ("FLUSH TABLES WITH READ LOCK")
+* Global read lock is acquired ("FLUSH TABLES WITH READ LOCK")
 * Various metadata is read ("SHOW SLAVE STATUS","SHOW MASTER STATUS")
 * Other threads connect and establish snapshots ("START TRANSACTION WITH CONSISTENT SNAPSHOT")
 ** On pre-4.1.8 it creates dummy InnoDB table, and reads from it.

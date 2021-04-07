@@ -29,6 +29,8 @@ char *cert = NULL;
 char *ca = NULL;
 char *capath = NULL;
 char *cipher = NULL;
+char *tls_version = NULL;
+gchar *ssl_mode = NULL;
 #endif
 
 gboolean askPassword = FALSE;
@@ -65,6 +67,8 @@ GOptionEntry common_entries[] = {
      "Use a specific defaults file", NULL},
 #ifdef WITH_SSL
     {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
+    {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
+     "Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY", NULL},
     {"key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file",
      NULL},
     {"cert", 0, 0, G_OPTION_ARG_STRING, &cert,
@@ -77,6 +81,8 @@ GOptionEntry common_entries[] = {
      NULL},
     {"cipher", 0, 0, G_OPTION_ARG_STRING, &cipher,
      "A list of permissible ciphers to use for SSL encryption", NULL},
+    {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
+     "Which protocols the server permits for encrypted connections", NULL},
 #endif
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

@@ -51,6 +51,8 @@
 #include "g_unix_signal.h"
 #include <math.h>
 #include "getPassword.h"
+#include "logging.h"
+#include "set_verbose.h"
 
 char *regexstring = NULL;
 
@@ -73,6 +75,8 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 guint chunk_filesize = 0;
 int longquery = 60;
+int longquery_retries = 0;
+int longquery_retry_interval = 60;
 int build_empty_files = 0;
 int skip_tz = 0;
 int need_dummy_read = 0;
@@ -100,9 +104,6 @@ gboolean need_binlogs = FALSE;
 gchar *binlog_directory = NULL;
 gchar *daemon_binlog_directory = NULL;
 #endif
-
-gchar *logfile = NULL;
-FILE *logoutfile = NULL;
 
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
@@ -195,6 +196,10 @@ static GOptionEntry entries[] = {
      "Do not use Percona backup locks", NULL},
     {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
      "Minimize locking time on InnoDB tables.", NULL},
+    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
+     "Retry checking for long queries, default 0 (do not retry)", NULL},
+    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
+     "Time to wait before retrying the long query check in seconds, default 60", NULL},
     {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
      "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
@@ -274,9 +279,6 @@ gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
 int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
 void read_tables_skiplist(const gchar *filename);
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data);
-void set_verbose(guint verbosity);
 #ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void *binlog_thread(void *data);
@@ -286,56 +288,6 @@ MYSQL *create_main_connection();
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
-
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)log_level;
-  (void)message;
-  (void)user_data;
-}
-
-void set_verbose(guint verbosity) {
-  if (logfile) {
-    logoutfile = g_fopen(logfile, "w");
-    if (!logoutfile) {
-      g_critical("Could not open log file '%s' for writing: %d", logfile,
-                 errno);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  switch (verbosity) {
-  case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
-    break;
-  case 1:
-    g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL,
-          (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  default:
-    if (logfile)
-      g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-                        write_log_file, NULL);
-    break;
-  }
-}
 
 gboolean sig_triggered(gpointer user_data) {
   (void)user_data;
@@ -1368,7 +1320,7 @@ void *binlog_thread(void *data) {
   MYSQL *conn;
   conn = mysql_init(NULL);
   if (defaults_file != NULL) {
-    mysql_options(thrconn, MYSQL_READ_DEFAULT_FILE, defaults_file);
+    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, defaults_file);
   }
   mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "mydumper");
 
@@ -1460,41 +1412,60 @@ void start_dump(MYSQL *conn) {
      This avoids stalling whole server with flush */
 
   if (!no_locks) {
-    if (mysql_query(conn, "SHOW PROCESSLIST")) {
-      g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
-                mysql_error(conn));
-    } else {
-      MYSQL_RES *res = mysql_store_result(conn);
-      MYSQL_ROW row;
 
-      /* Just in case PROCESSLIST output column order changes */
-      MYSQL_FIELD *fields = mysql_fetch_fields(res);
-      guint i;
-      int tcol = -1, ccol = -1, icol = -1;
-      for (i = 0; i < mysql_num_fields(res); i++) {
+    while (TRUE) {
+      int longquery_count = 0;
+      if (mysql_query(conn, "SHOW PROCESSLIST")) {
+        g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
+                  mysql_error(conn));
+        break;
+      } else {
+       MYSQL_RES *res = mysql_store_result(conn);
+        MYSQL_ROW row;
+
+        /* Just in case PROCESSLIST output column order changes */
+        MYSQL_FIELD *fields = mysql_fetch_fields(res);
+        guint i;
+        int tcol = -1, ccol = -1, icol = -1, ucol = -1;
+        for (i = 0; i < mysql_num_fields(res); i++) {
         if (!strcasecmp(fields[i].name, "Command"))
-          ccol = i;
-        else if (!strcasecmp(fields[i].name, "Time"))
-          tcol = i;
-        else if (!strcasecmp(fields[i].name, "Id"))
-          icol = i;
-      }
-      if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-        g_critical("Error obtaining information from processlist");
-        exit(EXIT_FAILURE);
-      }
-      while ((row = mysql_fetch_row(res))) {
-        if (row[ccol] && strcmp(row[ccol], "Query"))
-          continue;
-        if (row[tcol] && atoi(row[tcol]) > longquery) {
-          if (killqueries) {
-            if (mysql_query(conn,
-                            p3 = g_strdup_printf("KILL %lu", atol(row[icol]))))
-              g_warning("Could not KILL slow query: %s", mysql_error(conn));
-            else
-              g_warning("Killed a query that was running for %ss", row[tcol]);
-            g_free(p3);
-          } else {
+            ccol = i;
+          else if (!strcasecmp(fields[i].name, "Time"))
+            tcol = i;
+          else if (!strcasecmp(fields[i].name, "Id"))
+            icol = i;
+          else if (!strcasecmp(fields[i].name, "User"))
+            ucol = i;
+        }
+        if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+          g_critical("Error obtaining information from processlist");
+          exit(EXIT_FAILURE);
+        }
+        while ((row = mysql_fetch_row(res))) {
+          if (row[ccol] && strcmp(row[ccol], "Query"))
+            continue;
+          if (row[ucol] && !strcmp(row[ucol], "system user"))
+            continue;
+          if (row[tcol] && atoi(row[tcol]) > longquery) {
+            if (killqueries) {
+              if (mysql_query(conn,
+                              p3 = g_strdup_printf("KILL %lu", atol(row[icol])))) {
+                g_warning("Could not KILL slow query: %s", mysql_error(conn));
+                longquery_count++;
+              } else {
+                g_warning("Killed a query that was running for %ss", row[tcol]);
+              }
+              g_free(p3);
+            } else {
+              longquery_count++;
+            }
+          }
+        }
+        mysql_free_result(res);
+        if (longquery_count == 0)
+          break;
+        else {
+          if (longquery_retries == 0) {
             g_critical("There are queries in PROCESSLIST running longer than "
                        "%us, aborting dump,\n\t"
                        "use --long-query-guard to change the guard value, kill "
@@ -1503,9 +1474,13 @@ void start_dump(MYSQL *conn) {
                        longquery);
             exit(EXIT_FAILURE);
           }
+          longquery_retries--;
+          g_warning("There are queries in PROCESSLIST running longer than "
+                         "%us, retrying in %u seconds (%u left).",
+                         longquery, longquery_retry_interval, longquery_retries);
+          sleep(longquery_retry_interval);
         }
       }
-      mysql_free_result(res);
     }
   }
 
@@ -1516,8 +1491,8 @@ void start_dump(MYSQL *conn) {
     MYSQL_RES *res2 = mysql_store_result(conn);
     MYSQL_ROW ver;
     while ((ver = mysql_fetch_row(res2))) {
-      if (!g_str_has_prefix("Percona", ver[0]) &&
-          !g_str_has_prefix("8.", ver[1])) {
+      if (g_str_has_prefix(ver[0], "Percona") &&
+          g_str_has_prefix(ver[1], "8.")) {
         g_message("Disabling Percona Backup Locks for Percona Server 8");
         no_backup_locks = 1;
       }
@@ -1697,7 +1672,7 @@ void start_dump(MYSQL *conn) {
     g_free(query);
 
   } else {
-    g_warning("Executing in no-locks mode, snapshot will notbe consistent");
+    g_warning("Executing in no-locks mode, snapshot will not be consistent");
   }
   if (mysql_get_server_version(conn) < 40108) {
     mysql_query(
@@ -2075,7 +2050,7 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
 
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'",
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
       database, table);
   mysql_query(conn, query);
   g_free(query);
@@ -2098,7 +2073,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
-                      "not like '%%GENERATED%%'",
+                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%'",
                       database, table);
   mysql_query(conn, query);
   g_free(query);
@@ -2112,7 +2087,9 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
       g_string_append(field_list, ",");
     }
 
-    g_string_append(field_list, row[0]);
+    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    g_string_append(field_list, tb);
+    g_free(tb);
   }
   mysql_free_result(res);
 
@@ -2167,7 +2144,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
     while ((row = mysql_fetch_row(indexes))) {
       if (!strcmp(row[3], "1")) {
         if (row[6])
-          cardinality = strtoll(row[6], NULL, 10);
+          cardinality = strtoul(row[6], NULL, 10);
         if (cardinality > max_cardinality) {
           field = row[4];
           max_cardinality = cardinality;
@@ -2217,16 +2194,18 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
     /* static stepping */
-    nmin = strtoll(min, NULL, 10);
-    nmax = strtoll(max, NULL, 10);
+    nmin = strtoul(min, NULL, 10);
+    nmax = strtoul(max, NULL, 10);
     estimated_step = (nmax - nmin) / estimated_chunks + 1;
     cutoff = nmin;
     while (cutoff <= nmax) {
       chunks = g_list_prepend(
           chunks,
           g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
-                          !showed_nulls ? "`" : "", !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
                           !showed_nulls ? "`" : "",
                           !showed_nulls ? " IS NULL OR " : "", field,
                           (unsigned long long)cutoff, field,
@@ -2314,7 +2293,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     row = mysql_fetch_row(result);
 
   if (row && row[i])
-    count = strtoll(row[i], NULL, 10);
+    count = strtoul(row[i], NULL, 10);
 
   if (result)
     mysql_free_result(result);
@@ -3101,7 +3080,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     return;
   }
 
-  // we create myisam tables as workaround
+  // we create tables as workaround
   // for view dependencies
   query = g_strdup_printf("SHOW FIELDS FROM `%s`.`%s`", database, table);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
@@ -3125,7 +3104,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "`%s` int", row[0]);
   }
-  g_string_append(statement, "\n)ENGINE=MyISAM;\n");
+  g_string_append(statement, "\n);\n");
 
   if (result)
     mysql_free_result(result);
@@ -3710,38 +3689,4 @@ gboolean write_data(FILE *file, GString *data) {
   }
 
   return TRUE;
-}
-
-void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)user_data;
-
-  gchar date[20];
-  time_t rawtime;
-  struct tm timeinfo;
-
-  time(&rawtime);
-  localtime_r(&rawtime, &timeinfo);
-  strftime(date, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-  GString *message_out = g_string_new(date);
-  if (log_level & G_LOG_LEVEL_DEBUG) {
-    g_string_append(message_out, " [DEBUG] - ");
-  } else if ((log_level & G_LOG_LEVEL_INFO) ||
-             (log_level & G_LOG_LEVEL_MESSAGE)) {
-    g_string_append(message_out, " [INFO] - ");
-  } else if (log_level & G_LOG_LEVEL_WARNING) {
-    g_string_append(message_out, " [WARNING] - ");
-  } else if ((log_level & G_LOG_LEVEL_ERROR) ||
-             (log_level & G_LOG_LEVEL_CRITICAL)) {
-    g_string_append(message_out, " [ERROR] - ");
-  }
-
-  g_string_append_printf(message_out, "%s\n", message);
-  if (write(fileno(logoutfile), message_out->str, message_out->len) <= 0) {
-    fprintf(stderr, "Cannot write to log file with error %d.  Exiting...",
-            errno);
-  }
-  g_string_free(message_out, TRUE);
 }
