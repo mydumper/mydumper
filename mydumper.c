@@ -3768,7 +3768,6 @@ cleanup:
 gboolean write_data(FILE *file, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
-  g_message("Writing data in file: %s",data->str);
   while (written < data->len) {
     if (!compress_output)
       r = write(fileno(file), data->str + written, data->len);
