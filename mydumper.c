@@ -3685,7 +3685,6 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
                 gzclose((gzFile)file);
                 file = (void *)gzopen(fcfile, "w");
               }
-	      g_message("Restarting statement in file");
               st_in_file = 0;
             }
           }
