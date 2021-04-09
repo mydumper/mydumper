@@ -48,6 +48,7 @@ gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
+gchar *set_names_str=NULL;
 enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
 static GMutex *progress_mutex = NULL;
@@ -89,6 +90,8 @@ static GOptionEntry entries[] = {
      "Enable binary logging of the restore data", NULL},
     {"innodb-optimize-keys", 0, 0, G_OPTION_ARG_NONE, &innodb_optimize_keys,
      "Creates the table without the indexes and it adds them at the end", NULL},
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
+      "Sets the names, use it at your own risk, default binary", NULL },
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
@@ -134,6 +137,12 @@ int main(int argc, char *argv[]) {
   }
 
   set_verbose(verbose);
+
+  if (set_names_str){
+    gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+    set_names_str=tmp_str;
+  } else 
+    set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
   if (purge_mode_str){
     if (!strcmp(purge_mode_str,"TRUNCATE")){
@@ -517,7 +526,7 @@ void *process_queue(struct thread_data *td) {
   if (!enable_binlog)
     mysql_query(thrconn, "SET SQL_LOG_BIN=0");
 
-  mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+  mysql_query(thrconn, set_names_str);
   mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
   if (commit_count > 1)
