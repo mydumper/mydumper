@@ -10,7 +10,7 @@
 One needs to install development tools:
 * Ubuntu or Debian: 
 ```
-apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+apt-get install cmake g++ git
 ```
 * Fedora, RedHat and CentOS:
 ```
