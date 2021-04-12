@@ -67,15 +67,15 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el8.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.3/mydumper-0.10.3-1.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.3/mydumper-0.10.3-1.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
 
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
+wget https://github.com/maxbube/mydumper/releases/download/v0.10.3/mydumper_0.10.3-1.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.10.3-1.$(lsb_release -cs)_amd64.deb
 ```
 
 ### OSX
