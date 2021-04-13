@@ -9,8 +9,11 @@ RUN \
   rm -rf /var/lib/apt/lists/
 
 RUN \
-  wget https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb && \
-  dpkg -i percona-release_latest.$(lsb_release -sc)_all.deb
+  curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
+    https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb \
+  && \
+  dpkg -i /tmp/percona-release.deb && \
+  rm -v /tmp/percona-release.deb
 
 RUN \
   apt-get update && \
