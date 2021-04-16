@@ -21,12 +21,13 @@
 #ifndef _myloader_h
 #define _myloader_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_RESTORE_FILENAME, JOB_RESTORE_STRING };
+enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_RESTORE_FILENAME, JOB_RESTORE_STRING, JOB_WAIT };
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 
 struct configuration {
   GAsyncQueue *queue;
   GAsyncQueue *ready;
+  GAsyncQueue *fast_index_creation_queue;
   GMutex *mutex;
   int done;
 };

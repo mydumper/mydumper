@@ -46,6 +46,7 @@ gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
+gboolean sync_before_add_index = FALSE;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
@@ -96,10 +97,12 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
+    { "sync-before-add-index", 0, 0, G_OPTION_ARG_NONE, &sync_before_add_index,
+      "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -194,6 +197,7 @@ int main(int argc, char *argv[]) {
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
+  conf.fast_index_creation_queue = g_async_queue_new();
 
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
@@ -205,11 +209,29 @@ int main(int argc, char *argv[]) {
         g_thread_create((GThreadFunc)process_queue, &td[n], TRUE, NULL);
     g_async_queue_pop(conf.ready);
   }
-  g_async_queue_unref(conf.ready);
 
   g_message("%d threads created", num_threads);
 
   restore_databases(&conf, conn);
+
+  for (n = 0; n < num_threads; n++) {
+    struct job *j = g_new0(struct job, 1);
+    j->type = JOB_WAIT;
+    g_async_queue_push(conf.queue, j);
+  }
+
+  for (n = 0; n < num_threads; n++) 
+    g_async_queue_pop(conf.ready);
+
+  g_async_queue_unref(conf.ready);
+
+  // move from a queue to the done query
+  struct job *job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
+  while (job != NULL){
+    g_async_queue_push(conf.queue, job);
+    job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
+  }
+
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
@@ -253,13 +275,12 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   }
 
   const gchar *filename = NULL;
-  GAsyncQueue *fast_index_creation_queue = g_async_queue_new();
 
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
-        add_schema(filename, fast_index_creation_queue, conn);
+        add_schema(filename, conf->fast_index_creation_queue, conn);
       }
     }
   }
@@ -291,16 +312,6 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
       }
     }
   }
-
-
-  // move from a queue to the done query
-
-  struct job *job =(struct job *)g_async_queue_try_pop(fast_index_creation_queue);
-  while (job != NULL){
-	  g_async_queue_push(conf->queue, job);
-	  job =(struct job *)g_async_queue_try_pop(fast_index_creation_queue);
-  }
- 
 
   g_dir_close(dir);
 }
@@ -572,6 +583,9 @@ void *process_queue(struct thread_data *td) {
         g_free(rj->filename);
       g_free(rj);
       g_free(job);
+      break;
+    case JOB_WAIT:
+      g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
       break;
     case JOB_SHUTDOWN:
       g_message("Thread %d shutting down", td->thread_id);
