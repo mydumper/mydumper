@@ -1088,12 +1088,23 @@ int main(int argc, char *argv[]) {
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
   g_option_context_set_main_group(context, main_group);
-  if (!g_option_context_parse(context, &argc, &argv, &error)) {
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
   g_option_context_free(context);
 
+  if (password != NULL){
+    for(int i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
+	
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
