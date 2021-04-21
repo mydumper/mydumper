@@ -2005,7 +2005,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
 
   GString *statement = g_string_sized_new(statement_size);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database,
