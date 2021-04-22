@@ -263,7 +263,7 @@ void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
-guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *, FILE *, struct table_job * tj);
 void dump_database(char *, struct configuration *);
 void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
@@ -1092,6 +1092,14 @@ int main(int argc, char *argv[]) {
   }
   g_option_context_free(context);
 
+  if (!compress_output) {
+    m_open=&g_fopen;
+    m_close=(void *) &fclose;
+  } else {
+    m_open=(void *) &gzopen;
+    m_close=(void *) &gzclose;
+  }
+
   if (password != NULL){
     for(int i=1; i < argc; i++){
       gchar * p= g_strstr_len(argv[i],-1,password);
@@ -1106,14 +1114,11 @@ int main(int argc, char *argv[]) {
     password = passwordPrompt();
   }
 
-	 if (set_names_str){
-				gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
-				set_names_str=tmp_str;
-		} else 
-				set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
-
-  // printf("your password is %s and the size is %d
-  // \n",password,sizeof(password));
+  if (set_names_str){
+    gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+    set_names_str=tmp_str;
+  } else 
+    set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
   if (program_version) {
     g_print("mydumper %s, built against MySQL %s\n", VERSION,
@@ -1987,10 +1992,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
 
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  outfile = m_open(filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
@@ -2025,11 +2027,11 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
   }
   g_free(query);
 
-  if (!compress_output)
-    fclose((FILE *)outfile);
-  else
+//  if (!compress_output)
+    m_close(outfile);//fclose((FILE *)outfile);
+/*  else
     gzclose((gzFile)outfile);
-
+*/
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -2728,10 +2730,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
   MYSQL_ROW row2;
   gchar **splited_st = NULL;
 
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  outfile = m_open(filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
@@ -2903,10 +2902,7 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table,
   MYSQL_ROW row2;
   gchar **splited_st = NULL;
 
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  outfile = m_open(filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
@@ -2979,11 +2975,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  outfile = m_open(filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database,
@@ -3062,13 +3054,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
 
   mysql_select_db(conn, database);
 
-  if (!compress_output) {
-    outfile = g_fopen(filename, "w");
-    outfile2 = g_fopen(filename2, "w");
-  } else {
-    outfile = (void *)gzopen(filename, "w");
-    outfile2 = (void *)gzopen(filename2, "w");
-  }
+  outfile = m_open(filename,"w");
+  outfile2 = m_open(filename2,"w");
 
   if (!outfile || !outfile2) {
     g_critical("Error: DB: %s Could not create output file (%d)", database,
@@ -3174,28 +3161,21 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
 }
 
 void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
-  char *database=tj->database;
-  char *table=tj->table;
-  char *where=tj->where;
-  char *filename=tj->filename;
   void *outfile = NULL;
 
-  if (!compress_output)
-    outfile = g_fopen(filename, "w");
-  else
-    outfile = (void *)gzopen(filename, "w");
+  outfile = m_open(tj->filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
-               database, table, filename, errno);
+               tj->database, tj->table, tj->filename, errno);
     errors++;
     return;
   }
   guint64 rows_count =
-      dump_table_data(conn, (FILE *)outfile, database, table, where, filename);
+      dump_table_data(conn, (FILE *)outfile, tj);
 
   if (!rows_count)
-    g_message("Empty table %s.%s", database, table);
+    g_message("Empty table %s.%s", tj->database, tj->table);
 }
 
 void dump_schema(MYSQL *conn, char *database, char *table,
@@ -3301,8 +3281,9 @@ void dump_schema_post(char *database, struct configuration *conf) {
   return;
 }
 
-struct table_job * new_table_job(char *database, char *table, char *where, char *filename){
+struct table_job * new_table_job(char *directory, char *database, char *table, char *where, char *filename){
   struct table_job *tj = g_new0(struct table_job, 1);
+  tj->directory=directory;
   tj->database=g_strdup(database);
   tj->table=g_strdup(table);
   tj->where=where;
@@ -3326,11 +3307,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
       j->conf = conf;
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
       if (daemon_mode)
-        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf(
+        tj = new_table_job(output_directory,database,table,(char *)iter->data,g_strdup_printf(
             "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database,
             table, nchunk, (compress_output ? ".gz" : "")));
       else
-        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
+        tj = new_table_job(output_directory,database,table,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
                             table, nchunk, (compress_output ? ".gz" : "")));
       j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
@@ -3345,11 +3326,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
     if (daemon_mode)
-      tj = new_table_job(database,table,NULL, g_strdup_printf(
+      tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),database,table,NULL, g_strdup_printf(
           "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,
           (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
     else
-      tj = new_table_job(database,table,NULL, g_strdup_printf(
+      tj = new_table_job(output_directory,database,table,NULL, g_strdup_printf(
           "%s/%s.%s%s.sql%s", output_directory, database, table,
           (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
     j->job_data = (void *)tj;
@@ -3382,12 +3363,12 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
       for (citer = chunks; citer != NULL; citer = citer->next) {
         struct table_job *tj = NULL;
         if (daemon_mode)
-          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data,
+          tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),dbt->database,dbt->table,(char *)citer->data,
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
                               dump_number, dbt->database, dbt->table, nchunk,
                               (compress_output ? ".gz" : "")));
         else
-          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
+          tj = new_table_job(output_directory,dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
               dbt->table, nchunk, (compress_output ? ".gz" : "")));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
@@ -3397,12 +3378,12 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
     } else {
       struct table_job *tj = NULL;
       if (daemon_mode)
-        tj = new_table_job(dbt->database,dbt->table,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
+        tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),dbt->database,dbt->table,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
                                        dump_number, dbt->database, dbt->table,
                                        (chunk_filesize ? ".00001" : ""),
                                        (compress_output ? ".gz" : "")));
       else
-        tj = new_table_job(dbt->database,dbt->table,NULL, g_strdup_printf(
+        tj = new_table_job(output_directory,dbt->database,dbt->table,NULL, g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
             (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
@@ -3413,8 +3394,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 }
 
 /* Do actual data chunk reading/writing magic */
-guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
-                        char *where, char *filename) {
+guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   guint i;
   guint fn = 1;
   guint st_in_file = 0;
@@ -3428,16 +3408,16 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
 
-  fcfile = g_strdup(filename);
+  fcfile = g_strdup(tj->filename);
 
   if (chunk_filesize) {
-    gchar **split_filename = g_strsplit(filename, ".00001.sql", 0);
+    gchar **split_filename = g_strsplit(tj->filename, ".00001.sql", 0);
     filename_prefix = g_strdup(split_filename[0]);
     g_strfreev(split_filename);
   }
 
   gboolean has_generated_fields =
-      detect_generated_fields(conn, database, table);
+      detect_generated_fields(conn, tj->database, tj->table);
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
@@ -3447,7 +3427,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
   GString *select_fields;
 
   if (has_generated_fields) {
-    select_fields = get_insertable_fields(conn, database, table);
+    select_fields = get_insertable_fields(conn, tj->database, tj->table);
   } else {
     select_fields = g_string_new("*");
   }
@@ -3456,16 +3436,16 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "");
+      select_fields->str, tj->database, tj->table, tj->where ? "WHERE" : "",
+      tj->where ? tj->where : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
-      g_warning("Error dumping table (%s.%s) data: %s ", database, table,
+      g_warning("Error dumping table (%s.%s) data: %s ", tj->database, tj->table,
                 mysql_error(conn));
     } else {
-      g_critical("Error dumping table (%s.%s) data: %s ", database, table,
+      g_critical("Error dumping table (%s.%s) data: %s ", tj->database, tj->table,
                  mysql_error(conn));
       errors++;
     }
@@ -3501,15 +3481,15 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
         }
 
         if (!write_data(file, statement)) {
-          g_critical("Could not write out data for %s.%s", database, table);
+          g_critical("Could not write out data for %s.%s", tj->database, tj->table);
           goto cleanup;
         }
       }
       if (complete_insert || has_generated_fields) {
         if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", tj->table);
         } else {
-          g_string_printf(statement, "INSERT INTO `%s` (", table);
+          g_string_printf(statement, "INSERT INTO `%s` (", tj->table);
         }
         for (i = 0; i < num_fields; ++i) {
           if (i > 0) {
@@ -3520,9 +3500,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
         g_string_append(statement, ") VALUES");
       } else {
         if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", tj->table);
         } else {
-          g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+          g_string_printf(statement, "INSERT INTO `%s` VALUES", tj->table);
         }
       }
       num_rows_st = 0;
@@ -3564,13 +3544,13 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
           if (num_rows_st == 0) {
             g_string_append(statement, statement_row->str);
             g_string_set_size(statement_row, 0);
-            g_warning("Row bigger than statement_size for %s.%s", database,
-                      table);
+            g_warning("Row bigger than statement_size for %s.%s", tj->database,
+                      tj->table);
           }
           g_string_append(statement, ";\n");
 
           if (!write_data(file, statement)) {
-            g_critical("Could not write out data for %s.%s", database, table);
+            g_critical("Could not write out data for %s.%s", tj->database, tj->table);
             goto cleanup;
           } else {
             st_in_file++;
@@ -3581,13 +3561,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
               g_free(fcfile);
               fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix, fn,
                                        (compress_output ? ".gz" : ""));
-              if (!compress_output) {
-                fclose((FILE *)file);
-                file = g_fopen(fcfile, "w");
-              } else {
-                gzclose((gzFile)file);
-                file = (void *)gzopen(fcfile, "w");
-              }
+              m_close(file);
+              file = m_open(fcfile,"w");
+
               st_in_file = 0;
             }
           }
@@ -3603,7 +3579,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     }
   }
   if (mysql_errno(conn)) {
-    g_critical("Could not read data from %s.%s: %s", database, table,
+    g_critical("Could not read data from %s.%s: %s", tj->database, tj->table,
                mysql_error(conn));
     errors++;
   }
@@ -3616,9 +3592,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     } else {
       if (complete_insert) {
         if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", tj->table);
         } else {
-          g_string_printf(statement, "INSERT INTO `%s` (", table);
+          g_string_printf(statement, "INSERT INTO `%s` (", tj->table);
         }
         for (i = 0; i < num_fields; ++i) {
           if (i > 0) {
@@ -3629,9 +3605,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
         g_string_append(statement, ") VALUES");
       } else {
         if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", tj->table);
         } else {
-          g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+          g_string_printf(statement, "INSERT INTO `%s` VALUES", tj->table);
         }
       }
       g_string_append(statement, statement_row->str);
@@ -3643,7 +3619,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     if (!write_data(file, statement)) {
       g_critical(
           "Could not write out closing newline for %s.%s, now this is sad!",
-          database, table);
+          tj->database, tj->table);
       goto cleanup;
     }
     st_in_file++;
@@ -3677,7 +3653,7 @@ cleanup:
     g_free(fcfile);
     fcfile = g_strdup_printf("%s.sql%s", filename_prefix,
                              (compress_output ? ".gz" : ""));
-    g_rename(filename, fcfile);
+    g_rename(tj->filename, fcfile);
   }
 
   g_free(filename_prefix);
