@@ -1,0 +1,24 @@
+---
+version: 2.1
+
+jobs:
+  build:
+    docker:
+    - image: cimg/base:stable-20.04
+    executor: base
+
+    steps:
+    - checkout
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libmysqlclient-dev
+    - run: cmake .
+    - run: make
+
+workflows:
+  version: 2
+  mydumper:
+    jobs:
+    - build:
+        filters:
+          tags:
+            only: /.*/
