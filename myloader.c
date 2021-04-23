@@ -120,7 +120,8 @@ int main(int argc, char *argv[]) {
   g_option_context_free(context);
 
   if (password != NULL){
-    for(int i=1; i < argc; i++){
+    int i=1;
+    for(i=1; i < argc; i++){
       gchar * p= g_strstr_len(argv[i],-1,password);
       if (p != NULL){
         strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
