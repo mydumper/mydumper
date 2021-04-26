@@ -279,8 +279,7 @@ GList *get_chunks_for_table(MYSQL *, char *, char *,
                             struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename);
+void dump_table_data_file(MYSQL *conn, struct table_job * tj);
 void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
@@ -651,8 +650,7 @@ void *process_queue(struct thread_data *td) {
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
-      dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+      dump_table_data_file(thrconn, tj);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -700,8 +698,7 @@ void *process_queue(struct thread_data *td) {
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
-      dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+      dump_table_data_file(thrconn, tj);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -930,8 +927,7 @@ void *process_queue_less_locking(struct thread_data *td) {
         else
           g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
                     tj->database, tj->table);
-        dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                             tj->filename);
+        dump_table_data_file(thrconn, tj);
         if (tj->database)
           g_free(tj->database);
         if (tj->table)
@@ -1116,12 +1112,24 @@ int main(int argc, char *argv[]) {
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
   g_option_context_set_main_group(context, main_group);
-  if (!g_option_context_parse(context, &argc, &argv, &error)) {
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
   g_option_context_free(context);
 
+  if (password != NULL){
+    int i=1;	  
+    for(i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
+	
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
@@ -2028,7 +2036,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
 
   GString *statement = g_string_sized_new(statement_size);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database,
@@ -3200,8 +3208,11 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   return;
 }
 
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename) {
+void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
+  char *database=tj->database;
+  char *table=tj->table;
+  char *where=tj->where;
+  char *filename=tj->filename;
   void *outfile = NULL;
 
   if (!compress_output)
@@ -3399,6 +3410,15 @@ void dump_schema_post(char *database, struct configuration *conf) {
   return;
 }
 
+struct table_job * new_table_job(char *database, char *table, char *where, char *filename){
+  struct table_job *tj = g_new0(struct table_job, 1);
+  tj->database=g_strdup(database);
+  tj->table=g_strdup(table);
+  tj->where=where;
+  tj->filename=filename;
+  return tj;
+}
+
 void dump_table(MYSQL *conn, char *database, char *table,
                 struct configuration *conf, gboolean is_innodb) {
 
@@ -3411,21 +3431,17 @@ void dump_table(MYSQL *conn, char *database, char *table,
     GList *iter;
     for (iter = chunks; iter != NULL; iter = iter->next) {
       struct job *j = g_new0(struct job, 1);
-      struct table_job *tj = g_new0(struct table_job, 1);
-      j->job_data = (void *)tj;
-      tj->database = g_strdup(database);
-      tj->table = g_strdup(table);
+      struct table_job *tj = NULL;
       j->conf = conf;
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
       if (daemon_mode)
-        tj->filename = g_strdup_printf(
+        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf(
             "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database,
-            table, nchunk, (compress_output ? ".gz" : ""));
+            table, nchunk, (compress_output ? ".gz" : "")));
       else
-        tj->filename =
-            g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
-                            table, nchunk, (compress_output ? ".gz" : ""));
-      tj->where = (char *)iter->data;
+        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
+                            table, nchunk, (compress_output ? ".gz" : "")));
+      j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
       g_async_queue_push(conf->queue, j);
@@ -3434,20 +3450,18 @@ void dump_table(MYSQL *conn, char *database, char *table,
     g_list_free(chunks);
   } else {
     struct job *j = g_new0(struct job, 1);
-    struct table_job *tj = g_new0(struct table_job, 1);
-    j->job_data = (void *)tj;
-    tj->database = g_strdup(database);
-    tj->table = g_strdup(table);
+    struct table_job *tj = NULL;
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
     if (daemon_mode)
-      tj->filename = g_strdup_printf(
+      tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
     else
-      tj->filename = g_strdup_printf(
+      tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%s.%s%s.sql%s", output_directory, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
+    j->job_data = (void *)tj;
     g_async_queue_push(conf->queue, j);
     return;
   }
@@ -3475,37 +3489,31 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
       int nchunk = 0;
       GList *citer;
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = g_new0(struct table_job, 1);
-        tj->database = g_strdup_printf("%s", dbt->database);
-        tj->table = g_strdup_printf("%s", dbt->table);
+        struct table_job *tj = NULL;
         if (daemon_mode)
-          tj->filename =
+          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data,
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
                               dump_number, dbt->database, dbt->table, nchunk,
-                              (compress_output ? ".gz" : ""));
+                              (compress_output ? ".gz" : "")));
         else
-          tj->filename = g_strdup_printf(
+          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
-              dbt->table, nchunk, (compress_output ? ".gz" : ""));
-        tj->where = (char *)citer->data;
+              dbt->table, nchunk, (compress_output ? ".gz" : "")));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }
       g_list_free(chunks);
     } else {
-      struct table_job *tj = g_new0(struct table_job, 1);
-      tj->database = g_strdup_printf("%s", dbt->database);
-      tj->table = g_strdup_printf("%s", dbt->table);
+      struct table_job *tj = NULL;
       if (daemon_mode)
-        tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
+        tj = new_table_job(dbt->database,dbt->table,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
                                        dump_number, dbt->database, dbt->table,
                                        (chunk_filesize ? ".00001" : ""),
-                                       (compress_output ? ".gz" : ""));
+                                       (compress_output ? ".gz" : "")));
       else
-        tj->filename = g_strdup_printf(
+        tj = new_table_job(dbt->database,dbt->table,NULL, g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
-            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
-      tj->where = NULL;
+            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
   }
