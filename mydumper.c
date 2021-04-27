@@ -505,7 +505,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       fprintf(file, "SHOW SLAVE STATUS:");
       if (isms)
         fprintf(file, "\n\tConnection name: %s", connname);
-      fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",
+      fprintf(file, "\n\tHost: %s\n\tMaster_Log_File: %s\n\tRead_Master_Log_Pos: %s\n\tGTID:%s\n\n",
               slavehost, slavelog, slavepos, slavegtid);
       g_message("Written slave status");
     }
