@@ -712,49 +712,58 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
               g_string_append(alter_table_statement,data->str);
 	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	    }else{
-              // Processing CREATE TABLE statement
-              gboolean is_innodb_table=FALSE;
-              gchar** split_file= g_strsplit(data->str, "\n", -1);
-  	      GString *table_without_indexes=g_string_sized_new(512);
-              append_alter_table(alter_table_statement,db ? db : database,table);
+          // Processing CREATE TABLE statement
+          gboolean is_innodb_table=FALSE;
+          gchar** split_file= g_strsplit(data->str, "\n", -1);
+          gchar *autoinc_column=NULL;
+          GString *table_without_indexes=g_string_sized_new(512);
+          append_alter_table(alter_table_statement,db ? db : database,table);
 	      int fulltext_counter=0;
-              for (int i=0; i < (int)g_strv_length(split_file);i++){
-                
-                if ( g_strrstr(split_file[i],"  KEY")
+          for (int i=0; i < (int)g_strv_length(split_file);i++){
+            if ( g_strrstr(split_file[i],"  KEY")
                   || g_strrstr(split_file[i],"  UNIQUE")
                   || g_strrstr(split_file[i],"  SPATIAL")
                   || g_strrstr(split_file[i],"  FULLTEXT")
                   || g_strrstr(split_file[i],"  INDEX")
-		  || g_strrstr(split_file[i],"  CONSTRAINT")
+                  || g_strrstr(split_file[i],"  CONSTRAINT")
                  ){
-                  if (g_strrstr(split_file[i],"  FULLTEXT")){
+              // Ignore if the first column of the index is the AUTO_INCREMENT column
+              if ( g_strrstr(split_file[i],autoinc_column) ){
+                g_string_append(table_without_indexes, split_file[i]);
+                g_string_append_c(table_without_indexes,'\n');
+              }else{
+                if (g_strrstr(split_file[i],"  FULLTEXT")){
                     fulltext_counter++;
-		  }
-		  if (fulltext_counter>1){
-		    fulltext_counter=1;
-                    finish_alter_table(alter_table_statement);
-
-		    append_alter_table(alter_table_statement,db ? db : database,table);
-		  }
-		  g_string_append(alter_table_statement,"\n ADD");
-                  g_string_append(alter_table_statement, split_file[i]);  
-                }else{
-	  	  g_string_append(table_without_indexes, split_file[i]);
-		  g_string_append_c(table_without_indexes,'\n');
-	        }
-	        if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
-	          is_innodb_table=TRUE;
+                }
+                if (fulltext_counter>1){
+                  fulltext_counter=1;
+                  finish_alter_table(alter_table_statement);
+                  append_alter_table(alter_table_statement,db ? db : database,table);
+                }
+                g_string_append(alter_table_statement,"\n ADD");
+                g_string_append(alter_table_statement, split_file[i]);
+              }
+            }else{
+              if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
+                gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
+                autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+              }
+              g_string_append(table_without_indexes, split_file[i]);
+              g_string_append_c(table_without_indexes,'\n');
+            }
+            if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
+              is_innodb_table=TRUE;
 	        }
 	      }
 	      finish_alter_table(alter_table_statement);
 	      if (is_innodb_table){
-                g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
-                restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-                struct restore_job *rj = g_new(struct restore_job, 1);
-                rj->statement = alter_table_statement;
-                rj->database = g_strdup(database);
-                rj->table = g_strdup(table);
-                struct job *j = g_new0(struct job, 1);
+            g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
+            restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
+            struct restore_job *rj = g_new(struct restore_job, 1);
+            rj->statement = alter_table_statement;
+            rj->database = g_strdup(database);
+            rj->table = g_strdup(table);
+            struct job *j = g_new0(struct job, 1);
 	        j->job_data = (void *)rj;
 	        j->type = JOB_RESTORE_STRING;
 	        g_async_queue_push(fast_index_creation_queue, j);
