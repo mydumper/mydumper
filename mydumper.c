@@ -3541,7 +3541,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
       /* Don't escape safe formats, saves some time */
       if (!row[i]) {
         g_string_append(statement_row, "NULL");
-      } else if (fields[i].flags & NUM_FLAG) {
+      } else if ((fields[i].flags & NUM_FLAG) && (( fields[i].flags & MYSQL_TYPE_FLOAT) || (fields[i].flags & MYSQL_TYPE_DOUBLE))) {
         g_string_append(statement_row, row[i]);
       } else {
         /* We reuse buffers for string escaping, growing is expensive just at
