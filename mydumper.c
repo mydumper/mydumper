@@ -1878,6 +1878,7 @@ void start_dump(MYSQL *conn) {
     dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
   }
   g_list_free(innodb_tables);
+  innodb_tables=NULL;
 
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
@@ -1888,6 +1889,7 @@ void start_dump(MYSQL *conn) {
     g_free(dbt);
   }
   g_list_free(table_schemas);
+  table_schemas=NULL;
 
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
@@ -1898,6 +1900,7 @@ void start_dump(MYSQL *conn) {
     g_free(dbt);
   }
   g_list_free(view_schemas);
+  view_schemas=NULL;
 
   schema_post = g_list_reverse(schema_post);
   for (iter = schema_post; iter != NULL; iter = iter->next) {
@@ -1907,6 +1910,7 @@ void start_dump(MYSQL *conn) {
     g_free(sp);
   }
   g_list_free(schema_post);
+  schema_post=NULL;
 
   if (!no_locks && !trx_consistency_only) {
     g_async_queue_pop(conf.unlock_tables);
