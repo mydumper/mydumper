@@ -85,9 +85,11 @@ int compress_output = 0;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
+int sync_wait = -1;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
+gboolean use_sync_wait = FALSE;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -243,6 +245,8 @@ static GOptionEntry entries[] = {
       "Sets the names, use it at your own risk, default binary", NULL },
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
+    {"sync-wait", 0, 0, G_OPTION_ARG_INT, &sync_wait,
+     "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -546,6 +550,11 @@ void *process_queue(struct thread_data *td) {
   if ((detected_server == SERVER_TYPE_MYSQL) &&
       mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+  }
+  if ( use_sync_wait && mysql_query(thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
+    g_critical("Failed to set wsrep_sync_wait for the thread: %s",
+               mysql_error(thrconn));
+    exit(EXIT_FAILURE);
   }
   if (mysql_query(thrconn,
                   "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
@@ -1101,6 +1110,8 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  use_sync_wait= sync_wait != -1;
 	
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
