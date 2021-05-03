@@ -89,7 +89,6 @@ int sync_wait = -1;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
-gboolean use_sync_wait = FALSE;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -551,7 +550,7 @@ void *process_queue(struct thread_data *td) {
       mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
   }
-  if ( use_sync_wait && mysql_query(thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
+  if ( sync_wait != -1 && mysql_query(thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
     g_critical("Failed to set wsrep_sync_wait for the thread: %s",
                mysql_error(thrconn));
     exit(EXIT_FAILURE);
@@ -1110,8 +1109,6 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-
-  use_sync_wait= sync_wait != -1;
 	
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
