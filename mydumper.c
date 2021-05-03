@@ -3240,6 +3240,7 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
   char *table=tj->table;
   char *where=tj->where;
   char *filename=tj->filename;
+  char *order_by=tj->order_by;
   void *outfile = NULL;
 
   if (!compress_output)
@@ -3467,7 +3468,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
         else
           tj = new_table_job(dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
-              dbt->table, nchunk, (compress_output ? ".gz" : ""));
+              dbt->table, nchunk, (compress_output ? ".gz" : "")));
         if (order_by)
           tj->order_by = g_strdup(order_by);
         else
@@ -3488,7 +3489,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
       else
         tj = new_table_job(dbt->database,dbt->table,NULL, g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
-            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
       if (order_by_primary_key)
         tj->order_by = get_primary_key_string(conn, dbt->database, dbt->table);
       else
