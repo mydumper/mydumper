@@ -525,6 +525,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     mysql_free_result(mdb);
 }
 
+void message_dumping_data(guint thread_id, struct table_job *tj){
+  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s",
+                    thread_id, tj->database, tj->table, 
+		    tj->where ? " WHERE " : "", tj->where ? tj->where : "",
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
+}
+
 void *process_queue(struct thread_data *td) {
   struct configuration *conf = td->conf;
   // mysql_init is not thread safe, especially in Connector/C
@@ -639,12 +646,7 @@ void *process_queue(struct thread_data *td) {
     switch (job->type) {
     case JOB_DUMP:
       tj = (struct table_job *)job->job_data;
-      if (tj->where)
-        g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                  td->thread_id, tj->database, tj->table, tj->where);
-      else
-        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                  tj->database, tj->table);
+      message_dumping_data(td->thread_id,tj);
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
@@ -668,12 +670,7 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_DUMP_NON_INNODB:
       tj = (struct table_job *)job->job_data;
-      if (tj->where)
-        g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                  td->thread_id, tj->database, tj->table, tj->where);
-      else
-        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                  tj->database, tj->table);
+      message_dumping_data(td->thread_id,tj);
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
@@ -902,13 +899,7 @@ void *process_queue_less_locking(struct thread_data *td) {
       }
       for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
         tj = (struct table_job *)glj->data;
-        if (tj->where)
-          g_message("Thread %d dumping data for `%s`.`%s` where %s%s%s",
-                    td->thread_id, tj->database, tj->table, tj->where,
-                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
-        else
-          g_message("Thread %d dumping data for `%s`.`%s`%s%s", td->thread_id,
-                    tj->database, tj->table, tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
+        message_dumping_data(td->thread_id,tj);
         dump_table_data_file(thrconn, tj);
         if (tj->database)
           g_free(tj->database);
