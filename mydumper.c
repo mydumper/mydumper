@@ -1766,7 +1766,7 @@ void start_dump(MYSQL *conn) {
             tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
             tval.tm_min, tval.tm_sec);
 
-	mysql_query(conn, set_names_str);
+  mysql_query(conn, set_names_str);
   write_snapshot_info(conn, mdfile);
 
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
