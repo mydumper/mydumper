@@ -36,7 +36,7 @@ Where 'chunk' is a number padded with up to 5 zeros.
 
 Table Schemas
 -------------
-When the :option:`--schemas <mydumper --schemas>` option is used mydumper will
+As long as the :option:`--no-schemas <mydumper --no-schemas>` option is not specified, mydumper will
 create a file for the schema of every table it is writing data for.  The files
 for this are in the following format::
 
