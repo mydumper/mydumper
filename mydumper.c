@@ -2203,7 +2203,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   char *max = row[1];
 
   /* Got total number of rows, skip chunk logic if estimates are low */
-  guint64 rows = estimate_count(conn, database, table, field, NULL, NULL);
+  guint64 rows = estimate_count(conn, database, table, field, min, max);
   if (rows <= rows_per_file)
     goto cleanup;
 
@@ -2267,16 +2267,16 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     if (from) {
       escaped = g_new(char, strlen(from) * 2 + 1);
       mysql_real_escape_string(conn, escaped, from, strlen(from));
-      fromclause = g_strdup_printf(" `%s` >= '%s' ", field, escaped);
+      fromclause = g_strdup_printf(" `%s` >= %s ", field, escaped);
       g_free(escaped);
     }
     if (to) {
       escaped = g_new(char, strlen(to) * 2 + 1);
-      mysql_real_escape_string(conn, escaped, from, strlen(from));
-      toclause = g_strdup_printf(" `%s` <= '%s'", field, escaped);
+      mysql_real_escape_string(conn, escaped, to, strlen(to));
+      toclause = g_strdup_printf(" `%s` <= %s", field, escaped);
       g_free(escaped);
     }
-    query = g_strdup_printf("%s WHERE `%s` %s %s", querybase,
+    query = g_strdup_printf("%s WHERE %s %s %s", querybase,
                             (from ? fromclause : ""),
                             ((from && to) ? "AND" : ""), (to ? toclause : ""));
 
