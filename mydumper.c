@@ -39,6 +39,8 @@
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
+#include <glib/gerror.h>
+#include <gio/gio.h>
 #include "config.h"
 #ifdef WITH_BINLOG
 #include "binlog.h"
@@ -85,6 +87,7 @@ int compress_output = 0;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
+guint snapshot_count= 2;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
@@ -137,7 +140,7 @@ guint trx_consistency_only = 0;
 guint complete_insert = 0;
 gchar *set_names_str=NULL;
 
-// For daemon mode, 0 or 1
+// For daemon mode
 guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
@@ -211,6 +214,7 @@ static GOptionEntry entries[] = {
 #endif
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
+    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
     {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
      "Interval between each dump snapshot (in minutes), requires --daemon, "
      "default 60",
@@ -1101,7 +1105,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (password != NULL){
-    for(int i=1; i < argc; i++){
+    int i=1;	  
+    for(i=1; i < argc; i++){
       gchar * p= g_strstr_len(argv[i],-1,password);
       if (p != NULL){
         strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
@@ -1175,12 +1180,34 @@ int main(int argc, char *argv[]) {
     if (sid < 0)
       exit(EXIT_FAILURE);
 
-    char *dump_directory = g_strdup_printf("%s/0", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
-    dump_directory = g_strdup_printf("%s/1", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
+    char *dump_directory;
+    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
+        dump_directory= g_strdup_printf("%s/%d", output_directory, dump_number);
+        create_backup_dir(dump_directory);
+        g_free(dump_directory);
+    }
+    
+    GFile *last_dump = g_file_new_for_path(
+        g_strdup_printf("%s/last_dump", output_directory)
+    );
+    GFileInfo *last_dump_i = g_file_query_info(
+        last_dump,
+        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
+        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+        NULL, NULL
+    );
+    if (last_dump_i != NULL &&
+        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
+        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
+        if (dump_number >= snapshot_count-1) dump_number = 0;
+        else dump_number++;
+        g_object_unref(last_dump_i);
+    } else {
+        dump_number = 0;
+    }
+    g_object_unref(last_dump);
+
 #ifdef WITH_BINLOG
     daemon_binlog_directory =
         g_strdup_printf("%s/%s", output_directory, DAEMON_BINLOGS);
@@ -1315,7 +1342,7 @@ void *exec_thread(void *data) {
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.
     if (!shutdown_triggered) {
-      const char *dump_symlink_source = (dump_number == 0) ? "0" : "1";
+      char *dump_symlink_source= g_strdup_printf("%d", dump_number);
       char *dump_symlink_dest =
           g_strdup_printf("%s/last_dump", output_directory);
 
@@ -1328,7 +1355,8 @@ void *exec_thread(void *data) {
       }
       g_free(dump_symlink_dest);
 
-      dump_number = (dump_number == 1) ? 0 : 1;
+      if (dump_number >= snapshot_count-1) dump_number = 0;
+      else dump_number++;
     }
   }
   return NULL;
@@ -1883,7 +1911,6 @@ void start_dump(MYSQL *conn) {
   }
   g_list_free(innodb_tables);
   innodb_tables=NULL;
-  
 
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
@@ -2008,7 +2035,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
 
   GString *statement = g_string_sized_new(statement_size);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database,
