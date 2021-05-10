@@ -2184,10 +2184,10 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
   mysql_free_result(res);
   // Return NULL if we never found a PRIMARY or UNIQUE key
   if (first) {
-    g_string_free(field_list, true);
+    g_string_free(field_list, TRUE);
     return NULL;
   } else {
-    gchar *order_string = g_string_free(field_list, false);
+    gchar *order_string = g_string_free(field_list, FALSE);
     return order_string;
   }
 }
