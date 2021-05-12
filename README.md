@@ -96,7 +96,7 @@ make
 
 One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH
 
-Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
+Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options and you might need to add the source include path like this: `-DMYSQL_CFLAGS="-I/usr/src/percona-server/percona-server-5.7.33-36/include"`
 
 To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
 
