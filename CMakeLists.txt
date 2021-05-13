@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(mydumper)
-set(VERSION 0.10.6)
+set(VERSION testing)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages
@@ -17,9 +17,11 @@ if (BUILD_DOCS)
 endif (BUILD_DOCS)
 
 option(WITH_BINLOG "Build binlog dump options" OFF)
+option(WITH_BINLOG_8 "Build binlog dump options for MySQL 8" OFF)
 option(WITH_SSL "Build SSL support" ON)
 
 set(CMAKE_C_FLAGS "-Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -Werror -O3 -g ${MYSQL_CFLAGS}")
+set(CMAKE_CXX_FLAGS "-Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -fpermissive -O3 -g ${MYSQL_CFLAGS}")
 
 include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_DIR} ${PCRE_INCLUDE_DIR} ${ZLIB_INCLUDE_DIRS})
 
@@ -31,11 +33,15 @@ MARK_AS_ADVANCED(CMAKE)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 
 
-if (WITH_BINLOG)
-  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c)
-else (WITH_BINLOG)
+if (WITH_BINLOG OR WITH_BINLOG_8)
+  if (WITH_BINLOG)
+     add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c)
+  else (WITH_BINLOG)
+     add_executable(mydumper mydumper.c binlog.cpp server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c)
+  endif (WITH_BINLOG)
+else (WITH_BINLOG OR WITH_BINLOG_8)
   add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c)
-endif (WITH_BINLOG)
+endif (WITH_BINLOG OR WITH_BINLOG_8)
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m)
 
 
