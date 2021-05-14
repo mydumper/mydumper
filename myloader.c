@@ -729,7 +729,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   || g_strrstr(split_file[i],"  CONSTRAINT")
                  ){
               // Ignore if the first column of the index is the AUTO_INCREMENT column
-              if ( g_strrstr(split_file[i],autoinc_column) ){
+              if ( (autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
                 g_string_append(table_without_indexes, split_file[i]);
                 g_string_append_c(table_without_indexes,'\n');
               }else{
