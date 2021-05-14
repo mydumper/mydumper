@@ -540,6 +540,7 @@ void *process_queue(struct thread_data *td) {
   mysql_query(thrconn, set_names_str);
   mysql_query(thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
+  mysql_query(thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   if (commit_count > 1)
     mysql_query(thrconn, "SET autocommit=0");
 
