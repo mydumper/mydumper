@@ -3568,8 +3568,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj) {
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
       select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "", order_by ? "ORDER BY" : "",
-      order_by ? order_by : "");
+      where ? where : "", tj->order_by ? "ORDER BY" : "",
+      tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
