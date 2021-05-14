@@ -66,6 +66,7 @@ struct table_job {
   char *filename;
   char *where;
   gboolean has_generated_fields;
+  char *order_by;
 };
 
 struct tables_job {
