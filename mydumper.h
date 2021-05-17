@@ -65,6 +65,7 @@ struct table_job {
   char *table;
   char *filename;
   char *where;
+  char *order_by;
 };
 
 struct tables_job {
