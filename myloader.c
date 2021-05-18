@@ -653,7 +653,8 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter)
 {
   gchar** line=g_strsplit(data->str, ";\n", -1);
-  for (int i=0; i < (int)g_strv_length(line);i++){
+  int i=0;	
+  for (i=0; i < (int)g_strv_length(line);i++){
      if (strlen(line[i])>2){
        GString *str=g_string_new(line[i]);
        g_string_append_c(str,';');
@@ -740,8 +741,9 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
           gchar *autoinc_column=NULL;
           GString *table_without_indexes=g_string_sized_new(512);
           append_alter_table(alter_table_statement,db ? db : database,table);
-	      int fulltext_counter=0;
-          for (int i=0; i < (int)g_strv_length(split_file);i++){
+	  int fulltext_counter=0;
+          int i=0;
+          for (i=0; i < (int)g_strv_length(split_file);i++){
             if ( g_strrstr(split_file[i],"  KEY")
                   || g_strrstr(split_file[i],"  UNIQUE")
                   || g_strrstr(split_file[i],"  SPATIAL")
