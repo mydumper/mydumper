@@ -47,6 +47,7 @@ gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean sync_before_add_index = FALSE;
+gboolean disable_redo_log = FALSE;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
@@ -99,6 +100,8 @@ static GOptionEntry entries[] = {
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
     { "sync-before-add-index", 0, 0, G_OPTION_ARG_NONE, &sync_before_add_index,
       "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
+    { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
+      "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int main(int argc, char *argv[]) {
@@ -122,12 +125,23 @@ int main(int argc, char *argv[]) {
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
   g_option_context_set_main_group(context, main_group);
-  if (!g_option_context_parse(context, &argc, &argv, &error)) {
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
   g_option_context_free(context);
 
+  if (password != NULL){
+    int i=1;
+    for(i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
@@ -194,6 +208,10 @@ int main(int argc, char *argv[]) {
   if (!enable_binlog)
     mysql_query(conn, "SET SQL_LOG_BIN=0");
 
+  if (disable_redo_log){
+    g_message("Disabling redologs");
+    mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
+  }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
@@ -248,6 +266,9 @@ int main(int argc, char *argv[]) {
   restore_schema_view(conn);
 
   restore_schema_triggers(conn);
+
+  if (disable_redo_log)
+    mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.queue);
   mysql_close(conn);
