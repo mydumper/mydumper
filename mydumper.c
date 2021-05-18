@@ -271,7 +271,7 @@ void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
-guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj);
 void dump_database(char *, struct configuration *);
 void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
@@ -3254,29 +3254,24 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
 }
 
 void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
-  char *database=tj->database;
-  char *table=tj->table;
-  char *where=tj->where;
-  char *filename=tj->filename;
-  char *order_by=tj->order_by;
   void *outfile = NULL;
 
   if (!compress_output)
-    outfile = g_fopen(filename, "w");
+    outfile = g_fopen(tj->filename, "w");
   else
-    outfile = (void *)gzopen(filename, "w");
+    outfile = (void *)gzopen(tj->filename, "w");
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
-               database, table, filename, errno);
+               tj->database, tj->table, tj->filename, errno);
     errors++;
     return;
   }
   guint64 rows_count =
-      dump_table_data(conn, (FILE *)outfile, database, table, where, order_by, filename);
+      dump_table_data(conn, (FILE *)outfile, tj);
 
   if (!rows_count)
-    g_message("Empty table %s.%s", database, table);
+    g_message("Empty table %s.%s", tj->database, tj->table);
 }
 
 void dump_schema(MYSQL *conn, char *database, char *table,
@@ -3382,12 +3377,13 @@ void dump_schema_post(char *database, struct configuration *conf) {
   return;
 }
 
-struct table_job * new_table_job(char *database, char *table, char *where, char *filename){
+struct table_job * new_table_job(char *database, char *table, char *where, char *filename, gboolean has_generated_fields){
   struct table_job *tj = g_new0(struct table_job, 1);
   tj->database=g_strdup(database);
   tj->table=g_strdup(table);
   tj->where=where;
   tj->filename=filename;
+  tj->has_generated_fields=has_generated_fields;
   return tj;
 }
 
@@ -3397,6 +3393,9 @@ void dump_table(MYSQL *conn, char *database, char *table,
   GList *chunks = NULL;
   if (rows_per_file)
     chunks = get_chunks_for_table(conn, database, table, conf);
+
+  gboolean has_generated_fields =
+    detect_generated_fields(conn, database, table);
 
   char *order_by = NULL;
   if (order_by_primary_key)
@@ -3412,10 +3411,10 @@ void dump_table(MYSQL *conn, char *database, char *table,
       if (daemon_mode)
         tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf(
             "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database,
-            table, nchunk, (compress_output ? ".gz" : "")));
+            table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
       else
         tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
-                            table, nchunk, (compress_output ? ".gz" : "")));        
+                            table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
       if (order_by) {
         tj->order_by = g_strdup(order_by);
       } else {
@@ -3436,11 +3435,11 @@ void dump_table(MYSQL *conn, char *database, char *table,
     if (daemon_mode)
       tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
     else
       tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%s.%s%s.sql%s", output_directory, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
     if (order_by) {
       tj->order_by = g_strdup(order_by);
     } else {
@@ -3469,6 +3468,8 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 
     if (rows_per_file)
       chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
+    gboolean has_generated_fields =
+      detect_generated_fields(conn, dbt->database, dbt->table);
 
     if (chunks) {
       int nchunk = 0;
@@ -3482,11 +3483,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
           tj = new_table_job(dbt->database,dbt->table,(char *)citer->data,
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
                               dump_number, dbt->database, dbt->table, nchunk,
-                              (compress_output ? ".gz" : "")));
+                              (compress_output ? ".gz" : "")), has_generated_fields);
         else
           tj = new_table_job(dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
-              dbt->table, nchunk, (compress_output ? ".gz" : "")));
+              dbt->table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
         if (order_by)
           tj->order_by = g_strdup(order_by);
         else
@@ -3503,11 +3504,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
         tj = new_table_job(dbt->database,dbt->table,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
                                        dump_number, dbt->database, dbt->table,
                                        (chunk_filesize ? ".00001" : ""),
-                                       (compress_output ? ".gz" : "")));
+                                       (compress_output ? ".gz" : "")), has_generated_fields);
       else
         tj = new_table_job(dbt->database,dbt->table,NULL, g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
-            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")));
+            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
       if (order_by_primary_key)
         tj->order_by = get_primary_key_string(conn, dbt->database, dbt->table);
       else
@@ -3520,8 +3521,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 }
 
 /* Do actual data chunk reading/writing magic */
-guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
-                        char *where, char *order_by, char *filename) {
+guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj) {
+  char *database = tj->database;
+  char *table = tj->table;
+  char *where = tj->where;
+  char *filename = tj->filename;
   guint i;
   guint fn = 1;
   guint st_in_file = 0;
@@ -3543,8 +3547,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     g_strfreev(split_filename);
   }
 
-  gboolean has_generated_fields =
-      detect_generated_fields(conn, database, table);
+  gboolean has_generated_fields = tj->has_generated_fields;
+//      detect_generated_fields(conn, database, table);
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
@@ -3564,8 +3568,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
       select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "", order_by ? "ORDER BY" : "",
-      order_by ? order_by : "");
+      where ? where : "", tj->order_by ? "ORDER BY" : "",
+      tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
