@@ -45,6 +45,7 @@ guint commit_count = 1000;
 gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean enable_binlog = FALSE;
+gboolean disable_redo_log = FALSE;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
@@ -88,6 +89,8 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
+    { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
+      "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int main(int argc, char *argv[]) {
@@ -194,6 +197,10 @@ int main(int argc, char *argv[]) {
   if (!enable_binlog)
     mysql_query(conn, "SET SQL_LOG_BIN=0");
 
+  if (disable_redo_log){
+    g_message("Disabling redologs");
+    mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
+  }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
@@ -229,6 +236,9 @@ int main(int argc, char *argv[]) {
   restore_schema_view(conn);
 
   restore_schema_triggers(conn);
+
+  if (disable_redo_log)
+    mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.queue);
   mysql_close(conn);
