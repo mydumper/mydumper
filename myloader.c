@@ -68,7 +68,7 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
-void checksum_table(const gchar *filename, MYSQL *conn);
+void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void checksum_databases(MYSQL *conn);
@@ -360,7 +360,7 @@ void checksum_databases(MYSQL *conn) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, ".checksum")) {
-        checksum_table(filename, conn);
+        checksum_table_filename(filename, conn);
       }
     }
   }
@@ -567,33 +567,16 @@ void add_table(const gchar *filename, struct configuration *conf) {
   return;
 }
 
-void checksum_table(const gchar *filename, MYSQL *conn) {
+void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   // 0 is database, 1 is table
   gchar **split_file = g_strsplit(filename, ".", 0);
   gchar *database = split_file[0];
   gchar *table = split_file[1];
   void *infile;
   char checksum[256];
-  MYSQL_RES *result = NULL;
-  MYSQL_ROW row;
-
-  gchar *query =
-      g_strdup_printf("CHECKSUM TABLE `%s`.`%s`", db ? db : database, table);
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    g_critical("Error calculating checksum (%s.%s): %s", db ? db : database, table,
-           mysql_error(conn));
-    errors++;
-    g_free(query);
-    return;
-  }
-
-  /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  g_free(query);
-  if (result) {
-    mysql_free_result(result);
-  }
-
+  int errn=0;
+  char * row=checksum_table(conn, db ? db : database, table, &errn);
+  
   gchar *path = g_build_filename(directory, filename, NULL);
   infile = g_fopen(path, "r");
 
@@ -604,9 +587,8 @@ void checksum_table(const gchar *filename, MYSQL *conn) {
   }
 
   if (fgets(checksum, 256, infile) != NULL) {
-    checksum[strcspn(checksum, "\n")] = 0;
-    if(strcmp(checksum, row[1]) != 0) {
-      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row[1], checksum);
+    if(strcmp(checksum, row) != 0) {
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
     }
     else {
       g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);

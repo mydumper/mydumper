@@ -3318,9 +3318,6 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
 
 void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
   void *outfile = NULL;
-  char *query = NULL;
-  MYSQL_RES *result = NULL;
-  MYSQL_ROW row;
 
   outfile = g_fopen(filename, "w");
 
@@ -3330,45 +3327,24 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     errors++;
     return;
   }
+  int errn=0;
 
-  GString *statement = g_string_sized_new(statement_size);
-
-  query = g_strdup_printf("CHECKSUM TABLE `%s`.`%s`", database, table);
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    if (success_on_1146 && mysql_errno(conn) == 1146) {
-      g_warning("Error dumping checksum (%s.%s): %s", database, table,
-          mysql_error(conn));
-    } else {
-    g_critical("Error dumping checksum (%s.%s): %s", database, table,
-           mysql_error(conn));
+  GString *statement=g_string_new(checksum_table(conn, database, table, &errn));
+  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
     errors++;
-    }
-    g_free(query);
     return;
   }
-
-  g_string_set_size(statement, 0);
-
-  /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  g_string_append(statement, row[1]);
-  g_string_append(statement, "\n");
 
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;
   }
-  g_free(query);
   fclose((FILE *)outfile);
 
   g_string_free(statement, TRUE);
-  if (result)
-    mysql_free_result(result);
 
   return;
 }
-
-
 
 void dump_checksum(char *database, char *table,
                  struct configuration *conf) {
