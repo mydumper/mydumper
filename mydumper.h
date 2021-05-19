@@ -66,6 +66,8 @@ struct table_job {
   char *table;
   char *filename;
   char *where;
+  gboolean has_generated_fields;
+  char *order_by;
 };
 
 struct table_checksum_job {
