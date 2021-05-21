@@ -2622,7 +2622,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_routines) {
     // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = `%s`", database);
     if (mysql_query(conn, (query))) {
       g_critical("Error: DB: %s - Could not execute query: %s", database,
                  mysql_error(conn));
@@ -2840,7 +2840,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   if (dump_routines) {
     // get functions
-    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = '%s'", database);
+    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = `%s`", database);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
         g_warning("Error dumping functions from %s: %s", database,
