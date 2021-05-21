@@ -2107,10 +2107,18 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
 
   gboolean result = FALSE;
 
+  char *escaped_table = g_new(char, strlen(table) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_table, table, strlen(table));
+  char *escaped_database = g_new(char, strlen(database) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_database, database, strlen(database));
+
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
       "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
-      database, table);
+      escaped_database, escaped_table);
+  g_free(escaped_database);
+  g_free(escaped_table);
+
   mysql_query(conn, query);
   g_free(query);
 
