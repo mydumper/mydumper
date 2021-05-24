@@ -3451,7 +3451,8 @@ void append_insert (gboolean condition, GString *statement, char *table, MYSQL_F
     } else {
       g_string_printf(statement, "INSERT INTO `%s` (", table);
     }
-    for (guint i = 0; i < num_fields; ++i) {
+    guint i = 0
+    for (i = 0; i < num_fields; ++i) {
       if (i > 0) {
         g_string_append_c(statement, ',');
       }
@@ -3498,7 +3499,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
   }else{
     gchar **split_filename = g_strsplit(filename, ".", 0);
     GString *tmp_prefix=g_string_sized_new(0);
-    for (guint j=0; j< g_strv_length(split_filename)-1; j++){
+    guint j=0;
+    for (j=0; j< g_strv_length(split_filename)-1; j++){
       g_string_append(tmp_prefix,split_filename[j]);
       g_string_append_c(tmp_prefix,'.');
     }
