@@ -3451,7 +3451,7 @@ void append_insert (gboolean condition, GString *statement, char *table, MYSQL_F
     } else {
       g_string_printf(statement, "INSERT INTO `%s` (", table);
     }
-    guint i = 0
+    guint i = 0;
     for (i = 0; i < num_fields; ++i) {
       if (i > 0) {
         g_string_append_c(statement, ',');
