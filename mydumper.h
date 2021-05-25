@@ -67,6 +67,7 @@ struct table_job {
   char *where;
   gboolean has_generated_fields;
   char *order_by;
+  struct db_table *dbt;
 };
 
 struct tables_job {
@@ -116,6 +117,8 @@ struct db_table {
   char *database;
   char *table;
   guint64 datalength;
+  guint rows;
+  GMutex *rows_lock;
 };
 
 struct schema_post {
