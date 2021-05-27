@@ -605,8 +605,8 @@ void *process_queue(struct thread_data *td) {
     switch (job->type) {
     case JOB_RESTORE_STRING:
       rj = job->job_data;
-      g_message("Thread %d restoring indexes or contraints `%s`.`%s` %s", td->thread_id,
-                rj->database, rj->table, rj->statement->str);
+      g_message("Thread %d restoring indexes or contraints `%s`.`%s`", td->thread_id,
+                rj->database, rj->table);
       guint query_counter=0;
       //restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
       restore_data_in_gstring(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
