@@ -110,7 +110,7 @@ gchar *daemon_binlog_directory = NULL;
 #endif
 
 gboolean no_schemas = FALSE;
-gboolean no_checksums = FALSE;
+gboolean dump_checksums = FALSE;
 gboolean no_data = FALSE;
 gboolean no_locks = FALSE;
 gboolean dump_triggers = FALSE;
@@ -186,7 +186,7 @@ static GOptionEntry entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
      "Do not dump table schemas with the data", NULL},
-    {"no-checksums", 'U', 0, G_OPTION_ARG_NONE, &no_checksums,
+    {"table-checksums", 'U', 0, G_OPTION_ARG_NONE, &dump_checksums,
      "Do not dump table checksums with the data", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
      NULL},
@@ -1930,7 +1930,7 @@ void start_dump(MYSQL *conn) {
     GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
-      if (!no_checksums) {
+      if (dump_checksums) {
         dump_checksum(dbt->database, dbt->table, &conf);
       }
       dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
@@ -1944,7 +1944,7 @@ void start_dump(MYSQL *conn) {
   GList *iter;
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
-    if (!no_checksums) {
+    if (dump_checksums) {
       dump_checksum(dbt->database, dbt->table, &conf);
     }
     dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
