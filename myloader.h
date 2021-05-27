@@ -28,6 +28,7 @@ struct configuration {
   GAsyncQueue *queue;
   GAsyncQueue *ready;
   GAsyncQueue *fast_index_creation_queue;
+  GAsyncQueue *constraints_queue;
   GMutex *mutex;
   int done;
 };

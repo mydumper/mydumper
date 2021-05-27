@@ -61,14 +61,14 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
-		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue);
+		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue);
 void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table, 
 		  GString *data, const char *filename, gboolean is_schema, 
 		  guint *query_counter);
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
-void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
+void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
@@ -104,8 +104,43 @@ static GOptionEntry entries[] = {
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
+
+struct job * new_job (enum job_type type, void *job_data) {
+  struct job *j = g_new0(struct job, 1);
+  j->type = type;
+  switch (type){
+    case JOB_WAIT:
+      j->job_data = (GAsyncQueue *)job_data;
+    case JOB_SHUTDOWN:
+      break;
+    default:
+      j->job_data = (struct restore_job *)job_data;
+  }
+  return j;
+}
+
+struct restore_job * new_restore_job(char * filename, char * database, char * table, GString * statement, guint part){
+  struct restore_job *rj = g_new(struct restore_job, 1);
+  rj->filename= filename;
+  rj->statement = statement;
+  rj->database = database;
+  rj->table = table;
+  rj->part = part;
+  return rj;
+}
+void sync_threads(struct configuration * conf){
+  guint n;
+  GAsyncQueue * queue = g_async_queue_new();
+  for (n = 0; n < num_threads; n++)
+    g_async_queue_push(conf->queue, new_job(JOB_WAIT, queue));
+  for (n = 0; n < num_threads; n++)
+    g_async_queue_pop(conf->ready);
+  for (n = 0; n < num_threads; n++)
+    g_async_queue_push(queue, GINT_TO_POINTER(1));
+}
+
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -216,6 +251,7 @@ int main(int argc, char *argv[]) {
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.fast_index_creation_queue = g_async_queue_new();
+  conf.constraints_queue = g_async_queue_new();
 
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
@@ -231,17 +267,10 @@ int main(int argc, char *argv[]) {
   g_message("%d threads created", num_threads);
 
   restore_databases(&conf, conn);
-
-  for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_WAIT;
-    g_async_queue_push(conf.queue, j);
+  // All jobs to restore has been added we need to let them all sync before start adding more jobs
+  if (sync_before_add_index) {
+    sync_threads(&conf);
   }
-
-  for (n = 0; n < num_threads; n++) 
-    g_async_queue_pop(conf.ready);
-
-  g_async_queue_unref(conf.ready);
 
   // move from a queue to the done query
   struct job *job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
@@ -250,16 +279,25 @@ int main(int argc, char *argv[]) {
     job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
   }
 
+  sync_threads(&conf);
+
+  // move from a queue to the done query
+  job =(struct job *)g_async_queue_try_pop(conf.constraints_queue);
+  while (job != NULL){
+    g_async_queue_push(conf.queue, job);
+    job =(struct job *)g_async_queue_try_pop(conf.constraints_queue);
+  }
+
 
   for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.queue, j);
+    g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
   }
 
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+
+  g_async_queue_unref(conf.ready);
 
   restore_schema_post(conn);
 
@@ -301,7 +339,7 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
-        add_schema(filename, conf->fast_index_creation_queue, conn);
+        add_schema(filename, conf->fast_index_creation_queue, conf->constraints_queue, conn);
       }
     }
   }
@@ -353,7 +391,7 @@ void restore_schema_view(MYSQL *conn) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema-view.sql")) {
-        add_schema(filename, NULL, conn);
+        add_schema(filename, NULL, NULL, conn);
       }
     }
   }
@@ -387,7 +425,7 @@ void restore_schema_triggers(MYSQL *conn) {
         table = split_table[0];
         g_message("Restoring triggers for `%s`.`%s`", db ? db : database,
                   table);
-        restore_data_from_file(conn, database, table, filename, TRUE, TRUE, FALSE,NULL);
+        restore_data_from_file(conn, database, table, filename, TRUE, TRUE, FALSE,NULL,NULL);
       }
     }
   }
@@ -420,7 +458,7 @@ void restore_schema_post(MYSQL *conn) {
         database = split_file[0];
         // table= split_file[0]; //NULL
         g_message("Restoring routines and events for `%s`", db ? db : database);
-        restore_data_from_file(conn, database, NULL, filename, TRUE, TRUE, FALSE,NULL);
+        restore_data_from_file(conn, database, NULL, filename, TRUE, TRUE, FALSE,NULL,NULL);
       }
     }
   }
@@ -445,9 +483,9 @@ void create_database(MYSQL *conn, gchar *database) {
                                               directory, db ? db : database);
 
     if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
+      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL,NULL);
     } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
+      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL,NULL);
     } else {
       query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
       mysql_query(conn, query);
@@ -461,7 +499,7 @@ void create_database(MYSQL *conn, gchar *database) {
   return;
 }
 
-void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn) {
+void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue, MYSQL *conn) {
   // 0 is database, 1 is table with -schema on the end
   gchar **split_file = g_strsplit(filename, ".", 0);
   gchar *database = split_file[0];
@@ -515,7 +553,7 @@ void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, M
       g_message("Skipping table creation `%s`.`%s`", db ? db : database, table);
   }else{
     g_message("Creating table `%s`.`%s`", db ? db : database, table);
-    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue);
+    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue, constraints_queue);
   }
   g_strfreev(split_table);
   g_strfreev(split_file);
@@ -523,17 +561,9 @@ void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, M
 }
 
 void add_table(const gchar *filename, struct configuration *conf) {
-  struct job *j = g_new0(struct job, 1);
-  struct restore_job *rj = g_new(struct restore_job, 1);
-  j->job_data = (void *)rj;
-  rj->filename = g_strdup(filename);
-  j->type = JOB_RESTORE_FILENAME;
   gchar **split_file = g_strsplit(filename, ".", 0);
-  rj->database = g_strdup(split_file[0]);
-  rj->table = g_strdup(split_file[1]);
-  rj->part = g_ascii_strtoull(split_file[2], NULL, 10);
-
-  g_async_queue_push(conf->queue, j);
+  struct restore_job *rj = new_restore_job(g_strdup(filename), g_strdup(split_file[0]), g_strdup(split_file[1]), NULL, g_ascii_strtoull(split_file[2], NULL, 10));
+  g_async_queue_push(conf->queue, new_job(JOB_RESTORE_FILENAME,rj) );
   return;
 }
 
@@ -574,9 +604,9 @@ void *process_queue(struct thread_data *td) {
 
     switch (job->type) {
     case JOB_RESTORE_STRING:
-      rj = (struct restore_job *)job->job_data;
-      g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
-                rj->database, rj->table);
+      rj = job->job_data;
+      g_message("Thread %d restoring indexes or contraints `%s`.`%s` %s", td->thread_id,
+                rj->database, rj->table, rj->statement->str);
       guint query_counter=0;
       //restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
       restore_data_in_gstring(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
@@ -590,13 +620,13 @@ void *process_queue(struct thread_data *td) {
       g_free(job);
       break;
     case JOB_RESTORE_FILENAME:
-      rj = (struct restore_job *)job->job_data;
+      rj = job->job_data;
       g_mutex_lock(progress_mutex);
       progress++;
       g_message("Thread %d restoring `%s`.`%s` part %d. Progress %llu of %llu .", td->thread_id,
                 rj->database, rj->table, rj->part, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
-      restore_data_from_file(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE, FALSE,NULL);
+      restore_data_from_file(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE, FALSE,NULL, NULL);
       if (rj->database)
         g_free(rj->database);
       if (rj->table)
@@ -608,6 +638,8 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_WAIT:
       g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
+      GAsyncQueue *queue=job->job_data;
+      g_async_queue_pop(queue);
       break;
     case JOB_SHUTDOWN:
       g_message("Thread %d shutting down", td->thread_id);
@@ -684,7 +716,7 @@ void finish_alter_table(GString * alter_table_statement){
 
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
-		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue) {
+		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue) {
   void *infile;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -724,6 +756,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
   if (!is_schema && (commit_count > 1) )
     mysql_query(conn, "START TRANSACTION");
   GString *alter_table_statement=g_string_sized_new(512);
+  GString *alter_table_constraint_statement=g_string_sized_new(512);
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -732,7 +765,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 
             // Check if it is a /*!40  SET 
 	    if (g_strrstr(data->str,"/*!40")){
-              g_string_append(alter_table_statement,data->str);
+          g_string_append(alter_table_statement,data->str);
 	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	    }else{
               // Processing CREATE TABLE statement
@@ -741,18 +774,19 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
               gchar *autoinc_column=NULL;
               GString *table_without_indexes=g_string_sized_new(512);
               append_alter_table(alter_table_statement,db ? db : database,table);
+              append_alter_table(alter_table_constraint_statement,db ? db : database,table);
               int fulltext_counter=0;
               int i=0;
+              gboolean include_constraint=FALSE;
               for (i=0; i < (int)g_strv_length(split_file);i++){
                 if ( g_strstr_len(split_file[i],5,"  KEY")
                   || g_strstr_len(split_file[i],8,"  UNIQUE")
                   || g_strstr_len(split_file[i],9,"  SPATIAL")
                   || g_strstr_len(split_file[i],10,"  FULLTEXT")
                   || g_strstr_len(split_file[i],7,"  INDEX")
-                  || g_strstr_len(split_file[i],12,"  CONSTRAINT")
                  ){
                 // Ignore if the first column of the index is the AUTO_INCREMENT column
-                  if (!g_strstr_len(split_file[i],12,"  CONSTRAINT") && (autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
+                  if ((autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
                     g_string_append(table_without_indexes, split_file[i]);
                     g_string_append_c(table_without_indexes,'\n');
                   }else{
@@ -768,12 +802,18 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
                     g_string_append(alter_table_statement, split_file[i]);
                   }
                 }else{
-                  if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
-                    gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
-                    autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+                  if (g_strstr_len(split_file[i],12,"  CONSTRAINT")){
+                    include_constraint=TRUE;
+                    g_string_append(alter_table_constraint_statement,"\n ADD");
+                    g_string_append(alter_table_constraint_statement, split_file[i]);
+                  }else{
+                    if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
+                      gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
+                      autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+                    }
+                    g_string_append(table_without_indexes, split_file[i]);
+                    g_string_append_c(table_without_indexes,'\n');
                   }
-                  g_string_append(table_without_indexes, split_file[i]);
-                  g_string_append_c(table_without_indexes,'\n');
                 }
                 if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
                   is_innodb_table=TRUE;
@@ -783,14 +823,12 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
               if (is_innodb_table){
                 g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
                 restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-                struct restore_job *rj = g_new(struct restore_job, 1);
-                rj->statement = alter_table_statement;
-                rj->database = g_strdup(database);
-                rj->table = g_strdup(table);
-                struct job *j = g_new0(struct job, 1);
-                j->job_data = (void *)rj;
-                j->type = JOB_RESTORE_STRING;
-                g_async_queue_push(fast_index_creation_queue, j);
+                struct restore_job *rj = new_restore_job(g_strdup(filename), g_strdup(database), g_strdup(table), alter_table_statement, 0);
+                g_async_queue_push(fast_index_creation_queue, new_job(JOB_RESTORE_STRING,rj));
+                if (include_constraint){
+                  rj = new_restore_job(g_strdup(filename), g_strdup(database), g_strdup(table), alter_table_constraint_statement, 0);
+                  g_async_queue_push(constraints_queue, new_job(JOB_RESTORE_STRING,rj));
+                }
                 g_string_set_size(data, 0);
               }else{
                 restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
