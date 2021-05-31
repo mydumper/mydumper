@@ -27,6 +27,7 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_CHECKSUM,
   JOB_SCHEMA,
   JOB_VIEW,
   JOB_TRIGGERS,
@@ -67,6 +68,12 @@ struct table_job {
   char *where;
   gboolean has_generated_fields;
   char *order_by;
+};
+
+struct table_checksum_job {
+  char *database;
+  char *table;
+  char *filename;
 };
 
 struct tables_job {
