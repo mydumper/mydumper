@@ -68,8 +68,10 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
+void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
+void checksum_databases(MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
@@ -271,6 +273,9 @@ int main(int argc, char *argv[]) {
     mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.queue);
+
+  checksum_databases(conn);
+
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -334,6 +339,31 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
     }
   }
 
+  g_dir_close(dir);
+}
+
+void checksum_databases(MYSQL *conn) {
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory, error->message);
+    errors++;
+    return;
+  }
+
+  g_message("Starting table checksum verification");
+
+  const gchar *filename = NULL;
+
+  while ((filename = g_dir_read_name(dir))) {
+    if (!source_db ||
+        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      if (g_strrstr(filename, ".checksum")) {
+        checksum_table_filename(filename, conn);
+      }
+    }
+  }
   g_dir_close(dir);
 }
 
@@ -535,6 +565,39 @@ void add_table(const gchar *filename, struct configuration *conf) {
 
   g_async_queue_push(conf->queue, j);
   return;
+}
+
+void checksum_table_filename(const gchar *filename, MYSQL *conn) {
+  // 0 is database, 1 is table
+  gchar **split_file = g_strsplit(filename, ".", 0);
+  gchar *database = split_file[0];
+  gchar *table = split_file[1];
+  void *infile;
+  char checksum[256];
+  int errn=0;
+  char * row=checksum_table(conn, db ? db : database, table, &errn);
+  
+  gchar *path = g_build_filename(directory, filename, NULL);
+  infile = g_fopen(path, "r");
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+
+  if (fgets(checksum, 256, infile) != NULL) {
+    if(strcmp(checksum, row) != 0) {
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
+    }
+    else {
+      g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);
+    }
+  } else {
+    g_critical("error reading file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
 }
 
 void *process_queue(struct thread_data *td) {
