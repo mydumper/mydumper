@@ -27,8 +27,8 @@ enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 struct configuration {
   GAsyncQueue *queue;
   GAsyncQueue *ready;
-  GAsyncQueue *fast_index_creation_queue;
   GAsyncQueue *constraints_queue;
+  GList *table_list;
   GMutex *mutex;
   int done;
 };
@@ -52,4 +52,18 @@ struct restore_job {
   guint part;
 };
 
+struct db_table {
+  char *database;
+  char *table;
+  guint64 rows;
+  GAsyncQueue * queue;
+  guint current_threads;
+  guint max_threads;
+  GMutex *mutex;
+  GString *indexes;
+  guint count;
+  GDateTime * start_time;
+  GDateTime * start_index_time;
+  GDateTime * finish_time;
+};
 #endif

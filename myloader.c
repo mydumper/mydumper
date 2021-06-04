@@ -48,6 +48,7 @@ gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean sync_before_add_index = FALSE;
 gboolean disable_redo_log = FALSE;
+guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
@@ -55,20 +56,20 @@ enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
 static GMutex *progress_mutex = NULL;
 guint errors = 0;
+guint max_threads_per_table=4;
 unsigned long long int total_data_sql_files = 0;
 unsigned long long int progress = 0;
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
-		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue);
+		  gboolean is_create_table, GHashTable *table_hash, GAsyncQueue *constraints_queue);
 void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table, 
 		  GString *data, const char *filename, gboolean is_schema, 
 		  guint *query_counter);
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
-void add_table(const gchar *filename, struct configuration *conf);
-void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue, MYSQL *conn);
+void add_schema(const gchar *filename, struct configuration *conf, GHashTable *table_hash, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
@@ -76,6 +77,7 @@ void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data);
 void create_database(MYSQL *conn, gchar *database);
+gint compare_restore_job(gconstpointer a, gconstpointer b, gpointer table_hash);
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &directory,
@@ -102,8 +104,39 @@ static GOptionEntry entries[] = {
       "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
+    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
+     "Split the INSERT statement into this many rows.", NULL},
+    {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
+     "Maximum number of threads per table to use, default 4", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
+
+void split_and_restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
+                  const char *filename, GString *data, gboolean is_schema, guint *query_counter)
+{
+  char *next_line=g_strstr_len(data->str,-1,"\n");
+  char *insert_statement=g_strndup(data->str, next_line - data->str);
+  gchar *current_line=next_line+1;
+  next_line=g_strstr_len(current_line, -1, "\n");
+  GString * new_insert=g_string_sized_new(strlen(insert_statement));
+  do {
+    guint current_rows=0;
+    new_insert=g_string_append(new_insert,insert_statement);
+    do {
+      char *line=g_strndup(current_line, next_line - current_line);
+      g_string_append(new_insert, line);
+      g_free(line);
+      current_rows++;
+      current_line=next_line+1;
+      next_line=g_strstr_len(current_line, -1, "\n");
+    } while (current_rows < rows && next_line != NULL);
+    new_insert->str[new_insert->len - 1]=';';
+    restore_data_in_gstring_from_file(conn, database, table, new_insert, filename, is_schema, query_counter);
+  } while (next_line != NULL);
+  g_string_free(new_insert,TRUE);
+  g_string_set_size(data, 0);
+  
+}
 
 struct job * new_job (enum job_type type, void *job_data) {
   struct job *j = g_new0(struct job, 1);
@@ -117,6 +150,31 @@ struct job * new_job (enum job_type type, void *job_data) {
       j->job_data = (struct restore_job *)job_data;
   }
   return j;
+}
+
+struct db_table* append_new_db_table(gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement){
+  gchar *lkey=g_strdup_printf("%s_%s",database, table);
+  struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
+  g_free(lkey);
+  if (dbt == NULL){
+    dbt=g_new(struct db_table,1);
+    dbt->database=g_strdup(database);
+    dbt->table=g_strdup(table);
+    dbt->rows=number_rows;
+    dbt->queue=g_async_queue_new();
+    dbt->current_threads=0;
+    dbt->max_threads=max_threads_per_table;
+    dbt->mutex=g_mutex_new();
+    dbt->indexes=alter_table_statement;
+    dbt->start_time=NULL;
+    dbt->start_index_time=NULL;
+    dbt->finish_time=NULL;
+    g_hash_table_insert(table_hash, g_strdup_printf("%s_%s",dbt->database,dbt->table),dbt);
+  }else{
+    if (number_rows>0) dbt->rows=number_rows;
+    if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
+  }
+  return dbt;
 }
 
 struct restore_job * new_restore_job(char * filename, char * database, char * table, GString * statement, guint part){
@@ -138,6 +196,15 @@ void sync_threads(struct configuration * conf){
   for (n = 0; n < num_threads; n++)
     g_async_queue_push(queue, GINT_TO_POINTER(1));
 }
+
+gchar * print_time(GTimeSpan timespan){
+  GTimeSpan days=timespan/G_TIME_SPAN_DAY;
+  GTimeSpan hours=(timespan-(days*G_TIME_SPAN_DAY))/G_TIME_SPAN_HOUR;
+  GTimeSpan minutes=(timespan-(days*G_TIME_SPAN_HOUR))/G_TIME_SPAN_MINUTE;
+  GTimeSpan seconds=(timespan-(days*G_TIME_SPAN_MINUTE))/G_TIME_SPAN_SECOND;
+  return g_strdup_printf("%ld %02ld:%02ld:%02ld",days,hours,minutes,seconds);
+}
+
 
 int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, NULL, NULL, 0};
@@ -250,8 +317,9 @@ int main(int argc, char *argv[]) {
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
-  conf.fast_index_creation_queue = g_async_queue_new();
   conf.constraints_queue = g_async_queue_new();
+
+  restore_databases(&conf, conn);
 
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
@@ -266,28 +334,12 @@ int main(int argc, char *argv[]) {
 
   g_message("%d threads created", num_threads);
 
-  restore_databases(&conf, conn);
-  // All jobs to restore has been added we need to let them all sync before start adding more jobs
-  if (sync_before_add_index) {
-    sync_threads(&conf);
-  }
-
-  // move from a queue to the done query
-  struct job *job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
-  while (job != NULL){
-    g_async_queue_push(conf.queue, job);
-    job =(struct job *)g_async_queue_try_pop(conf.fast_index_creation_queue);
-  }
-
   sync_threads(&conf);
-
-  // move from a queue to the done query
-  job =(struct job *)g_async_queue_try_pop(conf.constraints_queue);
-  while (job != NULL){
-    g_async_queue_push(conf.queue, job);
-    job =(struct job *)g_async_queue_try_pop(conf.constraints_queue);
+  struct job *j=g_async_queue_try_pop(conf.constraints_queue);
+  while (j != NULL){
+    g_async_queue_push(conf.queue,j);
+    j=g_async_queue_try_pop(conf.constraints_queue);
   }
-
 
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
@@ -295,6 +347,15 @@ int main(int argc, char *argv[]) {
 
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
+  }
+
+  GList * t=conf.table_list;
+  while (t != NULL){
+    struct db_table * dbt=t->data;
+    GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
+    GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
+    g_message("Import timings for `%s`.`%s`: Data: %s | Index: %s | Time: %s",dbt->database,dbt->table, print_time(diff1),print_time(diff2),print_time(diff1+diff2));
+    t=t->next;
   }
 
   g_async_queue_unref(conf.ready);
@@ -334,12 +395,12 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   }
 
   const gchar *filename = NULL;
-
+  GHashTable *table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
-        add_schema(filename, conf->fast_index_creation_queue, conf->constraints_queue, conn);
+        add_schema(filename, conf, table_hash, conn);
       }
     }
   }
@@ -359,6 +420,18 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   }
   g_dir_rewind(dir);
   while ((filename = g_dir_read_name(dir))) {
+    if (g_str_has_suffix(filename, ".metadata")) {
+        gchar **split_file = g_strsplit(filename, ".", 0);
+        gchar * buff=NULL;
+        gsize len;
+        char * f=g_strdup_printf("%s/%s",directory,filename);
+        g_file_get_contents(f,&buff,&len,NULL);
+        g_free(f);
+        append_new_db_table(split_file[0],split_file[1],g_ascii_strtoll(buff,NULL,10),table_hash,NULL);
+    }
+  }
+  g_dir_rewind(dir);
+  while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (!g_strrstr(filename, "-schema.sql") &&
@@ -367,12 +440,25 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
           !g_strrstr(filename, "-schema-post.sql") &&
           !g_strrstr(filename, "-schema-create.sql") &&
           g_strrstr(filename, ".sql")) {
-        add_table(filename, conf);
+        gchar **split_file = g_strsplit(filename, ".", 0);
+        struct db_table *dbt=append_new_db_table(split_file[0],split_file[1],0,table_hash,NULL);
+        struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->database, dbt->table, NULL, g_ascii_strtoull(split_file[2], NULL, 10));
+        g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,rj));
       }
     }
   }
-
   g_dir_close(dir);
+  GList * table_list=NULL;
+  GHashTableIter iter;
+  gchar * lkey;
+  struct db_table *dbt;
+  g_hash_table_iter_init ( &iter, table_hash );
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
+    dbt->count=g_async_queue_length(dbt->queue);
+    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_restore_job,table_hash);
+  }
+  g_hash_table_destroy(table_hash);
+  conf->table_list=table_list;
 }
 
 void restore_schema_view(MYSQL *conn) {
@@ -395,7 +481,6 @@ void restore_schema_view(MYSQL *conn) {
       }
     }
   }
-
   g_dir_close(dir);
 }
 
@@ -499,7 +584,7 @@ void create_database(MYSQL *conn, gchar *database) {
   return;
 }
 
-void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue, MYSQL *conn) {
+void add_schema(const gchar *filename, struct configuration *conf, GHashTable *table_hash, MYSQL *conn) {
   // 0 is database, 1 is table with -schema on the end
   gchar **split_file = g_strsplit(filename, ".", 0);
   gchar *database = split_file[0];
@@ -553,18 +638,21 @@ void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, G
       g_message("Skipping table creation `%s`.`%s`", db ? db : database, table);
   }else{
     g_message("Creating table `%s`.`%s`", db ? db : database, table);
-    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, fast_index_creation_queue, constraints_queue);
+    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, TRUE, table_hash, conf->constraints_queue);
   }
   g_strfreev(split_table);
   g_strfreev(split_file);
   return;
 }
 
-void add_table(const gchar *filename, struct configuration *conf) {
-  gchar **split_file = g_strsplit(filename, ".", 0);
-  struct restore_job *rj = new_restore_job(g_strdup(filename), g_strdup(split_file[0]), g_strdup(split_file[1]), NULL, g_ascii_strtoull(split_file[2], NULL, 10));
-  g_async_queue_push(conf->queue, new_job(JOB_RESTORE_FILENAME,rj) );
-  return;
+gint compare_restore_job(gconstpointer a, gconstpointer b, gpointer table_hash){
+  gchar *a_key=g_strdup_printf("%s_%s",((struct restore_job *)a)->database,((struct restore_job *)a)->table);
+  gchar *b_key=g_strdup_printf("%s_%s",((struct restore_job *)b)->database,((struct restore_job *)b)->table);
+  struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
+  struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
+  g_free(a_key);
+  g_free(b_key);
+  return a_val->rows < b_val->rows;
 }
 
 void *process_queue(struct thread_data *td) {
@@ -596,24 +684,80 @@ void *process_queue(struct thread_data *td) {
     mysql_query(thrconn, "SET autocommit=0");
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-
+  GList *table_list=conf->table_list;
+  struct db_table *dbt=table_list->data;
+  g_mutex_lock(dbt->mutex);
+  dbt->current_threads++;
+  if (dbt->start_time==NULL)
+    dbt->start_time=g_date_time_new_now_local();
+  g_mutex_unlock(dbt->mutex);
   struct job *job = NULL;
   struct restore_job *rj = NULL;
   for (;;) {
-    job = (struct job *)g_async_queue_pop(conf->queue);
+
+    if (dbt != NULL){
+      g_mutex_lock(dbt->mutex);
+      if (dbt->current_threads > dbt->max_threads){
+        dbt->current_threads--;
+        g_mutex_unlock(dbt->mutex);
+        table_list=table_list->next;
+        if (table_list == NULL ){
+          dbt=NULL;
+          continue;
+        }
+        dbt=table_list->data;
+        g_mutex_lock(dbt->mutex);
+        if (dbt->start_time==NULL) dbt->start_time=g_date_time_new_now_local();
+        dbt->current_threads++;
+        g_mutex_unlock(dbt->mutex);
+        continue;
+      }
+      g_mutex_unlock(dbt->mutex);
+    
+      job = (struct job *)g_async_queue_try_pop(dbt->queue);
+
+      if (job == NULL){
+        g_mutex_lock(dbt->mutex);
+        dbt->current_threads--;
+        if (dbt->current_threads == 0){
+          dbt->current_threads--;
+          dbt->start_index_time=g_date_time_new_now_local();
+          g_mutex_unlock(dbt->mutex);
+          g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
+                  dbt->database, dbt->table);
+          guint query_counter=0;
+          restore_data_in_gstring(thrconn, dbt->database, dbt->table, dbt->indexes, NULL, FALSE, &query_counter);
+          dbt->finish_time=g_date_time_new_now_local();
+        }else{
+          g_mutex_unlock(dbt->mutex);
+        }
+        guint max=dbt->max_threads;
+        table_list=table_list->next;
+        if (table_list == NULL ){
+          dbt=NULL;
+          continue;
+        }
+        dbt=table_list->data;
+        g_mutex_lock(dbt->mutex);
+        if (dbt->start_time==NULL) dbt->start_time=g_date_time_new_now_local();
+        dbt->max_threads = max;
+        dbt->current_threads++;
+        g_mutex_unlock(dbt->mutex);
+        continue;
+      }
+    }else{
+      // All table jobs done
+     job = (struct job *)g_async_queue_pop(conf->queue);
+    }
+
 
     switch (job->type) {
     case JOB_RESTORE_STRING:
       rj = job->job_data;
-      g_message("Thread %d restoring indexes or contraints `%s`.`%s`", td->thread_id,
+      g_message("Thread %d restoring contraints `%s`.`%s`", td->thread_id,
                 rj->database, rj->table);
       guint query_counter=0;
-      //restore_data_in_gstring(thrconn, rj->database, rj->table, rj->prestatement, NULL, FALSE, &query_counter);
       restore_data_in_gstring(thrconn, rj->database, rj->table, rj->statement, NULL, FALSE, &query_counter);
-      if (rj->database)
-        g_free(rj->database);
-      if (rj->table)
-        g_free(rj->table);
       if (rj->statement)
         g_string_free(rj->statement,TRUE);
       g_free(rj);
@@ -623,14 +767,10 @@ void *process_queue(struct thread_data *td) {
       rj = job->job_data;
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d restoring `%s`.`%s` part %d. Progress %llu of %llu .", td->thread_id,
-                rj->database, rj->table, rj->part, progress,total_data_sql_files);
+      g_message("Thread %d restoring `%s`.`%s` part %d of %d. Progress %llu of %llu .", td->thread_id,
+                rj->database, rj->table, rj->part, dbt->count, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
       restore_data_from_file(thrconn, rj->database, rj->table, rj->filename, FALSE, TRUE, FALSE,NULL, NULL);
-      if (rj->database)
-        g_free(rj->database);
-      if (rj->table)
-        g_free(rj->table);
       if (rj->filename)
         g_free(rj->filename);
       g_free(rj);
@@ -657,6 +797,7 @@ void *process_queue(struct thread_data *td) {
   if (thrconn)
     mysql_close(thrconn);
   mysql_thread_end();
+g_message("Thread %d ending", td->thread_id);
   return NULL;
 }
 
@@ -716,7 +857,7 @@ void finish_alter_table(GString * alter_table_statement){
 
 void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   const char *filename, gboolean is_schema, gboolean need_use, 
-		  gboolean is_create_table, GAsyncQueue *fast_index_creation_queue, GAsyncQueue *constraints_queue) {
+		  gboolean is_create_table, GHashTable *table_hash, GAsyncQueue *constraints_queue) {
   void *infile;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -819,18 +960,22 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
                   is_innodb_table=TRUE;
 	        }
               }
-              finish_alter_table(alter_table_statement);
               if (is_innodb_table){
+                finish_alter_table(alter_table_statement);
                 g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
                 restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-                struct restore_job *rj = new_restore_job(g_strdup(filename), g_strdup(database), g_strdup(table), alter_table_statement, 0);
-                g_async_queue_push(fast_index_creation_queue, new_job(JOB_RESTORE_STRING,rj));
+                struct db_table *dbt=append_new_db_table(database,table,0,table_hash,alter_table_statement);
                 if (include_constraint){
-                  rj = new_restore_job(g_strdup(filename), g_strdup(database), g_strdup(table), alter_table_constraint_statement, 0);
+                  finish_alter_table(alter_table_constraint_statement);
+                  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->database, dbt->table, alter_table_constraint_statement, 0);
                   g_async_queue_push(constraints_queue, new_job(JOB_RESTORE_STRING,rj));
+                }else{
+                  g_string_free(alter_table_constraint_statement,TRUE);
                 }
                 g_string_set_size(data, 0);
               }else{
+                g_string_free(alter_table_statement,TRUE);
+                g_string_free(alter_table_constraint_statement,TRUE);
                 restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
               }
             }
@@ -838,7 +983,11 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
             restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	  }
         }else{
-          restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+          if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
+              split_and_restore_data_in_gstring_from_file(conn, database, table,
+                  filename, data, is_schema, &query_counter);
+          else 
+            restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
         }
       }
     } else {
