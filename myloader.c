@@ -576,19 +576,28 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   char checksum[256];
   int errn=0;
   char * row=checksum_table(conn, db ? db : database, table, &errn);
-  
+  gboolean is_compressed = FALSE; 
   gchar *path = g_build_filename(directory, filename, NULL);
-  infile = g_fopen(path, "r");
+
+  if (!g_str_has_suffix(path, ".gz")) {
+    infile = g_fopen(path, "r");
+    is_compressed = FALSE;
+  } else {
+    infile = (void *)gzopen(path, "r");
+    is_compressed=TRUE;
+  }
 
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return;
   }
-
-  if (fgets(checksum, 256, infile) != NULL) {
+  
+  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
+  if (cs != NULL) {
     if(strcmp(checksum, row) != 0) {
       g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
+      errors++;
     }
     else {
       g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);

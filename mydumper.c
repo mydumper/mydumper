@@ -3371,12 +3371,12 @@ void dump_checksum(char *database, char *table,
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   if (daemon_mode)
-    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum", output_directory,
-                                   dump_number, database, table);
+    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum%s", output_directory,
+                                   dump_number, database, table,(compress_output ? ".gz" : ""));
   else
     tcj->filename =
-        g_strdup_printf("%s/%s.%s.checksum", output_directory, database,
-                        table);
+        g_strdup_printf("%s/%s.%s.checksum%s", output_directory, database,
+                        table,(compress_output ? ".gz" : ""));
   g_async_queue_push(conf->queue, j);
 
   return;
