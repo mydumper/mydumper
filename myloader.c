@@ -350,11 +350,13 @@ int main(int argc, char *argv[]) {
   }
 
   GList * t=conf.table_list;
+  g_message("Import timings:");
+  g_message("Data      \t| Index    \t| Total   \t| Table");
   while (t != NULL){
     struct db_table * dbt=t->data;
     GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
     GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
-    g_message("Import timings for `%s`.`%s`: Data: %s | Index: %s | Time: %s",dbt->database,dbt->table, print_time(diff1),print_time(diff2),print_time(diff1+diff2));
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->database,dbt->table);
     t=t->next;
   }
 
