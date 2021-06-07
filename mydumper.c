@@ -3327,7 +3327,11 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
 void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
   void *outfile = NULL;
 
-  outfile = g_fopen(filename, "w");
+  if (!compress_output) {
+    outfile = g_fopen(filename, "w");
+  } else {
+    outfile = (void *)gzopen(filename, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3347,8 +3351,11 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;
   }
-  fclose((FILE *)outfile);
-
+  if (!compress_output) {
+    fclose(outfile);
+  } else {
+    gzclose(outfile);
+  }
   g_string_free(statement, TRUE);
 
   return;
