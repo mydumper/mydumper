@@ -685,12 +685,17 @@ void *process_queue(struct thread_data *td) {
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
   GList *table_list=conf->table_list;
-  struct db_table *dbt=table_list->data;
-  g_mutex_lock(dbt->mutex);
-  dbt->current_threads++;
-  if (dbt->start_time==NULL)
-    dbt->start_time=g_date_time_new_now_local();
-  g_mutex_unlock(dbt->mutex);
+  struct db_table *dbt=NULL;
+  if (table_list == NULL ) {
+    dbt=NULL;
+  }else{
+    dbt=table_list->data;
+    g_mutex_lock(dbt->mutex);
+    dbt->current_threads++;
+    if (dbt->start_time==NULL)
+      dbt->start_time=g_date_time_new_now_local();
+    g_mutex_unlock(dbt->mutex);
+  }
   struct job *job = NULL;
   struct restore_job *rj = NULL;
   for (;;) {
