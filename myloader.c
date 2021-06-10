@@ -793,10 +793,12 @@ void *process_queue(struct thread_data *td) {
           dbt->current_threads--;
           dbt->start_index_time=g_date_time_new_now_local();
           g_mutex_unlock(dbt->mutex);
-          g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
+	  if (dbt->indexes != NULL) {
+            g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
                   dbt->database, dbt->table);
-          guint query_counter=0;
-          restore_data_in_gstring(thrconn, dbt->database, dbt->table, dbt->indexes, NULL, FALSE, &query_counter);
+            guint query_counter=0;
+            restore_data_in_gstring(thrconn, dbt->database, dbt->table, dbt->indexes, NULL, FALSE, &query_counter);
+	  }
           dbt->finish_time=g_date_time_new_now_local();
         }else{
           g_mutex_unlock(dbt->mutex);
