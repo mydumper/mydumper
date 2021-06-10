@@ -3327,7 +3327,11 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
 void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
   void *outfile = NULL;
 
-  outfile = g_fopen(filename, "w");
+  if (!compress_output) {
+    outfile = g_fopen(filename, "w");
+  } else {
+    outfile = (void *)gzopen(filename, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3347,8 +3351,11 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;
   }
-  fclose((FILE *)outfile);
-
+  if (!compress_output) {
+    fclose(outfile);
+  } else {
+    gzclose(outfile);
+  }
   g_string_free(statement, TRUE);
 
   return;
@@ -3364,12 +3371,12 @@ void dump_checksum(char *database, char *table,
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   if (daemon_mode)
-    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum", output_directory,
-                                   dump_number, database, table);
+    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum%s", output_directory,
+                                   dump_number, database, table,(compress_output ? ".gz" : ""));
   else
     tcj->filename =
-        g_strdup_printf("%s/%s.%s.checksum", output_directory, database,
-                        table);
+        g_strdup_printf("%s/%s.%s.checksum%s", output_directory, database,
+                        table,(compress_output ? ".gz" : ""));
   g_async_queue_push(conf->queue, j);
 
   return;
