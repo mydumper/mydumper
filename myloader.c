@@ -463,25 +463,19 @@ void create_database(MYSQL *conn, gchar *database) {
 
   gchar *query = NULL;
 
-  if ((db == NULL && source_db == NULL) ||
-      (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))) {
-    const gchar *filename =
-        g_strdup_printf("%s-schema-create.sql", db ? db : database);
-    const gchar *filenamegz =
-        g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
-    const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                            directory, db ? db : database);
-    const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                              directory, db ? db : database);
+  const gchar *filename =
+      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+  const gchar *filenamegz =
+      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : database);
+  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
+                                          directory, source_db ? source_db : database);
+  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
+                                            directory, source_db ? source_db : database);
 
-    if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
-    } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
-    } else {
-      query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-      mysql_query(conn, query);
-    }
+  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
+  } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
   } else {
     query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
     mysql_query(conn, query);
