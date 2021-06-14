@@ -1,0 +1,7 @@
+#!/bin/sh
+SOURCE=$1
+BUILD_ROOT=$2
+cd $SOURCE
+install -m 0755 -d ${BUILD_ROOT}/usr/bin/
+install -m 0555 mydumper ${BUILD_ROOT}/usr/bin/
+install -m 0555 myloader ${BUILD_ROOT}/usr/bin/

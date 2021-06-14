@@ -12,43 +12,24 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+        Authors:        Domas Mituzas, Facebook ( domas at fb dot com )
                         Mark Leith, Oracle Corporation (mark dot leith at oracle
    dot com) Andrew Hutchings, SkySQL (andrew at skysql dot com)
 
 */
 
-#ifndef _myloader_h
-#define _myloader_h
+#ifndef LOGGING_H
+#define LOGGING_H
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_RESTORE_FILENAME, JOB_RESTORE_STRING, JOB_WAIT };
-enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
+// variables
+extern gchar *logfile;
+extern FILE *logoutfile;
 
-struct configuration {
-  GAsyncQueue *queue;
-  GAsyncQueue *ready;
-  GAsyncQueue *fast_index_creation_queue;
-  GMutex *mutex;
-  int done;
-};
+// functions
+void no_log(const gchar *log_domain, GLogLevelFlags log_level,
+            const gchar *message, gpointer user_data);
 
-struct thread_data {
-  struct configuration *conf;
-  guint thread_id;
-};
-
-struct job {
-  enum job_type type;
-  void *job_data;
-  struct configuration *conf;
-};
-
-struct restore_job {
-  char *database;
-  char *table;
-  char *filename;
-  GString *statement;
-  guint part;
-};
+void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
+                    const gchar *message, gpointer user_data);
 
 #endif

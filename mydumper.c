@@ -39,6 +39,8 @@
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
+#include <glib/gerror.h>
+#include <gio/gio.h>
 #include "config.h"
 #ifdef WITH_BINLOG
 #include "binlog.h"
@@ -51,6 +53,8 @@
 #include "g_unix_signal.h"
 #include <math.h>
 #include "getPassword.h"
+#include "logging.h"
+#include "set_verbose.h"
 
 char *regexstring = NULL;
 
@@ -73,6 +77,8 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 guint chunk_filesize = 0;
 int longquery = 60;
+int longquery_retries = 0;
+int longquery_retry_interval = 60;
 int build_empty_files = 0;
 int skip_tz = 0;
 int need_dummy_read = 0;
@@ -81,6 +87,8 @@ int compress_output = 0;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
+int sync_wait = -1;
+guint snapshot_count= 2;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
@@ -101,10 +109,8 @@ gchar *binlog_directory = NULL;
 gchar *daemon_binlog_directory = NULL;
 #endif
 
-gchar *logfile = NULL;
-FILE *logoutfile = NULL;
-
 gboolean no_schemas = FALSE;
+gboolean dump_checksums = FALSE;
 gboolean no_data = FALSE;
 gboolean no_locks = FALSE;
 gboolean dump_triggers = FALSE;
@@ -116,6 +122,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean order_by_primary_key = FALSE;
 
 GList *innodb_tables = NULL;
 GMutex *innodb_tables_mutex = NULL;
@@ -134,8 +141,9 @@ guint less_locking_threads = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
 guint complete_insert = 0;
+gchar *set_names_str=NULL;
 
-// For daemon mode, 0 or 1
+// For daemon mode
 guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
@@ -178,7 +186,12 @@ static GOptionEntry entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
      "Do not dump table schemas with the data", NULL},
+    {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
+     "Dump table checksums with the data", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
+     NULL},
+    {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
+     "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers",
      NULL},
@@ -195,6 +208,10 @@ static GOptionEntry entries[] = {
      "Do not use Percona backup locks", NULL},
     {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
      "Minimize locking time on InnoDB tables.", NULL},
+    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
+     "Retry checking for long queries, default 0 (do not retry)", NULL},
+    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
+     "Time to wait before retrying the long query check in seconds, default 60", NULL},
     {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
      "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
@@ -205,6 +222,7 @@ static GOptionEntry entries[] = {
 #endif
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
+    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
     {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
      "Interval between each dump snapshot (in minutes), requires --daemon, "
      "default 60",
@@ -233,8 +251,12 @@ static GOptionEntry entries[] = {
      "Transactional consistency only", NULL},
     {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
      "Use complete INSERT statements that include column names", NULL},
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
+      "Sets the names, use it at your own risk, default binary", NULL },
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
+    {"sync-wait", 0, 0, G_OPTION_ARG_INT, &sync_wait,
+     "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -246,6 +268,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
                     char *filename2);
 void dump_schema(MYSQL *conn, char *database, char *table,
                  struct configuration *conf);
+void dump_checksum(char *database, char *table,
+                 struct configuration *conf);
 void dump_view(char *database, char *table, struct configuration *conf);
 void dump_table(MYSQL *conn, char *database, char *table,
                 struct configuration *conf, gboolean is_innodb);
@@ -255,28 +279,26 @@ void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
 void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
-guint64 dump_table_data(MYSQL *, FILE *, char *, char *, char *, char *);
+guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj);
 void dump_database(char *, struct configuration *);
 void dump_database_thread(MYSQL *, char *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL *conn, struct configuration *);
+gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 void get_not_updated(MYSQL *conn, FILE *);
 GList *get_chunks_for_table(MYSQL *, char *, char *,
                             struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename);
+void dump_table_data_file(MYSQL *conn, struct table_job * tj);
+void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
 void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
 gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
 int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
 void read_tables_skiplist(const gchar *filename);
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data);
-void set_verbose(guint verbosity);
 #ifdef WITH_BINLOG
 MYSQL *reconnect_for_binlog(MYSQL *thrconn);
 void *binlog_thread(void *data);
@@ -286,56 +308,6 @@ MYSQL *create_main_connection();
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
-
-void no_log(const gchar *log_domain, GLogLevelFlags log_level,
-            const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)log_level;
-  (void)message;
-  (void)user_data;
-}
-
-void set_verbose(guint verbosity) {
-  if (logfile) {
-    logoutfile = g_fopen(logfile, "w");
-    if (!logoutfile) {
-      g_critical("Could not open log file '%s' for writing: %d", logfile,
-                 errno);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  switch (verbosity) {
-  case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
-    break;
-  case 1:
-    g_log_set_handler(
-        NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
-        no_log, NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
-    if (logfile)
-      g_log_set_handler(
-          NULL,
-          (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_CRITICAL),
-          write_log_file, NULL);
-    break;
-  default:
-    if (logfile)
-      g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-                        write_log_file, NULL);
-    break;
-  }
-}
 
 gboolean sig_triggered(gpointer user_data) {
   (void)user_data;
@@ -566,6 +538,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     mysql_free_result(mdb);
 }
 
+void message_dumping_data(guint thread_id, struct table_job *tj){
+  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s",
+                    thread_id, tj->database, tj->table, 
+		    tj->where ? " WHERE " : "", tj->where ? tj->where : "",
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
+}
+
 void *process_queue(struct thread_data *td) {
   struct configuration *conf = td->conf;
   // mysql_init is not thread safe, especially in Connector/C
@@ -592,6 +571,11 @@ void *process_queue(struct thread_data *td) {
   if ((detected_server == SERVER_TYPE_MYSQL) &&
       mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
+  }
+  if ( sync_wait != -1 && mysql_query(thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
+    g_critical("Failed to set wsrep_sync_wait for the thread: %s",
+               mysql_error(thrconn));
+    exit(EXIT_FAILURE);
   }
   if (mysql_query(thrconn,
                   "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
@@ -641,12 +625,13 @@ void *process_queue(struct thread_data *td) {
     if (res)
       mysql_free_result(res);
   }
-  mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, set_names_str);
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   struct job *job = NULL;
   struct table_job *tj = NULL;
+  struct table_checksum_job *tcj = NULL;
   struct dump_database_job *ddj = NULL;
   struct create_database_job *cdj = NULL;
   struct schema_job *sj = NULL;
@@ -680,17 +665,11 @@ void *process_queue(struct thread_data *td) {
     switch (job->type) {
     case JOB_DUMP:
       tj = (struct table_job *)job->job_data;
-      if (tj->where)
-        g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                  td->thread_id, tj->database, tj->table, tj->where);
-      else
-        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                  tj->database, tj->table);
+      message_dumping_data(td->thread_id,tj);
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
-      dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+      dump_table_data_file(thrconn, tj);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -701,24 +680,41 @@ void *process_queue(struct thread_data *td) {
         g_free(tj->table);
       if (tj->where)
         g_free(tj->where);
+      if (tj->order_by)
+        g_free(tj->order_by);
       if (tj->filename)
         g_free(tj->filename);
       g_free(tj);
       g_free(job);
       break;
-    case JOB_DUMP_NON_INNODB:
-      tj = (struct table_job *)job->job_data;
-      if (tj->where)
-        g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                  td->thread_id, tj->database, tj->table, tj->where);
-      else
-        g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                  tj->database, tj->table);
+     case JOB_CHECKSUM:
+      tcj = (struct table_checksum_job *)job->job_data;
+        g_message("Thread %d dumping checksum for `%s`.`%s`", td->thread_id,
+                  tcj->database, tcj->table);
       if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(thrconn));
       }
-      dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                           tj->filename);
+      dump_table_checksum(thrconn, tcj->database, tcj->table, tcj->filename);
+      if (use_savepoints &&
+          mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
+        g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
+      }
+      if (tcj->database)
+        g_free(tcj->database);
+      if (tcj->table)
+        g_free(tcj->table);
+      if (tcj->filename)
+        g_free(tcj->filename);
+      g_free(tcj);
+      g_free(job);
+      break;
+    case JOB_DUMP_NON_INNODB:
+      tj = (struct table_job *)job->job_data;
+      message_dumping_data(td->thread_id,tj);
+      if (use_savepoints && mysql_query(thrconn, "SAVEPOINT mydumper")) {
+        g_critical("Savepoint failed: %s", mysql_error(thrconn));
+      }
+      dump_table_data_file(thrconn, tj);
       if (use_savepoints &&
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
@@ -729,6 +725,8 @@ void *process_queue(struct thread_data *td) {
         g_free(tj->table);
       if (tj->where)
         g_free(tj->where);
+      if (tj->order_by)
+        g_free(tj->order_by);
       if (tj->filename)
         g_free(tj->filename);
       g_free(tj);
@@ -881,7 +879,7 @@ void *process_queue_less_locking(struct thread_data *td) {
   if (!skip_tz && mysql_query(thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
     g_critical("Failed to set time zone: %s", mysql_error(thrconn));
   }
-  mysql_query(thrconn, "/*!40101 SET NAMES binary*/");
+	mysql_query(thrconn, set_names_str);
 
   g_async_queue_push(conf->ready_less_locking, GINT_TO_POINTER(1));
 
@@ -941,20 +939,16 @@ void *process_queue_less_locking(struct thread_data *td) {
       }
       for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
         tj = (struct table_job *)glj->data;
-        if (tj->where)
-          g_message("Thread %d dumping data for `%s`.`%s` where %s",
-                    td->thread_id, tj->database, tj->table, tj->where);
-        else
-          g_message("Thread %d dumping data for `%s`.`%s`", td->thread_id,
-                    tj->database, tj->table);
-        dump_table_data_file(thrconn, tj->database, tj->table, tj->where,
-                             tj->filename);
+        message_dumping_data(td->thread_id,tj);
+        dump_table_data_file(thrconn, tj);
         if (tj->database)
           g_free(tj->database);
         if (tj->table)
           g_free(tj->table);
         if (tj->where)
           g_free(tj->where);
+        if (tj->order_by)
+          g_free(tj->order_by);
         if (tj->filename)
           g_free(tj->filename);
         g_free(tj);
@@ -1133,16 +1127,34 @@ int main(int argc, char *argv[]) {
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
   g_option_context_set_main_group(context, main_group);
-  if (!g_option_context_parse(context, &argc, &argv, &error)) {
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
   g_option_context_free(context);
 
+  if (password != NULL){
+    int i=1;	  
+    for(i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
+	
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
   }
+
+	 if (set_names_str){
+				gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+				set_names_str=tmp_str;
+		} else 
+				set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
   // printf("your password is %s and the size is %d
   // \n",password,sizeof(password));
@@ -1202,12 +1214,34 @@ int main(int argc, char *argv[]) {
     if (sid < 0)
       exit(EXIT_FAILURE);
 
-    char *dump_directory = g_strdup_printf("%s/0", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
-    dump_directory = g_strdup_printf("%s/1", output_directory);
-    create_backup_dir(dump_directory);
-    g_free(dump_directory);
+    char *dump_directory;
+    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
+        dump_directory= g_strdup_printf("%s/%d", output_directory, dump_number);
+        create_backup_dir(dump_directory);
+        g_free(dump_directory);
+    }
+    
+    GFile *last_dump = g_file_new_for_path(
+        g_strdup_printf("%s/last_dump", output_directory)
+    );
+    GFileInfo *last_dump_i = g_file_query_info(
+        last_dump,
+        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
+        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+        NULL, NULL
+    );
+    if (last_dump_i != NULL &&
+        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
+        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
+        if (dump_number >= snapshot_count-1) dump_number = 0;
+        else dump_number++;
+        g_object_unref(last_dump_i);
+    } else {
+        dump_number = 0;
+    }
+    g_object_unref(last_dump);
+
 #ifdef WITH_BINLOG
     daemon_binlog_directory =
         g_strdup_printf("%s/%s", output_directory, DAEMON_BINLOGS);
@@ -1342,7 +1376,7 @@ void *exec_thread(void *data) {
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.
     if (!shutdown_triggered) {
-      const char *dump_symlink_source = (dump_number == 0) ? "0" : "1";
+      char *dump_symlink_source= g_strdup_printf("%d", dump_number);
       char *dump_symlink_dest =
           g_strdup_printf("%s/last_dump", output_directory);
 
@@ -1355,7 +1389,8 @@ void *exec_thread(void *data) {
       }
       g_free(dump_symlink_dest);
 
-      dump_number = (dump_number == 1) ? 0 : 1;
+      if (dump_number >= snapshot_count-1) dump_number = 0;
+      else dump_number++;
     }
   }
   return NULL;
@@ -1368,7 +1403,7 @@ void *binlog_thread(void *data) {
   MYSQL *conn;
   conn = mysql_init(NULL);
   if (defaults_file != NULL) {
-    mysql_options(thrconn, MYSQL_READ_DEFAULT_FILE, defaults_file);
+    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, defaults_file);
   }
   mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, "mydumper");
 
@@ -1460,41 +1495,60 @@ void start_dump(MYSQL *conn) {
      This avoids stalling whole server with flush */
 
   if (!no_locks) {
-    if (mysql_query(conn, "SHOW PROCESSLIST")) {
-      g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
-                mysql_error(conn));
-    } else {
-      MYSQL_RES *res = mysql_store_result(conn);
-      MYSQL_ROW row;
 
-      /* Just in case PROCESSLIST output column order changes */
-      MYSQL_FIELD *fields = mysql_fetch_fields(res);
-      guint i;
-      int tcol = -1, ccol = -1, icol = -1;
-      for (i = 0; i < mysql_num_fields(res); i++) {
+    while (TRUE) {
+      int longquery_count = 0;
+      if (mysql_query(conn, "SHOW PROCESSLIST")) {
+        g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
+                  mysql_error(conn));
+        break;
+      } else {
+       MYSQL_RES *res = mysql_store_result(conn);
+        MYSQL_ROW row;
+
+        /* Just in case PROCESSLIST output column order changes */
+        MYSQL_FIELD *fields = mysql_fetch_fields(res);
+        guint i;
+        int tcol = -1, ccol = -1, icol = -1, ucol = -1;
+        for (i = 0; i < mysql_num_fields(res); i++) {
         if (!strcasecmp(fields[i].name, "Command"))
-          ccol = i;
-        else if (!strcasecmp(fields[i].name, "Time"))
-          tcol = i;
-        else if (!strcasecmp(fields[i].name, "Id"))
-          icol = i;
-      }
-      if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-        g_critical("Error obtaining information from processlist");
-        exit(EXIT_FAILURE);
-      }
-      while ((row = mysql_fetch_row(res))) {
-        if (row[ccol] && strcmp(row[ccol], "Query"))
-          continue;
-        if (row[tcol] && atoi(row[tcol]) > longquery) {
-          if (killqueries) {
-            if (mysql_query(conn,
-                            p3 = g_strdup_printf("KILL %lu", atol(row[icol]))))
-              g_warning("Could not KILL slow query: %s", mysql_error(conn));
-            else
-              g_warning("Killed a query that was running for %ss", row[tcol]);
-            g_free(p3);
-          } else {
+            ccol = i;
+          else if (!strcasecmp(fields[i].name, "Time"))
+            tcol = i;
+          else if (!strcasecmp(fields[i].name, "Id"))
+            icol = i;
+          else if (!strcasecmp(fields[i].name, "User"))
+            ucol = i;
+        }
+        if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+          g_critical("Error obtaining information from processlist");
+          exit(EXIT_FAILURE);
+        }
+        while ((row = mysql_fetch_row(res))) {
+          if (row[ccol] && strcmp(row[ccol], "Query"))
+            continue;
+          if (row[ucol] && !strcmp(row[ucol], "system user"))
+            continue;
+          if (row[tcol] && atoi(row[tcol]) > longquery) {
+            if (killqueries) {
+              if (mysql_query(conn,
+                              p3 = g_strdup_printf("KILL %lu", atol(row[icol])))) {
+                g_warning("Could not KILL slow query: %s", mysql_error(conn));
+                longquery_count++;
+              } else {
+                g_warning("Killed a query that was running for %ss", row[tcol]);
+              }
+              g_free(p3);
+            } else {
+              longquery_count++;
+            }
+          }
+        }
+        mysql_free_result(res);
+        if (longquery_count == 0)
+          break;
+        else {
+          if (longquery_retries == 0) {
             g_critical("There are queries in PROCESSLIST running longer than "
                        "%us, aborting dump,\n\t"
                        "use --long-query-guard to change the guard value, kill "
@@ -1503,9 +1557,13 @@ void start_dump(MYSQL *conn) {
                        longquery);
             exit(EXIT_FAILURE);
           }
+          longquery_retries--;
+          g_warning("There are queries in PROCESSLIST running longer than "
+                         "%us, retrying in %u seconds (%u left).",
+                         longquery, longquery_retry_interval, longquery_retries);
+          sleep(longquery_retry_interval);
         }
       }
-      mysql_free_result(res);
     }
   }
 
@@ -1516,8 +1574,8 @@ void start_dump(MYSQL *conn) {
     MYSQL_RES *res2 = mysql_store_result(conn);
     MYSQL_ROW ver;
     while ((ver = mysql_fetch_row(res2))) {
-      if (!g_str_has_prefix("Percona", ver[0]) &&
-          !g_str_has_prefix("8.", ver[1])) {
+      if (g_str_has_prefix(ver[0], "Percona") &&
+          g_str_has_prefix(ver[1], "8.")) {
         g_message("Disabling Percona Backup Locks for Percona Server 8");
         no_backup_locks = 1;
       }
@@ -1697,7 +1755,7 @@ void start_dump(MYSQL *conn) {
     g_free(query);
 
   } else {
-    g_warning("Executing in no-locks mode, snapshot will notbe consistent");
+    g_warning("Executing in no-locks mode, snapshot will not be consistent");
   }
   if (mysql_get_server_version(conn) < 40108) {
     mysql_query(
@@ -1749,7 +1807,7 @@ void start_dump(MYSQL *conn) {
             tval.tm_min, tval.tm_sec);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    mysql_query(conn, "/*!40101 SET NAMES binary*/");
+				mysql_query(conn, set_names_str);
 
     write_snapshot_info(conn, mdfile);
   }
@@ -1872,6 +1930,9 @@ void start_dump(MYSQL *conn) {
     GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
+      if (dump_checksums) {
+        dump_checksum(dbt->database, dbt->table, &conf);
+      }
       dump_table(conn, dbt->database, dbt->table, &conf, FALSE);
       g_atomic_int_inc(&non_innodb_table_counter);
     }
@@ -1883,9 +1944,13 @@ void start_dump(MYSQL *conn) {
   GList *iter;
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
+    if (dump_checksums) {
+      dump_checksum(dbt->database, dbt->table, &conf);
+    }
     dump_table(conn, dbt->database, dbt->table, &conf, TRUE);
   }
   g_list_free(innodb_tables);
+  innodb_tables=NULL;
 
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
@@ -1896,6 +1961,7 @@ void start_dump(MYSQL *conn) {
     g_free(dbt);
   }
   g_list_free(table_schemas);
+  table_schemas=NULL;
 
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
@@ -1906,6 +1972,7 @@ void start_dump(MYSQL *conn) {
     g_free(dbt);
   }
   g_list_free(view_schemas);
+  view_schemas=NULL;
 
   schema_post = g_list_reverse(schema_post);
   for (iter = schema_post; iter != NULL; iter = iter->next) {
@@ -1915,6 +1982,7 @@ void start_dump(MYSQL *conn) {
     g_free(sp);
   }
   g_list_free(schema_post);
+  schema_post=NULL;
 
   if (!no_locks && !trx_consistency_only) {
     g_async_queue_pop(conf.unlock_tables);
@@ -2010,7 +2078,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
 
   GString *statement = g_string_sized_new(statement_size);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE `%s`", database);
+  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database,
@@ -2073,10 +2141,18 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
 
   gboolean result = FALSE;
 
+  char *escaped_table = g_new(char, strlen(table) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_table, table, strlen(table));
+  char *escaped_database = g_new(char, strlen(database) * 2 + 1);
+  mysql_real_escape_string(conn, escaped_database, database, strlen(database));
+
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%'",
-      database, table);
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      escaped_database, escaped_table);
+  g_free(escaped_database);
+  g_free(escaped_table);
+
   mysql_query(conn, query);
   g_free(query);
 
@@ -2098,7 +2174,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
-                      "not like '%%GENERATED%%'",
+                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%'",
                       database, table);
   mysql_query(conn, query);
   g_free(query);
@@ -2112,11 +2188,58 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
       g_string_append(field_list, ",");
     }
 
-    g_string_append(field_list, row[0]);
+    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    g_string_append(field_list, tb);
+    g_free(tb);
   }
   mysql_free_result(res);
 
   return field_list;
+}
+
+gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  GString *field_list = g_string_new("");
+
+  gchar *query =
+          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
+                          "FROM information_schema.table_constraints t "
+                          "LEFT JOIN information_schema.key_column_usage k "
+                          "USING(constraint_name,table_schema,table_name) "
+                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
+                          "AND t.table_schema='%s' "
+                          "AND t.table_name='%s' "
+                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
+                          database, table);
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  gboolean first = TRUE;
+  while ((row = mysql_fetch_row(res))) {
+    if (first) {
+      first = FALSE;
+    } else if (atoi(row[1]) > 1) {
+      g_string_append(field_list, ",");
+    } else {
+      break;
+    }
+
+    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    g_string_append(field_list, tb);
+    g_free(tb);
+  }
+  mysql_free_result(res);
+  // Return NULL if we never found a PRIMARY or UNIQUE key
+  if (first) {
+    g_string_free(field_list, TRUE);
+    return NULL;
+  } else {
+    gchar *order_string = g_string_free(field_list, FALSE);
+    return order_string;
+  }
 }
 
 /* Heuristic chunks building - based on estimates, produces list of ranges for
@@ -2167,7 +2290,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
     while ((row = mysql_fetch_row(indexes))) {
       if (!strcmp(row[3], "1")) {
         if (row[6])
-          cardinality = strtoll(row[6], NULL, 10);
+          cardinality = strtoul(row[6], NULL, 10);
         if (cardinality > max_cardinality) {
           field = row[4];
           max_cardinality = cardinality;
@@ -2203,7 +2326,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   char *max = row[1];
 
   /* Got total number of rows, skip chunk logic if estimates are low */
-  guint64 rows = estimate_count(conn, database, table, field, NULL, NULL);
+  guint64 rows = estimate_count(conn, database, table, field, min, max);
   if (rows <= rows_per_file)
     goto cleanup;
 
@@ -2217,16 +2340,18 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
     /* static stepping */
-    nmin = strtoll(min, NULL, 10);
-    nmax = strtoll(max, NULL, 10);
+    nmin = strtoul(min, NULL, 10);
+    nmax = strtoul(max, NULL, 10);
     estimated_step = (nmax - nmin) / estimated_chunks + 1;
     cutoff = nmin;
     while (cutoff <= nmax) {
       chunks = g_list_prepend(
           chunks,
           g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
-                          !showed_nulls ? "`" : "", !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
                           !showed_nulls ? "`" : "",
                           !showed_nulls ? " IS NULL OR " : "", field,
                           (unsigned long long)cutoff, field,
@@ -2267,16 +2392,16 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     if (from) {
       escaped = g_new(char, strlen(from) * 2 + 1);
       mysql_real_escape_string(conn, escaped, from, strlen(from));
-      fromclause = g_strdup_printf(" `%s` >= \"%s\" ", field, escaped);
+      fromclause = g_strdup_printf(" `%s` >= %s ", field, escaped);
       g_free(escaped);
     }
     if (to) {
       escaped = g_new(char, strlen(to) * 2 + 1);
-      mysql_real_escape_string(conn, escaped, from, strlen(from));
-      toclause = g_strdup_printf(" `%s` <= \"%s\"", field, escaped);
+      mysql_real_escape_string(conn, escaped, to, strlen(to));
+      toclause = g_strdup_printf(" `%s` <= %s", field, escaped);
       g_free(escaped);
     }
-    query = g_strdup_printf("%s WHERE `%s` %s %s", querybase,
+    query = g_strdup_printf("%s WHERE %s %s %s", querybase,
                             (from ? fromclause : ""),
                             ((from && to) ? "AND" : ""), (to ? toclause : ""));
 
@@ -2314,7 +2439,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     row = mysql_fetch_row(result);
 
   if (row && row[i])
-    count = strtoll(row[i], NULL, 10);
+    count = strtoul(row[i], NULL, 10);
 
   if (result)
     mysql_free_result(result);
@@ -3000,7 +3125,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   GString *statement = g_string_sized_new(statement_size);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+				g_string_printf(statement,"%s;\n",set_names_str);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -3083,7 +3208,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   }
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-    g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+				g_string_printf(statement,"%s;\n",set_names_str);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
@@ -3101,7 +3226,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     return;
   }
 
-  // we create myisam tables as workaround
+  // we create tables as workaround
   // for view dependencies
   query = g_strdup_printf("SHOW FIELDS FROM `%s`.`%s`", database, table);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
@@ -3125,7 +3250,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "`%s` int", row[0]);
   }
-  g_string_append(statement, "\n)ENGINE=MyISAM;\n");
+  g_string_append(statement, "\n);\n");
 
   if (result)
     mysql_free_result(result);
@@ -3178,14 +3303,35 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   return;
 }
 
-void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
-                          char *filename) {
+void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
   void *outfile = NULL;
 
   if (!compress_output)
-    outfile = g_fopen(filename, "w");
+    outfile = g_fopen(tj->filename, "w");
   else
+    outfile = (void *)gzopen(tj->filename, "w");
+
+  if (!outfile) {
+    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
+               tj->database, tj->table, tj->filename, errno);
+    errors++;
+    return;
+  }
+  guint64 rows_count =
+      dump_table_data(conn, (FILE *)outfile, tj);
+
+  if (!rows_count)
+    g_message("Empty table %s.%s", tj->database, tj->table);
+}
+
+void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
+  void *outfile = NULL;
+
+  if (!compress_output) {
+    outfile = g_fopen(filename, "w");
+  } else {
     outfile = (void *)gzopen(filename, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3193,13 +3339,48 @@ void dump_table_data_file(MYSQL *conn, char *database, char *table, char *where,
     errors++;
     return;
   }
-  guint64 rows_count =
-      dump_table_data(conn, (FILE *)outfile, database, table, where, filename);
+  int errn=0;
 
-  if (!rows_count)
-    g_message("Empty table %s.%s", database, table);
+  GString *statement=g_string_new(checksum_table(conn, database, table, &errn));
+  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
+    errors++;
+    return;
+  }
+
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema for %s.%s", database, table);
+    errors++;
+  }
+  if (!compress_output) {
+    fclose(outfile);
+  } else {
+    gzclose(outfile);
+  }
+  g_string_free(statement, TRUE);
+
+  return;
 }
 
+void dump_checksum(char *database, char *table,
+                 struct configuration *conf) {
+  struct job *j = g_new0(struct job, 1);
+  struct table_checksum_job *tcj = g_new0(struct table_checksum_job, 1);
+  j->job_data = (void *)tcj;
+  tcj->database = g_strdup(database);
+  tcj->table = g_strdup(table);
+  j->conf = conf;
+  j->type = JOB_CHECKSUM;
+  if (daemon_mode)
+    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum%s", output_directory,
+                                   dump_number, database, table,(compress_output ? ".gz" : ""));
+  else
+    tcj->filename =
+        g_strdup_printf("%s/%s.%s.checksum%s", output_directory, database,
+                        table,(compress_output ? ".gz" : ""));
+  g_async_queue_push(conf->queue, j);
+
+  return;
+}
 void dump_schema(MYSQL *conn, char *database, char *table,
                  struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
@@ -3303,6 +3484,16 @@ void dump_schema_post(char *database, struct configuration *conf) {
   return;
 }
 
+struct table_job * new_table_job(char *database, char *table, char *where, char *filename, gboolean has_generated_fields){
+  struct table_job *tj = g_new0(struct table_job, 1);
+  tj->database=g_strdup(database);
+  tj->table=g_strdup(table);
+  tj->where=where;
+  tj->filename=filename;
+  tj->has_generated_fields=has_generated_fields;
+  return tj;
+}
+
 void dump_table(MYSQL *conn, char *database, char *table,
                 struct configuration *conf, gboolean is_innodb) {
 
@@ -3310,26 +3501,33 @@ void dump_table(MYSQL *conn, char *database, char *table,
   if (rows_per_file)
     chunks = get_chunks_for_table(conn, database, table, conf);
 
+  gboolean has_generated_fields =
+    detect_generated_fields(conn, database, table);
+
+  char *order_by = NULL;
+  if (order_by_primary_key)
+    order_by = get_primary_key_string(conn, database, table);
   if (chunks) {
     int nchunk = 0;
     GList *iter;
     for (iter = chunks; iter != NULL; iter = iter->next) {
       struct job *j = g_new0(struct job, 1);
-      struct table_job *tj = g_new0(struct table_job, 1);
-      j->job_data = (void *)tj;
-      tj->database = g_strdup(database);
-      tj->table = g_strdup(table);
+      struct table_job *tj = NULL;
       j->conf = conf;
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
       if (daemon_mode)
-        tj->filename = g_strdup_printf(
+        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf(
             "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, database,
-            table, nchunk, (compress_output ? ".gz" : ""));
+            table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
       else
-        tj->filename =
-            g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
-                            table, nchunk, (compress_output ? ".gz" : ""));
-      tj->where = (char *)iter->data;
+        tj = new_table_job(database,table,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, database,
+                            table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
+      if (order_by) {
+        tj->order_by = g_strdup(order_by);
+      } else {
+        tj->order_by = NULL;
+      }
+      j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
       g_async_queue_push(conf->queue, j);
@@ -3338,23 +3536,26 @@ void dump_table(MYSQL *conn, char *database, char *table,
     g_list_free(chunks);
   } else {
     struct job *j = g_new0(struct job, 1);
-    struct table_job *tj = g_new0(struct table_job, 1);
-    j->job_data = (void *)tj;
-    tj->database = g_strdup(database);
-    tj->table = g_strdup(table);
+    struct table_job *tj = NULL;
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
     if (daemon_mode)
-      tj->filename = g_strdup_printf(
+      tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
     else
-      tj->filename = g_strdup_printf(
+      tj = new_table_job(database,table,NULL, g_strdup_printf(
           "%s/%s.%s%s.sql%s", output_directory, database, table,
-          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
+          (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
+    if (order_by) {
+      tj->order_by = g_strdup(order_by);
+    } else {
+      tj->order_by = NULL;
+    }
+    j->job_data = (void *)tj;
     g_async_queue_push(conf->queue, j);
-    return;
   }
+  g_free(order_by);
 }
 
 void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
@@ -3374,42 +3575,51 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 
     if (rows_per_file)
       chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
+    gboolean has_generated_fields =
+      detect_generated_fields(conn, dbt->database, dbt->table);
 
     if (chunks) {
       int nchunk = 0;
       GList *citer;
+      gchar *order_by = NULL;
+      if (order_by_primary_key)
+        order_by = get_primary_key_string(conn, dbt->database, dbt->table);
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = g_new0(struct table_job, 1);
-        tj->database = g_strdup_printf("%s", dbt->database);
-        tj->table = g_strdup_printf("%s", dbt->table);
+        struct table_job *tj = NULL;
         if (daemon_mode)
-          tj->filename =
+          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data,
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
                               dump_number, dbt->database, dbt->table, nchunk,
-                              (compress_output ? ".gz" : ""));
+                              (compress_output ? ".gz" : "")), has_generated_fields);
         else
-          tj->filename = g_strdup_printf(
+          tj = new_table_job(dbt->database,dbt->table,(char *)citer->data, g_strdup_printf(
               "%s/%s.%s.%05d.sql%s", output_directory, dbt->database,
-              dbt->table, nchunk, (compress_output ? ".gz" : ""));
-        tj->where = (char *)citer->data;
+              dbt->table, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
+        if (order_by)
+          tj->order_by = g_strdup(order_by);
+        else
+          tj->order_by = NULL;
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }
+      if (order_by)
+        g_free(order_by);
       g_list_free(chunks);
     } else {
-      struct table_job *tj = g_new0(struct table_job, 1);
-      tj->database = g_strdup_printf("%s", dbt->database);
-      tj->table = g_strdup_printf("%s", dbt->table);
+      struct table_job *tj = NULL;
       if (daemon_mode)
-        tj->filename = g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
+        tj = new_table_job(dbt->database,dbt->table,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
                                        dump_number, dbt->database, dbt->table,
                                        (chunk_filesize ? ".00001" : ""),
-                                       (compress_output ? ".gz" : ""));
+                                       (compress_output ? ".gz" : "")), has_generated_fields);
       else
-        tj->filename = g_strdup_printf(
+        tj = new_table_job(dbt->database,dbt->table,NULL, g_strdup_printf(
             "%s/%s.%s%s.sql%s", output_directory, dbt->database, dbt->table,
-            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : ""));
-      tj->where = NULL;
+            (chunk_filesize ? ".00001" : ""), (compress_output ? ".gz" : "")), has_generated_fields);
+      if (order_by_primary_key)
+        tj->order_by = get_primary_key_string(conn, dbt->database, dbt->table);
+      else
+        tj->order_by = NULL;
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
   }
@@ -3418,8 +3628,11 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 }
 
 /* Do actual data chunk reading/writing magic */
-guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
-                        char *where, char *filename) {
+guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj) {
+  char *database = tj->database;
+  char *table = tj->table;
+  char *where = tj->where;
+  char *filename = tj->filename;
   guint i;
   guint fn = 1;
   guint st_in_file = 0;
@@ -3441,8 +3654,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     g_strfreev(split_filename);
   }
 
-  gboolean has_generated_fields =
-      detect_generated_fields(conn, database, table);
+  gboolean has_generated_fields = tj->has_generated_fields;
+//      detect_generated_fields(conn, database, table);
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
@@ -3459,10 +3672,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s",
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
       select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "");
+      where ? where : "", tj->order_by ? "ORDER BY" : "",
+      tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
@@ -3492,7 +3706,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
     if (!statement->len) {
       if (!st_in_file) {
         if (detected_server == SERVER_TYPE_MYSQL) {
-          g_string_printf(statement, "/*!40101 SET NAMES binary*/;\n");
+										g_string_printf(statement,"%s;\n",set_names_str);
           g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
           if (!skip_tz) {
             g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -3554,9 +3768,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, char *database, char *table,
         mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, "CONVERT(");
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         g_string_append(statement_row, escaped->str);
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, " USING UTF8MB4)");
       }
@@ -3710,38 +3924,4 @@ gboolean write_data(FILE *file, GString *data) {
   }
 
   return TRUE;
-}
-
-void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data) {
-  (void)log_domain;
-  (void)user_data;
-
-  gchar date[20];
-  time_t rawtime;
-  struct tm timeinfo;
-
-  time(&rawtime);
-  localtime_r(&rawtime, &timeinfo);
-  strftime(date, 20, "%Y-%m-%d %H:%M:%S", &timeinfo);
-
-  GString *message_out = g_string_new(date);
-  if (log_level & G_LOG_LEVEL_DEBUG) {
-    g_string_append(message_out, " [DEBUG] - ");
-  } else if ((log_level & G_LOG_LEVEL_INFO) ||
-             (log_level & G_LOG_LEVEL_MESSAGE)) {
-    g_string_append(message_out, " [INFO] - ");
-  } else if (log_level & G_LOG_LEVEL_WARNING) {
-    g_string_append(message_out, " [WARNING] - ");
-  } else if ((log_level & G_LOG_LEVEL_ERROR) ||
-             (log_level & G_LOG_LEVEL_CRITICAL)) {
-    g_string_append(message_out, " [ERROR] - ");
-  }
-
-  g_string_append_printf(message_out, "%s\n", message);
-  if (write(fileno(logoutfile), message_out->str, message_out->len) <= 0) {
-    fprintf(stderr, "Cannot write to log file with error %d.  Exiting...",
-            errno);
-  }
-  g_string_free(message_out, TRUE);
 }
