@@ -588,25 +588,19 @@ void create_database(MYSQL *conn, gchar *database) {
 
   gchar *query = NULL;
 
-  if ((db == NULL && source_db == NULL) ||
-      (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))) {
-    const gchar *filename =
-        g_strdup_printf("%s-schema-create.sql", db ? db : database);
-    const gchar *filenamegz =
-        g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
-    const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                            directory, db ? db : database);
-    const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                              directory, db ? db : database);
+  const gchar *filename =
+      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+  const gchar *filenamegz =
+      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : database);
+  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
+                                          directory, source_db ? source_db : database);
+  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
+                                            directory, source_db ? source_db : database);
 
-    if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL,NULL);
-    } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL,NULL);
-    } else {
-      query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-      mysql_query(conn, query);
-    }
+  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL,NULL);
+  } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL,NULL);
   } else {
     query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
     mysql_query(conn, query);
@@ -696,19 +690,28 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   char checksum[256];
   int errn=0;
   char * row=checksum_table(conn, db ? db : database, table, &errn);
-  
+  gboolean is_compressed = FALSE; 
   gchar *path = g_build_filename(directory, filename, NULL);
-  infile = g_fopen(path, "r");
+
+  if (!g_str_has_suffix(path, ".gz")) {
+    infile = g_fopen(path, "r");
+    is_compressed = FALSE;
+  } else {
+    infile = (void *)gzopen(path, "r");
+    is_compressed=TRUE;
+  }
 
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return;
   }
-
-  if (fgets(checksum, 256, infile) != NULL) {
+  
+  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
+  if (cs != NULL) {
     if(strcmp(checksum, row) != 0) {
       g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
+      errors++;
     }
     else {
       g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);

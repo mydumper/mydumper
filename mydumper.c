@@ -2326,7 +2326,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   char *max = row[1];
 
   /* Got total number of rows, skip chunk logic if estimates are low */
-  guint64 rows = estimate_count(conn, database, table, field, NULL, NULL);
+  guint64 rows = estimate_count(conn, database, table, field, min, max);
   if (rows <= rows_per_file)
     goto cleanup;
 
@@ -2392,16 +2392,16 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
     if (from) {
       escaped = g_new(char, strlen(from) * 2 + 1);
       mysql_real_escape_string(conn, escaped, from, strlen(from));
-      fromclause = g_strdup_printf(" `%s` >= \"%s\" ", field, escaped);
+      fromclause = g_strdup_printf(" `%s` >= %s ", field, escaped);
       g_free(escaped);
     }
     if (to) {
       escaped = g_new(char, strlen(to) * 2 + 1);
-      mysql_real_escape_string(conn, escaped, from, strlen(from));
-      toclause = g_strdup_printf(" `%s` <= \"%s\"", field, escaped);
+      mysql_real_escape_string(conn, escaped, to, strlen(to));
+      toclause = g_strdup_printf(" `%s` <= %s", field, escaped);
       g_free(escaped);
     }
-    query = g_strdup_printf("%s WHERE `%s` %s %s", querybase,
+    query = g_strdup_printf("%s WHERE %s %s %s", querybase,
                             (from ? fromclause : ""),
                             ((from && to) ? "AND" : ""), (to ? toclause : ""));
 
@@ -3327,7 +3327,11 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
 void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
   void *outfile = NULL;
 
-  outfile = g_fopen(filename, "w");
+  if (!compress_output) {
+    outfile = g_fopen(filename, "w");
+  } else {
+    outfile = (void *)gzopen(filename, "w");
+  }
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3347,8 +3351,11 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;
   }
-  fclose((FILE *)outfile);
-
+  if (!compress_output) {
+    fclose(outfile);
+  } else {
+    gzclose(outfile);
+  }
   g_string_free(statement, TRUE);
 
   return;
@@ -3364,12 +3371,12 @@ void dump_checksum(char *database, char *table,
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   if (daemon_mode)
-    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum", output_directory,
-                                   dump_number, database, table);
+    tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum%s", output_directory,
+                                   dump_number, database, table,(compress_output ? ".gz" : ""));
   else
     tcj->filename =
-        g_strdup_printf("%s/%s.%s.checksum", output_directory, database,
-                        table);
+        g_strdup_printf("%s/%s.%s.checksum%s", output_directory, database,
+                        table,(compress_output ? ".gz" : ""));
   g_async_queue_push(conf->queue, j);
 
   return;
@@ -3761,9 +3768,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj) {
         mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, "CONVERT(");
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         g_string_append(statement_row, escaped->str);
-        g_string_append_c(statement_row, '\"');
+        g_string_append_c(statement_row, '\'');
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, " USING UTF8MB4)");
       }
