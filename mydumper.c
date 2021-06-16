@@ -142,6 +142,7 @@ guint updated_since = 0;
 guint trx_consistency_only = 0;
 guint complete_insert = 0;
 gchar *set_names_str=NULL;
+gchar *where_option=NULL;
 
 // For daemon mode
 guint dump_number = 0;
@@ -257,6 +258,8 @@ static GOptionEntry entries[] = {
      "Snapshot to use for TiDB", NULL},
     {"sync-wait", 0, 0, G_OPTION_ARG_INT, &sync_wait,
      "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
+    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
+      "Dump only selected records.", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -539,9 +542,10 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 }
 
 void message_dumping_data(guint thread_id, struct table_job *tj){
-  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s",
+  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s",
                     thread_id, tj->database, tj->table, 
-		    tj->where ? " WHERE " : "", tj->where ? tj->where : "",
+		    (tj->where || where_option ) ? " WHERE " : "", tj->where ? tj->where : "",
+		    (tj->where && where_option ) ? " AND " : "", where_option ? where_option : "", 
                     tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
 }
 
@@ -1802,7 +1806,7 @@ void start_dump(MYSQL *conn) {
           tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
           tval.tm_min, tval.tm_sec);
 
-  g_message("Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
+  g_message("Started dump at: %04d-%02d-%02d %02d:%02d:%02d",
             tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
             tval.tm_min, tval.tm_sec);
 
@@ -2029,7 +2033,7 @@ void start_dump(MYSQL *conn) {
   g_rename(p, p2);
   g_free(p);
   g_free(p2);
-  g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
+  g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d",
             tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
             tval.tm_min, tval.tm_sec);
 
@@ -3672,10 +3676,10 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj) {
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s",
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, database, table, where ? "WHERE" : "",
-      where ? where : "", tj->order_by ? "ORDER BY" : "",
+      select_fields->str, database, table, (where || where_option ) ? "WHERE" : "",
+      where ? where : "",  (where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
       tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
