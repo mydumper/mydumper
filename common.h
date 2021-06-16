@@ -33,6 +33,9 @@ char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
 
+FILE * (*m_open)(const char *filename, const char *);
+int (*m_close)(void *file) = NULL;
+
 gboolean askPassword = FALSE;
 guint port = 0;
 guint num_threads = 4;
