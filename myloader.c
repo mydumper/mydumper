@@ -68,8 +68,10 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
 void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *data, const char *filename, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void add_table(const gchar *filename, struct configuration *conf);
+void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
+void checksum_databases(MYSQL *conn);
 void restore_schema_view(MYSQL *conn);
 void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
@@ -271,6 +273,9 @@ int main(int argc, char *argv[]) {
     mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.queue);
+
+  checksum_databases(conn);
+
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -334,6 +339,31 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
     }
   }
 
+  g_dir_close(dir);
+}
+
+void checksum_databases(MYSQL *conn) {
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory, error->message);
+    errors++;
+    return;
+  }
+
+  g_message("Starting table checksum verification");
+
+  const gchar *filename = NULL;
+
+  while ((filename = g_dir_read_name(dir))) {
+    if (!source_db ||
+        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      if (g_strrstr(filename, ".checksum")) {
+        checksum_table_filename(filename, conn);
+      }
+    }
+  }
   g_dir_close(dir);
 }
 
@@ -433,25 +463,19 @@ void create_database(MYSQL *conn, gchar *database) {
 
   gchar *query = NULL;
 
-  if ((db == NULL && source_db == NULL) ||
-      (db != NULL && source_db != NULL && !g_ascii_strcasecmp(db, source_db))) {
-    const gchar *filename =
-        g_strdup_printf("%s-schema-create.sql", db ? db : database);
-    const gchar *filenamegz =
-        g_strdup_printf("%s-schema-create.sql.gz", db ? db : database);
-    const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                            directory, db ? db : database);
-    const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                              directory, db ? db : database);
+  const gchar *filename =
+      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+  const gchar *filenamegz =
+      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : database);
+  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
+                                          directory, source_db ? source_db : database);
+  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
+                                            directory, source_db ? source_db : database);
 
-    if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
-    } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-      restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
-    } else {
-      query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
-      mysql_query(conn, query);
-    }
+  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filename, TRUE, FALSE, FALSE,NULL);
+  } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
+    restore_data_from_file(conn, database, NULL, filenamegz, TRUE, FALSE, FALSE,NULL);
   } else {
     query = g_strdup_printf("CREATE DATABASE `%s`", db ? db : database);
     mysql_query(conn, query);
@@ -535,6 +559,48 @@ void add_table(const gchar *filename, struct configuration *conf) {
 
   g_async_queue_push(conf->queue, j);
   return;
+}
+
+void checksum_table_filename(const gchar *filename, MYSQL *conn) {
+  // 0 is database, 1 is table
+  gchar **split_file = g_strsplit(filename, ".", 0);
+  gchar *database = split_file[0];
+  gchar *table = split_file[1];
+  void *infile;
+  char checksum[256];
+  int errn=0;
+  char * row=checksum_table(conn, db ? db : database, table, &errn);
+  gboolean is_compressed = FALSE; 
+  gchar *path = g_build_filename(directory, filename, NULL);
+
+  if (!g_str_has_suffix(path, ".gz")) {
+    infile = g_fopen(path, "r");
+    is_compressed = FALSE;
+  } else {
+    infile = (void *)gzopen(path, "r");
+    is_compressed=TRUE;
+  }
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+  
+  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
+  if (cs != NULL) {
+    if(strcmp(checksum, row) != 0) {
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
+      errors++;
+    }
+    else {
+      g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);
+    }
+  } else {
+    g_critical("error reading file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
 }
 
 void *process_queue(struct thread_data *td) {
@@ -735,67 +801,67 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
               g_string_append(alter_table_statement,data->str);
 	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	    }else{
-          // Processing CREATE TABLE statement
-          gboolean is_innodb_table=FALSE;
-          gchar** split_file= g_strsplit(data->str, "\n", -1);
-          gchar *autoinc_column=NULL;
-          GString *table_without_indexes=g_string_sized_new(512);
-          append_alter_table(alter_table_statement,db ? db : database,table);
-	  int fulltext_counter=0;
-          int i=0;
-          for (i=0; i < (int)g_strv_length(split_file);i++){
-            if ( g_strrstr(split_file[i],"  KEY")
-                  || g_strrstr(split_file[i],"  UNIQUE")
-                  || g_strrstr(split_file[i],"  SPATIAL")
-                  || g_strrstr(split_file[i],"  FULLTEXT")
-                  || g_strrstr(split_file[i],"  INDEX")
-                  || g_strrstr(split_file[i],"  CONSTRAINT")
+              // Processing CREATE TABLE statement
+              gboolean is_innodb_table=FALSE;
+              gchar** split_file= g_strsplit(data->str, "\n", -1);
+              gchar *autoinc_column=NULL;
+              GString *table_without_indexes=g_string_sized_new(512);
+              append_alter_table(alter_table_statement,db ? db : database,table);
+              int fulltext_counter=0;
+              int i=0;
+              for (i=0; i < (int)g_strv_length(split_file);i++){
+                if ( g_strstr_len(split_file[i],5,"  KEY")
+                  || g_strstr_len(split_file[i],8,"  UNIQUE")
+                  || g_strstr_len(split_file[i],9,"  SPATIAL")
+                  || g_strstr_len(split_file[i],10,"  FULLTEXT")
+                  || g_strstr_len(split_file[i],7,"  INDEX")
+                  || g_strstr_len(split_file[i],12,"  CONSTRAINT")
                  ){
-              // Ignore if the first column of the index is the AUTO_INCREMENT column
-              if ( (autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
-                g_string_append(table_without_indexes, split_file[i]);
-                g_string_append_c(table_without_indexes,'\n');
-              }else{
-                if (g_strrstr(split_file[i],"  FULLTEXT")){
-                    fulltext_counter++;
+                // Ignore if the first column of the index is the AUTO_INCREMENT column
+                  if (!g_strstr_len(split_file[i],12,"  CONSTRAINT") && (autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
+                    g_string_append(table_without_indexes, split_file[i]);
+                    g_string_append_c(table_without_indexes,'\n');
+                  }else{
+                    if (g_strrstr(split_file[i],"  FULLTEXT")){
+                      fulltext_counter++;
+                    }
+                    if (fulltext_counter>1){
+                      fulltext_counter=1;
+                      finish_alter_table(alter_table_statement);
+                      append_alter_table(alter_table_statement,db ? db : database,table);
+                    }
+                    g_string_append(alter_table_statement,"\n ADD");
+                    g_string_append(alter_table_statement, split_file[i]);
+                  }
+                }else{
+                  if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
+                    gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
+                    autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+                  }
+                  g_string_append(table_without_indexes, split_file[i]);
+                  g_string_append_c(table_without_indexes,'\n');
                 }
-                if (fulltext_counter>1){
-                  fulltext_counter=1;
-                  finish_alter_table(alter_table_statement);
-                  append_alter_table(alter_table_statement,db ? db : database,table);
-                }
-                g_string_append(alter_table_statement,"\n ADD");
-                g_string_append(alter_table_statement, split_file[i]);
-              }
-            }else{
-              if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
-                gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
-                autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
-              }
-              g_string_append(table_without_indexes, split_file[i]);
-              g_string_append_c(table_without_indexes,'\n');
-            }
-            if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
-              is_innodb_table=TRUE;
+                if (g_strrstr(split_file[i],"ENGINE=InnoDB")){
+                  is_innodb_table=TRUE;
 	        }
-	      }
-	      finish_alter_table(alter_table_statement);
-	      if (is_innodb_table){
-            g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
-            restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
-            struct restore_job *rj = g_new(struct restore_job, 1);
-            rj->statement = alter_table_statement;
-            rj->database = g_strdup(database);
-            rj->table = g_strdup(table);
-            struct job *j = g_new0(struct job, 1);
-	        j->job_data = (void *)rj;
-	        j->type = JOB_RESTORE_STRING;
-	        g_async_queue_push(fast_index_creation_queue, j);
-	        g_string_set_size(data, 0);
+              }
+              finish_alter_table(alter_table_statement);
+              if (is_innodb_table){
+                g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
+                restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
+                struct restore_job *rj = g_new(struct restore_job, 1);
+                rj->statement = alter_table_statement;
+                rj->database = g_strdup(database);
+                rj->table = g_strdup(table);
+                struct job *j = g_new0(struct job, 1);
+                j->job_data = (void *)rj;
+                j->type = JOB_RESTORE_STRING;
+                g_async_queue_push(fast_index_creation_queue, j);
+                g_string_set_size(data, 0);
               }else{
-	        restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
-  	      }
-	    }
+                restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
+              }
+            }
 	  }else{
             restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	  }

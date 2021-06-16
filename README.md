@@ -72,7 +72,11 @@ yum install https://github.com/maxbube/mydumper/releases/download/v0.10.5/mydump
 ```
 
 ### Ubuntu / Debian
-
+For ubuntu, you need to install the dependencies:
+```bash
+apt-get install libatomic1
+```
+Then you can download and install the package:
 ```bash
 wget https://github.com/maxbube/mydumper/releases/download/v0.10.5/mydumper_0.10.5-1.$(lsb_release -cs)_amd64.deb
 dpkg -i mydumper_0.10.5-1.$(lsb_release -cs)_amd64.deb

@@ -90,3 +90,5 @@ GOptionEntry common_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 #endif
+
+char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
