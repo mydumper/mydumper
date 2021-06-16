@@ -3685,8 +3685,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, database, table, (where || where_option ) ? "WHERE" : "",
-      tj->where ? tj->where : "",  (where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
+      select_fields->str, tj->database, tj->table, (tj->where || where_option ) ? "WHERE" : "",
+      tj->where ? tj->where : "",  (tj->where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
       tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
