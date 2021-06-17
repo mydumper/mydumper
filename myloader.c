@@ -133,6 +133,9 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  if (config_file != NULL){
+    load_config_file(config_file,context, "myloader");
+  }
   g_option_context_free(context);
 
   if (password != NULL){

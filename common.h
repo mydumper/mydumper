@@ -32,9 +32,11 @@ char *cipher = NULL;
 char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
+gchar *config_file;
 
 FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;
+void load_config_file(gchar *config_file,GOptionContext *context, const gchar * group );
 
 gboolean askPassword = FALSE;
 guint port = 0;
@@ -87,6 +89,8 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
+    { "config", 0, 0, G_OPTION_ARG_STRING, &config_file,
+      "Configuration file", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 #endif
