@@ -1410,7 +1410,6 @@ void dump_metadata(struct db_table * dbt){
   FILE *table_meta = g_fopen(filename, "w");
   fprintf(table_meta, "%d", dbt->rows);
   fclose(table_meta);
-
 }
 
 
@@ -3034,11 +3033,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
   }
 
   g_free(query);
-
-  if (!compress_output)
-    fclose((FILE *)outfile);
-  else
-    gzclose((gzFile)outfile);
+  m_close(outfile);
 
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
@@ -3111,11 +3106,7 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table,
   }
 
   g_free(query);
-
-  if (!compress_output)
-    fclose((FILE *)outfile);
-  else
-    gzclose((gzFile)outfile);
+  m_close(outfile);
 
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
@@ -3189,10 +3180,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   }
   g_free(query);
 
-  if (!compress_output)
-    fclose((FILE *)outfile);
-  else
-    gzclose((gzFile)outfile);
+  m_close(outfile);
 
   g_string_free(statement, TRUE);
   if (result)
@@ -3301,14 +3289,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     errors++;
   }
   g_free(query);
-
-  if (!compress_output) {
-    fclose((FILE *)outfile);
-    fclose((FILE *)outfile2);
-  } else {
-    gzclose((gzFile)outfile);
-    gzclose((gzFile)outfile2);
-  }
+  m_close(outfile);
+  m_close(outfile2);
 
   g_string_free(statement, TRUE);
   if (result)
@@ -3339,11 +3321,7 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
 void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filename) {
   void *outfile = NULL;
 
-  if (!compress_output) {
-    outfile = g_fopen(filename, "w");
-  } else {
-    outfile = (void *)gzopen(filename, "w");
-  }
+  outfile = m_open(filename, "w");
 
   if (!outfile) {
     g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
@@ -3363,11 +3341,7 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;
   }
-  if (!compress_output) {
-    fclose(outfile);
-  } else {
-    gzclose(outfile);
-  }
+  m_close(outfile);
   g_string_free(statement, TRUE);
 
   return;
@@ -3887,11 +3861,7 @@ cleanup:
   }
 
   if (file) {
-    if (!compress_output) {
-      fclose((FILE *)file);
-    } else {
-      gzclose((gzFile)file);
-    }
+    m_close(file);
   }
 
   if (!st_in_file && !build_empty_files) {
