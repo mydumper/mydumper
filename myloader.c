@@ -497,7 +497,7 @@ void add_schema(const gchar *filename, GAsyncQueue *fast_index_creation_queue, M
       g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
   if (mysql_query(conn, query)) {
     g_message("Creating database `%s`", db ? db : database);
-    create_database(conn, database);
+    create_database(conn, db ? db :database);
   } else {
     MYSQL_RES *result = mysql_store_result(conn);
     // In drizzle the query succeeds with no rows
