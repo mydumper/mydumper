@@ -55,6 +55,7 @@ enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
 static GMutex *progress_mutex = NULL;
 guint errors = 0;
+
 unsigned long long int total_data_sql_files = 0;
 unsigned long long int progress = 0;
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
@@ -134,7 +135,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   if (config_file != NULL){
-    load_config_file(config_file,context, "myloader");
+    set_session = g_string_new(NULL);
+    load_config_file(config_file, context, "myloader", set_session);
   }
   g_option_context_free(context);
 

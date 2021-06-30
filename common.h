@@ -33,10 +33,12 @@ char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
 gchar *config_file;
+GString *set_session=NULL;
 
 FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;
-void load_config_file(gchar *config_file,GOptionContext *context, const gchar * group );
+void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss);
+void execute_gstring(MYSQL *conn, GString *ss);
 
 gboolean askPassword = FALSE;
 guint port = 0;
