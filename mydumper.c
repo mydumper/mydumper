@@ -1136,6 +1136,26 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  g_option_context_free(context);
+
+  if (!compress_output) {
+    m_open=&g_fopen;
+    m_close=(void *) &fclose;
+  } else {
+    m_open=(void *) &gzopen;
+    m_close=(void *) &gzclose;
+  }
+
+  if (password != NULL){
+    int i=1;	  
+    for(i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
+
   if (config_file != NULL){
     load_config_file(config_file,context, "mydumper");
   }
