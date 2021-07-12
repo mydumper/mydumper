@@ -2353,15 +2353,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   char *min = row[0];
   char *max = row[1];
 
-  /* Got total number of rows, skip chunk logic if estimates are low */
-  guint64 rows = estimate_count(conn, database, table, field, min, max);
-  if (rows <= rows_per_file)
-    goto cleanup;
-
-  /* This is estimate, not to use as guarantee! Every chunk would have eventual
-   * adjustments */
-  guint64 estimated_chunks = rows / rows_per_file;
-  guint64 estimated_step, nmin, nmax, cutoff;
+  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
 
   /* Support just bigger INTs for now, very dumb, no verify approach */
   switch (fields[0].type) {
@@ -2369,6 +2361,14 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
+    /* Got total number of rows, skip chunk logic if estimates are low */
+    rows = estimate_count(conn, database, table, field, min, max);
+    if (rows <= rows_per_file)
+      goto cleanup;
+
+    /* This is estimate, not to use as guarantee! Every chunk would have eventual
+     * adjustments */
+    estimated_chunks = rows / rows_per_file;
     /* static stepping */
     nmin = strtoul(min, NULL, 10);
     nmax = strtoul(max, NULL, 10);
@@ -2388,7 +2388,7 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
       showed_nulls = 1;
     }
     chunks = g_list_reverse(chunks);
-
+// TODO: We need to add more chunk options for different types
   default:
     goto cleanup;
   }
