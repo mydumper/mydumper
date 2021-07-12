@@ -2181,6 +2181,10 @@ gboolean detect_generated_fields(MYSQL *conn, char *database, char *table) {
   g_free(query);
 
   res = mysql_store_result(conn);
+  if (res == NULL){
+  	return FALSE;
+  }
+
   if ((row = mysql_fetch_row(res))) {
     result = TRUE;
   }
