@@ -73,7 +73,7 @@ void add_schema(const gchar *filename, struct configuration *conf, GHashTable *t
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void restore_databases(struct configuration *conf, MYSQL *conn);
 void checksum_databases(MYSQL *conn);
-void restore_schema_view(MYSQL *conn);
+void restore_schema_view(MYSQL *conn,struct configuration *conf);
 void restore_schema_triggers(MYSQL *conn);
 void restore_schema_post(MYSQL *conn);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
@@ -202,8 +202,8 @@ void sync_threads(struct configuration * conf){
 gchar * print_time(GTimeSpan timespan){
   GTimeSpan days=timespan/G_TIME_SPAN_DAY;
   GTimeSpan hours=(timespan-(days*G_TIME_SPAN_DAY))/G_TIME_SPAN_HOUR;
-  GTimeSpan minutes=(timespan-(days*G_TIME_SPAN_HOUR))/G_TIME_SPAN_MINUTE;
-  GTimeSpan seconds=(timespan-(days*G_TIME_SPAN_MINUTE))/G_TIME_SPAN_SECOND;
+  GTimeSpan minutes=(timespan-(days*G_TIME_SPAN_HOUR)-(hours*G_TIME_SPAN_HOUR))/G_TIME_SPAN_MINUTE;
+  GTimeSpan seconds=(timespan-(days*G_TIME_SPAN_MINUTE)-(hours*G_TIME_SPAN_HOUR)-(minutes*G_TIME_SPAN_MINUTE))/G_TIME_SPAN_SECOND;
   return g_strdup_printf("%ld %02ld:%02ld:%02ld",days,hours,minutes,seconds);
 }
 
@@ -337,15 +337,19 @@ int main(int argc, char *argv[]) {
   g_message("%d threads created", num_threads);
 
   sync_threads(&conf);
+  // Leaving just on thread to execute the add constraints as it might cause deadlocks
+  for (n = 0; n < num_threads-1; n++) {
+    g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
+  }
+
   struct job *j=g_async_queue_try_pop(conf.constraints_queue);
   while (j != NULL){
     g_async_queue_push(conf.queue,j);
     j=g_async_queue_try_pop(conf.constraints_queue);
   }
 
-  for (n = 0; n < num_threads; n++) {
-    g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
-  }
+  // Shutdown the latest thread
+  g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
 
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
@@ -366,7 +370,7 @@ int main(int argc, char *argv[]) {
 
   restore_schema_post(conn);
 
-  restore_schema_view(conn);
+  restore_schema_view(conn,&conf);
 
   restore_schema_triggers(conn);
 
@@ -493,7 +497,7 @@ void checksum_databases(MYSQL *conn) {
   g_dir_close(dir);
 }
 
-void restore_schema_view(MYSQL *conn) {
+void restore_schema_view(MYSQL *conn,struct configuration *conf) {
   GError *error = NULL;
   GDir *dir = g_dir_open(directory, 0, &error);
 
@@ -505,11 +509,12 @@ void restore_schema_view(MYSQL *conn) {
 
   const gchar *filename = NULL;
 
+  purge_mode = DROP;
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
         g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema-view.sql")) {
-        add_schema(filename, NULL, NULL, conn);
+        add_schema(filename, conf, NULL, conn);
       }
     }
   }
