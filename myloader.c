@@ -365,7 +365,7 @@ int main(int argc, char *argv[]) {
     g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->database,dbt->table);
     t=t->next;
   }
-
+  innodb_optimize_keys=FALSE;
   g_async_queue_unref(conf.ready);
 
   restore_schema_post(conn);
@@ -986,7 +986,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 
             // Check if it is a /*!40  SET 
 	    if (g_strrstr(data->str,"/*!40")){
-          g_string_append(alter_table_statement,data->str);
+              g_string_append(alter_table_statement,data->str);
 	      restore_data_in_gstring_from_file(conn, database, table, data, filename, is_schema, &query_counter);
 	    }else{
               // Processing CREATE TABLE statement
