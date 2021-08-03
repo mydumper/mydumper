@@ -235,6 +235,10 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  if (config_file != NULL){
+    set_session = g_string_new(NULL);
+    load_config_file(config_file, context, "myloader", set_session);
+  }
   g_option_context_free(context);
 
   if (password != NULL){
@@ -627,7 +631,7 @@ void add_schema(const gchar *filename, struct configuration *conf, GHashTable *t
       g_strdup_printf("SHOW CREATE DATABASE `%s`", db ? db : database);
   if (mysql_query(conn, query)) {
     g_message("Creating database `%s`", db ? db : database);
-    create_database(conn, database);
+    create_database(conn, db ? db :database);
   } else {
     MYSQL_RES *result = mysql_store_result(conn);
     // In drizzle the query succeeds with no rows

@@ -61,13 +61,19 @@ struct job {
   struct configuration *conf;
 };
 
+// directory / database . table . first number . second number . extension
+// directory is needed to support the snapshot functionality 
+// first number : used when rows is used
+// second number : when load data is used 
 struct table_job {
+  char *directory;
   char *database;
   char *table;
   char *filename;
   char *where;
   gboolean has_generated_fields;
   char *order_by;
+  struct db_table *dbt;
 };
 
 struct table_checksum_job {
@@ -123,6 +129,8 @@ struct db_table {
   char *database;
   char *table;
   guint64 datalength;
+  guint rows;
+  GMutex *rows_lock;
 };
 
 struct schema_post {
