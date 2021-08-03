@@ -2,6 +2,7 @@
 
 #include <mysql.h>
 #include <glib.h>
+#include <string.h>
 
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
