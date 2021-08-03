@@ -2289,39 +2289,40 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   g_free(query);
   indexes = mysql_store_result(conn);
 
-  while ((row = mysql_fetch_row(indexes))) {
-    if (!strcmp(row[2], "PRIMARY") && (!strcmp(row[3], "1"))) {
-      /* Pick first column in PK, cardinality doesn't matter */
-      field = row[4];
-      break;
-    }
-  }
-
-  /* If no PK found, try using first UNIQUE index */
-  if (!field) {
-    mysql_data_seek(indexes, 0);
+  if (indexes){
     while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[1], "0") && (!strcmp(row[3], "1"))) {
-        /* Again, first column of any unique index */
+      if (!strcmp(row[2], "PRIMARY") && (!strcmp(row[3], "1"))) {
+        /* Pick first column in PK, cardinality doesn't matter */
         field = row[4];
         break;
       }
     }
-  }
 
-  /* Still unlucky? Pick any high-cardinality index */
-  if (!field && conf->use_any_index) {
-    guint64 max_cardinality = 0;
-    guint64 cardinality = 0;
-
-    mysql_data_seek(indexes, 0);
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[3], "1")) {
-        if (row[6])
-          cardinality = strtoul(row[6], NULL, 10);
-        if (cardinality > max_cardinality) {
+    /* If no PK found, try using first UNIQUE index */
+    if (!field) {
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[1], "0") && (!strcmp(row[3], "1"))) {
+          /* Again, first column of any unique index */
           field = row[4];
-          max_cardinality = cardinality;
+          break;
+        }
+      }
+    }
+    /* Still unlucky? Pick any high-cardinality index */
+    if (!field && conf->use_any_index) {
+      guint64 max_cardinality = 0;
+      guint64 cardinality = 0;
+
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[3], "1")) {
+          if (row[6])
+            cardinality = strtoul(row[6], NULL, 10);
+          if (cardinality > max_cardinality) {
+            field = row[4];
+            max_cardinality = cardinality;
+          }
         }
       }
     }
