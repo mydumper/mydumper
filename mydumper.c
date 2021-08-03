@@ -95,7 +95,6 @@ gboolean have_snapshot_cloning = FALSE;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
-
 gchar *tables_list = NULL;
 gchar *tidb_snapshot = NULL;
 GSequence *tables_skiplist = NULL;
@@ -566,6 +565,7 @@ void *process_queue(struct thread_data *td) {
     g_message("Thread %d connected using MySQL connection ID %lu",
               td->thread_id, mysql_thread_id(thrconn));
   }
+  execute_gstring(thrconn, set_session);
 
   if (use_savepoints && mysql_query(thrconn, "SET SQL_LOG_BIN = 0")) {
     g_critical("Failed to disable binlog for the thread: %s",
@@ -629,7 +629,7 @@ void *process_queue(struct thread_data *td) {
     if (res)
       mysql_free_result(res);
   }
-	mysql_query(thrconn, set_names_str);
+  mysql_query(thrconn, set_names_str);
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
@@ -1137,6 +1137,12 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  set_session = g_string_new(NULL);
+
+  if (config_file != NULL){
+    load_config_file(config_file,context, "mydumper", set_session);
+  }
+
   g_option_context_free(context);
 
   if (!compress_output) {
@@ -1156,7 +1162,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
-	
+
   // prompt for password if it's NULL
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
@@ -1339,6 +1345,8 @@ MYSQL *create_main_connection() {
     g_critical("Error connecting to database: %s", mysql_error(conn));
     exit(EXIT_FAILURE);
   }
+
+  execute_gstring(conn, set_session);
 
   detected_server = detect_server(conn);
 
