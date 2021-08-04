@@ -57,6 +57,7 @@ struct db_table {
   char *table;
   guint64 rows;
   GAsyncQueue * queue;
+  GList * restore_job_list;
   guint current_threads;
   guint max_threads;
   GMutex *mutex;

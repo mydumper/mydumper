@@ -80,6 +80,7 @@ void no_log(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data);
 void create_database(MYSQL *conn, gchar *database);
 gint compare_restore_job(gconstpointer a, gconstpointer b, gpointer table_hash);
+gint compare_filename_part (gconstpointer a, gconstpointer b);
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &directory,
@@ -163,6 +164,7 @@ struct db_table* append_new_db_table(gchar * database, gchar *table, guint64 num
     dbt->database=g_strdup(database);
     dbt->table=g_strdup(table);
     dbt->rows=number_rows;
+    dbt->restore_job_list = NULL;
     dbt->queue=g_async_queue_new();
     dbt->current_threads=0;
     dbt->max_threads=max_threads_per_table;
@@ -458,7 +460,8 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
         gchar **split_file = g_strsplit(filename, ".", 0);
         struct db_table *dbt=append_new_db_table(split_file[0],split_file[1],0,table_hash,NULL);
         struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->database, dbt->table, NULL, g_ascii_strtoull(split_file[2], NULL, 10));
-        g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,rj));
+        dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+        //g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,rj));
       }
     }
   }
@@ -471,6 +474,11 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
     dbt->count=g_async_queue_length(dbt->queue);
     table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_restore_job,table_hash);
+    GList *i=dbt->restore_job_list; 
+    while (i) {
+      g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,i->data));
+      i=i->next;
+    }
   }
   g_hash_table_destroy(table_hash);
   conf->table_list=table_list;
@@ -688,6 +696,9 @@ gint compare_restore_job(gconstpointer a, gconstpointer b, gpointer table_hash){
   g_free(a_key);
   g_free(b_key);
   return a_val->rows < b_val->rows;
+}
+gint compare_filename_part (gconstpointer a, gconstpointer b){
+  return ((struct restore_job *)a)->part > ((struct restore_job *)b)->part;
 }
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
