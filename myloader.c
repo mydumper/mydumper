@@ -472,13 +472,13 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   struct db_table *dbt;
   g_hash_table_iter_init ( &iter, table_hash );
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-    dbt->count=g_async_queue_length(dbt->queue);
     table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_restore_job,table_hash);
     GList *i=dbt->restore_job_list; 
     while (i) {
       g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,i->data));
       i=i->next;
     }
+    dbt->count=g_async_queue_length(dbt->queue);
   }
   g_hash_table_destroy(table_hash);
   conf->table_list=table_list;
