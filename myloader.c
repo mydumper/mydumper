@@ -71,11 +71,11 @@ void restore_data_in_gstring(MYSQL *conn, char *database, char *table, GString *
 void *process_queue(struct thread_data *td);
 void add_schema(const gchar *filename, struct configuration *conf, GHashTable *table_hash, MYSQL *conn);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-void restore_databases(struct configuration *conf, MYSQL *conn);
-void checksum_databases(MYSQL *conn);
+void load_directory_information(struct configuration *conf, MYSQL *conn);
+void checksum_databases(MYSQL *conn,struct configuration *conf);
 void restore_schema_view(MYSQL *conn,struct configuration *conf);
-void restore_schema_triggers(MYSQL *conn);
-void restore_schema_post(MYSQL *conn);
+void restore_schema_triggers(MYSQL *conn,struct configuration *conf);
+void restore_schema_post(MYSQL *conn,struct configuration *conf);
 void no_log(const gchar *log_domain, GLogLevelFlags log_level,
             const gchar *message, gpointer user_data);
 void create_database(MYSQL *conn, gchar *database);
@@ -211,7 +211,7 @@ gchar * print_time(GTimeSpan timespan){
 
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -327,7 +327,7 @@ int main(int argc, char *argv[]) {
   conf.ready = g_async_queue_new();
   conf.constraints_queue = g_async_queue_new();
 
-  restore_databases(&conf, conn);
+  load_directory_information(&conf, conn);
 
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
@@ -374,18 +374,18 @@ int main(int argc, char *argv[]) {
   innodb_optimize_keys=FALSE;
   g_async_queue_unref(conf.ready);
 
-  restore_schema_post(conn);
+  restore_schema_post(conn,&conf);
 
   restore_schema_view(conn,&conf);
 
-  restore_schema_triggers(conn);
+  restore_schema_triggers(conn,&conf);
 
   if (disable_redo_log)
     mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.queue);
 
-  checksum_databases(conn);
+  checksum_databases(conn,&conf);
 
   mysql_close(conn);
   mysql_thread_end();
@@ -401,7 +401,7 @@ int main(int argc, char *argv[]) {
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
-void restore_databases(struct configuration *conf, MYSQL *conn) {
+void load_directory_information(struct configuration *conf, MYSQL *conn) {
   GError *error = NULL;
   GDir *dir = g_dir_open(directory, 0, &error);
 
@@ -415,29 +415,10 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   GHashTable *table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while ((filename = g_dir_read_name(dir))) {
     if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
         add_schema(filename, conf, table_hash, conn);
-      }
-    }
-  }
-  g_dir_rewind(dir);
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (!g_strrstr(filename, "-schema.sql") &&
-          !g_strrstr(filename, "-schema-view.sql") &&
-          !g_strrstr(filename, "-schema-triggers.sql") &&
-          !g_strrstr(filename, "-schema-post.sql") &&
-          !g_strrstr(filename, "-schema-create.sql") &&
-          g_strrstr(filename, ".sql")) {
-        total_data_sql_files++;
-      }
-    }
-  }
-  g_dir_rewind(dir);
-  while ((filename = g_dir_read_name(dir))) {
-    if (g_str_has_suffix(filename, ".metadata")) {
+      } else if (g_str_has_suffix(filename, ".metadata")) {
         gchar **split_file = g_strsplit(filename, ".", 0);
         gchar * buff=NULL;
         gsize len;
@@ -445,27 +426,31 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
         g_file_get_contents(f,&buff,&len,NULL);
         g_free(f);
         append_new_db_table(split_file[0],split_file[1],g_ascii_strtoll(buff,NULL,10),table_hash,NULL);
-    }
-  }
-  g_dir_rewind(dir);
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (!g_strrstr(filename, "-schema.sql") &&
-          !g_strrstr(filename, "-schema-view.sql") &&
-          !g_strrstr(filename, "-schema-triggers.sql") &&
-          !g_strrstr(filename, "-schema-post.sql") &&
-          !g_strrstr(filename, "-schema-create.sql") &&
-          g_strrstr(filename, ".sql")) {
+      } else if ( strcmp(filename, "metadata") == 0 ){
+      } else if (g_str_has_suffix(filename, ".checksum")) {
+        conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
+      } else if ( g_strrstr(filename, "-schema-view.sql") ){
+        conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
+      } else if ( g_strrstr(filename, "-schema-triggers.sql") ){
+        conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
+      } else if ( g_strrstr(filename, "-schema-post.sql") ){
+        conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
+      } else if ( g_strrstr(filename, "-schema-create.sql") ){
+        conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
+      } else {
+	total_data_sql_files++;
+	// check if it is a data file
         gchar **split_file = g_strsplit(filename, ".", 0);
+	// count sections
         struct db_table *dbt=append_new_db_table(split_file[0],split_file[1],0,table_hash,NULL);
         struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->database, dbt->table, NULL, g_ascii_strtoull(split_file[2], NULL, 10));
         dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
-        //g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,rj));
-      }
+      } 
+
     }
   }
   g_dir_close(dir);
+
   GList * table_list=NULL;
   GHashTableIter iter;
   gchar * lkey;
@@ -484,121 +469,72 @@ void restore_databases(struct configuration *conf, MYSQL *conn) {
   conf->table_list=table_list;
 }
 
-void checksum_databases(MYSQL *conn) {
-  GError *error = NULL;
-  GDir *dir = g_dir_open(directory, 0, &error);
 
-  if (error) {
-    g_critical("cannot open directory %s, %s\n", directory, error->message);
-    errors++;
-    return;
-  }
-
+// this can be moved to the table structure and executed before index creation.
+void checksum_databases(MYSQL *conn,struct configuration *conf) {
   g_message("Starting table checksum verification");
 
   const gchar *filename = NULL;
-
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (g_strrstr(filename, ".checksum")) {
-        checksum_table_filename(filename, conn);
-      }
-    }
+  GList *e = conf->checksum_list;
+  while (e){
+    filename=e->data;
+    checksum_table_filename(filename, conn);
+    e=e->next;
   }
-  g_dir_close(dir);
 }
 
 void restore_schema_view(MYSQL *conn,struct configuration *conf) {
-  GError *error = NULL;
-  GDir *dir = g_dir_open(directory, 0, &error);
-
-  if (error) {
-    g_critical("cannot open directory %s, %s\n", directory, error->message);
-    errors++;
-    return;
-  }
+  purge_mode = DROP;
 
   const gchar *filename = NULL;
-
-  purge_mode = DROP;
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (g_strrstr(filename, "-schema-view.sql")) {
-        add_schema(filename, conf, NULL, conn);
-      }
-    }
+  GList *e = conf->schema_view_list;
+  while ( e ) {
+    filename=e->data;
+    add_schema(filename, conf, NULL, conn);
+    e=e->next;
   }
-  g_dir_close(dir);
 }
 
-void restore_schema_triggers(MYSQL *conn) {
-  GError *error = NULL;
-  GDir *dir = g_dir_open(directory, 0, &error);
+void restore_schema_triggers(MYSQL *conn,struct configuration *conf) {
   gchar **split_file = NULL;
   gchar *database = NULL;
   gchar **split_table = NULL;
   gchar *table = NULL;
 
-  if (error) {
-    g_critical("cannot open directory %s, %s\n", directory, error->message);
-    errors++;
-    return;
-  }
-
   const gchar *filename = NULL;
-
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (g_strrstr(filename, "-schema-triggers.sql")) {
-        split_file = g_strsplit(filename, ".", 0);
-        database = split_file[0];
-        split_table = g_strsplit(split_file[1], "-schema", 0);
-        table = split_table[0];
-        g_message("Restoring triggers for `%s`.`%s`", db ? db : database,
-                  table);
-        restore_data_from_file(conn, database, table, filename, TRUE, TRUE, FALSE,NULL,NULL);
-      }
-    }
+  GList *e = conf->schema_triggers_list;
+  while ( e ) {
+    filename = e->data;
+    split_file = g_strsplit(filename, ".", 0);
+    database = split_file[0];
+    split_table = g_strsplit(split_file[1], "-schema", 0);
+    table = split_table[0];
+    g_message("Restoring triggers for `%s`.`%s`", db ? db : database,
+              table);
+    restore_data_from_file(conn, database, table, filename, TRUE, TRUE, FALSE,NULL,NULL);
+    e=e->next;
   }
 
   g_strfreev(split_table);
   g_strfreev(split_file);
-  g_dir_close(dir);
 }
 
-void restore_schema_post(MYSQL *conn) {
-  GError *error = NULL;
-  GDir *dir = g_dir_open(directory, 0, &error);
+void restore_schema_post(MYSQL *conn,struct configuration *conf) {
   gchar **split_file = NULL;
   gchar *database = NULL;
-  // gchar* table=NULL;
-
-  if (error) {
-    g_critical("cannot open directory %s, %s\n", directory, error->message);
-    errors++;
-    return;
-  }
 
   const gchar *filename = NULL;
-
-  while ((filename = g_dir_read_name(dir))) {
-    if (!source_db ||
-        g_str_has_prefix(filename, g_strdup_printf("%s-schema-post", source_db))) {
-      if (g_strrstr(filename, "-schema-post.sql")) {
-        split_file = g_strsplit(filename, "-schema-post.sql", 0);
-        database = split_file[0];
-        // table= split_file[0]; //NULL
-        g_message("Restoring routines and events for `%s`", db ? db : database);
-        restore_data_from_file(conn, database, NULL, filename, TRUE, TRUE, FALSE,NULL,NULL);
-      }
-    }
+  GList *e = conf->schema_post_list;
+  while ( e ){
+    filename=e->data;
+    split_file = g_strsplit(filename, "-schema-post.sql", 0);
+    database = split_file[0];
+    g_message("Restoring routines and events for `%s`", db ? db : database);
+    restore_data_from_file(conn, database, NULL, filename, TRUE, TRUE, FALSE,NULL,NULL);
+    e=e->next;
   }
 
   g_strfreev(split_file);
-  g_dir_close(dir);
 }
 
 void create_database(MYSQL *conn, gchar *database) {
