@@ -901,7 +901,7 @@ void restore_data_in_gstring_from_file(MYSQL *conn, char *database, char *table,
 {
                 if (mysql_real_query(conn, data->str, data->len)) {
 
-                        g_critical("Error restoring %s.%s from file %s: %s \n%s", db ? db : database, table, filename, mysql_error(conn),data->str);
+                        g_critical("Error restoring %s.%s from file %s: %s \n", db ? db : database, table, filename, mysql_error(conn));
                         errors++;
                         return;
                 }
