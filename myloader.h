@@ -29,6 +29,11 @@ struct configuration {
   GAsyncQueue *ready;
   GAsyncQueue *constraints_queue;
   GList *table_list;
+  GList *schema_view_list;
+  GList *schema_triggers_list;
+  GList *schema_post_list;
+  GList *schema_create_list;
+  GList *checksum_list;
   GMutex *mutex;
   int done;
 };
