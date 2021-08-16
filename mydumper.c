@@ -1920,6 +1920,9 @@ void start_dump(MYSQL *conn) {
     GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
+      if (dump_checksums) {  // Submit checksum calculation task for non_innodb_table
+          dump_checksum(dbt->database, dbt->table, &conf);
+      }
       tn = 0;
       min = nits[0];
       for (n = 1; n < num_threads; n++) {
