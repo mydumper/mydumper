@@ -945,6 +945,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
               gchar** split_file= g_strsplit(data->str, "\n", -1);
               gchar *autoinc_column=NULL;
               GString *table_without_indexes=g_string_sized_new(512);
+              gboolean alter_table_present=FALSE;
               append_alter_table(alter_table_statement,db ? db : database,table);
               append_alter_table(alter_table_constraint_statement,db ? db : database,table);
               int fulltext_counter=0;
@@ -962,6 +963,7 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
                     g_string_append(table_without_indexes, split_file[i]);
                     g_string_append_c(table_without_indexes,'\n');
                   }else{
+                    alter_table_present=TRUE;
                     if (g_strrstr(split_file[i],"  FULLTEXT")){
                       fulltext_counter++;
                     }
@@ -992,8 +994,13 @@ void restore_data_from_file(MYSQL *conn, char *database, char *table,
 	        }
               }
               if (is_innodb_table){
-                finish_alter_table(alter_table_statement);
-                g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
+                if (alter_table_present){
+                  finish_alter_table(alter_table_statement);
+                  g_message("Fast index creation will be use for table: %s.%s",db ? db : database,table);
+                }else{
+                  g_string_free(alter_table_statement,TRUE);
+                  alter_table_statement=NULL; 
+                }
                 restore_data_in_gstring_from_file(conn, database, table, g_string_new(g_strjoinv("\n)",g_strsplit(table_without_indexes->str,",\n)",-1))) , filename, is_schema, &query_counter);
                 struct db_table *dbt=append_new_db_table(database,table,0,table_hash,alter_table_statement);
                 if (include_constraint){
