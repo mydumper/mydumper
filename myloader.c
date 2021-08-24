@@ -237,8 +237,8 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  set_session = g_string_new(NULL);
   if (config_file != NULL){
-    set_session = g_string_new(NULL);
     load_config_file(config_file, context, "myloader", set_session);
   }
   g_option_context_free(context);
