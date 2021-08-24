@@ -237,8 +237,8 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+  set_session = g_string_new(NULL);
   if (config_file != NULL){
-    set_session = g_string_new(NULL);
     load_config_file(config_file, context, "myloader", set_session);
   }
   g_option_context_free(context);
@@ -706,7 +706,7 @@ void *process_queue(struct thread_data *td) {
   mysql_query(thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   if (commit_count > 1)
     mysql_query(thrconn, "SET autocommit=0");
-
+  execute_gstring(thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
   GList *table_list=conf->table_list;
   struct db_table *dbt=NULL;
