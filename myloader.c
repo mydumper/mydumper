@@ -468,7 +468,6 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-	      g_message("Loading schema: %s", data->str); 
         if (g_strrstr(data->str,"CREATE ")){
           gchar** create_table= g_strsplit(data->str, "`", 3);
 	        dbt->real_table=g_strdup(create_table[1]);
