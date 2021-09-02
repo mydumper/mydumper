@@ -341,7 +341,7 @@ gboolean check_regex_general(char *regex, char *word) {
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
-  char * regex=strdup("^[\\w\\-. ]+$");
+  char * regex=strdup("^[\\w\\-_ ]+$");
 //  char * regex=strdup("^[\\w\\- ]+$");
   if (check_regex_general(regex,table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
     return table;

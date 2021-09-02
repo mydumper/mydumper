@@ -468,12 +468,15 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-	      
+	      g_message("Loading schema: %s", data->str); 
         if (g_strrstr(data->str,"CREATE ")){
           gchar** create_table= g_strsplit(data->str, "`", 3);
 	        dbt->real_table=g_strdup(create_table[1]);
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
             g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
+          }
+          else{
+           // g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
           }
           g_strfreev(create_table);
         }
@@ -867,14 +870,14 @@ gint compare_filename_part (gconstpointer a, gconstpointer b){
 }
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
-  // 0 is database, 1 is table
-  gchar **split_file = g_strsplit(filename, ".", 0);
-  gchar *database = split_file[0];
-  gchar *table = split_file[1];
+  gchar *database = NULL, *table = NULL;
+  get_database_table_from_file(filename,".checksum",&database,&table);
+  gchar *real_database=g_hash_table_lookup(db_hash,database);
+  gchar *real_table=g_hash_table_lookup(tbl_hash,table);
   void *infile;
   char checksum[256];
   int errn=0;
-  char * row=checksum_table(conn, db ? db : database, table, &errn);
+  char * row=checksum_table(conn, db ? db : real_database, real_table, &errn);
   gboolean is_compressed = FALSE; 
   gchar *path = g_build_filename(directory, filename, NULL);
 
@@ -895,11 +898,11 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
   if (cs != NULL) {
     if(strcmp(checksum, row) != 0) {
-      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : database, table, row, checksum);
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : real_database, real_table, row, checksum);
       errors++;
     }
     else {
-      g_message("Checksum confirmed for `%s`.`%s`", db ? db : database, table);
+      g_message("Checksum confirmed for `%s`.`%s`", db ? db : real_database, real_table);
     }
   } else {
     g_critical("error reading file %s (%d)", filename, errno);
