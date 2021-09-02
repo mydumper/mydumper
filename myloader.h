@@ -21,7 +21,8 @@
 #ifndef _myloader_h
 #define _myloader_h
 
-enum job_type { JOB_SHUTDOWN, JOB_RESTORE, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING, JOB_WAIT };
+enum job_type { JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
+enum restore_job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 
 struct configuration {
@@ -52,6 +53,7 @@ struct job {
 };
 
 struct restore_job {
+  enum restore_job_type type;
   struct db_table * dbt;
   char *filename;
   GString *statement;
