@@ -634,7 +634,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       } else if (g_str_has_suffix(filename, ".metadata")) {
         metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
       } else if ( strcmp(filename, "metadata") == 0 ){
-      } else if (g_str_has_suffix(filename, ".checksum")) {
+      } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
         conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
       } else if ( g_strrstr(filename, "-schema-view.sql") ){
         conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
