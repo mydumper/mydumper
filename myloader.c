@@ -473,9 +473,8 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
 	        dbt->real_table=g_strdup(create_table[1]);
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
             g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
-          }
-          else{
-           // g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
+          }else{
+            g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
           }
           g_strfreev(create_table);
         }
