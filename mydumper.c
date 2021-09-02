@@ -3970,7 +3970,7 @@ cleanup:
     }
   } else if (chunk_filesize && fn == 1) {
     g_free(fcfile);
-    fcfile = g_strdup_printf("%s.sql%s", filename_prefix,
+    fcfile = g_strdup_printf("%s.00000.sql%s", filename_prefix,
                              (compress_output ? ".gz" : ""));
     g_rename(tj->filename, fcfile);
   }
