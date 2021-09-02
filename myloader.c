@@ -717,7 +717,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,table_hash);
     GList *i=dbt->restore_job_list; 
     while (i) {
-      g_async_queue_push(dbt->queue, new_job(JOB_RESTORE_FILENAME ,i->data));
+      g_async_queue_push(dbt->queue, new_job(JOB_RESTORE ,i->data));
       i=i->next;
     }
     dbt->count=g_async_queue_length(dbt->queue);
