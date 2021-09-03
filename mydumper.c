@@ -2533,7 +2533,6 @@ void create_backup_dir(char *new_directory) {
   }
 }
 
-
 char * escape_string(MYSQL *conn, char *str){
   char * r=g_new(char, strlen(str) * 2 + 1);
   mysql_real_escape_string(conn, r, str, strlen(str));
@@ -2778,7 +2777,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_routines) {
     // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
     if (mysql_query(conn, (query))) {
       g_critical("Error: DB: %s - Could not execute query: %s", database,
                  mysql_error(conn));
@@ -2801,7 +2800,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
     if (!post_dump) {
       // FUNCTIONS
-      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = '%s'", database);
+      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
       if (mysql_query(conn, (query))) {
         g_critical("Error: DB: %s - Could not execute query: %s", database,
                    mysql_error(conn));
@@ -2995,7 +2994,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   if (dump_routines) {
     // get functions
-    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE Db = '%s'", database);
+    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
         g_warning("Error dumping functions from %s: %s", database,
@@ -3039,7 +3038,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
     }
 
     // get sp
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE Db = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
         g_warning("Error dumping stored procedures from %s: %s", database,
