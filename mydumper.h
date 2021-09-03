@@ -127,10 +127,19 @@ struct binlog_job {
 
 struct db_table {
   char *database;
+  char *database_filename;
   char *table;
+  char *table_filename;
+  char *escaped_table;
+  char *escaped_database;
   guint64 datalength;
   guint rows;
   GMutex *rows_lock;
+};
+
+struct database {
+  char *database;
+  char *database_filename;
 };
 
 struct schema_post {
