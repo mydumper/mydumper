@@ -35,6 +35,13 @@ The :program:`mydumper` tool has several available options:
 .. option:: --defaults-file
    
    Use the given option file. If the file does not exist or is otherwise inaccessible, no failure occurs
+   
+   Its possible to authenticate via --defaults-file.
+   A section [mydumper]/[myloader] or [client] is needed for authentication
+   
+   [mydumper]
+   user=
+   password=
 
 .. option:: --host, -h
 
@@ -105,9 +112,18 @@ The :program:`mydumper` tool has several available options:
 
    A regular expression to match against database and table
 
+.. option:: --omit-from-file, -O
+
+   File containing a list of database.table entries to skip, one per line; the
+   skipped entries have precedence over patterns specified by the regex option
+
 .. option:: --ignore-engines, -i
 
    Comma separated list of storage engines to ignore
+
+.. option:: --insert-ignore, -N
+
+   Dump rows with INSERT IGNORE INTO instead of INSERT INTO
 
 .. option:: --no-schemas, -m
 
@@ -132,6 +148,14 @@ The :program:`mydumper` tool has several available options:
 .. option:: --no-views, -W
 
    Do not dump views
+
+.. option:: --long-query-retries
+
+   Retry checking for long queries, default 0 (do not retry)
+
+.. option:: --long-query-retry-interval
+
+   Time to wait before retrying the long query check in seconds, default 60
 
 .. option:: --long-query-guard, -l
 

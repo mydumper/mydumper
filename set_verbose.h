@@ -12,23 +12,15 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+        Authors:        Domas Mituzas, Facebook ( domas at fb dot com )
+                        Mark Leith, Oracle Corporation (mark dot leith at oracle
+   dot com) Andrew Hutchings, SkySQL (andrew at skysql dot com)
+
 */
-#ifndef _server_detect_h
-#define _server_detect_h
 
-#include <mysql.h>
+#ifndef SET_VERBOSE_H
+#define SET_VERBOSE_H
 
-#define DETECT_MYSQL_REGEX "^([3-9]\\.[0-9]+\\.[0-9]+)"
-#define DETECT_DRIZZLE_REGEX "^(20[0-9]{2}\\.(0[1-9]|1[012])\\.[0-9]+)"
-#define DETECT_MARIADB_REGEX "^([0-9]{1,2}\\.[0-9]+\\.[0-9]+)"
-#define DETECT_TIDB_REGEX "TiDB"
+void set_verbose(guint verbosity);
 
-enum server_type {
-  SERVER_TYPE_UNKNOWN,
-  SERVER_TYPE_MYSQL,
-  SERVER_TYPE_DRIZZLE,
-  SERVER_TYPE_TIDB
-};
-int detect_server(MYSQL *conn);
 #endif
