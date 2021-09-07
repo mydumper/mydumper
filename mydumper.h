@@ -27,6 +27,7 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_CHECKSUM,
   JOB_SCHEMA,
   JOB_VIEW,
   JOB_TRIGGERS,
@@ -60,13 +61,25 @@ struct job {
   struct configuration *conf;
 };
 
+// directory / database . table . first number . second number . extension
+// directory is needed to support the snapshot functionality 
+// first number : used when rows is used
+// second number : when load data is used 
 struct table_job {
+  char *directory;
   char *database;
   char *table;
   char *filename;
   char *where;
   gboolean has_generated_fields;
   char *order_by;
+  struct db_table *dbt;
+};
+
+struct table_checksum_job {
+  char *database;
+  char *table;
+  char *filename;
 };
 
 struct tables_job {
@@ -114,8 +127,19 @@ struct binlog_job {
 
 struct db_table {
   char *database;
+  char *database_filename;
   char *table;
+  char *table_filename;
+  char *escaped_table;
+  char *escaped_database;
   guint64 datalength;
+  guint rows;
+  GMutex *rows_lock;
+};
+
+struct database {
+  char *database;
+  char *database_filename;
 };
 
 struct schema_post {
