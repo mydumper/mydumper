@@ -142,7 +142,7 @@ guint trx_consistency_only = 0;
 guint complete_insert = 0;
 gchar *set_names_str=NULL;
 gchar *where_option=NULL;
-guint64 max_estimated_step=1000000;
+guint64 max_rows=1000000;
 GHashTable *database_hash=NULL;
 GHashTable *ref_table=NULL;
 guint table_number;
@@ -178,8 +178,8 @@ static GOptionEntry entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
      "Split tables into chunks of this output file size. This value is in MB",
      NULL},
-    {"max-estimated-step", 0, 0, G_OPTION_ARG_INT64, &max_estimated_step,
-     "Limit the size of each block after the table is estimated, default 1000000", NULL},
+    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
+     "Limit the amounto of rows per block after the table is estimated, default 1000000", NULL},
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
@@ -2425,8 +2425,8 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
     nmin = strtoul(min, NULL, 10);
     nmax = strtoul(max, NULL, 10);
     estimated_step = (nmax - nmin) / estimated_chunks + 1;
-    if (estimated_step > max_estimated_step)
-      estimated_step = max_estimated_step;
+    if (estimated_step > max_rows)
+      estimated_step = max_rows;
     cutoff = nmin;
     while (cutoff <= nmax) {
       chunks = g_list_prepend(
