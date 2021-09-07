@@ -279,14 +279,14 @@ void dump_view(struct db_table *dbt, struct configuration *conf);
 void dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
-void dump_schema_post(char *database, struct configuration *conf);
+void dump_schema_post(struct database *database, struct configuration *conf);
 void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
-void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
+void dump_schema_post_data(MYSQL *conn, struct database *database, char *filename);
 guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj);
 void dump_database(struct database *database, struct configuration *);
-void dump_database_thread(MYSQL *, char *);
+void dump_database_thread(MYSQL *, struct database *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL *conn, struct configuration *);
@@ -811,7 +811,7 @@ void *process_queue(struct thread_data *td) {
     case JOB_DUMP_DATABASE:
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
-                ddj->database);
+                ddj->database->name);
       dump_database_thread(thrconn, ddj->database);
       g_free(job);
       if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -854,7 +854,7 @@ void *process_queue(struct thread_data *td) {
     case JOB_SCHEMA_POST:
       sp = (struct schema_post_job *)job->job_data;
       g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
-                sp->database);
+                sp->database->name);
       dump_schema_post_data(thrconn, sp->database, sp->filename);
       free_schema_post_job(sp);
       g_free(job);
@@ -993,7 +993,7 @@ void *process_queue_less_locking(struct thread_data *td) {
     case JOB_DUMP_DATABASE:
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
-                ddj->database);
+                ddj->database->name);
       dump_database_thread(thrconn, ddj->database);
       g_free(ddj);
       g_free(job);
@@ -1037,7 +1037,7 @@ void *process_queue_less_locking(struct thread_data *td) {
     case JOB_SCHEMA_POST:
       sp = (struct schema_post_job *)job->job_data;
       g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
-                sp->database);
+                sp->database->name);
       dump_schema_post_data(thrconn, sp->database, sp->filename);
       free_schema_post_job(sp);
       g_free(job);
@@ -2511,10 +2511,9 @@ struct database *get_database(MYSQL *conn, char *database){
   return d;
 }
 
-struct db_table *new_db_table( MYSQL *conn, char *database, char *table, char *datalength){
-  struct database * d=get_database(conn, database);
+struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
-  dbt->database = d;
+  dbt->database = database;
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
@@ -2535,7 +2534,7 @@ void dump_database(struct database *database, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
   j->job_data = (void *)ddj;
-  ddj->database = database->name;
+  ddj->database = database;
   j->conf = conf;
   j->type = JOB_DUMP_DATABASE;
 
@@ -2546,10 +2545,10 @@ void dump_database(struct database *database, struct configuration *conf) {
   return;
 }
 
-void dump_database_thread(MYSQL *conn, char *database) {
+void dump_database_thread(MYSQL *conn, struct database *database) {
 
   char *query;
-  mysql_select_db(conn, database);
+  mysql_select_db(conn, database->name);
   if (detected_server == SERVER_TYPE_MYSQL ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
@@ -2557,10 +2556,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
     query =
         g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
                         "DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'",
-                        database);
+                        database->escaped);
 
   if (mysql_query(conn, (query))) {
-    g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
     g_free(query);
@@ -2579,7 +2578,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
   }
 
   if (!result) {
-    g_critical("Could not list tables for %s: %s", database, mysql_error(conn));
+    g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
     return;
   }
@@ -2601,7 +2600,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
     if (!is_view && row[ecol] == NULL) {
-      g_warning("Broken table detected, please review: %s.%s", database,
+      g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
       dump = 0;
     }
@@ -2639,7 +2638,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
       continue;
 
     /* Special tables */
-    if (g_ascii_strcasecmp(database, "mysql") == 0 &&
+    if (g_ascii_strcasecmp(database->name, "mysql") == 0 &&
         (g_ascii_strcasecmp(row[0], "general_log") == 0 ||
          g_ascii_strcasecmp(row[0], "slow_log") == 0 ||
          g_ascii_strcasecmp(row[0], "innodb_index_stats") == 0 ||
@@ -2649,11 +2648,11 @@ void dump_database_thread(MYSQL *conn, char *database) {
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist && check_skiplist(database, row[0]))
+    if (tables_skiplist && check_skiplist(database->name, row[0]))
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (regexstring && !check_regex(database, row[0]))
+    if (regexstring && !check_regex(database->name, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -2661,8 +2660,8 @@ void dump_database_thread(MYSQL *conn, char *database) {
       GList *iter;
       for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
         if (g_ascii_strcasecmp(
-                iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0) {
-          g_message("NO UPDATED TABLE: %s.%s", database, row[0]);
+                iter->data, g_strdup_printf("%s.%s", database->name, row[0])) == 0) {
+          g_message("NO UPDATED TABLE: %s.%s", database->name, row[0]);
           dump = 0;
         }
       }
@@ -2723,9 +2722,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_routines) {
     // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -2734,11 +2733,11 @@ void dump_database_thread(MYSQL *conn, char *database) {
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist && check_skiplist(database, row[1]))
+      if (tables_skiplist && check_skiplist(database->name, row[1]))
         continue;
 
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database, row[1]))
+      if (regexstring && !check_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2746,9 +2745,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
     if (!post_dump) {
       // FUNCTIONS
-      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
       if (mysql_query(conn, (query))) {
-        g_critical("Error: DB: %s - Could not execute query: %s", database,
+        g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                    mysql_error(conn));
         errors++;
         g_free(query);
@@ -2757,10 +2756,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
       result = mysql_store_result(conn);
       while ((row = mysql_fetch_row(result)) && !post_dump) {
         /* Checks skip list on 'database.sp' string */
-        if (tables_skiplist_file && check_skiplist(database, row[1]))
+        if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
         /* Checks PCRE expressions on 'database.sp' string */
-        if (regexstring && !check_regex(database, row[1]))
+        if (regexstring && !check_regex(database->name, row[1]))
           continue;
 
         post_dump = 1;
@@ -2771,9 +2770,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_events && !post_dump) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database);
+    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -2782,10 +2781,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database, row[1]))
+      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database, row[1]))
+      if (regexstring && !check_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2795,7 +2794,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (post_dump) {
     struct schema_post *sp = g_new(struct schema_post, 1);
-    sp->database = g_strdup(database);
+    sp->database = database;
     schema_post = g_list_prepend(schema_post, sp);
   }
 
@@ -2918,7 +2917,7 @@ void restore_charset(GString *statement) {
                   "SET collation_connection = @PREV_COLLATION_CONNECTION;\n");
 }
 
-void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
+void dump_schema_post_data(MYSQL *conn, struct database *database, char *filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -2930,7 +2929,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
   outfile = m_open(filename,"w");
 
   if (!outfile) {
-    g_critical("Error: DB: %s Could not create output file %s (%d)", database,
+    g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
                filename, errno);
     errors++;
     return;
@@ -2940,13 +2939,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   if (dump_routines) {
     // get functions
-    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping functions from %s: %s", database,
+        g_warning("Error dumping functions from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping functions from %s: %s", database,
+        g_critical("Error dumping functions from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -2959,14 +2958,14 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append_printf(statement, "DROP FUNCTION IF EXISTS `%s`;\n",
                              row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
       g_string_set_size(statement, 0);
       query =
-          g_strdup_printf("SHOW CREATE FUNCTION `%s`.`%s`", database, row[1]);
+          g_strdup_printf("SHOW CREATE FUNCTION `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
@@ -2976,7 +2975,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write function data for %s.%s", database, row[1]);
+        g_critical("Could not write function data for %s.%s", database->name, row[1]);
         errors++;
         return;
       }
@@ -2984,13 +2983,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
     }
 
     // get sp
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping stored procedures from %s: %s", database,
+        g_warning("Error dumping stored procedures from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping stored procedures from %s: %s", database,
+        g_critical("Error dumping stored procedures from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -3003,14 +3002,14 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append_printf(statement, "DROP PROCEDURE IF EXISTS `%s`;\n",
                              row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
       g_string_set_size(statement, 0);
       query =
-          g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database, row[1]);
+          g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
@@ -3020,7 +3019,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
@@ -3031,13 +3030,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   // get events
   if (dump_events) {
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database);
+    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping events from %s: %s", database,
+        g_warning("Error dumping events from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping events from %s: %s", database,
+        g_critical("Error dumping events from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -3049,12 +3048,12 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       set_charset(statement, row[12], row[13]);
       g_string_append_printf(statement, "DROP EVENT IF EXISTS `%s`;\n", row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
-      query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database, row[1]);
+      query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       // DROP EVENT IF EXISTS event_name
@@ -3065,7 +3064,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write event data for %s.%s", database, row[1]);
+        g_critical("Could not write event data for %s.%s", database->name, row[1]);
         errors++;
         return;
       }
@@ -3492,21 +3491,20 @@ void dump_view(struct db_table *dbt, struct configuration *conf) {
   return;
 }
 
-void dump_schema_post(char *database, struct configuration *conf) {
+void dump_schema_post(struct database *database, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct schema_post_job *sp = g_new0(struct schema_post_job, 1);
   j->job_data = (void *)sp;
-  gchar *d=get_ref_table(database);
-  sp->database = g_strdup(database);
+  sp->database = database;
   j->conf = conf;
   j->type = JOB_SCHEMA_POST;
   if (daemon_mode) {
     sp->filename =
         g_strdup_printf("%s/%d/%s-schema-post.sql%s", output_directory,
-                        dump_number, d, (compress_output ? ".gz" : ""));
+                        dump_number, sp->database->filename, (compress_output ? ".gz" : ""));
   } else {
     sp->filename = g_strdup_printf("%s/%s-schema-post.sql%s", output_directory,
-                                   d, (compress_output ? ".gz" : ""));
+                                   sp->database->filename, (compress_output ? ".gz" : ""));
   }
   g_async_queue_push(conf->queue, j);
   return;

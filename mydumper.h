@@ -87,7 +87,7 @@ struct tables_job {
 };
 
 struct dump_database_job {
-  char *database;
+  struct database *database;
 };
 
 struct create_database_job {
@@ -109,7 +109,7 @@ struct view_job {
 };
 
 struct schema_post_job {
-  char *database;
+  struct database *database;
   char *filename;
 };
 
@@ -142,7 +142,7 @@ struct database {
 };
 
 struct schema_post {
-  char *database;
+  struct database *database;
 };
 
 #endif
