@@ -282,14 +282,14 @@ void dump_view(struct db_table *dbt, struct configuration *conf);
 void dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb);
 void dump_tables(MYSQL *, GList *, struct configuration *);
-void dump_schema_post(char *database, struct configuration *conf);
+void dump_schema_post(struct database *database, struct configuration *conf);
 void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
-void dump_schema_post_data(MYSQL *conn, char *database, char *filename);
+void dump_schema_post_data(MYSQL *conn, struct database *database, char *filename);
 guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj);
-void dump_database(char *, struct configuration *);
-void dump_database_thread(MYSQL *, char *);
+void dump_database(struct database *database, struct configuration *);
+void dump_database_thread(MYSQL *, struct database *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL *conn, struct configuration *);
@@ -318,6 +318,7 @@ void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
 struct database *new_database(char *database);
 gchar *get_ref_table(gchar *k);
+struct database *get_database(MYSQL *conn, char *database);
 
 gboolean check_regex_general(char *regex, char *word) {
   /* This is not going to be used in threads */
@@ -338,14 +339,13 @@ gboolean check_regex_general(char *regex, char *word) {
   }
 
   rc = pcre_exec(re, NULL, word, strlen(word), 0, 0, ovector, 9);
-
   return (rc > 0) ? TRUE : FALSE;
 }
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
+  // We might need to define a better filename alternatives
   char * regex=strdup("^[\\w\\-_ ]+$");
-//  char * regex=strdup("^[\\w\\- ]+$");
   if (check_regex_general(regex,table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
     return table;
   else{
@@ -586,6 +586,57 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     mysql_free_result(mdb);
 }
 
+// Free structures
+
+void free_table_job(struct table_job *tj){
+  if (tj->table)
+    g_free(tj->table);
+  if (tj->where)
+    g_free(tj->where);
+  if (tj->order_by)
+    g_free(tj->order_by);
+  if (tj->filename)
+    g_free(tj->filename);
+//  g_free(tj);
+}
+
+void free_schema_job(struct schema_job *sj){
+  if (sj->table)
+    g_free(sj->table);
+  if (sj->filename)
+    g_free(sj->filename);
+//  g_free(sj);
+}
+
+void free_table_checksum_job(struct table_checksum_job*tcj){
+      if (tcj->table)
+        g_free(tcj->table);
+      if (tcj->filename)
+        g_free(tcj->filename);
+ //     g_free(tcj);
+}
+void free_view_job(struct view_job *vj){
+  if (vj->table)
+    g_free(vj->table);
+  if (vj->filename)
+    g_free(vj->filename);
+  if (vj->filename2)
+    g_free(vj->filename2);
+//  g_free(vj);
+}
+
+void free_schema_post_job(struct schema_post_job *sp){
+  if (sp->filename)
+    g_free(sp->filename);
+//  g_free(sp);
+}
+
+void free_create_database_job(struct create_database_job * cdj){
+  if (cdj->filename)
+    g_free(cdj->filename);
+//  g_free(cdj);
+}
+
 void message_dumping_data(guint thread_id, struct table_job *tj){
   g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s",
                     thread_id, tj->database, tj->table, 
@@ -724,17 +775,7 @@ void *process_queue(struct thread_data *td) {
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
       }
-      if (tj->database)
-        g_free(tj->database);
-      if (tj->table)
-        g_free(tj->table);
-      if (tj->where)
-        g_free(tj->where);
-      if (tj->order_by)
-        g_free(tj->order_by);
-      if (tj->filename)
-        g_free(tj->filename);
-      g_free(tj);
+      free_table_job(tj);
       g_free(job);
       break;
      case JOB_CHECKSUM:
@@ -749,13 +790,7 @@ void *process_queue(struct thread_data *td) {
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
       }
-      if (tcj->database)
-        g_free(tcj->database);
-      if (tcj->table)
-        g_free(tcj->table);
-      if (tcj->filename)
-        g_free(tcj->filename);
-      g_free(tcj);
+      free_table_checksum_job(tcj);
       g_free(job);
       break;
     case JOB_DUMP_NON_INNODB:
@@ -769,17 +804,7 @@ void *process_queue(struct thread_data *td) {
           mysql_query(thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
         g_critical("Rollback to savepoint failed: %s", mysql_error(thrconn));
       }
-      if (tj->database)
-        g_free(tj->database);
-      if (tj->table)
-        g_free(tj->table);
-      if (tj->where)
-        g_free(tj->where);
-      if (tj->order_by)
-        g_free(tj->order_by);
-      if (tj->filename)
-        g_free(tj->filename);
-      g_free(tj);
+      free_table_job(tj);
       g_free(job);
       if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
           g_atomic_int_get(&non_innodb_done)) {
@@ -789,11 +814,8 @@ void *process_queue(struct thread_data *td) {
     case JOB_DUMP_DATABASE:
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
-                ddj->database);
+                ddj->database->name);
       dump_database_thread(thrconn, ddj->database);
-      if (ddj->database)
-        g_free(ddj->database);
-      g_free(ddj);
       g_free(job);
       if (g_atomic_int_dec_and_test(&database_counter)) {
         g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
@@ -804,11 +826,7 @@ void *process_queue(struct thread_data *td) {
       g_message("Thread %d dumping schema create for `%s`", td->thread_id,
                 cdj->database);
       dump_create_database_data(thrconn, cdj->database, cdj->filename);
-      if (cdj->database)
-        g_free(cdj->database);
-      if (cdj->filename)
-        g_free(cdj->filename);
-      g_free(cdj);
+      free_create_database_job(cdj);
       g_free(job);
       break;
     case JOB_SCHEMA:
@@ -816,13 +834,7 @@ void *process_queue(struct thread_data *td) {
       g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
                 sj->database, sj->table);
       dump_schema_data(thrconn, sj->database, sj->table, sj->filename);
-      if (sj->database)
-        g_free(sj->database);
-      if (sj->table)
-        g_free(sj->table);
-      if (sj->filename)
-        g_free(sj->filename);
-      g_free(sj);
+      free_schema_job(sj);
       g_free(job);
       break;
     case JOB_VIEW:
@@ -831,15 +843,7 @@ void *process_queue(struct thread_data *td) {
                 vj->database, vj->table);
       dump_view_data(thrconn, vj->database, vj->table, vj->filename,
                      vj->filename2);
-      if (vj->database)
-        g_free(vj->database);
-      if (vj->table)
-        g_free(vj->table);
-      if (vj->filename)
-        g_free(vj->filename);
-      if (vj->filename2)
-        g_free(vj->filename2);
-      g_free(vj);
+      free_view_job(vj);
       g_free(job);
       break;
     case JOB_TRIGGERS:
@@ -847,25 +851,15 @@ void *process_queue(struct thread_data *td) {
       g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id,
                 sj->database, sj->table);
       dump_triggers_data(thrconn, sj->database, sj->table, sj->filename);
-      if (sj->database)
-        g_free(sj->database);
-      if (sj->table)
-        g_free(sj->table);
-      if (sj->filename)
-        g_free(sj->filename);
-      g_free(sj);
+      free_schema_job(sj);
       g_free(job);
       break;
     case JOB_SCHEMA_POST:
       sp = (struct schema_post_job *)job->job_data;
       g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
-                sp->database);
+                sp->database->name);
       dump_schema_post_data(thrconn, sp->database, sp->filename);
-      if (sp->database)
-        g_free(sp->database);
-      if (sp->filename)
-        g_free(sp->filename);
-      g_free(sp);
+      free_schema_post_job(sp);
       g_free(job);
       break;
 #ifdef WITH_BINLOG
@@ -991,16 +985,7 @@ void *process_queue_less_locking(struct thread_data *td) {
         tj = (struct table_job *)glj->data;
         message_dumping_data(td->thread_id,tj);
         dump_table_data_file(thrconn, tj);
-        if (tj->database)
-          g_free(tj->database);
-        if (tj->table)
-          g_free(tj->table);
-        if (tj->where)
-          g_free(tj->where);
-        if (tj->order_by)
-          g_free(tj->order_by);
-        if (tj->filename)
-          g_free(tj->filename);
+        free_table_job(tj);
         g_free(tj);
       }
       mysql_query(thrconn, "UNLOCK TABLES /* Non Innodb */");
@@ -1011,10 +996,8 @@ void *process_queue_less_locking(struct thread_data *td) {
     case JOB_DUMP_DATABASE:
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
-                ddj->database);
+                ddj->database->name);
       dump_database_thread(thrconn, ddj->database);
-      if (ddj->database)
-        g_free(ddj->database);
       g_free(ddj);
       g_free(job);
       if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -1026,11 +1009,7 @@ void *process_queue_less_locking(struct thread_data *td) {
       g_message("Thread %d dumping schema create for `%s`", td->thread_id,
                 cdj->database);
       dump_create_database_data(thrconn, cdj->database, cdj->filename);
-      if (cdj->database)
-        g_free(cdj->database);
-      if (cdj->filename)
-        g_free(cdj->filename);
-      g_free(cdj);
+      free_create_database_job(cdj);
       g_free(job);
       break;
     case JOB_SCHEMA:
@@ -1038,13 +1017,7 @@ void *process_queue_less_locking(struct thread_data *td) {
       g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
                 sj->database, sj->table);
       dump_schema_data(thrconn, sj->database, sj->table, sj->filename);
-      if (sj->database)
-        g_free(sj->database);
-      if (sj->table)
-        g_free(sj->table);
-      if (sj->filename)
-        g_free(sj->filename);
-      g_free(sj);
+      free_schema_job(sj);
       g_free(job);
       break;
     case JOB_VIEW:
@@ -1053,15 +1026,7 @@ void *process_queue_less_locking(struct thread_data *td) {
                 sj->database, sj->table);
       dump_view_data(thrconn, vj->database, vj->table, vj->filename,
                      vj->filename2);
-      if (vj->database)
-        g_free(vj->database);
-      if (vj->table)
-        g_free(vj->table);
-      if (vj->filename)
-        g_free(vj->filename);
-      if (vj->filename2)
-        g_free(vj->filename2);
-      g_free(vj);
+      free_view_job(vj);
       g_free(job);
       break;
     case JOB_TRIGGERS:
@@ -1069,25 +1034,15 @@ void *process_queue_less_locking(struct thread_data *td) {
       g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id,
                 sj->database, sj->table);
       dump_triggers_data(thrconn, sj->database, sj->table, sj->filename);
-      if (sj->database)
-        g_free(sj->database);
-      if (sj->table)
-        g_free(sj->table);
-      if (sj->filename)
-        g_free(sj->filename);
-      g_free(sj);
+      free_schema_job(sj);
       g_free(job);
       break;
     case JOB_SCHEMA_POST:
       sp = (struct schema_post_job *)job->job_data;
       g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
-                sp->database);
+                sp->database->name);
       dump_schema_post_data(thrconn, sp->database, sp->filename);
-      if (sp->database)
-        g_free(sp->database);
-      if (sp->filename)
-        g_free(sp->filename);
-      g_free(sp);
+      free_schema_post_job(sp);
       g_free(job);
       break;
 #ifdef WITH_BINLOG
@@ -1462,7 +1417,7 @@ void *exec_thread(void *data) {
 }
 
 void dump_metadata(struct db_table * dbt){
-  char *filename = g_strdup_printf("%s/%s.%s.metadata", output_directory, dbt->database_filename, dbt->table_filename);
+  char *filename = g_strdup_printf("%s/%s.%s.metadata", output_directory, dbt->database->filename, dbt->table_filename);
   FILE *table_meta = g_fopen(filename, "w");
   fprintf(table_meta, "%d", dbt->rows);
   fclose(table_meta);
@@ -1927,7 +1882,7 @@ void start_dump(MYSQL *conn) {
   }
 
   if (db) {
-    dump_database(db, &conf);
+    dump_database(get_database(conn,db), &conf);
     if (!no_schemas)
       dump_create_database(db, &conf);
   } else if (tables) {
@@ -1946,7 +1901,7 @@ void start_dump(MYSQL *conn) {
           !strcasecmp(row[0], "performance_schema") ||
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
-      dump_database(row[0], &conf);
+      dump_database(get_database(conn,row[0]), &conf);
       /* Checks PCRE expressions on 'database' string */
       if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL)))
         dump_create_database(row[0], &conf);
@@ -2019,6 +1974,7 @@ void start_dump(MYSQL *conn) {
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     if (dump_checksums) {
+      g_message("David test: %s",dbt->database->name);
       dump_checksum(dbt, &conf);
     }
     dump_table(conn, dbt, &conf, TRUE);
@@ -2030,19 +1986,13 @@ void start_dump(MYSQL *conn) {
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     dump_schema(conn, dbt, &conf);
-//    g_free(dbt->table);
-//    g_free(dbt->database);
-//    g_free(dbt);
   }
-//  g_list_free(table_schemas);
-//  table_schemas=NULL;
 
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     dump_view(dbt, &conf);
     g_free(dbt->table);
-    g_free(dbt->database);
     g_free(dbt);
   }
   g_list_free(view_schemas);
@@ -2052,7 +2002,6 @@ void start_dump(MYSQL *conn) {
   for (iter = schema_post; iter != NULL; iter = iter->next) {
     sp = (struct schema_post *)iter->data;
     dump_schema_post(sp->database, &conf);
-    g_free(sp->database);
     g_free(sp);
   }
   g_list_free(schema_post);
@@ -2094,10 +2043,9 @@ void start_dump(MYSQL *conn) {
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     dump_metadata(dbt);
-    g_free(dbt->table);
-//    g_free(dbt->table_filename);
-    g_free(dbt->escaped_table);
-    g_free(dbt);
+//    g_free(dbt->table);
+//    g_free(dbt->escaped_table);
+//    g_free(dbt);
   }
   g_list_free(table_schemas);
   table_schemas=NULL;
@@ -2128,7 +2076,7 @@ void dump_create_database(char *database, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct create_database_job *cdj = g_new0(struct create_database_job, 1);
   j->job_data = (void *)cdj;
-  gchar *d=get_ref_table(g_strdup(database));
+  gchar *d=get_ref_table(database);
   cdj->database = database;
   j->conf = conf;
   j->type = JOB_CREATE_DATABASE;
@@ -2226,7 +2174,7 @@ gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
       "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
-      dbt->escaped_database, dbt->escaped_table);
+      dbt->database->escaped, dbt->escaped_table);
 
   mysql_query(conn, query);
   g_free(query);
@@ -2547,37 +2495,34 @@ char * escape_string(MYSQL *conn, char *str){
 gchar *get_ref_table(gchar *k){
   g_mutex_lock(ref_table_mutex);
   gchar *val=g_hash_table_lookup(ref_table,k);
-    g_message("K: %s V: %s",k, val);
   if (val == NULL){
-    val=determine_filename(k);
+    val=determine_filename(g_strdup(k));
     g_hash_table_insert(ref_table, k, val);
-    g_message("K: %s V: %s",k, val);
   }
   g_mutex_unlock(ref_table_mutex);
   return val;
 }
 
-struct database *new_database(char *database){
-  struct database * d=g_new(struct database,1);
-  d->database=g_strdup(database);
-  d->database_filename=get_ref_table(d->database);
+struct database *get_database(MYSQL *conn, char *database){
+  struct database * d=g_hash_table_lookup(database_hash,database);
+  if (d == NULL){
+    d=g_new(struct database,1);
+    d->name = g_strdup(database);
+    d->filename = get_ref_table(d->name);
+    d->escaped = escape_string(conn,d->name);
+    g_message("Appending new database: %s | %s | %s",d->name,d->filename,d->escaped);
+    g_hash_table_insert(database_hash, d->name,d);
+  }
   return d;
 }
 
-struct db_table *new_db_table( MYSQL *conn, char *database, char *table, char *datalength){
-  struct database * d=g_hash_table_lookup(database_hash,database);
-  if (d == NULL){
-    d=new_database(database);
-    g_hash_table_insert(database_hash, d->database,d);
-  }
+struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
-  dbt->database = d->database;
-  dbt->database_filename=d->database_filename;
+  dbt->database = database;
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
-  dbt->escaped_database = escape_string(conn,dbt->database);
   dbt->rows=0;
   if (!datalength)
     dbt->datalength = 0;
@@ -2587,14 +2532,14 @@ struct db_table *new_db_table( MYSQL *conn, char *database, char *table, char *d
 }
 
 
-void dump_database(char *database, struct configuration *conf) {
+void dump_database(struct database *database, struct configuration *conf) {
 
   g_atomic_int_inc(&database_counter);
 
   struct job *j = g_new0(struct job, 1);
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
   j->job_data = (void *)ddj;
-  ddj->database = g_strdup(database);
+  ddj->database = database;
   j->conf = conf;
   j->type = JOB_DUMP_DATABASE;
 
@@ -2605,10 +2550,10 @@ void dump_database(char *database, struct configuration *conf) {
   return;
 }
 
-void dump_database_thread(MYSQL *conn, char *database) {
+void dump_database_thread(MYSQL *conn, struct database *database) {
 
   char *query;
-  mysql_select_db(conn, database);
+  mysql_select_db(conn, database->name);
   if (detected_server == SERVER_TYPE_MYSQL ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
@@ -2616,10 +2561,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
     query =
         g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
                         "DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'",
-                        database);
+                        database->escaped);
 
   if (mysql_query(conn, (query))) {
-    g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
     g_free(query);
@@ -2638,7 +2583,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
   }
 
   if (!result) {
-    g_critical("Could not list tables for %s: %s", database, mysql_error(conn));
+    g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
     return;
   }
@@ -2660,7 +2605,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
     if (!is_view && row[ecol] == NULL) {
-      g_warning("Broken table detected, please review: %s.%s", database,
+      g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
       dump = 0;
     }
@@ -2698,7 +2643,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
       continue;
 
     /* Special tables */
-    if (g_ascii_strcasecmp(database, "mysql") == 0 &&
+    if (g_ascii_strcasecmp(database->name, "mysql") == 0 &&
         (g_ascii_strcasecmp(row[0], "general_log") == 0 ||
          g_ascii_strcasecmp(row[0], "slow_log") == 0 ||
          g_ascii_strcasecmp(row[0], "innodb_index_stats") == 0 ||
@@ -2708,11 +2653,11 @@ void dump_database_thread(MYSQL *conn, char *database) {
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist && check_skiplist(database, row[0]))
+    if (tables_skiplist && check_skiplist(database->name, row[0]))
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (regexstring && !check_regex(database, row[0]))
+    if (regexstring && !check_regex(database->name, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -2720,8 +2665,8 @@ void dump_database_thread(MYSQL *conn, char *database) {
       GList *iter;
       for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
         if (g_ascii_strcasecmp(
-                iter->data, g_strdup_printf("%s.%s", database, row[0])) == 0) {
-          g_message("NO UPDATED TABLE: %s.%s", database, row[0]);
+                iter->data, g_strdup_printf("%s.%s", database->name, row[0])) == 0) {
+          g_message("NO UPDATED TABLE: %s.%s", database->name, row[0]);
           dump = 0;
         }
       }
@@ -2782,9 +2727,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_routines) {
     // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -2793,11 +2738,11 @@ void dump_database_thread(MYSQL *conn, char *database) {
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist && check_skiplist(database, row[1]))
+      if (tables_skiplist && check_skiplist(database->name, row[1]))
         continue;
 
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database, row[1]))
+      if (regexstring && !check_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2805,9 +2750,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
     if (!post_dump) {
       // FUNCTIONS
-      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
       if (mysql_query(conn, (query))) {
-        g_critical("Error: DB: %s - Could not execute query: %s", database,
+        g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                    mysql_error(conn));
         errors++;
         g_free(query);
@@ -2816,10 +2761,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
       result = mysql_store_result(conn);
       while ((row = mysql_fetch_row(result)) && !post_dump) {
         /* Checks skip list on 'database.sp' string */
-        if (tables_skiplist_file && check_skiplist(database, row[1]))
+        if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
         /* Checks PCRE expressions on 'database.sp' string */
-        if (regexstring && !check_regex(database, row[1]))
+        if (regexstring && !check_regex(database->name, row[1]))
           continue;
 
         post_dump = 1;
@@ -2830,9 +2775,9 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (dump_events && !post_dump) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database);
+    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database,
+      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -2841,10 +2786,10 @@ void dump_database_thread(MYSQL *conn, char *database) {
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database, row[1]))
+      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database, row[1]))
+      if (regexstring && !check_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2854,7 +2799,7 @@ void dump_database_thread(MYSQL *conn, char *database) {
 
   if (post_dump) {
     struct schema_post *sp = g_new(struct schema_post, 1);
-    sp->database = g_strdup(database);
+    sp->database = database;
     schema_post = g_list_prepend(schema_post, sp);
   }
 
@@ -2910,7 +2855,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
 
       /* Green light! */
       struct db_table *dbt = g_new(struct db_table, 1);
-      dbt->database = g_strdup(dt[0]);
+      dbt->database = get_database(conn, dt[0]);
       dbt->table = g_strdup(dt[1]);
       dbt->rows_lock= g_mutex_new();
       dbt->rows=0;
@@ -2977,7 +2922,7 @@ void restore_charset(GString *statement) {
                   "SET collation_connection = @PREV_COLLATION_CONNECTION;\n");
 }
 
-void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
+void dump_schema_post_data(MYSQL *conn, struct database *database, char *filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -2989,7 +2934,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
   outfile = m_open(filename,"w");
 
   if (!outfile) {
-    g_critical("Error: DB: %s Could not create output file %s (%d)", database,
+    g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
                filename, errno);
     errors++;
     return;
@@ -2999,13 +2944,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   if (dump_routines) {
     // get functions
-    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping functions from %s: %s", database,
+        g_warning("Error dumping functions from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping functions from %s: %s", database,
+        g_critical("Error dumping functions from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -3018,14 +2963,14 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append_printf(statement, "DROP FUNCTION IF EXISTS `%s`;\n",
                              row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
       g_string_set_size(statement, 0);
       query =
-          g_strdup_printf("SHOW CREATE FUNCTION `%s`.`%s`", database, row[1]);
+          g_strdup_printf("SHOW CREATE FUNCTION `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
@@ -3035,7 +2980,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write function data for %s.%s", database, row[1]);
+        g_critical("Could not write function data for %s.%s", database->name, row[1]);
         errors++;
         return;
       }
@@ -3043,13 +2988,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
     }
 
     // get sp
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database);
+    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping stored procedures from %s: %s", database,
+        g_warning("Error dumping stored procedures from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping stored procedures from %s: %s", database,
+        g_critical("Error dumping stored procedures from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -3062,14 +3007,14 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append_printf(statement, "DROP PROCEDURE IF EXISTS `%s`;\n",
                              row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
       g_string_set_size(statement, 0);
       query =
-          g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database, row[1]);
+          g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
@@ -3079,7 +3024,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
@@ -3090,13 +3035,13 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
 
   // get events
   if (dump_events) {
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database);
+    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping events from %s: %s", database,
+        g_warning("Error dumping events from %s: %s", database->name,
                   mysql_error(conn));
       } else {
-        g_critical("Error dumping events from %s: %s", database,
+        g_critical("Error dumping events from %s: %s", database->name,
                    mysql_error(conn));
         errors++;
       }
@@ -3108,12 +3053,12 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       set_charset(statement, row[12], row[13]);
       g_string_append_printf(statement, "DROP EVENT IF EXISTS `%s`;\n", row[1]);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database,
+        g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
         return;
       }
-      query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database, row[1]);
+      query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database->name, row[1]);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       // DROP EVENT IF EXISTS event_name
@@ -3124,7 +3069,7 @@ void dump_schema_post_data(MYSQL *conn, char *database, char *filename) {
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data((FILE *)outfile, statement)) {
-        g_critical("Could not write event data for %s.%s", database, row[1]);
+        g_critical("Could not write event data for %s.%s", database->name, row[1]);
         errors++;
         return;
       }
@@ -3452,17 +3397,17 @@ void dump_checksum(struct db_table * dbt,
   struct job *j = g_new0(struct job, 1);
   struct table_checksum_job *tcj = g_new0(struct table_checksum_job, 1);
   j->job_data = (void *)tcj;
-  tcj->database = g_strdup(dbt->database);
+  tcj->database = dbt->database->name;
   tcj->table = g_strdup(dbt->table);
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   if (daemon_mode)
     tcj->filename = g_strdup_printf("%s/%d/%s.%s.checksum%s", output_directory,
-                                   dump_number, dbt->database_filename, dbt->table_filename,(compress_output ? ".gz" : ""));
+                                   dump_number, dbt->database->filename, dbt->table_filename,(compress_output ? ".gz" : ""));
   else
     tcj->filename =
         g_strdup_printf("%s/%s.%s.checksum%s", output_directory,
-                        dbt->database_filename, dbt->table_filename,(compress_output ? ".gz" : ""));
+                        dbt->database->filename, dbt->table_filename,(compress_output ? ".gz" : ""));
   g_async_queue_push(conf->queue, j);
 
   return;
@@ -3472,17 +3417,17 @@ void dump_schema(MYSQL *conn, struct db_table *dbt,
   struct job *j = g_new0(struct job, 1);
   struct schema_job *sj = g_new0(struct schema_job, 1);
   j->job_data = (void *)sj;
-  sj->database = g_strdup(dbt->database);
+  sj->database = dbt->database->name;
   sj->table = g_strdup(dbt->table);
   j->conf = conf;
   j->type = JOB_SCHEMA;
   if (daemon_mode)
     sj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory,
-                                   dump_number, dbt->database_filename, dbt->table_filename,
+                                   dump_number, dbt->database->filename, dbt->table_filename,
                                    (compress_output ? ".gz" : ""));
   else
     sj->filename =
-        g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, dbt->database_filename,
+        g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, dbt->database->filename,
                         dbt->table_filename, (compress_output ? ".gz" : ""));
   g_async_queue_push(conf->queue, j);
 
@@ -3491,9 +3436,9 @@ void dump_schema(MYSQL *conn, struct db_table *dbt,
     MYSQL_RES *result = NULL;
 
     query =
-        g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database, dbt->escaped_table);
+        g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-      g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database, dbt->table,
+      g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
                  mysql_error(conn),query);
       errors++;
     } else {
@@ -3501,17 +3446,17 @@ void dump_schema(MYSQL *conn, struct db_table *dbt,
         struct job *t = g_new0(struct job, 1);
         struct schema_job *st = g_new0(struct schema_job, 1);
         t->job_data = (void *)st;
-        st->database = g_strdup(dbt->database);
+        st->database = dbt->database->name;
         st->table = g_strdup(dbt->table);
         t->conf = conf;
         t->type = JOB_TRIGGERS;
         if (daemon_mode)
           st->filename = g_strdup_printf(
               "%s/%d/%s.%s-schema-triggers.sql%s", output_directory,
-              dump_number, dbt->database_filename, dbt->table_filename, (compress_output ? ".gz" : ""));
+              dump_number, dbt->database->filename, dbt->table_filename, (compress_output ? ".gz" : ""));
         else
           st->filename = g_strdup_printf("%s/%s.%s-schema-triggers.sql%s",
-                                         output_directory, dbt->database_filename, dbt->table_filename,
+                                         output_directory, dbt->database->filename, dbt->table_filename,
                                          (compress_output ? ".gz" : ""));
         g_async_queue_push(conf->queue, t);
       }
@@ -3528,44 +3473,43 @@ void dump_view(struct db_table *dbt, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct view_job *vj = g_new0(struct view_job, 1);
   j->job_data = (void *)vj;
-  vj->database = g_strdup(dbt->database);
+  vj->database = dbt->database->name;
   vj->table = g_strdup(dbt->table);
   j->conf = conf;
   j->type = JOB_VIEW;
   if (daemon_mode) {
     vj->filename = g_strdup_printf("%s/%d/%s.%s-schema.sql%s", output_directory,
-                                   dump_number, dbt->database_filename, dbt->table_filename,
+                                   dump_number, dbt->database->filename, dbt->table_filename,
                                    (compress_output ? ".gz" : ""));
     vj->filename2 = g_strdup_printf("%s/%d/%s.%s-schema-view.sql%s",
-                                    output_directory, dump_number, dbt->database_filename,
+                                    output_directory, dump_number, dbt->database->filename,
                                     dbt->table_filename, (compress_output ? ".gz" : ""));
   } else {
     vj->filename =
-        g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, dbt->database_filename,
+        g_strdup_printf("%s/%s.%s-schema.sql%s", output_directory, dbt->database->filename,
                         dbt->table_filename, (compress_output ? ".gz" : ""));
     vj->filename2 =
         g_strdup_printf("%s/%s.%s-schema-view.sql%s", output_directory,
-                        dbt->database_filename, dbt->table_filename, (compress_output ? ".gz" : ""));
+                        dbt->database->filename, dbt->table_filename, (compress_output ? ".gz" : ""));
   }
   g_async_queue_push(conf->queue, j);
   return;
 }
 
-void dump_schema_post(char *database, struct configuration *conf) {
+void dump_schema_post(struct database *database, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct schema_post_job *sp = g_new0(struct schema_post_job, 1);
   j->job_data = (void *)sp;
-  gchar *d=get_ref_table(g_strdup(database));
-  sp->database = g_strdup(database);
+  sp->database = database;
   j->conf = conf;
   j->type = JOB_SCHEMA_POST;
   if (daemon_mode) {
     sp->filename =
         g_strdup_printf("%s/%d/%s-schema-post.sql%s", output_directory,
-                        dump_number, d, (compress_output ? ".gz" : ""));
+                        dump_number, sp->database->filename, (compress_output ? ".gz" : ""));
   } else {
     sp->filename = g_strdup_printf("%s/%s-schema-post.sql%s", output_directory,
-                                   d, (compress_output ? ".gz" : ""));
+                                   sp->database->filename, (compress_output ? ".gz" : ""));
   }
   g_async_queue_push(conf->queue, j);
   return;
@@ -3574,7 +3518,8 @@ void dump_schema_post(char *database, struct configuration *conf) {
 struct table_job * new_table_job(char *directory, struct db_table *dbt, char *where, char *filename, gboolean has_generated_fields){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
-  tj->database=g_strdup(dbt->database);
+  // from the ref table?? TODO
+  tj->database=dbt->database->name;
   tj->table=g_strdup(dbt->table);
 // end 
   tj->directory=directory;
@@ -3591,14 +3536,14 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
 //  char *table = dbt->table;
   GList *chunks = NULL;
   if (rows_per_file)
-    chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
+    chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
 
   gboolean has_generated_fields =
     detect_generated_fields(conn, dbt);
 
   char *order_by = NULL;
   if (order_by_primary_key)
-    order_by = get_primary_key_string(conn, dbt->database, dbt->table);
+    order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
   if (chunks) {
     int nchunk = 0;
     GList *iter;
@@ -3609,10 +3554,10 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
       if (daemon_mode)
         tj = new_table_job(output_directory,dbt,(char *)iter->data,g_strdup_printf(
-            "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database_filename,
+            "%s/%d/%s.%s.%05d.sql%s", output_directory, dump_number, dbt->database->filename,
             dbt->table_filename, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
       else
-        tj = new_table_job(output_directory,dbt,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database_filename,
+        tj = new_table_job(output_directory,dbt,(char *)iter->data,g_strdup_printf("%s/%s.%s.%05d.sql%s", output_directory, dbt->database->filename,
                             dbt->table_filename, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
       if (order_by) {
         tj->order_by = g_strdup(order_by);
@@ -3634,11 +3579,11 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
     
     if (daemon_mode)
       tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),dbt,NULL, g_strdup_printf(
-          "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, dbt->database_filename, dbt->table_filename,
+          "%s/%d/%s.%s%s.sql%s", output_directory, dump_number, dbt->database->filename, dbt->table_filename,
           (chunk_filesize ? ".00001" : ".00000"), (compress_output ? ".gz" : "")), has_generated_fields);
     else
       tj = new_table_job(output_directory,dbt,NULL, g_strdup_printf(
-          "%s/%s.%s%s.sql%s", output_directory, dbt->database_filename, dbt->table_filename,
+          "%s/%s.%s%s.sql%s", output_directory, dbt->database->filename, dbt->table_filename,
           (chunk_filesize ? ".00001" : ".00000"), (compress_output ? ".gz" : "")), has_generated_fields);
     if (order_by) {
       tj->order_by = g_strdup(order_by);
@@ -3667,7 +3612,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
     dbt = (struct db_table *)iter->data;
 
     if (rows_per_file)
-      chunks = get_chunks_for_table(conn, dbt->database, dbt->table, conf);
+      chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
     gboolean has_generated_fields =
       detect_generated_fields(conn, dbt);
 
@@ -3676,17 +3621,17 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
       GList *citer;
       gchar *order_by = NULL;
       if (order_by_primary_key)
-        order_by = get_primary_key_string(conn, dbt->database, dbt->table);
+        order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
       for (citer = chunks; citer != NULL; citer = citer->next) {
         struct table_job *tj = NULL;
         if (daemon_mode)
           tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),dbt,(char *)citer->data,
               g_strdup_printf("%s/%d/%s.%s.%05d.sql%s", output_directory,
-                              dump_number, dbt->database_filename, dbt->table_filename, nchunk,
+                              dump_number, dbt->database->filename, dbt->table_filename, nchunk,
                               (compress_output ? ".gz" : "")), has_generated_fields);
         else
           tj = new_table_job(output_directory,dbt,(char *)citer->data, g_strdup_printf(
-              "%s/%s.%s.%05d.sql%s", output_directory, dbt->database_filename,
+              "%s/%s.%s.%05d.sql%s", output_directory, dbt->database->filename,
               dbt->table_filename, nchunk, (compress_output ? ".gz" : "")), has_generated_fields);
         if (order_by)
           tj->order_by = g_strdup(order_by);
@@ -3702,15 +3647,15 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
       struct table_job *tj = NULL;
       if (daemon_mode)
         tj = new_table_job(g_strdup_printf("%s/%d",output_directory,dump_number),dbt,NULL,g_strdup_printf("%s/%d/%s.%s%s.sql%s", output_directory,
-                                       dump_number, dbt->database_filename, dbt->table_filename,
+                                       dump_number, dbt->database->filename, dbt->table_filename,
                                        (chunk_filesize ? ".00001" : ".00000"),
                                        (compress_output ? ".gz" : "")), has_generated_fields);
       else
         tj = new_table_job(output_directory,dbt,NULL, g_strdup_printf(
-            "%s/%s.%s%s.sql%s", output_directory, dbt->database_filename, dbt->table_filename,
+            "%s/%s.%s%s.sql%s", output_directory, dbt->database->filename, dbt->table_filename,
             (chunk_filesize ? ".00001" : ".00000"), (compress_output ? ".gz" : "")), has_generated_fields);
       if (order_by_primary_key)
-        tj->order_by = get_primary_key_string(conn, dbt->database, dbt->table);
+        tj->order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
       else
         tj->order_by = NULL;
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);

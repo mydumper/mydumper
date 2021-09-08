@@ -87,7 +87,7 @@ struct tables_job {
 };
 
 struct dump_database_job {
-  char *database;
+  struct database *database;
 };
 
 struct create_database_job {
@@ -109,7 +109,7 @@ struct view_job {
 };
 
 struct schema_post_job {
-  char *database;
+  struct database *database;
   char *filename;
 };
 
@@ -126,24 +126,23 @@ struct binlog_job {
 };
 
 struct db_table {
-  char *database;
-  char *database_filename;
+  struct database *database;
   char *table;
   char *table_filename;
   char *escaped_table;
-  char *escaped_database;
   guint64 datalength;
   guint rows;
   GMutex *rows_lock;
 };
 
 struct database {
-  char *database;
-  char *database_filename;
+  char *name;
+  char *filename;
+  char *escaped;
 };
 
 struct schema_post {
-  char *database;
+  struct database *database;
 };
 
 #endif
