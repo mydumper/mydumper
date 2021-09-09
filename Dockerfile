@@ -1,10 +1,10 @@
 FROM gcc:11-bullseye
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 RUN \
   apt-get update && \
-  DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y lsb-release \
-  && \
+  apt-get install -y lsb-release && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
@@ -18,9 +18,8 @@ RUN \
 
 RUN \
   apt-get update && \
-  DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y \
-      libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev cmake g++ libperconaserverclient20-dev libperconaserverclient20 \
+  apt-get install -y \
+    libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev cmake g++ libperconaserverclient20-dev libperconaserverclient20 \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
