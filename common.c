@@ -3,6 +3,8 @@
 #include <mysql.h>
 #include <glib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
@@ -78,3 +80,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
   }
 }
 
+
+int write_file(FILE * file, char * buff, int len){
+  return write(fileno(file), buff, len); 
+}

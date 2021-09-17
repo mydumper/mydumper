@@ -72,7 +72,7 @@ int restore_data_in_gstring_from_file(MYSQL *conn,
 int restore_data_in_gstring(MYSQL *conn, GString *data, gboolean is_schema, guint *query_counter);
 void *process_queue(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-void load_directory_information(struct configuration *conf, MYSQL *conn);
+void load_directory_information(struct configuration *conf);
 void checksum_databases(MYSQL *conn,struct configuration *conf);
 void restore_schema_view(MYSQL *conn,struct configuration *conf);
 void restore_schema_triggers(MYSQL *conn,struct configuration *conf);
@@ -90,6 +90,7 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table);
 gchar * get_database_name_from_content(const gchar *filename);
 void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count, gchar ** current_database);
 gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count, gchar ** current_database);
+void *process_stream(struct configuration *conf);
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &directory,
@@ -194,10 +195,11 @@ struct db_table* append_new_db_table(gchar * real_database, gchar * database, gc
   return dbt;
 }
 
-struct restore_job * new_restore_job(char * filename, struct db_table * dbt, GString * statement, guint part, enum restore_job_type type){
+struct restore_job * new_restore_job(char * filename, char * database, struct db_table * dbt, GString * statement, guint part, enum restore_job_type type){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->type=type;
   rj->filename= filename;
+  rj->database= database;
   rj->statement = statement;
   rj->dbt = dbt;
   rj->part = part;
@@ -232,7 +234,7 @@ gchar * print_time(GTimeSpan timespan){
 
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -286,6 +288,9 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  stream_queue = g_async_queue_new();
+  GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, &conf, TRUE, NULL);
+
   if (set_names_str){
     gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
     set_names_str=tmp_str;
@@ -316,10 +321,12 @@ int main(int argc, char *argv[]) {
       g_critical("the specified directory doesn't exists\n");
       exit(EXIT_FAILURE);
     }
-    char *p = g_strdup_printf("%s/metadata", directory);
-    if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
-      g_critical("the specified directory is not a mydumper backup\n");
-      exit(EXIT_FAILURE);
+    if (!stream){
+      char *p = g_strdup_printf("%s/metadata", directory);
+      if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
+        g_critical("the specified directory is not a mydumper backup\n");
+        exit(EXIT_FAILURE);
+      }
     }
   }
   MYSQL *conn;
@@ -344,6 +351,7 @@ int main(int argc, char *argv[]) {
     mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
   }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
+  conf.database_queue = g_async_queue_new();
   conf.pre_queue = g_async_queue_new();
   conf.queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
@@ -358,7 +366,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Step 1: Create databases | single threaded
-  load_directory_information(&conf, conn);
+
+  if (!stream) load_directory_information(&conf);
   g_message("Step 1 completed, Databases created");
   // Step 2: Create tables | multithreaded
   GThread **threads = g_new(GThread *, num_threads);
@@ -372,14 +381,24 @@ int main(int argc, char *argv[]) {
     // We don't want all the threads try to connect at the same time
     g_async_queue_pop(conf.ready);
   }
+  // We need to sync all the threads before continue
+  sync_threads_on_queue(conf.ready,conf.database_queue,"Step 1 completed, databases created");
+
+  // Contiue with next stage if we load the data from the directory, if stream, the stream process needs to decide to continue
+  if (!stream)
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_push(conf.database_queue, new_job(JOB_SHUTDOWN,NULL));
+    }
+
 
   // We need to sync all the threads before continue
   sync_threads_on_queue(conf.ready,conf.pre_queue,"Step 2 completed, tables created");
 
-  // Contiue with next stage
-  for (n = 0; n < num_threads; n++) {
-    g_async_queue_push(conf.pre_queue, new_job(JOB_SHUTDOWN,NULL));
-  }
+  // Contiue with next stage if we load the data from the directory, if stream, the stream process needs to decide to continue
+  if (!stream)
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_push(conf.pre_queue, new_job(JOB_SHUTDOWN,NULL));
+    }
 
   // Step 3: Load data | multithreaded
  
@@ -387,6 +406,7 @@ int main(int argc, char *argv[]) {
   sync_threads_on_queue(conf.ready,conf.queue,"Step 3 completed, load data finished");
 
   // Contiue with next stage
+  if (!stream)
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.queue, new_job(JOB_SHUTDOWN,NULL));
   }
@@ -429,6 +449,9 @@ int main(int argc, char *argv[]) {
   g_async_queue_unref(conf.queue);
 
   checksum_databases(conn,&conf);
+
+
+  if (stream) g_thread_join(stream_thread);
 
   mysql_close(conn);
   mysql_thread_end();
@@ -549,7 +572,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
               dbt->indexes=alter_table_statement;
               if (include_constraint){
                 finish_alter_table(alter_table_constraint_statement);
-                struct restore_job *rj = new_restore_job(g_strdup(filename), dbt, alter_table_constraint_statement, 0, JOB_RESTORE_STRING);
+                struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, alter_table_constraint_statement, 0, JOB_RESTORE_STRING);
                 g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
@@ -569,7 +592,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
       }
     }
   }
-  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
+  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
   g_async_queue_push(conf->pre_queue, new_job(JOB_RESTORE,rj));
 }
 
@@ -610,7 +633,118 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
   g_strfreev(split_db_tbl);
 }
 
-void load_directory_information(struct configuration *conf, MYSQL *conn) {
+void process_database_filename(struct configuration *conf, const char * filename) {
+  gchar *db_kname,*db_vname;
+  db_vname=db_kname=get_database_name_from_filename(filename);
+  if (db_kname!=NULL && g_str_has_prefix(db_kname,"mydumper_")){
+    db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+  }
+  g_hash_table_insert(db_hash, db_kname, db_vname);
+  struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL /*dbt*/, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME);
+  g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj));
+}
+
+void process_table_filename(struct configuration *conf, GHashTable *table_hash, const char * filename){
+  gchar *db_name, *table_name, *real_db_name;
+  struct db_table *dbt=NULL;
+  get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
+  if (db_name == NULL || table_name == NULL){
+    g_critical("It was not possible to process file: %s",filename);
+    exit(EXIT_FAILURE);
+  }
+  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  if (real_db_name==NULL){
+    g_critical("It was not possible to process file: %s",filename);
+    exit(EXIT_FAILURE);
+  }
+  dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
+  load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
+}
+
+void process_data_filename(struct configuration *conf, GHashTable *table_hash, const char * filename){
+  gchar *db_name, *table_name, *real_db_name;
+  total_data_sql_files++;
+  // TODO: check if it is a data file
+  // TODO: we need to count sections of the data file to determine if it is ok.
+  guint part;
+  get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
+  if (db_name == NULL || table_name == NULL){
+    g_critical("It was not possible to process file: %s",filename);
+    exit(EXIT_FAILURE);
+  }
+  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
+  struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME);
+  // in stream mode, there is no need to sort. We can enqueue directly, where? queue maybe?.
+  if (stream){
+    g_async_queue_push(conf->queue, new_job(JOB_RESTORE ,rj));
+  }else{
+    dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+  }
+
+
+}
+
+enum file_type get_file_type (const char * filename){
+  if (g_strrstr(filename, "-schema.sql")) {
+    return SCHEMA_TABLE;
+  } else if (g_str_has_suffix(filename, ".metadata")) {
+    return METADATA_TABLE;
+  } else if ( strcmp(filename, "metadata") == 0 ){
+    return METADATA_GLOBAL;
+  } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
+    return CHECKSUM;
+  } else if ( g_strrstr(filename, "-schema-view.sql") ){
+    return SCHEMA_VIEW;
+  } else if ( g_strrstr(filename, "-schema-triggers.sql") ){
+    return SCHEMA_TRIGGER;
+  } else if ( g_strrstr(filename, "-schema-post.sql") ){
+    return SCHEMA_POST;
+  } else if ( g_strrstr(filename, "-schema-create.sql") ){
+    return SCHEMA_CREATE;
+  } 
+  return DATA;
+}
+
+
+enum file_type process_filename(struct configuration *conf,GHashTable *table_hash, GList *data_files_list, char *filename){
+  enum file_type ft= get_file_type(filename);
+  if (!source_db ||
+    g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+    switch (ft){
+      case SCHEMA_CREATE:
+        process_database_filename(conf, filename);
+        break;
+      case SCHEMA_TABLE:
+        process_table_filename(conf,table_hash,filename);
+        break;
+      case SCHEMA_VIEW:
+        conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
+        break;
+      case SCHEMA_TRIGGER:
+        conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
+        break;
+      case SCHEMA_POST:
+        conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
+        break;
+      case CHECKSUM:
+        conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
+        break;
+      case METADATA_GLOBAL:
+        break;
+      case METADATA_TABLE:
+        // TODO: we need to process this info
+        conf->metadata_list=g_list_insert(conf->metadata_list,g_strdup(filename),-1);
+        break;
+      case DATA:
+        data_files_list=g_list_insert(data_files_list,g_strdup(filename),-1);
+        break;
+    }
+  }
+  return ft;
+}
+
+void load_directory_information(struct configuration *conf) {
   GError *error = NULL;
   GDir *dir = g_dir_open(directory, 0, &error);
 
@@ -621,79 +755,69 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
   }
 
   const gchar *filename = NULL;
-  GHashTable *table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   GList *create_table_list=NULL,*metadata_list= NULL,*data_files_list=NULL;
   struct db_table *dbt=NULL;
   while ((filename = g_dir_read_name(dir))) {
     // TODO: read the whole dir, without !source_db and then filter out the objects.
     if (!source_db ||
       g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      if (g_strrstr(filename, "-schema.sql")) {
-        create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
-      } else if (g_str_has_suffix(filename, ".metadata")) {
-        metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
-      } else if ( strcmp(filename, "metadata") == 0 ){
-      } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
-        conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-view.sql") ){
-        conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-triggers.sql") ){
-        conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-post.sql") ){
-        conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-create.sql") ){
-        conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
-      } else {
-        data_files_list=g_list_insert(data_files_list,g_strdup(filename),-1);
-      } 
-
+      enum file_type ft= get_file_type(filename);
+      switch (ft){
+        case SCHEMA_CREATE:
+          conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
+          break;
+        case SCHEMA_TABLE:
+          create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
+          break;
+        case SCHEMA_VIEW:
+          conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
+          break;
+        case SCHEMA_TRIGGER:
+          conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
+          break;
+        case SCHEMA_POST:
+          conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
+          break;
+        case CHECKSUM:
+          conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
+          break;
+        case METADATA_GLOBAL:
+          break;
+        case METADATA_TABLE:
+          // TODO: we need to process this info
+          metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
+          break;
+        case DATA:
+          data_files_list=g_list_insert(data_files_list,g_strdup(filename),-1);
+          break;
+      }
     }
   }
   g_dir_close(dir);
 
 
-  // CREATE DATABASe
+  // CREATE DATABASE
   GList *schema_create_list=conf->schema_create_list;
-  gchar *db_kname,*db_vname;
   while (schema_create_list){
     filename=schema_create_list->data;
-    db_vname=db_kname=get_database_name_from_filename(filename);
-    if (db_kname!=NULL && g_str_has_prefix(db_kname,"mydumper_")){
-      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
-      // Append to hash ref table...
-    }
-    g_hash_table_insert(db_hash, db_kname, db_vname);
-    if (db)
-      create_database(conn, db);
-    else
-      restore_data_from_file(conn, db_vname, NULL, filename, TRUE, FALSE);
-    // Append to db
+    process_database_filename(conf, filename);
     schema_create_list=schema_create_list->next;
   }
 
-
-  // CREWATE TABLE
-  gchar *db_name, *table_name, *real_db_name;
+  // CREATE TABLE
+  GHashTable *table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while (create_table_list != NULL){
     filename=create_table_list->data;
-    get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
-    if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s",filename);
-      exit(EXIT_FAILURE);
-    }
-    real_db_name=g_hash_table_lookup(db_hash,db_name);
-    if (real_db_name==NULL){
-      g_critical("It was not possible to process file: %s",filename);
-      exit(EXIT_FAILURE);
-    }
-    dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
-    load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
+    process_table_filename(conf,table_hash,filename);
     create_table_list=create_table_list->next;
   }
 
   // DATA FILES
+  //gchar *db_name, *table_name, *real_db_name;
   while (data_files_list != NULL){
     filename=data_files_list->data;
+    process_data_filename(conf,table_hash,filename);
+    /*
     total_data_sql_files++;
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
@@ -705,11 +829,17 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
     dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
-    struct restore_job *rj = new_restore_job(g_strdup(filename), dbt, NULL, part , JOB_RESTORE_FILENAME);
+    struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME);
+    // in stream mode, there is no need to sort. We can enqueue directly.
     dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+    */
     data_files_list=data_files_list->next;
   }
 
+  // iterates over the dbt to create the jobs in the dbt->queue
+  // and sorts the dbt for the conf->table_list
+  // in stream mode, it is not possible to sort the tables as 
+  // we don't know the amount the rows, .metadata are sent at the end.
   GList * table_list=NULL;
   GHashTableIter iter;
   gchar * lkey;
@@ -725,6 +855,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
   }
   g_hash_table_destroy(table_hash);
   conf->table_list=table_list;
+  // conf->table needs to be set.
 }
 
 
@@ -982,6 +1113,12 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
         g_free(rj->filename);
       g_free(rj);
       break;
+    case JOB_RESTORE_SCHEMA_FILENAME:
+      if (db)
+        create_database(thrconn, db);
+      else
+        restore_data_from_file(thrconn, rj->database, NULL, rj->filename, TRUE, FALSE);
+      break;
     default:
       g_critical("Something very bad happened!");
       exit(EXIT_FAILURE);
@@ -1024,16 +1161,27 @@ void *process_queue(struct thread_data *td) {
   struct job *job = NULL;
   gboolean cont=TRUE;
   int count =0;
-  // Step 2: Create tables
   gchar *current_database=NULL;
+
+  // Step 1: creating databases 
+  while (cont){
+    job = (struct job *)g_async_queue_pop(conf->database_queue);
+    cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
+  }
+
+  // Step 2: Create tables
   if (db){
     execute_use(thrconn, db,"Creating tables");
     current_database=db;
   }
+  cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->pre_queue);
     cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
   }
+
+
+  // Is this correct in a streaming scenario ?
 
   GList *table_list=conf->table_list;
   if (table_list == NULL ) {
@@ -1080,12 +1228,12 @@ void *process_queue(struct thread_data *td) {
           dbt->current_threads--;
           dbt->start_index_time=g_date_time_new_now_local();
           g_mutex_unlock(dbt->mutex);
-	  if (dbt->indexes != NULL) {
+          if (dbt->indexes != NULL) {
             g_message("Thread %d restoring indexes `%s`.`%s`", td->thread_id,
                   dbt->real_database, dbt->real_table);
             guint query_counter=0;
             restore_data_in_gstring(thrconn, dbt->indexes, FALSE, &query_counter);
-	  }
+          }
           dbt->finish_time=g_date_time_new_now_local();
         }else{
           g_mutex_unlock(dbt->mutex);
@@ -1360,3 +1508,83 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
 
   return TRUE;
 }
+
+GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type current_ft){
+  switch (current_ft){
+    case SCHEMA_CREATE:
+      return conf->database_queue;
+    case SCHEMA_TABLE:
+      return conf->pre_queue;
+    case SCHEMA_VIEW:
+    case SCHEMA_TRIGGER:
+    case SCHEMA_POST:
+    case CHECKSUM:
+    case METADATA_GLOBAL:
+    case METADATA_TABLE:
+      return conf->post_queue;
+    case DATA:
+      return conf->queue;
+      break;
+  }
+  return NULL;
+}
+
+void *process_stream(struct configuration *conf){
+  char * filename=NULL,*real_filename=NULL;
+  char buffer[1024];
+  long unsigned int len=0;
+  FILE *file=NULL;
+  gboolean eof=FALSE;
+  GHashTable *table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  GList *data_files_list=NULL;
+  enum file_type last_ft=-1, current_ft=-1;
+  GAsyncQueue * queue;
+  do {
+    if(fgets(buffer, 1024, stdin) == NULL){
+      
+      if (file && feof(file)){
+        eof = TRUE;
+        buffer[0] = '\0';
+      }else{
+        break;
+      }
+    }else{
+      if (g_str_has_prefix(buffer,"-- ")){
+        if (file){
+          fclose(file);
+          last_ft=current_ft;
+          current_ft=process_filename(conf,table_hash,data_files_list,filename);
+//          g_message("File types: %d | %d",last_ft, current_ft);
+          if (last_ft!=current_ft){
+            if (current_ft <= SCHEMA_TABLE ) queue=get_queue_for_type(conf,current_ft);
+            if (last_ft == DATA) queue=get_queue_for_type(conf,last_ft);
+            // Next stage
+            guint n=0;
+//            g_message("Sending shutdown jobs to: %d",current_ft);
+            for (n = 0; n < num_threads; n++) {
+              g_async_queue_push(queue, new_job(JOB_SHUTDOWN,NULL));
+            }
+          }
+          if (current_ft == DATA){
+            process_data_filename(conf,table_hash,filename); 
+          }
+        }
+        buffer[strlen(buffer)-1]='\0';
+        real_filename = g_build_filename(directory,&(buffer[3]),NULL);
+        filename = g_build_filename(&(buffer[3]),NULL);
+//        g_message("New file: %s",filename);
+        file = g_fopen(real_filename, "w");
+      }else{
+        if (file){
+          len=write(fileno(file),buffer,strlen(buffer));
+          if (len != strlen(buffer)) {
+            g_critical("File size not the same");
+            exit(EXIT_FAILURE);
+          }
+        }
+      }
+    }
+  } while (eof == FALSE); 
+  return NULL;
+}
+

@@ -21,11 +21,13 @@
 #ifndef _myloader_h
 #define _myloader_h
 
-enum restore_job_type { JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
+enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
+enum file_type { SCHEMA_CREATE, SCHEMA_TABLE, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_GLOBAL, METADATA_TABLE, DATA };
 
 struct configuration {
+  GAsyncQueue *database_queue;
   GAsyncQueue *pre_queue;
   GAsyncQueue *queue;
   GAsyncQueue *post_queue;
@@ -37,6 +39,7 @@ struct configuration {
   GList *schema_post_list;
   GList *schema_create_list;
   GList *checksum_list;
+  GList *metadata_list;
   GMutex *mutex;
   int done;
 };
@@ -55,6 +58,7 @@ struct job {
 struct restore_job {
   enum restore_job_type type;
   struct db_table * dbt;
+  char *database;
   char *filename;
   GString *statement;
   guint part;
