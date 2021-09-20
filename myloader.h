@@ -21,6 +21,12 @@
 #ifndef _myloader_h
 #define _myloader_h
 
+
+#define IS_INNODB_TABLE 2
+#define INCLUDE_CONSTRAINT 4
+#define IS_ALTER_TABLE_PRESENT 8
+
+
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
@@ -28,15 +34,13 @@ enum file_type { SCHEMA_CREATE, SCHEMA_TABLE, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEM
 
 struct configuration {
   GAsyncQueue *database_queue;
-  GAsyncQueue *pre_queue;
-  GAsyncQueue *queue;
+  GAsyncQueue *table_queue; // previous pre_queue
+  GAsyncQueue *data_queue;
+  GAsyncQueue *post_table_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
   GAsyncQueue *constraints_queue;
   GList *table_list;
-  GList *schema_view_list;
-  GList *schema_triggers_list;
-  GList *schema_post_list;
   GList *schema_create_list;
   GList *checksum_list;
   GList *metadata_list;
@@ -62,6 +66,7 @@ struct restore_job {
   char *filename;
   GString *statement;
   guint part;
+  const char *object;
 };
 
 struct db_table {
@@ -69,6 +74,7 @@ struct db_table {
   char *real_database;
   char *table;
   char *real_table;
+  char *filename;
   guint64 rows;
   GAsyncQueue * queue;
   GList * restore_job_list;
