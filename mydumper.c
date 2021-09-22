@@ -674,11 +674,9 @@ void *process_stream(void *data){
     }
     m_close(f);
     if (no_delete == FALSE){
-      g_message("Removing: %s",filename);
       remove(filename);
     }
   }
-  g_message("len: %ld",len);
   return NULL;
 }
 
@@ -1961,10 +1959,16 @@ void start_dump(MYSQL *conn) {
     g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
   }
 
+  GList *iter;
+  table_schemas = g_list_reverse(table_schemas);
+  for (iter = table_schemas; iter != NULL; iter = iter->next) {
+    dbt = (struct db_table *)iter->data;
+    dump_schema(conn, dbt, &conf);
+  }
+
   non_innodb_table = g_list_reverse(non_innodb_table);
   if (less_locking) {
 
-    GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       tn = 0;
@@ -2000,7 +2004,6 @@ void start_dump(MYSQL *conn) {
       g_async_queue_push(conf.queue_less_locking, j);
     }
   } else {
-    GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       if (dump_checksums) {
@@ -2014,11 +2017,9 @@ void start_dump(MYSQL *conn) {
   }
 
   innodb_tables = g_list_reverse(innodb_tables);
-  GList *iter;
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     if (dump_checksums) {
-      g_message("David test: %s",dbt->database->name);
       dump_checksum(dbt, &conf);
     }
     dump_table(conn, dbt, &conf, TRUE);
@@ -2026,11 +2027,11 @@ void start_dump(MYSQL *conn) {
   g_list_free(innodb_tables);
   innodb_tables=NULL;
 
-  table_schemas = g_list_reverse(table_schemas);
+/*  table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     dump_schema(conn, dbt, &conf);
-  }
+  }*/
 
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {

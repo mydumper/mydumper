@@ -30,7 +30,7 @@
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
-enum file_type { SCHEMA_CREATE, SCHEMA_TABLE, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_GLOBAL, METADATA_TABLE, DATA };
+enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL };
 
 struct configuration {
   GAsyncQueue *database_queue;
@@ -39,7 +39,7 @@ struct configuration {
   GAsyncQueue *post_table_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
-  GAsyncQueue *constraints_queue;
+  GAsyncQueue *stream_queue;
   GList *table_list;
   GList *schema_create_list;
   GList *checksum_list;
