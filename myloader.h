@@ -56,7 +56,7 @@ struct thread_data {
 struct job {
   enum job_type type;
   void *job_data;
-  struct configuration *conf;
+  char * use_database;
 };
 
 struct restore_job {
