@@ -1004,7 +1004,7 @@ gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job,
 void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count,gchar **current_database){
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
-  if (!db ){
+  if ( !db && rj->database != NULL){
     if (*current_database==NULL || g_strcmp0(rj->database, *current_database) != 0){
       if (execute_use(thrconn, rj->database, "Restoring Job")){
         exit(EXIT_FAILURE);
