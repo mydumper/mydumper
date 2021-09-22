@@ -637,9 +637,14 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
 void process_database_filename(struct configuration *conf, char * filename, const char *object) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
+  if (db_kname == NULL){
+    g_critical("Can't be null");
+  }
+    
   if (db_kname!=NULL && g_str_has_prefix(db_kname,"mydumper_")){
     db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }
+
   g_hash_table_insert(db_hash, db_kname, db_vname);
   struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL /*dbt*/, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
   g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
@@ -756,7 +761,10 @@ void load_directory_information(struct configuration *conf) {
   GList *create_table_list=NULL,
         *metadata_list= NULL,
         *data_files_list=NULL,
-        *schema_create_list=NULL;
+        *schema_create_list=NULL,
+        *view_list=NULL,
+        *trigger_list=NULL,
+        *post_list=NULL;
 
   while ((filename = g_dir_read_name(dir))) {
     // TODO: read the whole dir, without !source_db and then filter out the objects.
@@ -772,13 +780,13 @@ void load_directory_information(struct configuration *conf) {
           create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
           break;
         case SCHEMA_VIEW:
-          process_schema_filename(conf, filename,"view");
+          view_list=g_list_insert(view_list,g_strdup(filename),-1);
           break;
         case SCHEMA_TRIGGER:
-          process_schema_filename(conf, filename,"trigger");
+          trigger_list=g_list_insert(trigger_list,g_strdup(filename),-1);
           break;
         case SCHEMA_POST:
-          process_schema_filename(conf, filename,"post");
+          post_list=g_list_insert(post_list,g_strdup(filename),-1);
           break;
         case CHECKSUM:
           conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
@@ -820,6 +828,24 @@ void load_directory_information(struct configuration *conf) {
     data_files_list=data_files_list->next;
   }
 
+
+  while (view_list != NULL){
+    f = view_list->data;
+    process_schema_filename(conf, f,"view");
+    view_list=view_list->next;
+  }
+
+  while (trigger_list != NULL){
+    f = trigger_list->data;
+    process_schema_filename(conf, f, "trigger");
+    trigger_list=trigger_list->next;
+  }
+
+  while (post_list != NULL){
+    f = post_list->data;
+    process_schema_filename(conf, f,"post");
+    post_list=post_list->next;
+  }
   // SORT DATA FILES TO ENQUEUE
   // iterates over the dbt to create the jobs in the dbt->queue
   // and sorts the dbt for the conf->table_list
@@ -1099,8 +1125,6 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
     cont=process_job(conf, thrconn, job, thread_id, count);
   }
 
-  g_message("Table creating finished");
-
   // Is this correct in a streaming scenario ?
   GList *table_list=conf->table_list;
   if (table_list == NULL ) {
@@ -1116,7 +1140,6 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
 
 
   // Step 3: Load data
-
   cont=TRUE;
   while (cont){
     if (dbt != NULL){
