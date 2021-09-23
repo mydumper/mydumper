@@ -1903,8 +1903,9 @@ void start_dump(MYSQL *conn) {
         continue;
       dump_database(get_database(conn,row[0]), &conf);
       /* Checks PCRE expressions on 'database' string */
-      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL)))
+      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
         dump_create_database(row[0], &conf);
+      }
     }
     mysql_free_result(databases);
   }
@@ -2077,7 +2078,7 @@ void dump_create_database(char *database, struct configuration *conf) {
   struct create_database_job *cdj = g_new0(struct create_database_job, 1);
   j->job_data = (void *)cdj;
   gchar *d=get_ref_table(database);
-  cdj->database = database;
+  cdj->database = g_strdup(database);
   j->conf = conf;
   j->type = JOB_CREATE_DATABASE;
 
