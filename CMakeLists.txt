@@ -40,13 +40,13 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DI
 
 if (WITH_ZSTD)
 if (WITH_BINLOG)
-  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c ) 
+  add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c common.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c ) 
 else (WITH_BINLOG)
-  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c)
+  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c common.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c)
 endif (WITH_BINLOG)
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} ${ZSTD_LIBRARIES} stdc++ m )
 
-add_executable(myloader myloader.c connection.c getPassword.c logging.c set_verbose.c)
+add_executable(myloader myloader.c connection.c getPassword.c logging.c set_verbose.c common.c)
 target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++)
 
 else (WITH_ZSTD)
