@@ -67,15 +67,19 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.5/mydumper-0.10.5-1.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.5/mydumper-0.10.5-1.el8.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
-
+For ubuntu, you need to install the dependencies:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.5/mydumper_0.10.5-1.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.5-1.$(lsb_release -cs)_amd64.deb
+apt-get install libatomic1
+```
+Then you can download and install the package:
+```bash
+wget https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
 ```
 
 ### OSX
@@ -131,6 +135,12 @@ To not dump all databases starting with test:
 
 ```bash
  mydumper --regex '^(?!(test))'
+```
+
+To dump specify tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
+
+```bash
+ mydumper --regex '^(db1\.table1$|db2\.table2$)'
 ```
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
