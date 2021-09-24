@@ -758,7 +758,7 @@ void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, c
     }
     real_db_name=g_hash_table_lookup(db_hash,database);
     if (!db){
-      if (current_database==NULL || g_strstr_len(real_db_name, strlen(real_db_name),current_database)){
+      if (current_database==NULL || g_strcmp0(real_db_name, current_database) != 0){
         execute_use(conn, real_db_name, execute_msg);
         current_database=real_db_name;
       }
@@ -936,7 +936,7 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
   if (!db && dbt != NULL){
-    if (*current_database==NULL || g_strstr_len(dbt->real_database, strlen(dbt->real_database),*current_database)){
+    if (*current_database==NULL || g_strcmp0(dbt->real_database, *current_database) != 0){
       if (execute_use(thrconn, dbt->real_database, "Restoring Job")){
         exit(EXIT_FAILURE);
       }
