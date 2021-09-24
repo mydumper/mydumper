@@ -137,6 +137,12 @@ To not dump all databases starting with test:
  mydumper --regex '^(?!(test))'
 ```
 
+To dump specify tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
+
+```bash
+ mydumper --regex '^(db1\.table1$|db2\.table2$)'
+```
+
 Of course, regex functionality can be used to describe pretty much any list of tables.
 
 
