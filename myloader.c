@@ -571,6 +571,11 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   }
   struct restore_job * rj = new_restore_job(g_strdup(filename), dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
   g_async_queue_push(conf->pre_queue, new_job(JOB_RESTORE,rj));
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 gchar * get_database_name_from_filename(const gchar *filename){
@@ -630,10 +635,10 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
         create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
-      } else if (g_str_has_suffix(filename, ".metadata")) {
+      } else if (g_str_has_suffix(filename, "-metadata")) {
         metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
       } else if ( strcmp(filename, "metadata") == 0 ){
-      } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
+      } else if (g_str_has_suffix(filename, "-checksum") || g_str_has_suffix(filename, "-checksum.gz")) {
         conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
       } else if ( g_strrstr(filename, "-schema-view.sql") ){
         conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
@@ -678,12 +683,12 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     filename=create_table_list->data;
     get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
     if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
     if (real_db_name==NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (2)",filename);
       exit(EXIT_FAILURE);
     }
     dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
@@ -700,7 +705,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     guint part;
     get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
     if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (3)",filename);
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
@@ -869,7 +874,7 @@ gint compare_filename_part (gconstpointer a, gconstpointer b){
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   gchar *database = NULL, *table = NULL;
-  get_database_table_from_file(filename,".checksum",&database,&table);
+  get_database_table_from_file(filename,"-checksum",&database,&table);
   gchar *real_database=g_hash_table_lookup(db_hash,database);
   gchar *real_table=g_hash_table_lookup(tbl_hash,table);
   void *infile;
@@ -906,6 +911,11 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
     g_critical("error reading file %s (%d)", filename, errno);
     errors++;
     return;
+  }
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
   }
 }
 

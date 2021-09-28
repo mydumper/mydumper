@@ -62,13 +62,12 @@ struct job {
 };
 
 // directory / database . table . first number . second number . extension
-// directory is needed to support the snapshot functionality 
 // first number : used when rows is used
 // second number : when load data is used 
 struct table_job {
-  char *directory;
   char *database;
   char *table;
+  guint nchunk;
   char *filename;
   char *where;
   gboolean has_generated_fields;
