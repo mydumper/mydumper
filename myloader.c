@@ -46,7 +46,6 @@ gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
-gboolean sync_before_add_index = FALSE;
 gboolean disable_redo_log = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
@@ -112,8 +111,6 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
-    { "sync-before-add-index", 0, 0, G_OPTION_ARG_NONE, &sync_before_add_index,
-      "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
