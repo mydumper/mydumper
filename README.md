@@ -46,6 +46,11 @@ apt-get install cmake g++ git
 yum install -y cmake gcc gcc-c++ git make
 ```
 * MacOSX:
+
+```
+brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
+```
+
 ```
 port install pkgconfig cmake
 ```
