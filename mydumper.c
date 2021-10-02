@@ -551,6 +551,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   else
     mysql_query(conn, "SHOW SLAVE STATUS");
 
+  guint slave_count=0;
   slave = mysql_store_result(conn);
   while (slave && (row = mysql_fetch_row(slave))) {
     fields = mysql_fetch_fields(slave);
@@ -569,6 +570,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       }
     }
     if (slavehost) {
+      slave_count++;
       fprintf(file, "SHOW SLAVE STATUS:");
       if (isms)
         fprintf(file, "\n\tConnection name: %s", connname);
@@ -577,6 +579,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       g_message("Written slave status");
     }
   }
+  if (slave_count > 1)
+    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
   fflush(file);
   if (master)
