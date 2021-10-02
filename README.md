@@ -67,8 +67,8 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el8.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper-0.11.1-3.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper-0.11.1-3.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
@@ -78,8 +78,8 @@ apt-get install libatomic1
 ```
 Then you can download and install the package:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
+wget https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper_0.11.1-3.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.11.1-3.$(lsb_release -cs)_amd64.deb
 ```
 
 ### OSX
