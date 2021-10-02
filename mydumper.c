@@ -55,6 +55,7 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
+# include "locale.h"
 
 char *regexstring = NULL;
 
@@ -1116,6 +1117,7 @@ int main(int argc, char *argv[]) {
   GOptionContext *context;
 
   g_thread_init(NULL);
+  setlocale(LC_ALL, "");
 
   ref_table_mutex = g_mutex_new();
   init_mutex = g_mutex_new();

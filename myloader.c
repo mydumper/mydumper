@@ -40,6 +40,7 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
+# include "locale.h"
 
 guint commit_count = 1000;
 gchar *directory = NULL;
@@ -237,6 +238,7 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
+  setlocale(LC_ALL, "");
   g_thread_init(NULL);
 
   init_mutex = g_mutex_new();
