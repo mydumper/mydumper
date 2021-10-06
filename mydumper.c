@@ -2864,7 +2864,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
       }
     }
   }
-  g_async_queue_pop(conf->ready_database_dump);  // needs to notify main thread to go ahead when "--tables-list" is used without "-B"!
+  g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));  // needs to notify main thread to go ahead when "--tables-list" is used without "-B"!
   g_free(query);
 }
 
