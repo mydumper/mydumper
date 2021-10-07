@@ -1127,8 +1127,7 @@ void *process_queue(struct thread_data *td) {
 int restore_data_in_gstring_from_file(MYSQL *conn, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(conn, data->str, data->len)) {
-g_critical("Error restoring: %s",data->str);
-	  //    g_critical("Error restoring %s.%s from file %s: %s \n", db ? db : database, table, filename, mysql_error(conn));
+    g_critical("Error restoring %s.%s from file %s: %s \n", db ? db : database, table, filename, mysql_error(conn));
     errors++;
     return 1;
   }
@@ -1136,7 +1135,7 @@ g_critical("Error restoring: %s",data->str);
   if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
     *query_counter= 0;
     if (mysql_query(conn, "COMMIT")) {
-//      g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
+      g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
       errors++;
       return 2;
     }
