@@ -133,6 +133,7 @@ struct db_table {
   guint64 datalength;
   guint rows;
   GMutex *rows_lock;
+  GList *anonymized_function;
 };
 
 struct database {
