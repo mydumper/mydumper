@@ -3830,7 +3830,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if (!st_in_file) { 
         // File Header
         if (detected_server == SERVER_TYPE_MYSQL) {
-	  g_string_printf(statement,"%s;\n",set_names_str);
+          g_string_printf(statement,"%s;\n",set_names_str);
           g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
           if (!skip_tz) {
             g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
