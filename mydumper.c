@@ -3764,7 +3764,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
     filename_prefix = g_strdup(split_filename[0]);
     g_strfreev(split_filename);
   }else{
-    gchar **split_filename = g_strsplit(filename, ".", 0);
+    gchar **split_filename = g_strsplit(tj->filename, ".", 0);
     GString *tmp_prefix=g_string_sized_new(0);
     guint j=0;
     for (j=0; j< g_strv_length(split_filename)-1; j++){
@@ -3851,7 +3851,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if ( load_data ){
 	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
 			      (compress_output ? ".gz" : ""));
-	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,table);
+	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
 	      if (strcmp(fields_terminated_by,""))
 	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by);
 	      if (strcmp(fields_enclosed_by,""))
@@ -3863,7 +3863,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by);
 	      g_string_append_printf(statement, "TERMINATED BY '%s\\n';\n", lines_terminated_by);
 	      if (!write_data(main_file, statement)) {
-		      g_critical("Could not write out data for %s.%s", database, table);
+		      g_critical("Could not write out data for %s.%s", tj->database, tj->table);
 		      goto cleanup;
 	      }else{
           g_string_set_size(statement, 0);
@@ -3879,7 +3879,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
           }
 	      }
       }else{
-        append_insert ((complete_insert || has_generated_fields), statement, table, fields, num_fields);	      
+        append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
       }
       num_rows_st = 0;
     }
@@ -3976,7 +3976,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       /* strange, should not happen */
       g_string_append(statement, statement_row->str);
     } else {
-      append_insert (complete_insert, statement, table, fields, num_fields); 
+      append_insert (complete_insert, statement, tj->table, fields, num_fields); 
       g_string_append(statement, statement_row->str);
     }
   }
