@@ -32,6 +32,13 @@ char *cipher = NULL;
 char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
+gchar *config_file;
+GString *set_session=NULL;
+
+FILE * (*m_open)(const char *filename, const char *);
+int (*m_close)(void *file) = NULL;
+void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss);
+void execute_gstring(MYSQL *conn, GString *ss);
 
 gboolean askPassword = FALSE;
 guint port = 0;
@@ -84,6 +91,10 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
+    { "config", 0, 0, G_OPTION_ARG_STRING, &config_file,
+      "Configuration file", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 #endif
+
+char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);

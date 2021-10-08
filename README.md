@@ -10,16 +10,22 @@
 One needs to install development tools:
 * Ubuntu or Debian: 
 ```
-apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+apt-get install cmake g++ git
 ```
 * Fedora, RedHat and CentOS:
 ```
 yum install -y cmake gcc gcc-c++ git make
 ```
 * MacOSX:
+
+```
+brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
+```
+
 ```
 port install pkgconfig cmake
 ```
+
 One needs to install development versions of GLib, ZLib and PCRE:
 * Ubuntu or Debian: 
 ```
@@ -67,15 +73,19 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper-0.10.1-2.el8.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper-0.11.1-3.el7.x86_64.rpm
+yum install https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper-0.11.1-3.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
-
+For ubuntu, you need to install the dependencies:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.1/mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.1-2.$(lsb_release -cs)_amd64.deb
+apt-get install libatomic1
+```
+Then you can download and install the package:
+```bash
+wget https://github.com/maxbube/mydumper/releases/download/v0.11.1-3/mydumper_0.11.1-3.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.11.1-3.$(lsb_release -cs)_amd64.deb
 ```
 
 ### OSX
@@ -131,6 +141,12 @@ To not dump all databases starting with test:
 
 ```bash
  mydumper --regex '^(?!(test))'
+```
+
+To dump specify tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
+
+```bash
+ mydumper --regex '^(db1\.table1$|db2\.table2$)'
 ```
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
