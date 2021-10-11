@@ -13,6 +13,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
+
 */
 
 #define _LARGEFILE64_SOURCE
