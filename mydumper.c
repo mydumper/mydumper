@@ -290,7 +290,7 @@ void set_charset(GString *statement, char *character_set,
 void dump_schema_post_data(MYSQL *conn, struct database *database, char *filename);
 guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job *tj);
 void dump_database(struct database *database, struct configuration *);
-void dump_database_thread(MYSQL *, struct database *);
+void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 void dump_create_database(char *, struct configuration *);
 void dump_create_database_data(MYSQL *, char *, char *);
 void get_tables(MYSQL *conn, struct configuration *);
@@ -317,7 +317,7 @@ MYSQL *create_main_connection();
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
-struct database *new_database(MYSQL *conn, char *database);
+struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
 gchar *get_ref_table(gchar *k);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 
@@ -820,7 +820,7 @@ void *process_queue(struct thread_data *td) {
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
                 ddj->database->name);
-      dump_database_thread(thrconn, ddj->database);
+      dump_database_thread(thrconn, conf, ddj->database);
       g_free(job);
       if (g_atomic_int_dec_and_test(&database_counter)) {
         g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
@@ -1002,7 +1002,7 @@ void *process_queue_less_locking(struct thread_data *td) {
       ddj = (struct dump_database_job *)job->job_data;
       g_message("Thread %d dumping db information for `%s`", td->thread_id,
                 ddj->database->name);
-      dump_database_thread(thrconn, ddj->database);
+      dump_database_thread(thrconn, conf, ddj->database);
       g_free(ddj);
       g_free(job);
       if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -1888,7 +1888,7 @@ void start_dump(MYSQL *conn) {
   }
 
   if (db) {
-    dump_database(new_database(conn,db), &conf);
+    dump_database(new_database(conn,db,TRUE), &conf);
     if (!no_schemas)
       dump_create_database(db, &conf);
   } else if (tables) {
@@ -1908,8 +1908,14 @@ void start_dump(MYSQL *conn) {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas )
-        dump_create_database(db_tmp->name, &conf);
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
+        g_mutex_lock(db_tmp->ad_mutex);
+        if (!db_tmp->already_dumped){
+          dump_create_database(db_tmp->name, &conf);
+          db_tmp->already_dumped=TRUE;
+        }
+        g_mutex_unlock(db_tmp->ad_mutex);
+      }
       dump_database(db_tmp, &conf);
       /* Checks PCRE expressions on 'database' string */
 //      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
@@ -2512,11 +2518,13 @@ gchar *get_ref_table(gchar *k){
   return val;
 }
 
-struct database * new_database(MYSQL *conn, char *database_name){
+struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped){
   struct database * d=g_new(struct database,1);
   d->name = g_strdup(database_name);
   d->filename = get_ref_table(d->name);
   d->escaped = escape_string(conn,d->name);
+  d->already_dumped = already_dumped;
+  d->ad_mutex=g_mutex_new();
   g_hash_table_insert(database_hash, d->name,d);
   return d;
 }
@@ -2524,7 +2532,7 @@ struct database * new_database(MYSQL *conn, char *database_name){
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database){
   *database=g_hash_table_lookup(database_hash,database_name);
   if (*database == NULL){
-    *database=new_database(conn,database_name);
+    *database=new_database(conn,database_name,FALSE);
     return TRUE;
   }
   return FALSE;
@@ -2566,8 +2574,15 @@ void dump_database(struct database *database, struct configuration *conf) {
 }
 
 
-void green_light(MYSQL *conn,gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol){
+void green_light(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol){
     /* Green light! */
+ g_mutex_lock(database->ad_mutex);
+ if (!database->already_dumped){
+   dump_create_database(database->name, conf);
+   database->already_dumped=TRUE;
+ }
+ g_mutex_unlock(database->ad_mutex);
+
     struct db_table *dbt = new_db_table( conn, database, (*row)[0], (*row)[6]);
 
     // if is a view we care only about schema
@@ -2611,7 +2626,7 @@ void green_light(MYSQL *conn,gboolean is_view, struct database * database, MYSQL
 }
 
 
-void dump_database_thread(MYSQL *conn, struct database *database) {
+void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
 
   char *query;
   mysql_select_db(conn, database->name);
@@ -2736,7 +2751,7 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     if (!dump)
       continue;
 
-    green_light(conn,is_view,database,&row,row[ecol]);
+    green_light(conn,conf, is_view,database,&row,row[ecol]);
     /* Green light! 
     struct db_table *dbt = new_db_table( conn, database, row[0], row[6]);
 
@@ -2920,7 +2935,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
       if ((detected_server == SERVER_TYPE_MYSQL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
-      green_light(conn,is_view, database, &row,row[ecol]);
+      green_light(conn, conf, is_view, database, &row,row[ecol]);
       /* Green light! 
       struct db_table *dbt = new_db_table( conn, get_database(conn, dt[0]), dt[1], NULL);
 

@@ -140,6 +140,8 @@ struct database {
   char *name;
   char *filename;
   char *escaped;
+  GMutex *ad_mutex;
+  gboolean already_dumped;
 };
 
 struct schema_post {
