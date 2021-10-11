@@ -78,3 +78,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
   }
 }
 
+gchar * identity_function(gchar ** r){
+  return *r;
+}
+
