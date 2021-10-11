@@ -12,11 +12,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
-                        Mark Leith, Oracle Corporation (mark dot leith at oracle
-   dot com) Andrew Hutchings, SkySQL (andrew at skysql dot com) Max Bubenick,
-   Percona RDBA (max dot bubenick at percona dot com)
-
+        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
+                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+                    Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
 #ifndef _mydumper_h
@@ -132,6 +132,7 @@ struct db_table {
   guint64 datalength;
   guint rows;
   GMutex *rows_lock;
+  GList *anonymized_function;
 };
 
 struct database {

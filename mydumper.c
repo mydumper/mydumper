@@ -12,10 +12,11 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
+        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
                     Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
                     Andrew Hutchings, SkySQL (andrew at skysql dot com)
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
 #define _LARGEFILE64_SOURCE
@@ -55,6 +56,7 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
+# include "locale.h"
 
 char *regexstring = NULL;
 
@@ -318,9 +320,9 @@ MYSQL *create_main_connection();
 void *exec_thread(void *data);
 void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
                     const gchar *message, gpointer user_data);
-struct database *new_database(char *database);
+struct database *new_database(MYSQL *conn, char *database);
 gchar *get_ref_table(gchar *k);
-struct database *get_database(MYSQL *conn, char *database);
+gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 
 gboolean check_regex_general(char *regex, char *word) {
   /* This is not going to be used in threads */
@@ -586,6 +588,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   else
     mysql_query(conn, "SHOW SLAVE STATUS");
 
+  guint slave_count=0;
   slave = mysql_store_result(conn);
   while (slave && (row = mysql_fetch_row(slave))) {
     fields = mysql_fetch_fields(slave);
@@ -604,6 +607,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       }
     }
     if (slavehost) {
+      slave_count++;
       fprintf(file, "SHOW SLAVE STATUS:");
       if (isms)
         fprintf(file, "\n\tConnection name: %s", connname);
@@ -612,6 +616,8 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       g_message("Written slave status");
     }
   }
+  if (slave_count > 1)
+    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
   fflush(file);
   if (master)
@@ -1152,6 +1158,7 @@ int main(int argc, char *argv[]) {
   GOptionContext *context;
 
   g_thread_init(NULL);
+  setlocale(LC_ALL, "");
 
   ref_table_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
@@ -1917,7 +1924,7 @@ void start_dump(MYSQL *conn) {
   }
 
   if (db) {
-    dump_database(get_database(conn,db), &conf);
+    dump_database(new_database(conn,db), &conf);
     if (!no_schemas)
       dump_create_database(db, &conf);
   } else if (tables) {
@@ -1936,7 +1943,7 @@ void start_dump(MYSQL *conn) {
           !strcasecmp(row[0], "performance_schema") ||
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
-      dump_database(get_database(conn,row[0]), &conf);
+      dump_database(new_database(conn,db), &conf);
       /* Checks PCRE expressions on 'database' string */
       if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
         dump_create_database(row[0], &conf);
@@ -1946,7 +1953,6 @@ void start_dump(MYSQL *conn) {
   }
   g_async_queue_pop(conf.ready_database_dump);
   g_async_queue_unref(conf.ready_database_dump);
-
   g_list_free(no_updated_tables);
 
   if (!non_innodb_table) {
@@ -2531,17 +2537,22 @@ gchar *get_ref_table(gchar *k){
   return val;
 }
 
-struct database *get_database(MYSQL *conn, char *database){
-  struct database * d=g_hash_table_lookup(database_hash,database);
-  if (d == NULL){
-    d=g_new(struct database,1);
-    d->name = g_strdup(database);
-    d->filename = get_ref_table(d->name);
-    d->escaped = escape_string(conn,d->name);
-    g_message("Appending new database: %s | %s | %s",d->name,d->filename,d->escaped);
-    g_hash_table_insert(database_hash, d->name,d);
-  }
+struct database * new_database(MYSQL *conn, char *database_name){
+  struct database * d=g_new(struct database,1);
+  d->name = g_strdup(database_name);
+  d->filename = get_ref_table(d->name);
+  d->escaped = escape_string(conn,d->name);
+  g_hash_table_insert(database_hash, d->name,d);
   return d;
+}
+
+gboolean get_database(MYSQL *conn, char *database_name, struct database ** database){
+  *database=g_hash_table_lookup(database_hash,database_name);
+  if (*database == NULL){
+    *database=new_database(conn,database_name);
+    return TRUE;
+  }
+  return FALSE;
 }
 
 struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
@@ -2551,6 +2562,7 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
+  dbt->anonymized_function=NULL;
   dbt->rows=0;
   if (!datalength)
     dbt->datalength = 0;
@@ -2577,6 +2589,52 @@ void dump_database(struct database *database, struct configuration *conf) {
     g_async_queue_push(conf->queue, j);
   return;
 }
+
+
+void green_light(MYSQL *conn,gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol){
+    /* Green light! */
+    struct db_table *dbt = new_db_table( conn, database, (*row)[0], (*row)[6]);
+
+    // if is a view we care only about schema
+    if (!is_view) {
+      // with trx_consistency_only we dump all as innodb_tables
+      if (!no_data) {
+        if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
+          if (trx_consistency_only ||
+              (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
+            g_message("Innodb tables 1");
+            g_mutex_lock(innodb_tables_mutex);
+            innodb_tables = g_list_prepend(innodb_tables, dbt);
+            g_mutex_unlock(innodb_tables_mutex);
+          } else if (ecol != NULL &&
+                     !g_ascii_strcasecmp("TokuDB", ecol)) {
+            g_message("Innodb tables 2");
+            g_mutex_lock(innodb_tables_mutex);
+            innodb_tables = g_list_prepend(innodb_tables, dbt);
+            g_mutex_unlock(innodb_tables_mutex);
+          } else {
+            g_message("non Innodb tables");
+            g_mutex_lock(non_innodb_table_mutex);
+            non_innodb_table = g_list_prepend(non_innodb_table, dbt);
+            g_mutex_unlock(non_innodb_table_mutex);
+          }
+        }
+      }
+      if (!no_schemas) {
+        g_mutex_lock(table_schemas_mutex);
+        table_schemas = g_list_prepend(table_schemas, dbt);
+        g_mutex_unlock(table_schemas_mutex);
+      }
+    } else {
+      if (!no_schemas) {
+        g_mutex_lock(view_schemas_mutex);
+        view_schemas = g_list_prepend(view_schemas, dbt);
+        g_mutex_unlock(view_schemas_mutex);
+      }
+    }
+
+}
+
 
 void dump_database_thread(MYSQL *conn, struct database *database) {
 
@@ -2703,7 +2761,8 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     if (!dump)
       continue;
 
-    /* Green light! */
+    green_light(conn,is_view,database,&row,row[ecol]);
+    /* Green light! 
     struct db_table *dbt = new_db_table( conn, database, row[0], row[6]);
 
     // if is a view we care only about schema
@@ -2739,7 +2798,8 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
         view_schemas = g_list_prepend(view_schemas, dbt);
         g_mutex_unlock(view_schemas_mutex);
       }
-    }
+    }*/
+
   }
 
   mysql_free_result(result);
@@ -2844,6 +2904,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
 
   for (x = 0; tables[x] != NULL; x++) {
     dt = g_strsplit(tables[x], ".", 0);
+
     query =
         g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
 
@@ -2871,7 +2932,11 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
       errors++;
       return;
     }
-
+    struct database * database=NULL;
+    if (get_database(conn, dt[0],&database)){
+      dump_create_database(database->name, conf);
+      g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+    }
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(result))) {
 
@@ -2880,17 +2945,10 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
       if ((detected_server == SERVER_TYPE_MYSQL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
+      green_light(conn,is_view, database, &row,row[ecol]);
+      /* Green light! 
+      struct db_table *dbt = new_db_table( conn, get_database(conn, dt[0]), dt[1], NULL);
 
-      /* Green light! */
-      struct db_table *dbt = g_new(struct db_table, 1);
-      dbt->database = get_database(conn, dt[0]);
-      dbt->table = g_strdup(dt[1]);
-      dbt->rows_lock= g_mutex_new();
-      dbt->rows=0;
-      if (!row[6])
-        dbt->datalength = 0;
-      else
-        dbt->datalength = g_ascii_strtoull(row[6], NULL, 10);
       if (!is_view) {
         if (trx_consistency_only) {
           dump_table(conn, dbt, conf, TRUE);
@@ -2919,8 +2977,10 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
           g_mutex_unlock(view_schemas_mutex);
         }
       }
+      */
     }
   }
+
   g_free(query);
 }
 
@@ -3631,6 +3691,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   char *query = NULL;
   gchar *fcfile = NULL;
   gchar *filename_prefix = NULL;
+  struct db_table * dbt = tj->dbt;
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
 
@@ -3684,6 +3745,17 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   MYSQL_ROW row;
 
   g_string_set_size(statement, 0);
+
+  // TODO #364: this is the place where we need to link the column between file loaded and dbt.
+  // Currently, we are using identity_function, which return the same data.
+    for(i=0; i< num_fields;i++){
+      if (i>0){
+        dbt->anonymized_function=g_list_append(dbt->anonymized_function,&identity_function);
+      }else{
+        dbt->anonymized_function=g_list_append(dbt->anonymized_function,&identity_function);
+      }
+    }
+
 
   /* Poor man's data dump code */
   while ((row = mysql_fetch_row(result))) {
@@ -3741,18 +3813,20 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
     }
 
     g_string_append(statement_row, "\n(");
-
+    GList *f = dbt->anonymized_function;
     for (i = 0; i < num_fields; i++) {
+      gchar * (*fun_ptr)(gchar **) = f->data;
+      f=f->next;
       /* Don't escape safe formats, saves some time */
       if (!row[i]) {
         g_string_append(statement_row, "NULL");
       } else if (fields[i].flags & NUM_FLAG) {
-        g_string_append(statement_row, row[i]);
+        g_string_append(statement_row, fun_ptr(&(row[i])));
       } else {
         /* We reuse buffers for string escaping, growing is expensive just at
          * the beginning */
         g_string_set_size(escaped, lengths[i] * 2 + 1);
-        mysql_real_escape_string(conn, escaped->str, row[i], lengths[i]);
+        mysql_real_escape_string(conn, escaped->str, fun_ptr(&(row[i])), lengths[i]);
         if (fields[i].type == MYSQL_TYPE_JSON)
           g_string_append(statement_row, "CONVERT(");
         g_string_append_c(statement_row, '\'');
@@ -3878,9 +3952,9 @@ cleanup:
     g_rename(tj->filename, fcfile);
   }
 
-  g_mutex_lock(tj->dbt->rows_lock);
-  tj->dbt->rows+=num_rows;
-  g_mutex_unlock(tj->dbt->rows_lock);
+  g_mutex_lock(dbt->rows_lock);
+  dbt->rows+=num_rows;
+  g_mutex_unlock(dbt->rows_lock);
 
   g_free(filename_prefix);
   g_free(fcfile);
