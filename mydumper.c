@@ -1907,11 +1907,14 @@ void start_dump(MYSQL *conn) {
           !strcasecmp(row[0], "performance_schema") ||
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
-      dump_database(new_database(conn,row[0]), &conf);
+      struct database * db_tmp=NULL;
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas )
+        dump_create_database(db_tmp->name, &conf);
+      dump_database(db_tmp, &conf);
       /* Checks PCRE expressions on 'database' string */
-      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
-        dump_create_database(row[0], &conf);
-      }
+//      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
+//        dump_create_database(row[0], &conf);
+//      }
     }
     mysql_free_result(databases);
   }
