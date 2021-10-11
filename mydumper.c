@@ -1907,7 +1907,7 @@ void start_dump(MYSQL *conn) {
           !strcasecmp(row[0], "performance_schema") ||
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
-      dump_database(new_database(conn,db), &conf);
+      dump_database(new_database(conn,row[0]), &conf);
       /* Checks PCRE expressions on 'database' string */
       if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
         dump_create_database(row[0], &conf);
