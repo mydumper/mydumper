@@ -682,7 +682,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
     if (real_db_name==NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s because real_db_name isn't found",filename);
       exit(EXIT_FAILURE);
     }
     dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
