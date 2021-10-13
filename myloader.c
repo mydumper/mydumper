@@ -218,6 +218,12 @@ struct restore_job * new_restore_job( char * filename, char * database, struct d
   return rj;
 }
 
+void free_restore_job(struct restore_job * rj){
+  // We consider that
+  if (rj->filename != NULL ) g_free(rj->filename);
+  if (rj->statement != NULL ) g_string_free(rj->statement,TRUE);
+  if (rj != NULL ) g_free(rj);
+}
 
 void sync_threads_on_queue(GAsyncQueue *ready_queue,GAsyncQueue *comm_queue,const gchar *msg){
   guint n;
@@ -242,12 +248,6 @@ gchar * print_time(GTimeSpan timespan){
   GTimeSpan minutes=(timespan-(days*G_TIME_SPAN_HOUR)-(hours*G_TIME_SPAN_HOUR))/G_TIME_SPAN_MINUTE;
   GTimeSpan seconds=(timespan-(days*G_TIME_SPAN_MINUTE)-(hours*G_TIME_SPAN_HOUR)-(minutes*G_TIME_SPAN_MINUTE))/G_TIME_SPAN_SECOND;
   return g_strdup_printf("%ld %02ld:%02ld:%02ld",days,hours,minutes,seconds);
-}
-
-void restore_from_stream(struct configuration *conf){
-  GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, conf, TRUE, NULL);
-
-  g_thread_join(stream_thread);
 }
 
 void restore_from_directory(struct configuration *conf){
@@ -435,7 +435,8 @@ int main(int argc, char *argv[]) {
 
   // Step 1: Create databases | single threaded
   if (stream){
-    restore_from_stream(&conf);
+    GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, &conf, TRUE, NULL);
+    g_thread_join(stream_thread);
   }else{
     restore_from_directory(&conf);
   }
@@ -643,16 +644,13 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
 void process_database_filename(struct configuration *conf, char * filename, const char *object) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
-  if (db_kname == NULL){
-    g_critical("Can't be null");
-  }
-    
+
   if (db_kname!=NULL && g_str_has_prefix(db_kname,"mydumper_")){
     db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }
 
-  g_hash_table_insert(db_hash, db_kname, db_vname);
-  struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL /*dbt*/, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
+  g_hash_table_insert(db_hash, db_kname, db ? db : db_vname);
+  struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
   g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
 }
 
@@ -1073,9 +1071,6 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
                 dbt->real_database, dbt->real_table, rj->filename);
       guint query_counter=0;
       restore_data_in_gstring(thrconn, rj->statement, FALSE, &query_counter);
-      if (rj->statement)
-        g_string_free(rj->statement,TRUE);
-      g_free(rj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
       g_message("Thread %d restoring table `%s`.`%s` from %s", thread_id, 
@@ -1101,9 +1096,6 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
       if (restore_data_from_file(thrconn, dbt->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_critical("Thread %d issue restoring %s: %s",thread_id,rj->filename, mysql_error(thrconn));
       }
-      if (rj->filename)
-        g_free(rj->filename);
-      g_free(rj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
       g_message("Thread %d restoring %s on `%s` from %s", thread_id, rj->object,
@@ -1117,6 +1109,7 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
       g_critical("Something very bad happened!");
       exit(EXIT_FAILURE);
     }
+  free_restore_job(rj);
 }
 
 void *process_stream_queue(MYSQL * thrconn, struct configuration *conf, int thread_id, gchar **current_database) {
@@ -1328,13 +1321,13 @@ int restore_data_in_gstring(MYSQL *conn, GString *data, gboolean is_schema, guin
   int r=0;
   if (data != NULL && data->len > 4){
     gchar** line=g_strsplit(data->str, ";\n", -1);
-  for (i=0; i < (int)g_strv_length(line);i++){
-     if (strlen(line[i])>2){
-       GString *str=g_string_new(line[i]);
-       g_string_append_c(str,';');
-       r+=restore_data_in_gstring_from_file(conn, str, is_schema, query_counter);
-     }
-  }
+    for (i=0; i < (int)g_strv_length(line);i++){
+       if (strlen(line[i])>2){
+         GString *str=g_string_new(line[i]);
+         g_string_append_c(str,';');
+         r+=restore_data_in_gstring_from_file(conn, str, is_schema, query_counter);
+       }
+    }
   }
   return r;
 }
