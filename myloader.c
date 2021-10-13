@@ -87,8 +87,8 @@ void finish_alter_table(GString * alter_table_statement);
 guint execute_use(MYSQL *conn, gchar *database, const gchar *msg);
 int overwrite_table(MYSQL *conn,gchar * database, gchar * table);
 gchar * get_database_name_from_content(const gchar *filename);
-void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count);
-gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count);
+void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count, gchar ** current_database);
+gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count, gchar ** current_database);
 void *process_stream(struct configuration *conf);
 GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type current_ft);
 void execute_use_if_needs_to(MYSQL *conn, gchar ** current_database, gchar *database, const gchar * msg);
@@ -596,8 +596,6 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   }
   struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING, "");
   g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
-  g_async_queue_push(conf->pre_queue, new_job(JOB_RESTORE,rj));
   if (!is_compressed) {
     fclose(infile);
   } else {
@@ -666,7 +664,7 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
       g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
   }
-  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  char *real_db_name=g_hash_table_lookup(db_hash,db_name);
   if (real_db_name==NULL){
     g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
     exit(EXIT_FAILURE);
@@ -686,7 +684,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
   }
-  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  char *real_db_name=g_hash_table_lookup(db_hash,db_name);
   struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
   //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
   struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME, "");
@@ -907,53 +905,6 @@ void checksum_databases(MYSQL *conn,struct configuration *conf) {
   }
 }
 
-void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, const gboolean overwrite_fun) {
-  const gchar *filename = NULL;
-  GList *e = schema_list;
-  gchar *database=NULL, *table=NULL, *current_database=NULL;
-  gchar *execute_msg=g_strdup_printf("on %s restoration",object);
-  if (db){
-    execute_use(conn, db, execute_msg);
-    current_database=db;
-  }
-  gchar *real_db_name;
-  while ( e ) {
-    filename=e->data;
-    get_database_table_from_file(filename,"-schema",&database,&table);
-    if (database == NULL){
-      g_critical("Database is null on: %s",filename);
-    }
-    real_db_name=g_hash_table_lookup(db_hash,database);
-    if (!db){
-      if (current_database==NULL || g_strcmp0(real_db_name, current_database) != 0){
-        execute_use(conn, real_db_name, execute_msg);
-        current_database=real_db_name;
-      }
-    }
-    if (table==NULL)
-      g_message("Restoring %s on `%s` file %s",object,current_database,filename);
-    else
-      g_message("Restoring %s on `%s`.`%s` from file %s",object,current_database,table,filename);
-    if (overwrite_fun)
-      overwrite_table(conn, current_database, table);
-    restore_data_from_file(conn, current_database, table, filename, TRUE, TRUE);
-    e=e->next;
-  }
-}
-
-void restore_schema_view(MYSQL *conn,struct configuration *conf) {
-  purge_mode = DROP;
-  restore_schema_list(conn,conf->schema_view_list,"View", TRUE);
-}
-
-void restore_schema_triggers(MYSQL *conn,struct configuration *conf) {
-  restore_schema_list(conn,conf->schema_triggers_list,"Triggers", FALSE);
-}
-
-void restore_schema_post(MYSQL *conn,struct configuration *conf) {
-  restore_schema_list(conn,conf->schema_post_list,"Routines and Events", FALSE);
-}
-
 void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
@@ -1081,10 +1032,10 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   }
 }
 
-gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count){
+gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count, gchar ** current_database){
   switch (job->type) {
     case JOB_RESTORE:
-      process_restore_job(thrconn,job->job_data,thread_id,count);
+      process_restore_job(thrconn,job->job_data,thread_id,count, current_database);
       break;
     case JOB_WAIT:
       g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
@@ -1104,7 +1055,7 @@ gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job,
 }
 
 
-void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count){
+void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count, gchar ** current_database){
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
   if (!db && dbt != NULL){
@@ -1182,7 +1133,7 @@ void *process_stream_queue(MYSQL * thrconn, struct configuration *conf, int thre
     job = (struct job *)g_async_queue_pop(q);
 
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring from stream");
-    cont=process_job(conf, thrconn, job, thread_id, count);
+    cont=process_job(conf, thrconn, job, thread_id, count,current_database);
     }
   }
   return NULL;
@@ -1198,14 +1149,14 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
   // Step 1: creating databases
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->database_queue);
-    cont=process_job(conf, thrconn, job, thread_id, count);
+    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
   }
   // Step 2: Create tables
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->table_queue);
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring tables");
-    cont=process_job(conf, thrconn, job, thread_id, count);
+    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
   }
 
   // Is this correct in a streaming scenario ?
@@ -1282,7 +1233,7 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
      job = (struct job *)g_async_queue_pop(conf->data_queue);
     }
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring data");
-    cont=process_job(conf, thrconn, job, thread_id, count);
+    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
   }
   return NULL;
 }
@@ -1334,13 +1285,13 @@ void *process_queue(struct thread_data *td) {
     job = (struct job *)g_async_queue_pop(conf->post_table_queue);
 //    g_message("%s",((struct restore_job *)job->job_data)->object);
     execute_use_if_needs_to(thrconn,&current_database, job->use_database, "Restoring post table");
-    cont=process_job(conf, thrconn, job, td->thread_id, count);
+    cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
   }
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(thrconn,&current_database, job->use_database, "Restoring post tasks");
-    cont=process_job(conf, thrconn, job, td->thread_id, count);
+    cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
   }
 
   if (thrconn)

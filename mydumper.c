@@ -3539,14 +3539,10 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     errors++;
     return;
   }
+  fprintf(outfile, "%s", checksum);
+  fclose(outfile);
 
-  if (!write_data((FILE *)outfile, statement)) {
-    g_critical("Could not write schema for %s.%s", database, table);
-    errors++;
-  }
-  m_close(outfile);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  g_string_free(statement, TRUE);
   g_free(checksum);
 
   return;
