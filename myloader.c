@@ -13,6 +13,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
+
 */
 
 #define _LARGEFILE64_SOURCE
@@ -40,13 +42,13 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
+# include "locale.h"
 
 guint commit_count = 1000;
 gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
-gboolean sync_before_add_index = FALSE;
 gboolean disable_redo_log = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
@@ -112,8 +114,6 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
-    { "sync-before-add-index", 0, 0, G_OPTION_ARG_NONE, &sync_before_add_index,
-      "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
@@ -300,6 +300,7 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
+  setlocale(LC_ALL, "");
   g_thread_init(NULL);
 
   init_mutex = g_mutex_new();
@@ -595,6 +596,13 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   }
   struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING, "");
   g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
+  g_async_queue_push(conf->pre_queue, new_job(JOB_RESTORE,rj));
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 gchar * get_database_name_from_filename(const gchar *filename){
@@ -654,6 +662,15 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
   get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
+  if (db_name == NULL || table_name == NULL){
+      g_critical("It was not possible to process file: %s (1)",filename);
+      exit(EXIT_FAILURE);
+  }
+  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  if (real_db_name==NULL){
+    g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
+    exit(EXIT_FAILURE);
+  }
   dbt=append_new_db_table(filename, db_name, table_name,0,table_hash,NULL);
   load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
 }
@@ -665,7 +682,13 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   // TODO: we need to count sections of the data file to determine if it is ok.
   guint part;
   get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
-  struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
+  if (db_name == NULL || table_name == NULL){
+    g_critical("It was not possible to process file: %s (3)",filename);
+    exit(EXIT_FAILURE);
+  }
+  real_db_name=g_hash_table_lookup(db_hash,db_name);
+  struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
+  //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
   struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME, "");
   // in stream mode, there is no need to sort. We can enqueue directly, where? queue maybe?.
   if (stream){
@@ -689,11 +712,11 @@ void process_schema_filename(struct configuration *conf, const gchar *filename, 
 enum file_type get_file_type (const char * filename){
   if (g_strrstr(filename, "-schema.sql")) {
     return SCHEMA_TABLE;
-  } else if (g_str_has_suffix(filename, ".metadata")) {
+  } else if (g_str_has_suffix(filename, "-metadata")) {
     return METADATA_TABLE;
   } else if ( strcmp(filename, "metadata") == 0 ){
     return METADATA_GLOBAL;
-  } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
+  } else if (g_str_has_suffix(filename, "-checksum") || g_str_has_suffix(filename, "-checksum.gz")) {
     return CHECKSUM;
   } else if ( g_strrstr(filename, "-schema-view.sql") ){
     return SCHEMA_VIEW;
@@ -884,6 +907,53 @@ void checksum_databases(MYSQL *conn,struct configuration *conf) {
   }
 }
 
+void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, const gboolean overwrite_fun) {
+  const gchar *filename = NULL;
+  GList *e = schema_list;
+  gchar *database=NULL, *table=NULL, *current_database=NULL;
+  gchar *execute_msg=g_strdup_printf("on %s restoration",object);
+  if (db){
+    execute_use(conn, db, execute_msg);
+    current_database=db;
+  }
+  gchar *real_db_name;
+  while ( e ) {
+    filename=e->data;
+    get_database_table_from_file(filename,"-schema",&database,&table);
+    if (database == NULL){
+      g_critical("Database is null on: %s",filename);
+    }
+    real_db_name=g_hash_table_lookup(db_hash,database);
+    if (!db){
+      if (current_database==NULL || g_strcmp0(real_db_name, current_database) != 0){
+        execute_use(conn, real_db_name, execute_msg);
+        current_database=real_db_name;
+      }
+    }
+    if (table==NULL)
+      g_message("Restoring %s on `%s` file %s",object,current_database,filename);
+    else
+      g_message("Restoring %s on `%s`.`%s` from file %s",object,current_database,table,filename);
+    if (overwrite_fun)
+      overwrite_table(conn, current_database, table);
+    restore_data_from_file(conn, current_database, table, filename, TRUE, TRUE);
+    e=e->next;
+  }
+}
+
+void restore_schema_view(MYSQL *conn,struct configuration *conf) {
+  purge_mode = DROP;
+  restore_schema_list(conn,conf->schema_view_list,"View", TRUE);
+}
+
+void restore_schema_triggers(MYSQL *conn,struct configuration *conf) {
+  restore_schema_list(conn,conf->schema_triggers_list,"Triggers", FALSE);
+}
+
+void restore_schema_post(MYSQL *conn,struct configuration *conf) {
+  restore_schema_list(conn,conf->schema_post_list,"Routines and Events", FALSE);
+}
+
 void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
@@ -966,7 +1036,7 @@ gint compare_filename_part (gconstpointer a, gconstpointer b){
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   gchar *database = NULL, *table = NULL;
-  get_database_table_from_file(filename,".checksum",&database,&table);
+  get_database_table_from_file(filename,"-checksum",&database,&table);
   gchar *real_database=g_hash_table_lookup(db_hash,database);
   gchar *real_table=g_hash_table_lookup(tbl_hash,table);
   void *infile;
@@ -1004,6 +1074,11 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
     errors++;
     return;
   }
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count){
@@ -1032,6 +1107,14 @@ gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job,
 void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count){
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
+  if (!db && dbt != NULL){
+    if (*current_database==NULL || g_strcmp0(dbt->real_database, *current_database) != 0){
+      if (execute_use(thrconn, dbt->real_database, "Restoring Job")){
+        exit(EXIT_FAILURE);
+      }
+      *current_database=dbt->real_database;
+    }
+  }
 
   switch (rj->type) {
     case JOB_RESTORE_STRING:
@@ -1271,7 +1354,7 @@ void *process_queue(struct thread_data *td) {
 int restore_data_in_gstring_from_file(MYSQL *conn, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(conn, data->str, data->len)) {
-	      g_critical("Error restoring: %s %s", data->str, mysql_error(conn));
+	  //g_critical("Error restoring: %s %s", data->str, mysql_error(conn));
     errors++;
     return 1;
   }
@@ -1279,7 +1362,6 @@ int restore_data_in_gstring_from_file(MYSQL *conn, GString *data, gboolean is_sc
   if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
     *query_counter= 0;
     if (mysql_query(conn, "COMMIT")) {
-//      g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
       errors++;
       return 2;
     }
