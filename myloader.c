@@ -87,8 +87,8 @@ void finish_alter_table(GString * alter_table_statement);
 guint execute_use(MYSQL *conn, gchar *database, const gchar *msg);
 int overwrite_table(MYSQL *conn,gchar * database, gchar * table);
 gchar * get_database_name_from_content(const gchar *filename);
-void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count, gchar ** current_database);
-gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count, gchar ** current_database);
+void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count);
+gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count);
 void *process_stream(struct configuration *conf);
 GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type current_ft);
 void execute_use_if_needs_to(MYSQL *conn, gchar ** current_database, gchar *database, const gchar * msg);
@@ -233,7 +233,7 @@ void sync_threads_on_queue(GAsyncQueue *ready_queue,GAsyncQueue *comm_queue,cons
   }
   for (n = 0; n < num_threads; n++)
     g_async_queue_pop(ready_queue);
-  g_message("%s",msg);
+  g_debug("%s",msg);
   for (n = 0; n < num_threads; n++)
     g_async_queue_push(queue, GINT_TO_POINTER(1));
 }
@@ -271,7 +271,7 @@ void restore_from_directory(struct configuration *conf){
     g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-  g_message("Step 4 completed");
+  g_debug("Step 4 completed");
 
   GList * t=conf->table_list;
   g_message("Import timings:");
@@ -290,7 +290,7 @@ void restore_from_directory(struct configuration *conf){
   }
   // Step 5: Create remaining objects. 
   // TODO: is it possible to do it in parallel? Actually, why aren't we queuing this files?
-  g_message("Step 5 started");
+  g_debug("Step 5 started");
 
 }
 
@@ -434,6 +434,8 @@ int main(int argc, char *argv[]) {
   }
 
   // Step 1: Create databases | single threaded
+  if (db)
+    create_database(conn, db);
   if (stream){
     GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, &conf, TRUE, NULL);
     g_thread_join(stream_thread);
@@ -648,10 +650,12 @@ void process_database_filename(struct configuration *conf, char * filename, cons
   if (db_kname!=NULL && g_str_has_prefix(db_kname,"mydumper_")){
     db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }
-
+  g_debug("Adding database: %s -> %s", db_kname, db ? db : db_vname);
   g_hash_table_insert(db_hash, db_kname, db ? db : db_vname);
-  struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
-  g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
+  if (!db){
+    struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
+    g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
+  }
 }
 
 void process_table_filename(struct configuration *conf, GHashTable *table_hash, char * filename){
@@ -1030,10 +1034,10 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   }
 }
 
-gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count, gchar ** current_database){
+gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job, int thread_id, int count){
   switch (job->type) {
     case JOB_RESTORE:
-      process_restore_job(thrconn,job->job_data,thread_id,count, current_database);
+      process_restore_job(thrconn,job->job_data,thread_id,count);
       break;
     case JOB_WAIT:
       g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
@@ -1053,17 +1057,9 @@ gboolean process_job(struct configuration *conf, MYSQL *thrconn,struct job *job,
 }
 
 
-void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count, gchar ** current_database){
+void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, int count){
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
-  if (!db && dbt != NULL){
-    if (*current_database==NULL || g_strcmp0(dbt->real_database, *current_database) != 0){
-      if (execute_use(thrconn, dbt->real_database, "Restoring Job")){
-        exit(EXIT_FAILURE);
-      }
-      *current_database=dbt->real_database;
-    }
-  }
 
   switch (rj->type) {
     case JOB_RESTORE_STRING:
@@ -1100,10 +1096,7 @@ void process_restore_job(MYSQL *thrconn,struct restore_job *rj, int thread_id, i
     case JOB_RESTORE_SCHEMA_FILENAME:
       g_message("Thread %d restoring %s on `%s` from %s", thread_id, rj->object,
                 rj->database, rj->filename);
-      if (db)
-        create_database(thrconn, db);
-      else
-        restore_data_from_file(thrconn, rj->database, NULL, rj->filename, TRUE );
+      restore_data_from_file(thrconn, rj->database, NULL, rj->filename, TRUE );
       break;
     default:
       g_critical("Something very bad happened!");
@@ -1121,12 +1114,13 @@ void *process_stream_queue(MYSQL * thrconn, struct configuration *conf, int thre
   while (cont){
 
     ft = (enum file_type )g_async_queue_pop(conf->stream_queue);
+    g_message("Thread %d: Processing file type: %d",thread_id,ft);
     GAsyncQueue *q= get_queue_for_type(conf,ft);
     if (q != NULL){
     job = (struct job *)g_async_queue_pop(q);
 
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring from stream");
-    cont=process_job(conf, thrconn, job, thread_id, count,current_database);
+    cont=process_job(conf, thrconn, job, thread_id, count);
     }
   }
   return NULL;
@@ -1142,14 +1136,14 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
   // Step 1: creating databases
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->database_queue);
-    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
+    cont=process_job(conf, thrconn, job, thread_id, count);
   }
   // Step 2: Create tables
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->table_queue);
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring tables");
-    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
+    cont=process_job(conf, thrconn, job, thread_id, count);
   }
 
   // Is this correct in a streaming scenario ?
@@ -1226,7 +1220,7 @@ void *process_directory_queue(MYSQL * thrconn, struct configuration *conf, int t
      job = (struct job *)g_async_queue_pop(conf->data_queue);
     }
     execute_use_if_needs_to(thrconn,current_database, job->use_database, "Restoring data");
-    cont=process_job(conf, thrconn, job, thread_id, count, current_database);
+    cont=process_job(conf, thrconn, job, thread_id, count);
   }
   return NULL;
 }
@@ -1264,6 +1258,13 @@ void *process_queue(struct thread_data *td) {
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   gchar *current_database=NULL;
+  if (db){
+    current_database=db;
+    execute_use(thrconn, current_database, "Initializing thread");
+    if (stream)
+      g_async_queue_push(conf->database_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+  }
+  g_debug("Thread %d: Starting import", td->thread_id);
   if (stream){
     process_stream_queue(thrconn,conf,td->thread_id, &current_database);
   }else{
@@ -1273,24 +1274,26 @@ void *process_queue(struct thread_data *td) {
   gboolean cont=TRUE;
   int count =0;
 
+//  g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->post_table_queue);
 //    g_message("%s",((struct restore_job *)job->job_data)->object);
     execute_use_if_needs_to(thrconn,&current_database, job->use_database, "Restoring post table");
-    cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
+    cont=process_job(conf, thrconn, job, td->thread_id, count);
   }
+//  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(thrconn,&current_database, job->use_database, "Restoring post tasks");
-    cont=process_job(conf, thrconn, job, td->thread_id, count, &current_database);
+    cont=process_job(conf, thrconn, job, td->thread_id, count);
   }
 
   if (thrconn)
     mysql_close(thrconn);
   mysql_thread_end();
-  g_message("Thread %d ending", td->thread_id);
+  g_debug("Thread %d ending", td->thread_id);
   return NULL;
 }
 
