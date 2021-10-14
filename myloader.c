@@ -13,6 +13,8 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
+
 */
 
 #define _LARGEFILE64_SOURCE
@@ -44,13 +46,13 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
+# include "locale.h"
 
 guint commit_count = 1000;
 gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
-gboolean sync_before_add_index = FALSE;
 gboolean disable_redo_log = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
@@ -116,8 +118,6 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str, 
       "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
-    { "sync-before-add-index", 0, 0, G_OPTION_ARG_NONE, &sync_before_add_index,
-      "If --innodb-optimize-keys is used, this option will force all the data threads to complete before starting the create index phase", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
@@ -241,6 +241,7 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
+  setlocale(LC_ALL, "");
   g_thread_init(NULL);
 
   init_mutex = g_mutex_new();
@@ -575,6 +576,11 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   }
   struct restore_job * rj = new_restore_job(g_strdup(filename), dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING);
   g_async_queue_push(conf->pre_queue, new_job(JOB_RESTORE,rj));
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 gchar * get_database_name_from_filename(const gchar *filename){
@@ -634,10 +640,10 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
       if (g_strrstr(filename, "-schema.sql")) {
         create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
-      } else if (g_str_has_suffix(filename, ".metadata")) {
+      } else if (g_str_has_suffix(filename, "-metadata")) {
         metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
       } else if ( strcmp(filename, "metadata") == 0 ){
-      } else if (g_str_has_suffix(filename, ".checksum") || g_str_has_suffix(filename, ".checksum.gz")) {
+      } else if (g_str_has_suffix(filename, "-checksum") || g_str_has_suffix(filename, "-checksum.gz")) {
         conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
       } else if ( g_strrstr(filename, "-schema-view.sql") ){
         conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
@@ -682,12 +688,12 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     filename=create_table_list->data;
     get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
     if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
     if (real_db_name==NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
       exit(EXIT_FAILURE);
     }
     dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
@@ -704,7 +710,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
     guint part;
     get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
     if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s",filename);
+      g_critical("It was not possible to process file: %s (3)",filename);
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
@@ -873,7 +879,7 @@ gint compare_filename_part (gconstpointer a, gconstpointer b){
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   gchar *database = NULL, *table = NULL;
-  get_database_table_from_file(filename,".checksum",&database,&table);
+  get_database_table_from_file(filename,"-checksum",&database,&table);
   gchar *real_database=g_hash_table_lookup(db_hash,database);
   gchar *real_table=g_hash_table_lookup(tbl_hash,table);
   void *infile;
@@ -910,6 +916,11 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
     g_critical("error reading file %s (%d)", filename, errno);
     errors++;
     return;
+  }
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
   }
 }
 
@@ -1132,8 +1143,6 @@ void *process_queue(struct thread_data *td) {
 int restore_data_in_gstring_from_file(MYSQL *conn, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(conn, data->str, data->len)) {
-g_critical("Error restoring: %s",data->str);
-	  //    g_critical("Error restoring %s.%s from file %s: %s \n", db ? db : database, table, filename, mysql_error(conn));
     errors++;
     return 1;
   }
@@ -1141,7 +1150,6 @@ g_critical("Error restoring: %s",data->str);
   if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
     *query_counter= 0;
     if (mysql_query(conn, "COMMIT")) {
-//      g_critical("Error committing data for %s.%s: %s", db ? db : database, table, mysql_error(conn));
       errors++;
       return 2;
     }
