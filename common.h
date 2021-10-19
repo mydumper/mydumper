@@ -34,6 +34,7 @@ gchar *ssl_mode = NULL;
 #endif
 gchar *config_file;
 GString *set_session=NULL;
+gchar *compress_extension = NULL;
 
 FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;

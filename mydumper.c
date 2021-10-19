@@ -91,7 +91,6 @@ int skip_tz = 0;
 int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int compress_output = 0;
-gchar *compress_extension = NULL;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
