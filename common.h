@@ -37,6 +37,7 @@ GString *set_session=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 GAsyncQueue *stream_queue;
+gchar *compress_extension = NULL;
 
 FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;

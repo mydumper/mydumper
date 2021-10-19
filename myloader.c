@@ -34,7 +34,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
+#ifdef ZWRAP_USE_ZSTD
+#include "zstd/zstd_zlibwrapper.h"
+#else
 #include <zlib.h>
+#endif
 #include "config.h"
 #include "common.h"
 #include "myloader.h"
@@ -350,7 +354,11 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-
+#ifdef ZWRAP_USE_ZSTD
+  compress_extension = g_strdup(".zst");
+#else
+  compress_extension = g_strdup(".gz");
+#endif
   if (set_names_str){
     gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
     set_names_str=tmp_str;
@@ -528,7 +536,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   GString *create_table_statement=g_string_sized_new(512);
   GString *alter_table_statement=g_string_sized_new(512);
   GString *alter_table_constraint_statement=g_string_sized_new(512);
-  if (!g_str_has_suffix(filename, ".gz")) {
+  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
   } else {
@@ -798,18 +806,22 @@ void load_directory_information(struct configuration *conf) {
         case INIT:
         case SCHEMA_CREATE:
           schema_create_list=g_list_insert(schema_create_list,g_strdup(filename),-1);
+          conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
           break;
         case SCHEMA_TABLE:
           create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
           break;
         case SCHEMA_VIEW:
           view_list=g_list_insert(view_list,g_strdup(filename),-1);
+          conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
           break;
         case SCHEMA_TRIGGER:
           trigger_list=g_list_insert(trigger_list,g_strdup(filename),-1);
+          conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
           break;
         case SCHEMA_POST:
           post_list=g_list_insert(post_list,g_strdup(filename),-1);
+          conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
           break;
         case CHECKSUM:
           conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
@@ -913,11 +925,11 @@ void create_database(MYSQL *conn, gchar *database) {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql.gz", source_db ? source_db : database);
+      g_strdup_printf("%s-schema-create.sql%s", source_db ? source_db : database, compress_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
                                           directory, source_db ? source_db : database);
-  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql.gz",
-                                            directory, source_db ? source_db : database);
+  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
+                                            directory, source_db ? source_db : database, compress_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filename, TRUE);
@@ -999,7 +1011,7 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   gboolean is_compressed = FALSE; 
   gchar *path = g_build_filename(directory, filename, NULL);
 
-  if (!g_str_has_suffix(path, ".gz")) {
+  if (!g_str_has_suffix(path, compress_extension)) {
     infile = g_fopen(path, "r");
     is_compressed = FALSE;
   } else {
@@ -1380,7 +1392,7 @@ gchar * get_table_name_from_content(const gchar *filename){
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  if (!g_str_has_suffix(filename, ".gz")) {
+  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
   } else {
@@ -1418,7 +1430,7 @@ gchar * get_database_name_from_content(const gchar *filename){
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  if (!g_str_has_suffix(filename, ".gz")) {
+  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
   } else {
@@ -1463,7 +1475,7 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
 
   gchar *path = g_build_filename(directory, filename, NULL);
 
-  if (!g_str_has_suffix(path, ".gz")) {
+  if (!g_str_has_suffix(path, compress_extension)) {
     infile = g_fopen(path, "r");
     is_compressed = FALSE;
   } else {
