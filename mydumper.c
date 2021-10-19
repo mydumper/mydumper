@@ -36,7 +36,11 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
+#ifdef ZWRAP_USE_ZSTD
+#include "zstd/zstd_zlibwrapper.h"
+#else
 #include <zlib.h>
+#endif
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
@@ -87,7 +91,6 @@ int skip_tz = 0;
 int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int compress_output = 0;
-gchar *compress_extension = NULL;
 int killqueries = 0;
 int detected_server = 0;
 int lock_all_tables = 0;
@@ -1198,7 +1201,11 @@ int main(int argc, char *argv[]) {
   } else {
     m_open=(void *) &gzopen;
     m_close=(void *) &gzclose;
+#ifdef ZWRAP_USE_ZSTD
+    compress_extension = g_strdup(".zst");
+#else
     compress_extension = g_strdup(".gz");
+#endif
   }
 
   if (password != NULL){
