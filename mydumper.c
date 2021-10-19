@@ -1202,7 +1202,11 @@ int main(int argc, char *argv[]) {
   } else {
     m_open=(void *) &gzopen;
     m_close=(void *) &gzclose;
+#ifdef ZWRAP_USE_ZSTD
+    compress_extension = g_strdup(".zst");
+#else
     compress_extension = g_strdup(".gz");
+#endif
   }
 
   if (password != NULL){
