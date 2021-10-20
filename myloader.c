@@ -813,15 +813,12 @@ void load_directory_information(struct configuration *conf) {
           break;
         case SCHEMA_VIEW:
           view_list=g_list_insert(view_list,g_strdup(filename),-1);
-          conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
           break;
         case SCHEMA_TRIGGER:
           trigger_list=g_list_insert(trigger_list,g_strdup(filename),-1);
-          conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
           break;
         case SCHEMA_POST:
           post_list=g_list_insert(post_list,g_strdup(filename),-1);
-          conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
           break;
         case CHECKSUM:
           conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
