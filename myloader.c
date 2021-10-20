@@ -640,9 +640,13 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
   GList *create_table_list=NULL,*metadata_list= NULL,*data_files_list=NULL;
   struct db_table *dbt=NULL;
   while ((filename = g_dir_read_name(dir))) {
-    // TODO: read the whole dir, without !source_db and then filter out the objects.
-    if (!source_db ||
-      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+    if ( g_strrstr(filename, "-schema-create.sql") ){
+        conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
+    } else if ( g_strrstr(filename, "-schema-post.sql") ){
+        conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
+    } else if (!source_db ||
+      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)) || 
+      g_str_has_prefix(filename, "mydumper_")) {
       if (g_strrstr(filename, "-schema.sql")) {
         create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
       } else if (g_str_has_suffix(filename, "-metadata")) {
@@ -654,11 +658,7 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
         conf->schema_view_list=g_list_insert(conf->schema_view_list,g_strdup(filename),-1);
       } else if ( g_strrstr(filename, "-schema-triggers.sql") ){
         conf->schema_triggers_list=g_list_insert(conf->schema_triggers_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-post.sql") ){
-        conf->schema_post_list=g_list_insert(conf->schema_post_list,g_strdup(filename),-1);
-      } else if ( g_strrstr(filename, "-schema-create.sql") ){
-        conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
-      } else {
+      } else { 
         data_files_list=g_list_insert(data_files_list,g_strdup(filename),-1);
       } 
 
@@ -678,16 +678,18 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       // Append to hash ref table...
     }
     g_hash_table_insert(db_hash, db_kname, db_vname);
-    if (db)
-      create_database(conn, db);
-    else
-      restore_data_from_file(conn, db_vname, NULL, filename, TRUE, FALSE);
+    if (!source_db || g_strcmp0(source_db, db_vname) == 0){
+      if (db)
+        create_database(conn, db);
+      else
+        restore_data_from_file(conn, db_vname, NULL, filename, TRUE, FALSE);
+    }
     // Append to db
     schema_create_list=schema_create_list->next;
   }
 
 
-  // CREWATE TABLE
+  // CREATE TABLE
   gchar *db_name, *table_name, *real_db_name;
   while (create_table_list != NULL){
     filename=create_table_list->data;
@@ -701,8 +703,10 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
       exit(EXIT_FAILURE);
     }
-    dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
-    load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
+    if (!source_db || g_strcmp0(source_db, real_db_name) == 0){
+      dbt=append_new_db_table(real_db_name, db_name, table_name,0,table_hash,NULL);
+      load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
+    }
     create_table_list=create_table_list->next;
   }
 
@@ -719,9 +723,11 @@ void load_directory_information(struct configuration *conf, MYSQL *conn) {
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,db_name);
-    dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
-    struct restore_job *rj = new_restore_job(g_strdup(filename), dbt, NULL, part , JOB_RESTORE_FILENAME);
-    dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+    if (!source_db || g_strcmp0(source_db, real_db_name) == 0){
+      dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
+      struct restore_job *rj = new_restore_job(g_strdup(filename), dbt, NULL, part , JOB_RESTORE_FILENAME);
+      dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+    }
     data_files_list=data_files_list->next;
   }
 
@@ -770,8 +776,12 @@ void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, c
     get_database_table_from_file(filename,"-schema",&database,&table);
     if (database == NULL){
       g_critical("Database is null on: %s",filename);
+      exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,database);
+    if (!source_db || g_strcmp0(source_db, real_db_name) == 0){
+      continue;
+    }
     if (!db){
       if (current_database==NULL || g_strcmp0(real_db_name, current_database) != 0){
         execute_use(conn, real_db_name, execute_msg);
