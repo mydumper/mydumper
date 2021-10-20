@@ -235,7 +235,7 @@ static int ZWRAPC_finishWithError(ZWRAP_CCtx* zwc, z_streamp strm, int error)
 }
 
 
-static int ZWRAPC_finishWithErrorMsg(z_streamp strm, char* message)
+static int ZWRAPC_finishWithErrorMsg(z_streamp strm, const char* message)
 {
     ZWRAP_CCtx* zwc = (ZWRAP_CCtx*) strm->state;
     strm->msg = message;
@@ -584,7 +584,7 @@ static int ZWRAPD_finishWithError(ZWRAP_DCtx* zwd, z_streamp strm, int error)
     return (error) ? error : Z_STREAM_ERROR;
 }
 
-static int ZWRAPD_finishWithErrorMsg(z_streamp strm, char* message)
+static int ZWRAPD_finishWithErrorMsg(z_streamp strm, const char* message)
 {
     ZWRAP_DCtx* const zwd = (ZWRAP_DCtx*) strm->state;
     strm->msg = message;
