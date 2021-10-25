@@ -831,10 +831,12 @@ void load_directory_information(struct configuration *conf) {
           case DATA:
             data_files_list=g_list_append(data_files_list,g_strdup(filename));
             break;
+          default:
+            g_warning("File ignored: %s", filename);
+            break;
         }
       }
     }
-  }
   g_dir_close(dir);
 
   gchar *f = NULL;
