@@ -798,40 +798,40 @@ void load_directory_information(struct configuration *conf) {
         *post_list=NULL;
 
   while ((filename = g_dir_read_name(dir))) {
-    // TODO: read the whole dir, without !source_db and then filter out the objects.
-    if (!source_db ||
-      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
-      enum file_type ft= get_file_type(filename);
-      switch (ft){
-        case INIT:
-        case SCHEMA_CREATE:
+    enum file_type ft= get_file_type(filename);
+    if (ft == SCHEMA_POST){
+          post_list=g_list_insert(post_list,g_strdup(filename),-1);
+    } else if (ft ==  SCHEMA_CREATE ){
           schema_create_list=g_list_insert(schema_create_list,g_strdup(filename),-1);
           conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
-          break;
-        case SCHEMA_TABLE:
-          create_table_list=g_list_insert(create_table_list,g_strdup(filename),-1);
-          break;
-        case SCHEMA_VIEW:
-          view_list=g_list_insert(view_list,g_strdup(filename),-1);
-          break;
-        case SCHEMA_TRIGGER:
-          trigger_list=g_list_insert(trigger_list,g_strdup(filename),-1);
-          break;
-        case SCHEMA_POST:
-          post_list=g_list_insert(post_list,g_strdup(filename),-1);
-          break;
-        case CHECKSUM:
-          conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
-          break;
-        case METADATA_GLOBAL:
-          break;
-        case METADATA_TABLE:
-          // TODO: we need to process this info
-          metadata_list=g_list_insert(metadata_list,g_strdup(filename),-1);
-          break;
-        case DATA:
-          data_files_list=g_list_insert(data_files_list,g_strdup(filename),-1);
-          break;
+    } else if (!source_db ||
+      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))|| 
+      g_str_has_prefix(filename, "mydumper_")) { 
+        switch (ft){
+          case INIT:
+            break;
+          case SCHEMA_TABLE:
+            create_table_list=g_list_append(create_table_list,g_strdup(filename));
+            break;
+          case SCHEMA_VIEW:
+            view_list=g_list_append(view_list,g_strdup(filename));
+            break;
+          case SCHEMA_TRIGGER:
+            trigger_list=g_list_append(trigger_list,g_strdup(filename));
+            break;
+          case CHECKSUM:
+            conf->checksum_list=g_list_append(conf->checksum_list,g_strdup(filename));
+            break;
+          case METADATA_GLOBAL:
+            break;
+          case METADATA_TABLE:
+            // TODO: we need to process this info
+            metadata_list=g_list_append(metadata_list,g_strdup(filename));
+            break;
+          case DATA:
+            data_files_list=g_list_append(data_files_list,g_strdup(filename));
+            break;
+        }
       }
     }
   }
@@ -857,6 +857,7 @@ void load_directory_information(struct configuration *conf) {
   while (data_files_list != NULL){
     f = data_files_list->data;
     process_data_filename(conf,table_hash,f);
+
     data_files_list=data_files_list->next;
   }
 
