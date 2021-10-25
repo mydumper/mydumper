@@ -773,6 +773,7 @@ void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, c
   gchar *real_db_name;
   while ( e ) {
     filename=e->data;
+    e=e->next;
     get_database_table_from_file(filename,"-schema",&database,&table);
     if (database == NULL){
       g_critical("Database is null on: %s",filename);
@@ -795,7 +796,6 @@ void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, c
     if (overwrite_fun)
       overwrite_table(conn, current_database, table);
     restore_data_from_file(conn, current_database, table, filename, TRUE, TRUE);
-    e=e->next;
   }
 }
 
