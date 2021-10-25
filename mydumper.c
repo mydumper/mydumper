@@ -1315,7 +1315,7 @@ int main(int argc, char *argv[]) {
     else if (pid > 0)
       exit(EXIT_SUCCESS);
 
-    umask(0);
+    umask(0037);
     sid = setsid();
 
     if (sid < 0)
@@ -1479,7 +1479,7 @@ void *exec_thread(void *data) {
     g_async_queue_pop(start_scheduled_dump);
     MYSQL *conn = create_main_connection();
     char *dump_number_str=g_strdup_printf("%d",dump_number);
-    dump_directory = g_build_path( output_directory, dump_number_str, NULL);
+    dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     clear_dump_directory(dump_directory);
     start_dump(conn);
