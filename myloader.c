@@ -765,7 +765,7 @@ void restore_schema_list(MYSQL *conn,GList * schema_list, const gchar *object, c
       exit(EXIT_FAILURE);
     }
     real_db_name=g_hash_table_lookup(db_hash,database);
-    if (!source_db || g_strcmp0(source_db, real_db_name) == 0){
+    if (!(!source_db || g_strcmp0(source_db, real_db_name) == 0)){
       continue;
     }
     if (!db){
