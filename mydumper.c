@@ -159,6 +159,7 @@ guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
 GAsyncQueue *start_scheduled_dump;
+
 GMainLoop *m1;
 static GCond *ll_cond = NULL;
 static GMutex *ll_mutex = NULL;
@@ -690,6 +691,40 @@ void message_dumping_data(guint thread_id, struct table_job *tj){
                     tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
 }
 
+void *process_stream(void *data){
+  (void)data;
+  char * filename=NULL;
+  FILE * f=NULL;
+  char buf[1024];
+  int buflen;
+  ssize_t len=0;
+  for(;;){
+    filename=(char *)g_async_queue_pop(stream_queue);
+    if (strlen(filename) == 0){
+      break;
+    }
+    char *used_filemame=g_path_get_basename(filename);
+    len=m_write(stdout, "\n-- ", 4);
+    len=m_write(stdout, used_filemame, strlen(used_filemame));
+    len=m_write(stdout, "\n", 1);
+    free(used_filemame);
+    f=m_open(filename,"r");
+    while((buflen = read(fileno(f), buf, 1024)) > 0)
+    {
+      len=m_write(stdout, buf, buflen);
+      if (len != buflen){
+        g_critical("Stream failed during transmition of file: %s",filename);
+        exit(EXIT_FAILURE);
+      }
+    }
+    m_close(f);
+    if (no_delete == FALSE){
+      remove(filename);
+    }
+  }
+  return NULL;
+}
+
 void *process_queue(struct thread_data *td) {
   struct configuration *conf = td->conf;
   // mysql_init is not thread safe, especially in Connector/C
@@ -1197,10 +1232,12 @@ int main(int argc, char *argv[]) {
   if (!compress_output) {
     m_open=&g_fopen;
     m_close=(void *) &fclose;
+    m_write=(void *)&write_file;
     compress_extension=g_strdup("");
   } else {
     m_open=(void *) &gzopen;
     m_close=(void *) &gzclose;
+    m_write=(void *)&gzwrite;
 #ifdef ZWRAP_USE_ZSTD
     compress_extension = g_strdup(".zst");
 #else
@@ -1477,6 +1514,7 @@ void dump_metadata(struct db_table * dbt){
   char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
   FILE *table_meta = g_fopen(filename, "w");
   fprintf(table_meta, "%d", dbt->rows);
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   fclose(table_meta);
 }
 
@@ -1889,7 +1927,11 @@ void start_dump(MYSQL *conn) {
 
     write_snapshot_info(conn, mdfile);
   }
-
+  GThread *stream_thread = NULL;
+  if (stream){
+    stream_queue = g_async_queue_new();
+    stream_thread = g_thread_create((GThreadFunc)process_stream, stream_queue, TRUE, NULL);
+  }
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
   struct thread_data *td =
       g_new(struct thread_data, num_threads * (less_locking + 1));
@@ -1975,10 +2017,16 @@ void start_dump(MYSQL *conn) {
     g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
   }
 
+  GList *iter;
+  table_schemas = g_list_reverse(table_schemas);
+  for (iter = table_schemas; iter != NULL; iter = iter->next) {
+    dbt = (struct db_table *)iter->data;
+    dump_schema(conn, dbt, &conf);
+  }
+
   non_innodb_table = g_list_reverse(non_innodb_table);
   if (less_locking) {
 
-    GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       tn = 0;
@@ -2014,7 +2062,6 @@ void start_dump(MYSQL *conn) {
       g_async_queue_push(conf.queue_less_locking, j);
     }
   } else {
-    GList *iter;
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       if (dump_checksums) {
@@ -2028,7 +2075,6 @@ void start_dump(MYSQL *conn) {
   }
 
   innodb_tables = g_list_reverse(innodb_tables);
-  GList *iter;
   for (iter = innodb_tables; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     if (dump_checksums) {
@@ -2039,11 +2085,11 @@ void start_dump(MYSQL *conn) {
   g_list_free(innodb_tables);
   innodb_tables=NULL;
 
-  table_schemas = g_list_reverse(table_schemas);
+/*  table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     dump_schema(conn, dbt, &conf);
-  }
+  }*/
 
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
@@ -2119,12 +2165,17 @@ void start_dump(MYSQL *conn) {
   if (updated_since > 0)
     fclose(nufile);
   g_rename(p, p2);
+  if (stream) g_async_queue_push(stream_queue, g_strdup(p2));
   g_free(p);
   g_free(p2);
   g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d",
             tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
             tval.tm_min, tval.tm_sec);
 
+  if (stream) {
+    g_async_queue_push(stream_queue, g_strdup(""));
+    g_thread_join(stream_thread);
+  }
   g_free(td);
   g_free(threads);
 }
@@ -2186,7 +2237,7 @@ void dump_create_database_data(MYSQL *conn, char *database, char *filename) {
   g_free(query);
 
   m_close(outfile);
-
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -3192,7 +3243,7 @@ void dump_schema_post_data(MYSQL *conn, struct database *database, char *filenam
 
   g_free(query);
   m_close(outfile);
-
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -3265,7 +3316,7 @@ void dump_triggers_data(MYSQL *conn, char *database, char *table,
 
   g_free(query);
   m_close(outfile);
-
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -3339,7 +3390,7 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   g_free(query);
 
   m_close(outfile);
-
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -3448,8 +3499,9 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   }
   g_free(query);
   m_close(outfile);
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   m_close(outfile2);
-
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename2));
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -3494,9 +3546,10 @@ void dump_table_checksum(MYSQL *conn, char *database, char *table, char *filenam
     errors++;
     return;
   }
-
   fprintf(outfile, "%s", checksum);
   fclose(outfile);
+
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   g_free(checksum);
 
   return;
@@ -3884,9 +3937,10 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
                     chunk_filesize) {
               fn++;
               g_free(fcfile);
+              m_close(file);
+              if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
               fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix, fn,
                                        (compress_output ? ".gz" : ""));
-              m_close(file);
               file = m_open(fcfile,"w");
 
               st_in_file = 0;
@@ -3975,6 +4029,9 @@ cleanup:
     fcfile = g_strdup_printf("%s.00000.sql%s", filename_prefix,
                              (compress_output ? ".gz" : ""));
     g_rename(tj->filename, fcfile);
+    if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+  }else{
+    if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
   }
 
   g_mutex_lock(dbt->rows_lock);
@@ -3987,16 +4044,13 @@ cleanup:
   return num_rows;
 }
 
+
 gboolean write_data(FILE *file, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
 
   while (written < data->len) {
-    if (!compress_output)
-      r = write(fileno(file), data->str + written, data->len);
-    else
-      r = gzwrite((gzFile)file, data->str + written, data->len);
-
+    r=m_write(file, data->str + written, data->len);
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
       errors++;
