@@ -34,10 +34,14 @@ gchar *ssl_mode = NULL;
 #endif
 gchar *config_file;
 GString *set_session=NULL;
+gboolean stream = FALSE;
+gboolean no_delete = FALSE;
+GAsyncQueue *stream_queue;
 gchar *compress_extension = NULL;
 
 FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;
+int (*m_write)(FILE * file, const char * buff, int len);
 void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss);
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar * identity_function(gchar ** r);
@@ -95,8 +99,13 @@ GOptionEntry common_entries[] = {
 #endif
     { "config", 0, 0, G_OPTION_ARG_STRING, &config_file,
       "Configuration file", NULL },
+    {"stream", 0, 0, G_OPTION_ARG_NONE, &stream,
+     "It will stream over STDOUT once the files has been written", NULL},
+    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
+      "It will not delete the files after stream has been completed", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 #endif
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
+int write_file(FILE * file, char * buff, int len);

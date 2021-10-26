@@ -21,22 +21,29 @@
 #ifndef _myloader_h
 #define _myloader_h
 
-enum restore_job_type { JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
+
+#define IS_INNODB_TABLE 2
+#define INCLUDE_CONSTRAINT 4
+#define IS_ALTER_TABLE_PRESENT 8
+
+
+enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
+enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL };
 
 struct configuration {
-  GAsyncQueue *pre_queue;
-  GAsyncQueue *queue;
+  GAsyncQueue *database_queue;
+  GAsyncQueue *table_queue; // previous pre_queue
+  GAsyncQueue *data_queue;
+  GAsyncQueue *post_table_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
-  GAsyncQueue *constraints_queue;
+  GAsyncQueue *stream_queue;
   GList *table_list;
-  GList *schema_view_list;
-  GList *schema_triggers_list;
-  GList *schema_post_list;
   GList *schema_create_list;
   GList *checksum_list;
+  GList *metadata_list;
   GMutex *mutex;
   int done;
 };
@@ -49,15 +56,17 @@ struct thread_data {
 struct job {
   enum job_type type;
   void *job_data;
-  struct configuration *conf;
+  char * use_database;
 };
 
 struct restore_job {
   enum restore_job_type type;
   struct db_table * dbt;
+  char *database;
   char *filename;
   GString *statement;
   guint part;
+  const char *object;
 };
 
 struct db_table {
@@ -65,6 +74,7 @@ struct db_table {
   char *real_database;
   char *table;
   char *real_table;
+  char *filename;
   guint64 rows;
   GAsyncQueue * queue;
   GList * restore_job_list;
