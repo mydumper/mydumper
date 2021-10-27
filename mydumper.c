@@ -3898,8 +3898,13 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       /* Don't escape safe formats, saves some time */
       if (!row[i]) {
         g_string_append(statement_row, "NULL");
-      } else if ((fields[i].flags & NUM_FLAG) && (( fields[i].flags & MYSQL_TYPE_FLOAT) || (fields[i].flags & MYSQL_TYPE_DOUBLE))) {
-        g_string_append(statement_row, fun_ptr(&(row[i])));
+      } else if ((fields[i].flags & NUM_FLAG)){
+        if (strcmp(row[i],"-0")==0){
+          g_string_append(statement_row, "'");
+          g_string_append(statement_row, fun_ptr(&(row[i])));
+          g_string_append(statement_row, "'");
+        }else
+          g_string_append(statement_row, fun_ptr(&(row[i])));
       } else {
         /* We reuse buffers for string escaping, growing is expensive just at
          * the beginning */
