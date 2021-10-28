@@ -2682,18 +2682,15 @@ void green_light(MYSQL *conn, struct configuration *conf, gboolean is_view, stru
         if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
           if (trx_consistency_only ||
               (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
-            g_message("Innodb tables 1");
             g_mutex_lock(innodb_tables_mutex);
             innodb_tables = g_list_prepend(innodb_tables, dbt);
             g_mutex_unlock(innodb_tables_mutex);
           } else if (ecol != NULL &&
                      !g_ascii_strcasecmp("TokuDB", ecol)) {
-            g_message("Innodb tables 2");
             g_mutex_lock(innodb_tables_mutex);
             innodb_tables = g_list_prepend(innodb_tables, dbt);
             g_mutex_unlock(innodb_tables_mutex);
           } else {
-            g_message("non Innodb tables");
             g_mutex_lock(non_innodb_table_mutex);
             non_innodb_table = g_list_prepend(non_innodb_table, dbt);
             g_mutex_unlock(non_innodb_table_mutex);
