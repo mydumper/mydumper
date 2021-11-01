@@ -79,6 +79,7 @@ static GMutex *init_mutex = NULL;
 static GMutex *ref_table_mutex = NULL;
 /* Program options */
 gchar *output_directory = NULL;
+gchar *output_directory_param = NULL;
 gchar *dump_directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
@@ -175,7 +176,7 @@ static GOptionEntry entries[] = {
      "File containing a list of database.table entries to skip, one per line "
      "(skips before applying regex option)",
      NULL},
-    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory,
+    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
      "Attempted size of INSERT statement in bytes, default 1000000", NULL},
@@ -1300,7 +1301,7 @@ int main(int argc, char *argv[]) {
     g_warning("Using trx_consistency_only, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
-  if (!output_directory)
+  if (!output_directory_param)
     output_directory = g_strdup_printf(
         "%s-%04d%02d%02d-%02d%02d%02d", DIRECTORY, tval.tm_year + 1900,
         tval.tm_mon + 1, tval.tm_mday, tval.tm_hour, tval.tm_min, tval.tm_sec);
@@ -2165,7 +2166,12 @@ void start_dump(MYSQL *conn) {
   if (updated_since > 0)
     fclose(nufile);
   g_rename(p, p2);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(p2));
+  if (stream) {
+    g_async_queue_push(stream_queue, g_strdup(p2));
+    if (output_directory_param == NULL)
+      if (g_rmdir(output_directory) != 0)
+        g_critical("Backup directory not removed: %s", output_directory);
+  }
   g_free(p);
   g_free(p2);
   g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d",
