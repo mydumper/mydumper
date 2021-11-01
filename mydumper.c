@@ -310,7 +310,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 void dump_table_data_file(MYSQL *conn, struct table_job * tj);
 void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
-void create_backup_dir(char *directory);
+//void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
 gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
@@ -2171,7 +2171,7 @@ void start_dump(MYSQL *conn) {
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(""));
     g_thread_join(stream_thread);
-    if (output_directory_param == NULL)
+    if (no_delete == FALSE && output_directory_param == NULL)
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);
   }
@@ -2577,7 +2577,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
   return (count);
 }
 
-void create_backup_dir(char *new_directory) {
+void old_create_backup_dir(char *new_directory) {
   if (g_mkdir(new_directory, 0700) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
