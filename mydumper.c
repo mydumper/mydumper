@@ -60,9 +60,8 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
-# include "locale.h"
-
-char *regexstring = NULL;
+#include "locale.h"
+#include "regex.h"
 
 const char DIRECTORY[] = "export";
 #ifdef WITH_BINLOG
@@ -192,8 +191,6 @@ static GOptionEntry entries[] = {
      "Compress output files", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
-     "Regular expression for 'db.table' matching", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
@@ -328,7 +325,7 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
 gchar *get_ref_table(gchar *k);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 
-gboolean check_regex_general(char *regex, char *word) {
+gboolean old_check_regex_general(char *regex, char *word) {
   /* This is not going to be used in threads */
   static pcre *re = NULL;
   int rc;
@@ -353,8 +350,7 @@ gboolean check_regex_general(char *regex, char *word) {
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
-  char * regex=strdup("^[\\w\\-_ ]+$");
-  if (check_regex_general(regex,table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
+  if (check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
     return table;
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
@@ -447,7 +443,7 @@ gboolean run_snapshot(gpointer *data) {
 
 /* Check database.table string against regular expression */
 
-gboolean check_regex(char *database, char *table) {
+gboolean old_check_regex(char *database, char *table) {
   /* This is not going to be used in threads */
   static pcre *re = NULL;
   int rc;
@@ -1214,6 +1210,7 @@ int main(int argc, char *argv[]) {
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
+  g_option_group_add_entries(main_group, regex_entries);
   g_option_context_set_main_group(context, main_group);
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
@@ -1273,7 +1270,7 @@ int main(int argc, char *argv[]) {
   }
 
   set_verbose(verbose);
-
+  initialize_regex();
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
@@ -1781,7 +1778,7 @@ void start_dump(MYSQL *conn) {
             }
             if (lock && tables_skiplist_file && check_skiplist(row[0], row[1]))
               continue;
-            if (lock && regexstring && !check_regex(row[0], row[1]))
+            if (lock && eval_regex(row[0], row[1]))
               continue;
 
             if (lock) {
@@ -1993,7 +1990,7 @@ void start_dump(MYSQL *conn) {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (!eval_regex(row[0], NULL))){
         g_mutex_lock(db_tmp->ad_mutex);
         if (!db_tmp->already_dumped){
           dump_create_database(db_tmp->name, &conf);
@@ -2819,7 +2816,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (regexstring && !check_regex(database->name, row[0]))
+    if (eval_regex(database->name, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -2906,7 +2903,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
         continue;
 
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database->name, row[1]))
+      if (eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2928,7 +2925,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
         /* Checks PCRE expressions on 'database.sp' string */
-        if (regexstring && !check_regex(database->name, row[1]))
+        if (eval_regex(database->name, row[1]))
           continue;
 
         post_dump = 1;
@@ -2953,7 +2950,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database->name, row[1]))
+      if (eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;

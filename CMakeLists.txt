@@ -53,7 +53,7 @@ else (WITH_ZSTD)
 if (WITH_BINLOG)
   add_executable(mydumper mydumper.c binlog.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c common.c)
 else (WITH_BINLOG)
-  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c common.c)
+  add_executable(mydumper mydumper.c server_detect.c g_unix_signal.c connection.c getPassword.c logging.c set_verbose.c common.c regex.c)
 endif (WITH_BINLOG)
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )
 
