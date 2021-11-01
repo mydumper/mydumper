@@ -1275,9 +1275,7 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-  time_t t;
-  time(&t);
-  localtime_r(&t, &tval);
+  GDateTime * datetime = g_date_time_new_now_local();
 
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
@@ -1301,11 +1299,13 @@ int main(int argc, char *argv[]) {
     g_warning("Using trx_consistency_only, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
-  if (!output_directory_param)
-    output_directory = g_strdup_printf(
-        "%s-%04d%02d%02d-%02d%02d%02d", DIRECTORY, tval.tm_year + 1900,
-        tval.tm_mon + 1, tval.tm_mday, tval.tm_hour, tval.tm_min, tval.tm_sec);
+  char *datetimestr;
 
+  if (!output_directory_param){
+    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+    g_free(datetimestr);
+  }
   create_backup_dir(output_directory);
   if (daemon_mode) {
     pid_t pid, sid;
@@ -1575,7 +1575,6 @@ void start_dump(MYSQL *conn) {
   GList *nitl[num_threads];
   int tn = 0;
   guint64 min = 0;
-  time_t t;
   struct db_table *dbt=NULL;
   struct schema_post *sp;
   guint n;
@@ -1913,15 +1912,12 @@ void start_dump(MYSQL *conn) {
     if (res)
       mysql_free_result(res);
   }
-  time(&t);
-  localtime_r(&t, &tval);
-  fprintf(mdfile, "Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
-          tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-          tval.tm_min, tval.tm_sec);
+  GDateTime *datetime = g_date_time_new_now_local();
+  char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  fprintf(mdfile, "Started dump at: %s\n", datetimestr);
 
-  g_message("Started dump at: %04d-%02d-%02d %02d:%02d:%02d",
-            tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-            tval.tm_min, tval.tm_sec);
+  g_message("Started dump at: %s", datetimestr);
+  g_free(datetimestr);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
 				mysql_query(conn, set_names_str);
@@ -2157,30 +2153,27 @@ void start_dump(MYSQL *conn) {
   g_async_queue_unref(conf.queue);
   g_async_queue_unref(conf.unlock_tables);
 
-  time(&t);
-  localtime_r(&t, &tval);
-  fprintf(mdfile, "Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
-          tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-          tval.tm_min, tval.tm_sec);
+  datetime = g_date_time_new_now_local();
+  datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  fprintf(mdfile, "Finished dump at: %s\n", datetimestr);
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);
   g_rename(p, p2);
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(p2));
-    if (output_directory_param == NULL)
-      if (g_rmdir(output_directory) != 0)
-        g_critical("Backup directory not removed: %s", output_directory);
   }
   g_free(p);
   g_free(p2);
-  g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d",
-            tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-            tval.tm_min, tval.tm_sec);
+  g_message("Finished dump at: %s",datetimestr);
+  g_free(datetimestr);
 
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(""));
     g_thread_join(stream_thread);
+    if (output_directory_param == NULL)
+      if (g_rmdir(output_directory) != 0)
+        g_critical("Backup directory not removed: %s", output_directory);
   }
   g_free(td);
   g_free(threads);
