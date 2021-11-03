@@ -927,21 +927,23 @@ void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+      g_strdup_printf("%s-schema-create.sql", database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql%s", source_db ? source_db : database, compress_extension);
+      g_strdup_printf("%s-schema-create.sql%s", database, compress_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                          directory, source_db ? source_db : database);
+                                          directory, database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, source_db ? source_db : database, compress_extension);
+                                            directory, database, compress_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filename, TRUE);
   } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filenamegz, TRUE);
   } else {
-    query = g_strdup_printf("CREATE DATABASE `%s`", database);
-    mysql_query(conn, query);
+    query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
+    if (mysql_query(conn, query)){
+      g_warning("Fail to create database: %s", database);
+    }
   }
 
   g_free(query);
