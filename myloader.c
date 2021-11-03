@@ -746,7 +746,11 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
     switch (ft){
       case INIT:
       case SCHEMA_CREATE:
-        process_database_filename(conf, filename, "create database");
+        if (db){
+          g_warning("Skipping database creation on file: %s",filename);
+	}else{
+          process_database_filename(conf, filename, "create database");
+        }
         break;
       case SCHEMA_TABLE:
         process_table_filename(conf,table_hash,filename);
