@@ -109,3 +109,4 @@ GOptionEntry common_entries[] = {
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
+guint strcount(gchar *text);
