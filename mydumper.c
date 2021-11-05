@@ -1315,7 +1315,7 @@ int main(int argc, char *argv[]) {
     else if (pid > 0)
       exit(EXIT_SUCCESS);
 
-    umask(0);
+    umask(0037);
     sid = setsid();
 
     if (sid < 0)
