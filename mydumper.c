@@ -1277,26 +1277,41 @@ int main(int argc, char *argv[]) {
   }
 
   if (!fields_terminated_by){
-	  fields_terminated_by=g_strdup(",");
+    if (load_data)
+      fields_terminated_by=g_strdup("\\t");
+    else
+      fields_terminated_by=g_strdup(",");
   }
   if (!fields_enclosed_by){
-	  fields_enclosed_by=g_strdup("");
+  	fields_enclosed_by=g_strdup("");
   }else if(strlen(fields_enclosed_by)>1){
 	  g_error("--fields-enclosed-by must be a single character");
   }
   if (!fields_escaped_by){
-	  fields_escaped_by=g_strdup("");
+    if (load_data)
+      fields_escaped_by=g_strdup("\\\\");
+    else
+  	  fields_escaped_by=g_strdup("");
   }else if(strlen(fields_escaped_by)>1){
 	  g_error("--fields-escaped-by must be a single character");
   }
   if (!lines_starting_by){
-	  lines_starting_by=g_strdup("(");
+    if (load_data)
+      lines_starting_by=g_strdup("");
+    else
+  	  lines_starting_by=g_strdup("(");
   }
   if (!lines_terminated_by){
-	  lines_terminated_by=g_strdup(")");
+    if (load_data)
+      lines_terminated_by=g_strdup(""); // The MySQL default is '\n' but we are already terminating by '\n'
+    else
+  	  lines_terminated_by=g_strdup(")");
   }
   if (!statement_terminated_by){
-	  statement_terminated_by=g_strdup(";\n");
+    if (load_data)
+      statement_terminated_by=g_strdup("\n");
+    else
+  	  statement_terminated_by=g_strdup(";\n");
   }
 
 
@@ -3796,6 +3811,15 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
   tjs->table_job_list = g_list_reverse(tjs->table_job_list);
   g_async_queue_push(conf->queue_less_locking, j);
 }
+void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
+  guint i = 0;
+  for (i = 0; i < num_fields; ++i) {
+    if (i > 0) {
+      g_string_append_c(statement, ',');
+    }
+    g_string_append_printf(statement, "`%s`", fields[i].name);
+  }
+}
 
 void append_insert (gboolean condition, GString *statement, char *table, MYSQL_FIELD *fields, guint num_fields){
   if (condition) {
@@ -3804,13 +3828,7 @@ void append_insert (gboolean condition, GString *statement, char *table, MYSQL_F
     } else {
       g_string_printf(statement, "INSERT INTO `%s` (", table);
     }
-    guint i = 0;
-    for (i = 0; i < num_fields; ++i) {
-      if (i > 0) {
-        g_string_append_c(statement, ',');
-      }
-      g_string_append_printf(statement, "`%s`", fields[i].name);
-    }
+    append_columns(statement,fields,num_fields);
     g_string_append(statement, ") VALUES");
   } else {
     if (insert_ignore) {
@@ -3958,7 +3976,10 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 	      g_string_append(statement, "LINES ");
 	      if (strcmp(lines_starting_by,""))
 	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by);
-	      g_string_append_printf(statement, "TERMINATED BY '%s\\n';\n", lines_terminated_by);
+	      g_string_append_printf(statement, "TERMINATED BY '%s\\n' (", lines_terminated_by);
+
+        append_columns(statement,fields,num_fields);
+        g_string_append(statement,");\n");
 	      if (!write_data(main_file, statement)) {
 		      g_critical("Could not write out data for %s.%s", tj->database, tj->table);
 		      goto cleanup;

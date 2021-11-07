@@ -625,7 +625,7 @@ void get_database_table_part_name_from_filename(const gchar *filename, const gch
   gchar **split_file = g_strsplit(filename, suffix, 3);
   gchar **split_db_tbl = g_strsplit(split_file[0], ".", -1);
   g_strfreev(split_file);
-  if (g_strv_length(split_db_tbl)==3){
+  if (g_strv_length(split_db_tbl)>=3){
     *database=g_strdup(split_db_tbl[0]);
     *table=g_strdup(split_db_tbl[1]);
     *part=g_ascii_strtoull(split_db_tbl[2], NULL, 10);
@@ -734,7 +734,8 @@ enum file_type get_file_type (const char * filename){
     return SCHEMA_POST;
   } else if ( g_strrstr(filename, "-schema-create.sql") ){
     return SCHEMA_CREATE;
-  } 
+  }else if (g_str_has_suffix(filename, ".dat")) 
+    return LOAD_DATA;
   return DATA;
 }
 
@@ -772,6 +773,9 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         break;
       case DATA:
         process_data_filename(conf,table_hash,filename);
+        break;
+      case LOAD_DATA:
+        g_message("Load data file found: %s", filename);
         break;
     }
   }
@@ -831,6 +835,9 @@ void load_directory_information(struct configuration *conf) {
           case DATA:
             data_files_list=g_list_append(data_files_list,g_strdup(filename));
             break;
+          case LOAD_DATA:
+            g_message("Load data file found: %s", filename);
+            break;            
           default:
             g_warning("File ignored: %s", filename);
             break;
@@ -1572,6 +1579,9 @@ GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type curre
     case DATA:
       return conf->data_queue;
       break;
+    case LOAD_DATA:
+      break;
+
   }
   return NULL;
 }
