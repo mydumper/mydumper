@@ -1278,7 +1278,7 @@ int main(int argc, char *argv[]) {
 
   if (!fields_terminated_by){
     if (load_data)
-      fields_terminated_by=g_strdup("\\t");
+      fields_terminated_by=g_strdup("\t");
     else
       fields_terminated_by=g_strdup(",");
   }
@@ -1294,6 +1294,11 @@ int main(int argc, char *argv[]) {
   	  fields_escaped_by=g_strdup("");
   }else if(strlen(fields_escaped_by)>1){
 	  g_error("--fields-escaped-by must be a single character");
+    exit(EXIT_FAILURE);
+  }else{
+    if (strcmp(fields_escaped_by,"\\")==0){
+      fields_escaped_by=g_strdup("\\\\");
+    }
   }
   if (!lines_starting_by){
     if (load_data)
@@ -1309,7 +1314,7 @@ int main(int argc, char *argv[]) {
   }
   if (!statement_terminated_by){
     if (load_data)
-      statement_terminated_by=g_strdup("\n");
+      statement_terminated_by=g_strdup("");
     else
   	  statement_terminated_by=g_strdup(";\n");
   }
@@ -3932,7 +3937,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       }
     }
 
-
+  gboolean first_time=TRUE;
   /* Poor man's data dump code */
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
@@ -3964,6 +3969,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
         }
       }
       if ( load_data ){
+        if (first_time){
 	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
 			      (compress_output ? ".gz" : ""));
 	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
@@ -3996,6 +4002,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
             file = (void *)gzopen(fcfile, "a");
           }
 	      }
+        first_time=FALSE;
+        }
       }else{
         append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
       }
