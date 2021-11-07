@@ -1,8 +1,22 @@
-
+/*
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    Authors:        David Ducos, Percona (david dot ducos at percona dot com)
+*/
 
 #include <mysql.h>
 #include <glib.h>
 #include <string.h>
+#include <stdio.h>
+#include <unistd.h>
 
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
@@ -25,6 +39,7 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   return r;
 }
 
+
 void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss){
   GError *error = NULL;
   GKeyFile *kf = g_key_file_new ();
@@ -37,31 +52,40 @@ void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, 
   gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
   gsize i=0;
   GSList *list = NULL;
-  for (i=0; i < len; i++){
-    list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
-    gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
-    if ( value != NULL ) list=g_slist_append(list, value);
-  }
-  gint slen = g_slist_length(list) + 1;
-  gchar ** gclist = g_new0(gchar *, slen);
-  GSList *ilist=list;
-  gint j=0;
-  for (j=1; j < slen ; j++){
-    gclist[j]=ilist->data;
-    ilist=ilist->next;
-  }
-  g_slist_free(list);
-  if (!g_option_context_parse(context, &slen, &gclist, &error)) {
-    g_print("option parsing failed: %s, try --help\n", error->message);
-    exit(EXIT_FAILURE);
+  if (error != NULL){
+    g_warning("loading %s: %s",group,error->message);
   }else{
-    g_message("Config file loaded");
+    for (i=0; i < len; i++){
+      list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
+      gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
+      if ( value != NULL ) list=g_slist_append(list, value);
+    }
+    gint slen = g_slist_length(list) + 1;
+    gchar ** gclist = g_new0(gchar *, slen);
+    GSList *ilist=list;
+    gint j=0;
+    for (j=1; j < slen ; j++){
+      gclist[j]=ilist->data;
+      ilist=ilist->next;
+    }
+    g_slist_free(list);
+    if (!g_option_context_parse(context, &slen, &gclist, &error)) {
+      g_print("option parsing failed: %s, try --help\n", error->message);
+      exit(EXIT_FAILURE);
+    }else{
+      g_message("Config file loaded");
+    }
   }
   gchar * group_variables=g_strdup_printf("%s_variables",group);
+  error=NULL;
   keys=g_key_file_get_keys(kf,group_variables, &len, &error);
-  for (i=0; i < len; i++){
-    gchar *value=g_key_file_get_value(kf,group_variables,keys[i],&error);
-    g_string_append_printf(ss,"SET SESSION %s = %s ;\n",keys[i],value); 
+  if (error != NULL){
+    g_warning("loading %s: %s",group_variables,error->message);
+  }else{
+    for (i=0; i < len; i++){
+      gchar *value=g_key_file_get_value(kf,group_variables,keys[i],&error);
+      g_string_append_printf(ss,"SET SESSION %s = %s ;\n",keys[i],value); 
+    }
   }
 }
 
@@ -76,5 +100,13 @@ void execute_gstring(MYSQL *conn, GString *ss)
        }
     }
   }
+}
+
+int write_file(FILE * file, char * buff, int len){
+  return write(fileno(file), buff, len); 
+}
+
+gchar * identity_function(gchar ** r){
+  return *r;
 }
 
