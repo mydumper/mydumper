@@ -156,11 +156,17 @@ GHashTable *ref_table=NULL;
 guint table_number;
 
 gchar *fields_terminated_by=NULL;
-gchar *fields_enclosed_by;
-gchar *fields_escaped_by;
+gchar *fields_enclosed_by=NULL;
+gchar *fields_escaped_by=NULL;
 gchar *lines_starting_by=NULL;
 gchar *lines_terminated_by=NULL;
 gchar *statement_terminated_by=NULL;
+
+gchar *fields_enclosed_by_ld=NULL;
+gchar *fields_terminated_by_ld=NULL;
+gchar *lines_starting_by_ld=NULL;
+gchar *lines_terminated_by_ld=NULL;
+gchar *statement_terminated_by_ld=NULL;
 
 // For daemon mode
 guint dump_number = 0;
@@ -279,12 +285,21 @@ static GOptionEntry entries[] = {
      "Snapshot to use for TiDB", NULL},
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
      "", NULL },
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by,"", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by,"", NULL },
-    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,"", NULL },
-    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by,"", NULL },
-    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by,"", NULL },
-    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by,"", NULL },
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
+    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
+      "Single character that is going to be used to escape characters in the"
+      "LOAD DATA stament, default: '\\' ", NULL },
+    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
+      "Adds the string at the begining of each row. When --load-data is used"
+      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
+      "also when it is used.", NULL },
+    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
+      "Adds the string at the end of each row. When --load-data is used it is"
+       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
+       "also when it is used.", NULL },
+    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
+      "This might never be used, unless you know what are you doing", NULL },
     {"sync-wait", 0, 0, G_OPTION_ARG_INT, &sync_wait,
      "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
@@ -1276,48 +1291,56 @@ int main(int argc, char *argv[]) {
     password = passwordPrompt();
   }
 
-  if (!fields_terminated_by){
-    if (load_data)
-      fields_terminated_by=g_strdup("\t");
-    else
-      fields_terminated_by=g_strdup(",");
-  }
-  if (!fields_enclosed_by){
-  	fields_enclosed_by=g_strdup("");
-  }else if(strlen(fields_enclosed_by)>1){
-	  g_error("--fields-enclosed-by must be a single character");
-  }
-  if (!fields_escaped_by){
-    if (load_data)
-      fields_escaped_by=g_strdup("\\\\");
-    else
-  	  fields_escaped_by=g_strdup("");
-  }else if(strlen(fields_escaped_by)>1){
-	  g_error("--fields-escaped-by must be a single character");
-    exit(EXIT_FAILURE);
-  }else{
-    if (strcmp(fields_escaped_by,"\\")==0){
-      fields_escaped_by=g_strdup("\\\\");
+  if (load_data){
+    if (!fields_enclosed_by_ld){
+    	fields_enclosed_by=g_strdup("");
+    }else if(strlen(fields_enclosed_by_ld)>1){
+	    g_error("--fields-enclosed-by must be a single character");
+      exit(EXIT_FAILURE);
+    }else{
+      fields_enclosed_by=fields_enclosed_by_ld;
+    }
+  
+    if (fields_escaped_by){
+      if(strlen(fields_escaped_by)>1){
+	      g_error("--fields-escaped-by must be a single character");
+        exit(EXIT_FAILURE);
+      }else if (strcmp(fields_escaped_by,"\\")==0){
+        fields_escaped_by=g_strdup("\\\\");
+      } 
     }
   }
-  if (!lines_starting_by){
+
+  if (!fields_terminated_by_ld){
+    if (load_data){
+      fields_terminated_by=g_strdup("\t");
+//      fields_terminated_by_ld=g_strdup("\\t")
+    }else
+      fields_terminated_by=g_strdup(",");
+  }else
+    fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+  if (!lines_starting_by_ld){
     if (load_data)
       lines_starting_by=g_strdup("");
     else
   	  lines_starting_by=g_strdup("(");
-  }
-  if (!lines_terminated_by){
-    if (load_data)
-      lines_terminated_by=g_strdup(""); // The MySQL default is '\n' but we are already terminating by '\n'
-    else
-  	  lines_terminated_by=g_strdup(")");
-  }
-  if (!statement_terminated_by){
+  }else
+    lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+  if (!lines_terminated_by_ld){
+    if (load_data){
+      lines_terminated_by=g_strdup("\n");
+      lines_terminated_by_ld=g_strdup("\\n");
+    }else
+  	  lines_terminated_by=g_strdup(")\n");
+  }else
+    lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+  if (!statement_terminated_by_ld){
     if (load_data)
       statement_terminated_by=g_strdup("");
     else
   	  statement_terminated_by=g_strdup(";\n");
-  }
+  }else
+    statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
 
   if (set_names_str){
@@ -3973,16 +3996,16 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
 			      (compress_output ? ".gz" : ""));
 	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
-	      if (strcmp(fields_terminated_by,""))
-	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by);
-	      if (strcmp(fields_enclosed_by,""))
-	        g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by);
-	      if (strcmp(fields_escaped_by,""))
+	      if (fields_terminated_by_ld)
+	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+	      if (fields_enclosed_by_ld)
+	        g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+	      if (fields_escaped_by)
           g_string_append_printf(statement, "ESCAPED BY '%s' ",fields_escaped_by);
 	      g_string_append(statement, "LINES ");
-	      if (strcmp(lines_starting_by,""))
-	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by);
-	      g_string_append_printf(statement, "TERMINATED BY '%s\\n' (", lines_terminated_by);
+	      if (lines_starting_by_ld)
+	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
+	      g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
 
         append_columns(statement,fields,num_fields);
         g_string_append(statement,");\n");
@@ -4051,7 +4074,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if (i < num_fields - 1) {
         g_string_append(statement_row, fields_terminated_by);
       } else {
-        g_string_append_printf(statement_row,"%s\n", lines_terminated_by);
+        g_string_append_printf(statement_row,"%s", lines_terminated_by);
 
         /* INSERT statement is closed before over limit */
         if (statement->len + statement_row->len + 1 > statement_size) {

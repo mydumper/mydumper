@@ -45,6 +45,7 @@ int (*m_write)(FILE * file, const char * buff, int len);
 void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss);
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar * identity_function(gchar ** r);
+gchar *replace_escaped_strings(gchar *c);
 
 gboolean askPassword = FALSE;
 guint port = 0;

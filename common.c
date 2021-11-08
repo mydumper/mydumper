@@ -110,3 +110,39 @@ gchar * identity_function(gchar ** r){
   return *r;
 }
 
+gchar *replace_escaped_strings(gchar *c){
+  guint i=0,j=0;
+
+  while (c[i]!='\0'){
+    if (c[i]=='\\') {
+      switch (c[i+1]){
+        case 'n':
+          c[j]='\n';
+          i=i+2;
+          break;
+        case 't':
+          c[j]='\t';
+          i=i+2;
+          break;
+        case 'r':
+          c[j]='\r';
+          i=i+2;
+          break;
+        case 'f':
+          c[j]='\f';
+          i=i+2;
+          break;
+        default:
+          c[j]=c[i];
+          i++;
+      }
+    }else{
+      c[j]=c[i];
+      i++;
+    }
+    j++;
+  }
+  c[j]=c[i];
+  return c;
+}
+
