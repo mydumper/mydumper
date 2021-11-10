@@ -327,8 +327,9 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   set_session = g_string_new(NULL);
-  if (config_file != NULL){
-    load_config_file(config_file, context, "myloader", set_session);
+//  g_key_file_set_string(kf, "mydumper_variables", "WAIT_TIMEOUT", "2147483");
+  if (defaults_file != NULL){
+    load_config_file(defaults_file, context, "myloader");
   }
   g_option_context_free(context);
 
