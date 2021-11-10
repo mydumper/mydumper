@@ -1221,6 +1221,19 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+
+  if (tmpargc > 1 ){
+    int ddd=0;
+    stream=TRUE;
+    db=tmpargv[1];
+    if (tmpargc > 2 ){
+      GString *s = g_string_new(tmpargv[2]);
+      for (ddd=3; ddd<tmpargc;ddd++){
+        g_string_append_printf(s,",%s",tmpargv[ddd]);
+      }
+      tables_list=g_strdup(s->str);
+    }
+  }
   set_session = g_string_new(NULL);
 
   if (config_file != NULL){
