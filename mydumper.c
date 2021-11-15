@@ -274,7 +274,7 @@ static GOptionEntry entries[] = {
      "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
-    { "ignore-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
+    { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -1589,6 +1589,8 @@ void start_dump(MYSQL *conn) {
     nits[n] = 0;
     nitl[n] = NULL;
   }
+  if (ignore_generated_fields)
+    g_message("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
   p = g_strdup_printf("%s/metadata.partial", dump_directory);
   p2 = g_strndup(p, (unsigned)strlen(p) - 8);
