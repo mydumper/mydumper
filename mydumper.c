@@ -1590,7 +1590,7 @@ void start_dump(MYSQL *conn) {
     nitl[n] = NULL;
   }
   if (ignore_generated_fields)
-    g_message("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
+    g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
   p = g_strdup_printf("%s/metadata.partial", dump_directory);
   p2 = g_strndup(p, (unsigned)strlen(p) - 8);
