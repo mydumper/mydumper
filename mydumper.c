@@ -3456,7 +3456,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   }
   g_free(query);
   g_string_set_size(statement, 0);
-  g_string_append_printf(statement, "CREATE TABLE `%s`(\n", table);
+  g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS `%s`(\n", table);
   row = mysql_fetch_row(result);
   g_string_append_printf(statement, "`%s` int", row[0]);
   while ((row = mysql_fetch_row(result))) {
