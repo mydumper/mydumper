@@ -1274,6 +1274,8 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  g_message("MyDumper backup version: %s", VERSION);
+
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
