@@ -1472,7 +1472,7 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
   gboolean eof = FALSE;
   guint query_counter = 0;
   GString *data = g_string_sized_new(512);
-
+  guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
 
   if (!g_str_has_suffix(path, compress_extension)) {
@@ -1493,13 +1493,19 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
+        preline=line;
+        line+=strcount(data->str);
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
           split_and_restore_data_in_gstring_from_file(conn,
             data, is_schema, &query_counter);
-        else{ 
-          r+=restore_data_in_gstring_from_file(conn, data, is_schema, &query_counter);
-	}
-	g_string_set_size(data, 0);
+        else{
+          guint tr=restore_data_in_gstring_from_file(conn, data, is_schema, &query_counter);
+          r+=tr;
+          if (tr > 0){
+            g_critical("Error occours between lines: %d and %d on file %s",preline,line,filename);
+          }
+        }
+        g_string_set_size(data, 0);
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);

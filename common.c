@@ -110,3 +110,13 @@ gchar * identity_function(gchar ** r){
   return *r;
 }
 
+guint strcount(gchar *text){
+  gchar *t=text;
+  guint i=0;
+  while (t){
+    t=g_strstr_len(t+1,strlen(t),"\n");
+    i++;
+  }
+  return i;
+}
+
