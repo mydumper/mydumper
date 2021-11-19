@@ -79,6 +79,7 @@ static GMutex *init_mutex = NULL;
 static GMutex *ref_table_mutex = NULL;
 /* Program options */
 gchar *output_directory = NULL;
+gchar *output_directory_param = NULL;
 gchar *dump_directory = NULL;
 guint statement_size = 1000000;
 guint rows_per_file = 0;
@@ -175,7 +176,7 @@ static GOptionEntry entries[] = {
      "File containing a list of database.table entries to skip, one per line "
      "(skips before applying regex option)",
      NULL},
-    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory,
+    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
      "Attempted size of INSERT statement in bytes, default 1000000", NULL},
@@ -309,7 +310,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 void dump_table_data_file(MYSQL *conn, struct table_job * tj);
 void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
-void create_backup_dir(char *directory);
+//void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
 gboolean check_regex(char *database, char *table);
 gboolean check_skiplist(char *database, char *table);
@@ -1274,6 +1275,8 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
+  GDateTime * datetime = g_date_time_new_now_local();
+
   g_message("MyDumper backup version: %s", VERSION);
 
   time_t t;
@@ -1302,11 +1305,13 @@ int main(int argc, char *argv[]) {
     g_warning("Using trx_consistency_only, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
-  if (!output_directory)
-    output_directory = g_strdup_printf(
-        "%s-%04d%02d%02d-%02d%02d%02d", DIRECTORY, tval.tm_year + 1900,
-        tval.tm_mon + 1, tval.tm_mday, tval.tm_hour, tval.tm_min, tval.tm_sec);
+  char *datetimestr;
 
+  if (!output_directory_param){
+    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+    g_free(datetimestr);
+  }
   create_backup_dir(output_directory);
   if (daemon_mode) {
     pid_t pid, sid;
@@ -1576,7 +1581,6 @@ void start_dump(MYSQL *conn) {
   GList *nitl[num_threads];
   int tn = 0;
   guint64 min = 0;
-  time_t t;
   struct db_table *dbt=NULL;
   struct schema_post *sp;
   guint n;
@@ -1914,15 +1918,12 @@ void start_dump(MYSQL *conn) {
     if (res)
       mysql_free_result(res);
   }
-  time(&t);
-  localtime_r(&t, &tval);
-  fprintf(mdfile, "Started dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
-          tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-          tval.tm_min, tval.tm_sec);
+  GDateTime *datetime = g_date_time_new_now_local();
+  char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  fprintf(mdfile, "Started dump at: %s\n", datetimestr);
 
-  g_message("Started dump at: %04d-%02d-%02d %02d:%02d:%02d",
-            tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-            tval.tm_min, tval.tm_sec);
+  g_message("Started dump at: %s", datetimestr);
+  g_free(datetimestr);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
 				mysql_query(conn, set_names_str);
@@ -2158,25 +2159,27 @@ void start_dump(MYSQL *conn) {
   g_async_queue_unref(conf.queue);
   g_async_queue_unref(conf.unlock_tables);
 
-  time(&t);
-  localtime_r(&t, &tval);
-  fprintf(mdfile, "Finished dump at: %04d-%02d-%02d %02d:%02d:%02d\n",
-          tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-          tval.tm_min, tval.tm_sec);
+  datetime = g_date_time_new_now_local();
+  datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  fprintf(mdfile, "Finished dump at: %s\n", datetimestr);
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);
   g_rename(p, p2);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(p2));
+  if (stream) {
+    g_async_queue_push(stream_queue, g_strdup(p2));
+  }
   g_free(p);
   g_free(p2);
-  g_message("Finished dump at: %04d-%02d-%02d %02d:%02d:%02d",
-            tval.tm_year + 1900, tval.tm_mon + 1, tval.tm_mday, tval.tm_hour,
-            tval.tm_min, tval.tm_sec);
+  g_message("Finished dump at: %s",datetimestr);
+  g_free(datetimestr);
 
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(""));
     g_thread_join(stream_thread);
+    if (no_delete == FALSE && output_directory_param == NULL)
+      if (g_rmdir(output_directory) != 0)
+        g_critical("Backup directory not removed: %s", output_directory);
   }
   g_free(td);
   g_free(threads);
@@ -2580,7 +2583,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
   return (count);
 }
 
-void create_backup_dir(char *new_directory) {
+void old_create_backup_dir(char *new_directory) {
   if (g_mkdir(new_directory, 0700) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));

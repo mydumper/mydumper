@@ -109,4 +109,5 @@ GOptionEntry common_entries[] = {
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
+void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);
