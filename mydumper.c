@@ -3947,7 +3947,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
               m_close(file);
               if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
               fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix, fn,
-                                       (compress_output ? ".gz" : ""));
+                                       (compress_output ? compress_extension : ""));
               file = m_open(fcfile,"w");
 
               st_in_file = 0;
@@ -4034,7 +4034,7 @@ cleanup:
   } else if (chunk_filesize && fn == 1) {
     g_free(fcfile);
     fcfile = g_strdup_printf("%s.00000.sql%s", filename_prefix,
-                             (compress_output ? ".gz" : ""));
+                             (compress_output ? compress_extension : ""));
     g_rename(tj->filename, fcfile);
     if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
   }else{
