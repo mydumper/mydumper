@@ -475,7 +475,7 @@ int main(int argc, char *argv[]) {
 
   checksum_databases(conn,&conf);
 
-  if (no_delete == FALSE && input_directory == NULL){
+  if (stream && no_delete == FALSE && input_directory == NULL){
     // remove metadata files
     GList *e=conf.metadata_list;
     gchar *path = NULL;
@@ -641,7 +641,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   } else {
     gzclose((gzFile)infile);
   }
-  if (no_delete == FALSE){
+  if (stream && no_delete == FALSE){
     g_message("Removing file: %s", filename);
     remove(filename);
   }
@@ -1558,7 +1558,7 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
     gzclose((gzFile)infile);
   }
 
-  if (no_delete == FALSE){
+  if (stream && no_delete == FALSE){
     g_message("Removing file: %s", path);
     remove(path);
   }
