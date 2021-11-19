@@ -1277,6 +1277,12 @@ int main(int argc, char *argv[]) {
 
   GDateTime * datetime = g_date_time_new_now_local();
 
+  g_message("MyDumper backup version: %s", VERSION);
+
+  time_t t;
+  time(&t);
+  localtime_r(&t, &tval);
+
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
     chunk_filesize = 0;
@@ -1316,7 +1322,7 @@ int main(int argc, char *argv[]) {
     else if (pid > 0)
       exit(EXIT_SUCCESS);
 
-    umask(0);
+    umask(0037);
     sid = setsid();
 
     if (sid < 0)
@@ -3453,7 +3459,7 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
   }
   g_free(query);
   g_string_set_size(statement, 0);
-  g_string_append_printf(statement, "CREATE TABLE `%s`(\n", table);
+  g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS `%s`(\n", table);
   row = mysql_fetch_row(result);
   g_string_append_printf(statement, "`%s` int", row[0]);
   while ((row = mysql_fetch_row(result))) {

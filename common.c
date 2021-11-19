@@ -119,3 +119,14 @@ void create_backup_dir(char *new_directory) {
     }
   }
 }
+
+guint strcount(gchar *text){
+  gchar *t=text;
+  guint i=0;
+  while (t){
+    t=g_strstr_len(t+1,strlen(t),"\n");
+    i++;
+  }
+  return i;
+}
+
