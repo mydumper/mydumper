@@ -1311,6 +1311,8 @@ int main(int argc, char *argv[]) {
     datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
     output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
     g_free(datetimestr);
+  }else{
+    output_directory=output_directory_param;
   }
   create_backup_dir(output_directory);
   if (daemon_mode) {
@@ -3765,7 +3767,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
 /* Do actual data chunk reading/writing magic */
 guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   guint i;
-  guint fn = 1;
+  guint fn = 0;
   guint st_in_file = 0;
   guint num_fields = 0;
   guint64 num_rows = 0;
@@ -3773,17 +3775,14 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   MYSQL_RES *result = NULL;
   char *query = NULL;
   gchar *fcfile = NULL;
-  gchar *filename_prefix = NULL;
   struct db_table * dbt = tj->dbt;
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
 
-  fcfile = g_strdup(tj->filename);
-
   if (chunk_filesize) {
-    gchar **split_filename = g_strsplit(tj->filename, ".00001.sql", 0);
-    filename_prefix = g_strdup(split_filename[0]);
-    g_strfreev(split_filename);
+    fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
+  }else{
+    fcfile = g_strdup(tj->filename);
   }
 
   gboolean has_generated_fields = tj->has_generated_fields;
@@ -3948,9 +3947,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
               fn++;
               g_free(fcfile);
               m_close(file);
+              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
               if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
-              fcfile = g_strdup_printf("%s.%05d.sql%s", filename_prefix, fn,
-                                       (compress_output ? ".gz" : ""));
               file = m_open(fcfile,"w");
 
               st_in_file = 0;
@@ -4034,11 +4032,7 @@ cleanup:
     if (remove(fcfile)) {
       g_warning("Failed to remove empty file : %s\n", fcfile);
     }
-  } else if (chunk_filesize && fn == 1) {
-    g_free(fcfile);
-    fcfile = g_strdup_printf("%s.00000.sql%s", filename_prefix,
-                             (compress_output ? ".gz" : ""));
-    g_rename(tj->filename, fcfile);
+  } else if (chunk_filesize && fn == 0) {
     if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
   }else{
     if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
@@ -4048,7 +4042,6 @@ cleanup:
   dbt->rows+=num_rows;
   g_mutex_unlock(dbt->rows_lock);
 
-  g_free(filename_prefix);
   g_free(fcfile);
 
   return num_rows;
