@@ -27,6 +27,18 @@ wget https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper_0.
 dpkg -i mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
 ```
 
+### FreeBSD
+By using pkg
+
+```bash
+pkg install mydumper
+```
+or from ports
+
+```bash
+cd /usr/ports/databases/mydumper && make install
+```
+
 ### OSX
 By using [Homebrew](https://brew.sh/)
 
