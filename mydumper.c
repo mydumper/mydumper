@@ -433,14 +433,18 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
 // Global Var used:
 // - dump_directory
 // - compress_extension
-gchar * build_data_filename(char *database, char *table, guint part ){
+gchar * build_filename(char *database, char *table, guint part, const gchar *extension){
   GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s.%05d.sql%s", database, table, part, compress_extension);
+  g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
 }
 
+
+gchar * build_data_filename(char *database, char *table, guint part ){
+  return build_filename(database,table,part,"sql");
+}
 
 void clear_dump_directory(gchar *directory) {
   GError *error = NULL;
@@ -3891,7 +3895,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   char *query = NULL;
   gchar *fcfile = NULL;
   gchar *load_data_fn=NULL;
-  gchar *filename_prefix = NULL;
+//  gchar *filename_prefix = NULL;
   struct db_table * dbt = tj->dbt;
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
@@ -3988,8 +3992,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       }
       if ( load_data ){
         if (first_time){
-	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
-			      (compress_output ? ".gz" : ""));
+          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, "dat");
+//	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
+//			      (compress_output ? ".gz" : ""));
 	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
 	      if (fields_terminated_by_ld)
 	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
@@ -4041,9 +4046,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       f=f->next;
       if (load_data){
         if (!row[i]) {
-          g_string_append(statement_row,fields_enclosed_by);
+//          g_string_append(statement_row,fields_enclosed_by);
           g_string_append(statement_row, "NULL");
-          g_string_append(statement_row,fields_enclosed_by);
+//          g_string_append(statement_row,fields_enclosed_by);
         }else if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
           g_string_append(statement_row,fields_enclosed_by);
           g_string_append(statement_row,fun_ptr(&(row[i])));
