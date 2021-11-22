@@ -49,6 +49,7 @@
 # include "locale.h"
 
 guint commit_count = 1000;
+gchar *input_directory = NULL;
 gchar *directory = NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
@@ -67,6 +68,8 @@ unsigned long long int total_data_sql_files = 0;
 unsigned long long int progress = 0;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
+
+const char DIRECTORY[] = "import";
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
                    gboolean *eof);
@@ -98,7 +101,7 @@ GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type curre
 void execute_use_if_needs_to(MYSQL *conn, gchar ** current_database, gchar *database, const gchar * msg);
 
 static GOptionEntry entries[] = {
-    {"directory", 'd', 0, G_OPTION_ARG_STRING, &directory,
+    {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
      "Directory of the dump to import", NULL},
     {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
      "Number of queries per transaction, default 1000", NULL},
@@ -382,14 +385,24 @@ int main(int argc, char *argv[]) {
     purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
   else purge_mode=NONE;
   
-  if (!directory) {
-    g_critical("a directory needs to be specified, see --help\n");
-    exit(EXIT_FAILURE);
+  if (!input_directory) {
+    if (stream){
+      GDateTime * datetime = g_date_time_new_now_local();
+      char *datetimestr;
+      datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+      directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+      create_backup_dir(directory);
+      g_free(datetimestr); 
+    }else{
+      g_critical("a directory needs to be specified, see --help\n");
+      exit(EXIT_FAILURE);
+    }
   } else {
-    if (!g_file_test(directory,G_FILE_TEST_IS_DIR)){
+    if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
       g_critical("the specified directory doesn't exists\n");
       exit(EXIT_FAILURE);
     }
+    directory=input_directory;
     if (!stream){
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
@@ -463,6 +476,22 @@ int main(int argc, char *argv[]) {
 
   checksum_databases(conn,&conf);
 
+  if (stream && no_delete == FALSE && input_directory == NULL){
+    // remove metadata files
+    GList *e=conf.metadata_list;
+    gchar *path = NULL;
+    while (e) {
+      path = g_build_filename(directory, e->data, NULL);
+      remove(path);
+      g_free(path);
+      e=e->next;
+    }
+    path = g_build_filename(directory, "metadata", NULL);
+    remove(path);
+    g_free(path);
+    if (g_rmdir(directory) != 0)
+        g_critical("Restore directory not removed: %s", directory);
+  }
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -613,6 +642,10 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   } else {
     gzclose((gzFile)infile);
   }
+  if (stream && no_delete == FALSE){
+    g_message("Removing file: %s", filename);
+    remove(filename);
+  }
 }
 
 gchar * get_database_name_from_filename(const gchar *filename){
@@ -747,7 +780,11 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
     switch (ft){
       case INIT:
       case SCHEMA_CREATE:
-        process_database_filename(conf, filename, "create database");
+        if (db){
+          g_warning("Skipping database creation on file: %s",filename);
+	}else{
+          process_database_filename(conf, filename, "create database");
+        }
         break;
       case SCHEMA_TABLE:
         process_table_filename(conf,table_hash,filename);
@@ -924,21 +961,23 @@ void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+      g_strdup_printf("%s-schema-create.sql", database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql%s", source_db ? source_db : database, compress_extension);
+      g_strdup_printf("%s-schema-create.sql%s", database, compress_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                          directory, source_db ? source_db : database);
+                                          directory, database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, source_db ? source_db : database, compress_extension);
+                                            directory, database, compress_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filename, TRUE);
   } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filenamegz, TRUE);
   } else {
-    query = g_strdup_printf("CREATE DATABASE `%s`", database);
-    mysql_query(conn, query);
+    query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
+    if (mysql_query(conn, query)){
+      g_warning("Fail to create database: %s", database);
+    }
   }
 
   g_free(query);
@@ -1127,7 +1166,7 @@ void *process_stream_queue(MYSQL * thrconn, struct configuration *conf, int thre
   while (cont){
 
     ft = (enum file_type )g_async_queue_pop(conf->stream_queue);
-    g_message("Thread %d: Processing file type: %d",thread_id,ft);
+//    g_message("Thread %d: Processing file type: %d",thread_id,ft);
     GAsyncQueue *q= get_queue_for_type(conf,ft);
     if (q != NULL){
     job = (struct job *)g_async_queue_pop(q);
@@ -1473,7 +1512,7 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
   gboolean eof = FALSE;
   guint query_counter = 0;
   GString *data = g_string_sized_new(512);
-
+  guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
 
   if (!g_str_has_suffix(path, compress_extension)) {
@@ -1494,13 +1533,19 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
+        preline=line;
+        line+=strcount(data->str);
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
           split_and_restore_data_in_gstring_from_file(conn,
             data, is_schema, &query_counter);
-        else{ 
-          r+=restore_data_in_gstring_from_file(conn, data, is_schema, &query_counter);
-	}
-	g_string_set_size(data, 0);
+        else{
+          guint tr=restore_data_in_gstring_from_file(conn, data, is_schema, &query_counter);
+          r+=tr;
+          if (tr > 0){
+            g_critical("Error occours between lines: %d and %d on file %s",preline,line,filename);
+          }
+        }
+        g_string_set_size(data, 0);
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);
@@ -1514,12 +1559,17 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
     errors++;
   }
   g_string_free(data, TRUE);
-  g_free(path);
   if (!is_compressed) {
     fclose(infile);
   } else {
     gzclose((gzFile)infile);
   }
+
+  if (stream && no_delete == FALSE){
+    g_message("Removing file: %s", path);
+    remove(path);
+  }
+  g_free(path);
   return r;
 }
 
