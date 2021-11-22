@@ -1507,7 +1507,6 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema){
   void *infile;
   int r=0;
-  int e=0;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   guint query_counter = 0;
