@@ -4040,7 +4040,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       gchar * (*fun_ptr)(gchar **) = f->data;
       f=f->next;
       if (load_data){
-        if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
+        if (!row[i]) {
+          g_string_append(statement_row,fields_enclosed_by);
+          g_string_append(statement_row, "NULL");
+          g_string_append(statement_row,fields_enclosed_by);
+        }else if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
           g_string_append(statement_row,fields_enclosed_by);
           g_string_append(statement_row,fun_ptr(&(row[i])));
           g_string_append(statement_row,fields_enclosed_by);
