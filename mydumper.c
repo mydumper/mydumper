@@ -92,6 +92,7 @@ guint snapshot_count= 2;
 guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
+gboolean ignore_generated_fields = FALSE;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -256,6 +257,9 @@ static GOptionEntry entries[] = {
      "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
+    { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
+      "Queries related to generated fields are not going to be executed."
+      "It will lead to restoration issues if you have generated columns", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -1370,6 +1374,8 @@ void start_dump(MYSQL *conn) {
     nits[n] = 0;
     nitl[n] = NULL;
   }
+  if (ignore_generated_fields)
+    g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
   p = g_strdup_printf("%s/metadata.partial", dump_directory);
   p2 = g_strndup(p, (unsigned)strlen(p) - 8);
@@ -2053,6 +2059,8 @@ gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
   MYSQL_ROW row;
 
   gboolean result = FALSE;
+  if (ignore_generated_fields)
+    return FALSE;
 
   gchar *query = g_strdup_printf(
       "select COLUMN_NAME from information_schema.COLUMNS where "
