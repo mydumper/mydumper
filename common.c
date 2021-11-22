@@ -17,7 +17,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <errno.h>
+#include <glib/gstdio.h>
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
@@ -144,5 +145,24 @@ gchar *replace_escaped_strings(gchar *c){
   }
   c[j]=c[i];
   return c;
+}
+
+void create_backup_dir(char *new_directory) {
+  if (g_mkdir(new_directory, 0700) == -1) {
+    if (errno != EEXIST) {
+      g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+guint strcount(gchar *text){
+  gchar *t=text;
+  guint i=0;
+  while (t){
+    t=g_strstr_len(t+1,strlen(t),"\n");
+    i++;
+  }
+  return i;
 }
 
