@@ -667,7 +667,6 @@ void free_create_database_job(struct create_database_job * cdj){
 }
 
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
-  //td->queue
   g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s | Remaining jobs: %d",
                     td->thread_id, tj->database, tj->table, 
 		    (tj->where || where_option ) ? " WHERE " : "", tj->where ? tj->where : "",
