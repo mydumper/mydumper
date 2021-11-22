@@ -330,8 +330,9 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   set_session = g_string_new(NULL);
-  if (config_file != NULL){
-    load_config_file(config_file, context, "myloader", set_session);
+//  g_key_file_set_string(kf, "mydumper_variables", "WAIT_TIMEOUT", "2147483");
+  if (defaults_file != NULL){
+    load_config_file(defaults_file, context, "myloader");
   }
   g_option_context_free(context);
 
@@ -780,7 +781,11 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
     switch (ft){
       case INIT:
       case SCHEMA_CREATE:
-        process_database_filename(conf, filename, "create database");
+        if (db){
+          g_warning("Skipping database creation on file: %s",filename);
+	}else{
+          process_database_filename(conf, filename, "create database");
+        }
         break;
       case SCHEMA_TABLE:
         process_table_filename(conf,table_hash,filename);
@@ -963,21 +968,23 @@ void create_database(MYSQL *conn, gchar *database) {
   gchar *query = NULL;
 
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql", source_db ? source_db : database);
+      g_strdup_printf("%s-schema-create.sql", database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql%s", source_db ? source_db : database, compress_extension);
+      g_strdup_printf("%s-schema-create.sql%s", database, compress_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                          directory, source_db ? source_db : database);
+                                          directory, database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, source_db ? source_db : database, compress_extension);
+                                            directory, database, compress_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filename, TRUE);
   } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
     restore_data_from_file(conn, database, NULL, filenamegz, TRUE);
   } else {
-    query = g_strdup_printf("CREATE DATABASE `%s`", database);
-    mysql_query(conn, query);
+    query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
+    if (mysql_query(conn, query)){
+      g_warning("Fail to create database: %s", database);
+    }
   }
 
   g_free(query);
