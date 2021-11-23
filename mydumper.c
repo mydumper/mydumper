@@ -692,6 +692,9 @@ void *process_stream(void *data){
     len=m_write(stdout, "\n", 1);
     free(used_filemame);
     f=m_open(filename,"r");
+    if (!f){
+      g_error("File failed to open: %s",filename);
+    }else{
     while((buflen = read(fileno(f), buf, 1024)) > 0)
     {
       len=m_write(stdout, buf, buflen);
@@ -701,6 +704,7 @@ void *process_stream(void *data){
       }
     }
     m_close(f);
+    }
     if (no_delete == FALSE){
       remove(filename);
     }
