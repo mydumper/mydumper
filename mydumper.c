@@ -3729,12 +3729,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
                 st_in_file * (guint)ceil((float)statement_size / 1024 / 1024) >
                     chunk_filesize) {
               fn++;
-              g_free(fcfile);
               m_close(file);
-              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
               if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+              g_free(fcfile);
+              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
               file = m_open(fcfile,"w");
-
               st_in_file = 0;
             }
           }
