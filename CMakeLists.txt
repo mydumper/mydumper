@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.6)
 project(mydumper)
 set(VERSION 0.11.2)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
+set(CMAKE_BUILD_TYPE Debug)
 
 #Required packages
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
