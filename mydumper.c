@@ -695,15 +695,31 @@ void *process_stream(void *data){
     if (!f){
       g_error("File failed to open: %s",filename);
     }else{
-    while((buflen = read(fileno(f), buf, 1024)) > 0)
-    {
-      len=m_write(stdout, buf, buflen);
-      if (len != buflen){
-        g_critical("Stream failed during transmition of file: %s",filename);
-        exit(EXIT_FAILURE);
+      fseek(f, 0, SEEK_END);
+      guint sz = ftell(f);
+      m_close(f);
+      f=m_open(filename,"r");
+      guint total_len=0;
+//      fseek(f, 0, SEEK_SET);
+//      rewind(f);
+      buflen = read(fileno(f), buf, 1024);
+      while(buflen > 0){
+        len=m_write(stdout, buf, buflen);
+        total_len=total_len + buflen;
+//        g_message("Data transmited: %ld  %d", len, buflen);
+        if (len != buflen){
+          g_critical("Stream failed during transmition of file: %s",filename);
+          exit(EXIT_FAILURE);
+        }
+        buflen = read(fileno(f), buf, 1024);
+//        if (total_len> 100000)
+//          break;
       }
-    }
-    m_close(f);
+      if (total_len != sz){
+        g_critical("Length of the file not the same: %s  %d   %d  %ld   %d",filename,sz,total_len,len, buflen);
+//        exit(EXIT_FAILURE);
+      }
+      m_close(f);
     }
     if (no_delete == FALSE){
       remove(filename);
@@ -3815,7 +3831,7 @@ cleanup:
     if (remove(fcfile)) {
       g_warning("Failed to remove empty file : %s\n", fcfile);
     }
-  } else if (chunk_filesize && fn == 0) {
+  } else if (chunk_filesize) {
     if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
   }else{
     if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
