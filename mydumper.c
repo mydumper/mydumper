@@ -1435,6 +1435,10 @@ void *exec_thread(void *data) {
 void dump_metadata(struct db_table * dbt){
   char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
   FILE *table_meta = g_fopen(filename, "w");
+  if (!table_meta) {
+    g_critical("Couldn't write table metadata file %s (%d)", filename, errno);
+    exit(EXIT_FAILURE);
+  }
   fprintf(table_meta, "%d", dbt->rows);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   fclose(table_meta);

@@ -50,6 +50,8 @@ struct configuration {
 
 struct thread_data {
   struct configuration *conf;
+  MYSQL *thrconn;
+  gchar *current_database;
   guint thread_id;
 };
 
