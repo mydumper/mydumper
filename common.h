@@ -32,7 +32,6 @@ char *cipher = NULL;
 char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
-gchar *config_file;
 GString *set_session=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -100,8 +99,6 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
-    { "config", 0, 0, G_OPTION_ARG_STRING, &config_file,
-      "Configuration file", NULL },
     {"stream", 0, 0, G_OPTION_ARG_NONE, &stream,
      "It will stream over STDOUT once the files has been written", NULL},
     {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,

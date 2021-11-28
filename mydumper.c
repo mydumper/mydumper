@@ -1093,8 +1093,11 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+
+  set_session = g_string_new(NULL);
+
   if (defaults_file != NULL){
-    load_config_file(defaults_file, context, "mydumper");
+    load_config_file(defaults_file, context, "mydumper", set_session);
   }
   g_option_context_free(context);
 
