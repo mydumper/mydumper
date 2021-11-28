@@ -45,6 +45,7 @@ int (*m_write)(FILE * file, const char * buff, int len);
 void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group);
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar * identity_function(gchar ** r);
+gchar *replace_escaped_strings(gchar *c);
 void load_hash_from_key_file(GHashTable * set_session_hash, const gchar * group_variables);
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 
