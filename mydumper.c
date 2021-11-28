@@ -701,12 +701,12 @@ void free_create_database_job(struct create_database_job * cdj){
 //  g_free(cdj);
 }
 
-void message_dumping_data(guint thread_id, struct table_job *tj){
-  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s",
-                    thread_id, tj->database, tj->table, 
+void message_dumping_data(struct thread_data *td, struct table_job *tj){
+  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s | Remaining jobs: %d",
+                    td->thread_id, tj->database, tj->table, 
 		    (tj->where || where_option ) ? " WHERE " : "", tj->where ? tj->where : "",
 		    (tj->where && where_option ) ? " AND " : "", where_option ? where_option : "", 
-                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "", g_async_queue_length(td->queue));
 }
 
 void *process_stream(void *data){
@@ -960,7 +960,7 @@ void *process_queue(struct thread_data *td) {
       }
       for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
         tj = (struct table_job *)glj->data;
-        message_dumping_data(td->thread_id,tj);
+        message_dumping_data(td,tj);
         dump_table_data_file(td->thrconn, tj);
         free_table_job(tj);
         g_free(tj);
@@ -972,7 +972,7 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_DUMP:
       tj = (struct table_job *)job->job_data;
-      message_dumping_data(td->thread_id,tj);
+      message_dumping_data(td,tj);
       if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
       }
@@ -1001,7 +1001,7 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_DUMP_NON_INNODB:
       tj = (struct table_job *)job->job_data;
-      message_dumping_data(td->thread_id,tj);
+      message_dumping_data(td,tj);
       if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
       }
