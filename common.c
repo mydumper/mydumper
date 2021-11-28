@@ -171,7 +171,7 @@ gchar *replace_escaped_strings(gchar *c){
 }
 
 void create_backup_dir(char *new_directory) {
-  if (g_mkdir(new_directory, 0700) == -1) {
+  if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
       exit(EXIT_FAILURE);
