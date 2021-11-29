@@ -17,7 +17,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <unistd.h>
-
+#include <errno.h>
+#include <glib/gstdio.h>
+#include "server_detect.h"
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
@@ -40,10 +42,11 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
 }
 
 
-void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss){
+void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group){
   GError *error = NULL;
   GKeyFile *kf = g_key_file_new ();
-  if (!g_key_file_load_from_file (kf, cf,
+  // Loads the config_file
+  if (!g_key_file_load_from_file (kf, config_file,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
     g_warning ("Failed to load config file: %s", error->message);
     return;
@@ -55,6 +58,7 @@ void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, 
   if (error != NULL){
     g_warning("loading %s: %s",group,error->message);
   }else{
+    // Transform the key-value pair to parameters option that the parsing will understand
     for (i=0; i < len; i++){
       list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
       gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
@@ -69,6 +73,7 @@ void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, 
       ilist=ilist->next;
     }
     g_slist_free(list);
+    // Second parse over the options
     if (!g_option_context_parse(context, &slen, &gclist, &error)) {
       g_print("option parsing failed: %s, try --help\n", error->message);
       exit(EXIT_FAILURE);
@@ -76,16 +81,36 @@ void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, 
       g_message("Config file loaded");
     }
   }
-  gchar * group_variables=g_strdup_printf("%s_variables",group);
-  error=NULL;
-  keys=g_key_file_get_keys(kf,group_variables, &len, &error);
-  if (error != NULL){
-    g_warning("loading %s: %s",group_variables,error->message);
-  }else{
-    for (i=0; i < len; i++){
-      gchar *value=g_key_file_get_value(kf,group_variables,keys[i],&error);
-      g_string_append_printf(ss,"SET SESSION %s = %s ;\n",keys[i],value); 
-    }
+}
+
+void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables){
+  guint i=0;
+  GError *error = NULL;
+  gchar *value=NULL;
+  gsize len=0;
+  GKeyFile *kf = g_key_file_new ();
+  // Loads the config_file
+  if (!g_key_file_load_from_file (kf, config_file,
+                                  G_KEY_FILE_KEEP_COMMENTS, &error)) {
+    g_warning ("Failed to load config file: %s", error->message);
+    return;
+  }
+  gchar **keys=g_key_file_get_keys(kf,group_variables, &len, &error);
+  for (i=0; i < len; i++){
+    value=g_key_file_get_value(kf,group_variables,keys[i],&error);
+    if (!error)
+      g_hash_table_insert(set_session_hash, keys[i],value);
+  }
+}
+
+
+void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, set_session_hash );
+  gchar *e=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
+    g_string_append_printf(ss,"SET SESSION %s = %s ;\n",lkey,e);
   }
 }
 
@@ -110,3 +135,73 @@ gchar * identity_function(gchar ** r){
   return *r;
 }
 
+gchar *replace_escaped_strings(gchar *c){
+  guint i=0,j=0;
+
+  while (c[i]!='\0'){
+    if (c[i]=='\\') {
+      switch (c[i+1]){
+        case 'n':
+          c[j]='\n';
+          i=i+2;
+          break;
+        case 't':
+          c[j]='\t';
+          i=i+2;
+          break;
+        case 'r':
+          c[j]='\r';
+          i=i+2;
+          break;
+        case 'f':
+          c[j]='\f';
+          i=i+2;
+          break;
+        default:
+          c[j]=c[i];
+          i++;
+      }
+    }else{
+      c[j]=c[i];
+      i++;
+    }
+    j++;
+  }
+  c[j]=c[i];
+  return c;
+}
+
+void create_backup_dir(char *new_directory) {
+  if (g_mkdir(new_directory, 0750) == -1) {
+    if (errno != EEXIST) {
+      g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
+      exit(EXIT_FAILURE);
+    }
+  }
+}
+
+guint strcount(gchar *text){
+  gchar *t=text;
+  guint i=0;
+  while (t){
+    t=g_strstr_len(t+1,strlen(t),"\n");
+    i++;
+  }
+  return i;
+}
+
+void initialize_session_variables(const gchar *group, GString * set_session,int detected_server, gchar * config_file){
+  gchar * group_variables=g_strdup_printf("%s_variables", group);
+  if (set_session)
+    g_string_set_size(set_session, 0);
+  else
+    set_session = g_string_new(NULL);
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+//  get_set_session_from_key_file(set_session, group_variables, kf);
+  load_hash_from_key_file(set_session_hash,config_file,group_variables);
+  refresh_set_session_from_hash(set_session,set_session_hash);
+}

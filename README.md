@@ -27,6 +27,18 @@ wget https://github.com/maxbube/mydumper/releases/download/v0.11.3-2/mydumper_0.
 dpkg -i mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
 ```
 
+### FreeBSD
+By using pkg
+
+```bash
+pkg install mydumper
+```
+or from ports
+
+```bash
+cd /usr/ports/databases/mydumper && make install
+```
+
 ### OSX
 By using [Homebrew](https://brew.sh/)
 
@@ -150,5 +162,11 @@ To dump specify tables in different databases (Note: The name of tables should e
 ```bash
  mydumper --regex '^(db1\.table1$|db2\.table2$)'
 ```
+
+If you want to dump a couple of databases but discard some tables, you can do:
+```bash
+ mydumper --regex '^(?=(?:(db1\.|db2\.)))(?!(?:(db1\.table1$|db2\.table2$)))'
+```
+Which will dump all the tables in db1 and db2 but it will exclude db1.table1 and db2.table2
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
