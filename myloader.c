@@ -46,7 +46,8 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
-# include "locale.h"
+#include "locale.h"
+#include "server_detect.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -329,10 +330,9 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
-  set_session = g_string_new(NULL);
-  
+
   if (defaults_file != NULL){
-    load_config_file(defaults_file, context, "myloader", set_session);
+    load_config_file(defaults_file, context, "myloader");
   }
   g_option_context_free(context);
 
@@ -421,6 +421,10 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  detected_server = detect_server(conn);
+  initialize_session_variables("myloader",set_session, detected_server, defaults_file);
+
+  // TODO: we need to set the variables in the initilize session varibles, not from:
   if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
     g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
   }
@@ -433,6 +437,7 @@ int main(int argc, char *argv[]) {
     mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
   }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
+  // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
   conf.data_queue = g_async_queue_new();

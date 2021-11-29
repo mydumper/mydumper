@@ -85,7 +85,6 @@ int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int compress_output = 0;
 int killqueries = 0;
-int detected_server = 0;
 int lock_all_tables = 0;
 int sync_wait = -1;
 guint snapshot_count= 2;
@@ -1097,7 +1096,7 @@ int main(int argc, char *argv[]) {
   set_session = g_string_new(NULL);
 
   if (defaults_file != NULL){
-    load_config_file(defaults_file, context, "mydumper", set_session);
+    load_config_file(defaults_file, context, "mydumper");
   }
   g_option_context_free(context);
 
@@ -1338,7 +1337,7 @@ int main(int argc, char *argv[]) {
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
-void initialize_session_variables(const gchar *group){
+/* void initialize_session_variables(const gchar *group){
   gchar * group_variables=g_strdup_printf("%s_variables", group);
   if (set_session)
     g_string_set_size(set_session, 0);
@@ -1352,7 +1351,7 @@ void initialize_session_variables(const gchar *group){
 //  get_set_session_from_key_file(set_session, group_variables, kf);
   load_hash_from_key_file(set_session_hash,group_variables);
   refresh_set_session_from_hash(set_session,set_session_hash);
-}
+}*/
 
 MYSQL *create_main_connection() {
   MYSQL *conn;
@@ -1367,7 +1366,7 @@ MYSQL *create_main_connection() {
   }
 
   detected_server = detect_server(conn);
-  initialize_session_variables("mydumper");
+  initialize_session_variables("mydumper",set_session, detected_server, defaults_file);
   execute_gstring(conn, set_session);
 //  if ((detected_server == SERVER_TYPE_MYSQL) &&
 //      mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {

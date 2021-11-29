@@ -32,6 +32,7 @@ char *cipher = NULL;
 char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
+int detected_server = 0;
 GString *set_session=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -111,3 +112,4 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);
+void initialize_session_variables(const gchar *group, GString * set_session,int detected_server, gchar * config_file);
