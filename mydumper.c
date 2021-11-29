@@ -160,7 +160,6 @@ guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
 GAsyncQueue *start_scheduled_dump;
-
 GMainLoop *m1;
 static GCond *ll_cond = NULL;
 static GMutex *ll_mutex = NULL;
