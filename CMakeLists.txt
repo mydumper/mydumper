@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.6)
 project(mydumper)
-set(VERSION 0.11.2)
+set(VERSION testing)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages
@@ -9,9 +9,6 @@ find_package(MySQL)
 find_package(ZLIB)
 find_package(GLIB2)
 find_package(PCRE)
-if (WITH_ZSTD)
-  find_package(ZSTD)
-endif (WITH_ZSTD)
 
 option(BUILD_DOCS "Build the documentation" ON)
 
@@ -22,6 +19,9 @@ endif (BUILD_DOCS)
 option(WITH_BINLOG "Build binlog dump options" OFF)
 option(WITH_SSL "Build SSL support" ON)
 option(WITH_ZSTD "Build ZSTD support" OFF)
+if (WITH_ZSTD)
+  find_package(ZSTD)
+endif (WITH_ZSTD)
 
 if (WITH_ZSTD)
   set(CMAKE_C_FLAGS "-Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -O3 -g -DZWRAP_USE_ZSTD=1 -Werror -Wno-discarded-qualifiers ${MYSQL_CFLAGS}")
@@ -46,7 +46,7 @@ else (WITH_BINLOG)
 endif (WITH_BINLOG)
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} ${ZSTD_LIBRARIES} stdc++ m )
 
-add_executable(myloader myloader.c connection.c getPassword.c logging.c set_verbose.c common.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c)
+add_executable(myloader myloader.c server_detect.c connection.c getPassword.c logging.c set_verbose.c common.c zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c)
 target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} ${ZSTD_LIBRARIES} stdc++)
 
 else (WITH_ZSTD)
@@ -57,7 +57,7 @@ else (WITH_BINLOG)
 endif (WITH_BINLOG)
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )
 
-add_executable(myloader myloader.c connection.c getPassword.c logging.c set_verbose.c common.c)
+add_executable(myloader myloader.c server_detect.c connection.c getPassword.c logging.c set_verbose.c common.c)
 target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++)
 endif (WITH_ZSTD)
 
