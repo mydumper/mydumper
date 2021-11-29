@@ -23,7 +23,7 @@ apt-get install libatomic1
 ```
 Then you can download and install the package:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.11.3-2/mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
+wget https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
 dpkg -i mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
 ```
 
