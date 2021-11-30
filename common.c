@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib/gstdio.h>
+#include "server_detect.h"
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
@@ -134,8 +135,44 @@ gchar * identity_function(gchar ** r){
   return *r;
 }
 
+gchar *replace_escaped_strings(gchar *c){
+  guint i=0,j=0;
+
+  while (c[i]!='\0'){
+    if (c[i]=='\\') {
+      switch (c[i+1]){
+        case 'n':
+          c[j]='\n';
+          i=i+2;
+          break;
+        case 't':
+          c[j]='\t';
+          i=i+2;
+          break;
+        case 'r':
+          c[j]='\r';
+          i=i+2;
+          break;
+        case 'f':
+          c[j]='\f';
+          i=i+2;
+          break;
+        default:
+          c[j]=c[i];
+          i++;
+      }
+    }else{
+      c[j]=c[i];
+      i++;
+    }
+    j++;
+  }
+  c[j]=c[i];
+  return c;
+}
+
 void create_backup_dir(char *new_directory) {
-  if (g_mkdir(new_directory, 0700) == -1) {
+  if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
       exit(EXIT_FAILURE);
@@ -153,3 +190,18 @@ guint strcount(gchar *text){
   return i;
 }
 
+void initialize_session_variables(const gchar *group, GString * set_session,int detected_server, gchar * config_file){
+  gchar * group_variables=g_strdup_printf("%s_variables", group);
+  if (set_session)
+    g_string_set_size(set_session, 0);
+  else
+    set_session = g_string_new(NULL);
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+//  get_set_session_from_key_file(set_session, group_variables, kf);
+  load_hash_from_key_file(set_session_hash,config_file,group_variables);
+  refresh_set_session_from_hash(set_session,set_session_hash);
+}

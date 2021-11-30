@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/mydumper/mydumper/tree/master.svg?style=svg)](https://circleci.com/gh/mydumper/mydumper/tree/master)
+
 # What is mydumper? Why?
 
 * Parallelism (hence, speed) and performance (avoids expensive character set conversion routines, efficient code overall)
@@ -12,8 +14,8 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el8.x86_64.rpm
+yum install https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper-0.11.3-2.el7.x86_64.rpm
+yum install https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper-0.11.3-2.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
@@ -23,8 +25,8 @@ apt-get install libatomic1
 ```
 Then you can download and install the package:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
+wget https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
 ```
 
 ### FreeBSD
@@ -66,14 +68,14 @@ brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
 ```
 port install pkgconfig cmake
 ```
-### One needs to install development versions of GLib, ZLib and PCRE:
+### One needs to install development versions of GLib, ZLib, PCRE and ZSTD:
 * Ubuntu or Debian: 
 ```
-apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
 ```
 * Fedora, RedHat and CentOS: 
 ```
-yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel
+yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel libzstd-devel
 ```
 * openSUSE: 
 ```
@@ -162,5 +164,11 @@ To dump specify tables in different databases (Note: The name of tables should e
 ```bash
  mydumper --regex '^(db1\.table1$|db2\.table2$)'
 ```
+
+If you want to dump a couple of databases but discard some tables, you can do:
+```bash
+ mydumper --regex '^(?=(?:(db1\.|db2\.)))(?!(?:(db1\.table1$|db2\.table2$)))'
+```
+Which will dump all the tables in db1 and db2 but it will exclude db1.table1 and db2.table2
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
