@@ -1679,7 +1679,7 @@ gboolean has_mydumper_suffix(gchar *line){
 
 void *process_stream(struct configuration *conf){
   char * filename=NULL,*real_filename=NULL;
-  char buffer[1000000];
+  char buffer[1000000]; 
   FILE *file=NULL;
   gboolean eof=FALSE;
   GHashTable *table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
