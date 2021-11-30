@@ -1542,7 +1542,7 @@ int restore_data_from_file(MYSQL *conn, char *database, char *table,
           guint tr=restore_data_in_gstring_from_file(conn, data, is_schema, &query_counter);
           r+=tr;
           if (tr > 0){
-            g_critical("Error occours between lines: %d and %d on file %s",preline,line,filename);
+            g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(conn));
           }
         }
         g_string_set_size(data, 0);
@@ -1643,16 +1643,27 @@ void process_stream_filename(struct configuration *conf,GHashTable *table_hash, 
   g_async_queue_push(conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
+void ml_write( int fd, gchar * buffer){
+  long unsigned int len=0;
+  len=write(fd, buffer, strlen(buffer));
+  if (len != strlen(buffer)) {
+    g_critical("Data written is not the same than buffer");
+    exit(EXIT_FAILURE);
+  }
+}
+
+gboolean has_mydumper_suffix(gchar *line){
+  return g_str_has_suffix(line,".sql") || g_str_has_suffix(line,".sql.gz") || g_str_has_suffix(line,"metadata") || g_str_has_suffix(line,".checksum") || g_str_has_suffix(line,".checksum.gz") ;
+}
 
 void *process_stream(struct configuration *conf){
   char * filename=NULL,*real_filename=NULL;
-  char buffer[1024];
-  long unsigned int len=0;
+  char buffer[1000000];
   FILE *file=NULL;
   gboolean eof=FALSE;
   GHashTable *table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   do {
-    if(fgets(buffer, 1024, stdin) == NULL){
+    if(fgets(buffer, 1000000, stdin) == NULL){
       if (file && feof(file)){
         eof = TRUE;
         buffer[0] = '\0';
@@ -1662,22 +1673,22 @@ void *process_stream(struct configuration *conf){
       }
     }else{
       if (g_str_has_prefix(buffer,"-- ")){
-        if (file){
-          fclose(file);
-          process_stream_filename(conf,table_hash,filename);
-        }
+        gchar lastchar = buffer[strlen(buffer)-1];
         buffer[strlen(buffer)-1]='\0';
-        real_filename = g_build_filename(directory,&(buffer[3]),NULL);
-        filename = g_build_filename(&(buffer[3]),NULL);
-        file = g_fopen(real_filename, "w");
-      }else{
-        if (file){
-          len=write(fileno(file),buffer,strlen(buffer));
-          if (len != strlen(buffer)) {
-            g_critical("File size not the same");
-            exit(EXIT_FAILURE);
+        if (has_mydumper_suffix(buffer)){
+          if (file){
+            fclose(file);
+            process_stream_filename(conf,table_hash,filename);
           }
+          real_filename = g_build_filename(directory,&(buffer[3]),NULL);
+          filename = g_build_filename(&(buffer[3]),NULL);
+          file = g_fopen(real_filename, "w");
+        }else{
+          buffer[strlen(buffer)-1]=lastchar;
+          if (file) ml_write(fileno(file),buffer);
         }
+      }else{
+        if (file) ml_write(fileno(file),buffer);
       }
     }
   } while (eof == FALSE);
