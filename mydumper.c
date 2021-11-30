@@ -160,7 +160,6 @@ guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
 GAsyncQueue *start_scheduled_dump;
-
 GMainLoop *m1;
 static GCond *ll_cond = NULL;
 static GMutex *ll_mutex = NULL;
@@ -1416,7 +1415,7 @@ void *exec_thread(void *data) {
     g_async_queue_pop(start_scheduled_dump);
     MYSQL *conn = create_main_connection();
     char *dump_number_str=g_strdup_printf("%d",dump_number);
-    dump_directory = g_build_path( output_directory, dump_number_str, NULL);
+    dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     clear_dump_directory(dump_directory);
     start_dump(conn);
