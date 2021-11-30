@@ -1097,7 +1097,6 @@ int main(int argc, char *argv[]) {
     int pos=0;
     stream=TRUE;
     db=tmpargv[1];
-
     if (tmpargc > 2 ){
       GString *s = g_string_new(tmpargv[2]);
       for (pos=3; pos<tmpargc;pos++){
