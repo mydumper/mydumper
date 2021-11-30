@@ -1560,7 +1560,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           guint tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
           r+=tr;
           if (tr > 0){
-            g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(conn));
+            g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
           }
         }
         g_string_set_size(data, 0);
