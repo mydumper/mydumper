@@ -14,8 +14,8 @@ First get the correct url from the [releases section](https://github.com/maxbube
 ### RedHat / Centos
 
 ```bash
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el7.x86_64.rpm
-yum install https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper-0.10.7-2.el8.x86_64.rpm
+yum install https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper-0.11.3-2.el7.x86_64.rpm
+yum install https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper-0.11.3-2.el8.x86_64.rpm
 ```
 
 ### Ubuntu / Debian
@@ -25,8 +25,8 @@ apt-get install libatomic1
 ```
 Then you can download and install the package:
 ```bash
-wget https://github.com/maxbube/mydumper/releases/download/v0.10.7-2/mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_0.10.7-2.$(lsb_release -cs)_amd64.deb
+wget https://github.com/mydumper/mydumper/releases/download/v0.11.3-2/mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
+dpkg -i mydumper_0.11.3-2.$(lsb_release -cs)_amd64.deb
 ```
 
 ### FreeBSD
@@ -68,14 +68,14 @@ brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
 ```
 port install pkgconfig cmake
 ```
-### One needs to install development versions of GLib, ZLib and PCRE:
+### One needs to install development versions of GLib, ZLib, PCRE and ZSTD:
 * Ubuntu or Debian: 
 ```
-apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev
+apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
 ```
 * Fedora, RedHat and CentOS: 
 ```
-yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel
+yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel libzstd-devel
 ```
 * openSUSE: 
 ```
