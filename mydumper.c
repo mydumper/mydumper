@@ -1094,13 +1094,13 @@ int main(int argc, char *argv[]) {
   }
 
   if (tmpargc > 1 ){
-    int ddd=0;
+    int pos=0;
     stream=TRUE;
     db=tmpargv[1];
     if (tmpargc > 2 ){
       GString *s = g_string_new(tmpargv[2]);
-      for (ddd=3; ddd<tmpargc;ddd++){
-        g_string_append_printf(s,",%s",tmpargv[ddd]);
+      for (pos=3; pos<tmpargc;pos++){
+        g_string_append_printf(s,",%s",tmpargv[pos]);
       }
       tables_list=g_strdup(s->str);
     }
