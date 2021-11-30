@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/mydumper/mydumper/tree/master.svg?style=svg)](https://circleci.com/gh/mydumper/mydumper/tree/master)
+
 # What is mydumper? Why?
 
 * Parallelism (hence, speed) and performance (avoids expensive character set conversion routines, efficient code overall)
