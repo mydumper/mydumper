@@ -1093,6 +1093,19 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  if (tmpargc > 1 ){
+    int pos=0;
+    stream=TRUE;
+    db=tmpargv[1];
+    if (tmpargc > 2 ){
+      GString *s = g_string_new(tmpargv[2]);
+      for (pos=3; pos<tmpargc;pos++){
+        g_string_append_printf(s,",%s",tmpargv[pos]);
+      }
+      tables_list=g_strdup(s->str);
+    }
+  }
+
   set_session = g_string_new(NULL);
 
   if (defaults_file != NULL){
