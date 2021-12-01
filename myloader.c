@@ -68,6 +68,7 @@ guint max_threads_per_table=4;
 unsigned long long int total_data_sql_files = 0;
 unsigned long long int progress = 0;
 GHashTable *db_hash=NULL;
+static GMutex *db_hash_mutex = NULL;
 GHashTable *tbl_hash=NULL;
 
 const char DIRECTORY[] = "import";
@@ -173,13 +174,25 @@ struct job * new_job (enum job_type type, void *job_data, char *use_database) {
   }
   return j;
 }
+char * db_hash_lookup(gchar *database){
+  char *r=NULL;
+  g_mutex_lock(db_hash_mutex);
+  r=db?db:g_hash_table_lookup(db_hash,database);
+  g_mutex_unlock(db_hash_mutex);
+  return r;
+}
+void db_hash_insert(gchar *k, gchar *v){
+  g_mutex_lock(db_hash_mutex);
+  g_hash_table_insert(db_hash, k, v);
+  g_mutex_unlock(db_hash_mutex);
+}
 
 struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement){
   if ( database == NULL || table == NULL){
     g_critical("It was not possible to process file: %s",filename);
     exit(EXIT_FAILURE);
   }
-  char *real_database=g_hash_table_lookup(db_hash,database);
+  char *real_database=db_hash_lookup(database);
   if (real_database == NULL){
     g_critical("It was not possible to process file: %s",filename);
     exit(EXIT_FAILURE);
@@ -446,7 +459,21 @@ int main(int argc, char *argv[]) {
   conf.ready = g_async_queue_new();
   conf.stream_queue = g_async_queue_new();
   db_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  struct thread_data t;
+  t.thread_id = 0;
+  t.conf = &conf;
+  t.thrconn = conn;
+  t.current_database=NULL;
+
+  // Create database before the thread, to allow connection
+  if (db){
+    db_hash_insert(db,db);
+    create_database(&t, db);
+  }
+  
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
   struct thread_data *td = g_new(struct thread_data, num_threads);
@@ -459,16 +486,7 @@ int main(int argc, char *argv[]) {
     // We don't want all the threads try to connect at the same time
     g_async_queue_pop(conf.ready);
   }
-
-  struct thread_data t;
-  t.thread_id = 0;
-  t.conf = &conf;
-  t.thrconn = conn;
-  t.current_database=NULL;
-
-  // Step 1: Create databases | single threaded
-  if (db)
-    create_database(&t, db);
+  
   if (stream){
     GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, &conf, TRUE, NULL);
     g_thread_join(stream_thread);
@@ -704,7 +722,7 @@ void process_database_filename(struct configuration *conf, char * filename, cons
     db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }
   g_debug("Adding database: %s -> %s", db_kname, db ? db : db_vname);
-  g_hash_table_insert(db_hash, db_kname, db ? db : db_vname);
+  db_hash_insert(db_kname, db ? db : db_vname);
   if (!db){
     struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
     g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
@@ -719,7 +737,7 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
       g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
   }
-  char *real_db_name=g_hash_table_lookup(db_hash,db_name);
+  char *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
     g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
     exit(EXIT_FAILURE);
@@ -739,7 +757,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
   }
-  char *real_db_name=g_hash_table_lookup(db_hash,db_name);
+  char *real_db_name=db_hash_lookup(db_name);
   struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
   //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
   struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME, "");
@@ -757,7 +775,7 @@ void process_schema_filename(struct configuration *conf, const gchar *filename, 
     if (database == NULL){
       g_critical("Database is null on: %s",filename);
     }
-    real_db_name=g_hash_table_lookup(db_hash,database);
+    real_db_name=db_hash_lookup(database);
     struct restore_job *rj = new_restore_job(g_strdup(filename), real_db_name , NULL , NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
@@ -794,7 +812,13 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
       case SCHEMA_CREATE:
         if (db){
           g_warning("Skipping database creation on file: %s",filename);
-	}else{
+          if (stream && no_delete == FALSE){
+            gchar *path = g_build_filename(directory, filename, NULL);
+            g_message("Removing file: %s", path);
+            remove(path);
+            g_free(path);
+          }
+        }else{
           process_database_filename(conf, filename, "create database");
         }
         break;
@@ -1060,7 +1084,7 @@ gint compare_filename_part (gconstpointer a, gconstpointer b){
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   gchar *database = NULL, *table = NULL;
   get_database_table_from_file(filename,"-checksum",&database,&table);
-  gchar *real_database=g_hash_table_lookup(db_hash,database);
+  gchar *real_database=db_hash_lookup(database);
   gchar *real_table=g_hash_table_lookup(tbl_hash,table);
   void *infile;
   char checksum[256];

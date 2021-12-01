@@ -202,6 +202,7 @@ void initialize_session_variables(const gchar *group, GString * set_session,int 
     g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
   }
 //  get_set_session_from_key_file(set_session, group_variables, kf);
-  load_hash_from_key_file(set_session_hash,config_file,group_variables);
+  if (config_file)
+    load_hash_from_key_file(set_session_hash,config_file,group_variables);
   refresh_set_session_from_hash(set_session,set_session_hash);
 }
