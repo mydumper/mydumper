@@ -877,11 +877,6 @@ void *process_queue(struct thread_data *td) {
   initialize_thread(td);
   execute_gstring(td->thrconn, set_session);
 
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
-//  }
-
   if (!skip_tz && mysql_query(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
     g_critical("Failed to set time zone: %s", mysql_error(td->thrconn));
   }
@@ -1061,6 +1056,16 @@ void *process_queue(struct thread_data *td) {
   return NULL;
 }
 
+GHashTable * initialize_hash_of_session_variables(){
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+  return set_session_hash;
+}
+
+
 int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
@@ -1104,8 +1109,6 @@ int main(int argc, char *argv[]) {
       tables_list=g_strdup(s->str);
     }
   }
-
-  set_session = g_string_new(NULL);
 
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "mydumper");
@@ -1335,7 +1338,6 @@ int main(int argc, char *argv[]) {
     start_dump(conn);
   }
 
-  // sleep(5);
   mysql_thread_end();
   mysql_library_end();
   g_free(output_directory);
@@ -1349,22 +1351,6 @@ int main(int argc, char *argv[]) {
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
-/* void initialize_session_variables(const gchar *group){
-  gchar * group_variables=g_strdup_printf("%s_variables", group);
-  if (set_session)
-    g_string_set_size(set_session, 0);
-  else
-    set_session = g_string_new(NULL);
-  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  if (detected_server == SERVER_TYPE_MYSQL){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
-  }
-//  get_set_session_from_key_file(set_session, group_variables, kf);
-  load_hash_from_key_file(set_session_hash,group_variables);
-  refresh_set_session_from_hash(set_session,set_session_hash);
-}*/
-
 MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
@@ -1377,17 +1363,13 @@ MYSQL *create_main_connection() {
     exit(EXIT_FAILURE);
   }
 
+  set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
-  initialize_session_variables("mydumper",set_session, detected_server, defaults_file);
+  GHashTable * set_session_hash = initialize_hash_of_session_variables();
+  if (defaults_file)
+    load_hash_from_key_file(set_session_hash, defaults_file, "mydumper_variables");
+  refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
-//  }
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(conn, "SET SESSION net_write_timeout = 2147483")) {
-//    g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
-//  }
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:

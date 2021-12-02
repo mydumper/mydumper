@@ -121,7 +121,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
     int i=0;
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i]) > 3 && mysql_query(conn, line[i])){
-         g_warning("Set session failed: %s | ",line[i]);
+         g_warning("Set session failed: %s",line[i]);
        }
     }
   }
@@ -190,19 +190,3 @@ guint strcount(gchar *text){
   return i;
 }
 
-void initialize_session_variables(const gchar *group, GString * set_session,int detected_server, gchar * config_file){
-  gchar * group_variables=g_strdup_printf("%s_variables", group);
-  if (set_session)
-    g_string_set_size(set_session, 0);
-  else
-    set_session = g_string_new(NULL);
-  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  if (detected_server == SERVER_TYPE_MYSQL){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
-  }
-//  get_set_session_from_key_file(set_session, group_variables, kf);
-  if (config_file)
-    load_hash_from_key_file(set_session_hash,config_file,group_variables);
-  refresh_set_session_from_hash(set_session,set_session_hash);
-}

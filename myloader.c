@@ -218,6 +218,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     dbt->start_time=NULL;
     dbt->start_index_time=NULL;
     dbt->finish_time=NULL;
+    dbt->schema_created=FALSE;
     g_hash_table_insert(table_hash, g_strdup_printf("%s_%s",dbt->database,dbt->table),dbt);
   }else{
     if (number_rows>0) dbt->rows=number_rows;
@@ -314,6 +315,22 @@ void restore_from_directory(struct configuration *conf){
   g_debug("Step 5 started");
 
 }
+
+
+GHashTable * initialize_hash_of_session_variables(){
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+  if (!enable_binlog)
+    g_hash_table_insert(set_session_hash,g_strdup("SQL_LOG_BIN"),g_strdup("0"));
+  if (commit_count > 1)
+    g_hash_table_insert(set_session_hash,g_strdup("AUTOCOMMIT"),g_strdup("0"));
+
+  return set_session_hash;
+}
+
 
 int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
@@ -434,16 +451,21 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
-  initialize_session_variables("myloader",set_session, detected_server, defaults_file);
+  GHashTable * set_session_hash = initialize_hash_of_session_variables();
+  if (defaults_file)
+    load_hash_from_key_file(set_session_hash, defaults_file, "myloader_variables");
+  refresh_set_session_from_hash(set_session,set_session_hash);
+  execute_gstring(conn, set_session);
 
   // TODO: we need to set the variables in the initilize session varibles, not from:
-  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
-    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
-  }
+//  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
+//    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
+//  }
 
-  if (!enable_binlog)
-    mysql_query(conn, "SET SQL_LOG_BIN=0");
+//  if (!enable_binlog)
+//    mysql_query(conn, "SET SQL_LOG_BIN=0");
 
   if (disable_redo_log){
     g_message("Disabling redologs");
@@ -470,7 +492,7 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    db_hash_insert(db,db);
+    db_hash_insert(db, db);
     create_database(&t, db);
   }
   
@@ -1176,6 +1198,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj, int cou
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
       }
+      dbt->schema_created=TRUE;
       break;
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
@@ -1183,6 +1206,18 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj, int cou
       g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu .", td->thread_id,
                 dbt->real_database, dbt->real_table, rj->part, count, rj->filename, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
+      if (stream && !dbt->schema_created){
+        // In a stream scenario we might need to wait until table is created to start executing inserts.
+        int i=0;
+        while (!dbt->schema_created && i<100){
+          usleep(1000);
+          i++;
+        }
+        if (!dbt->schema_created){
+          g_critical("Table has not been created in more than 10 seconds");
+          exit(EXIT_FAILURE);
+        }
+      }
       if (restore_data_from_file(td, dbt->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
@@ -1335,21 +1370,22 @@ void *process_queue(struct thread_data *td) {
     exit(EXIT_FAILURE);
   }
 
-  if (mysql_query(td->thrconn, "SET SESSION wait_timeout = 2147483")) {
-    g_warning("Failed to increase wait_timeout: %s", mysql_error(td->thrconn));
-  }
+//  if (mysql_query(td->thrconn, "SET SESSION wait_timeout = 2147483")) {
+//    g_warning("Failed to increase wait_timeout: %s", mysql_error(td->thrconn));
+//  }
 
-  if (!enable_binlog)
-    mysql_query(td->thrconn, "SET SQL_LOG_BIN=0");
+//  if (!enable_binlog)
+//    mysql_query(td->thrconn, "SET SQL_LOG_BIN=0");
 
   mysql_query(td->thrconn, set_names_str);
   mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
   mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
-  if (commit_count > 1)
-    mysql_query(td->thrconn, "SET autocommit=0");
+//  if (commit_count > 1)
+//    mysql_query(td->thrconn, "SET autocommit=0");
 
   execute_gstring(td->thrconn, set_session);
+  g_message("Executing: %s", set_session->str);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   if (db){
