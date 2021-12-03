@@ -3776,7 +3776,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   fcfile = g_strdup(tj->filename);
 
   if (chunk_filesize) {
-    gchar **split_filename = g_strsplit(tj->filename, ".00000.sql", 0);
+    gchar **split_filename = g_strsplit(tj->filename, ".00001.sql", 0);
     filename_prefix = g_strdup(split_filename[0]);
     g_strfreev(split_filename);
   }
