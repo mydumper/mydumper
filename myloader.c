@@ -621,10 +621,14 @@ gchar * get_database_name_from_filename(const gchar *filename){
   return db_name;
 }
 
-void get_database_table_part_name_from_filename(const gchar *filename, const gchar * suffix, gchar **database, gchar **table, guint *part){
-  gchar **split_file = g_strsplit(filename, suffix, 3);
-  gchar **split_db_tbl = g_strsplit(split_file[0], ".", -1);
-  g_strfreev(split_file);
+void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part){
+  guint l = strlen(filename)-4;
+  if (g_str_has_suffix(filename, compress_extension)){
+    l-=strlen(compress_extension);
+  }
+  gchar *f=g_strndup(filename,l);
+  gchar **split_db_tbl = g_strsplit(f, ".", -1);
+  g_free(f);
   if (g_strv_length(split_db_tbl)==3){
     *database=g_strdup(split_db_tbl[0]);
     *table=g_strdup(split_db_tbl[1]);
@@ -689,7 +693,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
   guint part;
-  get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
+  get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part);
   if (db_name == NULL || table_name == NULL){
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
