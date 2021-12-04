@@ -30,7 +30,7 @@
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
-enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, IGNORED};
+enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, IGNORED, LOAD_DATA};
 
 struct configuration {
   GAsyncQueue *database_queue;
@@ -50,6 +50,8 @@ struct configuration {
 
 struct thread_data {
   struct configuration *conf;
+  MYSQL *thrconn;
+  gchar *current_database;
   guint thread_id;
 };
 
