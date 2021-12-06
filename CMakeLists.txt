@@ -13,7 +13,10 @@ find_package(OpenSSL)
 
 if (NOT OpenSSL_FOUND)
   option(WITH_SSL FALSE)
+  string(REPLACE "MYSQL_LIBRARIES_ssl-NOTFOUND"    "" MYSQL_LIBRARIES "${MYSQL_LIBRARIES}")
+  string(REPLACE "MYSQL_LIBRARIES_crypto-NOTFOUND" "" MYSQL_LIBRARIES "${MYSQL_LIBRARIES}")
 endif (NOT OpenSSL_FOUND)
+
 option(BUILD_DOCS "Build the documentation" ON)
 
 if (BUILD_DOCS)
