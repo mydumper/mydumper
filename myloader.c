@@ -864,6 +864,7 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         break;
       case IGNORED:
         g_warning("Filename %s has been ignored", filename);
+        break;
       case LOAD_DATA:
         g_message("Load data file found: %s", filename);
         break;
