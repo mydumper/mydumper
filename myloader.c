@@ -684,10 +684,14 @@ gchar * get_database_name_from_filename(const gchar *filename){
   return db_name;
 }
 
-void get_database_table_part_name_from_filename(const gchar *filename, const gchar * suffix, gchar **database, gchar **table, guint *part){
-  gchar **split_file = g_strsplit(filename, suffix, 3);
-  gchar **split_db_tbl = g_strsplit(split_file[0], ".", -1);
-  g_strfreev(split_file);
+void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part){
+  guint l = strlen(filename)-4;
+  if (g_str_has_suffix(filename, compress_extension)){
+    l-=strlen(compress_extension);
+  }
+  gchar *f=g_strndup(filename,l);
+  gchar **split_db_tbl = g_strsplit(f, ".", -1);
+  g_free(f);
   if (g_strv_length(split_db_tbl)>=3){
     *database=g_strdup(split_db_tbl[0]);
     *table=g_strdup(split_db_tbl[1]);
@@ -752,7 +756,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
   guint part;
-  get_database_table_part_name_from_filename(filename,".sql",&db_name,&table_name,&part);
+  get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part);
   if (db_name == NULL || table_name == NULL){
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
@@ -780,26 +784,37 @@ void process_schema_filename(struct configuration *conf, const gchar *filename, 
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 
+gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
+  char str2[20];
+  g_strlcpy(str2,str,strlen(str)+1);
+  if (g_str_has_suffix(str2, compress_extension)){
+    str2[strlen(str)-strlen(compress_extension)]='\0';
+  }
+  return g_str_has_suffix(str2,suffix);
+}
+
 enum file_type get_file_type (const char * filename){
-  if (g_strrstr(filename, "-schema.sql")) {
+  if (m_filename_has_suffix(filename, "-schema.sql")) {
     return SCHEMA_TABLE;
-  } else if (g_str_has_suffix(filename, "-metadata")) {
+  } else if (m_filename_has_suffix(filename, "-metadata")) {
     return METADATA_TABLE;
   } else if ( strcmp(filename, "metadata") == 0 ){
     return METADATA_GLOBAL;
-  } else if (g_str_has_suffix(filename, "-checksum") || g_str_has_suffix(filename, "-checksum.gz")) {
+  } else if (m_filename_has_suffix(filename, "-checksum")) {
     return CHECKSUM;
-  } else if ( g_strrstr(filename, "-schema-view.sql") ){
+  } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
     return SCHEMA_VIEW;
-  } else if ( g_strrstr(filename, "-schema-triggers.sql") ){
+  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql") ){
     return SCHEMA_TRIGGER;
-  } else if ( g_strrstr(filename, "-schema-post.sql") ){
+  } else if (m_filename_has_suffix(filename, "-schema-post.sql") ){
     return SCHEMA_POST;
-  } else if ( g_strrstr(filename, "-schema-create.sql") ){
+  } else if (m_filename_has_suffix(filename, "-schema-create.sql") ){
     return SCHEMA_CREATE;
+  } else if (m_filename_has_suffix(filename, ".sql") ){
+    return DATA;
   }else if (g_str_has_suffix(filename, ".dat")) 
     return LOAD_DATA;
-  return DATA;
+  return IGNORED;
 }
 
 
@@ -846,6 +861,9 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         break;
       case DATA:
         process_data_filename(conf,table_hash,filename);
+        break;
+      case IGNORED:
+        g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
         g_message("Load data file found: %s", filename);
@@ -1665,9 +1683,9 @@ GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type curre
     case DATA:
       return conf->data_queue;
       break;
+    case IGNORED:
     case LOAD_DATA:
       break;
-
   }
   return NULL;
 }
