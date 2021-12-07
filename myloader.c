@@ -785,12 +785,13 @@ void process_schema_filename(struct configuration *conf, const gchar *filename, 
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
-  char str2[20];
-  g_strlcpy(str2,str,strlen(str)+1);
+  char *str2=g_strdup(str);
   if (g_str_has_suffix(str2, compress_extension)){
     str2[strlen(str)-strlen(compress_extension)]='\0';
   }
-  return g_str_has_suffix(str2,suffix);
+  gboolean b=g_str_has_suffix(str2,suffix);
+  g_free(str2);
+  return b;
 }
 
 enum file_type get_file_type (const char * filename){
