@@ -46,7 +46,7 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar * identity_function(gchar ** r);
 gchar *replace_escaped_strings(gchar *c);
-void load_hash_from_key_file(GHashTable * set_session_hash, const gchar * group_variables);
+void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 
 gboolean askPassword = FALSE;
@@ -112,4 +112,3 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);
-void initialize_session_variables(const gchar *group, GString * set_session,int detected_server, gchar * config_file);

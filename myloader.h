@@ -86,6 +86,7 @@ struct db_table {
   GString *indexes;
   GString *constraints;
   guint count;
+  gboolean schema_created;
   GDateTime * start_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
