@@ -428,6 +428,12 @@ int main(int argc, char *argv[]) {
   conf.stream_queue = g_async_queue_new();
   db_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  // Step 1: Create databases | single threaded
+  if (db){
+    g_hash_table_insert(db_hash, db, db);
+    create_database(conn, db);
+  }
+
   guint n;
   GThread **threads = g_new(GThread *, num_threads);
   struct thread_data *td = g_new(struct thread_data, num_threads);
@@ -441,9 +447,6 @@ int main(int argc, char *argv[]) {
     g_async_queue_pop(conf.ready);
   }
 
-  // Step 1: Create databases | single threaded
-  if (db)
-    create_database(conn, db);
   if (stream){
     GThread *stream_thread = g_thread_create((GThreadFunc)process_stream, &conf, TRUE, NULL);
     g_thread_join(stream_thread);
