@@ -1404,7 +1404,6 @@ void *process_queue(struct thread_data *td) {
 //    mysql_query(td->thrconn, "SET autocommit=0");
 
   execute_gstring(td->thrconn, set_session);
-  g_message("Executing: %s", set_session->str);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   if (db){
