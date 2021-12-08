@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib/gstdio.h>
+#include "server_detect.h"
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
@@ -120,7 +121,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
     int i=0;
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i]) > 3 && mysql_query(conn, line[i])){
-         g_warning("Set session failed: %s | ",line[i]);
+         g_warning("Set session failed: %s",line[i]);
        }
     }
   }
@@ -134,8 +135,44 @@ gchar * identity_function(gchar ** r){
   return *r;
 }
 
+gchar *replace_escaped_strings(gchar *c){
+  guint i=0,j=0;
+
+  while (c[i]!='\0'){
+    if (c[i]=='\\') {
+      switch (c[i+1]){
+        case 'n':
+          c[j]='\n';
+          i=i+2;
+          break;
+        case 't':
+          c[j]='\t';
+          i=i+2;
+          break;
+        case 'r':
+          c[j]='\r';
+          i=i+2;
+          break;
+        case 'f':
+          c[j]='\f';
+          i=i+2;
+          break;
+        default:
+          c[j]=c[i];
+          i++;
+      }
+    }else{
+      c[j]=c[i];
+      i++;
+    }
+    j++;
+  }
+  c[j]=c[i];
+  return c;
+}
+
 void create_backup_dir(char *new_directory) {
-  if (g_mkdir(new_directory, 0700) == -1) {
+  if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
       exit(EXIT_FAILURE);

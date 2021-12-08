@@ -85,7 +85,6 @@ int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int compress_output = 0;
 int killqueries = 0;
-int detected_server = 0;
 int lock_all_tables = 0;
 int sync_wait = -1;
 guint snapshot_count= 2;
@@ -116,6 +115,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean load_data = FALSE;
 gboolean order_by_primary_key = FALSE;
 
 GList *innodb_tables = NULL;
@@ -142,12 +142,24 @@ GHashTable *database_hash=NULL;
 GHashTable *ref_table=NULL;
 guint table_number;
 
+gchar *fields_terminated_by=NULL;
+gchar *fields_enclosed_by=NULL;
+gchar *fields_escaped_by=NULL;
+gchar *lines_starting_by=NULL;
+gchar *lines_terminated_by=NULL;
+gchar *statement_terminated_by=NULL;
+
+gchar *fields_enclosed_by_ld=NULL;
+gchar *fields_terminated_by_ld=NULL;
+gchar *lines_starting_by_ld=NULL;
+gchar *lines_terminated_by_ld=NULL;
+gchar *statement_terminated_by_ld=NULL;
+
 // For daemon mode
 guint dump_number = 0;
 guint binlog_connect_id = 0;
 gboolean shutdown_triggered = FALSE;
 GAsyncQueue *start_scheduled_dump;
-
 GMainLoop *m1;
 static GCond *ll_cond = NULL;
 static GMutex *ll_mutex = NULL;
@@ -253,6 +265,23 @@ static GOptionEntry entries[] = {
       "Sets the names, use it at your own risk, default binary", NULL },
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
+    {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
+     "", NULL },
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
+    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
+      "Single character that is going to be used to escape characters in the"
+      "LOAD DATA stament, default: '\\' ", NULL },
+    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
+      "Adds the string at the begining of each row. When --load-data is used"
+      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
+      "also when it is used.", NULL },
+    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
+      "Adds the string at the end of each row. When --load-data is used it is"
+       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
+       "also when it is used.", NULL },
+    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
+      "This might never be used, unless you know what are you doing", NULL },
     {"sync-wait", 0, 0, G_OPTION_ARG_INT, &sync_wait,
      "WSREP_SYNC_WAIT value to set at SESSION level", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
@@ -384,14 +413,18 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
 // Global Var used:
 // - dump_directory
 // - compress_extension
-gchar * build_data_filename(char *database, char *table, guint part ){
+gchar * build_filename(char *database, char *table, guint part, const gchar *extension){
   GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s.%05d.sql%s", database, table, part, compress_extension);
+  g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
 }
 
+
+gchar * build_data_filename(char *database, char *table, guint part ){
+  return build_filename(database,table,part,"sql");
+}
 
 void clear_dump_directory(gchar *directory) {
   GError *error = NULL;
@@ -666,12 +699,12 @@ void free_create_database_job(struct create_database_job * cdj){
 //  g_free(cdj);
 }
 
-void message_dumping_data(guint thread_id, struct table_job *tj){
-  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s",
-                    thread_id, tj->database, tj->table, 
+void message_dumping_data(struct thread_data *td, struct table_job *tj){
+  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s | Remaining jobs: %d",
+                    td->thread_id, tj->database, tj->table, 
 		    (tj->where || where_option ) ? " WHERE " : "", tj->where ? tj->where : "",
 		    (tj->where && where_option ) ? " AND " : "", where_option ? where_option : "", 
-                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "");
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "", g_async_queue_length(td->queue));
 }
 
 void *process_stream(void *data){
@@ -864,11 +897,6 @@ void *process_queue(struct thread_data *td) {
   initialize_thread(td);
   execute_gstring(td->thrconn, set_session);
 
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(thrconn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(thrconn));
-//  }
-
   if (!skip_tz && mysql_query(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
     g_critical("Failed to set time zone: %s", mysql_error(td->thrconn));
   }
@@ -945,7 +973,7 @@ void *process_queue(struct thread_data *td) {
       }
       for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
         tj = (struct table_job *)glj->data;
-        message_dumping_data(td->thread_id,tj);
+        message_dumping_data(td,tj);
         dump_table_data_file(td->thrconn, tj);
         free_table_job(tj);
         g_free(tj);
@@ -957,7 +985,7 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_DUMP:
       tj = (struct table_job *)job->job_data;
-      message_dumping_data(td->thread_id,tj);
+      message_dumping_data(td,tj);
       if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
       }
@@ -986,7 +1014,7 @@ void *process_queue(struct thread_data *td) {
       break;
     case JOB_DUMP_NON_INNODB:
       tj = (struct table_job *)job->job_data;
-      message_dumping_data(td->thread_id,tj);
+      message_dumping_data(td,tj);
       if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
         g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
       }
@@ -1048,6 +1076,16 @@ void *process_queue(struct thread_data *td) {
   return NULL;
 }
 
+GHashTable * initialize_hash_of_session_variables(){
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+  return set_session_hash;
+}
+
+
 int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
@@ -1078,6 +1116,20 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
+
+  if (tmpargc > 1 ){
+    int pos=0;
+    stream=TRUE;
+    db=tmpargv[1];
+    if (tmpargc > 2 ){
+      GString *s = g_string_new(tmpargv[2]);
+      for (pos=3; pos<tmpargc;pos++){
+        g_string_append_printf(s,",%s",tmpargv[pos]);
+      }
+      tables_list=g_strdup(s->str);
+    }
+  }
+
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "mydumper");
   }
@@ -1113,6 +1165,58 @@ int main(int argc, char *argv[]) {
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
   }
+
+  if (load_data){
+    if (!fields_enclosed_by_ld){
+    	fields_enclosed_by=g_strdup("");
+    }else if(strlen(fields_enclosed_by_ld)>1){
+	    g_error("--fields-enclosed-by must be a single character");
+      exit(EXIT_FAILURE);
+    }else{
+      fields_enclosed_by=fields_enclosed_by_ld;
+    }
+  
+    if (fields_escaped_by){
+      if(strlen(fields_escaped_by)>1){
+	      g_error("--fields-escaped-by must be a single character");
+        exit(EXIT_FAILURE);
+      }else if (strcmp(fields_escaped_by,"\\")==0){
+        fields_escaped_by=g_strdup("\\\\");
+      } 
+    }
+  }
+
+  if (!fields_terminated_by_ld){
+    if (load_data){
+      fields_terminated_by=g_strdup("\t");
+//      fields_terminated_by_ld=g_strdup("\\t")
+    }else
+      fields_terminated_by=g_strdup(",");
+  }else
+    fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+  if (!lines_starting_by_ld){
+    if (load_data)
+      lines_starting_by=g_strdup("");
+    else
+  	  lines_starting_by=g_strdup("(");
+  }else
+    lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+  if (!lines_terminated_by_ld){
+    if (load_data){
+      lines_terminated_by=g_strdup("\n");
+      lines_terminated_by_ld=g_strdup("\\n");
+    }else
+  	  lines_terminated_by=g_strdup(")\n");
+  }else
+    lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+  if (!statement_terminated_by_ld){
+    if (load_data)
+      statement_terminated_by=g_strdup("");
+    else
+  	  statement_terminated_by=g_strdup(";\n");
+  }else
+    statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
+
 
   if (set_names_str){
     gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
@@ -1254,7 +1358,6 @@ int main(int argc, char *argv[]) {
     start_dump(conn);
   }
 
-  // sleep(5);
   mysql_thread_end();
   mysql_library_end();
   g_free(output_directory);
@@ -1266,22 +1369,6 @@ int main(int argc, char *argv[]) {
   }
 
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
-}
-
-void initialize_session_variables(const gchar *group){
-  gchar * group_variables=g_strdup_printf("%s_variables", group);
-  if (set_session)
-    g_string_set_size(set_session, 0);
-  else
-    set_session = g_string_new(NULL);
-  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  if (detected_server == SERVER_TYPE_MYSQL){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
-  }
-//  get_set_session_from_key_file(set_session, group_variables, kf);
-  load_hash_from_key_file(set_session_hash,group_variables);
-  refresh_set_session_from_hash(set_session,set_session_hash);
 }
 
 MYSQL *create_main_connection() {
@@ -1296,17 +1383,13 @@ MYSQL *create_main_connection() {
     exit(EXIT_FAILURE);
   }
 
+  set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
-  initialize_session_variables("mydumper");
+  GHashTable * set_session_hash = initialize_hash_of_session_variables();
+  if (defaults_file)
+    load_hash_from_key_file(set_session_hash, defaults_file, "mydumper_variables");
+  refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
-//  }
-//  if ((detected_server == SERVER_TYPE_MYSQL) &&
-//      mysql_query(conn, "SET SESSION net_write_timeout = 2147483")) {
-//    g_warning("Failed to increase net_write_timeout: %s", mysql_error(conn));
-//  }
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
@@ -1334,7 +1417,7 @@ void *exec_thread(void *data) {
     g_async_queue_pop(start_scheduled_dump);
     MYSQL *conn = create_main_connection();
     char *dump_number_str=g_strdup_printf("%d",dump_number);
-    dump_directory = g_build_path( output_directory, dump_number_str, NULL);
+    dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     clear_dump_directory(dump_directory);
     start_dump(conn);
@@ -1368,6 +1451,10 @@ void *exec_thread(void *data) {
 void dump_metadata(struct db_table * dbt){
   char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
   FILE *table_meta = g_fopen(filename, "w");
+  if (!table_meta) {
+    g_critical("Couldn't write table metadata file %s (%d)", filename, errno);
+    exit(EXIT_FAILURE);
+  }
   fprintf(table_meta, "%d", dbt->rows);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   fclose(table_meta);
@@ -2389,7 +2476,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 }
 
 void old_create_backup_dir(char *new_directory) {
-  if (g_mkdir(new_directory, 0700) == -1) {
+  if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
       exit(EXIT_FAILURE);
@@ -3563,9 +3650,41 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
   tjs->table_job_list = g_list_reverse(tjs->table_job_list);
   g_async_queue_push(conf->queue_less_locking, j);
 }
+void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
+  guint i = 0;
+  for (i = 0; i < num_fields; ++i) {
+    if (i > 0) {
+      g_string_append_c(statement, ',');
+    }
+    g_string_append_printf(statement, "`%s`", fields[i].name);
+  }
+}
+
+void append_insert (gboolean condition, GString *statement, char *table, MYSQL_FIELD *fields, guint num_fields){
+  if (condition) {
+    if (insert_ignore) {
+      g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
+    } else {
+      g_string_printf(statement, "INSERT INTO `%s` (", table);
+    }
+    append_columns(statement,fields,num_fields);
+    g_string_append(statement, ") VALUES");
+  } else {
+    if (insert_ignore) {
+      g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
+    } else {
+      g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
+    }
+  }
+}
 
 /* Do actual data chunk reading/writing magic */
 guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
+  // There are 2 possible options to chunk the files:
+  // - no chunk: this means that will be just 1 data file
+  // - chunk_filesize: this function will be spliting the per filesize, this means that multiple files will be created
+  // Split by row is before this step
+  // It could write multiple INSERT statments in a data file if statement_size is reached
   guint i;
   guint fn = 0;
   guint st_in_file = 0;
@@ -3575,10 +3694,12 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   MYSQL_RES *result = NULL;
   char *query = NULL;
   gchar *fcfile = NULL;
+  gchar *load_data_fn=NULL;
+//  gchar *filename_prefix = NULL;
   struct db_table * dbt = tj->dbt;
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
-
+  FILE *main_file=file;
   if (chunk_filesize) {
     fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
   }else{
@@ -3638,16 +3759,20 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       }
     }
 
-
+  gboolean first_time=TRUE;
   /* Poor man's data dump code */
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
     num_rows++;
 
     if (!statement->len) {
-      if (!st_in_file) {
+	    
+      // A file can be chunked by amount of rows or file size. 
+      //
+      if (!st_in_file) { 
+        // File Header
         if (detected_server == SERVER_TYPE_MYSQL) {
-										g_string_printf(statement,"%s;\n",set_names_str);
+          g_string_printf(statement,"%s;\n",set_names_str);
           g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
           if (!skip_tz) {
             g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -3665,25 +3790,45 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
           goto cleanup;
         }
       }
-      if (complete_insert || has_generated_fields) {
-        if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", tj->table);
-        } else {
-          g_string_printf(statement, "INSERT INTO `%s` (", tj->table);
-        }
-        for (i = 0; i < num_fields; ++i) {
-          if (i > 0) {
-            g_string_append_c(statement, ',');
+      if ( load_data ){
+        if (first_time){
+          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, "dat");
+//	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
+//			      (compress_output ? ".gz" : ""));
+	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
+	      if (fields_terminated_by_ld)
+	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+	      if (fields_enclosed_by_ld)
+	        g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+	      if (fields_escaped_by)
+          g_string_append_printf(statement, "ESCAPED BY '%s' ",fields_escaped_by);
+	      g_string_append(statement, "LINES ");
+	      if (lines_starting_by_ld)
+	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
+	      g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
+
+        append_columns(statement,fields,num_fields);
+        g_string_append(statement,");\n");
+	      if (!write_data(main_file, statement)) {
+		      g_critical("Could not write out data for %s.%s", tj->database, tj->table);
+		      goto cleanup;
+	      }else{
+          g_string_set_size(statement, 0);
+          g_free(fcfile);
+          fcfile=load_data_fn;
+
+          if (!compress_output) {
+            fclose((FILE *)file);
+            file = g_fopen(fcfile, "a");
+          } else {
+            gzclose((gzFile)file);
+            file = (void *)gzopen(fcfile, "a");
           }
-          g_string_append_printf(statement, "`%s`", fields[i].name);
+	      }
+        first_time=FALSE;
         }
-        g_string_append(statement, ") VALUES");
-      } else {
-        if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", tj->table);
-        } else {
-          g_string_printf(statement, "INSERT INTO `%s` VALUES", tj->table);
-        }
+      }else{
+        append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
       }
       num_rows_st = 0;
     }
@@ -3694,38 +3839,47 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       num_rows_st++;
     }
 
-    g_string_append(statement_row, "\n(");
+    g_string_append(statement_row, lines_starting_by);
     GList *f = dbt->anonymized_function;
     for (i = 0; i < num_fields; i++) {
       gchar * (*fun_ptr)(gchar **) = f->data;
       f=f->next;
-      /* Don't escape safe formats, saves some time */
-      if (!row[i]) {
-        g_string_append(statement_row, "NULL");
-      } else if ((fields[i].flags & NUM_FLAG)){
-        if (strcmp(row[i],"-0")==0){
-          g_string_append(statement_row, "'");
-          g_string_append(statement_row, fun_ptr(&(row[i])));
-          g_string_append(statement_row, "'");
+      if (load_data){
+        if (!row[i]) {
+//          g_string_append(statement_row,fields_enclosed_by);
+          g_string_append(statement_row, "NULL");
+//          g_string_append(statement_row,fields_enclosed_by);
+        }else if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
+          g_string_append(statement_row,fields_enclosed_by);
+          g_string_append(statement_row,fun_ptr(&(row[i])));
+          g_string_append(statement_row,fields_enclosed_by);
         }else
+          g_string_append(statement_row,fun_ptr(&(row[i])));
+      }else{
+        /* Don't escape safe formats, saves some time */
+        if (!row[i]) {
+          g_string_append(statement_row, "NULL");
+        } else if (fields[i].flags & NUM_FLAG) {
           g_string_append(statement_row, fun_ptr(&(row[i])));
-      } else {
-        /* We reuse buffers for string escaping, growing is expensive just at
-         * the beginning */
-        g_string_set_size(escaped, lengths[i] * 2 + 1);
-        mysql_real_escape_string(conn, escaped->str, fun_ptr(&(row[i])), lengths[i]);
-        if (fields[i].type == MYSQL_TYPE_JSON)
-          g_string_append(statement_row, "CONVERT(");
-        g_string_append_c(statement_row, '\'');
-        g_string_append(statement_row, escaped->str);
-        g_string_append_c(statement_row, '\'');
-        if (fields[i].type == MYSQL_TYPE_JSON)
-          g_string_append(statement_row, " USING UTF8MB4)");
+        } else {
+          /* We reuse buffers for string escaping, growing is expensive just at
+           * the beginning */
+          g_string_set_size(escaped, lengths[i] * 2 + 1);
+          mysql_real_escape_string(conn, escaped->str, fun_ptr(&(row[i])), lengths[i]);
+          if (fields[i].type == MYSQL_TYPE_JSON)
+            g_string_append(statement_row, "CONVERT(");
+          g_string_append_c(statement_row, '\"');
+          g_string_append(statement_row, escaped->str);
+          g_string_append_c(statement_row, '\"');
+          if (fields[i].type == MYSQL_TYPE_JSON)
+            g_string_append(statement_row, " USING UTF8MB4)");
+        }
       }
       if (i < num_fields - 1) {
-        g_string_append_c(statement_row, ',');
+        g_string_append(statement_row, fields_terminated_by);
       } else {
-        g_string_append_c(statement_row, ')');
+        g_string_append_printf(statement_row,"%s", lines_terminated_by);
+
         /* INSERT statement is closed before over limit */
         if (statement->len + statement_row->len + 1 > statement_size) {
           if (num_rows_st == 0) {
@@ -3734,7 +3888,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
             g_warning("Row bigger than statement_size for %s.%s", tj->database,
                       tj->table);
           }
-          g_string_append(statement, ";\n");
+          g_string_append(statement, statement_terminated_by);
 
           if (!write_data(file, statement)) {
             g_critical("Could not write out data for %s.%s", tj->database, tj->table);
@@ -3755,7 +3909,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
           }
           g_string_set_size(statement, 0);
         } else {
-          if (num_rows_st)
+          if (num_rows_st && ! load_data)
             g_string_append_c(statement, ',');
           g_string_append(statement, statement_row->str);
           num_rows_st++;
@@ -3776,32 +3930,13 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       /* strange, should not happen */
       g_string_append(statement, statement_row->str);
     } else {
-      if (complete_insert) {
-        if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` (", tj->table);
-        } else {
-          g_string_printf(statement, "INSERT INTO `%s` (", tj->table);
-        }
-        for (i = 0; i < num_fields; ++i) {
-          if (i > 0) {
-            g_string_append_c(statement, ',');
-          }
-          g_string_append_printf(statement, "`%s`", fields[i].name);
-        }
-        g_string_append(statement, ") VALUES");
-      } else {
-        if (insert_ignore) {
-          g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", tj->table);
-        } else {
-          g_string_printf(statement, "INSERT INTO `%s` VALUES", tj->table);
-        }
-      }
+      append_insert (complete_insert, statement, tj->table, fields, num_fields); 
       g_string_append(statement, statement_row->str);
     }
   }
 
   if (statement->len > 0) {
-    g_string_append(statement, ";\n");
+    g_string_append(statement, statement_terminated_by);
     if (!write_data(file, statement)) {
       g_critical(
           "Could not write out closing newline for %s.%s, now this is sad!",
@@ -3850,7 +3985,6 @@ cleanup:
 gboolean write_data(FILE *file, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
-
   while (written < data->len) {
     r=m_write(file, data->str + written, data->len);
     if (r < 0) {
