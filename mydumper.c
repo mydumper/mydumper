@@ -815,6 +815,15 @@ void initialize_thread(struct thread_data *td){
 
 }
 
+void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
+  if (mysql_query(conn,
+                  "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
+    g_critical("Failed to set isolation level: %s", mysql_error(conn));
+    exit(EXIT_FAILURE);
+  }
+}
+
+
 void initialize_consistent_snapshot(struct thread_data *td){
 
   if ( sync_wait != -1 && mysql_query(td->thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
@@ -822,11 +831,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
                mysql_error(td->thrconn));
     exit(EXIT_FAILURE);
   }
-  if (mysql_query(td->thrconn,
-                  "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
-    g_critical("Failed to set isolation level: %s", mysql_error(td->thrconn));
-    exit(EXIT_FAILURE);
-  }
+  set_transaction_isolation_level_repeatable_read(td->thrconn);
   if (mysql_query(td->thrconn,
                   "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
     g_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
@@ -1374,6 +1379,7 @@ MYSQL *create_main_connection() {
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
     g_message("Connected to a MySQL server");
+    set_transaction_isolation_level_repeatable_read(conn);
     break;
   case SERVER_TYPE_DRIZZLE:
     g_message("Connected to a Drizzle server");
