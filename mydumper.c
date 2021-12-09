@@ -711,7 +711,7 @@ void *process_stream(void *data){
   (void)data;
   char * filename=NULL;
   FILE * f=NULL;
-  char buf[1024];
+  char buf[STREAM_BUFFER_SIZE];
   int buflen;
   ssize_t len=0;
   for(;;){
@@ -725,15 +725,30 @@ void *process_stream(void *data){
     len=m_write(stdout, "\n", 1);
     free(used_filemame);
     f=m_open(filename,"r");
-    while((buflen = read(fileno(f), buf, 1024)) > 0)
-    {
-      len=m_write(stdout, buf, buflen);
-      if (len != buflen){
-        g_critical("Stream failed during transmition of file: %s",filename);
+    if (!f){
+      g_error("File failed to open: %s",filename);
+    }else{
+      fseek(f, 0, SEEK_END);
+      guint sz = ftell(f);
+      m_close(f);
+      f=m_open(filename,"r");
+      guint total_len=0;
+      buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+      while(buflen > 0){
+        len=m_write(stdout, buf, buflen);
+        total_len=total_len + buflen;
+        if (len != buflen){
+          g_critical("Stream failed during transmition of file: %s",filename);
+          exit(EXIT_FAILURE);
+        }
+        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+      }
+      if (total_len != sz){
+        g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
         exit(EXIT_FAILURE);
       }
+      m_close(f);
     }
-    m_close(f);
     if (no_delete == FALSE){
       remove(filename);
     }
@@ -3879,12 +3894,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
                 st_in_file * (guint)ceil((float)statement_size / 1024 / 1024) >
                     chunk_filesize) {
               fn++;
-              g_free(fcfile);
               m_close(file);
-              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
               if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+              g_free(fcfile);
+              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
               file = m_open(fcfile,"w");
-
               st_in_file = 0;
             }
           }
@@ -3947,7 +3961,7 @@ cleanup:
     if (remove(fcfile)) {
       g_warning("Failed to remove empty file : %s\n", fcfile);
     }
-  } else if (chunk_filesize && fn == 0) {
+  } else if (chunk_filesize) {
     if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
   }else{
     if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
