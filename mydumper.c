@@ -741,7 +741,7 @@ void *process_stream(void *data){
           g_critical("Stream failed during transmition of file: %s",filename);
           exit(EXIT_FAILURE);
         }
-        buflen = read(fileno(f), buf, 1024);
+        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
       }
       if (total_len != sz){
         g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
