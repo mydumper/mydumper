@@ -115,6 +115,7 @@ gboolean use_savepoints = FALSE;
 gboolean success_on_1146 = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean split_partitions = FALSE;
 gboolean load_data = FALSE;
 gboolean order_by_primary_key = FALSE;
 
@@ -261,6 +262,8 @@ static GOptionEntry entries[] = {
      "Transactional consistency only", NULL},
     {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
      "Use complete INSERT statements that include column names", NULL},
+    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions, 
+      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
       "Sets the names, use it at your own risk, default binary", NULL },
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
@@ -305,7 +308,7 @@ void dump_checksum(struct db_table * dbt,
 void dump_view(struct db_table *dbt, struct configuration *conf);
 void dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb);
-void dump_tables(MYSQL *, GList *, struct configuration *);
+void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *, GList *, struct configuration *);
 void dump_schema_post(struct database *database, struct configuration *conf);
 void restore_charset(GString *statement);
 void set_charset(GString *statement, char *character_set,
@@ -385,6 +388,27 @@ gboolean sig_triggered(gpointer user_data) {
   return FALSE;
 }
 
+GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
+	MYSQL_RES *res=NULL;
+	MYSQL_ROW row;
+
+	GList *partition_list = NULL;
+
+	gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
+	mysql_query(conn,query);
+	g_free(query);
+
+	res = mysql_store_result(conn);
+	if (res == NULL)
+		//partitioning is not supported
+		return partition_list;
+	while ((row = mysql_fetch_row(res))) {
+		partition_list = g_list_append(partition_list, strdup(row[0]));
+	}
+	mysql_free_result(res);
+
+	return partition_list;
+}
 
 gchar * build_meta_filename(char *database, char *table, const char *suffix){
   GString *filename = g_string_sized_new(20);
@@ -1947,7 +1971,7 @@ void start_dump(MYSQL *conn) {
     for (n = 0; n < num_threads; n++) {
       if (nits[n] > 0) {
         g_atomic_int_inc(&non_innodb_table_counter);
-        dump_tables(conn, nitl[n], &conf);
+        create_jobs_for_non_innodb_table_list_in_less_locking_mode(conn, nitl[n], &conf);
         g_list_free(nitl[n]);
       }
     }
@@ -2224,6 +2248,8 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
 }
 
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
+  if (!order_by_primary_key) return NULL;
+
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
@@ -2263,8 +2289,7 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
     g_string_free(field_list, TRUE);
     return NULL;
   } else {
-    gchar *order_string = g_string_free(field_list, FALSE);
-    return order_string;
+    return g_string_free(field_list, FALSE);
   }
 }
 
@@ -3532,15 +3557,17 @@ void dump_schema_post(struct database *database, struct configuration *conf) {
   return;
 }
 
-struct table_job * new_table_job(struct db_table *dbt, char *where, guint nchunk, gboolean has_generated_fields){
+struct table_job * new_table_job(struct db_table *dbt, char *partition, char *where, guint nchunk, gboolean has_generated_fields, char *order_by){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
   tj->database=dbt->database->name;
   tj->table=g_strdup(dbt->table);
 // end 
-  tj->nchunk=nchunk; 
+  tj->partition=partition;
   tj->where=where;
+  tj->order_by=order_by;
+  tj->nchunk=nchunk; 
   tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk);
   tj->has_generated_fields=has_generated_fields;
   tj->dbt=dbt;
@@ -3551,6 +3578,10 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb) {
 //  char *database = dbt->database;
 //  char *table = dbt->table;
+	GList * partitions = NULL;
+	if (split_partitions)
+		partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+
   GList *chunks = NULL;
   if (rows_per_file)
     chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
@@ -3558,10 +3589,24 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
   gboolean has_generated_fields =
     detect_generated_fields(conn, dbt);
 
-  char *order_by = NULL;
-  if (order_by_primary_key)
-    order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
-  if (chunks) {
+  if (partitions){
+    int npartition=0;
+		for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+			struct job *j = g_new0(struct job,1);
+			struct table_job *tj = NULL;
+			j->job_data=(void*) tj;
+			j->conf=conf;
+			j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+      tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      j->job_data = (void *)tj;
+			if (!is_innodb && npartition)
+			  g_atomic_int_inc(&non_innodb_table_counter);
+			g_async_queue_push(conf->queue,j);
+			npartition++;
+		}
+		g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);    
+
+  } else if (chunks) {
     int nchunk = 0;
     GList *iter;
     for (iter = chunks; iter != NULL; iter = iter->next) {
@@ -3569,12 +3614,7 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
       struct table_job *tj = NULL;
       j->conf = conf;
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-      tj = new_table_job(dbt, (char *)iter->data, nchunk, has_generated_fields);
-      if (order_by) {
-        tj->order_by = g_strdup(order_by);
-      } else {
-        tj->order_by = NULL;
-      }
+      tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
       j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
@@ -3587,22 +3627,17 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
     struct table_job *tj = NULL;
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-    tj = new_table_job(dbt, NULL, 0, has_generated_fields);
-    if (order_by) {
-      tj->order_by = g_strdup(order_by);
-    } else {
-      tj->order_by = NULL;
-    }
+    tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
     j->job_data = (void *)tj;
     g_async_queue_push(conf->queue, j);
   }
-  g_free(order_by);
 }
 
-void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
+void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
                  struct configuration *conf) {
   struct db_table *dbt=NULL;
   GList *chunks = NULL;
+  GList * partitions = NULL;
 
   struct job *j = g_new0(struct job, 1);
   struct tables_job *tjs = g_new0(struct tables_job, 1);
@@ -3611,6 +3646,7 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
   j->job_data = (void *)tjs;
 
   GList *iter;
+
   for (iter = noninnodb_tables_list; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
 
@@ -3619,38 +3655,38 @@ void dump_tables(MYSQL *conn, GList *noninnodb_tables_list,
     gboolean has_generated_fields =
       detect_generated_fields(conn, dbt);
 
-    if (chunks) {
+    if (split_partitions)
+      partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+
+    if (partitions){
+      int npartition=0;
+      for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+        struct table_job *tj = NULL;
+        tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
+        npartition++;
+      }
+      g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
+
+    } else if (chunks) {
       int nchunk = 0;
       GList *citer;
-      gchar *order_by = NULL;
-      if (order_by_primary_key)
-        order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = NULL;
-        tj = new_table_job(dbt, (char *)iter->data, nchunk, has_generated_fields);
-        if (order_by)
-          tj->order_by = g_strdup(order_by);
-        else
-          tj->order_by = NULL;
+        struct table_job *tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }
-      if (order_by)
-        g_free(order_by);
       g_list_free(chunks);
     } else {
       struct table_job *tj = NULL;
-      tj = new_table_job(dbt, NULL, 0, has_generated_fields);
-      if (order_by_primary_key)
-        tj->order_by = get_primary_key_string(conn, dbt->database->name, dbt->table);
-      else
-        tj->order_by = NULL;
+      tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
   }
   tjs->table_job_list = g_list_reverse(tjs->table_job_list);
   g_async_queue_push(conf->queue_less_locking, j);
 }
+
 void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
   for (i = 0; i < num_fields; ++i) {
@@ -3724,9 +3760,9 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s",
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, tj->database, tj->table, (tj->where || where_option ) ? "WHERE" : "",
+      select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
       tj->where ? tj->where : "",  (tj->where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
       tj->order_by ? tj->order_by : "");
   g_string_free(select_fields, TRUE);
