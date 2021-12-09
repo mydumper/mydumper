@@ -711,7 +711,7 @@ void *process_stream(void *data){
   (void)data;
   char * filename=NULL;
   FILE * f=NULL;
-  char buf[1024];
+  char buf[STREAM_BUFFER_SIZE];
   int buflen;
   ssize_t len=0;
   for(;;){
@@ -733,24 +733,19 @@ void *process_stream(void *data){
       m_close(f);
       f=m_open(filename,"r");
       guint total_len=0;
-//      fseek(f, 0, SEEK_SET);
-//      rewind(f);
-      buflen = read(fileno(f), buf, 1024);
+      buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
       while(buflen > 0){
         len=m_write(stdout, buf, buflen);
         total_len=total_len + buflen;
-//        g_message("Data transmited: %ld  %d", len, buflen);
         if (len != buflen){
           g_critical("Stream failed during transmition of file: %s",filename);
           exit(EXIT_FAILURE);
         }
         buflen = read(fileno(f), buf, 1024);
-//        if (total_len> 100000)
-//          break;
       }
       if (total_len != sz){
-        g_critical("Length of the file not the same: %s  %d   %d  %ld   %d",filename,sz,total_len,len, buflen);
-//        exit(EXIT_FAILURE);
+        g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
+        exit(EXIT_FAILURE);
       }
       m_close(f);
     }
