@@ -71,6 +71,7 @@ struct job {
 struct table_job {
   char *database;
   char *table;
+  char *partition;
   guint nchunk;
   char *filename;
   char *where;
