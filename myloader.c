@@ -1757,12 +1757,12 @@ gboolean has_mydumper_suffix(gchar *line){
 
 void *process_stream(struct configuration *conf){
   char * filename=NULL,*real_filename=NULL;
-  char buffer[1000000]; 
+  char buffer[STREAM_BUFFER_SIZE]; 
   FILE *file=NULL;
   gboolean eof=FALSE;
   GHashTable *table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   do {
-    if(fgets(buffer, 1000000, stdin) == NULL){
+    if(fgets(buffer, STREAM_BUFFER_SIZE, stdin) == NULL){
       if (file && feof(file)){
         eof = TRUE;
         buffer[0] = '\0';

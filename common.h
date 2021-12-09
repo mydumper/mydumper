@@ -16,6 +16,7 @@
 */
 #ifndef _common_h
 #define _common_h
+#define STREAM_BUFFER_SIZE 1000000
 
 char *hostname = NULL;
 char *username = NULL;
