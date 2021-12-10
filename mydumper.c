@@ -3574,6 +3574,20 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, char *wh
   return tj;
 }
 
+void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
+  // Each job weights 500 bytes aprox.
+  // if we reach to 200k of jobs, which is 100MB of RAM, we are going to wait 5 seconds 
+  // which is not too much considering that it will impossible to proccess 200k of jobs 
+  // in 5 seconds. 
+  // I don't think that we need to this values as parameters, unless that a user needs to 
+  // set hundreds of threads
+  while (g_async_queue_length(queue)>200000){
+    g_warning("Too many jobs in the queue. We are pausing the jobs creation for 5 seconds.");
+    sleep(5);
+  }
+  g_async_queue_push(queue, element);
+}
+
 void dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb) {
 //  char *database = dbt->database;
@@ -3618,7 +3632,7 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
       j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
-      g_async_queue_push(conf->queue, j);
+      m_async_queue_push_conservative(conf->queue, j);
       nchunk++;
     }
     g_list_free(chunks);
