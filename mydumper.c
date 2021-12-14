@@ -56,7 +56,8 @@
 #include "getPassword.h"
 #include "logging.h"
 #include "set_verbose.h"
-# include "locale.h"
+#include "locale.h"
+#include <sys/statvfs.h>
 
 char *regexstring = NULL;
 
@@ -143,6 +144,10 @@ GHashTable *database_hash=NULL;
 GHashTable *ref_table=NULL;
 guint table_number;
 
+guint pause_at=0;
+guint resume_at=0;
+
+
 gchar *fields_terminated_by=NULL;
 gchar *fields_enclosed_by=NULL;
 gchar *fields_escaped_by=NULL;
@@ -155,6 +160,8 @@ gchar *fields_terminated_by_ld=NULL;
 gchar *lines_starting_by_ld=NULL;
 gchar *lines_terminated_by_ld=NULL;
 gchar *statement_terminated_by_ld=NULL;
+
+gchar *disk_limits=NULL;
 
 // For daemon mode
 guint dump_number = 0;
@@ -292,6 +299,11 @@ static GOptionEntry entries[] = {
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
+    { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
+      "Set the limit to pause and resume if determines there is no enough disk space."
+      "Accepts values like: '<resume>:<pause>' in MB."
+      "For instance: 100:500 will pause when there is only 100MB free and will"
+      "resume if 500MB are available", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -957,8 +969,17 @@ void *process_queue(struct thread_data *td) {
 
     g_mutex_unlock(ll_mutex);
   }
+  GAsyncQueue *resume_queue=NULL;
 
   for (;;) {
+    if (conf->pause_resume){
+      resume_queue = (GAsyncQueue *)g_async_queue_try_pop(conf->pause_resume);
+      if (resume_queue != NULL){
+        g_async_queue_pop(resume_queue);
+        resume_queue=NULL;
+        continue;
+      }
+    }
     GTimeVal tv;
     g_get_current_time(&tv);
     g_time_val_add(&tv, 1000 * 1000 * 1);
@@ -1109,6 +1130,60 @@ GHashTable * initialize_hash_of_session_variables(){
   return set_session_hash;
 }
 
+void parse_disk_limits(){
+  gchar ** strsplit = g_strsplit(disk_limits,":",3);
+  if (g_strv_length(strsplit)!=2){
+    g_critical("Parse limit failed");
+    exit(EXIT_FAILURE);
+  }
+  pause_at=atoi(strsplit[0]);
+  resume_at=atoi(strsplit[1]);
+}
+
+gboolean is_disk_space_ok(guint val){
+  struct statvfs buffer;
+  int ret = statvfs(output_directory, &buffer);
+  if (!ret) {
+    const double available = (double)(buffer.f_bfree * buffer.f_frsize) / 1024 / 1024;
+    return available > val;
+  }else{
+    g_warning("Disk space check failed");
+  }
+  return TRUE;
+}
+
+void *monitor_disk_space_thread (void *queue){
+  (void)queue;
+  guint i=0;
+  GAsyncQueue **pause_queue_per_thread=g_new(GAsyncQueue * , num_threads) ;
+  for(i=0;i<num_threads;i++){
+    pause_queue_per_thread[i]=g_async_queue_new();
+  }
+
+  gboolean previous_state = TRUE, current_state = TRUE;
+
+  while (disk_limits != NULL){
+    current_state = previous_state ? is_disk_space_ok(pause_at) : is_disk_space_ok(resume_at);
+    if (previous_state != current_state){
+      if (!current_state){
+        g_warning("Pausing backup disk space lower than %dMB. You need to free up to %dMB to resume",pause_at,resume_at);
+        for(i=0;i<num_threads;i++){
+          g_async_queue_push(queue,pause_queue_per_thread[i]);
+        }
+      }else{
+        g_warning("Resuming backup");
+        for(i=0;i<num_threads;i++){
+          g_async_queue_push(pause_queue_per_thread[i], GINT_TO_POINTER(1));
+        }
+      }
+      previous_state = current_state;
+
+    }
+    sleep(10);
+  }
+  return NULL;
+}
+
 
 int main(int argc, char *argv[]) {
   GError *error = NULL;
@@ -1183,6 +1258,10 @@ int main(int argc, char *argv[]) {
         strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
       }
     }
+  }
+
+  if (disk_limits!=NULL){
+    parse_disk_limits();
   }
 
   // prompt for password if it's NULL
@@ -1486,7 +1565,7 @@ void dump_metadata(struct db_table * dbt){
 }
 
 void start_dump(MYSQL *conn) {
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *p;
   char *p2;
   char *p3;
@@ -1501,7 +1580,12 @@ void start_dump(MYSQL *conn) {
   guint n;
   FILE *nufile = NULL;
   guint have_backup_locks = 0;
+  GThread *disk_check_thread = NULL;
 
+  if (disk_limits!=NULL){
+    conf.pause_resume = g_async_queue_new();
+    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
+  }
   for (n = 0; n < num_threads; n++) {
     nits[n] = 0;
     nitl[n] = NULL;
@@ -2098,6 +2182,10 @@ void start_dump(MYSQL *conn) {
   }
   g_free(td);
   g_free(threads);
+  if (disk_check_thread!=NULL){
+    disk_limits=NULL;
+  }
+
 }
 
 void dump_create_database(char *database, struct configuration *conf) {
@@ -4048,3 +4136,4 @@ gboolean write_data(FILE *file, GString *data) {
 
   return TRUE;
 }
+

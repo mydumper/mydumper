@@ -46,6 +46,7 @@ struct configuration {
   GAsyncQueue *ready_less_locking;
   GAsyncQueue *ready_database_dump;
   GAsyncQueue *unlock_tables;
+  GAsyncQueue *pause_resume;
   GMutex *mutex;
   int done;
 };
