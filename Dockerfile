@@ -1,4 +1,5 @@
 FROM gcc
+FROM ubuntu:latest
 
 RUN \
   apt-get update && \
