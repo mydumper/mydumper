@@ -737,6 +737,9 @@ void *process_stream(void *data){
   FILE * f=NULL;
   char buf[STREAM_BUFFER_SIZE];
   int buflen;
+  guint64 total_size=0;
+  GDateTime *total_start_time=g_date_time_new_now_local();
+  GTimeSpan diff=0,total_diff=0;
   ssize_t len=0;
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
@@ -747,6 +750,8 @@ void *process_stream(void *data){
     len=m_write(stdout, "\n-- ", 4);
     len=m_write(stdout, used_filemame, strlen(used_filemame));
     len=m_write(stdout, "\n", 1);
+    total_size+=5;
+    total_size+=strlen(used_filemame);
     free(used_filemame);
     f=m_open(filename,"r");
     if (!f){
@@ -757,6 +762,7 @@ void *process_stream(void *data){
       m_close(f);
       f=m_open(filename,"r");
       guint total_len=0;
+      GDateTime *start_time=g_date_time_new_now_local();
       buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
       while(buflen > 0){
         len=m_write(stdout, buf, buflen);
@@ -770,6 +776,15 @@ void *process_stream(void *data){
       if (total_len != sz){
         g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
         exit(EXIT_FAILURE);
+      }else{
+        diff=g_date_time_difference(g_date_time_new_now_local(),start_time)/G_TIME_SPAN_SECOND;
+        total_diff=g_date_time_difference(g_date_time_new_now_local(),total_start_time)/G_TIME_SPAN_SECOND;
+        if (diff > 0){
+          g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,sz/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+        }else{
+          g_message("File %s transfered | Global: %ld MB/s",filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+        }
+        total_size+=sz;
       }
       m_close(f);
     }
@@ -777,6 +792,8 @@ void *process_stream(void *data){
       remove(filename);
     }
   }
+  total_diff=g_date_time_difference(g_date_time_new_now_local(),total_start_time)/G_TIME_SPAN_SECOND;
+  g_message("All data transfered was %ld at a rate of %ld MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
   return NULL;
 }
 
