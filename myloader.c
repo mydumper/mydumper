@@ -577,7 +577,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
         g_string_append(create_table_statement, split_file[i]);
         g_string_append_c(create_table_statement,'\n');
       }else{
-        flag+=IS_ALTER_TABLE_PRESENT;
+        flag|=IS_ALTER_TABLE_PRESENT;
         if (g_strrstr(split_file[i],"  FULLTEXT")) fulltext_counter++;
         if (fulltext_counter>1){
           fulltext_counter=1;
@@ -589,7 +589,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
       }
     }else{
       if (g_strstr_len(split_file[i],12,"  CONSTRAINT")){
-        flag+=INCLUDE_CONSTRAINT;
+        flag|=INCLUDE_CONSTRAINT;
         g_string_append(alter_table_constraint_statement,"\n ADD");
         g_string_append(alter_table_constraint_statement, split_file[i]);
       }else{
@@ -601,7 +601,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
         g_string_append_c(create_table_statement,'\n');
       }
     }
-    if (g_strrstr(split_file[i],"ENGINE=InnoDB")) flag+=IS_INNODB_TABLE;
+    if (g_strrstr(split_file[i],"ENGINE=InnoDB")) flag|=IS_INNODB_TABLE;
   }
   return flag;
 }
