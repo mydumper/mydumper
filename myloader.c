@@ -90,14 +90,15 @@ void no_log(const gchar *log_domain, GLogLevelFlags log_level,
 void create_database(struct thread_data *td, gchar *database);
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 gint compare_filename_part (gconstpointer a, gconstpointer b);
+gint compare_by_time(gconstpointer a, gconstpointer b);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
 void append_alter_table(GString * alter_table_statement, char *database, char *table);
 void finish_alter_table(GString * alter_table_statement);
 guint execute_use(struct thread_data *td, const gchar *msg);
 int overwrite_table(MYSQL *conn,gchar * database, gchar * table);
 gchar * get_database_name_from_content(const gchar *filename);
-void process_restore_job(struct thread_data *td, struct restore_job *rj, int count);
-gboolean process_job(struct thread_data *td, struct job *job, int count);
+void process_restore_job(struct thread_data *td, struct restore_job *rj);
+gboolean process_job(struct thread_data *td, struct job *job);
 void *process_stream(struct configuration *conf);
 GAsyncQueue *get_queue_for_type(struct configuration *conf, enum file_type current_ft);
 void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg);
@@ -228,7 +229,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   return dbt;
 }
 
-struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, enum restore_job_type type, const char *object){
+struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->type=type;
   rj->filename= filename;
@@ -236,6 +237,7 @@ struct restore_job * new_restore_job( char * filename, char * database, struct d
   rj->statement = statement;
   rj->dbt = dbt;
   rj->part = part;
+  rj->sub_part = sub_part;
   rj->object = object;
   return rj;
 }
@@ -295,7 +297,7 @@ void restore_from_directory(struct configuration *conf){
   g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   g_debug("Step 4 completed");
 
-  GList * t=conf->table_list;
+  GList * t=g_list_sort(conf->table_list, compare_by_time);
   g_message("Import timings:");
   g_message("Data      \t| Index    \t| Total   \t| Table");
   while (t != NULL){
@@ -662,11 +664,11 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
               g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
               dbt->indexes=alter_table_statement;
               if (stream){
-                struct restore_job *rj = new_restore_job(dbt->filename, dbt->real_database, dbt, dbt->indexes, 0, JOB_RESTORE_STRING, "indexes");
+                struct restore_job *rj = new_restore_job(dbt->filename, dbt->real_database, dbt, dbt->indexes, 0, 0, JOB_RESTORE_STRING, "indexes");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
               }
               if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, alter_table_constraint_statement, 0, JOB_RESTORE_STRING, "constraint");
+                struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, alter_table_constraint_statement, 0, 0, JOB_RESTORE_STRING, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
@@ -686,7 +688,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
       }
     }
   }
-  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0,JOB_RESTORE_SCHEMA_STRING, "");
+  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0, 0, JOB_RESTORE_SCHEMA_STRING, "");
   g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
   if (!is_compressed) {
     fclose(infile);
@@ -706,7 +708,7 @@ gchar * get_database_name_from_filename(const gchar *filename){
   return db_name;
 }
 
-void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part){
+void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part, guint *sub_part){
   guint l = strlen(filename)-4;
   if (g_str_has_suffix(filename, compress_extension)){
     l-=strlen(compress_extension);
@@ -718,10 +720,12 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
     *database=g_strdup(split_db_tbl[0]);
     *table=g_strdup(split_db_tbl[1]);
     *part=g_ascii_strtoull(split_db_tbl[2], NULL, 10);
+    if (g_strv_length(split_db_tbl)>3) *sub_part=g_ascii_strtoull(split_db_tbl[3], NULL, 10);
   }else{
     *database=NULL;
     *table=NULL;
     *part=0;
+    *sub_part=0;
   }
   g_strfreev(split_db_tbl);
 }
@@ -750,7 +754,7 @@ void process_database_filename(struct configuration *conf, char * filename, cons
   g_debug("Adding database: %s -> %s", db_kname, db ? db : db_vname);
   db_hash_insert(db_kname, db ? db : db_vname);
   if (!db){
-    struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
+    struct restore_job *rj = new_restore_job(g_strdup(filename), db_vname, NULL, NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
     g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
   }
 }
@@ -777,8 +781,8 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   total_data_sql_files++;
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
-  guint part;
-  get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part);
+  guint part=0,sub_part=0;
+  get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part,&sub_part);
   if (db_name == NULL || table_name == NULL){
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
@@ -786,7 +790,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   char *real_db_name=db_hash_lookup(db_name);
   struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
   //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
-  struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part , JOB_RESTORE_FILENAME, "");
+  struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part, sub_part, JOB_RESTORE_FILENAME, "");
   // in stream mode, there is no need to sort. We can enqueue directly, where? queue maybe?.
   if (stream){
     g_async_queue_push(conf->data_queue, new_job(JOB_RESTORE ,rj,dbt->real_database));
@@ -802,7 +806,7 @@ void process_schema_filename(struct configuration *conf, const gchar *filename, 
       g_critical("Database is null on: %s",filename);
     }
     real_db_name=db_hash_lookup(database);
-    struct restore_job *rj = new_restore_job(g_strdup(filename), real_db_name , NULL , NULL, 0 , JOB_RESTORE_SCHEMA_FILENAME, object);
+    struct restore_job *rj = new_restore_job(g_strdup(filename), real_db_name , NULL , NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 
@@ -1020,6 +1024,7 @@ void load_directory_information(struct configuration *conf) {
       i=i->next;
     }
     dbt->count=g_async_queue_length(dbt->queue);
+    g_debug("Setting count to: %d", dbt->count);
   }
   g_hash_table_destroy(table_hash);
   conf->table_list=table_list;
@@ -1119,7 +1124,13 @@ gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
   return a_val->rows < b_val->rows;
 }
 gint compare_filename_part (gconstpointer a, gconstpointer b){
-  return ((struct restore_job *)a)->part > ((struct restore_job *)b)->part;
+  return ((struct restore_job *)a)->part == ((struct restore_job *)b)->part ? ((struct restore_job *)a)->sub_part > ((struct restore_job *)b)->sub_part : ((struct restore_job *)a)->part > ((struct restore_job *)b)->part ;
+}
+
+gint compare_by_time(gconstpointer a, gconstpointer b){
+  return 
+    g_date_time_difference(((struct db_table *)a)->finish_time,((struct db_table *)a)->start_time) > 
+    g_date_time_difference(((struct db_table *)b)->finish_time,((struct db_table *)b)->start_time);
 }
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn) {
@@ -1169,10 +1180,10 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   }
 }
 
-gboolean process_job(struct thread_data *td, struct job *job, int count){
+gboolean process_job(struct thread_data *td, struct job *job){
   switch (job->type) {
     case JOB_RESTORE:
-      process_restore_job(td,job->job_data,count);
+      process_restore_job(td,job->job_data);
       break;
     case JOB_WAIT:
       g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
@@ -1192,7 +1203,7 @@ gboolean process_job(struct thread_data *td, struct job *job, int count){
 }
 
 
-void process_restore_job(struct thread_data *td, struct restore_job *rj, int count){
+void process_restore_job(struct thread_data *td, struct restore_job *rj){
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
 
@@ -1222,8 +1233,8 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj, int cou
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu .", td->thread_id,
-                dbt->real_database, dbt->real_table, rj->part, count, rj->filename, progress,total_data_sql_files);
+      g_message("Thread %d restoring `%s`.`%s` part %d %d of %d from %s. Progress %llu of %llu .", td->thread_id,
+                dbt->real_database, dbt->real_table, rj->part, rj->sub_part, dbt->count, rj->filename, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
       if (stream && !dbt->schema_created){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
@@ -1255,7 +1266,6 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj, int cou
 
 void *process_stream_queue(struct thread_data * td) {
   struct job *job = NULL;
-  int count =0;
   gboolean cont=TRUE;
 
   enum file_type ft;
@@ -1268,7 +1278,7 @@ void *process_stream_queue(struct thread_data * td) {
     job = (struct job *)g_async_queue_pop(q);
 
     execute_use_if_needs_to(td, job->use_database, "Restoring from stream");
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
     }
   }
   return NULL;
@@ -1279,19 +1289,18 @@ void *process_directory_queue(struct thread_data * td) {
   struct db_table *dbt=NULL;
   struct job *job = NULL;
   gboolean cont=TRUE;
-  int count =0;
 
   // Step 1: creating databases
   while (cont){
     job = (struct job *)g_async_queue_pop(td->conf->database_queue);
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
   }
   // Step 2: Create tables
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(td->conf->table_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring tables");
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
   }
 
   // Is this correct in a streaming scenario ?
@@ -1323,7 +1332,6 @@ void *process_directory_queue(struct thread_data * td) {
         }
         dbt=table_list->data;
         g_mutex_lock(dbt->mutex);
-        count=dbt->count;
         if (dbt->start_time==NULL) dbt->start_time=g_date_time_new_now_local();
         dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
@@ -1368,7 +1376,7 @@ void *process_directory_queue(struct thread_data * td) {
      job = (struct job *)g_async_queue_pop(td->conf->data_queue);
     }
     execute_use_if_needs_to(td, job->use_database, "Restoring data");
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
   }
   return NULL;
 }
@@ -1420,7 +1428,6 @@ void *process_queue(struct thread_data *td) {
   }
   struct job *job = NULL;
   gboolean cont=TRUE;
-  int count =0;
 
 //  g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
@@ -1428,14 +1435,14 @@ void *process_queue(struct thread_data *td) {
     job = (struct job *)g_async_queue_pop(conf->post_table_queue);
 //    g_message("%s",((struct restore_job *)job->job_data)->object);
     execute_use_if_needs_to(td, job->use_database, "Restoring post table");
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
   }
 //  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
-    cont=process_job(td, job, count);
+    cont=process_job(td, job);
   }
 
   if (td->thrconn)
