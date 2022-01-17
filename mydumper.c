@@ -207,7 +207,7 @@ static GOptionEntry entries[] = {
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
      "Dump rows with INSERT IGNORE", NULL},
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
-     "Do not dump table schemas with the data", NULL},
+     "Do not dump table schemas with the data and triggers", NULL},
     {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
      "Dump table checksums with the data", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
