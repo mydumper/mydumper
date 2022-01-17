@@ -452,17 +452,19 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
 // Global Var used:
 // - dump_directory
 // - compress_extension
-gchar * build_filename(char *database, char *table, guint part, const gchar *extension){
+gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
   GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension);
+  sub_part == 0 ?
+  g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension):
+  g_string_append_printf(filename, "%s.%s.%05d.%05d.%s%s", database, table, part, sub_part, extension, compress_extension);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
 }
 
 
-gchar * build_data_filename(char *database, char *table, guint part ){
-  return build_filename(database,table,part,"sql");
+gchar * build_data_filename(char *database, char *table, guint part, guint sub_part){
+  return build_filename(database,table,part,sub_part,"sql");
 }
 
 void clear_dump_directory(gchar *directory) {
@@ -1372,8 +1374,9 @@ int main(int argc, char *argv[]) {
 
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
-    chunk_filesize = 0;
-    g_warning("--chunk-filesize disabled by --rows option");
+//    chunk_filesize = 0;
+//    g_warning("--chunk-filesize disabled by --rows option");
+    g_warning("We are going to chunk by row and by filesize");
   }
 
   // until we have an unique option on lock types we need to ensure this
@@ -3683,7 +3686,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, char *wh
   tj->where=where;
   tj->order_by=order_by;
   tj->nchunk=nchunk; 
-  tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk);
+  tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, 0);
   tj->has_generated_fields=has_generated_fields;
   tj->dbt=dbt;
   return tj;
@@ -3853,6 +3856,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   // It could write multiple INSERT statments in a data file if statement_size is reached
   guint i;
   guint fn = 0;
+  guint sub_part=0;
   guint st_in_file = 0;
   guint num_fields = 0;
   guint64 num_rows = 0;
@@ -3866,11 +3870,11 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
   /* Buffer for escaping field values */
   GString *escaped = g_string_sized_new(3000);
   FILE *main_file=file;
-  if (chunk_filesize) {
-    fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
-  }else{
+//  if (chunk_filesize) {
+//    fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
+//  }else{
     fcfile = g_strdup(tj->filename);
-  }
+//  }
 
   gboolean has_generated_fields = tj->has_generated_fields;
 
@@ -3958,7 +3962,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       }
       if ( load_data ){
         if (first_time){
-          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, "dat");
+          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, "dat");
 //	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
 //			      (compress_output ? ".gz" : ""));
 	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
@@ -4064,11 +4068,15 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
             if (chunk_filesize &&
                 st_in_file * (guint)ceil((float)statement_size / 1024 / 1024) >
                     chunk_filesize) {
-              fn++;
+              if (tj->where == NULL){
+                fn++;
+              }else{
+                sub_part++;
+              }
               m_close(file);
               if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
               g_free(fcfile);
-              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn);
+              fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
               file = m_open(fcfile,"w");
               st_in_file = 0;
             }

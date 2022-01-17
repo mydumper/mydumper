@@ -68,6 +68,7 @@ struct restore_job {
   char *filename;
   GString *statement;
   guint part;
+  guint sub_part;
   const char *object;
 };
 
