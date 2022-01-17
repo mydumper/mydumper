@@ -119,6 +119,7 @@ gboolean insert_ignore = FALSE;
 gboolean split_partitions = FALSE;
 gboolean load_data = FALSE;
 gboolean order_by_primary_key = FALSE;
+gboolean csv = FALSE;
 
 GList *innodb_tables = NULL;
 GMutex *innodb_tables_mutex = NULL;
@@ -304,6 +305,8 @@ static GOptionEntry entries[] = {
       "Accepts values like: '<resume>:<pause>' in MB."
       "For instance: 100:500 will pause when there is only 100MB free and will"
       "resume if 500MB are available", NULL },
+    { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
+      "Automatically enables --load-data and set variables to export in CSV format.", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -1286,6 +1289,13 @@ int main(int argc, char *argv[]) {
     password = passwordPrompt();
   }
 
+  if (csv){
+    load_data=TRUE;
+    if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
+    if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
+    if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
+    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
+  }
   if (load_data){
     if (!fields_enclosed_by_ld){
     	fields_enclosed_by=g_strdup("");
