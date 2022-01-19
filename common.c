@@ -190,3 +190,19 @@ guint strcount(gchar *text){
   return i;
 }
 
+gboolean m_remove(gchar * directory, const gchar * filename){
+  gchar *path = g_build_filename(directory, filename, NULL);
+  g_message("Removing file: %s", path);
+  remove(path);
+  g_free(path);
+  return TRUE;
+}
+
+gboolean is_table_in_list(gchar *table_name, gchar **table_list){
+  guint i = 0;
+  for (i = 0; table_list[i] != NULL; i++)
+    if (g_ascii_strcasecmp(table_list[i], table_name) == 0)
+      return TRUE;
+  return FALSE;
+}
+

@@ -59,7 +59,9 @@
 #include "locale.h"
 #include <sys/statvfs.h>
 
-char *regexstring = NULL;
+#include "src/tables_skiplist.h"
+#include "src/regex.h"
+//char *regexstring = NULL;
 
 const char DIRECTORY[] = "export";
 
@@ -96,16 +98,15 @@ gboolean ignore_generated_fields = FALSE;
 
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
-gchar *tables_list = NULL;
+//gchar *tables_list = NULL;
 gchar *tidb_snapshot = NULL;
-GSequence *tables_skiplist = NULL;
-gchar *tables_skiplist_file = NULL;
-char **tables = NULL;
+//gchar *tables_skiplist_file = NULL;
+//char **tables = NULL;
 GList *no_updated_tables = NULL;
 
 gboolean no_schemas = FALSE;
 gboolean dump_checksums = FALSE;
-gboolean no_data = FALSE;
+//gboolean no_data = FALSE;
 gboolean no_locks = FALSE;
 gboolean dump_triggers = FALSE;
 gboolean dump_events = FALSE;
@@ -173,17 +174,17 @@ GMainLoop *m1;
 static GCond *ll_cond = NULL;
 static GMutex *ll_mutex = NULL;
 
-int errors;
+guint errors;
 
 static GOptionEntry entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
-    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
-     "Comma delimited table list to dump (does not exclude regex option)",
-     NULL},
-    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
-     "File containing a list of database.table entries to skip, one per line "
-     "(skips before applying regex option)",
-     NULL},
+//    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
+//     "Comma delimited table list to dump (does not exclude regex option)",
+//     NULL},
+//    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
+//     "File containing a list of database.table entries to skip, one per line "
+//     "(skips before applying regex option)",
+//     NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
@@ -201,8 +202,8 @@ static GOptionEntry entries[] = {
      "Compress output files", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
-     "Regular expression for 'db.table' matching", NULL},
+//    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
+//     "Regular expression for 'db.table' matching", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
@@ -345,10 +346,6 @@ void dump_table_data_file(MYSQL *conn, struct table_job * tj);
 void dump_table_checksum(MYSQL *conn, char *database, char *table,  char *filename);
 //void create_backup_dir(char *directory);
 gboolean write_data(FILE *, GString *);
-gboolean check_regex(char *database, char *table);
-gboolean check_skiplist(char *database, char *table);
-int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data);
-void read_tables_skiplist(const gchar *filename);
 void start_dump(MYSQL *conn);
 MYSQL *create_main_connection();
 void *exec_thread(void *data);
@@ -358,15 +355,16 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
 gchar *get_ref_table(gchar *k);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 
+/*
 gboolean check_regex_general(char *regex, char *word) {
-  /* This is not going to be used in threads */
+//   This is not going to be used in threads 
   static pcre *re = NULL;
   int rc;
   int ovector[9] = {0};
   const char *error;
   int erroroffset;
 
-  /* Let's compile the RE before we do anything */
+  // Let's compile the RE before we do anything 
   if (!re) {
     re = pcre_compile(regex, PCRE_CASELESS | PCRE_MULTILINE, &error,
                       &erroroffset, NULL);
@@ -379,12 +377,13 @@ gboolean check_regex_general(char *regex, char *word) {
   rc = pcre_exec(re, NULL, word, strlen(word), 0, 0, ovector, 9);
   return (rc > 0) ? TRUE : FALSE;
 }
+*/
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
-  char * regex=strdup("^[\\w\\-_ ]+$");
-  if (check_regex_general(regex,table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
+//  char * rx=strdup("^[\\w\\-_ ]+$");
+  if (check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
     return table;
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
@@ -503,9 +502,9 @@ gboolean run_snapshot(gpointer *data) {
 
 
 /* Check database.table string against regular expression */
-
+/*
 gboolean check_regex(char *database, char *table) {
-  /* This is not going to be used in threads */
+//   This is not going to be used in threads 
   static pcre *re = NULL;
   int rc;
   int ovector[9] = {0};
@@ -514,7 +513,7 @@ gboolean check_regex(char *database, char *table) {
 
   char *p;
 
-  /* Let's compile the RE before we do anything */
+   Let's compile the RE before we do anything 
   if (!re) {
     re = pcre_compile(regexstring, PCRE_CASELESS | PCRE_MULTILINE, &error,
                       &erroroffset, NULL);
@@ -530,65 +529,7 @@ gboolean check_regex(char *database, char *table) {
 
   return (rc > 0) ? TRUE : FALSE;
 }
-
-/* Check database.table string against skip list; returns TRUE if found */
-
-gboolean check_skiplist(char *database, char *table) {
-  if (g_sequence_lookup(tables_skiplist,
-                        g_strdup_printf("%s.%s", database, table),
-                        tables_skiplist_cmp, NULL)) {
-    return TRUE;
-  } else {
-    return FALSE;
-  };
-}
-
-/* Comparison function for skiplist sort and lookup */
-
-int tables_skiplist_cmp(gconstpointer a, gconstpointer b, gpointer user_data) {
-  /* Not using user_data, but needed for function prototype, shutting up
-   * compiler warnings about unused variable */
-  (void)user_data;
-  /* Any sorting function would work, as long as its usage is consistent
-   * between sort and lookup.  strcmp should be one of the fastest. */
-  return strcmp(a, b);
-}
-
-/* Read the list of tables to skip from the given filename, and prepares them
- * for future lookups. */
-
-void read_tables_skiplist(const gchar *filename) {
-  GIOChannel *tables_skiplist_channel = NULL;
-  gchar *buf = NULL;
-  GError *error = NULL;
-  /* Create skiplist if it does not exist */
-  if (!tables_skiplist) {
-    tables_skiplist = g_sequence_new(NULL);
-  };
-  tables_skiplist_channel = g_io_channel_new_file(filename, "r", &error);
-
-  /* Error opening/reading the file? bail out. */
-  if (!tables_skiplist_channel) {
-    g_critical("cannot read/open file %s, %s\n", filename, error->message);
-    errors++;
-    return;
-  };
-
-  /* Read lines, push them to the list */
-  do {
-    g_io_channel_read_line(tables_skiplist_channel, &buf, NULL, NULL, NULL);
-    if (buf) {
-      g_strchomp(buf);
-      g_sequence_append(tables_skiplist, buf);
-    };
-  } while (buf);
-  g_io_channel_shutdown(tables_skiplist_channel, FALSE, NULL);
-  /* Sort the list, so that lookups work */
-  g_sequence_sort(tables_skiplist, tables_skiplist_cmp, NULL);
-  g_message("Omit list file contains %d tables to skip\n",
-            g_sequence_get_length(tables_skiplist));
-  return;
-}
+*/
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
@@ -1368,6 +1309,7 @@ int main(int argc, char *argv[]) {
 
   g_message("MyDumper backup version: %s", VERSION);
 
+  initialize_regex(regexstring);
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
@@ -1460,7 +1402,7 @@ int main(int argc, char *argv[]) {
 
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
-    read_tables_skiplist(tables_skiplist_file);
+    read_tables_skiplist(tables_skiplist_file, &errors);
 
   if (daemon_mode) {
     GError *terror;
@@ -1818,7 +1760,7 @@ void start_dump(MYSQL *conn) {
             }
             if (lock && tables_skiplist_file && check_skiplist(row[0], row[1]))
               continue;
-            if (lock && regexstring && !check_regex(row[0], row[1]))
+            if (lock && regexstring && !eval_regex(row[0], row[1]))
               continue;
 
             if (lock) {
@@ -2033,7 +1975,7 @@ void start_dump(MYSQL *conn) {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (regexstring == NULL || eval_regex(row[0], NULL))){
         g_mutex_lock(db_tmp->ad_mutex);
         if (!db_tmp->already_dumped){
           dump_create_database(db_tmp->name, &conf);
@@ -2831,12 +2773,12 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     /* In case of table-list option is enabled, check if table is part of the
      * list */
     if (tables) {
-      int table_found = 0;
+/*      int table_found = 0;
       for (i = 0; tables[i] != NULL; i++)
         if (g_ascii_strcasecmp(tables[i], row[0]) == 0)
           table_found = 1;
-
-      if (!table_found)
+*/
+      if (!is_table_in_list(row[0], tables))
         dump = 0;
     }
     if (!dump)
@@ -2853,11 +2795,11 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist && check_skiplist(database->name, row[0]))
+    if (tables_skiplist_file && check_skiplist(database->name, row[0]))
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (regexstring && !check_regex(database->name, row[0]))
+    if (regexstring && !eval_regex(database->name, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -2876,43 +2818,6 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
 
     green_light(conn,conf, is_view,database,&row,row[ecol]);
-    /* Green light! 
-    struct db_table *dbt = new_db_table( conn, database, row[0], row[6]);
-
-    // if is a view we care only about schema
-    if (!is_view) {
-      // with trx_consistency_only we dump all as innodb_tables
-      if (!no_data) {
-        if (row[ecol] != NULL && g_ascii_strcasecmp("MRG_MYISAM", row[ecol])) {
-          if (trx_consistency_only ||
-              (row[ecol] != NULL && !g_ascii_strcasecmp("InnoDB", row[ecol]))) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else if (row[ecol] != NULL &&
-                     !g_ascii_strcasecmp("TokuDB", row[ecol])) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else {
-            g_mutex_lock(non_innodb_table_mutex);
-            non_innodb_table = g_list_prepend(non_innodb_table, dbt);
-            g_mutex_unlock(non_innodb_table_mutex);
-          }
-        }
-      }
-      if (!no_schemas) {
-        g_mutex_lock(table_schemas_mutex);
-        table_schemas = g_list_prepend(table_schemas, dbt);
-        g_mutex_unlock(table_schemas_mutex);
-      }
-    } else {
-      if (!no_schemas) {
-        g_mutex_lock(view_schemas_mutex);
-        view_schemas = g_list_prepend(view_schemas, dbt);
-        g_mutex_unlock(view_schemas_mutex);
-      }
-    }*/
 
   }
 
@@ -2940,11 +2845,11 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist && check_skiplist(database->name, row[1]))
+      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
 
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database->name, row[1]))
+      if (regexstring && !eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -2966,7 +2871,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
         /* Checks PCRE expressions on 'database.sp' string */
-        if (regexstring && !check_regex(database->name, row[1]))
+        if (regexstring && !eval_regex(database->name, row[1]))
           continue;
 
         post_dump = 1;
@@ -2991,7 +2896,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !check_regex(database->name, row[1]))
+      if (regexstring && !eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -3060,38 +2965,6 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
       green_light(conn, conf, is_view, database, &row,row[ecol]);
-      /* Green light! 
-      struct db_table *dbt = new_db_table( conn, get_database(conn, dt[0]), dt[1], NULL);
-
-      if (!is_view) {
-        if (trx_consistency_only) {
-          dump_table(conn, dbt, conf, TRUE);
-        } else if (!g_ascii_strcasecmp("InnoDB", row[ecol])) {
-          g_mutex_lock(innodb_tables_mutex);
-          innodb_tables = g_list_prepend(innodb_tables, dbt);
-          g_mutex_unlock(innodb_tables_mutex);
-        } else if (!g_ascii_strcasecmp("TokuDB", row[ecol])) {
-          g_mutex_lock(innodb_tables_mutex);
-          innodb_tables = g_list_prepend(innodb_tables, dbt);
-          g_mutex_unlock(innodb_tables_mutex);
-        } else {
-          g_mutex_lock(non_innodb_table_mutex);
-          non_innodb_table = g_list_prepend(non_innodb_table, dbt);
-          g_mutex_unlock(non_innodb_table_mutex);
-        }
-        if (!no_schemas) {
-          g_mutex_lock(table_schemas_mutex);
-          table_schemas = g_list_prepend(table_schemas, dbt);
-          g_mutex_unlock(table_schemas_mutex);
-        }
-      } else {
-        if (!no_schemas) {
-          g_mutex_lock(view_schemas_mutex);
-          view_schemas = g_list_prepend(view_schemas, dbt);
-          g_mutex_unlock(view_schemas_mutex);
-        }
-      }
-      */
     }
   }
 
