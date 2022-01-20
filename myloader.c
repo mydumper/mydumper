@@ -48,6 +48,8 @@
 #include "set_verbose.h"
 #include "locale.h"
 #include "server_detect.h"
+#include "src/tables_skiplist.h"
+#include "src/regex.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -56,6 +58,9 @@ gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
+gboolean skip_triggers = FALSE;
+gboolean skip_post = FALSE;
+
 guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
@@ -130,8 +135,13 @@ static GOptionEntry entries[] = {
      "Split the INSERT statement into this many rows.", NULL},
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
      "Maximum number of threads per table to use, default 4", NULL},
+    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
+     NULL},
+    {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
+     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures nor functions", NULL},
+    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
+     NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
                   GString *data, gboolean is_schema, guint *query_counter)
@@ -443,6 +453,13 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+
+  /* Process list of tables to omit if specified */
+  if (tables_skiplist_file)
+    read_tables_skiplist(tables_skiplist_file, &errors);
+
+  initialize_regex(regexstring);
+
   MYSQL *conn;
   conn = mysql_init(NULL);
 
@@ -492,6 +509,9 @@ int main(int argc, char *argv[]) {
   t.thrconn = conn;
   t.current_database=NULL;
 
+  if (tables_list)
+    tables = g_strsplit(tables_list, ",", 0);
+
   // Create database before the thread, to allow connection
   if (db){
     db_hash_insert(db, db);
@@ -532,16 +552,11 @@ int main(int argc, char *argv[]) {
   if (stream && no_delete == FALSE && input_directory == NULL){
     // remove metadata files
     GList *e=conf.metadata_list;
-    gchar *path = NULL;
     while (e) {
-      path = g_build_filename(directory, e->data, NULL);
-      remove(path);
-      g_free(path);
+      m_remove(directory, e->data);
       e=e->next;
     }
-    path = g_build_filename(directory, "metadata", NULL);
-    remove(path);
-    g_free(path);
+    m_remove(directory,"metadata");
     if (g_rmdir(directory) != 0)
         g_critical("Restore directory not removed: %s", directory);
   }
@@ -744,6 +759,22 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
   g_strfreev(split_db_tbl);
 }
 
+gboolean eval_table( char *db_name, char * table_name){
+  if ( tables ){
+    if ( ! is_table_in_list(table_name, tables) ){
+      return FALSE;
+    }
+  }
+  if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+    return FALSE;
+  }
+  if ( regexstring )
+    if(!eval_regex(db_name, table_name)){
+      return FALSE;
+  }
+  return TRUE;
+}
+
 void process_database_filename(struct configuration *conf, char * filename, const char *object) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
@@ -772,6 +803,10 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
     g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
     exit(EXIT_FAILURE);
   }
+  if (!eval_table(real_db_name, table_name)){
+    g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
+    return;
+  }
   dbt=append_new_db_table(filename, db_name, table_name,0,table_hash,NULL);
   load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
 }
@@ -790,6 +825,10 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
   char *real_db_name=db_hash_lookup(db_name);
   struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
   //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
+  if (!eval_table(real_db_name, table_name)){
+    g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
+    return;
+  }
   struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, NULL, part, sub_part, JOB_RESTORE_FILENAME, "");
   // in stream mode, there is no need to sort. We can enqueue directly, where? queue maybe?.
   if (stream){
@@ -800,12 +839,16 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
 }
 
 void process_schema_filename(struct configuration *conf, const gchar *filename, const char * object) {
-    gchar *database=NULL, *table=NULL, *real_db_name=NULL;
-    get_database_table_from_file(filename,"-schema",&database,&table);
+    gchar *database=NULL, *table_name=NULL, *real_db_name=NULL;
+    get_database_table_from_file(filename,"-schema",&database,&table_name);
     if (database == NULL){
       g_critical("Database is null on: %s",filename);
     }
     real_db_name=db_hash_lookup(database);
+    if (!eval_table(real_db_name, table_name)){
+      g_warning("File %s has been filter out",filename);
+      return;
+    }
     struct restore_job *rj = new_restore_job(g_strdup(filename), real_db_name , NULL , NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
@@ -855,10 +898,7 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         if (db){
           g_warning("Skipping database creation on file: %s",filename);
           if (stream && no_delete == FALSE){
-            gchar *path = g_build_filename(directory, filename, NULL);
-            g_message("Removing file: %s", path);
-            remove(path);
-            g_free(path);
+            m_remove(directory,filename);
           }
         }else{
           process_database_filename(conf, filename, "create database");
@@ -871,11 +911,13 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         process_schema_filename(conf, filename,"view");
         break;
       case SCHEMA_TRIGGER:
-        process_schema_filename(conf, filename,"trigger");
+        if (!skip_triggers)
+          process_schema_filename(conf, filename,"trigger");
         break;
       case SCHEMA_POST:
         // can be enqueued in any order
-        process_schema_filename(conf, filename,"post");
+        if (!skip_post)
+          process_schema_filename(conf, filename,"post");
         break;
       case CHECKSUM:
         conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
@@ -887,7 +929,10 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         conf->metadata_list=g_list_insert(conf->metadata_list,g_strdup(filename),-1);
         break;
       case DATA:
-        process_data_filename(conf,table_hash,filename);
+        if (!no_data)
+          process_data_filename(conf,table_hash,filename);
+        else if (!no_delete)
+          m_remove(directory,filename);
         break;
       case IGNORED:
         g_warning("Filename %s has been ignored", filename);
@@ -922,6 +967,7 @@ void load_directory_information(struct configuration *conf) {
   while ((filename = g_dir_read_name(dir))) {
     enum file_type ft= get_file_type(filename);
     if (ft == SCHEMA_POST){
+        if (!skip_post)
           post_list=g_list_insert(post_list,g_strdup(filename),-1);
     } else if (ft ==  SCHEMA_CREATE ){
           schema_create_list=g_list_insert(schema_create_list,g_strdup(filename),-1);
@@ -939,7 +985,8 @@ void load_directory_information(struct configuration *conf) {
             view_list=g_list_append(view_list,g_strdup(filename));
             break;
           case SCHEMA_TRIGGER:
-            trigger_list=g_list_append(trigger_list,g_strdup(filename));
+            if (!skip_triggers)
+              trigger_list=g_list_append(trigger_list,g_strdup(filename));
             break;
           case CHECKSUM:
             conf->checksum_list=g_list_append(conf->checksum_list,g_strdup(filename));
@@ -951,7 +998,8 @@ void load_directory_information(struct configuration *conf) {
             metadata_list=g_list_append(metadata_list,g_strdup(filename));
             break;
           case DATA:
-            data_files_list=g_list_append(data_files_list,g_strdup(filename));
+            if (!no_data)
+              data_files_list=g_list_append(data_files_list,g_strdup(filename));
             break;
           case LOAD_DATA:
             g_message("Load data file found: %s", filename);

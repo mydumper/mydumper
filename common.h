@@ -37,18 +37,10 @@ int detected_server = 0;
 GString *set_session=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
+gboolean no_data = FALSE;
+
 GAsyncQueue *stream_queue;
 gchar *compress_extension = NULL;
-
-FILE * (*m_open)(const char *filename, const char *);
-int (*m_close)(void *file) = NULL;
-int (*m_write)(FILE * file, const char * buff, int len);
-void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group);
-void execute_gstring(MYSQL *conn, GString *ss);
-gchar * identity_function(gchar ** r);
-gchar *replace_escaped_strings(gchar *c);
-void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
-void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 
 gboolean askPassword = FALSE;
 guint port = 0;
@@ -57,6 +49,11 @@ guint verbose = 2;
 gboolean ssl = FALSE;
 gboolean compress_protocol = FALSE;
 gboolean program_version = FALSE;
+
+gchar *tables_list = NULL;
+gchar *tables_skiplist_file = NULL;
+char **tables = NULL;
+char *regexstring = NULL;
 
 GOptionEntry common_entries[] = {
     {"host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to",
@@ -105,6 +102,15 @@ GOptionEntry common_entries[] = {
      "It will stream over STDOUT once the files has been written", NULL},
     {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
       "It will not delete the files after stream has been completed", NULL},
+    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
+     "File containing a list of database.table entries to skip, one per line "
+     "(skips before applying regex option)",
+     NULL},
+    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
+     "Comma delimited table list to dump (does not exclude regex option)",
+     NULL},
+    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
+     "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 #endif
@@ -113,3 +119,14 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);
+gboolean m_remove(gchar * directory, const gchar * filename);
+FILE * (*m_open)(const char *filename, const char *);
+int (*m_close)(void *file) = NULL;
+int (*m_write)(FILE * file, const char * buff, int len);
+void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group);
+void execute_gstring(MYSQL *conn, GString *ss);
+gchar * identity_function(gchar ** r);
+gchar *replace_escaped_strings(gchar *c);
+void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
+void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
+gboolean is_table_in_list(gchar *table_name, gchar **table_list);
