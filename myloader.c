@@ -60,6 +60,7 @@ gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 gboolean skip_triggers = FALSE;
 gboolean skip_post = FALSE;
+gboolean skip_definer = FALSE;
 
 guint rows = 0;
 gchar *source_db = NULL;
@@ -139,6 +140,8 @@ static GOptionEntry entries[] = {
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures nor functions", NULL},
+    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
+     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -1686,6 +1689,19 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         preline=line;
         line+=strcount(data->str);
+        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
+          char * from=g_strstr_len(data->str,30," DEFINER")+1;
+          if (from){
+            char * to=g_strstr_len(from,30," ");
+            if (to){
+              while(from != to){
+                from[0]=' ';
+                from++;
+              }
+              g_message("It is a create statement %s: %s",filename,from);
+            }
+          }
+        }
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
           split_and_restore_data_in_gstring_by_statement(td,
             data, is_schema, &query_counter);
