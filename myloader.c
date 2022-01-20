@@ -1320,7 +1320,7 @@ void *process_stream_queue(struct thread_data * td) {
   while (cont){
 
     ft = (enum file_type )g_async_queue_pop(td->conf->stream_queue);
-//    g_message("Thread %d: Processing file type: %d",td->thread_id,ft);
+    g_debug("Thread %d: Processing file type: %d",td->thread_id,ft);
     GAsyncQueue *q= get_queue_for_type(td->conf,ft);
     if (q != NULL){
     job = (struct job *)g_async_queue_pop(q);
@@ -1821,7 +1821,7 @@ void *process_stream(struct configuration *conf){
       if (file && feof(file)){
         eof = TRUE;
         buffer[0] = '\0';
-        fclose(file);
+        m_close(file);
       }else{
         break;
       }
@@ -1831,22 +1831,30 @@ void *process_stream(struct configuration *conf){
         buffer[strlen(buffer)-1]='\0';
         if (has_mydumper_suffix(buffer)){
           if (file){
-            fclose(file);
+            m_close(file);
             process_stream_filename(conf,table_hash,filename);
           }
           real_filename = g_build_filename(directory,&(buffer[3]),NULL);
           filename = g_build_filename(&(buffer[3]),NULL);
-          file = g_fopen(real_filename, "w");
+          if (!g_str_has_suffix(filename, compress_extension)) {
+            file = g_fopen(real_filename, "w");
+            m_write=(void *)&write_file;
+            m_close=(void *) &fclose;
+          } else {
+            file = (void *)gzopen(real_filename, "w");
+            m_write=(void *)&gzwrite;
+            m_close=(void *) &gzclose;
+          }
         }else{
           buffer[strlen(buffer)-1]=lastchar;
-          if (file) ml_write(fileno(file),buffer);
+          if (file) m_write(file,buffer,strlen(buffer));
         }
       }else{
-        if (file) ml_write(fileno(file),buffer);
+        if (file) m_write(file,buffer,strlen(buffer));
       }
     }
   } while (eof == FALSE);
-  fclose(file);
+  m_close(file);
   process_stream_filename(conf,table_hash,filename);
   guint n=0;
   for (n = 0; n < num_threads *2 ; n++) {
