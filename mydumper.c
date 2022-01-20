@@ -698,6 +698,8 @@ void *process_stream(void *data){
   guint64 total_size=0;
   GDateTime *total_start_time=g_date_time_new_now_local();
   GTimeSpan diff=0,total_diff=0;
+  gboolean not_compressed = FALSE;
+  guint sz=0;
   ssize_t len=0;
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
@@ -705,33 +707,43 @@ void *process_stream(void *data){
       break;
     }
     char *used_filemame=g_path_get_basename(filename);
-    len=m_write(stdout, "\n-- ", 4);
-    len=m_write(stdout, used_filemame, strlen(used_filemame));
-    len=m_write(stdout, "\n", 1);
+    len=write(fileno(stdout), "\n-- ", 4);
+    len=write(fileno(stdout), used_filemame, strlen(used_filemame));
+    len=write(fileno(stdout), "\n", 1);
     total_size+=5;
     total_size+=strlen(used_filemame);
     free(used_filemame);
+    g_message("Opening: %s",filename);
     f=m_open(filename,"r");
+    not_compressed= !g_str_has_suffix(filename, compress_extension);
+    if (not_compressed)
+      f=g_fopen(filename,"r");
+    else
+      f=m_open(filename,"r");
     if (!f){
       g_error("File failed to open: %s",filename);
     }else{
-      fseek(f, 0, SEEK_END);
-      guint sz = ftell(f);
-      m_close(f);
-      f=m_open(filename,"r");
+      if (not_compressed){
+        fseek(f, 0, SEEK_END);
+        sz = ftell(f);
+        m_close(f);
+        f=g_fopen(filename,"r");
+      }
       guint total_len=0;
       GDateTime *start_time=g_date_time_new_now_local();
-      buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+      buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
+      //  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
       while(buflen > 0){
-        len=m_write(stdout, buf, buflen);
+        len=write(fileno(stdout), buf, buflen);
         total_len=total_len + buflen;
         if (len != buflen){
           g_critical("Stream failed during transmition of file: %s",filename);
           exit(EXIT_FAILURE);
         }
-        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+//        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+        buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
       }
-      if (total_len != sz){
+      if (not_compressed && total_len != sz){
         g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
         exit(EXIT_FAILURE);
       }else{
