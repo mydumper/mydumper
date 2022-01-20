@@ -908,7 +908,8 @@ void *process_queue(struct thread_data *td) {
     initialize_consistent_snapshot(td);
     check_connection_status(td);
   }
-  mysql_query(td->thrconn, set_names_str);
+  if (set_names_str)
+    mysql_query(td->thrconn, set_names_str);
 
   g_async_queue_push(td->ready, GINT_TO_POINTER(1));
 
@@ -1292,8 +1293,11 @@ int main(int argc, char *argv[]) {
 
 
   if (set_names_str){
-    gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
-    set_names_str=tmp_str;
+    if (strlen(set_names_str)!=0){
+      gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+      set_names_str=tmp_str;
+    }else
+      set_names_str=NULL;
   } else 
     set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
 
@@ -1899,7 +1903,8 @@ void start_dump(MYSQL *conn) {
   g_free(datetimestr);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-				mysql_query(conn, set_names_str);
+    if (set_names_str)
+  		mysql_query(conn, set_names_str);
 
     write_snapshot_info(conn, mdfile);
   }
@@ -3255,7 +3260,8 @@ void dump_schema_data(MYSQL *conn, char *database, char *table,
   GString *statement = g_string_sized_new(statement_size);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
-				g_string_printf(statement,"%s;\n",set_names_str);
+    if (set_names_str)
+		  g_string_printf(statement,"%s;\n",set_names_str);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
@@ -3329,8 +3335,8 @@ void dump_view_data(MYSQL *conn, char *database, char *table, char *filename,
     return;
   }
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-				g_string_printf(statement,"%s;\n",set_names_str);
+  if (detected_server == SERVER_TYPE_MYSQL && set_names_str) {
+		g_string_printf(statement,"%s;\n",set_names_str);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
@@ -3815,7 +3821,8 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if (!st_in_file) { 
         // File Header
         if (detected_server == SERVER_TYPE_MYSQL) {
-          g_string_printf(statement,"%s;\n",set_names_str);
+          if (set_names_str)
+            g_string_printf(statement,"%s;\n",set_names_str);
           g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
           if (!skip_tz) {
             g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
