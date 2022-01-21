@@ -61,7 +61,7 @@ gboolean disable_redo_log = FALSE;
 gboolean skip_triggers = FALSE;
 gboolean skip_post = FALSE;
 gboolean skip_definer = FALSE;
-
+gboolean serial_tbl_creation = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
@@ -69,6 +69,7 @@ gchar *set_names_str=NULL;
 enum purge_mode purge_mode;
 static GMutex *init_mutex = NULL;
 static GMutex *progress_mutex = NULL;
+static GMutex *single_threaded_create_table = NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
 unsigned long long int total_data_sql_files = 0;
@@ -143,6 +144,8 @@ static GOptionEntry entries[] = {
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
+     NULL},
+    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation, "Table recreation will be executed in serie, one thread at a time",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -358,7 +361,7 @@ int main(int argc, char *argv[]) {
 
   init_mutex = g_mutex_new();
   progress_mutex = g_mutex_new();
-
+  single_threaded_create_table = g_mutex_new();
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
   }
@@ -1266,6 +1269,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       restore_data_in_gstring(td, rj->statement, FALSE, &query_counter);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
+      if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
       g_message("Thread %d restoring table `%s`.`%s` from %s", td->thread_id, 
                 dbt->real_database, dbt->real_table, rj->filename);
       int truncate_or_delete_failed=0;
@@ -1280,6 +1284,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         }
       }
       dbt->schema_created=TRUE;
+      if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
       break;
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
