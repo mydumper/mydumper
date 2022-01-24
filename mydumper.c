@@ -197,7 +197,7 @@ static GOptionEntry entries[] = {
      "Split tables into chunks of this output file size. This value is in MB",
      NULL},
     {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the amounto of rows per block after the table is estimated, default 1000000", NULL},
+     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
