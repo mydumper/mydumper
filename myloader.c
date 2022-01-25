@@ -351,7 +351,7 @@ GHashTable * initialize_hash_of_session_variables(){
 
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -796,7 +796,7 @@ void process_database_filename(struct configuration *conf, char * filename, cons
   }
 }
 
-void process_table_filename(struct configuration *conf, GHashTable *table_hash, char * filename){
+void process_table_filename(struct configuration *conf, char * filename){
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
   get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
@@ -813,7 +813,7 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
     g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
     return;
   }
-  dbt=append_new_db_table(filename, db_name, table_name,0,table_hash,NULL);
+  dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
   load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
 }
 
@@ -850,7 +850,7 @@ void process_metadata_filename( GHashTable *table_hash, char * filename){
     dbt->rows=g_ascii_strtoull(cs, NULL, 10);
 }
 
-void process_data_filename(struct configuration *conf, GHashTable *table_hash, char * filename){
+void process_data_filename(struct configuration *conf, char * filename){
   gchar *db_name, *table_name;
   total_data_sql_files++;
   // TODO: check if it is a data file
@@ -862,7 +862,7 @@ void process_data_filename(struct configuration *conf, GHashTable *table_hash, c
     exit(EXIT_FAILURE);
   }
   char *real_db_name=db_hash_lookup(db_name);
-  struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,table_hash,NULL);
+  struct db_table *dbt=append_new_db_table(real_db_name,db_name, table_name,0,conf->table_hash,NULL);
   //struct db_table *dbt=append_new_db_table(filename,db_name, table_name,0,table_hash,NULL);
   if (!eval_table(real_db_name, table_name)){
     g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
@@ -927,7 +927,7 @@ enum file_type get_file_type (const char * filename){
 }
 
 
-enum file_type process_filename(struct configuration *conf,GHashTable *table_hash, char *filename){
+enum file_type process_filename(struct configuration *conf, char *filename){
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
@@ -944,7 +944,7 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
         }
         break;
       case SCHEMA_TABLE:
-        process_table_filename(conf,table_hash,filename);
+        process_table_filename(conf, filename);
         break;
       case SCHEMA_VIEW:
         process_schema_filename(conf, filename,"view");
@@ -964,12 +964,12 @@ enum file_type process_filename(struct configuration *conf,GHashTable *table_has
       case METADATA_GLOBAL:
         break;
       case METADATA_TABLE:
-        // TODO: we need to process this info
         conf->metadata_list=g_list_insert(conf->metadata_list,g_strdup(filename),-1);
+	process_metadata_filename(conf->table_hash,filename);
         break;
       case DATA:
         if (!no_data)
-          process_data_filename(conf,table_hash,filename);
+          process_data_filename(conf, filename);
         else if (!no_delete)
           m_remove(directory,filename);
         break;
@@ -1060,17 +1060,17 @@ void load_directory_information(struct configuration *conf) {
   }
 
   // CREATE TABLE
-  GHashTable *table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while (create_table_list != NULL){
     f = create_table_list->data;
-    process_table_filename(conf,table_hash,f);
+    process_table_filename(conf,f);
     create_table_list=create_table_list->next;
   }
 
   // DATA FILES
   while (data_files_list != NULL){
     f = data_files_list->data;
-    process_data_filename(conf,table_hash,f);
+    process_data_filename(conf, f);
 
     data_files_list=data_files_list->next;
   }
@@ -1078,7 +1078,7 @@ void load_directory_information(struct configuration *conf) {
   // METADATA FILES
   while (metadata_list != NULL){
     f = metadata_list->data;
-    process_metadata_filename(table_hash,f);
+    process_metadata_filename(conf->table_hash,f);
     metadata_list=metadata_list->next;
   }
 
@@ -1107,10 +1107,10 @@ void load_directory_information(struct configuration *conf) {
   GList * table_list=NULL;
   GHashTableIter iter;
   gchar * lkey;
-  g_hash_table_iter_init ( &iter, table_hash );
-    struct db_table *dbt=NULL;
+  g_hash_table_iter_init ( &iter, conf->table_hash );
+  struct db_table *dbt=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,table_hash);
+    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
     GList *i=dbt->restore_job_list; 
     while (i) {
       g_async_queue_push(dbt->queue, new_job(JOB_RESTORE ,i->data,dbt->real_database));
@@ -1119,7 +1119,6 @@ void load_directory_information(struct configuration *conf) {
     dbt->count=g_async_queue_length(dbt->queue);
     g_debug("Setting count to: %d", dbt->count);
   }
-  g_hash_table_destroy(table_hash);
   conf->table_list=table_list;
   // conf->table needs to be set.
 }
@@ -1848,12 +1847,13 @@ void send_shutdown_jobs(GAsyncQueue * queue){
       }
 }
 
-void process_stream_filename(struct configuration *conf,GHashTable *table_hash, gchar * filename){
-  enum file_type current_ft=process_filename(conf,table_hash,filename);
+void process_stream_filename(struct configuration *conf, gchar * filename){
+  enum file_type current_ft=process_filename(conf, filename);
   if (current_ft != SCHEMA_VIEW &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
-      current_ft != CHECKSUM )
+      current_ft != CHECKSUM &&
+      current_ft != METADATA_TABLE )
   g_async_queue_push(conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
@@ -1875,7 +1875,7 @@ void *process_stream(struct configuration *conf){
   char buffer[STREAM_BUFFER_SIZE]; 
   FILE *file=NULL;
   gboolean eof=FALSE;
-  GHashTable *table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   do {
     if(fgets(buffer, STREAM_BUFFER_SIZE, stdin) == NULL){
       if (file && feof(file)){
@@ -1892,7 +1892,7 @@ void *process_stream(struct configuration *conf){
         if (has_mydumper_suffix(buffer)){
           if (file){
             m_close(file);
-            process_stream_filename(conf,table_hash,filename);
+            process_stream_filename(conf, filename);
           }
           real_filename = g_build_filename(directory,&(buffer[3]),NULL);
           filename = g_build_filename(&(buffer[3]),NULL);
@@ -1915,7 +1915,7 @@ void *process_stream(struct configuration *conf){
     }
   } while (eof == FALSE);
   m_close(file);
-  process_stream_filename(conf,table_hash,filename);
+  process_stream_filename(conf, filename);
   guint n=0;
   for (n = 0; n < num_threads *2 ; n++) {
     g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));

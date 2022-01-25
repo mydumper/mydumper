@@ -41,6 +41,7 @@ struct configuration {
   GAsyncQueue *ready;
   GAsyncQueue *stream_queue;
   GList *table_list;
+  GHashTable *table_hash;  
   GList *schema_create_list;
   GList *checksum_list;
   GList *metadata_list;
