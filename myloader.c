@@ -817,6 +817,39 @@ void process_table_filename(struct configuration *conf, GHashTable *table_hash, 
   load_schema(conf, dbt,g_build_filename(directory,filename,NULL));
 }
 
+void process_metadata_filename( GHashTable *table_hash, char * filename){
+  gchar *db_name, *table_name;
+  get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
+  if (db_name == NULL || table_name == NULL){
+      g_critical("It was not possible to process file: %s (1)",filename);
+      exit(EXIT_FAILURE);
+  }
+  void *infile;
+  gboolean is_compressed = FALSE;
+  gchar *path = g_build_filename(directory, filename, NULL);
+  char metadata_val[256];
+  if (!g_str_has_suffix(path, compress_extension)) {
+    infile = g_fopen(path, "r");
+    is_compressed = FALSE;
+  } else {
+    infile = (void *)gzopen(path, "r");
+    is_compressed=TRUE;
+  }
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+
+  char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
+  gchar *lkey=g_strdup_printf("%s_%s",db_name, table_name);
+  struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
+  g_free(lkey);
+  if (dbt != NULL) 
+    dbt->rows=g_ascii_strtoull(cs, NULL, 10);
+}
+
 void process_data_filename(struct configuration *conf, GHashTable *table_hash, char * filename){
   gchar *db_name, *table_name;
   total_data_sql_files++;
@@ -1042,6 +1075,12 @@ void load_directory_information(struct configuration *conf) {
     data_files_list=data_files_list->next;
   }
 
+  // METADATA FILES
+  while (metadata_list != NULL){
+    f = metadata_list->data;
+    process_metadata_filename(table_hash,f);
+    metadata_list=metadata_list->next;
+  }
 
   while (view_list != NULL){
     f = view_list->data;
