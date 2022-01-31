@@ -152,14 +152,16 @@ static GOptionEntry entries[] = {
 int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
                   GString *data, gboolean is_schema, guint *query_counter)
 {
-  char *next_line=g_strstr_len(data->str,-1,"\n");
-  char *insert_statement=g_strndup(data->str, next_line - data->str);
+  char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
+  char *insert_statement=g_strndup(data->str,next_line - data->str);
   int r=0;
-  gchar *current_line=next_line+1;
+  gchar *current_line=next_line;
   next_line=g_strstr_len(current_line, -1, "\n");
   GString * new_insert=g_string_sized_new(strlen(insert_statement));
+  guint current_rows=0;
   do {
-    guint current_rows=0;
+    current_rows=0;
+    g_string_set_size(new_insert, 0);
     new_insert=g_string_append(new_insert,insert_statement);
     do {
       char *line=g_strndup(current_line, next_line - current_line);
@@ -169,10 +171,12 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
       current_line=next_line+1;
       next_line=g_strstr_len(current_line, -1, "\n");
     } while (current_rows < rows && next_line != NULL);
-    new_insert->str[new_insert->len - 1]=';';
-    r+=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
+    if (new_insert->len > strlen(insert_statement))
+      r+=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
+    current_line++; // remove trailing ,
   } while (next_line != NULL);
   g_string_free(new_insert,TRUE);
+  g_free(insert_statement);
   g_string_set_size(data, 0);
   return r;
 }
@@ -1512,7 +1516,7 @@ void *process_queue(struct thread_data *td) {
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
-	  //g_critical("Error restoring: %s %s", data->str, mysql_error(conn));
+	  g_critical("Error restoring: %s \n%s", mysql_error(td->thrconn), data->str);
     errors++;
     return 1;
   }
