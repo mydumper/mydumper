@@ -1,17 +1,17 @@
-FROM gcc
-FROM ubuntu:latest
+FROM gcc:11-bullseye
 
 RUN \
   apt-get update && \
   DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y lsb-release curl gnupg2 \
+    apt-get install -y lsb-release \
   && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
 RUN \
+  . /etc/os-release && \
   curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
-    https://repo.percona.com/apt/percona-release_latest.$(lsb_release -sc)_all.deb \
+    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb \
   && \
   dpkg -i /tmp/percona-release.deb && \
   rm -v /tmp/percona-release.deb
