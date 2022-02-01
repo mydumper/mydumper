@@ -513,4 +513,3 @@ void *process_queue(struct thread_data *td) {
   g_debug("Thread %d ending", td->thread_id);
   return NULL;
 }
-
