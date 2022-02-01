@@ -324,7 +324,8 @@ void *process_stream(){
   } while (eof == FALSE);
   m_close(file);
   g_async_queue_push(intermidiate_queue, filename);
-  g_async_queue_push(intermidiate_queue, "END");
+  gchar *e=g_strdup("END");
+  g_async_queue_push(intermidiate_queue, e);
   guint n=0;
   for (n = 0; n < num_threads *2 ; n++) {
     g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
