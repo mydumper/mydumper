@@ -1516,7 +1516,7 @@ void *process_queue(struct thread_data *td) {
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
-	  g_critical("Error restoring: %s \n%s", mysql_error(td->thrconn), data->str);
+//	  g_critical("Error restoring: %s \n%s", mysql_error(td->thrconn), data->str);
     errors++;
     return 1;
   }
