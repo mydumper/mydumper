@@ -191,7 +191,7 @@ guint strcount(gchar *text){
 }
 
 gboolean m_remove(gchar * directory, const gchar * filename){
-  gchar *path = g_build_filename(directory, filename, NULL);
+  gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
   g_message("Removing file: %s", path);
   remove(path);
   g_free(path);
