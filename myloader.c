@@ -1699,7 +1699,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        preline=line;
+//        preline=line;
 //        line+=strcount(data->str);
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           char * from=g_strstr_len(data->str,30," DEFINER")+1;
@@ -1725,6 +1725,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           }
         }
         g_string_set_size(data, 0);
+        preline=line;
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);
