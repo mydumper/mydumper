@@ -81,7 +81,7 @@ GHashTable *tbl_hash=NULL;
 const char DIRECTORY[] = "import";
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
-                   gboolean *eof);
+                   gboolean *eof, guint *line);
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema);
 int restore_data_in_gstring_by_statement(struct thread_data *td, 
@@ -644,6 +644,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   GString *create_table_statement=g_string_sized_new(512);
   GString *alter_table_statement=g_string_sized_new(512);
   GString *alter_table_constraint_statement=g_string_sized_new(512);
+  guint line=0;
   if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
@@ -657,7 +658,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
     return;
   }
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strrstr(data->str,"CREATE ")){
           gchar** create_table= g_strsplit(data->str, "`", 3);
@@ -1608,8 +1609,9 @@ gchar * get_table_name_from_content(const gchar *filename){
     return NULL;
   }
   gchar *real_database=NULL;
+  guint line=0;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_str_has_prefix(data->str,"INSERT ")){
         gchar** create= g_strsplit(data->str, "`", 3);
         real_database=g_strdup(create[1]);
@@ -1646,8 +1648,9 @@ gchar * get_database_name_from_content(const gchar *filename){
     return NULL;
   }
   gchar *real_database=NULL;
+  guint line=0;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_str_has_prefix(data->str,"CREATE ")){
           gchar** create= g_strsplit(data->str, "`", 3);
@@ -1694,10 +1697,10 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   if (!is_schema && (commit_count > 1) )
     mysql_query(td->thrconn, "START TRANSACTION");
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        preline=line;
-        line+=strcount(data->str);
+//        preline=line;
+//        line+=strcount(data->str);
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           char * from=g_strstr_len(data->str,30," DEFINER")+1;
           if (from){
@@ -1722,6 +1725,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           }
         }
         g_string_set_size(data, 0);
+        preline=line;
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);
@@ -1750,7 +1754,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 }
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
-                   gboolean *eof) {
+                   gboolean *eof, guint *line) {
   char buffer[256];
 
   do {
@@ -1774,6 +1778,8 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
       }
     }
     g_string_append(data, buffer);
+    if (strlen(buffer) != 256)
+      (*line)++;
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
   return TRUE;
