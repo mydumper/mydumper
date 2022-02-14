@@ -454,8 +454,8 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
 gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
   GString *filename = g_string_sized_new(20);
   sub_part == 0 ?
-  g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension):
-  g_string_append_printf(filename, "%s.%s.%05d.%05d.%s%s", database, table, part, sub_part, extension, compress_extension);
+    g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension):
+    g_string_append_printf(filename, "%s.%s.%05d.%05d.%s%s", database, table, part, sub_part, extension, compress_extension);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
@@ -3855,39 +3855,39 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if ( load_data ){
         if (first_time){
           load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, "dat");
-//	      load_data_fn=g_strdup_printf("%s%05d.dat%s", filename_prefix, fn,
-//			      (compress_output ? ".gz" : ""));
-	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",load_data_fn,tj->table);
-	      if (fields_terminated_by_ld)
-	      	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
-	      if (fields_enclosed_by_ld)
-	        g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
-	      if (fields_escaped_by)
-          g_string_append_printf(statement, "ESCAPED BY '%s' ",fields_escaped_by);
-	      g_string_append(statement, "LINES ");
-	      if (lines_starting_by_ld)
-	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
-	      g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
+          char * basename=g_path_get_basename(load_data_fn);
+  	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",basename,tj->table);
+          g_free(basename);
+	        if (fields_terminated_by_ld)
+	        	g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+	        if (fields_enclosed_by_ld)
+  	        g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+	        if (fields_escaped_by)
+            g_string_append_printf(statement, "ESCAPED BY '%s' ",fields_escaped_by);
+	        g_string_append(statement, "LINES ");
+	        if (lines_starting_by_ld)
+  	        g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
+	        g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
 
-        append_columns(statement,fields,num_fields);
-        g_string_append(statement,");\n");
-	      if (!write_data(main_file, statement)) {
-		      g_critical("Could not write out data for %s.%s", tj->database, tj->table);
-		      goto cleanup;
-	      }else{
-          g_string_set_size(statement, 0);
-          g_free(fcfile);
-          fcfile=load_data_fn;
-
-          if (!compress_output) {
-            fclose((FILE *)file);
-            file = g_fopen(fcfile, "a");
-          } else {
-            gzclose((gzFile)file);
-            file = (void *)gzopen(fcfile, "a");
-          }
-	      }
-        first_time=FALSE;
+          append_columns(statement,fields,num_fields);
+          g_string_append(statement,");\n");
+	        if (!write_data(main_file, statement)) {
+		        g_critical("Could not write out data for %s.%s", tj->database, tj->table);
+		        goto cleanup;
+  	      }else{
+            g_string_set_size(statement, 0);
+            g_free(fcfile);
+            fcfile=load_data_fn;
+  
+            if (!compress_output) {
+              fclose((FILE *)file);
+              file = g_fopen(fcfile, "a");
+            } else {
+              gzclose((gzFile)file);
+              file = (void *)gzopen(fcfile, "a");
+            }
+	        }
+          first_time=FALSE;
         }
       }else{
         append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
