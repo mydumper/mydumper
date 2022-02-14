@@ -60,6 +60,7 @@
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
+gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean enable_binlog = FALSE;
@@ -205,12 +206,13 @@ int main(int argc, char *argv[]) {
     set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
   initialize_job(purge_mode_str);
 
+  pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):g_get_current_dir();
   if (!input_directory) {
     if (stream){
       GDateTime * datetime = g_date_time_new_now_local();
       char *datetimestr;
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-      directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+      directory = g_strdup_printf("%s/%s-%s",pwd, DIRECTORY, datetimestr);
       create_backup_dir(directory);
       g_free(datetimestr); 
     }else{
@@ -222,16 +224,16 @@ int main(int argc, char *argv[]) {
       g_critical("the specified directory doesn't exists\n");
       exit(EXIT_FAILURE);
     }
-    directory=input_directory;
+    directory=g_strdup_printf("%s/%s", pwd, input_directory);
     if (!stream){
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
-        g_critical("the specified directory is not a mydumper backup\n");
+        g_critical("the specified directory %s is not a mydumper backup",directory);
         exit(EXIT_FAILURE);
       }
     }
   }
-
+  g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
