@@ -59,48 +59,48 @@ brew install mydumper
 
 ### One needs to install development tools:
 * Ubuntu or Debian: 
-```
+```shell
 apt-get install cmake g++ git
 ```
 * Fedora, RedHat and CentOS:
-```
+```shell
 yum install -y cmake gcc gcc-c++ git make
 ```
 * MacOSX:
 
-```
+```shell
 brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
 ```
 
-```
+```shell
 port install pkgconfig cmake
 ```
 ### One needs to install development versions of GLib, ZLib, PCRE and ZSTD:
 * Ubuntu or Debian: 
-```
+```shell
 apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
 ```
 * Fedora, RedHat and CentOS: 
-```
+```shell
 yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel libzstd-devel
 ```
 * openSUSE: 
-```
+```shell
 zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
 ```
 * MacOSX: 
-```
+```shell
 port install glib2 pcre 
 ```
 ### One needs to install MySQL/Percona/MariaDB development versions:
 * Ubuntu or Debian: 
-```
+```shell
 apt-get install libmysqlclient-dev
 apt-get install libperconaserverclient20-dev
 apt-get install libmariadbclient-dev 
 ```
 * Fedora, RedHat and CentOS: 
-```
+```shell
 yum install -y mysql-devel
 yum install -y Percona-Server-devel-57
 yum install -y mariadb-devel
@@ -108,7 +108,7 @@ yum install -y mariadb-devel
 CentOS 7 comes by default with MariaDB 5.5 libraries which are very old.
   It might be better to download a newer version of these libraries (MariaDB, MySQL, Percona etc).
 * openSUSE: 
-```
+```shell
 zypper install libmysqlclient-devel
 ```
 * MacOSX: port install mysql5
@@ -118,7 +118,7 @@ zypper install libmysqlclient-devel
 
 Run:
 
-```bash
+```shell
 cmake .
 make
 ```
@@ -128,6 +128,13 @@ One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PAT
 Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
 
 To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
+
+### Build Docker image
+You can build the Docker image either from local sources or directly from Github sources with [the provided Dockerfile](./Dockerfile).
+```shell
+docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper github.com/mydumper/mydumper
+```
+Keep in mind that the main purpose the Dockerfile addresses is development and build from source locally. It might not be optimal for distribution purposes, but can also work as a quick build and run solution with the above one-liner, though.
 
 # How to use mydumper
 
