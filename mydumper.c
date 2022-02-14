@@ -48,9 +48,10 @@
 #include <gio/gio.h>
 #include "config.h"
 #include "mydumper.h"
-#include "server_detect.h"
+#include "src/server_detect.h"
 #include "connection.h"
-#include "common.h"
+#include "src/common_options.h"
+#include "src/common.h"
 #include "g_unix_signal.h"
 #include <math.h>
 #include "getPassword.h"
@@ -61,6 +62,7 @@
 
 #include "src/tables_skiplist.h"
 #include "src/regex.h"
+#include "src/common_options.h"
 //char *regexstring = NULL;
 
 const char DIRECTORY[] = "export";
@@ -715,7 +717,7 @@ void *process_stream(void *data){
     free(used_filemame);
     g_message("Opening: %s",filename);
     f=m_open(filename,"r");
-    not_compressed= !g_str_has_suffix(filename, compress_extension);
+    not_compressed= g_str_has_suffix(filename, compress_extension);
     if (not_compressed)
       f=g_fopen(filename,"r");
     else
@@ -732,7 +734,6 @@ void *process_stream(void *data){
       guint total_len=0;
       GDateTime *start_time=g_date_time_new_now_local();
       buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
-      //  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
       while(buflen > 0){
         len=write(fileno(stdout), buf, buflen);
         total_len=total_len + buflen;
@@ -740,7 +741,6 @@ void *process_stream(void *data){
           g_critical("Stream failed during transmition of file: %s",filename);
           exit(EXIT_FAILURE);
         }
-//        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
         buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
       }
       if (not_compressed && total_len != sz){

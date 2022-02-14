@@ -14,9 +14,8 @@
 
     Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
 */
-#ifndef _common_h
-#define _common_h
-#define STREAM_BUFFER_SIZE 1000000
+#ifndef _common_options_h
+#define _common_options_h
 
 char *hostname = NULL;
 char *username = NULL;
@@ -113,20 +112,7 @@ GOptionEntry common_entries[] = {
      "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-#endif
-
-char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
-int write_file(FILE * file, char * buff, int len);
-void create_backup_dir(char *new_directory) ;
-guint strcount(gchar *text);
-gboolean m_remove(gchar * directory, const gchar * filename);
-FILE * (*m_open)(const char *filename, const char *);
 int (*m_close)(void *file) = NULL;
 int (*m_write)(FILE * file, const char * buff, int len);
-void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group);
-void execute_gstring(MYSQL *conn, GString *ss);
-gchar * identity_function(gchar ** r);
-gchar *replace_escaped_strings(gchar *c);
-void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
-void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
-gboolean is_table_in_list(gchar *table_name, gchar **table_list);
+#endif
+
