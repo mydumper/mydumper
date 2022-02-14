@@ -22,7 +22,8 @@ RUN \
     https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb \
   && \
   dpkg -i /tmp/percona-release.deb && \
-  rm -v /tmp/percona-release.deb
+  rm -v /tmp/percona-release.deb && \
+  percona-release show
 
 # Temp fix required due to 'percona-release' failing to detect package repos.
 RUN \
@@ -47,3 +48,6 @@ RUN \
   cmake ${CMAKE_ARGS} . && \
   make && \
   make install
+
+# Compilation outputs both mydumper and myloader binaries.
+CMD [ "bash", "-c", "echo 'This Docker image contains both mydumper and myloader binaries. Run the container by invoking either mydumper or myloader as first argument.'" ]
