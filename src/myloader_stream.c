@@ -18,6 +18,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <stdio.h>
+#include <string.h>
 #ifdef ZWRAP_USE_ZSTD
 #include "../zstd/zstd_zlibwrapper.h"
 #else
@@ -105,7 +106,7 @@ enum file_type process_filename(char *filename){
       case METADATA_GLOBAL:
         break;
       case METADATA_TABLE:
-        conf->metadata_list=g_list_insert(conf->metadata_list,strdup(filename),-1);
+        conf->metadata_list=g_list_insert(conf->metadata_list,g_strdup(filename),-1);
         process_metadata_filename(conf->table_hash,filename);
         g_mutex_lock(table_list_mutex);
         refresh_table_list(conf);
@@ -271,7 +272,7 @@ void *intermidiate_thread(){
   char * filename=NULL;
   do{
     filename = (gchar *)g_async_queue_pop(intermidiate_queue);
-    if ( strcmp(filename,"END") ==0 ) break;
+    if ( g_strcmp0(filename,"END") ==0 ) break;
     process_stream_filename(filename);
   } while (filename != NULL);
   return NULL;

@@ -13,6 +13,7 @@
 */
 
 #include <glib.h>
+#include <string.h>
 
 GSequence *tables_skiplist = NULL;
 
