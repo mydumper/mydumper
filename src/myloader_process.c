@@ -144,8 +144,9 @@ gchar * get_database_name_from_content(const gchar *filename){
     return NULL;
   }
   gchar *real_database=NULL;
+  guint line;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_str_has_prefix(data->str,"CREATE ")){
           gchar** create= g_strsplit(data->str, "`", 3);

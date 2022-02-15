@@ -288,7 +288,6 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   GString *data = g_string_sized_new(512);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
-
   if (!g_str_has_suffix(path, compress_extension)) {
     infile = g_fopen(path, "r");
     is_compressed = FALSE;
@@ -305,10 +304,8 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   if (!is_schema && (commit_count > 1) )
     mysql_query(td->thrconn, "START TRANSACTION");
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        preline=line;
-        line+=strcount(data->str);
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           char * from=g_strstr_len(data->str,30," DEFINER")+1;
           if (from){
@@ -333,6 +330,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           }
         }
         g_string_set_size(data, 0);
+        preline=line;
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);

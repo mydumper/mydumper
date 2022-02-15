@@ -151,7 +151,7 @@ enum file_type get_file_type (const char * filename){
 
 
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
-                   gboolean *eof) {
+                   gboolean *eof, guint *line) {
   char buffer[256];
 
   do {
@@ -175,6 +175,8 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
       }
     }
     g_string_append(data, buffer);
+    if (strlen(buffer) != 256)
+      (*line)++;
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
   return TRUE;
@@ -188,6 +190,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
   GString *create_table_statement=g_string_sized_new(512);
   GString *alter_table_statement=g_string_sized_new(512);
   GString *alter_table_constraint_statement=g_string_sized_new(512);
+  guint line=0;
   if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
@@ -201,7 +204,7 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
     return;
   }
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof)) {
+    if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strrstr(data->str,"CREATE ")){
           gchar** create_table= g_strsplit(data->str, "`", 3);
