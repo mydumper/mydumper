@@ -40,20 +40,20 @@ extern gboolean skip_triggers;
 extern gboolean skip_post;
 extern gboolean stream;
 extern guint num_threads;
+extern GAsyncQueue *stream_queue;
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
 GAsyncQueue *intermidiate_queue = NULL;
-GAsyncQueue *stream_queue = NULL;
 GThread *stream_thread = NULL;
 GThread *stream_intermidiate_thread = NULL;
 static GMutex *table_list_mutex = NULL;
 void *process_stream();
 void *intermidiate_thread();
 
-struct configuration *conf = NULL;
+struct configuration *stream_conf = NULL;
 
 void initialize_stream (struct configuration *c){
-  conf = c;
+  stream_conf = c;
   stream_queue = g_async_queue_new();
   intermidiate_queue = g_async_queue_new();
   table_list_mutex = g_mutex_new();
@@ -85,7 +85,7 @@ enum file_type process_filename(char *filename){
       case SCHEMA_TABLE:
         process_table_filename(filename);
         g_mutex_lock(table_list_mutex);
-        refresh_table_list(conf);
+        refresh_table_list(stream_conf);
         g_mutex_unlock(table_list_mutex);        
         break;
       case SCHEMA_VIEW:
@@ -101,15 +101,15 @@ enum file_type process_filename(char *filename){
           process_schema_filename(filename,"post");
         break;
       case CHECKSUM:
-        conf->checksum_list=g_list_insert(conf->checksum_list,g_strdup(filename),-1);
+        stream_conf->checksum_list=g_list_insert(stream_conf->checksum_list,g_strdup(filename),-1);
         break;
       case METADATA_GLOBAL:
         break;
       case METADATA_TABLE:
-        conf->metadata_list=g_list_insert(conf->metadata_list,g_strdup(filename),-1);
-        process_metadata_filename(conf->table_hash,filename);
+        stream_conf->metadata_list=g_list_insert(stream_conf->metadata_list,g_strdup(filename),-1);
+        process_metadata_filename(stream_conf->table_hash,filename);
         g_mutex_lock(table_list_mutex);
-        refresh_table_list(conf);
+        refresh_table_list(stream_conf);
         g_mutex_unlock(table_list_mutex);
         break;
       case DATA:
@@ -147,21 +147,21 @@ void process_stream_filename(gchar * filename){
   switch (current_ft){
     case INIT:
     case SCHEMA_CREATE:
-      return conf->database_queue;
+      return stream_conf->database_queue;
     case SCHEMA_TABLE:
-      return conf->table_queue;
+      return stream_conf->table_queue;
     case SCHEMA_VIEW:
     case SCHEMA_TRIGGER:
     case SCHEMA_POST:
     case CHECKSUM:
-      return conf->post_queue;
+      return stream_conf->post_queue;
     case METADATA_GLOBAL:
       return NULL;
     case METADATA_TABLE:
       return NULL;
-      return conf->post_table_queue;
+      return stream_conf->post_table_queue;
     case DATA:
-      return conf->data_queue;
+      return stream_conf->data_queue;
       break;
     case IGNORED:
     case LOAD_DATA:
@@ -174,7 +174,7 @@ void process_stream_filename(gchar * filename){
 
 struct job * give_any_data_job(){
   g_mutex_lock(table_list_mutex);
-  GList * iter=conf->table_list;
+  GList * iter=stream_conf->table_list;
   GList * next = NULL;
   struct job *job = NULL;
 
@@ -200,10 +200,10 @@ struct job * give_any_data_job(){
 
 struct restore_job * give_me_next_data_job(){
   g_mutex_lock(table_list_mutex);
-  GList * iter=conf->table_list;
+  GList * iter=stream_conf->table_list;
   GList * next = NULL;
   struct restore_job *job = NULL;
-//  g_message("Elemetns in table_list: %d",g_list_length(conf->table_list));
+//  g_message("Elemetns in table_list: %d",g_list_length(stream_conf->table_list));
   while (iter != NULL){
     struct db_table * dbt = iter->data;
 //    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
@@ -233,12 +233,12 @@ void *process_stream_queue(struct thread_data * td) {
 //  enum file_type ft;
   while (cont){
     ft=(enum file_type)g_async_queue_pop(stream_queue);
-    job=g_async_queue_try_pop(conf->database_queue);
+    job=g_async_queue_try_pop(stream_conf->database_queue);
     if (job != NULL){
       cont=process_job(td, job);
       continue;
     }
-    job=g_async_queue_try_pop(conf->table_queue);
+    job=g_async_queue_try_pop(stream_conf->table_queue);
     if (job != NULL){
       execute_use_if_needs_to(td, job->use_database, "Restoring tables");
       cont=process_job(td, job);
@@ -284,7 +284,7 @@ void *process_stream(){
   char buffer[STREAM_BUFFER_SIZE];
   FILE *file=NULL;
   gboolean eof=FALSE;
-  conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  stream_conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   do {
     if(fgets(buffer, STREAM_BUFFER_SIZE, stdin) == NULL){
       if (file && feof(file)){
@@ -329,9 +329,9 @@ void *process_stream(){
   g_async_queue_push(intermidiate_queue, e);
   guint n=0;
   for (n = 0; n < num_threads *2 ; n++) {
-    g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(stream_conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(stream_conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_queue, GINT_TO_POINTER(DATA));
   }
 

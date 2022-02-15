@@ -67,6 +67,9 @@
 
 const char DIRECTORY[] = "export";
 
+
+extern GAsyncQueue *stream_queue;
+extern FILE * (*m_open)(const char *filename, const char *);
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
