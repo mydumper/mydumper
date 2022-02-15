@@ -38,7 +38,6 @@ gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 gboolean no_data = FALSE;
 
-GAsyncQueue *stream_queue;
 gchar *compress_extension = NULL;
 
 gboolean askPassword = FALSE;

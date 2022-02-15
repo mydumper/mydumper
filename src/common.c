@@ -21,6 +21,9 @@
 #include <glib/gstdio.h>
 #include "server_detect.h"
 
+FILE * (*m_open)(const char *filename, const char *);
+GAsyncQueue *stream_queue = NULL;
+
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
