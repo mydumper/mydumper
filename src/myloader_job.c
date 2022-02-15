@@ -246,19 +246,21 @@ gboolean process_job(struct thread_data *td, struct job *job){
 }
 
 int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
-                  GString *data, gboolean is_schema, guint *query_counter)
+                  GString *data, gboolean is_schema, guint *query_counter, guint offset_line)
 {
   char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
-  char *insert_statement=g_strndup(data->str,next_line - data->str);
+  char *insert_statement_prefix=g_strndup(data->str,next_line - data->str);
+  guint insert_statement_prefix_len=strlen(insert_statement_prefix);
   int r=0;
+  guint tr=0,current_offset_line=offset_line-1;
   gchar *current_line=next_line;
   next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement));
+  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
   guint current_rows=0;
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
-    new_insert=g_string_append(new_insert,insert_statement);
+    new_insert=g_string_append(new_insert,insert_statement_prefix);
     do {
       char *line=g_strndup(current_line, next_line - current_line);
       g_string_append(new_insert, line);
@@ -266,13 +268,21 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
       current_rows++;
       current_line=next_line+1;
       next_line=g_strstr_len(current_line, -1, "\n");
+      current_offset_line++;
     } while (current_rows < rows && next_line != NULL);
-    if (new_insert->len > strlen(insert_statement))
-      r+=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
+    if (new_insert->len > insert_statement_prefix_len)
+      tr=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
+    else
+      tr=0;
+    r+=tr;
+    if (tr > 0){
+      g_critical("Error occours between lines: %d and %d in a splited INSERT: %s",offset_line,current_offset_line,mysql_error(td->thrconn));
+    }
+    offset_line=current_offset_line+1;
     current_line++; // remove trailing ,
   } while (next_line != NULL);
   g_string_free(new_insert,TRUE);
-  g_free(insert_statement);
+  g_free(insert_statement_prefix);
   g_string_set_size(data, 0);
   return r;
 
@@ -303,6 +313,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   }
   if (!is_schema && (commit_count > 1) )
     mysql_query(td->thrconn, "START TRANSACTION");
+  guint tr=0;
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -320,17 +331,16 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           }
         }
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
-          split_and_restore_data_in_gstring_by_statement(td,
-            data, is_schema, &query_counter);
-        else{
-          guint tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
-          r+=tr;
-          if (tr > 0){
+          tr=split_and_restore_data_in_gstring_by_statement(td,
+            data, is_schema, &query_counter,preline);
+        else
+          tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+        r+=tr;
+        if (tr > 0){
             g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
-          }
         }
         g_string_set_size(data, 0);
-        preline=line;
+        preline=line+1;
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);
