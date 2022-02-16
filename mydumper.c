@@ -52,7 +52,8 @@
 #include "connection.h"
 #include "src/common_options.h"
 #include "src/common.h"
-#include "g_unix_signal.h"
+//#include "g_unix_signal.h"
+#include <glib-unix.h>
 #include <math.h>
 #include "getPassword.h"
 #include "logging.h"
@@ -395,15 +396,6 @@ char * determine_filename (char * table){
    
 }
 
-gboolean sig_triggered(gpointer user_data) {
-  (void)user_data;
-
-  g_message("Shutting down gracefully");
-  shutdown_triggered = TRUE;
-  g_main_loop_quit(m1);
-  return FALSE;
-}
-
 GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
 	MYSQL_RES *res=NULL;
 	MYSQL_ROW row;
@@ -499,7 +491,7 @@ gboolean run_snapshot(gpointer *data) {
 
   g_async_queue_push(start_scheduled_dump, GINT_TO_POINTER(1));
 
-  return (shutdown_triggered) ? FALSE : TRUE;
+  return !shutdown_triggered;
 }
 
 
@@ -945,14 +937,15 @@ void *process_queue(struct thread_data *td) {
 
     g_mutex_unlock(ll_mutex);
   }
-  GAsyncQueue *resume_queue=NULL;
+  GMutex *resume_mutex=NULL;
 
   for (;;) {
     if (conf->pause_resume){
-      resume_queue = (GAsyncQueue *)g_async_queue_try_pop(conf->pause_resume);
-      if (resume_queue != NULL){
-        g_async_queue_pop(resume_queue);
-        resume_queue=NULL;
+      resume_mutex = (GMutex *)g_async_queue_try_pop(conf->pause_resume);
+      if (resume_mutex != NULL){
+        g_mutex_lock(resume_mutex);
+        g_mutex_unlock(resume_mutex);
+        resume_mutex=NULL;
         continue;
       }
     }
@@ -1131,9 +1124,10 @@ gboolean is_disk_space_ok(guint val){
 void *monitor_disk_space_thread (void *queue){
   (void)queue;
   guint i=0;
-  GAsyncQueue **pause_queue_per_thread=g_new(GAsyncQueue * , num_threads) ;
+  // This should be done with mutex not queues! what was I thinking?
+  GMutex **pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
   for(i=0;i<num_threads;i++){
-    pause_queue_per_thread[i]=g_async_queue_new();
+    pause_mutex_per_thread[i]=g_mutex_new();
   }
 
   gboolean previous_state = TRUE, current_state = TRUE;
@@ -1144,12 +1138,13 @@ void *monitor_disk_space_thread (void *queue){
       if (!current_state){
         g_warning("Pausing backup disk space lower than %dMB. You need to free up to %dMB to resume",pause_at,resume_at);
         for(i=0;i<num_threads;i++){
-          g_async_queue_push(queue,pause_queue_per_thread[i]);
+          g_mutex_lock(pause_mutex_per_thread[i]);
+          g_async_queue_push(queue,pause_mutex_per_thread[i]);
         }
       }else{
         g_warning("Resuming backup");
         for(i=0;i<num_threads;i++){
-          g_async_queue_push(pause_queue_per_thread[i], GINT_TO_POINTER(1));
+          g_mutex_unlock(pause_mutex_per_thread[i]);
         }
       }
       previous_state = current_state;
@@ -1160,6 +1155,56 @@ void *monitor_disk_space_thread (void *queue){
   return NULL;
 }
 
+GMutex **pause_mutex_per_thread=NULL;
+gboolean sig_triggered(void * user_data) {
+  guint i=0;
+  if (pause_mutex_per_thread == NULL){
+    pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
+    for(i=0;i<num_threads;i++){
+      pause_mutex_per_thread[i]=g_mutex_new();
+    }
+  }
+  if (((struct configuration *)user_data)->pause_resume == NULL)
+    ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
+  GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
+  if (!daemon_mode){
+    g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+    for(i=0;i<num_threads;i++){
+      g_mutex_lock(pause_mutex_per_thread[i]);
+      g_async_queue_push(queue,pause_mutex_per_thread[i]);
+    }
+    int c=0;
+    while (1){
+    do{
+      c=fgetc(stdin);
+    }while (c=='\n');
+    if ( c == 'N' || c == 'n'){
+      for(i=0;i<num_threads;i++)
+        g_mutex_unlock(pause_mutex_per_thread[i]);
+      return TRUE;
+    }
+    if ( c == 'Y' || c == 'y'){
+      shutdown_triggered = TRUE;
+      for(i=0;i<num_threads;i++)
+        g_mutex_unlock(pause_mutex_per_thread[i]);
+      goto finish;
+    }
+    }
+  }
+finish:
+  g_message("Shutting down gracefully");
+  return FALSE;
+}
+
+void *signal_thread(void *data) {
+  GMainLoop * loop=NULL;
+  g_unix_signal_add(SIGINT, sig_triggered, data);
+  g_unix_signal_add(SIGTERM, sig_triggered, data);
+  loop = g_main_loop_new (NULL, TRUE);
+  g_main_loop_run (loop);
+  g_message("Ending signal thread");
+  return NULL;
+}
 
 int main(int argc, char *argv[]) {
   GError *error = NULL;
@@ -1449,6 +1494,7 @@ int main(int argc, char *argv[]) {
     start_dump(conn);
   }
 
+
   mysql_thread_end();
   mysql_library_end();
   g_free(output_directory);
@@ -1574,6 +1620,18 @@ void start_dump(MYSQL *conn) {
     conf.pause_resume = g_async_queue_new();
     disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
   }
+
+  if (!daemon_mode){
+    GError *serror;
+    GThread *sthread =
+        g_thread_create(signal_thread, &conf, FALSE, &serror);
+    if (sthread == NULL) {
+      g_critical("Could not create signal thread: %s", serror->message);
+      g_error_free(serror);
+      exit(EXIT_FAILURE);
+    }
+  }
+
   for (n = 0; n < num_threads; n++) {
     nits[n] = 0;
     nitl[n] = NULL;
