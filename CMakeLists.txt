@@ -44,7 +44,7 @@ MARK_AS_ADVANCED(CMAKE)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/config.h)
 SET( SHARED_SRCS src/server_detect.c connection.c getPassword.c logging.c set_verbose.c src/common.c src/tables_skiplist.c src/regex.c)
-SET( MYDUMPER_SRCS mydumper.c g_unix_signal.c ${SHARED_SRCS})
+SET( MYDUMPER_SRCS mydumper.c ${SHARED_SRCS})
 SET( ZSTD_SRCS zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c )
 SET( MYLOADER_SRCS myloader.c ${SHARED_SRCS} src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_job.c src/myloader_directory.c )
 
