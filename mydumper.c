@@ -1497,8 +1497,8 @@ int main(int argc, char *argv[]) {
     g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
                           NULL);
 #endif
-    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered, NULL);
-    sigsource = g_unix_signal_add(SIGTERM, sig_triggered, NULL);
+    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
+    sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
     m1 = g_main_loop_new(NULL, TRUE);
     g_main_loop_run(m1);
     g_source_remove(sigsource);
