@@ -1160,39 +1160,44 @@ void *monitor_disk_space_thread (void *queue){
 
 GMutex **pause_mutex_per_thread=NULL;
 
-gboolean sig_triggered(void * user_data) {
-  guint i=0;
-  if (pause_mutex_per_thread == NULL){
-    pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
-    for(i=0;i<num_threads;i++){
-      pause_mutex_per_thread[i]=g_mutex_new();
+gboolean sig_triggered(void * user_data, int signal) {
+  if (signal == SIGTERM){
+    shutdown_triggered = TRUE;
+  }else{
+
+    guint i=0;
+    if (pause_mutex_per_thread == NULL){
+      pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
+      for(i=0;i<num_threads;i++){
+        pause_mutex_per_thread[i]=g_mutex_new();
+      }
     }
-  }
-  if (((struct configuration *)user_data)->pause_resume == NULL)
-    ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
-  GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
-  if (!daemon_mode){
-    g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
-    for(i=0;i<num_threads;i++){
-      g_mutex_lock(pause_mutex_per_thread[i]);
-      g_async_queue_push(queue,pause_mutex_per_thread[i]);
-    }
-    int c=0;
-    while (1){
-    do{
-      c=fgetc(stdin);
-    }while (c=='\n');
-    if ( c == 'N' || c == 'n'){
-      for(i=0;i<num_threads;i++)
-        g_mutex_unlock(pause_mutex_per_thread[i]);
-      return TRUE;
-    }
-    if ( c == 'Y' || c == 'y'){
-      shutdown_triggered = TRUE;
-      for(i=0;i<num_threads;i++)
-        g_mutex_unlock(pause_mutex_per_thread[i]);
-      goto finish;
-    }
+    if (((struct configuration *)user_data)->pause_resume == NULL)
+      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
+    GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
+    if (!daemon_mode){
+      g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+      for(i=0;i<num_threads;i++){
+        g_mutex_lock(pause_mutex_per_thread[i]);
+        g_async_queue_push(queue,pause_mutex_per_thread[i]);
+      }
+      int c=0;
+      while (1){
+        do{
+          c=fgetc(stdin);
+        }while (c=='\n');
+        if ( c == 'N' || c == 'n'){
+          for(i=0;i<num_threads;i++)
+            g_mutex_unlock(pause_mutex_per_thread[i]);
+          return TRUE;
+        }
+        if ( c == 'Y' || c == 'y'){
+          shutdown_triggered = TRUE;
+          for(i=0;i<num_threads;i++)
+            g_mutex_unlock(pause_mutex_per_thread[i]);
+          goto finish;
+        }
+      }
     }
   }
 finish:
@@ -1200,10 +1205,17 @@ finish:
   return FALSE;
 }
 
+gboolean sig_triggered_int(void * user_data) {
+  return sig_triggered(user_data,SIGINT);
+}
+gboolean sig_triggered_term(void * user_data) {
+  return sig_triggered(user_data,SIGTERM);
+}
+
 void *signal_thread(void *data) {
   GMainLoop * loop=NULL;
-  g_unix_signal_add(SIGINT, sig_triggered, data);
-  g_unix_signal_add(SIGTERM, sig_triggered, data);
+  g_unix_signal_add(SIGINT, sig_triggered_int, data);
+  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
   loop = g_main_loop_new (NULL, TRUE);
   g_main_loop_run (loop);
   g_message("Ending signal thread");
@@ -1488,8 +1500,8 @@ int main(int argc, char *argv[]) {
     g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
                           NULL);
 #endif
-    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered, NULL);
-    sigsource = g_unix_signal_add(SIGTERM, sig_triggered, NULL);
+    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
+    sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
     m1 = g_main_loop_new(NULL, TRUE);
     g_main_loop_run(m1);
     g_source_remove(sigsource);
