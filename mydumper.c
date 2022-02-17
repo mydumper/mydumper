@@ -1156,6 +1156,7 @@ void *monitor_disk_space_thread (void *queue){
 }
 
 GMutex **pause_mutex_per_thread=NULL;
+
 gboolean sig_triggered(void * user_data) {
   guint i=0;
   if (pause_mutex_per_thread == NULL){

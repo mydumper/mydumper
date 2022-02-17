@@ -50,6 +50,8 @@ unsigned long long int progress = 0;
 unsigned long long int total_data_sql_files = 0;
 extern gboolean stream;
 
+gboolean shutdown_triggered=FALSE;
+
 void initialize_job(gchar * purge_mode_str){
   single_threaded_create_table = g_mutex_new();
   progress_mutex = g_mutex_new();
@@ -72,7 +74,7 @@ void initialize_job(gchar * purge_mode_str){
 
 void free_restore_job(struct restore_job * rj){
   // We consider that
-  if (rj->filename != NULL ) g_free(rj->filename);
+  if ( !shutdown_triggered && rj->filename != NULL ) g_free(rj->filename);
   if (rj->statement != NULL ) g_string_free(rj->statement,TRUE);
   if (rj != NULL ) g_free(rj);
 }
@@ -144,9 +146,21 @@ int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_s
 }
 
 void process_restore_job(struct thread_data *td, struct restore_job *rj){
+  if (td->conf->pause_resume){
+    GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
+    if (resume_mutex != NULL){
+      g_mutex_lock(resume_mutex);
+      g_mutex_unlock(resume_mutex);
+      resume_mutex=NULL;
+    }
+  }
+  if (shutdown_triggered){
+//    g_message("file enqueued to allow resume: %s", rj->filename);
+    g_async_queue_push(td->conf->file_list_to_do,rj->filename);
+    goto cleanup;
+  }
   struct db_table *dbt=rj->dbt;
   dbt=rj->dbt;
-  g_message("Thread %d restoring job", td->thread_id);
   switch (rj->type) {
     case JOB_RESTORE_STRING:
       g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->object,
@@ -203,6 +217,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_critical("Something very bad happened!");
       exit(EXIT_FAILURE);
     }
+cleanup:
   free_restore_job(rj);
 }
 
@@ -224,17 +239,17 @@ struct job * new_job (enum job_type type, void *job_data, char *use_database) {
 gboolean process_job(struct thread_data *td, struct job *job){
   switch (job->type) {
     case JOB_RESTORE:
-      g_message("Restore Job");
+//      g_message("Restore Job");
       process_restore_job(td,job->job_data);
       break;
     case JOB_WAIT:
-      g_message("Wait Job");
+//      g_message("Wait Job");
       g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
       GAsyncQueue *queue=job->queue;
       g_async_queue_pop(queue);
       break;
     case JOB_SHUTDOWN:
-      g_message("Thread %d shutting down", td->thread_id);
+//      g_message("Thread %d shutting down", td->thread_id);
       g_free(job);
       return FALSE;
       break;
