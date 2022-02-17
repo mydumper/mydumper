@@ -47,6 +47,101 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
     g_date_time_difference(((struct db_table *)b)->finish_time,((struct db_table *)b)->start_time);
 }
 
+gboolean append_filename_to_list (
+    GList **schema_create_list, 
+    GList **create_table_list, 
+    GList **metadata_list, 
+    GList **data_files_list, 
+    GList **view_list, 
+    GList **trigger_list, 
+    GList **post_list, 
+    GList **checksum_list, const gchar *filename, gboolean inside_resume){
+  enum file_type ft= get_file_type(filename);
+    if (ft == SCHEMA_POST){
+        if (!skip_post)
+          *post_list=g_list_insert(*post_list,g_strdup(filename),-1);
+    } else if (ft ==  SCHEMA_CREATE ){
+          *schema_create_list=g_list_insert(*schema_create_list,g_strdup(filename),-1);
+    } else if (!source_db ||
+      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))||
+      g_str_has_prefix(filename, "mydumper_")) {
+        switch (ft){
+          case INIT:
+            break;
+          case SCHEMA_TABLE:
+            *create_table_list=g_list_append(*create_table_list,g_strdup(filename));
+            break;
+          case SCHEMA_VIEW:
+            *view_list=g_list_append(*view_list,g_strdup(filename));
+            break;
+          case SCHEMA_TRIGGER:
+            if (!skip_triggers)
+              *trigger_list=g_list_append(*trigger_list,g_strdup(filename));
+            break;
+          case CHECKSUM:
+            *checksum_list=g_list_append(*checksum_list,g_strdup(filename));
+            break;
+          case METADATA_GLOBAL:
+            break;
+          case METADATA_TABLE:
+            // TODO: we need to process this info
+            *metadata_list=g_list_append(*metadata_list,g_strdup(filename));
+            break;
+          case DATA:
+            if (!no_data)
+              *data_files_list=g_list_append(*data_files_list,g_strdup(filename));
+            break;
+          case LOAD_DATA:
+            g_message("Load data file found: %s", filename);
+            break;
+          case RESUME:
+            if (inside_resume){
+              g_critical("resume file found inside resume processing. You need to manually edit resume file");
+              exit(EXIT_FAILURE);
+            }else{
+              g_message("Using resume file");
+              g_list_free_full(*create_table_list,g_free);
+              g_list_free_full(*view_list,g_free);
+              g_list_free_full(*trigger_list,g_free);
+              g_list_free_full(*checksum_list,g_free);
+              g_list_free_full(*metadata_list,g_free);
+              g_list_free_full(*data_files_list,g_free);
+              *create_table_list=NULL;
+              *view_list=NULL;
+              *trigger_list=NULL;
+              *checksum_list=NULL;
+              *metadata_list=NULL;
+              *data_files_list=NULL;
+              FILE *file = g_fopen(filename, "r");
+              GString *data=g_string_sized_new(256);
+              gboolean eof = FALSE;
+              guint line=0;
+              read_data(file, FALSE, data, &eof, &line);
+              gchar **split=NULL;
+              guint i=0;
+              while (!eof){
+                read_data(file, FALSE, data, &eof, &line);
+                split=g_strsplit(data->str,"\n",0);
+                for (i=0; i<g_strv_length(split);i++){
+                  if (strlen(split[i])>2)
+                    append_filename_to_list(schema_create_list,create_table_list,metadata_list,data_files_list,view_list,trigger_list,post_list,checksum_list,split[i],TRUE);
+                }
+                g_string_set_size(data, 0);
+              } 
+              fclose(file);
+              g_remove(filename);
+            }
+            return FALSE;
+            break;
+          default:
+            g_warning("File ignored: %s", filename);
+            break;
+        }
+      }
+  return TRUE;
+}
+
+
 void load_directory_information(struct configuration *conf) {
   GError *error = NULL;
   GDir *dir = g_dir_open(directory, 0, &error);
@@ -65,15 +160,15 @@ void load_directory_information(struct configuration *conf) {
         *view_list=NULL,
         *trigger_list=NULL,
         *post_list=NULL;
-
-  while ((filename = g_dir_read_name(dir))) {
-    enum file_type ft= get_file_type(filename);
+  gboolean cont=TRUE;
+  while (cont && (filename = g_dir_read_name(dir))) {
+    cont=append_filename_to_list(&schema_create_list,&create_table_list,&metadata_list,&data_files_list,&view_list,&trigger_list,&post_list,&(conf->checksum_list),filename,FALSE);
+/*    enum file_type ft= get_file_type(filename);
     if (ft == SCHEMA_POST){
         if (!skip_post)
           post_list=g_list_insert(post_list,g_strdup(filename),-1);
     } else if (ft ==  SCHEMA_CREATE ){
           schema_create_list=g_list_insert(schema_create_list,g_strdup(filename),-1);
-          conf->schema_create_list=g_list_insert(conf->schema_create_list,g_strdup(filename),-1);
     } else if (!source_db ||
       g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))|| 
       g_str_has_prefix(filename, "mydumper_")) { 
@@ -105,12 +200,23 @@ void load_directory_information(struct configuration *conf) {
             break;
           case LOAD_DATA:
             g_message("Load data file found: %s", filename);
-            break;            
+            break;
+          case RESUME:
+            g_list_free_full(create_table_list,g_free);
+            g_list_free_full(view_list,g_free);
+            g_list_free_full(trigger_list,g_free);
+            g_list_free_full(conf->checksum_list,g_free);
+            g_list_free_full(metadata_list,g_free);
+            g_list_free_full(data_files_list,g_free);
+
+            goto exit_loop;
+            break;
           default:
             g_warning("File ignored: %s", filename);
             break;
         }
       }
+      */
     }
   g_dir_close(dir);
 

@@ -118,6 +118,10 @@ enum file_type process_filename(char *filename){
         else if (!no_delete)
           m_remove(directory,filename);
         break;
+      case RESUME:
+        g_critical("We don't expect to find resume files in a stream scenario");
+        exit(EXIT_FAILURE);
+        break;
       case IGNORED:
         g_warning("Filename %s has been ignored", filename);
         break;

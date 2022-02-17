@@ -39,6 +39,7 @@
 #else
 #include <zlib.h>
 #endif
+#include <glib-unix.h>
 #include "config.h"
 #include "src/common.h"
 #include "src/myloader_stream.h"
@@ -69,6 +70,7 @@ gboolean skip_triggers = FALSE;
 gboolean skip_post = FALSE;
 gboolean skip_definer = FALSE;
 gboolean serial_tbl_creation = FALSE;
+gboolean resume = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
@@ -81,6 +83,7 @@ guint max_threads_per_table=4;
 //GHashTable *db_hash=NULL;
 extern GHashTable *tbl_hash;
 extern GHashTable *db_hash;
+extern gboolean shutdown_triggered;
 const char DIRECTORY[] = "import";
 
 void *process_queue(struct thread_data *td);
@@ -123,8 +126,10 @@ static GOptionEntry entries[] = {
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
-    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation, "Table recreation will be executed in serie, one thread at a time",
-     NULL},
+    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation, 
+      "Table recreation will be executed in serie, one thread at a time",NULL},
+    {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
+      "Expect to find resume file in backup dir and will only process those files",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GHashTable * initialize_hash_of_session_variables(){
@@ -141,8 +146,97 @@ GHashTable * initialize_hash_of_session_variables(){
   return set_session_hash;
 }
 
+
+GMutex **pause_mutex_per_thread=NULL;
+
+gboolean sig_triggered(void * user_data, int signal) {
+  guint i=0;
+  GAsyncQueue *queue=NULL;
+  if (signal == SIGTERM){
+    shutdown_triggered = TRUE;
+  }else{
+    if (pause_mutex_per_thread == NULL){
+      pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
+      for(i=0;i<num_threads;i++){
+        pause_mutex_per_thread[i]=g_mutex_new();
+      }
+    }
+    if (((struct configuration *)user_data)->pause_resume == NULL)
+      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
+    queue = ((struct configuration *)user_data)->pause_resume;
+    for(i=0;i<num_threads;i++){
+      g_mutex_lock(pause_mutex_per_thread[i]);
+      g_async_queue_push(queue,pause_mutex_per_thread[i]);
+    }
+    g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+    int c=0;
+    while (1){
+      do{
+        c=fgetc(stdin);
+      }while (c=='\n');
+      if ( c == 'N' || c == 'n'){
+        for(i=0;i<num_threads;i++)
+          g_mutex_unlock(pause_mutex_per_thread[i]);
+        return TRUE;
+      }
+      if ( c == 'Y' || c == 'y'){
+        shutdown_triggered = TRUE;
+        for(i=0;i<num_threads;i++)
+          g_mutex_unlock(pause_mutex_per_thread[i]);
+        break;
+      }
+    }
+  }
+
+  g_message("Writing resume.partial file");
+  queue = ((struct configuration *)user_data)->file_list_to_do;
+  gchar *filename;
+  gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
+
+  void *outfile = g_fopen(p, "w");
+  filename=g_async_queue_pop(queue);
+  while(g_strcmp0(filename,"NO_MORE_FILES")!=0){
+    fprintf(outfile, "%s\n", filename);
+    filename=g_async_queue_pop(queue);
+  }
+  fclose(outfile);
+  if (g_rename(p, p2) != 0){
+    g_critical("Error renaming resume.partial to resume");
+  }
+  g_free(p);
+  g_free(p2);
+  g_message("Shutting down gracefully completed.");
+  return FALSE;
+}
+
+gboolean sig_triggered_int(void * user_data) {
+  return sig_triggered(user_data,SIGINT);
+}
+gboolean sig_triggered_term(void * user_data) {
+  return sig_triggered(user_data,SIGTERM);
+}
+
+void *signal_thread(void *data) {
+  GMainLoop * loop=NULL;
+  g_unix_signal_add(SIGINT, sig_triggered_int, data);
+  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
+  loop = g_main_loop_new (NULL, TRUE);
+  g_main_loop_run (loop);
+  return NULL;
+}
+
+
+void m_connect(MYSQL *conn){
+  configure_connection(conn, "myloader");
+  if (!mysql_real_connect(conn, hostname, username, password, NULL, port,
+                          socket_path, 0)) {
+    g_critical("Error connection to database: %s", mysql_error(conn));
+    exit(EXIT_FAILURE);
+  }
+}
+
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -242,15 +336,18 @@ int main(int argc, char *argv[]) {
   initiliaze_common();
   initialize_regex(regexstring);
 
-  MYSQL *conn;
-  conn = mysql_init(NULL);
-
-  configure_connection(conn, "myloader");
-  if (!mysql_real_connect(conn, hostname, username, password, NULL, port,
-                          socket_path, 0)) {
-    g_critical("Error connection to database: %s", mysql_error(conn));
+  GError *serror;
+  GThread *sthread =
+      g_thread_create(signal_thread, &conf, FALSE, &serror);
+  if (sthread == NULL) {
+    g_critical("Could not create signal thread: %s", serror->message);
+    g_error_free(serror);
     exit(EXIT_FAILURE);
   }
+
+  MYSQL *conn;
+  conn = mysql_init(NULL);
+  m_connect(conn);
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
@@ -280,8 +377,15 @@ int main(int argc, char *argv[]) {
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
+  conf.pause_resume = g_async_queue_new();
+  conf.file_list_to_do = g_async_queue_new();
   db_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){
+    g_critical("Resume file not found");
+    exit(EXIT_FAILURE);
+  }
 
   struct thread_data t;
   t.thread_id = 0;
@@ -297,7 +401,6 @@ int main(int argc, char *argv[]) {
     db_hash_insert(db, db);
     create_database(&t, db);
   }
- 
 
   if (stream){
     initialize_stream(&conf);
@@ -325,6 +428,10 @@ int main(int argc, char *argv[]) {
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+
+
+  if (shutdown_triggered)
+    g_async_queue_push(conf.file_list_to_do, g_strdup("NO_MORE_FILES"));
   g_async_queue_unref(conf.ready);
   if (disable_redo_log)
     mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
@@ -453,27 +560,12 @@ void *process_queue(struct thread_data *td) {
   g_mutex_unlock(init_mutex);
   td->current_database=NULL;
 
-  configure_connection(td->thrconn, "myloader");
-
-  if (!mysql_real_connect(td->thrconn, hostname, username, password, NULL, port,
-                          socket_path, 0)) {
-    g_critical("Failed to connect to MySQL server: %s", mysql_error(td->thrconn));
-    exit(EXIT_FAILURE);
-  }
-
-//  if (mysql_query(td->thrconn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(td->thrconn));
-//  }
-
-//  if (!enable_binlog)
-//    mysql_query(td->thrconn, "SET SQL_LOG_BIN=0");
+  m_connect(td->thrconn);
 
   mysql_query(td->thrconn, set_names_str);
   mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
   mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
-//  if (commit_count > 1)
-//    mysql_query(td->thrconn, "SET autocommit=0");
 
   execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
@@ -481,8 +573,6 @@ void *process_queue(struct thread_data *td) {
   if (db){
     td->current_database=db;
     execute_use(td, "Initializing thread");
-//    if (stream)
-//      g_async_queue_push(conf->database_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   g_debug("Thread %d: Starting import", td->thread_id);
   if (stream){

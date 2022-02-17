@@ -34,9 +34,11 @@ struct configuration {
   GAsyncQueue *post_table_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
+  GAsyncQueue *pause_resume;
+  GAsyncQueue *file_list_to_do;
   GList *table_list;
   GHashTable *table_hash;
-  GList *schema_create_list;
+//  GList *schema_create_list;
   GList *checksum_list;
   GList *metadata_list;
   GMutex *mutex;
@@ -71,7 +73,7 @@ struct db_table {
   GDateTime * finish_time;
 };
 
-enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, IGNORED, LOAD_DATA};
+enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA};
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
 
 struct restore_job {

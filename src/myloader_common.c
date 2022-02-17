@@ -37,6 +37,7 @@ extern gchar *db;
 extern gboolean no_delete;
 extern gboolean stream;
 extern gboolean innodb_optimize_keys;
+extern gboolean resume;
 extern char *regexstring;
 extern char **tables;
 extern gchar *tables_skiplist_file;
@@ -133,6 +134,16 @@ enum file_type get_file_type (const char * filename){
     return METADATA_TABLE;
   } else if ( strcmp(filename, "metadata") == 0 ){
     return METADATA_GLOBAL;
+  } else if ( strcmp(filename, "resume") == 0 ){
+    if (!resume){
+      g_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
+      exit(EXIT_FAILURE);
+    }
+
+    return RESUME;
+  } else if ( strcmp(filename, "resume.partial") == 0 ){
+    g_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
+    exit(EXIT_FAILURE);
   } else if (m_filename_has_suffix(filename, "-checksum")) {
     return CHECKSUM;
   } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
