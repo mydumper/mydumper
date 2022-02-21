@@ -1316,6 +1316,7 @@ int main(int argc, char *argv[]) {
   if (load_data){
     if (!fields_enclosed_by_ld){
     	fields_enclosed_by=g_strdup("");
+      fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
 	    g_error("--fields-enclosed-by must be a single character");
       exit(EXIT_FAILURE);
@@ -1330,21 +1331,24 @@ int main(int argc, char *argv[]) {
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
       } 
+    }else{
+      fields_escaped_by=g_strdup("\\\\");
     }
   }
 
   if (!fields_terminated_by_ld){
     if (load_data){
       fields_terminated_by=g_strdup("\t");
-//      fields_terminated_by_ld=g_strdup("\\t")
+      fields_terminated_by_ld=g_strdup("\\t");
     }else
       fields_terminated_by=g_strdup(",");
   }else
     fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
   if (!lines_starting_by_ld){
-    if (load_data)
+    if (load_data){
       lines_starting_by=g_strdup("");
-    else
+      lines_starting_by_ld=lines_starting_by;
+    }else
   	  lines_starting_by=g_strdup("(");
   }else
     lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
@@ -1357,9 +1361,10 @@ int main(int argc, char *argv[]) {
   }else
     lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
   if (!statement_terminated_by_ld){
-    if (load_data)
+    if (load_data){
       statement_terminated_by=g_strdup("");
-    else
+      statement_terminated_by_ld=statement_terminated_by;
+    }else
   	  statement_terminated_by=g_strdup(";\n");
   }else
     statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
@@ -3983,7 +3988,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
       if (load_data){
         if (!row[i]) {
 //          g_string_append(statement_row,fields_enclosed_by);
-          g_string_append(statement_row, "NULL");
+          g_string_append(statement_row, "\\N");
 //          g_string_append(statement_row,fields_enclosed_by);
         }else if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
           g_string_append(statement_row,fields_enclosed_by);
