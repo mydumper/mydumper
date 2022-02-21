@@ -1255,6 +1255,7 @@ int main(int argc, char *argv[]) {
   if (load_data){
     if (!fields_enclosed_by_ld){
     	fields_enclosed_by=g_strdup("");
+      fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
 	    g_error("--fields-enclosed-by must be a single character");
       exit(EXIT_FAILURE);
@@ -1269,21 +1270,24 @@ int main(int argc, char *argv[]) {
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
       } 
+    }else{
+      fields_escaped_by=g_strdup("\\\\");
     }
   }
 
   if (!fields_terminated_by_ld){
     if (load_data){
       fields_terminated_by=g_strdup("\t");
-//      fields_terminated_by_ld=g_strdup("\\t")
+      fields_terminated_by_ld=g_strdup("\\t");
     }else
       fields_terminated_by=g_strdup(",");
   }else
     fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
   if (!lines_starting_by_ld){
-    if (load_data)
+    if (load_data){
       lines_starting_by=g_strdup("");
-    else
+      lines_starting_by_ld=lines_starting_by;
+    }else
   	  lines_starting_by=g_strdup("(");
   }else
     lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
@@ -1296,9 +1300,10 @@ int main(int argc, char *argv[]) {
   }else
     lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
   if (!statement_terminated_by_ld){
-    if (load_data)
+    if (load_data){
       statement_terminated_by=g_strdup("");
-    else
+      statement_terminated_by_ld=statement_terminated_by;
+    }else
   	  statement_terminated_by=g_strdup(";\n");
   }else
     statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
