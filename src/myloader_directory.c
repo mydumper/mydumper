@@ -286,7 +286,7 @@ void load_directory_information(struct configuration *conf) {
       i=i->next;
     }
     dbt->count=g_async_queue_length(dbt->queue);
-    g_debug("Setting count to: %d", dbt->count);
+//    g_debug("Setting count to: %d", dbt->count);
   }
   conf->table_list=table_list;
   // conf->table needs to be set.
