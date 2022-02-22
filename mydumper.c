@@ -156,6 +156,8 @@ guint pause_at=0;
 guint resume_at=0;
 
 
+gchar **db_items=NULL;
+
 gchar *fields_terminated_by=NULL;
 gchar *fields_enclosed_by=NULL;
 gchar *fields_escaped_by=NULL;
@@ -1486,6 +1488,10 @@ int main(int argc, char *argv[]) {
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
 
+  if (db){
+    db_items=g_strsplit(db,",",0);
+  }
+
   if (daemon_mode) {
     GError *terror;
     start_scheduled_dump = g_async_queue_new();
@@ -1535,7 +1541,7 @@ MYSQL *create_main_connection() {
 
   configure_connection(conn, "mydumper");
 
-  if (!mysql_real_connect(conn, hostname, username, password, db, port,
+  if (!mysql_real_connect(conn, hostname, username, password, db_items!=NULL?db_items[0]:db, port,
                           socket_path, 0)) {
     g_critical("Error connecting to database: %s", mysql_error(conn));
     exit(EXIT_FAILURE);
@@ -1636,7 +1642,20 @@ void start_dump(MYSQL *conn) {
   FILE *nufile = NULL;
   guint have_backup_locks = 0;
   GThread *disk_check_thread = NULL;
+  GString *db_quoted_list=NULL;
+  if (db){
+    guint i=0;
+    db_quoted_list=g_string_sized_new(strlen(db));
+    g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
+    i++;
+    while (i<g_strv_length(db_items)){
 
+      g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
+      i++;
+
+    } 
+    
+  }
   if (disk_limits!=NULL){
     conf.pause_resume = g_async_queue_new();
     disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
@@ -1813,10 +1832,10 @@ void start_dump(MYSQL *conn) {
         g_string_printf(
             query,
             "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES "
-            "WHERE TABLE_SCHEMA = '%s' AND TABLE_TYPE ='BASE TABLE' AND NOT "
+            "WHERE TABLE_SCHEMA in (%s) AND TABLE_TYPE ='BASE TABLE' AND NOT "
             "(TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR "
             "TABLE_NAME = 'general_log'))",
-            db);
+            db_quoted_list->str);
       } else if (tables) {
         for (i = 0; tables[i] != NULL; i++) {
           dt = g_strsplit(tables[i], ".", 0);
@@ -2051,9 +2070,12 @@ void start_dump(MYSQL *conn) {
   }
 
   if (db) {
-    dump_database(new_database(conn,db,TRUE), &conf);
-    if (!no_schemas)
-      dump_create_database(db, &conf);
+    guint i=0;
+    for (i=0;i<g_strv_length(db_items);i++){
+      dump_database(new_database(conn,db_items[i],TRUE), &conf);
+      if (!no_schemas)
+        dump_create_database(db_items[i], &conf);
+    }
   } else if (tables) {
     get_tables(conn, &conf);
   } else {
