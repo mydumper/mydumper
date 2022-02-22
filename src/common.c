@@ -21,6 +21,8 @@
 #include <glib/gstdio.h>
 #include "server_detect.h"
 
+typedef gchar * (*fun_ptr)(gchar **);
+
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 
@@ -51,7 +53,7 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
   // Loads the config_file
   if (!g_key_file_load_from_file (kf, config_file,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
-    g_warning ("Failed to load config file: %s", error->message);
+    g_warning ("Failed to load config file %s: %s", config_file, error->message);
     return;
   }
   gsize len=0;
@@ -63,9 +65,11 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
   }else{
     // Transform the key-value pair to parameters option that the parsing will understand
     for (i=0; i < len; i++){
-      list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
-      gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
-      if ( value != NULL ) list=g_slist_append(list, value);
+      if (g_strcmp0("host",keys[i]) && g_strcmp0("user",keys[i]) && g_strcmp0("password",keys[i])){
+        list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
+        gchar *value=g_key_file_get_value(kf,group,keys[i],&error);
+        if ( value != NULL ) list=g_slist_append(list, value);
+      }
     }
     gint slen = g_slist_length(list) + 1;
     gchar ** gclist = g_new0(gchar *, slen);
@@ -86,16 +90,39 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
   }
 }
 
-void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables){
-  guint i=0;
+gchar * identity_function(gchar ** r){
+  return *r;
+}
+
+gchar * random_int_function(gchar ** r){
+  // TODO: This function is not near to be ok, it is just for testing.
+  gchar * new_number=g_strdup_printf("%u",g_random_int());
+  g_strlcpy(*r,new_number,strlen(*r)+1);
+  return *r;
+}
+
+fun_ptr get_function_pointer_for (gchar *function_char){
+  if (!g_strcmp0(function_char,"random_int"))
+    return &random_int_function;
+  // TODO: more functions needs to be added.
+  if (!g_strcmp0(function_char,""))
+    return &identity_function;
+  if (!g_strcmp0(function_char,""))
+    return &identity_function;     
+  return &identity_function;
+}
+
+
+void load_hash_from_key_file(GHashTable * set_session_hash, GHashTable *all_anonymized_function, gchar * config_file, const gchar * group_variables){
+  guint i=0,j=0;
   GError *error = NULL;
   gchar *value=NULL;
-  gsize len=0;
+  gsize len=0,len2=0;
   GKeyFile *kf = g_key_file_new ();
   // Loads the config_file
   if (!g_key_file_load_from_file (kf, config_file,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
-    g_warning ("Failed to load config file: %s", error->message);
+    g_warning ("Failed to load config file %s: %s", config_file, error->message);
     return;
   }
   gchar **keys=g_key_file_get_keys(kf,group_variables, &len, &error);
@@ -104,6 +131,20 @@ void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file,
     if (!error)
       g_hash_table_insert(set_session_hash, keys[i],value);
   }
+  gchar **groups=g_key_file_get_groups(kf,&len);
+  GHashTable *ht=NULL;
+  for (i=0; i < len; i++){
+    if (g_strstr_len(groups[i],strlen(groups[i]),"`.`") && g_str_has_prefix(groups[i],"`") && g_str_has_suffix(groups[i],"`")){
+      ht=g_hash_table_new ( g_str_hash, g_str_equal );
+      keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
+      for (j=0; j < len2; j++){
+        value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+        g_hash_table_insert(ht,g_strdup(keys[j]),get_function_pointer_for(value));
+      }
+      g_hash_table_insert(all_anonymized_function,g_strdup(groups[i]),ht);
+    }
+  }
+
 }
 
 
@@ -132,10 +173,6 @@ void execute_gstring(MYSQL *conn, GString *ss)
 
 int write_file(FILE * file, char * buff, int len){
   return write(fileno(file), buff, len); 
-}
-
-gchar * identity_function(gchar ** r){
-  return *r;
 }
 
 gchar *replace_escaped_strings(gchar *c){

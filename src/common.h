@@ -30,7 +30,8 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar * identity_function(gchar ** r);
 gchar *replace_escaped_strings(gchar *c);
-void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
+void load_hash_from_key_file(GHashTable * set_session_hash, GHashTable *all_anonymized_function, gchar * config_file, const gchar * group_variables);
+//void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **table_list);
 #endif

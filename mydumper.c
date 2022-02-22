@@ -150,6 +150,7 @@ gchar *where_option=NULL;
 guint64 max_rows=1000000;
 GHashTable *database_hash=NULL;
 GHashTable *ref_table=NULL;
+GHashTable *all_anonymized_function=NULL;
 guint table_number;
 
 guint pause_at=0;
@@ -1240,6 +1241,7 @@ int main(int argc, char *argv[]) {
   ll_cond = g_cond_new();
   database_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   ref_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
   context = g_option_context_new("multi-threaded MySQL dumping");
   GOptionGroup *main_group =
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
@@ -1544,8 +1546,9 @@ MYSQL *create_main_connection() {
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
   GHashTable * set_session_hash = initialize_hash_of_session_variables();
-  if (defaults_file)
-    load_hash_from_key_file(set_session_hash, defaults_file, "mydumper_variables");
+  if (defaults_file){
+    load_hash_from_key_file(set_session_hash, all_anonymized_function, defaults_file, "mydumper_variables");
+  }
   refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
 
@@ -2703,6 +2706,45 @@ gboolean get_database(MYSQL *conn, char *database_name, struct database ** datab
   return FALSE;
 }
 
+typedef gchar * (*fun_ptr2)(gchar **);
+
+GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
+  // TODO #364: this is the place where we need to link the column between file loaded and dbt.
+  // Currently, we are using identity_function, which return the same data.
+  // Key: `database`.`table`.`column`
+
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gchar *query =
+      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
+                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
+                      database, table);
+  mysql_query(conn, query);
+  g_free(query);
+
+  GList *anonymized_function_list=NULL;
+  res = mysql_store_result(conn);
+  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
+  GHashTable *ht = g_hash_table_lookup(all_anonymized_function,k);
+  fun_ptr2 f;
+  if (ht){
+    while ((row = mysql_fetch_row(res))) {
+      f=(fun_ptr2)g_hash_table_lookup(ht,row[0]);
+      if (f  != NULL){
+        anonymized_function_list=g_list_append(anonymized_function_list,f);
+      }else{
+        anonymized_function_list=g_list_append(anonymized_function_list,&identity_function);
+      }
+    }
+  }else{
+    g_message("No anonymized func for that");
+  }
+  mysql_free_result(res);
+  g_free(k);
+  return anonymized_function_list;
+}
+
 struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
@@ -2710,7 +2752,7 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
-  dbt->anonymized_function=NULL;
+  dbt->anonymized_function=get_anonymized_function_for(conn, database->name, table);
   dbt->rows=0;
   if (!datalength)
     dbt->datalength = 0;
@@ -3889,16 +3931,6 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 
   g_string_set_size(statement, 0);
 
-  // TODO #364: this is the place where we need to link the column between file loaded and dbt.
-  // Currently, we are using identity_function, which return the same data.
-    for(i=0; i< num_fields;i++){
-      if (i>0){
-        dbt->anonymized_function=g_list_append(dbt->anonymized_function,&identity_function);
-      }else{
-        dbt->anonymized_function=g_list_append(dbt->anonymized_function,&identity_function);
-      }
-    }
-
   gboolean first_time=TRUE;
   /* Poor man's data dump code */
   while ((row = mysql_fetch_row(result))) {
@@ -3982,9 +4014,12 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
 
     g_string_append(statement_row, lines_starting_by);
     GList *f = dbt->anonymized_function;
+    gchar * (*fun_ptr)(gchar **) = &identity_function;
     for (i = 0; i < num_fields; i++) {
-      gchar * (*fun_ptr)(gchar **) = f->data;
+      if (f){
+      fun_ptr=f->data;
       f=f->next;
+      }
       if (load_data){
         if (!row[i]) {
 //          g_string_append(statement_row,fields_enclosed_by);
