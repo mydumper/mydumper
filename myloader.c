@@ -353,7 +353,7 @@ int main(int argc, char *argv[]) {
   detected_server = detect_server(conn);
   GHashTable * set_session_hash = initialize_hash_of_session_variables();
   if (defaults_file)
-    load_hash_from_key_file(set_session_hash, defaults_file, "myloader_variables");
+    load_hash_from_key_file(set_session_hash, NULL, defaults_file, "myloader_variables");
   refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
 
