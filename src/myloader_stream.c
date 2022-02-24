@@ -125,6 +125,8 @@ enum file_type process_filename(char *filename){
       case LOAD_DATA:
         g_message("Load data file found: %s", filename);
         break;
+      case SHUTDOWN:
+        break;
     }
   }
   return ft;
@@ -206,6 +208,7 @@ void *process_stream_queue(struct thread_data * td) {
     ft=(enum file_type)g_async_queue_pop(stream_queue);
     job=g_async_queue_try_pop(stream_conf->database_queue);
     if (job != NULL){
+      g_debug("Restoring database");
       cont=process_job(td, job);
       continue;
     }
@@ -218,24 +221,24 @@ void *process_stream_queue(struct thread_data * td) {
     struct restore_job *rj = give_me_next_data_job();
     if (rj != NULL){
       job=new_job(JOB_RESTORE,rj,rj->dbt->real_database);
-      g_message("Data! %s", job->job_data->filename);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables");
-      g_message("Start Processing");
       cont=process_job(td, job);
-      g_message("End Processing");
       continue;
     }
-    g_message("PROBLEM: the should be any file %d",ft);
     job=give_any_data_job();
     if (job != NULL){
-      g_message("Data2!");
       execute_use_if_needs_to(td, job->use_database, "Restoring tables");
       cont=process_job(td, job);
       continue;
+    }else{
+      if (ft==SHUTDOWN)
+        cont=FALSE;
+      else
+        g_async_queue_push(stream_queue,GINT_TO_POINTER(ft));
     }
     
   }
-  g_message("Intermediate DEAD!!!");
+  g_message("Shutting down stream thread");
   return NULL;
 }
 
@@ -302,7 +305,7 @@ void *process_stream(){
     g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_queue, GINT_TO_POINTER(DATA));
+    g_async_queue_push(stream_queue, GINT_TO_POINTER(SHUTDOWN));
   }
 
   return NULL;
