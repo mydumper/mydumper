@@ -20,11 +20,23 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include "server_detect.h"
+extern gboolean no_delete;
+extern gboolean stream;
 
 typedef gchar * (*fun_ptr)(gchar **);
 
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
+extern int detected_server;
+
+GHashTable * initialize_hash_of_session_variables(){
+  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  if (detected_server == SERVER_TYPE_MYSQL){
+    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
+    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+  }
+  return set_session_hash;
+}
 
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
   MYSQL_RES *result = NULL;
@@ -231,10 +243,12 @@ guint strcount(gchar *text){
 }
 
 gboolean m_remove(gchar * directory, const gchar * filename){
-  gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
-  g_message("Removing file: %s", path);
-  remove(path);
-  g_free(path);
+  if (stream && no_delete == FALSE){
+    gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
+    g_message("Removing file: %s", path);
+    remove(path);
+    g_free(path);
+  }
   return TRUE;
 }
 
@@ -245,4 +259,3 @@ gboolean is_table_in_list(gchar *table_name, gchar **table_list){
       return TRUE;
   return FALSE;
 }
-

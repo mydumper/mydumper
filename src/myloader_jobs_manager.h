@@ -20,7 +20,8 @@ enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 struct job * new_job (enum job_type type, void *job_data, char *use_database);
 gboolean process_job(struct thread_data *td, struct job *job);
 void initialize_job();
-int restore_data_from_file(struct thread_data *td, char *database, char *table,
-                  const char *filename, gboolean is_schema);
-int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
-int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
+void *loader_thread(struct thread_data *td);
+void *signal_thread(void *data);
+void initialize_loader_threads(struct configuration *conf);
+void wait_loader_threads_to_finish();
+void free_loader_threads();

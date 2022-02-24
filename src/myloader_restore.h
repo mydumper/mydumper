@@ -12,11 +12,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Aaron Brady, Shopify (insom)
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _connection_h
-#define _connection_h
-#include <mysql.h>
-
-void configure_connection(MYSQL *conn, const char *name);
-#endif
+void load_restore_entries(GOptionGroup *main_group);
+int restore_data_from_file(struct thread_data *td, char *database, char *table,
+                  const char *filename, gboolean is_schema);
+int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
+int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);

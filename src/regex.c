@@ -21,12 +21,23 @@
 #include <glib.h>
 #include "regex.h"
 
-char *regex = NULL;
-
 const char * filename_regex="^[\\w\\-_ ]+$";
 
 static pcre *re = NULL;
 static pcre *filename_re = NULL;
+
+char *regex = NULL;
+
+
+GOptionEntry regex_entries[] = {
+    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regex,
+     "Regular expression for 'db.table' matching", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+void load_regex_entries(GOptionGroup *main_group){
+  g_option_group_add_entries(main_group, regex_entries);
+}
 
 gboolean check_filename_regex(char *word) {
   /* This is not going to be used in threads */
@@ -48,8 +59,7 @@ void init_regex(pcre **r, const char *str){
   }
 }
 
-void initialize_regex(char *rx){
-  regex=rx;
+void initialize_regex(){
   if (regex)
     init_regex(&re,regex);
   init_regex(&filename_re,filename_regex);
@@ -69,8 +79,9 @@ gboolean check_regex(pcre *tre, char *database, char *table) {
 }
 
 gboolean eval_regex(char * a,char * b){
+
   if (re){
     return check_regex(re, a, b);
   }
-  return FALSE;
+  return TRUE;
 }

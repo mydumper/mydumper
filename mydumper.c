@@ -46,25 +46,23 @@
 #include <glib/gstdio.h>
 #include <glib/gerror.h>
 #include <gio/gio.h>
-#include "config.h"
+#include "src/config.h"
 #include "mydumper.h"
 #include "src/server_detect.h"
-#include "connection.h"
+#include "src/connection.h"
 #include "src/common_options.h"
 #include "src/common.h"
-//#include "g_unix_signal.h"
 #include <glib-unix.h>
 #include <math.h>
-#include "getPassword.h"
-#include "logging.h"
-#include "set_verbose.h"
+//#include "getPassword.h"
+#include "src/logging.h"
+#include "src/set_verbose.h"
 #include "locale.h"
 #include <sys/statvfs.h>
 
 #include "src/tables_skiplist.h"
 #include "src/regex.h"
-#include "src/common_options.h"
-//char *regexstring = NULL;
+
 
 const char DIRECTORY[] = "export";
 
@@ -211,8 +209,6 @@ static GOptionEntry entries[] = {
      "Compress output files", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-//    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
-//     "Regular expression for 'db.table' matching", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
@@ -363,30 +359,6 @@ void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
 gchar *get_ref_table(gchar *k);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
-
-/*
-gboolean check_regex_general(char *regex, char *word) {
-//   This is not going to be used in threads 
-  static pcre *re = NULL;
-  int rc;
-  int ovector[9] = {0};
-  const char *error;
-  int erroroffset;
-
-  // Let's compile the RE before we do anything 
-  if (!re) {
-    re = pcre_compile(regex, PCRE_CASELESS | PCRE_MULTILINE, &error,
-                      &erroroffset, NULL);
-    if (!re) {
-      g_critical("Regular expression fail: %s", error);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  rc = pcre_exec(re, NULL, word, strlen(word), 0, 0, ovector, 9);
-  return (rc > 0) ? TRUE : FALSE;
-}
-*/
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
@@ -826,17 +798,9 @@ void thd_JOB_TRIGGERS(struct thread_data *td, struct job *job){
 }
 
 void initialize_thread(struct thread_data *td){
-  configure_connection(td->thrconn, "mydumper");
-
-  if (!mysql_real_connect(td->thrconn, hostname, username, password, NULL, port,
-                          socket_path, 0)) {
-    g_critical("Failed to connect to database: %s", mysql_error(td->thrconn));
-    exit(EXIT_FAILURE);
-  } else {
-    g_message("Thread %d connected using MySQL connection ID %lu",
-              td->thread_id, mysql_thread_id(td->thrconn));
-  }
-
+  m_connect(td->thrconn, "mydumper", NULL);
+  g_message("Thread %d connected using MySQL connection ID %lu",
+            td->thread_id, mysql_thread_id(td->thrconn));
 }
 
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
@@ -1096,15 +1060,6 @@ void *process_queue(struct thread_data *td) {
   return NULL;
 }
 
-GHashTable * initialize_hash_of_session_variables(){
-  GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  if (detected_server == SERVER_TYPE_MYSQL){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
-  }
-  return set_session_hash;
-}
-
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
   if (g_strv_length(strsplit)!=2){
@@ -1249,6 +1204,8 @@ int main(int argc, char *argv[]) {
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
+  load_connection_entries(main_group);
+  load_regex_entries(main_group);
   g_option_context_set_main_group(context, main_group);
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
@@ -1291,23 +1248,11 @@ int main(int argc, char *argv[]) {
 #endif
   }
 
-  if (password != NULL){
-    int i=1;	  
-    for(i=1; i < argc; i++){
-      gchar * p= g_strstr_len(argv[i],-1,password);
-      if (p != NULL){
-        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
-      }
-    }
-  }
-
+  hide_password(argc, argv);
+  ask_password();
+  
   if (disk_limits!=NULL){
     parse_disk_limits();
-  }
-
-  // prompt for password if it's NULL
-  if (sizeof(password) == 0 || (password == NULL && askPassword)) {
-    password = passwordPrompt();
   }
 
   if (csv){
@@ -1395,7 +1340,7 @@ int main(int argc, char *argv[]) {
 
   g_message("MyDumper backup version: %s", VERSION);
 
-  initialize_regex(regexstring);
+  initialize_regex();
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
@@ -1541,13 +1486,7 @@ MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  configure_connection(conn, "mydumper");
-
-  if (!mysql_real_connect(conn, hostname, username, password, db_items!=NULL?db_items[0]:db, port,
-                          socket_path, 0)) {
-    g_critical("Error connecting to database: %s", mysql_error(conn));
-    exit(EXIT_FAILURE);
-  }
+  m_connect(conn, "mydumper",db_items!=NULL?db_items[0]:db);
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
@@ -1877,7 +1816,7 @@ void start_dump(MYSQL *conn) {
             }
             if (lock && tables_skiplist_file && check_skiplist(row[0], row[1]))
               continue;
-            if (lock && regexstring && !eval_regex(row[0], row[1]))
+            if (lock && !eval_regex(row[0], row[1]))
               continue;
 
             if (lock) {
@@ -2096,7 +2035,7 @@ void start_dump(MYSQL *conn) {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (regexstring == NULL || eval_regex(row[0], NULL))){
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (!eval_regex(row[0], NULL))){
         g_mutex_lock(db_tmp->ad_mutex);
         if (!db_tmp->already_dumped){
           dump_create_database(db_tmp->name, &conf);
@@ -2959,7 +2898,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (regexstring && !eval_regex(database->name, row[0]))
+    if (!eval_regex(database->name, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -3009,7 +2948,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
         continue;
 
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !eval_regex(database->name, row[1]))
+      if (!eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;
@@ -3031,7 +2970,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
         /* Checks PCRE expressions on 'database.sp' string */
-        if (regexstring && !eval_regex(database->name, row[1]))
+        if ( !eval_regex(database->name, row[1]))
           continue;
 
         post_dump = 1;
@@ -3056,7 +2995,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if (regexstring && !eval_regex(database->name, row[1]))
+      if ( !eval_regex(database->name, row[1]))
         continue;
 
       post_dump = 1;

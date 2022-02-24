@@ -26,23 +26,30 @@
 #endif
 #include "myloader_stream.h"
 #include "common.h"
+//#include "common_options.h"
+#include <glib-unix.h>
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_job.h"
+#include "myloader_jobs_manager.h"
+#include "myloader_directory.h"
+#include "myloader_restore.h"
+#include "connection.h"
 #include <errno.h>
 
 extern guint errors;
-extern guint commit_count;
 extern gboolean serial_tbl_creation;
 extern gboolean overwrite_tables;
 extern gboolean no_delete;
 extern gchar *directory;
 extern gchar *compress_extension;
 extern gchar *db;
-extern gboolean skip_definer;
 extern guint rows;
+extern gchar *set_names_str;
+extern GString *set_session;
+extern guint num_threads;
 
+static GMutex *init_mutex=NULL;
 static GMutex *single_threaded_create_table = NULL;
 static GMutex *progress_mutex = NULL;
 enum purge_mode purge_mode;
@@ -51,11 +58,15 @@ unsigned long long int progress = 0;
 unsigned long long int total_data_sql_files = 0;
 extern gboolean stream;
 
+GAsyncQueue *file_list_to_do=NULL;
+
 gboolean shutdown_triggered=FALSE;
 
 void initialize_job(gchar * purge_mode_str){
   single_threaded_create_table = g_mutex_new();
+  init_mutex = g_mutex_new();
   progress_mutex = g_mutex_new();
+  file_list_to_do = g_async_queue_new();
   if (purge_mode_str){
     if (!strcmp(purge_mode_str,"TRUNCATE")){
       purge_mode=TRUNCATE;
@@ -109,43 +120,6 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
   return truncate_or_delete_failed;
 }
 
-int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
-{
-  if (mysql_real_query(td->thrconn, data->str, data->len)) {
-    //g_critical("Error restoring: %s %s", data->str, mysql_error(conn));
-    errors++;
-    return 1;
-  }
-  *query_counter=*query_counter+1;
-  if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
-    *query_counter= 0;
-    if (mysql_query(td->thrconn, "COMMIT")) {
-      errors++;
-      return 2;
-    }
-    mysql_query(td->thrconn, "START TRANSACTION");
-  }
-  g_string_set_size(data, 0);
-  return 0;
-}
-
-int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
-{
-  int i=0;
-  int r=0;
-  if (data != NULL && data->len > 4){
-    gchar** line=g_strsplit(data->str, ";\n", -1);
-    for (i=0; i < (int)g_strv_length(line);i++){
-       if (strlen(line[i])>2){
-         GString *str=g_string_new(line[i]);
-         g_string_append_c(str,';');
-         r+=restore_data_in_gstring_by_statement(td, str, is_schema, query_counter);
-       }
-    }
-  }
-  return r;
-}
-
 void process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
@@ -157,7 +131,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   }
   if (shutdown_triggered){
 //    g_message("file enqueued to allow resume: %s", rj->filename);
-    g_async_queue_push(td->conf->file_list_to_do,rj->filename);
+    g_async_queue_push(file_list_to_do,rj->filename);
     goto cleanup;
   }
   struct db_table *dbt=rj->dbt;
@@ -261,126 +235,165 @@ gboolean process_job(struct thread_data *td, struct job *job){
   return TRUE;
 }
 
-int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
-                  GString *data, gboolean is_schema, guint *query_counter, guint offset_line)
-{
-  char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
-  char *insert_statement_prefix=g_strndup(data->str,next_line - data->str);
-  guint insert_statement_prefix_len=strlen(insert_statement_prefix);
-  int r=0;
-  guint tr=0,current_offset_line=offset_line-1;
-  gchar *current_line=next_line;
-  next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
-  guint current_rows=0;
-  do {
-    current_rows=0;
-    g_string_set_size(new_insert, 0);
-    new_insert=g_string_append(new_insert,insert_statement_prefix);
-    do {
-      char *line=g_strndup(current_line, next_line - current_line);
-      g_string_append(new_insert, line);
-      g_free(line);
-      current_rows++;
-      current_line=next_line+1;
-      next_line=g_strstr_len(current_line, -1, "\n");
-      current_offset_line++;
-    } while (current_rows < rows && next_line != NULL);
-    if (new_insert->len > insert_statement_prefix_len)
-      tr=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
-    else
-      tr=0;
-    r+=tr;
-    if (tr > 0){
-      g_critical("Error occours between lines: %d and %d in a splited INSERT: %s",offset_line,current_offset_line,mysql_error(td->thrconn));
-    }
-    offset_line=current_offset_line+1;
-    current_line++; // remove trailing ,
-  } while (next_line != NULL);
-  g_string_free(new_insert,TRUE);
-  g_free(insert_statement_prefix);
-  g_string_set_size(data, 0);
-  return r;
+void *loader_thread(struct thread_data *td) {
+  struct configuration *conf = td->conf;
+  g_mutex_lock(init_mutex);
+  td->thrconn = mysql_init(NULL);
+  g_mutex_unlock(init_mutex);
+  td->current_database=NULL;
 
+  m_connect(td->thrconn, "myloader", NULL);
+
+  mysql_query(td->thrconn, set_names_str);
+  mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
+  mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
+  mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
+
+  execute_gstring(td->thrconn, set_session);
+  g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
+
+  if (db){
+    td->current_database=db;
+    execute_use(td, "Initializing thread");
+  }
+  g_debug("Thread %d: Starting import", td->thread_id);
+  if (stream){
+    process_stream_queue(td);
+  }else{
+    process_directory_queue(td);
+  }
+  struct job *job = NULL;
+  gboolean cont=TRUE;
+
+//  g_message("Thread %d: Starting post import task over table", td->thread_id);
+  cont=TRUE;
+  while (cont){
+    job = (struct job *)g_async_queue_pop(conf->post_table_queue);
+//    g_message("%s",((struct restore_job *)job->job_data)->object);
+    execute_use_if_needs_to(td, job->use_database, "Restoring post table");
+    cont=process_job(td, job);
+  }
+//  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
+  cont=TRUE;
+  while (cont){
+    job = (struct job *)g_async_queue_pop(conf->post_queue);
+    execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
+    cont=process_job(td, job);
+  }
+
+  if (td->thrconn)
+    mysql_close(td->thrconn);
+  mysql_thread_end();
+  g_debug("Thread %d ending", td->thread_id);
+  return NULL;
 }
 
-int restore_data_from_file(struct thread_data *td, char *database, char *table,
-                  const char *filename, gboolean is_schema){
-  void *infile;
-  int r=0;
-  gboolean is_compressed = FALSE;
-  gboolean eof = FALSE;
-  guint query_counter = 0;
-  GString *data = g_string_sized_new(512);
-  guint line=0,preline=0;
-  gchar *path = g_build_filename(directory, filename, NULL);
-  if (!g_str_has_suffix(path, compress_extension)) {
-    infile = g_fopen(path, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(path, "r");
-    is_compressed = TRUE;
-  }
+GMutex **pause_mutex_per_thread=NULL;
 
-  if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
-    errors++;
-    return 1;
-  }
-  if (!is_schema && (commit_count > 1) )
-    mysql_query(td->thrconn, "START TRANSACTION");
-  guint tr=0;
-  while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof, &line)) {
-      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          char * from=g_strstr_len(data->str,30," DEFINER")+1;
-          if (from){
-            char * to=g_strstr_len(from,30," ");
-            if (to){
-              while(from != to){
-                from[0]=' ';
-                from++;
-              }
-              g_message("It is a create statement %s: %s",filename,from);
-            }
-          }
-        }
-        if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
-          tr=split_and_restore_data_in_gstring_by_statement(td,
-            data, is_schema, &query_counter,preline);
-        else
-          tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
-        r+=tr;
-        if (tr > 0){
-            g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
-        }
-        g_string_set_size(data, 0);
-        preline=line+1;
+gboolean sig_triggered(void * user_data, int signal) {
+  guint i=0;
+  GAsyncQueue *queue=NULL;
+  if (signal == SIGTERM){
+    shutdown_triggered = TRUE;
+  }else{
+    if (pause_mutex_per_thread == NULL){
+      pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
+      for(i=0;i<num_threads;i++){
+        pause_mutex_per_thread[i]=g_mutex_new();
       }
-    } else {
-      g_critical("error reading file %s (%d)", filename, errno);
-      errors++;
-      return r;
+    }
+    if (((struct configuration *)user_data)->pause_resume == NULL)
+      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
+    queue = ((struct configuration *)user_data)->pause_resume;
+    for(i=0;i<num_threads;i++){
+      g_mutex_lock(pause_mutex_per_thread[i]);
+      g_async_queue_push(queue,pause_mutex_per_thread[i]);
+    }
+    g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+    int c=0;
+    while (1){
+      do{
+        c=fgetc(stdin);
+      }while (c=='\n');
+      if ( c == 'N' || c == 'n'){
+        for(i=0;i<num_threads;i++)
+          g_mutex_unlock(pause_mutex_per_thread[i]);
+        return TRUE;
+      }
+      if ( c == 'Y' || c == 'y'){
+        shutdown_triggered = TRUE;
+        for(i=0;i<num_threads;i++)
+          g_mutex_unlock(pause_mutex_per_thread[i]);
+        break;
+      }
     }
   }
-  if (!is_schema && (commit_count > 1) && mysql_query(td->thrconn, "COMMIT")) {
-    g_critical("Error committing data for %s.%s from file %s: %s",
-               db ? db : database, table, filename, mysql_error(td->thrconn));
-    errors++;
-  }
-  g_string_free(data, TRUE);
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
 
-  if (stream && no_delete == FALSE){
-    g_message("Removing file: %s", path);
-    remove(path);
+  g_message("Writing resume.partial file");
+  gchar *filename;
+  gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
+
+  void *outfile = g_fopen(p, "w");
+  filename=g_async_queue_pop(file_list_to_do);
+  while(g_strcmp0(filename,"NO_MORE_FILES")!=0){
+    fprintf(outfile, "%s\n", filename);
+    filename=g_async_queue_pop(file_list_to_do);
   }
-  g_free(path);
-  return r;
+  fclose(outfile);
+  if (g_rename(p, p2) != 0){
+    g_critical("Error renaming resume.partial to resume");
+  }
+  g_free(p);
+  g_free(p2);
+  g_message("Shutting down gracefully completed.");
+  return FALSE;
 }
 
+gboolean sig_triggered_int(void * user_data) {
+  return sig_triggered(user_data,SIGINT);
+}
+gboolean sig_triggered_term(void * user_data) {
+  return sig_triggered(user_data,SIGTERM);
+}
+
+void *signal_thread(void *data) {
+  GMainLoop * loop=NULL;
+  g_unix_signal_add(SIGINT, sig_triggered_int, data);
+  g_unix_signal_add(SIGTERM, sig_triggered_term, data);
+  loop = g_main_loop_new (NULL, TRUE);
+  g_main_loop_run (loop);
+  return NULL;
+}
+
+GThread **threads = NULL;
+struct thread_data *td = NULL;
+
+void initialize_loader_threads(struct configuration *conf){
+  guint n=0;
+  threads = g_new(GThread *, num_threads);
+  td = g_new(struct thread_data, num_threads);
+  for (n = 0; n < num_threads; n++) {
+    td[n].conf = conf;
+    td[n].thread_id = n + 1;
+    threads[n] =
+        g_thread_create((GThreadFunc)loader_thread, &td[n], TRUE, NULL);
+    // Here, the ready queue is being used to serialize the connection to the database.
+    // We don't want all the threads try to connect at the same time
+    g_async_queue_pop(conf->ready);
+  }
+}
+
+void wait_loader_threads_to_finish(){
+  guint n=0;
+  for (n = 0; n < num_threads; n++) {
+    g_thread_join(threads[n]);
+  }
+
+  if (shutdown_triggered)
+    g_async_queue_push(file_list_to_do, g_strdup("NO_MORE_FILES"));
+}
+
+void free_loader_threads(){
+  g_free(td);
+  g_free(threads);
+}

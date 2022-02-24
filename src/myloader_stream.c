@@ -24,33 +24,33 @@
 #else
 #include <zlib.h>
 #endif
-#include "myloader_stream.h"
 #include "common.h"
-#include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_job.h"
+#include "myloader_jobs_manager.h"
+#include "myloader_stream.h"
+
 extern gchar *compress_extension;
 extern gchar *db;
 extern gchar *directory;
 extern gchar *source_db;
-extern gboolean no_delete;
 extern gboolean no_data;
 extern gboolean skip_triggers;
 extern gboolean skip_post;
-extern gboolean stream;
 extern guint num_threads;
 extern GAsyncQueue *stream_queue;
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
+
 GAsyncQueue *intermidiate_queue = NULL;
 GThread *stream_thread = NULL;
 GThread *stream_intermidiate_thread = NULL;
 static GMutex *table_list_mutex = NULL;
-void *process_stream();
-void *intermidiate_thread();
 
 struct configuration *stream_conf = NULL;
+
+void *process_stream();
+void *intermidiate_thread();
 
 void initialize_stream (struct configuration *c){
   stream_conf = c;
@@ -65,7 +65,6 @@ void wait_stream_to_finish(){
   g_thread_join(stream_thread);
 }
 
-
 enum file_type process_filename(char *filename){
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
@@ -75,9 +74,7 @@ enum file_type process_filename(char *filename){
       case SCHEMA_CREATE:
         if (db){
           g_warning("Skipping database creation on file: %s",filename);
-          if (stream && no_delete == FALSE){
-            m_remove(directory,filename);
-          }
+          m_remove(directory,filename);
         }else{
           process_database_filename(filename, "create database");
         }
@@ -115,7 +112,7 @@ enum file_type process_filename(char *filename){
       case DATA:
         if (!no_data)
           process_data_filename(filename);
-        else if (!no_delete)
+        else
           m_remove(directory,filename);
         break;
       case RESUME:
@@ -147,35 +144,6 @@ void process_stream_filename(gchar * filename){
   g_async_queue_push(stream_queue, GINT_TO_POINTER(current_ft));
 }
 
-/*GAsyncQueue *get_queue_for_type(enum file_type current_ft){
-  switch (current_ft){
-    case INIT:
-    case SCHEMA_CREATE:
-      return stream_conf->database_queue;
-    case SCHEMA_TABLE:
-      return stream_conf->table_queue;
-    case SCHEMA_VIEW:
-    case SCHEMA_TRIGGER:
-    case SCHEMA_POST:
-    case CHECKSUM:
-      return stream_conf->post_queue;
-    case METADATA_GLOBAL:
-      return NULL;
-    case METADATA_TABLE:
-      return NULL;
-      return stream_conf->post_table_queue;
-    case DATA:
-      return stream_conf->data_queue;
-      break;
-    case IGNORED:
-    case LOAD_DATA:
-      break;
-  }
-  return NULL;
-}
-*/
-
-
 struct job * give_any_data_job(){
   g_mutex_lock(table_list_mutex);
   GList * iter=stream_conf->table_list;
@@ -199,7 +167,6 @@ struct job * give_any_data_job(){
   g_mutex_unlock(table_list_mutex);
 
   return job;
-
 }
 
 struct restore_job * give_me_next_data_job(){
@@ -281,7 +248,6 @@ void *intermidiate_thread(){
   } while (filename != NULL);
   return NULL;
 }
-
 
 void *process_stream(){
   char * filename=NULL,*real_filename=NULL;
