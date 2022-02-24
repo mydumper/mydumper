@@ -443,7 +443,7 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
 }
 
 
-void my_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
+void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
   if (!g_str_has_suffix(filename, compress_extension)) {
     *infile = g_fopen(filename, "r");
     *is_compressed = FALSE;

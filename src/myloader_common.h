@@ -40,5 +40,5 @@ gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 void refresh_table_list(struct configuration *conf);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-void my_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
+void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
 #endif

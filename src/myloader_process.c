@@ -134,7 +134,7 @@ gchar * get_database_name_from_content(const gchar *filename){
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  my_open(&infile,filename,&is_compressed);
+  ml_open(&infile,filename,&is_compressed);
 /*  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;

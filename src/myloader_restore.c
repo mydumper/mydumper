@@ -137,7 +137,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   GString *data = g_string_sized_new(512);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
-  my_open(&infile,path,&is_compressed);
+  ml_open(&infile,path,&is_compressed);
 
 /*  if (!g_str_has_suffix(path, compress_extension)) {
     infile = g_fopen(path, "r");
