@@ -46,7 +46,7 @@
 #include <glib/gstdio.h>
 #include <glib/gerror.h>
 #include <gio/gio.h>
-#include "config.h"
+#include "src/config.h"
 #include "mydumper.h"
 #include "src/server_detect.h"
 #include "src/connection.h"

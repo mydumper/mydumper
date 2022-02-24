@@ -40,23 +40,23 @@
 #include <zlib.h>
 #endif
 #include "config.h"
-#include "src/common.h"
-#include "src/myloader_stream.h"
+#include "common.h"
+#include "myloader_stream.h"
 
-#include "src/connection.h"
+#include "connection.h"
 //#include "getPassword.h"
-#include "src/logging.h"
-#include "src/set_verbose.h"
+#include "logging.h"
+#include "set_verbose.h"
 #include "locale.h"
-#include "src/server_detect.h"
-#include "src/tables_skiplist.h"
-#include "src/regex.h"
-#include "src/myloader_process.h"
-#include "src/myloader_common.h"
-#include "src/common_options.h"
-#include "src/myloader_jobs_manager.h"
-#include "src/myloader_directory.h"
-#include "src/myloader_restore.h"
+#include "server_detect.h"
+#include "tables_skiplist.h"
+#include "regex.h"
+#include "myloader_process.h"
+#include "myloader_common.h"
+#include "common_options.h"
+#include "myloader_jobs_manager.h"
+#include "myloader_directory.h"
+#include "myloader_restore.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;

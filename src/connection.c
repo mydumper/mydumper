@@ -21,7 +21,7 @@
 #include <pcre.h>
 #include <glib.h>
 #include <string.h>
-#include "../config.h"
+#include "config.h"
 #include "connection.h"
 
 char *hostname = NULL;
