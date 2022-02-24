@@ -19,6 +19,7 @@
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #ifdef ZWRAP_USE_ZSTD
 #include "../zstd/zstd_zlibwrapper.h"
 #else
@@ -28,10 +29,8 @@
 #include "myloader_stream.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_job.h"
-#include <errno.h>
+#include "myloader_jobs_manager.h"
 
-struct configuration *conf;
 extern gchar *compress_extension;
 extern gchar *db;
 extern gboolean stream;
@@ -39,6 +38,9 @@ extern guint max_threads_per_table;
 extern gchar *directory;
 extern guint errors;
 extern guint total_data_sql_files;
+
+struct configuration *conf;
+
 void initialize_process(struct configuration *c){
   conf=c;
 }
@@ -128,17 +130,18 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
 }
 
 gchar * get_database_name_from_content(const gchar *filename){
-  void *infile;
+  FILE *infile;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  if (!g_str_has_suffix(filename, compress_extension)) {
+  my_open(&infile,filename,&is_compressed);
+/*  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
   } else {
     infile = (void *)gzopen(filename, "r");
     is_compressed = TRUE;
-  }
+  }*/
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
@@ -219,7 +222,7 @@ void process_metadata_filename( GHashTable *table_hash, char * filename){
     is_compressed = FALSE;
   } else {
     infile = (void *)gzopen(path, "r");
-    is_compressed=TRUE;
+    is_compressed = TRUE;
   }
 
   if (!infile) {

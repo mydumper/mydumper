@@ -18,5 +18,11 @@
 #define _connection_h
 #include <mysql.h>
 
-void configure_connection(MYSQL *conn, const char *name);
+
+
+//void configure_connection(MYSQL *conn, const char *name);
+void m_connect(MYSQL *conn, const gchar *app, gchar *schema);
+void hide_password(int argc, char *argv[]);
+void ask_password();
+void load_connection_entries(GOptionGroup *main_group);
 #endif

@@ -16,7 +16,5 @@
 */
 #include "myloader.h"
 void *process_stream_queue(struct thread_data * td);
-//void *process_stream(struct configuration *conf);
-
 void initialize_stream (struct configuration *conf);
 void wait_stream_to_finish();

@@ -35,7 +35,10 @@ void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt);
 void finish_alter_table(GString * alter_table_statement);
-void initiliaze_common();
+void initialize_common();
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 void refresh_table_list(struct configuration *conf);
+void checksum_databases(struct thread_data *td);
+void checksum_table_filename(const gchar *filename, MYSQL *conn);
+void my_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
 #endif

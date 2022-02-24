@@ -17,10 +17,6 @@
 #ifndef _common_options_h
 #define _common_options_h
 
-char *hostname = NULL;
-char *username = NULL;
-char *password = NULL;
-char *socket_path = NULL;
 char *db = NULL;
 char *defaults_file = NULL;
 #ifdef WITH_SSL
@@ -40,8 +36,6 @@ gboolean no_data = FALSE;
 
 gchar *compress_extension = NULL;
 
-gboolean askPassword = FALSE;
-guint port = 0;
 guint num_threads = 4;
 guint verbose = 2;
 gboolean ssl = FALSE;
@@ -51,20 +45,8 @@ gboolean program_version = FALSE;
 gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
 char **tables = NULL;
-char *regexstring = NULL;
 
 GOptionEntry common_entries[] = {
-    {"host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to",
-     NULL},
-    {"user", 'u', 0, G_OPTION_ARG_STRING, &username,
-     "Username with the necessary privileges", NULL},
-    {"password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL},
-    {"ask-password", 'a', 0, G_OPTION_ARG_NONE, &askPassword,
-     "Prompt For User password", NULL},
-    {"port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to",
-     NULL},
-    {"socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path,
-     "UNIX domain socket file to use for connection", NULL},
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, default 4", NULL},
     {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
@@ -107,8 +89,6 @@ GOptionEntry common_entries[] = {
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
      "Comma delimited table list to dump (does not exclude regex option)",
      NULL},
-    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regexstring,
-     "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int (*m_close)(void *file) = NULL;

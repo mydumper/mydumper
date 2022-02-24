@@ -15,11 +15,37 @@
     Authors:        Aaron Brady, Shopify (insom)
 */
 
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <pcre.h>
 #include <glib.h>
 #include <string.h>
-#include "config.h"
+#include "../config.h"
 #include "connection.h"
+
+char *hostname = NULL;
+char *username = NULL;
+char *password = NULL;
+char *socket_path = NULL;
+guint port = 0;
+gboolean askPassword = FALSE;
+
+GOptionEntry connection_entries[] = {
+    {"host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to",
+     NULL},
+    {"user", 'u', 0, G_OPTION_ARG_STRING, &username,
+     "Username with the necessary privileges", NULL},
+    {"password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL},
+    {"ask-password", 'a', 0, G_OPTION_ARG_NONE, &askPassword,
+     "Prompt For User password", NULL},
+    {"port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to",
+     NULL},
+    {"socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path,
+     "UNIX domain socket file to use for connection", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
 
 extern char *defaults_file;
 #ifdef WITH_SSL
@@ -33,6 +59,10 @@ extern gboolean ssl;
 extern gchar *ssl_mode;
 #endif
 extern guint compress_protocol;
+
+void load_connection_entries(GOptionGroup *main_group){
+  g_option_group_add_entries(main_group, connection_entries);
+}
 
 void configure_connection(MYSQL *conn, const char *name) {
   if (defaults_file != NULL) {
@@ -92,3 +122,39 @@ void configure_connection(MYSQL *conn, const char *name) {
   }
 #endif
 }
+
+void m_connect(MYSQL *conn, const gchar *app, gchar *schema){
+  configure_connection(conn, app);
+  if (!mysql_real_connect(conn, hostname, username, password, schema, port,
+                          socket_path, 0)) {
+    g_critical("Error connection to database: %s", mysql_error(conn));
+    exit(EXIT_FAILURE);
+  }
+}
+
+void hide_password(int argc, char *argv[]){
+  if (password != NULL){
+    int i=1;
+    for(i=1; i < argc; i++){
+      gchar * p= g_strstr_len(argv[i],-1,password);
+      if (p != NULL){
+        strncpy(p, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX", strlen(password));
+      }
+    }
+  }
+}
+
+char *passwordPrompt(void) {
+  char *p;
+  p = getpass("Enter MySQL Password: ");
+
+  return p;
+}
+
+void ask_password(){
+  // prompt for password if it's NULL
+  if (sizeof(password) == 0 || (password == NULL && askPassword)) {
+    password = passwordPrompt();
+  }
+}
+

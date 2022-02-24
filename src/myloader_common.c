@@ -28,6 +28,7 @@
 #include "myloader_stream.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
+#include "connection.h"
 #include "tables_skiplist.h"
 #include "regex.h"
 #include <errno.h>
@@ -38,7 +39,6 @@ extern gboolean no_delete;
 extern gboolean stream;
 extern gboolean innodb_optimize_keys;
 extern gboolean resume;
-extern char *regexstring;
 extern char **tables;
 extern gchar *tables_skiplist_file;
 extern guint errors;
@@ -48,8 +48,9 @@ static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
 
-void initiliaze_common(){
+void initialize_common(){
   db_hash_mutex=g_mutex_new();
+  tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
@@ -85,11 +86,7 @@ gboolean eval_table( char *db_name, char * table_name){
   if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
     return FALSE;
   }
-  if ( regexstring )
-    if(!eval_regex(db_name, table_name)){
-      return FALSE;
-  }
-  return TRUE;
+  return eval_regex(db_name, table_name);
 }
 
 struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object){
@@ -139,7 +136,6 @@ enum file_type get_file_type (const char * filename){
       g_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
       exit(EXIT_FAILURE);
     }
-
     return RESUME;
   } else if ( strcmp(filename, "resume.partial") == 0 ){
     g_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
@@ -385,3 +381,75 @@ void refresh_table_list(struct configuration *conf){
   g_list_free(conf->table_list);
   conf->table_list=table_list;
 }
+
+// this can be moved to the table structure and executed before index creation.
+void checksum_databases(struct thread_data *td) {
+  g_message("Starting table checksum verification");
+
+  const gchar *filename = NULL;
+  GList *e = td->conf->checksum_list;
+  while (e){
+    filename=e->data;
+    checksum_table_filename(filename, td->thrconn);
+    e=e->next;
+  }
+}
+
+void checksum_table_filename(const gchar *filename, MYSQL *conn) {
+  gchar *database = NULL, *table = NULL;
+  get_database_table_from_file(filename,"-checksum",&database,&table);
+  gchar *real_database=db_hash_lookup(database);
+  gchar *real_table=g_hash_table_lookup(tbl_hash,table);
+  void *infile;
+  char checksum[256];
+  int errn=0;
+  char * row=checksum_table(conn, db ? db : real_database, real_table, &errn);
+  gboolean is_compressed = FALSE;
+  gchar *path = g_build_filename(directory, filename, NULL);
+
+  if (!g_str_has_suffix(path, compress_extension)) {
+    infile = g_fopen(path, "r");
+    is_compressed = FALSE;
+  } else {
+    infile = (void *)gzopen(path, "r");
+    is_compressed=TRUE;
+  }
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+
+  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
+  if (cs != NULL) {
+    if(strcmp(checksum, row) != 0) {
+      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : real_database, real_table, row, checksum);
+      errors++;
+    }
+    else {
+      g_message("Checksum confirmed for `%s`.`%s`", db ? db : real_database, real_table);
+    }
+  } else {
+    g_critical("error reading file %s (%d)", filename, errno);
+    errors++;
+    return;
+  }
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
+}
+
+
+void my_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
+  if (!g_str_has_suffix(filename, compress_extension)) {
+    *infile = g_fopen(filename, "r");
+    *is_compressed = FALSE;
+  } else {
+    *infile = (void *)gzopen(filename, "r");
+    *is_compressed = TRUE;
+  }
+}
+

@@ -34,4 +34,7 @@ void load_hash_from_key_file(GHashTable * set_session_hash, GHashTable *all_anon
 //void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **table_list);
+GHashTable * initialize_hash_of_session_variables();
+void load_common_entries(GOptionGroup *main_group);
 #endif
+

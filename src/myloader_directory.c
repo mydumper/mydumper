@@ -31,7 +31,8 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_job.h"
+#include "myloader_jobs_manager.h"
+#include "myloader_restore.h"
 
 extern guint num_threads;
 extern gboolean innodb_optimize_keys;
@@ -162,63 +163,9 @@ void load_directory_information(struct configuration *conf) {
         *trigger_list=NULL,
         *post_list=NULL;
   gboolean cont=TRUE;
-  while (cont && (filename = g_dir_read_name(dir))) {
+  while (cont && (filename = g_dir_read_name(dir)))
     cont=append_filename_to_list(&schema_create_list,&create_table_list,&metadata_list,&data_files_list,&view_list,&trigger_list,&post_list,&(conf->checksum_list),filename,FALSE);
-/*    enum file_type ft= get_file_type(filename);
-    if (ft == SCHEMA_POST){
-        if (!skip_post)
-          post_list=g_list_insert(post_list,g_strdup(filename),-1);
-    } else if (ft ==  SCHEMA_CREATE ){
-          schema_create_list=g_list_insert(schema_create_list,g_strdup(filename),-1);
-    } else if (!source_db ||
-      g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))|| 
-      g_str_has_prefix(filename, "mydumper_")) { 
-        switch (ft){
-          case INIT:
-            break;
-          case SCHEMA_TABLE:
-            create_table_list=g_list_append(create_table_list,g_strdup(filename));
-            break;
-          case SCHEMA_VIEW:
-            view_list=g_list_append(view_list,g_strdup(filename));
-            break;
-          case SCHEMA_TRIGGER:
-            if (!skip_triggers)
-              trigger_list=g_list_append(trigger_list,g_strdup(filename));
-            break;
-          case CHECKSUM:
-            conf->checksum_list=g_list_append(conf->checksum_list,g_strdup(filename));
-            break;
-          case METADATA_GLOBAL:
-            break;
-          case METADATA_TABLE:
-            // TODO: we need to process this info
-            metadata_list=g_list_append(metadata_list,g_strdup(filename));
-            break;
-          case DATA:
-            if (!no_data)
-              data_files_list=g_list_append(data_files_list,g_strdup(filename));
-            break;
-          case LOAD_DATA:
-            g_message("Load data file found: %s", filename);
-            break;
-          case RESUME:
-            g_list_free_full(create_table_list,g_free);
-            g_list_free_full(view_list,g_free);
-            g_list_free_full(trigger_list,g_free);
-            g_list_free_full(conf->checksum_list,g_free);
-            g_list_free_full(metadata_list,g_free);
-            g_list_free_full(data_files_list,g_free);
-
-            goto exit_loop;
-            break;
-          default:
-            g_warning("File ignored: %s", filename);
-            break;
-        }
-      }
-      */
-    }
+ 
   g_dir_close(dir);
 
   gchar *f = NULL;
