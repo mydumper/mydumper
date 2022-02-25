@@ -374,7 +374,6 @@ void refresh_table_list(struct configuration *conf){
   gchar * lkey;
   g_hash_table_iter_init ( &iter, conf->table_hash );
   struct db_table *dbt=NULL;
-  g_message("Refreshing table list");
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
     table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
   }
