@@ -1227,6 +1227,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  set_verbose(verbose);
+
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "mydumper");
   }
@@ -1334,7 +1336,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-  set_verbose(verbose);
 
   GDateTime * datetime = g_date_time_new_now_local();
 
