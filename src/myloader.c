@@ -193,12 +193,14 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  set_verbose(verbose);
+  set_verbose(2);
 
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "myloader");
   }
   g_option_context_free(context);
+
+  set_verbose(verbose);
 
   hide_password(argc, argv);
   ask_password();
