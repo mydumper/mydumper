@@ -193,6 +193,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+  set_verbose(verbose);
+
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "myloader");
   }
@@ -207,7 +209,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-  set_verbose(verbose);
 #ifdef ZWRAP_USE_ZSTD
   compress_extension = g_strdup(".zst");
 #else
