@@ -193,7 +193,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  set_verbose(2);
+  set_verbose(verbose?verbose:2);
 
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "myloader");
