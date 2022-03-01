@@ -1227,7 +1227,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  set_verbose(2);
+  set_verbose(verbose?verbose:2);
 
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "mydumper");
