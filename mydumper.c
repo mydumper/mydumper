@@ -1227,12 +1227,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  set_verbose(verbose);
+  set_verbose(2);
 
   if (defaults_file != NULL){
     load_config_file(defaults_file, context, "mydumper");
   }
   g_option_context_free(context);
+
+  set_verbose(verbose);
 
   if (!compress_output) {
     m_open=&g_fopen;
