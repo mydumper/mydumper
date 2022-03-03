@@ -115,7 +115,7 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
       tr=0;
     r+=tr;
     if (tr > 0){
-      g_critical("Error occours between lines: %d and %d in a splited INSERT: %s",offset_line,current_offset_line,mysql_error(td->thrconn));
+      g_critical("Error occurs between lines: %d and %d in a splited INSERT: %s",offset_line,current_offset_line,mysql_error(td->thrconn));
     }
     offset_line=current_offset_line+1;
     current_line++; // remove trailing ,
@@ -178,7 +178,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
           tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
         r+=tr;
         if (tr > 0){
-            g_critical("Error occours between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
+            g_critical("Error occurs between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
         }
         g_string_set_size(data, 0);
         preline=line+1;
