@@ -209,6 +209,8 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
+  set_verbose(verbose);
+
 #ifdef ZWRAP_USE_ZSTD
   compress_extension = g_strdup(".zst");
 #else

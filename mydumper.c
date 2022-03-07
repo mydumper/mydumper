@@ -1336,6 +1336,7 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
+  set_verbose(verbose);
 
   GDateTime * datetime = g_date_time_new_now_local();
 
