@@ -78,7 +78,7 @@ struct schema_restore_job * new_schema_restore_job_internal( char * database, GS
   return rj;
 }
 
-struct restore_job * new_restore_job(const char * filename, struct db_table * dbt, enum restore_job_type type){
+struct restore_job * new_restore_job( char * filename, struct db_table * dbt, enum restore_job_type type){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->filename  = filename;
   rj->dbt       = dbt;
@@ -86,13 +86,13 @@ struct restore_job * new_restore_job(const char * filename, struct db_table * db
   return rj;
 }
 
-struct restore_job * new_data_restore_job( const char * filename, enum restore_job_type type, struct db_table * dbt, guint part, guint sub_part){
+struct restore_job * new_data_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, guint part, guint sub_part){
   struct restore_job *rj = new_restore_job(filename, dbt, type);
   rj->data.drj=new_data_restore_job_internal( dbt->count, part, sub_part);
   return rj;
 }
 
-struct restore_job * new_schema_restore_job( const char * filename, enum restore_job_type type, struct db_table * dbt, char * database, GString * statement, const char *object){
+struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, char * database, GString * statement, const char *object){
   struct restore_job *rj = new_restore_job(filename, dbt, type);
   rj->data.srj=new_schema_restore_job_internal(database, statement, object);
   return rj;

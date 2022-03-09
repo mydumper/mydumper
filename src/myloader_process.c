@@ -97,7 +97,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
 
 
 
-void load_schema(struct db_table *dbt, const gchar *filename){
+void load_schema(struct db_table *dbt, gchar *filename){
   void *infile;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -355,7 +355,7 @@ void process_metadata_filename( GHashTable *table_hash, char * filename){
     dbt->rows=g_ascii_strtoull(cs, NULL, 10);
 }
 
-void process_schema_filename(const gchar *filename, const char * object) {
+void process_schema_filename(gchar *filename, const char * object) {
     gchar *database=NULL, *table_name=NULL, *real_db_name=NULL;
     get_database_table_from_file(filename,"-schema",&database,&table_name);
     if (database == NULL){
