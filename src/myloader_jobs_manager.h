@@ -15,10 +15,10 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
+//enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 
-struct job * new_job (enum job_type type, void *job_data, char *use_database);
-gboolean process_job(struct thread_data *td, struct job *job);
+//struct job * new_job (enum job_type type, void *job_data, char *use_database);
+//gboolean process_job(struct thread_data *td, struct job *job);
 void initialize_job();
 void *loader_thread(struct thread_data *td);
 void *signal_thread(void *data);

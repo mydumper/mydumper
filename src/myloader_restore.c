@@ -33,7 +33,6 @@ extern guint errors;
 extern guint commit_count;
 extern gchar *directory;
 extern gchar *compress_extension;
-extern gchar *db;
 extern guint rows;
 
 gboolean skip_definer = FALSE;
@@ -191,7 +190,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   }
   if (!is_schema && (commit_count > 1) && mysql_query(td->thrconn, "COMMIT")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
-               db ? db : database, table, filename, mysql_error(td->thrconn));
+               database, table, filename, mysql_error(td->thrconn));
     errors++;
   }
   g_string_free(data, TRUE);

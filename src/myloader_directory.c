@@ -33,6 +33,8 @@
 #include "myloader_process.h"
 #include "myloader_jobs_manager.h"
 #include "myloader_restore.h"
+#include "myloader_restore_job.h"
+#include "myloader_control_job.h"
 
 extern guint num_threads;
 extern gboolean innodb_optimize_keys;
@@ -242,18 +244,18 @@ void load_directory_information(struct configuration *conf) {
 
 void *process_directory_queue(struct thread_data * td) {
   struct db_table *dbt=NULL;
-  struct job *job = NULL;
+  struct control_job *job = NULL;
   gboolean cont=TRUE;
 
   // Step 1: creating databases
   while (cont){
-    job = (struct job *)g_async_queue_pop(td->conf->database_queue);
+    job = (struct control_job *)g_async_queue_pop(td->conf->database_queue);
     cont=process_job(td, job);
   }
   // Step 2: Create tables
   cont=TRUE;
   while (cont){
-    job = (struct job *)g_async_queue_pop(td->conf->table_queue);
+    job = (struct control_job *)g_async_queue_pop(td->conf->table_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring tables");
     cont=process_job(td, job);
   }
@@ -294,7 +296,7 @@ void *process_directory_queue(struct thread_data * td) {
       }
       g_mutex_unlock(dbt->mutex);
 
-      job = (struct job *)g_async_queue_try_pop(dbt->queue);
+      job = (struct control_job *)g_async_queue_try_pop(dbt->queue);
 
       if (job == NULL){
         g_mutex_lock(dbt->mutex);
@@ -328,7 +330,7 @@ void *process_directory_queue(struct thread_data * td) {
         continue;
       }
     }else{
-     job = (struct job *)g_async_queue_pop(td->conf->data_queue);
+     job = (struct control_job *)g_async_queue_pop(td->conf->data_queue);
     }
     execute_use_if_needs_to(td, job->use_database, "Restoring data");
     cont=process_job(td, job);

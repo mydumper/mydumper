@@ -28,6 +28,9 @@
 #include "myloader_stream.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
+#include "myloader_restore_job.h"
+#include "myloader_control_job.h"
+
 #include "connection.h"
 #include "tables_skiplist.h"
 #include "regex.h"
@@ -37,7 +40,6 @@ extern gchar *compress_extension;
 extern gchar *db;
 extern gboolean no_delete;
 extern gboolean stream;
-extern gboolean innodb_optimize_keys;
 extern gboolean resume;
 extern char **tables;
 extern gchar *tables_skiplist_file;
@@ -72,7 +74,7 @@ void db_hash_insert(gchar *k, gchar *v){
 char * db_hash_lookup(gchar *database){
   char *r=NULL;
   g_mutex_lock(db_hash_mutex);
-  r=db?db:g_hash_table_lookup(db_hash,database);
+  r=g_hash_table_lookup(db_hash,database);
   g_mutex_unlock(db_hash_mutex);
   return r;
 }
@@ -89,19 +91,20 @@ gboolean eval_table( char *db_name, char * table_name){
   return eval_regex(db_name, table_name);
 }
 
-struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object){
+/*struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object){
   struct restore_job *rj = g_new(struct restore_job, 1);
-  rj->type=type;
-  rj->filename= filename;
-  rj->database= database;
+  rj->filename  = filename;
+  rj->database  = database;
+  rj->dbt       = dbt;
   rj->statement = statement;
-  rj->dbt = dbt;
-  rj->part = part;
-  rj->sub_part = sub_part;
-  rj->object = object;
+  rj->part      = part;
+  rj->sub_part  = sub_part;
+  rj->type      = type;
+  rj->object    = object;
   return rj;
 }
 
+*/
 guint execute_use(struct thread_data *td, const gchar * msg){
   gchar *query = g_strdup_printf("USE `%s`", td->current_database);
   if (mysql_query(td->thrconn, query)) {
@@ -188,96 +191,6 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
   return TRUE;
-}
-
-void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *filename){
-  void *infile;
-  gboolean is_compressed = FALSE;
-  gboolean eof = FALSE;
-  GString *data=g_string_sized_new(512);
-  GString *create_table_statement=g_string_sized_new(512);
-  GString *alter_table_statement=g_string_sized_new(512);
-  GString *alter_table_constraint_statement=g_string_sized_new(512);
-  guint line=0;
-  if (!g_str_has_suffix(filename, compress_extension)) {
-    infile = g_fopen(filename, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(filename, "r");
-    is_compressed = TRUE;
-  }
-  if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
-    errors++;
-    return;
-  }
-  while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof,&line)) {
-      if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if (g_strrstr(data->str,"CREATE ")){
-          gchar** create_table= g_strsplit(data->str, "`", 3);
-          dbt->real_table=g_strdup(create_table[1]);
-          if ( g_str_has_prefix(dbt->table,"mydumper_")){
-            g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
-          }else{
-            g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
-          }
-          g_strfreev(create_table);
-        }
-        if (innodb_optimize_keys){
-          // Check if it is a /*!40  SET
-          if (g_strrstr(data->str,"/*!40")){
-            g_string_append(alter_table_statement,data->str);
-            g_string_append(create_table_statement,data->str);
-          }else{
-            // Processing CREATE TABLE statement
-            GString *new_create_table_statement=g_string_sized_new(512);
-            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt);
-            if (flag & IS_INNODB_TABLE){
-              if (flag & IS_ALTER_TABLE_PRESENT){
-                finish_alter_table(alter_table_statement);
-                g_message("Fast index creation will be use for table: %s.%s",dbt->real_database,dbt->real_table);
-              }else{
-                g_string_free(alter_table_statement,TRUE);
-                alter_table_statement=NULL;
-              }
-              g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
-              dbt->indexes=alter_table_statement;
-              if (stream){
-                struct restore_job *rj = new_restore_job(dbt->filename, dbt->real_database, dbt, dbt->indexes, 0, 0, JOB_RESTORE_STRING, "indexes");
-                g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-              }
-              if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, alter_table_constraint_statement, 0, 0, JOB_RESTORE_STRING, "constraint");
-                g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-                dbt->constraints=alter_table_constraint_statement;
-              }else{
-                 g_string_free(alter_table_constraint_statement,TRUE);
-              }
-              g_string_set_size(data, 0);
-            }else{
-              g_string_free(alter_table_statement,TRUE);
-              g_string_free(alter_table_constraint_statement,TRUE);
-              g_string_append(create_table_statement,data->str);
-            }
-          }
-        }else{
-          g_string_append(create_table_statement,data->str);
-        }
-        g_string_set_size(data, 0);
-      }
-    }
-  }
-  struct restore_job * rj = new_restore_job(g_strdup(filename), dbt->real_database, dbt, create_table_statement, 0, 0, JOB_RESTORE_SCHEMA_STRING, "");
-  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-  if (stream && no_delete == FALSE){
-    m_remove(NULL,filename);
-  }
 }
 
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
