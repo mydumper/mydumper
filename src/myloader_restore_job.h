@@ -44,7 +44,7 @@ union restore_job_data {
 struct restore_job {
   enum restore_job_type type;
   union restore_job_data data;
-  char *filename;
+  const char *filename;
   struct db_table *dbt;
 };
 
