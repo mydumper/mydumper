@@ -75,7 +75,7 @@ enum file_type process_filename(char *filename){
       case INIT:
       case SCHEMA_CREATE:
         process_database_filename(filename, "create database");
-        m_remove(directory,filename);
+        //m_remove(directory,filename);
         break;
       case SCHEMA_TABLE:
         process_table_filename(filename);
