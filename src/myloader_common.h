@@ -28,10 +28,10 @@ void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gcha
 enum file_type get_file_type (const char * filename);
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof, guint *line);
 void db_hash_insert(gchar *k, gchar *v);
-struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object);
+//struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object);
 char * db_hash_lookup(gchar *database);
 gboolean eval_table( char *db_name, char * table_name);
-void load_schema(struct configuration *conf, struct db_table *dbt, const gchar *filename);
+//void load_schema(structconfiguration *conf, struct db_table *dbt, const gchar *filename);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt);
 void finish_alter_table(GString * alter_table_statement);

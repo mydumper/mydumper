@@ -15,10 +15,10 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#include <mysql.h>
+
 #ifndef _src_myloader_h
 #define _src_myloader_h
-
-enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
 
 struct thread_data {
   struct configuration *conf;
@@ -44,19 +44,11 @@ struct configuration {
   int done;
 };
 
-struct job {
-  enum job_type type;
-  struct restore_job *job_data;
-  GAsyncQueue * queue;
-  char * use_database;
-};
-
 struct db_table {
   char *database;
   char *real_database;
   char *table;
   char *real_table;
-  char *filename;
   guint64 rows;
   GAsyncQueue * queue;
   GList * restore_job_list;
@@ -73,17 +65,5 @@ struct db_table {
 };
 
 enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA, SHUTDOWN};
-enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
-
-struct restore_job {
-  enum restore_job_type type;
-  struct db_table * dbt;
-  char *database;
-  char *filename;
-  GString *statement;
-  guint part;
-  guint sub_part;
-  const char *object;
-};
 
 #endif

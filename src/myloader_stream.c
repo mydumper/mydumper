@@ -29,6 +29,8 @@
 #include "myloader_process.h"
 #include "myloader_jobs_manager.h"
 #include "myloader_stream.h"
+#include "myloader_restore_job.h"
+#include "myloader_control_job.h"
 
 extern gchar *compress_extension;
 extern gchar *db;
@@ -72,12 +74,8 @@ enum file_type process_filename(char *filename){
     switch (ft){
       case INIT:
       case SCHEMA_CREATE:
-        if (db){
-          g_warning("Skipping database creation on file: %s",filename);
-          m_remove(directory,filename);
-        }else{
-          process_database_filename(filename, "create database");
-        }
+        process_database_filename(filename, "create database");
+        //m_remove(directory,filename);
         break;
       case SCHEMA_TABLE:
         process_table_filename(filename);
@@ -133,7 +131,14 @@ enum file_type process_filename(char *filename){
 }
 
 gboolean has_mydumper_suffix(gchar *line){
-  return g_str_has_suffix(line,".sql") || g_str_has_suffix(line,".sql.gz") || g_str_has_suffix(line,"metadata") || g_str_has_suffix(line,".checksum") || g_str_has_suffix(line,".checksum.gz") ;
+  return 
+    g_str_has_suffix(line,".sql") || 
+    g_str_has_suffix(line,".sql.gz") || 
+    g_str_has_suffix(line,".sql.zst") ||
+    g_str_has_suffix(line,"metadata") || 
+    g_str_has_suffix(line,"-checksum") || 
+    g_str_has_suffix(line,"-checksum.gz") ||
+    g_str_has_suffix(line,"-checksum.zst");
 }
 
 void process_stream_filename(gchar * filename){
@@ -146,11 +151,11 @@ void process_stream_filename(gchar * filename){
   g_async_queue_push(stream_queue, GINT_TO_POINTER(current_ft));
 }
 
-struct job * give_any_data_job(){
+struct control_job * give_any_data_job(){
   g_mutex_lock(table_list_mutex);
   GList * iter=stream_conf->table_list;
   GList * next = NULL;
-  struct job *job = NULL;
+  struct control_job *job = NULL;
 
   while (iter != NULL){
     struct db_table * dbt = iter->data;
@@ -200,7 +205,7 @@ struct restore_job * give_me_next_data_job(){
 }
 
 void *process_stream_queue(struct thread_data * td) {
-  struct job *job = NULL;
+  struct control_job *job = NULL;
   gboolean cont=TRUE;
   enum file_type ft=0;
 //  enum file_type ft;
@@ -214,20 +219,20 @@ void *process_stream_queue(struct thread_data * td) {
     }
     job=g_async_queue_try_pop(stream_conf->table_queue);
     if (job != NULL){
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables");
+      execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
       cont=process_job(td, job);
       continue;
     }
     struct restore_job *rj = give_me_next_data_job();
     if (rj != NULL){
-      job=new_job(JOB_RESTORE,rj,rj->dbt->real_database);
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables");
+      job=new_job(JOB_RESTORE,rj,rj->dbt->database);
+      execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
       cont=process_job(td, job);
       continue;
     }
     job=give_any_data_job();
     if (job != NULL){
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables");
+      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
       cont=process_job(td, job);
       continue;
     }else{
@@ -246,58 +251,97 @@ void *intermidiate_thread(){
   char * filename=NULL;
   do{
     filename = (gchar *)g_async_queue_pop(intermidiate_queue);
-    if ( g_strcmp0(filename,"END") ==0 ) break;
+    if ( g_strcmp0(filename,"END") == 0 ) break;
     process_stream_filename(filename);
   } while (filename != NULL);
   return NULL;
 }
 
+int read_stream_line(char *buffer, gboolean *eof,FILE *file,int c_to_read){
+    size_t bytes = fread(buffer, sizeof(char), c_to_read, stdin);
+    if( !bytes ){
+      if (file != NULL && feof(file)){
+        *eof = TRUE;
+        buffer[0] = '\0';
+        m_close(file);
+      }
+    }
+    return bytes;
+}
+
+void flush(char *buffer, int from, int to, FILE *file){
+  if (file) 
+    if (m_write(file,&(buffer[from]),to-from+1) != to-from+1) 
+      g_critical("error on writing");
+}
+
 void *process_stream(){
-  char * filename=NULL,*real_filename=NULL;
+  char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
   char buffer[STREAM_BUFFER_SIZE];
   FILE *file=NULL;
   gboolean eof=FALSE;
   stream_conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  int pos=0,buffer_len=0i, from_pos=0;
+  int diff=0;
+
   do {
-    if(fgets(buffer, STREAM_BUFFER_SIZE, stdin) == NULL){
-      if (file && feof(file)){
-        eof = TRUE;
-        buffer[0] = '\0';
-        m_close(file);
-      }else{
-        break;
-      }
+    pos=0,from_pos=0;
+    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff);
+    diff=0;
+    if (!buffer_len){ 
+      break;
     }else{
-      if (g_str_has_prefix(buffer,"-- ")){
-        gchar lastchar = buffer[strlen(buffer)-1];
-        buffer[strlen(buffer)-1]='\0';
-        if (has_mydumper_suffix(buffer)){
-          if (file){
-            m_close(file);
-            g_async_queue_push(intermidiate_queue, filename);
+      while (pos < buffer_len){
+        while (pos < buffer_len && buffer[pos] !='\n' ){
+          pos++;
+        }
+        flush(buffer,from_pos,pos-1,file);
+        if (buffer[pos] == EOF)
+          break;
+        if (g_str_has_prefix(&(buffer[pos+1]),"-- ")){
+          from_pos=pos;
+          pos++;
+          while (pos < buffer_len && buffer[pos] !='\n'){
+            pos++;
           }
-          real_filename = g_build_filename(directory,&(buffer[3]),NULL);
-          filename = g_build_filename(&(buffer[3]),NULL);
-          if (!g_str_has_suffix(filename, compress_extension)) {
+
+          if (pos == buffer_len){
+            g_strlcpy(buffer,&(buffer[from_pos+1]),pos-(from_pos+2));
+            diff=pos-(from_pos+1);
+            continue;
+          }
+          previous_filename=g_strdup(filename);
+          filename=g_strndup(&(buffer[from_pos+4]),pos-(from_pos+4));
+          real_filename = g_build_filename(directory,filename,NULL);
+          if (has_mydumper_suffix(filename)){
+            if (file){
+              m_close(file);
+              g_async_queue_push(intermidiate_queue, previous_filename);
+            }
             file = g_fopen(real_filename, "w");
             m_write=(void *)&write_file;
             m_close=(void *) &fclose;
-          } else {
-            file = (void *)gzopen(real_filename, "w");
-            m_write=(void *)&gzwrite;
-            m_close=(void *) &gzclose;
+            pos++;
+            from_pos=pos;
+          }else{
+            flush(buffer,from_pos,pos-1,file);
           }
+          
         }else{
-          buffer[strlen(buffer)-1]=lastchar;
-          if (file) m_write(file,buffer,strlen(buffer));
+          from_pos=pos;
+          pos++;
         }
-      }else{
-        if (file) m_write(file,buffer,strlen(buffer));
       }
+      if (buffer[pos] != '\0')
+        flush(buffer,from_pos,pos-2,file);
+      else
+        flush(buffer,from_pos,pos-1,file);
     }
   } while (eof == FALSE);
-  m_close(file);
-  g_async_queue_push(intermidiate_queue, filename);
+  if (file) 
+    m_close(file);
+  if (filename)
+    g_async_queue_push(intermidiate_queue, filename);
   gchar *e=g_strdup("END");
   g_async_queue_push(intermidiate_queue, e);
   guint n=0;

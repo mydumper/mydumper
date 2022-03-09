@@ -46,7 +46,7 @@ CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DI
 SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/regex.c)
 SET( MYDUMPER_SRCS mydumper.c ${SHARED_SRCS})
 SET( ZSTD_SRCS zstd/zstd_zlibwrapper.c zstd/gzclose.c zstd/gzlib.c zstd/gzread.c zstd/gzwrite.c )
-SET( MYLOADER_SRCS src/myloader.c ${SHARED_SRCS} src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_jobs_manager.c src/myloader_directory.c src/myloader_restore.c)
+SET( MYLOADER_SRCS src/myloader.c ${SHARED_SRCS} src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_jobs_manager.c src/myloader_directory.c src/myloader_restore.c src/myloader_restore_job.c src/myloader_control_job.c)
 
 if (WITH_ZSTD)
   add_executable(mydumper ${MYDUMPER_SRCS} ${ZSTD_SRCS})

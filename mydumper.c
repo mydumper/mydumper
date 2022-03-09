@@ -2642,8 +2642,9 @@ gchar *get_ref_table(gchar *k){
   g_mutex_lock(ref_table_mutex);
   gchar *val=g_hash_table_lookup(ref_table,k);
   if (val == NULL){
-    val=determine_filename(g_strdup(k));
-    g_hash_table_insert(ref_table, k, val);
+    char * t=g_strdup(k);
+    val=determine_filename(t);
+    g_hash_table_insert(ref_table, t, val);
   }
   g_mutex_unlock(ref_table_mutex);
   return val;
