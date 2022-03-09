@@ -136,9 +136,9 @@ gboolean has_mydumper_suffix(gchar *line){
     g_str_has_suffix(line,".sql.gz") || 
     g_str_has_suffix(line,".sql.zst") ||
     g_str_has_suffix(line,"metadata") || 
-    g_str_has_suffix(line,".checksum") || 
-    g_str_has_suffix(line,".checksum.gz") ||
-    g_str_has_suffix(line,".checksum.zst");
+    g_str_has_suffix(line,"-checksum") || 
+    g_str_has_suffix(line,"-checksum.gz") ||
+    g_str_has_suffix(line,"-checksum.zst");
 }
 
 void process_stream_filename(gchar * filename){
@@ -251,7 +251,7 @@ void *intermidiate_thread(){
   char * filename=NULL;
   do{
     filename = (gchar *)g_async_queue_pop(intermidiate_queue);
-    if ( g_strcmp0(filename,"END") ==0 ) break;
+    if ( g_strcmp0(filename,"END") == 0 ) break;
     process_stream_filename(filename);
   } while (filename != NULL);
   return NULL;
@@ -310,7 +310,7 @@ void *process_stream(){
             diff=pos-(from_pos+1);
             continue;
           }
-          previous_filename=filename;
+          previous_filename=g_strdup(filename);
           filename=g_strndup(&(buffer[from_pos+4]),pos-(from_pos+4));
           real_filename = g_build_filename(directory,filename,NULL);
           if (has_mydumper_suffix(filename)){
