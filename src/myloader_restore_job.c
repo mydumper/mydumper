@@ -78,7 +78,7 @@ struct schema_restore_job * new_schema_restore_job_internal( char * database, GS
   return rj;
 }
 
-struct restore_job * new_restore_job( char * filename, struct db_table * dbt, enum restore_job_type type){
+struct restore_job * new_restore_job(const char * filename, struct db_table * dbt, enum restore_job_type type){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->filename  = filename;
   rj->dbt       = dbt;
