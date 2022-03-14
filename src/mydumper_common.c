@@ -18,6 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include "string.h"
 #include <mysql.h>
 #include <glib.h>
 #include "regex.h"
