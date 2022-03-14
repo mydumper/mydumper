@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include "string.h"
 #include <mysql.h>
 #include <glib/gstdio.h>
 #ifdef ZWRAP_USE_ZSTD
