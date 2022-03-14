@@ -47,7 +47,6 @@ extern gboolean use_savepoints;
 extern gint database_counter;
 
 gboolean dump_triggers = FALSE;
-guint table_number;
 
 static GOptionEntry dump_into_file_entries[] = {
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",

@@ -167,13 +167,11 @@ gchar **db_items=NULL;
 // For daemon mode
 extern guint dump_number;
 extern gboolean shutdown_triggered;
-GAsyncQueue *start_scheduled_dump;
-GMainLoop *m1;
+extern GAsyncQueue *start_scheduled_dump;
 GCond *ll_cond = NULL;
 GMutex *ll_mutex = NULL;
 
-guint errors;
-struct tm tval;
+extern guint errors;
 
 
 static GOptionEntry start_dump_entries[] = {
