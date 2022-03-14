@@ -37,7 +37,7 @@
 #include <errno.h>
 #include <time.h>
 #ifdef ZWRAP_USE_ZSTD
-#include "zstd/zstd_zlibwrapper.h"
+#include "../zstd/zstd_zlibwrapper.h"
 #else
 #include <zlib.h>
 #endif
