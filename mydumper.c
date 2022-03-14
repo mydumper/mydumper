@@ -28,6 +28,7 @@
 #define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
 #endif
 
+#include "string.h"
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include "src/config.h"
