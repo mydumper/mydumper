@@ -41,7 +41,8 @@
 static guint log_handlers[total_handlers] = {};
 
 static void free_log_handlers() {
-  for (int x = 0; x < total_handlers; x++) {
+  int x = 0;
+  for (x = 0; x < total_handlers; x++) {
     if (log_handlers[x] != 0) {
       g_log_remove_handler(NULL, log_handlers[x]);
       log_handlers[x] = 0;
