@@ -59,8 +59,6 @@ guint statement_size = 1000000;
 guint rows_per_file = 0;
 guint chunk_filesize = 0;
 int build_empty_files = 0;
-guint snapshot_count= 2;
-guint snapshot_interval = 60;
 gboolean daemon_mode = FALSE;
 gboolean have_snapshot_cloning = FALSE;
 
@@ -86,10 +84,7 @@ gchar *statement_terminated_by_ld=NULL;
 gchar *disk_limits=NULL;
 
 // For daemon mode
-guint dump_number = 0;
 gboolean shutdown_triggered = FALSE;
-GAsyncQueue *start_scheduled_dump;
-GMainLoop *m1;
 
 guint errors;
 
@@ -111,11 +106,6 @@ static GOptionEntry entries[] = {
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
      NULL},
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
-     NULL},
-    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
-    {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
-     "Interval between each dump snapshot (in minutes), requires --daemon, "
-     "default 60",
      NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
@@ -152,14 +142,6 @@ static GOptionEntry entries[] = {
 
 struct tm tval;
 
-gboolean run_snapshot(gpointer *data) {
-  (void)data;
-
-  g_async_queue_push(start_scheduled_dump, GINT_TO_POINTER(1));
-
-  return !shutdown_triggered;
-}
-
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
   if (g_strv_length(strsplit)!=2){
@@ -184,6 +166,7 @@ int main(int argc, char *argv[]) {
   load_connection_entries(main_group);
   load_regex_entries(main_group);
   load_start_dump_entries(main_group);
+  load_daemon_entries(main_group);
   g_option_context_set_main_group(context, main_group);
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
@@ -211,7 +194,6 @@ int main(int argc, char *argv[]) {
     load_config_file(defaults_file, context, "mydumper");
   }
   g_option_context_free(context);
-
 
   initialize_start_dump();
 
@@ -327,47 +309,7 @@ int main(int argc, char *argv[]) {
   }
   create_backup_dir(output_directory);
   if (daemon_mode) {
-    pid_t pid, sid;
-
-    pid = fork();
-    if (pid < 0)
-      exit(EXIT_FAILURE);
-    else if (pid > 0)
-      exit(EXIT_SUCCESS);
-
-    umask(0037);
-    sid = setsid();
-
-    if (sid < 0)
-      exit(EXIT_FAILURE);
-
-    char *d_d;
-    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
-        d_d= g_strdup_printf("%s/%d", output_directory, dump_number);
-        create_backup_dir(d_d);
-        g_free(d_d);
-    }
-    
-    GFile *last_dump = g_file_new_for_path(
-        g_strdup_printf("%s/last_dump", output_directory)
-    );
-    GFileInfo *last_dump_i = g_file_query_info(
-        last_dump,
-        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
-        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
-        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
-        NULL, NULL
-    );
-    if (last_dump_i != NULL &&
-        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
-        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
-        if (dump_number >= snapshot_count-1) dump_number = 0;
-        else dump_number++;
-        g_object_unref(last_dump_i);
-    } else {
-        dump_number = 0;
-    }
-    g_object_unref(last_dump);
+    initialize_daemon_thread();
   }else{
     dump_directory = output_directory;
   }
@@ -381,34 +323,11 @@ int main(int argc, char *argv[]) {
     read_tables_skiplist(tables_skiplist_file, &errors);
 
   if (daemon_mode) {
-    GError *terror;
-    start_scheduled_dump = g_async_queue_new();
-    GThread *ethread =
-        g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
-    if (ethread == NULL) {
-      g_critical("Could not create exec thread: %s", terror->message);
-      g_error_free(terror);
-      exit(EXIT_FAILURE);
-    }
-    // Run initial snapshot
-    run_snapshot(NULL);
-#if GLIB_MINOR_VERSION < 14
-    g_timeout_add(snapshot_interval * 60 * 1000, (GSourceFunc)run_snapshot,
-                  NULL);
-#else
-    g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
-                          NULL);
-#endif
-    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
-    sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
-    m1 = g_main_loop_new(NULL, TRUE);
-    g_main_loop_run(m1);
-    g_source_remove(sigsource);
+    run_daemon();
   } else {
     MYSQL *conn = create_main_connection();
     start_dump(conn);
   }
-
 
   mysql_thread_end();
   mysql_library_end();

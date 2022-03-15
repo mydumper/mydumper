@@ -19,56 +19,92 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#define _LARGEFILE64_SOURCE
-#define _FILE_OFFSET_BITS 64
-
 #include <mysql.h>
 
-#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
-#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
-#endif
-
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-#include <glib.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <errno.h>
-#include <time.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
-#include <pcre.h>
-#include <signal.h>
 #include <glib/gstdio.h>
-#include <glib/gerror.h>
 #include <gio/gio.h>
 #include "config.h"
-#include "server_detect.h"
-#include "connection.h"
-//#include "common_options.h"
 #include "common.h"
 #include <glib-unix.h>
-#include <math.h>
-#include "logging.h"
-#include "set_verbose.h"
-#include "locale.h"
-#include <sys/statvfs.h>
-
-
 #include "mydumper_start_dump.h"
 #include "mydumper_common.h"
-extern guint snapshot_count;
-extern gboolean shutdown_triggered;
-extern gchar *output_directory;
-extern GAsyncQueue *start_scheduled_dump;
-extern guint dump_number;
+
+guint snapshot_interval = 60;
+guint snapshot_count= 2;
+GMainLoop *m1;
+GAsyncQueue *start_scheduled_dump;
+guint dump_number=0;
+
 extern gchar *dump_directory;
-//extern guint errors;
-//
+extern gchar *output_directory;
+extern gboolean shutdown_triggered;
+
+static GOptionEntry daemon_entries[] = {
+    {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
+     "Interval between each dump snapshot (in minutes), requires --daemon, "
+     "default 60",
+     NULL},
+    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},    
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+void load_daemon_entries(GOptionGroup *main_group){
+  g_option_group_add_entries(main_group, daemon_entries);
+}
+
+void initialize_daemon_thread(){
+    pid_t pid, sid;
+
+    pid = fork();
+    if (pid < 0)
+      exit(EXIT_FAILURE);
+    else if (pid > 0)
+      exit(EXIT_SUCCESS);
+
+    umask(0037);
+    sid = setsid();
+
+    if (sid < 0)
+      exit(EXIT_FAILURE);
+
+    char *d_d;
+    for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
+        d_d= g_strdup_printf("%s/%d", output_directory, dump_number);
+        create_backup_dir(d_d);
+        g_free(d_d);
+    }
+
+    GFile *last_dump = g_file_new_for_path(
+        g_strdup_printf("%s/last_dump", output_directory)
+    );
+    GFileInfo *last_dump_i = g_file_query_info(
+        last_dump,
+        G_FILE_ATTRIBUTE_STANDARD_TYPE ","
+        G_FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET,
+        G_FILE_QUERY_INFO_NOFOLLOW_SYMLINKS,
+        NULL, NULL
+    );
+    if (last_dump_i != NULL &&
+        g_file_info_get_file_type(last_dump_i) == G_FILE_TYPE_SYMBOLIC_LINK) {
+        dump_number = atoi(g_file_info_get_symlink_target(last_dump_i));
+        if (dump_number >= snapshot_count-1) dump_number = 0;
+        else dump_number++;
+        g_object_unref(last_dump_i);
+    } else {
+        dump_number = 0;
+    }
+    g_object_unref(last_dump);
+}
+
+gboolean run_snapshot(gpointer *data) {
+    (void)data;
+
+      g_async_queue_push(start_scheduled_dump, GINT_TO_POINTER(1));
+
+        return !shutdown_triggered;
+}
+
+
 void *exec_thread(void *data) {
   (void)data;
 
@@ -107,3 +143,29 @@ void *exec_thread(void *data) {
   return NULL;
 }
 
+
+void run_daemon(){
+    GError *terror;
+    start_scheduled_dump = g_async_queue_new();
+    GThread *ethread =
+        g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
+    if (ethread == NULL) {
+      g_critical("Could not create exec thread: %s", terror->message);
+      g_error_free(terror);
+      exit(EXIT_FAILURE);
+    }
+    // Run initial snapshot
+    run_snapshot(NULL);
+#if GLIB_MINOR_VERSION < 14
+    g_timeout_add(snapshot_interval * 60 * 1000, (GSourceFunc)run_snapshot,
+                  NULL);
+#else
+    g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
+                          NULL);
+#endif
+    guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);
+    sigsource = g_unix_signal_add(SIGTERM, sig_triggered_term, NULL);
+    m1 = g_main_loop_new(NULL, TRUE);
+    g_main_loop_run(m1);
+    g_source_remove(sigsource);
+}

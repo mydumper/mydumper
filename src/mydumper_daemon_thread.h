@@ -20,3 +20,6 @@
 */
 
 void *exec_thread(void *data);
+void initialize_daemon_thread();
+void run_daemon();
+void load_daemon_entries(GOptionGroup *main_group);

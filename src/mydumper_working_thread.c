@@ -1470,7 +1470,7 @@ guint64 dump_table_data(MYSQL *conn, FILE *file, struct table_job * tj){
         append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
       }
       num_rows_st = 0;
-    }
+    
 
     if (statement_row->len) {
       g_string_append(statement, statement_row->str);
