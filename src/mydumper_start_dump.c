@@ -206,6 +206,7 @@ gboolean get_database(MYSQL *conn, char *database_name, struct database ** datab
 
 void load_start_dump_entries(GOptionGroup *main_group){
   load_dump_into_file_entries(main_group);
+  load_working_thread_entries(main_group);
   g_option_group_add_entries(main_group, start_dump_entries);
 }
 
