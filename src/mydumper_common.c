@@ -21,9 +21,14 @@
 #include "string.h"
 #include <mysql.h>
 #include <glib.h>
+#include <glib/gstdio.h>
+#include <gio/gio.h>
 #include "regex.h"
+#include <errno.h>
+
 extern gchar *compress_extension;
 extern gchar *dump_directory;
+extern guint errors;
 
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
@@ -115,3 +120,49 @@ void restore_charset(GString *statement) {
                   "SET collation_connection = @PREV_COLLATION_CONNECTION;\n");
 }
 
+void clear_dump_directory(gchar *directory) {
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory,
+               error->message);
+    errors++;
+    return;
+  }
+
+  const gchar *filename = NULL;
+
+  while ((filename = g_dir_read_name(dir))) {
+    gchar *path = g_build_filename(directory, filename, NULL);
+    if (g_unlink(path) == -1) {
+      g_critical("error removing file %s (%d)\n", path, errno);
+      errors++;
+      return;
+    }
+    g_free(path);
+  }
+
+  g_dir_close(dir);
+}
+
+void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
+  if (mysql_query(conn,
+                  "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
+    g_critical("Failed to set isolation level: %s", mysql_error(conn));
+    exit(EXIT_FAILURE);
+  }
+}
+
+// Global Var used:
+// - dump_directory
+// - compress_extension
+gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
+  GString *filename = g_string_sized_new(20);
+  sub_part == 0 ?
+    g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension):
+    g_string_append_printf(filename, "%s.%s.%05d.%05d.%s%s", database, table, part, sub_part, extension, compress_extension);
+  gchar *r = g_build_filename(dump_directory, filename->str, NULL);
+  g_string_free(filename,TRUE);
+  return r;
+}

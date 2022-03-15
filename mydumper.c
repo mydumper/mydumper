@@ -42,7 +42,7 @@
 #include "src/tables_skiplist.h"
 #include "src/regex.h"
 #include "src/mydumper_start_dump.h"
-
+#include "src/mydumper_daemon_thread.h"
 const char DIRECTORY[] = "export";
 
 extern GAsyncQueue *stream_queue;

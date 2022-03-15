@@ -18,16 +18,9 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-void initialize_common();
-gchar *get_ref_table(gchar *k);
-char * determine_filename (char * table);
-char * escape_string(MYSQL *conn, char *str);
-gchar * build_schema_table_filename(char *database, char *table, const char *suffix);
-gchar * build_schema_filename(char *database, const char *suffix);
-gchar * build_meta_filename(char *database, char *table, const char *suffix);
-void set_charset(GString *statement, char *character_set,
-                 char *collation_connection);
-void restore_charset(GString *statement);
-void clear_dump_directory(gchar *directory);
-void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
-gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
+
+void *working_thread(struct thread_data *td);
+void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);
+void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list, struct configuration *conf);
+void green_light(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol);
+void initialize_working_thread();

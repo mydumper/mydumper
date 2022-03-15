@@ -18,16 +18,5 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-void initialize_common();
-gchar *get_ref_table(gchar *k);
-char * determine_filename (char * table);
-char * escape_string(MYSQL *conn, char *str);
-gchar * build_schema_table_filename(char *database, char *table, const char *suffix);
-gchar * build_schema_filename(char *database, const char *suffix);
-gchar * build_meta_filename(char *database, char *table, const char *suffix);
-void set_charset(GString *statement, char *character_set,
-                 char *collation_connection);
-void restore_charset(GString *statement);
-void clear_dump_directory(gchar *directory);
-void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
-gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
+
+void *exec_thread(void *data);
