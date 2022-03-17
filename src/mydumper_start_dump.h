@@ -123,7 +123,7 @@ struct schema_post {
 
 void load_start_dump_entries(GOptionGroup *main_group);
 void initialize_start_dump();
-void start_dump(MYSQL *conn);
+void start_dump();
 MYSQL *create_main_connection();
 void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
