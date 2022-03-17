@@ -110,15 +110,15 @@ void *exec_thread(void *data) {
 
   while (1) {
     g_async_queue_pop(start_scheduled_dump);
-    MYSQL *conn = create_main_connection();
+//    MYSQL *conn = create_main_connection();
     char *dump_number_str=g_strdup_printf("%d",dump_number);
     dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     clear_dump_directory(dump_directory);
-    start_dump(conn);
+    start_dump();
     // start_dump already closes mysql
     // mysql_close(conn);
-    mysql_thread_end();
+    // mysql_thread_end();
 
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.

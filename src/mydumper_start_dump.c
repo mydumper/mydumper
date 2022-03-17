@@ -74,38 +74,20 @@
 
 /* Program options */
 extern GAsyncQueue *stream_queue;
-extern int build_empty_files;
 extern gchar *output_directory;
 extern gchar *output_directory_param;
 extern gchar *dump_directory;
-extern guint statement_size;
-extern guint rows_per_file;
-extern guint chunk_filesize;
 extern guint snapshot_count;
 extern gboolean daemon_mode;
-extern guint complete_insert;
-extern gchar *fields_terminated_by;
-extern gchar *fields_enclosed_by;
-extern gchar *fields_escaped_by;
-extern gchar *lines_starting_by;
-extern gchar *lines_terminated_by;
-extern gchar *statement_terminated_by;
-extern gchar *fields_enclosed_by_ld;
-extern gchar *fields_terminated_by_ld;
-extern gchar *lines_starting_by_ld;
-extern gchar *lines_terminated_by_ld;
 extern gchar *disk_limits;
-extern gboolean use_savepoints;
 extern gboolean load_data;
 extern gboolean stream;
 extern int detected_server;
 extern gboolean no_delete;
-extern gboolean no_data;
 extern char *defaults_file;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
-extern gchar *compress_extension;
 extern gchar *db;
 extern GString *set_session;
 extern guint num_threads;
@@ -490,7 +472,8 @@ MYSQL *create_main_connection() {
   return conn;
 }
 
-void start_dump(MYSQL *conn) {
+void start_dump() {
+  MYSQL *conn = create_main_connection();
   struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *p;
   char *p2;

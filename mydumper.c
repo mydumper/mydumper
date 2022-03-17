@@ -22,30 +22,27 @@
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
 
-#include <mysql.h>
-
 #if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
 #define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
 #endif
 
-#include "string.h"
+#include <string.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <glib-unix.h>
+#include <locale.h>
 #include "src/config.h"
 #include "src/connection.h"
 #include "src/common_options.h"
 #include "src/common.h"
-#include <glib-unix.h>
 #include "src/logging.h"
 #include "src/set_verbose.h"
-#include "locale.h"
 #include "src/tables_skiplist.h"
 #include "src/regex.h"
 #include "src/mydumper_start_dump.h"
 #include "src/mydumper_daemon_thread.h"
 const char DIRECTORY[] = "export";
 
-extern GAsyncQueue *stream_queue;
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -55,32 +52,7 @@ extern GAsyncQueue *stream_queue;
 gchar *output_directory = NULL;
 gchar *output_directory_param = NULL;
 gchar *dump_directory = NULL;
-guint statement_size = 1000000;
-guint rows_per_file = 0;
-guint chunk_filesize = 0;
-int build_empty_files = 0;
 gboolean daemon_mode = FALSE;
-gboolean have_snapshot_cloning = FALSE;
-
-gboolean use_savepoints = FALSE;
-gboolean load_data = FALSE;
-gboolean csv = FALSE;
-
-guint complete_insert = 0;
-
-gchar *fields_terminated_by=NULL;
-gchar *fields_enclosed_by=NULL;
-gchar *fields_escaped_by=NULL;
-gchar *lines_starting_by=NULL;
-gchar *lines_terminated_by=NULL;
-gchar *statement_terminated_by=NULL;
-
-gchar *fields_enclosed_by_ld=NULL;
-gchar *fields_terminated_by_ld=NULL;
-gchar *lines_starting_by_ld=NULL;
-gchar *lines_terminated_by_ld=NULL;
-gchar *statement_terminated_by_ld=NULL;
-
 gchar *disk_limits=NULL;
 
 // For daemon mode
@@ -92,52 +64,17 @@ static GOptionEntry entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
-    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
-     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
-     "Try to split tables into chunks of this many rows. This option turns off "
-     "--chunk-filesize",
-     NULL},
-    {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
-     "Split tables into chunks of this output file size. This value is in MB",
-     NULL},
-    {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
-     "Build dump files even if no data available from table", NULL},
     {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
      NULL},
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
-    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
-     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
-     NULL},
-    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
-     "Use complete INSERT statements that include column names", NULL},
-    {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "", NULL },
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
-    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
-      "Single character that is going to be used to escape characters in the"
-      "LOAD DATA stament, default: '\\' ", NULL },
-    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
-      "Adds the string at the begining of each row. When --load-data is used"
-      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
-      "also when it is used.", NULL },
-    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
-      "Adds the string at the end of each row. When --load-data is used it is"
-       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
-       "also when it is used.", NULL },
-    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
-      "This might never be used, unless you know what are you doing", NULL },
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."
       "For instance: 100:500 will pause when there is only 100MB free and will"
       "resume if 500MB are available", NULL },
-    { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
-      "Automatically enables --load-data and set variables to export in CSV format.", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 struct tm tval;
@@ -150,6 +87,11 @@ void parse_disk_limits(){
   }
   set_disk_limits(atoi(strsplit[0]),atoi(strsplit[1]));
 }
+
+void initialize_main(){
+
+}
+
 
 int main(int argc, char *argv[]) {
   GError *error = NULL;
@@ -195,6 +137,7 @@ int main(int argc, char *argv[]) {
   }
   g_option_context_free(context);
 
+  initialize_main();
   initialize_start_dump();
 
   hide_password(argc, argv);
@@ -203,69 +146,6 @@ int main(int argc, char *argv[]) {
   if (disk_limits!=NULL){
     parse_disk_limits();
   }
-
-  if (csv){
-    load_data=TRUE;
-    if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
-    if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
-    if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
-    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
-  }
-  if (load_data){
-    if (!fields_enclosed_by_ld){
-    	fields_enclosed_by=g_strdup("");
-      fields_enclosed_by_ld=fields_enclosed_by;
-    }else if(strlen(fields_enclosed_by_ld)>1){
-	    g_error("--fields-enclosed-by must be a single character");
-      exit(EXIT_FAILURE);
-    }else{
-      fields_enclosed_by=fields_enclosed_by_ld;
-    }
-  
-    if (fields_escaped_by){
-      if(strlen(fields_escaped_by)>1){
-	      g_error("--fields-escaped-by must be a single character");
-        exit(EXIT_FAILURE);
-      }else if (strcmp(fields_escaped_by,"\\")==0){
-        fields_escaped_by=g_strdup("\\\\");
-      } 
-    }else{
-      fields_escaped_by=g_strdup("\\\\");
-    }
-  }
-
-  if (!fields_terminated_by_ld){
-    if (load_data){
-      fields_terminated_by=g_strdup("\t");
-      fields_terminated_by_ld=g_strdup("\\t");
-    }else
-      fields_terminated_by=g_strdup(",");
-  }else
-    fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
-  if (!lines_starting_by_ld){
-    if (load_data){
-      lines_starting_by=g_strdup("");
-      lines_starting_by_ld=lines_starting_by;
-    }else
-  	  lines_starting_by=g_strdup("(");
-  }else
-    lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
-  if (!lines_terminated_by_ld){
-    if (load_data){
-      lines_terminated_by=g_strdup("\n");
-      lines_terminated_by_ld=g_strdup("\\n");
-    }else
-  	  lines_terminated_by=g_strdup(")\n");
-  }else
-    lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
-  if (!statement_terminated_by_ld){
-    if (load_data){
-      statement_terminated_by=g_strdup("");
-      statement_terminated_by_ld=statement_terminated_by;
-    }else
-  	  statement_terminated_by=g_strdup(";\n");
-  }else
-    statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
   if (program_version) {
     g_print("mydumper %s, built against MySQL %s\n", VERSION,
@@ -283,20 +163,6 @@ int main(int argc, char *argv[]) {
   time_t t;
   time(&t);
   localtime_r(&t, &tval);
-
-  // rows chunks have precedence over chunk_filesize
-  if (rows_per_file > 0 && chunk_filesize > 0) {
-//    chunk_filesize = 0;
-//    g_warning("--chunk-filesize disabled by --rows option");
-    g_warning("We are going to chunk by row and by filesize");
-  }
-
-  /* savepoints workaround to avoid metadata locking issues
-     doesnt work for chuncks */
-  if (rows_per_file && use_savepoints) {
-    use_savepoints = FALSE;
-    g_warning("--use-savepoints disabled by --rows");
-  }
 
   char *datetimestr;
 
@@ -325,12 +191,9 @@ int main(int argc, char *argv[]) {
   if (daemon_mode) {
     run_daemon();
   } else {
-    MYSQL *conn = create_main_connection();
-    start_dump(conn);
+    start_dump();
   }
 
-  mysql_thread_end();
-  mysql_library_end();
   g_free(output_directory);
   g_strfreev(tables);
 

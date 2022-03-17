@@ -74,34 +74,27 @@
 GMutex *init_mutex = NULL;
 /* Program options */
 extern GAsyncQueue *stream_queue;
-extern int build_empty_files;
-extern gchar *output_directory;
-extern gchar *output_directory_param;
-extern gchar *dump_directory;
-extern guint statement_size;
-extern guint rows_per_file;
-extern guint chunk_filesize;
-extern guint snapshot_count;
-extern gboolean daemon_mode;
-extern guint complete_insert;
-extern gchar *fields_terminated_by;
-extern gchar *fields_enclosed_by;
-extern gchar *fields_escaped_by;
-extern gchar *lines_starting_by;
-extern gchar *lines_terminated_by;
-extern gchar *statement_terminated_by;
-extern gchar *fields_enclosed_by_ld;
-extern gchar *fields_terminated_by_ld;
-extern gchar *lines_starting_by_ld;
-extern gchar *lines_terminated_by_ld;
-extern gchar *disk_limits;
-extern gboolean use_savepoints;
-extern gboolean load_data;
+guint complete_insert = 0;
+gboolean load_data = FALSE;
+gboolean csv = FALSE;
+gchar *fields_enclosed_by=NULL;
+gchar *fields_escaped_by=NULL;
+gchar *fields_terminated_by=NULL;
+gchar *lines_starting_by=NULL;
+gchar *lines_terminated_by=NULL;
+gchar *statement_terminated_by=NULL;
+
+gchar *fields_enclosed_by_ld=NULL;
+gchar *lines_starting_by_ld=NULL;
+gchar *lines_terminated_by_ld=NULL;
+gchar *statement_terminated_by_ld=NULL;
+gchar *fields_terminated_by_ld=NULL;
+guint rows_per_file = 0;
+gboolean use_savepoints = FALSE;
+
 extern gboolean stream;
 extern int detected_server;
-extern gboolean no_delete;
 extern gboolean no_data;
-extern char *defaults_file;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
@@ -160,7 +153,9 @@ GCond *ll_cond = NULL;
 GMutex *ll_mutex = NULL;
 
 extern guint errors;
-
+guint statement_size = 1000000;
+guint chunk_filesize = 0;
+int build_empty_files = 0;
 
 static GOptionEntry working_thread_entries[] = {
     {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
@@ -176,6 +171,8 @@ static GOptionEntry working_thread_entries[] = {
      "between servers with different time zones, defaults to on use "
      "--skip-tz-utc to disable.",
      NULL},
+    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
+     "Use complete INSERT statements that include column names", NULL},
     {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
@@ -185,6 +182,13 @@ static GOptionEntry working_thread_entries[] = {
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
+    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
+     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
+    {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
+     "Split tables into chunks of this output file size. This value is in MB",
+     NULL},
+    {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
+     "Build dump files even if no data available from table", NULL},
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},    
@@ -196,6 +200,27 @@ static GOptionEntry working_thread_entries[] = {
      "Transactional consistency only", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
+    {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
+     "", NULL },
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
+    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
+      "Single character that is going to be used to escape characters in the"
+      "LOAD DATA stament, default: '\\' ", NULL },
+    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
+      "Adds the string at the begining of each row. When --load-data is used"
+      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
+      "also when it is used.", NULL },
+    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
+      "Adds the string at the end of each row. When --load-data is used it is"
+       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
+       "also when it is used.", NULL },
+    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
+      "This might never be used, unless you know what are you doing", NULL },
+    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
+     "Try to split tables into chunks of this many rows. This option turns off "
+     "--chunk-filesize",
+     NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
@@ -222,6 +247,84 @@ void initialize_working_thread(){
   ll_cond = g_cond_new();
 
   initialize_dump_into_file();
+
+  if (csv){
+    load_data=TRUE;
+    if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
+    if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
+    if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
+    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
+  }
+  if (load_data){
+    if (!fields_enclosed_by_ld){
+      fields_enclosed_by=g_strdup("");
+      fields_enclosed_by_ld=fields_enclosed_by;
+    }else if(strlen(fields_enclosed_by_ld)>1){
+      g_error("--fields-enclosed-by must be a single character");
+      exit(EXIT_FAILURE);
+    }else{
+      fields_enclosed_by=fields_enclosed_by_ld;
+    }
+
+    if (fields_escaped_by){
+      if(strlen(fields_escaped_by)>1){
+        g_error("--fields-escaped-by must be a single character");
+        exit(EXIT_FAILURE);
+      }else if (strcmp(fields_escaped_by,"\\")==0){
+        fields_escaped_by=g_strdup("\\\\");
+      }
+    }else{
+      fields_escaped_by=g_strdup("\\\\");
+    }
+  }
+
+  if (!fields_terminated_by_ld){
+    if (load_data){
+      fields_terminated_by=g_strdup("\t");
+      fields_terminated_by_ld=g_strdup("\\t");
+    }else
+      fields_terminated_by=g_strdup(",");
+  }else
+    fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+  if (!lines_starting_by_ld){
+    if (load_data){
+      lines_starting_by=g_strdup("");
+      lines_starting_by_ld=lines_starting_by;
+    }else
+      lines_starting_by=g_strdup("(");
+  }else
+    lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+  if (!lines_terminated_by_ld){
+    if (load_data){
+      lines_terminated_by=g_strdup("\n");
+      lines_terminated_by_ld=g_strdup("\\n");
+    }else
+      lines_terminated_by=g_strdup(")\n");
+  }else
+    lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+  if (!statement_terminated_by_ld){
+    if (load_data){
+      statement_terminated_by=g_strdup("");
+      statement_terminated_by_ld=statement_terminated_by;
+    }else
+      statement_terminated_by=g_strdup(";\n");
+  }else
+    statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
+
+
+  // rows chunks have precedence over chunk_filesize
+  if (rows_per_file > 0 && chunk_filesize > 0) {
+//    chunk_filesize = 0;
+//    g_warning("--chunk-filesize disabled by --rows option");
+    g_warning("We are going to chunk by row and by filesize");
+  }
+
+  /* savepoints workaround to avoid metadata locking issues
+     doesnt work for chuncks */
+  if (rows_per_file && use_savepoints) {
+    use_savepoints = FALSE;
+    g_warning("--use-savepoints disabled by --rows");
+  }
 
   /* Give ourselves an array of engines to ignore */
   if (ignore_engines)
