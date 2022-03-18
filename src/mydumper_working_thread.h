@@ -19,6 +19,9 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+typedef gchar * (*fun_ptr2)(gchar **);
+
+
 void load_working_thread_entries(GOptionGroup *main_group);
 void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);

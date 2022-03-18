@@ -117,7 +117,6 @@ GList *view_schemas = NULL;
 GList *schema_post = NULL;
 gint non_innodb_table_counter = 0;
 gint non_innodb_done = 0;
-guint less_locking_threads = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
 gchar *set_names_str=NULL;
@@ -937,7 +936,6 @@ void start_dump() {
   if (less_locking) {
     conf.queue_less_locking = g_async_queue_new();
     conf.ready_less_locking = g_async_queue_new();
-    less_locking_threads = num_threads;
     for (n = num_threads; n < num_threads * 2; n++) {
       td[n].conf = &conf;
       td[n].thread_id = n + 1;
