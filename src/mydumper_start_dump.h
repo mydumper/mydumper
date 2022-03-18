@@ -12,15 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
-                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
-                    Andrew Hutchings, SkySQL (andrew at skysql dot com)
-                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
-                    David Ducos, Percona (david dot ducos at percona dot com)
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _mydumper_h
-#define _mydumper_h
 
 enum job_type {
   JOB_SHUTDOWN,
@@ -68,7 +62,7 @@ struct job {
 
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
-// second number : when load data is used 
+// second number : when load data is used
 struct table_job {
   char *database;
   char *table;
@@ -100,24 +94,6 @@ struct create_database_job {
   char *filename;
 };
 
-struct schema_job {
-  char *database;
-  char *table;
-  char *filename;
-};
-
-struct view_job {
-  char *database;
-  char *table;
-  char *filename;
-  char *filename2;
-};
-
-struct schema_post_job {
-  struct database *database;
-  char *filename;
-};
-
 struct restore_job {
   char *database;
   char *table;
@@ -141,16 +117,19 @@ struct db_table {
   GList *anonymized_function;
 };
 
-struct database {
-  char *name;
-  char *filename;
-  char *escaped;
-  GMutex *ad_mutex;
-  gboolean already_dumped;
-};
-
 struct schema_post {
   struct database *database;
 };
 
-#endif
+void load_start_dump_entries(GOptionGroup *main_group);
+void initialize_start_dump();
+void start_dump();
+MYSQL *create_main_connection();
+void *exec_thread(void *data);
+gboolean sig_triggered_int(void * user_data);
+gboolean sig_triggered_term(void * user_data);
+void set_disk_limits(guint p_at, guint r_at);
+gboolean write_data(FILE *, GString *);
+
+
+
