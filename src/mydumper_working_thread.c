@@ -62,7 +62,7 @@
 #include "regex.h"
 
 #include "mydumper_start_dump.h"
-#include "mydumper_dump_into_file.h"
+#include "mydumper_jobs.h"
 #include "mydumper_common.h"
 #include "mydumper_stream.h"
 #include "mydumper_database.h"

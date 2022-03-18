@@ -62,7 +62,7 @@
 #include "regex.h"
 
 #include "mydumper_start_dump.h"
-#include "mydumper_dump_into_file.h"
+#include "mydumper_jobs.h"
 #include "mydumper_common.h"
 #include "mydumper_stream.h"
 #include "mydumper_database.h"
@@ -173,18 +173,6 @@ static GOptionEntry start_dump_entries[] = {
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void dump_table(MYSQL *conn, struct db_table *dbt,
-                struct configuration *conf, gboolean is_innodb);
-void restore_charset(GString *statement);
-void set_charset(GString *statement, char *character_set,
-                 char *collation_connection);
-void get_tables(MYSQL *conn, struct configuration *);
-void get_not_updated(MYSQL *conn, FILE *);
-void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
-                    const gchar *message, gpointer user_data);
-struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
-gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 
 void load_start_dump_entries(GOptionGroup *main_group){
   load_dump_into_file_entries(main_group);
@@ -471,6 +459,84 @@ MYSQL *create_main_connection() {
 
   return conn;
 }
+
+void get_not_updated(MYSQL *conn, FILE *file) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gchar *query =
+      g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM "
+                      "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
+                      "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
+                      updated_since);
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  while ((row = mysql_fetch_row(res))) {
+    no_updated_tables = g_list_prepend(no_updated_tables, row[0]);
+    fprintf(file, "%s\n", row[0]);
+  }
+  no_updated_tables = g_list_reverse(no_updated_tables);
+  fflush(file);
+}
+
+void get_tables(MYSQL *conn, struct configuration *conf) {
+
+  gchar **dt = NULL;
+  char *query = NULL;
+  guint i, x;
+
+  for (x = 0; tables[x] != NULL; x++) {
+    dt = g_strsplit(tables[x], ".", 0);
+
+    query =
+        g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
+
+    if (mysql_query(conn, (query))) {
+      g_critical("Error: DB: %s - Could not execute query: %s", dt[0],
+                 mysql_error(conn));
+      errors++;
+      return;
+    }
+
+    MYSQL_RES *result = mysql_store_result(conn);
+    MYSQL_FIELD *fields = mysql_fetch_fields(result);
+    guint ecol = -1;
+    guint ccol = -1;
+    for (i = 0; i < mysql_num_fields(result); i++) {
+      if (!strcasecmp(fields[i].name, "Engine"))
+        ecol = i;
+      else if (!strcasecmp(fields[i].name, "Comment"))
+        ccol = i;
+    }
+
+    if (!result) {
+      g_warning("Could not list table for %s.%s: %s", dt[0], dt[1],
+                mysql_error(conn));
+      errors++;
+      return;
+    }
+    struct database * database=NULL;
+    if (get_database(conn, dt[0],&database)){
+      create_job_to_dump_schema(database->name, conf);
+      g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+    }
+    MYSQL_ROW row;
+    while ((row = mysql_fetch_row(result))) {
+
+      int is_view = 0;
+
+      if ((detected_server == SERVER_TYPE_MYSQL) &&
+          (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
+        is_view = 1;
+      green_light(conn, conf, is_view, database, &row,row[ecol]);
+    }
+  }
+
+  g_free(query);
+}
+
 
 void start_dump() {
   MYSQL *conn = create_main_connection();
@@ -1125,82 +1191,5 @@ void start_dump() {
     disk_limits=NULL;
   }
 
-}
-
-void get_not_updated(MYSQL *conn, FILE *file) {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  gchar *query =
-      g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM "
-                      "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
-                      "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
-                      updated_since);
-  mysql_query(conn, query);
-  g_free(query);
-
-  res = mysql_store_result(conn);
-  while ((row = mysql_fetch_row(res))) {
-    no_updated_tables = g_list_prepend(no_updated_tables, row[0]);
-    fprintf(file, "%s\n", row[0]);
-  }
-  no_updated_tables = g_list_reverse(no_updated_tables);
-  fflush(file);
-}
-
-void get_tables(MYSQL *conn, struct configuration *conf) {
-
-  gchar **dt = NULL;
-  char *query = NULL;
-  guint i, x;
-
-  for (x = 0; tables[x] != NULL; x++) {
-    dt = g_strsplit(tables[x], ".", 0);
-
-    query =
-        g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
-
-    if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", dt[0],
-                 mysql_error(conn));
-      errors++;
-      return;
-    }
-
-    MYSQL_RES *result = mysql_store_result(conn);
-    MYSQL_FIELD *fields = mysql_fetch_fields(result);
-    guint ecol = -1;
-    guint ccol = -1;
-    for (i = 0; i < mysql_num_fields(result); i++) {
-      if (!strcasecmp(fields[i].name, "Engine"))
-        ecol = i;
-      else if (!strcasecmp(fields[i].name, "Comment"))
-        ccol = i;
-    }
-
-    if (!result) {
-      g_warning("Could not list table for %s.%s: %s", dt[0], dt[1],
-                mysql_error(conn));
-      errors++;
-      return;
-    }
-    struct database * database=NULL;
-    if (get_database(conn, dt[0],&database)){
-      create_job_to_dump_schema(database->name, conf);
-      g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
-    }
-    MYSQL_ROW row;
-    while ((row = mysql_fetch_row(result))) {
-
-      int is_view = 0;
-
-      if ((detected_server == SERVER_TYPE_MYSQL) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
-        is_view = 1;
-      green_light(conn, conf, is_view, database, &row,row[ecol]);
-    }
-  }
-
-  g_free(query);
 }
 
