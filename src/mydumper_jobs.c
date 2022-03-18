@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <glib/gstdio.h>
+#include <gio/gio.h>
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
 #include "common.h"
@@ -45,11 +46,26 @@ extern gboolean dump_routines;
 extern gboolean dump_events;
 extern gboolean use_savepoints;
 extern gint database_counter;
-
+extern guint rows_per_file;
+extern gint non_innodb_table_counter;
 gboolean dump_triggers = FALSE;
+gboolean split_partitions = FALSE;
+gboolean order_by_primary_key = FALSE;
+guint64 max_rows=1000000;
+gboolean ignore_generated_fields = FALSE;
 
 static GOptionEntry dump_into_file_entries[] = {
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
+     NULL},
+    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
+      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
+    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
+     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
+    { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
+      "Queries related to generated fields are not going to be executed."
+      "It will lead to restoration issues if you have generated columns", NULL },
+    {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
+     "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -59,6 +75,8 @@ void load_dump_into_file_entries(GOptionGroup *main_group){
 
 void initialize_dump_into_file(){
   initialize_database();
+  if (ignore_generated_fields)
+    g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 }
 
 void write_table_metadata_into_file(struct db_table * dbt){
@@ -702,7 +720,7 @@ void create_job_to_dump_triggers(struct db_table *dbt, struct configuration *con
   g_async_queue_push(conf->queue, t);
 }
 
-void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
+void create_job_to_dump_table_schema(MYSQL *conn, struct db_table *dbt,
                  struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct schema_job *sj = g_new0(struct schema_job, 1);
@@ -794,3 +812,449 @@ void create_job_to_dump_database(struct database *database, struct configuration
   return;
 }
 
+void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
+  // Each job weights 500 bytes aprox.
+  // if we reach to 200k of jobs, which is 100MB of RAM, we are going to wait 5 seconds
+  // which is not too much considering that it will impossible to proccess 200k of jobs
+  // in 5 seconds.
+  // I don't think that we need to this values as parameters, unless that a user needs to
+  // set hundreds of threads
+  while (g_async_queue_length(queue)>200000){
+    g_warning("Too many jobs in the queue. We are pausing the jobs creation for 5 seconds.");
+    sleep(5);
+  }
+  g_async_queue_push(queue, element);
+}
+
+GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
+  MYSQL_RES *res=NULL;
+  MYSQL_ROW row;
+
+  GList *partition_list = NULL;
+
+  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
+  mysql_query(conn,query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  if (res == NULL)
+    //partitioning is not supported
+    return partition_list;
+  while ((row = mysql_fetch_row(res))) {
+    partition_list = g_list_append(partition_list, strdup(row[0]));
+  }
+  mysql_free_result(res);
+
+  return partition_list;
+}
+
+/* Try to get EXPLAIN'ed estimates of row in resultset */
+guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
+                       char *from, char *to) {
+  char *querybase, *query;
+  int ret;
+
+  g_assert(conn && database && table);
+
+  querybase = g_strdup_printf("EXPLAIN SELECT `%s` FROM `%s`.`%s`",
+                              (field ? field : "*"), database, table);
+  if (from || to) {
+    g_assert(field != NULL);
+    char *fromclause = NULL, *toclause = NULL;
+    char *escaped;
+    if (from) {
+      escaped = g_new(char, strlen(from) * 2 + 1);
+      mysql_real_escape_string(conn, escaped, from, strlen(from));
+      fromclause = g_strdup_printf(" `%s` >= %s ", field, escaped);
+      g_free(escaped);
+    }
+    if (to) {
+      escaped = g_new(char, strlen(to) * 2 + 1);
+      mysql_real_escape_string(conn, escaped, to, strlen(to));
+      toclause = g_strdup_printf(" `%s` <= %s", field, escaped);
+      g_free(escaped);
+    }
+    query = g_strdup_printf("%s WHERE %s %s %s", querybase,
+                            (from ? fromclause : ""),
+                            ((from && to) ? "AND" : ""), (to ? toclause : ""));
+
+    if (toclause)
+      g_free(toclause);
+    if (fromclause)
+      g_free(fromclause);
+    ret = mysql_query(conn, query);
+    g_free(querybase);
+    g_free(query);
+  } else {
+    ret = mysql_query(conn, querybase);
+    g_free(querybase);
+  }
+
+  if (ret) {
+    g_warning("Unable to get estimates for %s.%s: %s", database, table,
+              mysql_error(conn));
+  }
+
+  MYSQL_RES *result = mysql_store_result(conn);
+  MYSQL_FIELD *fields = mysql_fetch_fields(result);
+
+  guint i;
+  for (i = 0; i < mysql_num_fields(result); i++) {
+    if (!strcmp(fields[i].name, "rows"))
+      break;
+  }
+
+  MYSQL_ROW row = NULL;
+
+  guint64 count = 0;
+
+  if (result)
+    row = mysql_fetch_row(result);
+
+  if (row && row[i])
+    count = strtoul(row[i], NULL, 10);
+
+  if (result)
+    mysql_free_result(result);
+
+  return (count);
+}
+
+GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
+                            struct configuration *conf) {
+
+  GList *chunks = NULL;
+  MYSQL_RES *indexes = NULL, *minmax = NULL, *total = NULL;
+  MYSQL_ROW row;
+  char *field = NULL;
+  int showed_nulls = 0;
+
+  /* first have to pick index, in future should be able to preset in
+   * configuration too */
+  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", database, table);
+  mysql_query(conn, query);
+  g_free(query);
+  indexes = mysql_store_result(conn);
+
+  if (indexes){
+    while ((row = mysql_fetch_row(indexes))) {
+      if (!strcmp(row[2], "PRIMARY") && (!strcmp(row[3], "1"))) {
+        /* Pick first column in PK, cardinality doesn't matter */
+        field = row[4];
+        break;
+      }
+    }
+
+    /* If no PK found, try using first UNIQUE index */
+    if (!field) {
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[1], "0") && (!strcmp(row[3], "1"))) {
+          /* Again, first column of any unique index */
+          field = row[4];
+          break;
+        }
+      }
+    }
+    /* Still unlucky? Pick any high-cardinality index */
+    if (!field && conf->use_any_index) {
+      guint64 max_cardinality = 0;
+      guint64 cardinality = 0;
+
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[3], "1")) {
+          if (row[6])
+            cardinality = strtoul(row[6], NULL, 10);
+          if (cardinality > max_cardinality) {
+            field = row[4];
+            max_cardinality = cardinality;
+          }
+        }
+      }
+    }
+  }
+  /* Oh well, no chunks today - no suitable index */
+  if (!field)
+    goto cleanup;
+
+  /* Get minimum/maximum */
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
+                        (detected_server == SERVER_TYPE_MYSQL)
+                            ? "/*!40001 SQL_NO_CACHE */"
+                            : "",
+                        field, field, database, table));
+  g_free(query);
+  minmax = mysql_store_result(conn);
+
+  if (!minmax)
+    goto cleanup;
+
+  row = mysql_fetch_row(minmax);
+  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
+
+  /* Check if all values are NULL */
+  if (row[0] == NULL)
+    goto cleanup;
+
+  char *min = row[0];
+  char *max = row[1];
+
+  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
+
+  /* Support just bigger INTs for now, very dumb, no verify approach */
+  switch (fields[0].type) {
+  case MYSQL_TYPE_LONG:
+  case MYSQL_TYPE_LONGLONG:
+  case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
+    /* Got total number of rows, skip chunk logic if estimates are low */
+    rows = estimate_count(conn, database, table, field, min, max);
+    if (rows <= rows_per_file)
+      goto cleanup;
+
+    /* This is estimate, not to use as guarantee! Every chunk would have eventual
+     * adjustments */
+    estimated_chunks = rows / rows_per_file;
+    /* static stepping */
+    nmin = strtoul(min, NULL, 10);
+    nmax = strtoul(max, NULL, 10);
+    estimated_step = (nmax - nmin) / estimated_chunks + 1;
+    if (estimated_step > max_rows)
+      estimated_step = max_rows;
+    cutoff = nmin;
+    while (cutoff <= nmax) {
+      chunks = g_list_prepend(
+          chunks,
+          g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? " IS NULL OR " : "", field,
+                          (unsigned long long)cutoff, field,
+                          (unsigned long long)(cutoff + estimated_step)));
+      cutoff += estimated_step;
+      showed_nulls = 1;
+    }
+    chunks = g_list_reverse(chunks);
+// TODO: We need to add more chunk options for different types
+  default:
+    goto cleanup;
+  }
+
+cleanup:
+  if (indexes)
+    mysql_free_result(indexes);
+  if (minmax)
+    mysql_free_result(minmax);
+  if (total)
+    mysql_free_result(total);
+  return chunks;
+}
+
+
+struct table_job * new_table_job(struct db_table *dbt, char *partition, char *where, guint nchunk, gboolean has_generated_fields, char *order_by){
+  struct table_job *tj = g_new0(struct table_job, 1);
+// begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
+  // from the ref table?? TODO
+  tj->database=dbt->database->name;
+  tj->table=g_strdup(dbt->table);
+// end
+  tj->partition=partition;
+  tj->where=where;
+  tj->order_by=order_by;
+  tj->nchunk=nchunk;
+  tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, 0);
+  tj->has_generated_fields=has_generated_fields;
+  tj->dbt=dbt;
+  return tj;
+}
+
+gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
+  if (!order_by_primary_key) return NULL;
+
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  GString *field_list = g_string_new("");
+
+  gchar *query =
+          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
+                          "FROM information_schema.table_constraints t "
+                          "LEFT JOIN information_schema.key_column_usage k "
+                          "USING(constraint_name,table_schema,table_name) "
+                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
+                          "AND t.table_schema='%s' "
+                          "AND t.table_name='%s' "
+                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
+                          database, table);
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  gboolean first = TRUE;
+  while ((row = mysql_fetch_row(res))) {
+    if (first) {
+      first = FALSE;
+    } else if (atoi(row[1]) > 1) {
+      g_string_append(field_list, ",");
+    } else {
+      break;
+    }
+
+    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    g_string_append(field_list, tb);
+    g_free(tb);
+  }
+  mysql_free_result(res);
+  // Return NULL if we never found a PRIMARY or UNIQUE key
+  if (first) {
+    g_string_free(field_list, TRUE);
+    return NULL;
+  } else {
+    return g_string_free(field_list, FALSE);
+  }
+}
+
+gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gboolean result = FALSE;
+  if (ignore_generated_fields)
+    return FALSE;
+
+  gchar *query = g_strdup_printf(
+      "select COLUMN_NAME from information_schema.COLUMNS where "
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      dbt->database->escaped, dbt->escaped_table);
+
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  if (res == NULL){
+    return FALSE;
+  }
+
+  if ((row = mysql_fetch_row(res))) {
+    result = TRUE;
+  }
+  mysql_free_result(res);
+
+  return result;
+}
+
+void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
+                struct configuration *conf, gboolean is_innodb) {
+//  char *database = dbt->database;
+//  char *table = dbt->table;
+  GList * partitions = NULL;
+  if (split_partitions)
+    partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+
+  GList *chunks = NULL;
+  if (rows_per_file)
+    chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
+
+  gboolean has_generated_fields =
+    detect_generated_fields(conn, dbt);
+
+  if (partitions){
+    int npartition=0;
+    for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+      struct job *j = g_new0(struct job,1);
+      struct table_job *tj = NULL;
+      j->job_data=(void*) tj;
+      j->conf=conf;
+      j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+      tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      j->job_data = (void *)tj;
+      if (!is_innodb && npartition)
+        g_atomic_int_inc(&non_innodb_table_counter);
+      g_async_queue_push(conf->queue,j);
+      npartition++;
+    }
+    g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
+
+  } else if (chunks) {
+    int nchunk = 0;
+    GList *iter;
+    for (iter = chunks; iter != NULL; iter = iter->next) {
+      struct job *j = g_new0(struct job, 1);
+      struct table_job *tj = NULL;
+      j->conf = conf;
+      j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+      tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      j->job_data = (void *)tj;
+      if (!is_innodb && nchunk)
+        g_atomic_int_inc(&non_innodb_table_counter);
+      m_async_queue_push_conservative(conf->queue, j);
+      nchunk++;
+    }
+    g_list_free(chunks);
+  } else {
+    struct job *j = g_new0(struct job, 1);
+    struct table_job *tj = NULL;
+    j->conf = conf;
+    j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+    tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+    j->job_data = (void *)tj;
+    g_async_queue_push(conf->queue, j);
+  }
+}
+
+void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
+                 struct configuration *conf) {
+  struct db_table *dbt=NULL;
+  GList *chunks = NULL;
+  GList * partitions = NULL;
+
+  struct job *j = g_new0(struct job, 1);
+  struct tables_job *tjs = g_new0(struct tables_job, 1);
+  j->conf = conf;
+  j->type = JOB_LOCK_DUMP_NON_INNODB;
+  j->job_data = (void *)tjs;
+
+  GList *iter;
+
+  for (iter = noninnodb_tables_list; iter != NULL; iter = iter->next) {
+    dbt = (struct db_table *)iter->data;
+
+    if (rows_per_file)
+      chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
+    gboolean has_generated_fields =
+      detect_generated_fields(conn, dbt);
+
+    if (split_partitions)
+      partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+
+    if (partitions){
+      int npartition=0;
+      for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
+        struct table_job *tj = NULL;
+        tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
+        npartition++;
+      }
+      g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
+
+    } else if (chunks) {
+      int nchunk = 0;
+      GList *citer;
+      for (citer = chunks; citer != NULL; citer = citer->next) {
+        struct table_job *tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
+        nchunk++;
+      }
+      g_list_free(chunks);
+    } else {
+      struct table_job *tj = NULL;
+      tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
+    }
+  }
+  tjs->table_job_list = g_list_reverse(tjs->table_job_list);
+  g_async_queue_push(conf->queue_less_locking, j);
+}

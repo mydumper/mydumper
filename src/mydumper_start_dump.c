@@ -104,7 +104,6 @@ int need_dummy_toku_read = 0;
 int compress_output = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
-gboolean ignore_generated_fields = FALSE;
 gboolean no_schemas = FALSE;
 gboolean dump_checksums = FALSE;
 gboolean no_locks = FALSE;
@@ -151,9 +150,6 @@ static GOptionEntry start_dump_entries[] = {
      "Snapshot to use for TiDB", NULL},
     {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
      "Use Update_time to dump only tables updated in the last U days", NULL},
-    { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
-      "Queries related to generated fields are not going to be executed."
-      "It will lead to restoration issues if you have generated columns", NULL },
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
     {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
@@ -329,7 +325,6 @@ gboolean is_disk_space_ok(guint val){
 void *monitor_disk_space_thread (void *queue){
   (void)queue;
   guint i=0;
-  // This should be done with mutex not queues! what was I thinking?
   GMutex **pause_mutex_per_thread=g_new(GMutex * , num_threads) ;
   for(i=0;i<num_threads;i++){
     pause_mutex_per_thread[i]=g_mutex_new();
@@ -590,8 +585,6 @@ void start_dump() {
     nits[n] = 0;
     nitl[n] = NULL;
   }
-  if (ignore_generated_fields)
-    g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
   p = g_strdup_printf("%s/metadata.partial", dump_directory);
   p2 = g_strndup(p, (unsigned)strlen(p) - 8);
@@ -1035,7 +1028,7 @@ void start_dump() {
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
-    create_job_to_dump_table(conn, dbt, &conf);
+    create_job_to_dump_table_schema(conn, dbt, &conf);
   }
 
   non_innodb_table = g_list_reverse(non_innodb_table);
@@ -1081,7 +1074,7 @@ void start_dump() {
       if (dump_checksums) {
         create_job_to_dump_checksum(dbt, &conf);
       }
-      dump_table(conn, dbt, &conf, FALSE);
+      create_job_to_dump_table(conn, dbt, &conf, FALSE);
       g_atomic_int_inc(&non_innodb_table_counter);
     }
     g_list_free(non_innodb_table);
@@ -1094,7 +1087,7 @@ void start_dump() {
     if (dump_checksums) {
       create_job_to_dump_checksum(dbt, &conf);
     }
-    dump_table(conn, dbt, &conf, TRUE);
+    create_job_to_dump_table(conn, dbt, &conf, TRUE);
   }
   g_list_free(innodb_tables);
   innodb_tables=NULL;

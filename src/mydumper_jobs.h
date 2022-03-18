@@ -41,11 +41,15 @@ struct schema_post_job {
 void initialize_dump_into_file();
 void load_dump_into_file_entries(GOptionGroup *main_group);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
-void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_table_schema(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
 void create_job_to_dump_database(struct database *database, struct configuration *conf, gboolean less_locking);
 void create_job_to_dump_schema(char *database, struct configuration *conf);
+void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
+                    struct configuration *conf, gboolean is_innodb);
+void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
+                     struct configuration *conf);
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
 void write_table_metadata_into_file(struct db_table * dbt);
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);

@@ -31,3 +31,4 @@ void restore_charset(GString *statement);
 void clear_dump_directory(gchar *directory);
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
 gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
+gchar * build_data_filename(char *database, char *table, guint part, guint sub_part);

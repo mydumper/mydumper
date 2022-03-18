@@ -123,8 +123,6 @@ gboolean no_dump_views = FALSE;
 extern gboolean less_locking;
 gboolean success_on_1146 = FALSE;
 gboolean insert_ignore = FALSE;
-gboolean split_partitions = FALSE;
-gboolean order_by_primary_key = FALSE;
 
 extern GList *innodb_tables;
 GMutex *innodb_tables_mutex = NULL;
@@ -141,7 +139,6 @@ extern guint less_locking_threads;
 extern guint trx_consistency_only;
 extern gchar *set_names_str;
 gchar *where_option=NULL;
-guint64 max_rows=1000000;
 extern GHashTable *all_anonymized_function;
 
 
@@ -163,8 +160,6 @@ static GOptionEntry working_thread_entries[] = {
      "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
      "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
      "when a server has data in different time zones or data is being moved "
@@ -189,11 +184,6 @@ static GOptionEntry working_thread_entries[] = {
      NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-    {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
-     "Sort the data by Primary Key or Unique key if no primary key exists",
-     NULL},    
-    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
     {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
@@ -347,31 +337,6 @@ void initialize_working_thread(){
   }
 }
 
-GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
-	MYSQL_RES *res=NULL;
-	MYSQL_ROW row;
-
-	GList *partition_list = NULL;
-
-	gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
-	mysql_query(conn,query);
-	g_free(query);
-
-	res = mysql_store_result(conn);
-	if (res == NULL)
-		//partitioning is not supported
-		return partition_list;
-	while ((row = mysql_fetch_row(res))) {
-		partition_list = g_list_append(partition_list, strdup(row[0]));
-	}
-	mysql_free_result(res);
-
-	return partition_list;
-}
-
-gchar * build_data_filename(char *database, char *table, guint part, guint sub_part){
-  return build_filename(database,table,part,sub_part,"sql");
-}
 
 // Free structures
 void free_table_job(struct table_job *tj){
@@ -643,7 +608,7 @@ void *working_thread(struct thread_data *td) {
   mysql_thread_end();
   return NULL;
 }
-
+/*
 gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
@@ -672,7 +637,7 @@ gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
 
   return result;
 }
-
+*/
 GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
@@ -704,7 +669,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
 
   return field_list;
 }
-
+/*
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
   if (!order_by_primary_key) return NULL;
 
@@ -750,144 +715,9 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
     return g_string_free(field_list, FALSE);
   }
 }
-
-/* Heuristic chunks building - based on estimates, produces list of ranges for
-   datadumping WORK IN PROGRESS
 */
-GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
-                            struct configuration *conf) {
-
-  GList *chunks = NULL;
-  MYSQL_RES *indexes = NULL, *minmax = NULL, *total = NULL;
-  MYSQL_ROW row;
-  char *field = NULL;
-  int showed_nulls = 0;
-
-  /* first have to pick index, in future should be able to preset in
-   * configuration too */
-  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", database, table);
-  mysql_query(conn, query);
-  g_free(query);
-  indexes = mysql_store_result(conn);
-
-  if (indexes){
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[2], "PRIMARY") && (!strcmp(row[3], "1"))) {
-        /* Pick first column in PK, cardinality doesn't matter */
-        field = row[4];
-        break;
-      }
-    }
-
-    /* If no PK found, try using first UNIQUE index */
-    if (!field) {
-      mysql_data_seek(indexes, 0);
-      while ((row = mysql_fetch_row(indexes))) {
-        if (!strcmp(row[1], "0") && (!strcmp(row[3], "1"))) {
-          /* Again, first column of any unique index */
-          field = row[4];
-          break;
-        }
-      }
-    }
-    /* Still unlucky? Pick any high-cardinality index */
-    if (!field && conf->use_any_index) {
-      guint64 max_cardinality = 0;
-      guint64 cardinality = 0;
-
-      mysql_data_seek(indexes, 0);
-      while ((row = mysql_fetch_row(indexes))) {
-        if (!strcmp(row[3], "1")) {
-          if (row[6])
-            cardinality = strtoul(row[6], NULL, 10);
-          if (cardinality > max_cardinality) {
-            field = row[4];
-            max_cardinality = cardinality;
-          }
-        }
-      }
-    }
-  }
-  /* Oh well, no chunks today - no suitable index */
-  if (!field)
-    goto cleanup;
-
-  /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, field, database, table));
-  g_free(query);
-  minmax = mysql_store_result(conn);
-
-  if (!minmax)
-    goto cleanup;
-
-  row = mysql_fetch_row(minmax);
-  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-
-  /* Check if all values are NULL */
-  if (row[0] == NULL)
-    goto cleanup;
-
-  char *min = row[0];
-  char *max = row[1];
-
-  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
-
-  /* Support just bigger INTs for now, very dumb, no verify approach */
-  switch (fields[0].type) {
-  case MYSQL_TYPE_LONG:
-  case MYSQL_TYPE_LONGLONG:
-  case MYSQL_TYPE_INT24:
-  case MYSQL_TYPE_SHORT:
-    /* Got total number of rows, skip chunk logic if estimates are low */
-    rows = estimate_count(conn, database, table, field, min, max);
-    if (rows <= rows_per_file)
-      goto cleanup;
-
-    /* This is estimate, not to use as guarantee! Every chunk would have eventual
-     * adjustments */
-    estimated_chunks = rows / rows_per_file;
-    /* static stepping */
-    nmin = strtoul(min, NULL, 10);
-    nmax = strtoul(max, NULL, 10);
-    estimated_step = (nmax - nmin) / estimated_chunks + 1;
-    if (estimated_step > max_rows)
-      estimated_step = max_rows;
-    cutoff = nmin;
-    while (cutoff <= nmax) {
-      chunks = g_list_prepend(
-          chunks,
-          g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
-                          !showed_nulls ? "`" : "",
-                          !showed_nulls ? field : "",
-                          !showed_nulls ? "`" : "",
-                          !showed_nulls ? " IS NULL OR " : "", field,
-                          (unsigned long long)cutoff, field,
-                          (unsigned long long)(cutoff + estimated_step)));
-      cutoff += estimated_step;
-      showed_nulls = 1;
-    }
-    chunks = g_list_reverse(chunks);
-// TODO: We need to add more chunk options for different types
-  default:
-    goto cleanup;
-  }
-
-cleanup:
-  if (indexes)
-    mysql_free_result(indexes);
-  if (minmax)
-    mysql_free_result(minmax);
-  if (total)
-    mysql_free_result(total);
-  return chunks;
-}
-
 /* Try to get EXPLAIN'ed estimates of row in resultset */
+/*
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to) {
   char *querybase, *query;
@@ -958,7 +788,7 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 
   return (count);
 }
-
+*/
 typedef gchar * (*fun_ptr2)(gchar **);
 
 GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
@@ -1309,7 +1139,7 @@ void dump_table_data_file(MYSQL *conn, struct table_job *tj) {
     g_message("Empty table %s.%s", tj->database, tj->table);
   
 }
-
+/*
 struct table_job * new_table_job(struct db_table *dbt, char *partition, char *where, guint nchunk, gboolean has_generated_fields, char *order_by){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
@@ -1399,7 +1229,7 @@ void dump_table(MYSQL *conn, struct db_table *dbt,
     g_async_queue_push(conf->queue, j);
   }
 }
-
+*/
 void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
   for (i = 0; i < num_fields; ++i) {
@@ -1749,7 +1579,7 @@ gboolean write_data(FILE *file, GString *data) {
   return TRUE;
 }
 
-
+/*
 void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
                  struct configuration *conf) {
   struct db_table *dbt=NULL;
@@ -1803,4 +1633,4 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
   tjs->table_job_list = g_list_reverse(tjs->table_job_list);
   g_async_queue_push(conf->queue_less_locking, j);
 }
-
+*/

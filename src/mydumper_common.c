@@ -166,3 +166,7 @@ gchar * build_filename(char *database, char *table, guint part, guint sub_part, 
   g_string_free(filename,TRUE);
   return r;
 }
+
+gchar * build_data_filename(char *database, char *table, guint part, guint sub_part){
+  return build_filename(database,table,part,sub_part,"sql");
+}
