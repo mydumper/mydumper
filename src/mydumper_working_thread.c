@@ -672,8 +672,6 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
         anonymized_function_list=g_list_append(anonymized_function_list,&identity_function);
       }
     }
-  }else{
-    g_message("No anonymized func for that");
   }
   mysql_free_result(res);
   g_free(k);

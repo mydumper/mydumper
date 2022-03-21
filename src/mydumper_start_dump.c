@@ -531,86 +531,8 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
   g_free(query);
 }
 
-
-void start_dump() {
-  MYSQL *conn = create_main_connection();
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
-  char *p;
-  char *p2;
-  char *p3;
-  char *u;
-
-  guint64 nits[num_threads];
-  GList *nitl[num_threads];
-  int tn = 0;
-  guint64 min = 0;
-  struct db_table *dbt=NULL;
-  struct schema_post *sp;
-  guint n;
-  FILE *nufile = NULL;
-  guint have_backup_locks = 0;
-  GThread *disk_check_thread = NULL;
-  GString *db_quoted_list=NULL;
-  if (db){
-    guint i=0;
-    db_quoted_list=g_string_sized_new(strlen(db));
-    g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
-    i++;
-    while (i<g_strv_length(db_items)){
-
-      g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
-      i++;
-
-    } 
-    
-  }
-  if (disk_limits!=NULL){
-    conf.pause_resume = g_async_queue_new();
-    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
-  }
-
-  if (!daemon_mode){
-    GError *serror;
-    GThread *sthread =
-        g_thread_create(signal_thread, &conf, FALSE, &serror);
-    if (sthread == NULL) {
-      g_critical("Could not create signal thread: %s", serror->message);
-      g_error_free(serror);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  for (n = 0; n < num_threads; n++) {
-    nits[n] = 0;
-    nitl[n] = NULL;
-  }
-
-  p = g_strdup_printf("%s/metadata.partial", dump_directory);
-  p2 = g_strndup(p, (unsigned)strlen(p) - 8);
-
-  FILE *mdfile = g_fopen(p, "w");
-  if (!mdfile) {
-    g_critical("Couldn't write metadata file %s (%d)", p, errno);
-    exit(EXIT_FAILURE);
-  }
-
-  if (updated_since > 0) {
-    u = g_strdup_printf("%s/not_updated_tables", dump_directory);
-    nufile = g_fopen(u, "w");
-    if (!nufile) {
-      g_critical("Couldn't write not_updated_tables file (%d)", errno);
-      exit(EXIT_FAILURE);
-    }
-    get_not_updated(conn, nufile);
-  }
-
-  /* We check SHOW PROCESSLIST, and if there're queries
-     larger than preset value, we terminate the process.
-
-     This avoids stalling whole server with flush */
-
-  if (!no_locks) {
-
+void long_query_wait(MYSQL *conn){
+  char *p3=NULL;
     while (TRUE) {
       int longquery_count = 0;
       if (mysql_query(conn, "SHOW PROCESSLIST")) {
@@ -680,9 +602,121 @@ void start_dump() {
         }
       }
     }
+}
+
+
+void start_dump() {
+  MYSQL *conn = create_main_connection();
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  char *metadata_partial_filename, *metadata_filename;
+  char *u;
+
+  guint64 nits[num_threads];
+  GList *nitl[num_threads];
+  int tn = 0;
+  guint64 min = 0;
+  struct db_table *dbt=NULL;
+  struct schema_post *sp;
+  guint n;
+  FILE *nufile = NULL;
+  guint have_percona_backup_locks = 0;
+  GThread *disk_check_thread = NULL;
+  GString *db_quoted_list=NULL;
+  if (db){
+    guint i=0;
+    db_quoted_list=g_string_sized_new(strlen(db));
+    g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
+    i++;
+    while (i<g_strv_length(db_items)){
+
+      g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
+      i++;
+
+    } 
+    
+  }
+  if (disk_limits!=NULL){
+    conf.pause_resume = g_async_queue_new();
+    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
   }
 
-  if (!no_locks && (detected_server != SERVER_TYPE_TIDB)) {
+  if (!daemon_mode){
+    GError *serror;
+    GThread *sthread =
+        g_thread_create(signal_thread, &conf, FALSE, &serror);
+    if (sthread == NULL) {
+      g_critical("Could not create signal thread: %s", serror->message);
+      g_error_free(serror);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  for (n = 0; n < num_threads; n++) {
+    nits[n] = 0;
+    nitl[n] = NULL;
+  }
+
+  metadata_partial_filename = g_strdup_printf("%s/metadata.partial", dump_directory);
+  metadata_filename = g_strndup(metadata_partial_filename, (unsigned)strlen(metadata_partial_filename) - 8);
+
+  FILE *mdfile = g_fopen(metadata_partial_filename, "w");
+  if (!mdfile) {
+    g_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
+    exit(EXIT_FAILURE);
+  }
+
+  if (updated_since > 0) {
+    u = g_strdup_printf("%s/not_updated_tables", dump_directory);
+    nufile = g_fopen(u, "w");
+    if (!nufile) {
+      g_critical("Couldn't write not_updated_tables file (%d)", errno);
+      exit(EXIT_FAILURE);
+    }
+    get_not_updated(conn, nufile);
+  }
+
+  if (!no_locks) {
+  // We check SHOW PROCESSLIST, and if there're queries
+  // larger than preset value, we terminate the process.
+  // This avoids stalling whole server with flush.
+		long_query_wait(conn);
+	}
+
+if (detected_server == SERVER_TYPE_TIDB) {
+    g_message("Skipping locks because of TiDB");
+    if (!tidb_snapshot) {
+
+      // Generate a @@tidb_snapshot to use for the worker threads since
+      // the tidb-snapshot argument was not specified when starting mydumper
+
+      if (mysql_query(conn, "SHOW MASTER STATUS")) {
+        g_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
+        exit(EXIT_FAILURE);
+      } else {
+
+        MYSQL_RES *result = mysql_store_result(conn);
+        MYSQL_ROW row = mysql_fetch_row(
+            result); /* There should never be more than one row */
+        tidb_snapshot = g_strdup(row[1]);
+        mysql_free_result(result);
+      }
+    }
+
+    // Need to set the @@tidb_snapshot for the master thread
+    gchar *query =
+        g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+
+    if (mysql_query(conn, query)) {
+      g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+      exit(EXIT_FAILURE);
+    }
+    g_free(query);
+
+  }else{
+
+  if (!no_locks) {
     // Percona Server 8 removed LOCK BINLOG so backup locks is useless for
     // mydumper now and we need to fail back to FTWRL
     mysql_query(conn, "SELECT @@version_comment, @@version");
@@ -699,21 +733,22 @@ void start_dump() {
 
     // Percona Backup Locks
     if (!no_backup_locks) {
-      mysql_query(conn, "SELECT @@have_backup_locks");
+      mysql_query(conn, "SELECT @@have_percona_backup_locks");
       MYSQL_RES *rest = mysql_store_result(conn);
       if (rest != NULL && mysql_num_rows(rest)) {
         mysql_free_result(rest);
         g_message("Using Percona Backup Locks");
-        have_backup_locks = 1;
+        have_percona_backup_locks = 1;
       }
     }
 
-    if (have_backup_locks) {
+    if (have_percona_backup_locks) {
       if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
         g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
                    "not be consistent: %s",
                    mysql_error(conn));
         errors++;
+        exit(EXIT_FAILURE);
       }
 
       if (mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
@@ -721,8 +756,11 @@ void start_dump() {
                    "not be consistent: %s",
                    mysql_error(conn));
         errors++;
+				exit(EXIT_FAILURE);
       }
-    } else if (lock_all_tables) {
+    }
+ 
+		if (lock_all_tables) {
       // LOCK ALL TABLES
       GString *query = g_string_sized_new(16777216);
       gchar *dbtb = NULL;
@@ -837,41 +875,10 @@ void start_dump() {
         errors++;
       }
     }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
-    g_message("Skipping locks because of TiDB");
-    if (!tidb_snapshot) {
-
-      // Generate a @@tidb_snapshot to use for the worker threads since
-      // the tidb-snapshot argument was not specified when starting mydumper
-
-      if (mysql_query(conn, "SHOW MASTER STATUS")) {
-        g_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
-        exit(EXIT_FAILURE);
-      } else {
-
-        MYSQL_RES *result = mysql_store_result(conn);
-        MYSQL_ROW row = mysql_fetch_row(
-            result); /* There should never be more than one row */
-        tidb_snapshot = g_strdup(row[1]);
-        mysql_free_result(result);
-      }
-    }
-
-    // Need to set the @@tidb_snapshot for the master thread
-    gchar *query =
-        g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
-
-    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
-
-    if (mysql_query(conn, query)) {
-      g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
-      exit(EXIT_FAILURE);
-    }
-    g_free(query);
-
   } else {
     g_warning("Executing in no-locks mode, snapshot will not be consistent");
   }
+}
   if (mysql_get_server_version(conn) < 40108) {
     mysql_query(
         conn,
@@ -965,12 +972,14 @@ void start_dump() {
     g_async_queue_pop(conf.ready);
   }
 
+  // IMPORTANT: At this point, all the threads are in sync
+
   g_async_queue_unref(conf.ready);
 
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
     mysql_query(conn, "UNLOCK TABLES /* trx-only */");
-    if (have_backup_locks)
+    if (have_percona_backup_locks)
       mysql_query(conn, "UNLOCK BINLOG");
   }
 
@@ -1090,12 +1099,6 @@ void start_dump() {
   g_list_free(innodb_tables);
   innodb_tables=NULL;
 
-/*  table_schemas = g_list_reverse(table_schemas);
-  for (iter = table_schemas; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-    dump_schema(conn, dbt, &conf);
-  }*/
-
   view_schemas = g_list_reverse(view_schemas);
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
@@ -1119,12 +1122,12 @@ void start_dump() {
     g_async_queue_pop(conf.unlock_tables);
     g_message("Non-InnoDB dump complete, unlocking tables");
     mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-    if (have_backup_locks)
+    if (have_percona_backup_locks)
       mysql_query(conn, "UNLOCK BINLOG");
   }
   // close main connection
   mysql_close(conn);
-
+  g_message("Main connection closed");
   if (less_locking) {
     for (n = num_threads; n < num_threads * 2; n++) {
       g_thread_join(threads[n]);
@@ -1160,12 +1163,12 @@ void start_dump() {
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);
-  g_rename(p, p2);
+  g_rename(metadata_partial_filename, metadata_filename);
   if (stream) {
-    g_async_queue_push(stream_queue, g_strdup(p2));
+    g_async_queue_push(stream_queue, g_strdup(metadata_filename));
   }
-  g_free(p);
-  g_free(p2);
+  g_free(metadata_partial_filename);
+  g_free(metadata_filename);
   g_message("Finished dump at: %s",datetimestr);
   g_free(datetimestr);
 
