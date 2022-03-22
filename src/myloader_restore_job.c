@@ -231,7 +231,7 @@ gboolean sig_triggered(void * user_data, int signal) {
       g_mutex_lock(pause_mutex_per_thread[i]);
       g_async_queue_push(queue,pause_mutex_per_thread[i]);
     }
-    g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+    fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
     int c=0;
     while (1){
       do{

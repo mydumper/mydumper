@@ -372,7 +372,7 @@ gboolean sig_triggered(void * user_data, int signal) {
       ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
     GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
     if (!daemon_mode){
-      g_critical("Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+      fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
       for(i=0;i<num_threads;i++){
         g_mutex_lock(pause_mutex_per_thread[i]);
         g_async_queue_push(queue,pause_mutex_per_thread[i]);
