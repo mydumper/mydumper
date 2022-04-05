@@ -49,7 +49,8 @@ void load_restore_entries(GOptionGroup *main_group){
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
-    //g_critical("Error restoring: %s %s", data->str, mysql_error(conn));
+    if (is_schema)
+      g_critical("Error restoring: %s %s", data->str, mysql_error(td->thrconn));
     errors++;
     return 1;
   }
