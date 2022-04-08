@@ -210,7 +210,7 @@ void *process_stream_queue(struct thread_data * td) {
   enum file_type ft=0;
 //  enum file_type ft;
   while (cont){
-    ft=(enum file_type)g_async_queue_pop(stream_queue);
+    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(stream_queue));
     job=g_async_queue_try_pop(stream_conf->database_queue);
     if (job != NULL){
       g_debug("Restoring database");
