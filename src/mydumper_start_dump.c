@@ -149,22 +149,22 @@ static GOptionEntry start_dump_entries[] = {
      "Snapshot to use for TiDB", NULL},
     {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
      "Use Update_time to dump only tables updated in the last U days", NULL},
-    {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
-     "Do not use Percona backup locks", NULL},
-    {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
-     "Use LOCK TABLE for all, instead of FTWRL", NULL},
-    {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
-      "Do not dump table schemas with the data and triggers", NULL},
-    {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
-     "Minimize locking time on InnoDB tables.", NULL},
-    {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
-     "Kill long running queries (instead of aborting)", NULL},
     {"no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks,
      "Do not execute the temporary shared read lock.  WARNING: This will cause "
      "inconsistent backups",
      NULL},
+    {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
+     "Do not use Percona backup locks", NULL},
+    {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
+     "Use LOCK TABLE for all, instead of FTWRL", NULL},
+    {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
+     "Minimize locking time on InnoDB tables.", NULL},
     {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
      "Transactional consistency only", NULL},
+    {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
+      "Do not dump table schemas with the data and triggers", NULL},
+    {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
+     "Kill long running queries (instead of aborting)", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -717,6 +717,8 @@ if (detected_server == SERVER_TYPE_TIDB) {
   }else{
 
   if (!no_locks) {
+		// This backup will lock the database
+
     // Percona Server 8 removed LOCK BINLOG so backup locks is useless for
     // mydumper now and we need to fail back to FTWRL
     mysql_query(conn, "SELECT @@version_comment, @@version");
@@ -726,6 +728,7 @@ if (detected_server == SERVER_TYPE_TIDB) {
       if (g_str_has_prefix(ver[0], "Percona") &&
           g_str_has_prefix(ver[1], "8.")) {
         g_message("Disabling Percona Backup Locks for Percona Server 8");
+// THIS IS WROKING. We can use ALTER INSTANCE
         no_backup_locks = 1;
       }
     }
@@ -878,7 +881,10 @@ if (detected_server == SERVER_TYPE_TIDB) {
   } else {
     g_warning("Executing in no-locks mode, snapshot will not be consistent");
   }
-}
+  }
+
+
+// TODO: this should be deleted on future releases. 
   if (mysql_get_server_version(conn) < 40108) {
     mysql_query(
         conn,
@@ -900,6 +906,7 @@ if (detected_server == SERVER_TYPE_TIDB) {
 
   // Do not start a transaction when lock all tables instead of FTWRL,
   // since it can implicitly release read locks we hold
+  // TODO: this should be deleted as main connection is not being used for export data
   if (!lock_all_tables) {
     mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
   }
@@ -931,10 +938,8 @@ if (detected_server == SERVER_TYPE_TIDB) {
 
     write_snapshot_info(conn, mdfile);
   }
-  GThread *stream_thread = NULL;
   if (stream){
-    stream_queue = g_async_queue_new();
-    stream_thread = g_thread_create((GThreadFunc)process_stream, stream_queue, TRUE, NULL);
+    initialize_stream();
   }
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
   struct thread_data *td =
@@ -1118,6 +1123,13 @@ if (detected_server == SERVER_TYPE_TIDB) {
   g_list_free(schema_post);
   schema_post=NULL;
 
+  if (less_locking) {
+    for (n = num_threads; n < num_threads * 2; n++) {
+      g_thread_join(threads[n]);
+    }
+    g_async_queue_unref(conf.queue_less_locking);
+  }
+
   if (!no_locks && !trx_consistency_only) {
     g_async_queue_pop(conf.unlock_tables);
     g_message("Non-InnoDB dump complete, unlocking tables");
@@ -1128,12 +1140,6 @@ if (detected_server == SERVER_TYPE_TIDB) {
   // close main connection
   mysql_close(conn);
   g_message("Main connection closed");
-  if (less_locking) {
-    for (n = num_threads; n < num_threads * 2; n++) {
-      g_thread_join(threads[n]);
-    }
-    g_async_queue_unref(conf.queue_less_locking);
-  }
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
@@ -1174,7 +1180,7 @@ if (detected_server == SERVER_TYPE_TIDB) {
 
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(""));
-    g_thread_join(stream_thread);
+		wait_stream_to_finish();
     if (no_delete == FALSE && output_directory_param == NULL)
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);

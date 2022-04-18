@@ -33,6 +33,8 @@ extern gchar *compress_extension;
 extern GAsyncQueue *stream_queue;
 extern gboolean no_delete;
 
+GThread *stream_thread = NULL;
+
 void *process_stream(void *data){
   (void)data;
   char * filename=NULL;
@@ -109,4 +111,11 @@ void *process_stream(void *data){
   return NULL;
 }
 
+void initialize_stream(){
+  stream_queue = g_async_queue_new();
+  stream_thread = g_thread_create((GThreadFunc)process_stream, stream_queue, TRUE, NULL);
+}
 
+void wait_stream_to_finish(){
+  g_thread_join(stream_thread);
+}
