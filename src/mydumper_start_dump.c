@@ -527,6 +527,15 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if ((detected_server == SERVER_TYPE_MYSQL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
+
+      /* Checks skip list on 'database.table' string */
+      if (tables_skiplist_file && check_skiplist(database->name, row[0]))
+        continue;
+
+      /* Checks PCRE expressions on 'database.table' string */
+      if (!eval_regex(database->name, row[0]))
+        continue;
+
       new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
     }
   }
@@ -682,123 +691,127 @@ void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(M
 
 
 void send_lock_all_tables(MYSQL *conn){
-      // LOCK ALL TABLES
-      GString *query = g_string_sized_new(16777216);
-      gchar *dbtb = NULL;
-      gchar **dt = NULL;
-      GList *tables_lock = NULL;
-      GList *iter = NULL;
-      guint success = 0;
-      guint retry = 0;
-      guint lock = 1;
-      guint i = 0;
-      guint n = 0;
-      if (db) {
-          GString *db_quoted_list=NULL;
-          if (db){
-            db_quoted_list=g_string_sized_new(strlen(db));
-            g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
-            i++;
-            while (i<g_strv_length(db_items)){
-              g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
-              i++;
-            }
+  // LOCK ALL TABLES
+  GString *query = g_string_sized_new(16777216);
+  gchar *dbtb = NULL;
+  gchar **dt = NULL;
+  GList *tables_lock = NULL;
+  GList *iter = NULL;
+  guint success = 0;
+  guint retry = 0;
+  guint lock = 1;
+  guint i = 0;
 
-          }
-          g_string_printf(
+  if (tables) {
+    for (i = 0; tables[i] != NULL; i++) {
+      dt = g_strsplit(tables[i], ".", 0);
+      if (tables_skiplist_file && check_skiplist(dt[0], dt[1]))
+        continue;
+      if (!eval_regex(dt[0], dt[1]))
+        continue;
+      dbtb = g_strdup_printf("`%s`.`%s`", dt[0], dt[1]);
+      tables_lock = g_list_prepend(tables_lock, dbtb);
+    }
+    tables_lock = g_list_reverse(tables_lock);
+  }else{
+    if (db) {
+      GString *db_quoted_list=NULL;
+      db_quoted_list=g_string_sized_new(strlen(db));
+      g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
+      i++;
+      while (i<g_strv_length(db_items)){
+        g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
+        i++;
+      }
+
+      g_string_printf(
             query,
             "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES "
             "WHERE TABLE_SCHEMA in (%s) AND TABLE_TYPE ='BASE TABLE' AND NOT "
             "(TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR "
             "TABLE_NAME = 'general_log'))",
             db_quoted_list->str);
-      } else if (tables) {
-        for (i = 0; tables[i] != NULL; i++) {
-          dt = g_strsplit(tables[i], ".", 0);
-          dbtb = g_strdup_printf("`%s`.`%s`", dt[0], dt[1]);
+    } else {
+      g_string_printf(
+        query,
+        "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES "
+        "WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN "
+        "('information_schema', 'performance_schema', 'data_dictionary') "
+        "AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR "
+        "TABLE_NAME = 'general_log'))");
+    }
+  }
+
+  if (tables_lock == NULL && query->len > 0  ) {
+    if (mysql_query(conn, query->str)) {
+      g_critical("Couldn't get table list for lock all tables: %s",
+                 mysql_error(conn));
+      errors++;
+    } else {
+      MYSQL_RES *res = mysql_store_result(conn);
+      MYSQL_ROW row;
+
+      while ((row = mysql_fetch_row(res))) {
+        lock = 1;
+        if (tables) {
+          int table_found = 0;
+          for (i = 0; tables[i] != NULL; i++)
+            if (g_ascii_strcasecmp(tables[i], row[1]) == 0)
+              table_found = 1;
+          if (!table_found)
+              lock = 0;
+        }
+        if (lock && tables_skiplist_file && check_skiplist(row[0], row[1]))
+          continue;
+        if (lock && !eval_regex(row[0], row[1]))
+          continue;
+        if (lock) {
+          dbtb = g_strdup_printf("`%s`.`%s`", row[0], row[1]);
           tables_lock = g_list_prepend(tables_lock, dbtb);
         }
-        tables_lock = g_list_reverse(tables_lock);
-      } else {
-        g_string_printf(
-            query,
-            "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES "
-            "WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN "
-            "('information_schema', 'performance_schema', 'data_dictionary') "
-            "AND NOT (TABLE_SCHEMA = 'mysql' AND (TABLE_NAME = 'slow_log' OR "
-            "TABLE_NAME = 'general_log'))");
       }
-
-      if (tables_lock == NULL) {
-        if (mysql_query(conn, query->str)) {
-          g_critical("Couldn't get table list for lock all tables: %s",
-                     mysql_error(conn));
-          errors++;
-        } else {
-          MYSQL_RES *res = mysql_store_result(conn);
-          MYSQL_ROW row;
-
-          while ((row = mysql_fetch_row(res))) {
-            lock = 1;
-            if (tables) {
-              int table_found = 0;
-              for (i = 0; tables[i] != NULL; i++)
-                if (g_ascii_strcasecmp(tables[i], row[1]) == 0)
-                  table_found = 1;
-              if (!table_found)
-                lock = 0;
-            }
-            if (lock && tables_skiplist_file && check_skiplist(row[0], row[1]))
-              continue;
-            if (lock && !eval_regex(row[0], row[1]))
-              continue;
-
-            if (lock) {
-              dbtb = g_strdup_printf("`%s`.`%s`", row[0], row[1]);
-              tables_lock = g_list_prepend(tables_lock, dbtb);
-            }
-          }
-          tables_lock = g_list_reverse(tables_lock);
-        }
+      tables_lock = g_list_reverse(tables_lock);
+    }
+  }
+  if (tables_lock != NULL) {
+  // Try three times to get the lock, this is in case of tmp tables
+  // disappearing
+    while (!success && retry < 4) {
+      g_string_append(query, "LOCK TABLE");
+      for (iter = tables_lock; iter != NULL; iter = iter->next) {
+        g_string_append_printf(query, "%s READ,", (char *)iter->data);
       }
+      g_strrstr(query->str,",")[0]=' ';
 
-      // Try three times to get the lock, this is in case of tmp tables
-      // disappearing
-      while (!success && retry < 4) {
-        n = 0;
+      if (mysql_query(conn, query->str)) {
+        gchar *failed_table = NULL;
+        gchar **tmp_fail;
+
+        tmp_fail = g_strsplit(mysql_error(conn), "'", 0);
+        tmp_fail = g_strsplit(tmp_fail[1], ".", 0);
+        failed_table = g_strdup_printf("`%s`.`%s`", tmp_fail[0], tmp_fail[1]);
         for (iter = tables_lock; iter != NULL; iter = iter->next) {
-          if (n == 0) {
-            g_string_printf(query, "LOCK TABLE %s READ", (char *)iter->data);
-            n = 1;
-          } else {
-            g_string_append_printf(query, ", %s READ", (char *)iter->data);
+          if (strcmp(iter->data, failed_table) == 0) {
+            tables_lock = g_list_remove(tables_lock, iter->data);
           }
         }
-        if (mysql_query(conn, query->str)) {
-          gchar *failed_table = NULL;
-          gchar **tmp_fail;
-
-          tmp_fail = g_strsplit(mysql_error(conn), "'", 0);
-          tmp_fail = g_strsplit(tmp_fail[1], ".", 0);
-          failed_table = g_strdup_printf("`%s`.`%s`", tmp_fail[0], tmp_fail[1]);
-          for (iter = tables_lock; iter != NULL; iter = iter->next) {
-            if (strcmp(iter->data, failed_table) == 0) {
-              tables_lock = g_list_remove(tables_lock, iter->data);
-            }
-          }
-          g_free(tmp_fail);
-          g_free(failed_table);
-        } else {
-          success = 1;
-        }
-        retry += 1;
+        g_free(tmp_fail);
+        g_free(failed_table);
+      } else {
+        success = 1;
       }
-      if (!success) {
-        g_critical("Lock all tables fail: %s", mysql_error(conn));
-        exit(EXIT_FAILURE);
-      }
-      g_free(query->str);
-      g_list_free(tables_lock);
+      retry += 1;
+    }
+    if (!success) {
+      g_critical("Lock all tables fail: %s", mysql_error(conn));
+      exit(EXIT_FAILURE);
+    }
+  }else{
+    g_critical("No table found to lock");
+    exit(EXIT_FAILURE);
+  }
+  g_free(query->str);
+  g_list_free(tables_lock);
 }
 
 void start_dump() {
