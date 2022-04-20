@@ -93,6 +93,7 @@ gchar *fields_terminated_by_ld=NULL;
 guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
 
+extern gboolean dump_triggers;
 extern gboolean stream;
 extern int detected_server;
 extern gboolean no_data;
@@ -131,6 +132,8 @@ extern GList *non_innodb_table;
 GMutex *non_innodb_table_mutex = NULL;
 extern GList *table_schemas;
 GMutex *table_schemas_mutex = NULL;
+extern GList *trigger_schemas;
+GMutex *trigger_schemas_mutex = NULL;
 extern GList *view_schemas;
 GMutex *view_schemas_mutex = NULL;
 extern GList *schema_post;
@@ -233,6 +236,7 @@ void initialize_working_thread(){
   innodb_tables_mutex = g_mutex_new();
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
+  trigger_schemas_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
   ll_mutex = g_mutex_new();
   ll_cond = g_cond_new();
@@ -726,11 +730,16 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           g_mutex_unlock(non_innodb_table_mutex);
         }
       }
-    }
-    if (!no_schemas) {
-      g_mutex_lock(table_schemas_mutex);
-      table_schemas = g_list_prepend(table_schemas, dbt);
-      g_mutex_unlock(table_schemas_mutex);
+      if (!no_schemas) {
+        g_mutex_lock(table_schemas_mutex);
+        table_schemas = g_list_prepend(table_schemas, dbt);
+        g_mutex_unlock(table_schemas_mutex);
+      }
+      if (dump_triggers) {
+        g_mutex_lock(trigger_schemas_mutex);
+        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
+        g_mutex_unlock(trigger_schemas_mutex);
+      }      
     }
   } else {
     if (!no_schemas) {
