@@ -109,6 +109,7 @@ gboolean dump_checksums = FALSE;
 gboolean no_locks = FALSE;
 gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
+gboolean no_ddl_locks = FALSE;
 
 GList *innodb_tables = NULL;
 GList *non_innodb_table = NULL;
@@ -475,14 +476,14 @@ void get_not_updated(MYSQL *conn, FILE *file) {
   fflush(file);
 }
 
-void get_tables(MYSQL *conn, struct configuration *conf) {
+void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
 
   gchar **dt = NULL;
   char *query = NULL;
-  guint i, x;
+  guint x;
 
-  for (x = 0; tables[x] != NULL; x++) {
-    dt = g_strsplit(tables[x], ".", 0);
+  for (x = 0; table_list[x] != NULL; x++) {
+    dt = g_strsplit(table_list[x], ".", 0);
 
     query =
         g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
@@ -495,27 +496,28 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
     }
 
     MYSQL_RES *result = mysql_store_result(conn);
-    MYSQL_FIELD *fields = mysql_fetch_fields(result);
-    guint ecol = -1;
-    guint ccol = -1;
-    for (i = 0; i < mysql_num_fields(result); i++) {
-      if (!strcasecmp(fields[i].name, "Engine"))
-        ecol = i;
-      else if (!strcasecmp(fields[i].name, "Comment"))
-        ccol = i;
+    guint ecol = -1, ccol = -1;
+    determine_ecol_ccol(result, &ecol, &ccol);
+
+    struct database * database=NULL;
+    if (get_database(conn, dt[0], &database)){
+      if (!database->already_dumped){
+        g_mutex_lock(database->ad_mutex);
+        if (!database->already_dumped){
+          create_job_to_dump_schema(database->name, conf);
+          database->already_dumped=TRUE;
+        }
+        g_mutex_unlock(database->ad_mutex);
+        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+      }
     }
 
     if (!result) {
-      g_warning("Could not list table for %s.%s: %s", dt[0], dt[1],
-                mysql_error(conn));
+      g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
       errors++;
       return;
     }
-    struct database * database=NULL;
-    if (get_database(conn, dt[0],&database)){
-      create_job_to_dump_schema(database->name, conf);
-      g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
-    }
+
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(result))) {
 
@@ -524,7 +526,7 @@ void get_tables(MYSQL *conn, struct configuration *conf) {
       if ((detected_server == SERVER_TYPE_MYSQL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
-      green_light(conn, conf, is_view, database, &row,row[ecol]);
+      new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
     }
   }
 
@@ -605,165 +607,80 @@ void long_query_wait(MYSQL *conn){
 }
 
 
-void start_dump() {
-  MYSQL *conn = create_main_connection();
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
-  char *metadata_partial_filename, *metadata_filename;
-  char *u;
 
-  guint64 nits[num_threads];
-  GList *nitl[num_threads];
-  int tn = 0;
-  guint64 min = 0;
-  struct db_table *dbt=NULL;
-  struct schema_post *sp;
-  guint n;
-  FILE *nufile = NULL;
-  guint have_percona_backup_locks = 0;
-  GThread *disk_check_thread = NULL;
-  GString *db_quoted_list=NULL;
-  if (db){
-    guint i=0;
-    db_quoted_list=g_string_sized_new(strlen(db));
-    g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
-    i++;
-    while (i<g_strv_length(db_items)){
-
-      g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
-      i++;
-
-    } 
-    
-  }
-  if (disk_limits!=NULL){
-    conf.pause_resume = g_async_queue_new();
-    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
-  }
-
-  if (!daemon_mode){
-    GError *serror;
-    GThread *sthread =
-        g_thread_create(signal_thread, &conf, FALSE, &serror);
-    if (sthread == NULL) {
-      g_critical("Could not create signal thread: %s", serror->message);
-      g_error_free(serror);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  for (n = 0; n < num_threads; n++) {
-    nits[n] = 0;
-    nitl[n] = NULL;
-  }
-
-  metadata_partial_filename = g_strdup_printf("%s/metadata.partial", dump_directory);
-  metadata_filename = g_strndup(metadata_partial_filename, (unsigned)strlen(metadata_partial_filename) - 8);
-
-  FILE *mdfile = g_fopen(metadata_partial_filename, "w");
-  if (!mdfile) {
-    g_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
+void send_percona57_backup_locks(MYSQL *conn){
+  if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
+    g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
+               "not be consistent: %s",
+               mysql_error(conn));
+    errors++;
     exit(EXIT_FAILURE);
   }
 
-  if (updated_since > 0) {
-    u = g_strdup_printf("%s/not_updated_tables", dump_directory);
-    nufile = g_fopen(u, "w");
-    if (!nufile) {
-      g_critical("Couldn't write not_updated_tables file (%d)", errno);
-      exit(EXIT_FAILURE);
-    }
-    get_not_updated(conn, nufile);
+  if (mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
+    g_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
+               "not be consistent: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
   }
+}
 
-  if (!no_locks) {
-  // We check SHOW PROCESSLIST, and if there're queries
-  // larger than preset value, we terminate the process.
-  // This avoids stalling whole server with flush.
-		long_query_wait(conn);
-	}
+void send_lock_instance_backup(MYSQL *conn){
+  if (mysql_query(conn, "LOCK INSTANCE FOR BACKUP")) {
+    g_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
+  }
+} 
 
-if (detected_server == SERVER_TYPE_TIDB) {
-    g_message("Skipping locks because of TiDB");
-    if (!tidb_snapshot) {
+void send_unlock_tables(MYSQL *conn){
+  mysql_query(conn, "UNLOCK TABLES");
+}
 
-      // Generate a @@tidb_snapshot to use for the worker threads since
-      // the tidb-snapshot argument was not specified when starting mydumper
+void send_unlock_tables_and_binlogs(MYSQL *conn){
+  send_unlock_tables(conn);
+  mysql_query(conn, "UNLOCK BINLOG");
+}
 
-      if (mysql_query(conn, "SHOW MASTER STATUS")) {
-        g_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
-        exit(EXIT_FAILURE);
-      } else {
+void send_unlock_instance_backup(MYSQL *conn){
+  mysql_query(conn, "UNLOCK INSTANCE");
+}
 
-        MYSQL_RES *result = mysql_store_result(conn);
-        MYSQL_ROW row = mysql_fetch_row(
-            result); /* There should never be more than one row */
-        tidb_snapshot = g_strdup(row[1]);
-        mysql_free_result(result);
+void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *)) {
+  mysql_query(*conn, "SELECT @@version_comment, @@version");
+  MYSQL_RES *res2 = mysql_store_result(*conn);
+  MYSQL_ROW ver;
+  while ((ver = mysql_fetch_row(res2))) {
+    if (g_str_has_prefix(ver[0], "Percona")){
+      if (g_str_has_prefix(ver[1], "8.")) {
+        *acquire_lock_function = &send_lock_instance_backup;
+        *release_lock_function = &send_unlock_instance_backup;
+        break;
       }
-    }
-
-    // Need to set the @@tidb_snapshot for the master thread
-    gchar *query =
-        g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
-
-    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
-
-    if (mysql_query(conn, query)) {
-      g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
-      exit(EXIT_FAILURE);
-    }
-    g_free(query);
-
-  }else{
-
-  if (!no_locks) {
-		// This backup will lock the database
-
-    // Percona Server 8 removed LOCK BINLOG so backup locks is useless for
-    // mydumper now and we need to fail back to FTWRL
-    mysql_query(conn, "SELECT @@version_comment, @@version");
-    MYSQL_RES *res2 = mysql_store_result(conn);
-    MYSQL_ROW ver;
-    while ((ver = mysql_fetch_row(res2))) {
-      if (g_str_has_prefix(ver[0], "Percona") &&
-          g_str_has_prefix(ver[1], "8.")) {
-        g_message("Disabling Percona Backup Locks for Percona Server 8");
-// THIS IS WROKING. We can use ALTER INSTANCE
-        no_backup_locks = 1;
-      }
-    }
-    mysql_free_result(res2);
-
-    // Percona Backup Locks
-    if (!no_backup_locks) {
-      mysql_query(conn, "SELECT @@have_percona_backup_locks");
-      MYSQL_RES *rest = mysql_store_result(conn);
-      if (rest != NULL && mysql_num_rows(rest)) {
-        mysql_free_result(rest);
-        g_message("Using Percona Backup Locks");
-        have_percona_backup_locks = 1;
-      }
-    }
-
-    if (have_percona_backup_locks) {
-      if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
-        g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
-                   "not be consistent: %s",
-                   mysql_error(conn));
-        errors++;
-        exit(EXIT_FAILURE);
+      if (g_str_has_prefix(ver[1], "5.7.")) {
+        *acquire_lock_function = &send_percona57_backup_locks;
+        *release_lock_function = &send_unlock_tables_and_binlogs;
+        *conn = create_main_connection();
+        break;
       }
 
-      if (mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
-        g_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
-                   "not be consistent: %s",
-                   mysql_error(conn));
-        errors++;
-				exit(EXIT_FAILURE);
+
+    }
+    if (g_str_has_prefix(ver[0], "MySQL")){
+      if (g_str_has_prefix(ver[1], "8.")) {
+        *acquire_lock_function = &send_lock_instance_backup;
+        *release_lock_function = &send_unlock_instance_backup;
+        break;
       }
     }
- 
-		if (lock_all_tables) {
+  }
+  mysql_free_result(res2);
+}
+
+
+void send_lock_all_tables(MYSQL *conn){
       // LOCK ALL TABLES
       GString *query = g_string_sized_new(16777216);
       gchar *dbtb = NULL;
@@ -773,10 +690,21 @@ if (detected_server == SERVER_TYPE_TIDB) {
       guint success = 0;
       guint retry = 0;
       guint lock = 1;
-      int i = 0;
-
+      guint i = 0;
+      guint n = 0;
       if (db) {
-        g_string_printf(
+          GString *db_quoted_list=NULL;
+          if (db){
+            db_quoted_list=g_string_sized_new(strlen(db));
+            g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
+            i++;
+            while (i<g_strv_length(db_items)){
+              g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
+              i++;
+            }
+
+          }
+          g_string_printf(
             query,
             "SELECT TABLE_SCHEMA, TABLE_NAME FROM information_schema.TABLES "
             "WHERE TABLE_SCHEMA in (%s) AND TABLE_TYPE ='BASE TABLE' AND NOT "
@@ -870,17 +798,133 @@ if (detected_server == SERVER_TYPE_TIDB) {
       }
       g_free(query->str);
       g_list_free(tables_lock);
-    } else {
-      if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
-        g_critical("Couldn't acquire global lock, snapshots will not be "
-                   "consistent: %s",
-                   mysql_error(conn));
-        errors++;
+}
+
+void start_dump() {
+  MYSQL *conn = create_main_connection();
+  MYSQL *second_conn = conn;
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  char *metadata_partial_filename, *metadata_filename;
+  char *u;
+
+  void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
+  void (*release_ddl_lock_function)(MYSQL *) = NULL;
+
+  guint64 nits[num_threads];
+  GList *nitl[num_threads];
+  int tn = 0;
+  guint64 min = 0;
+  struct db_table *dbt=NULL;
+  struct schema_post *sp;
+  guint n;
+  FILE *nufile = NULL;
+  guint have_percona_backup_locks = 0;
+  GThread *disk_check_thread = NULL;
+  if (disk_limits!=NULL){
+    conf.pause_resume = g_async_queue_new();
+    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
+  }
+
+  if (!daemon_mode){
+    GError *serror;
+    GThread *sthread =
+        g_thread_create(signal_thread, &conf, FALSE, &serror);
+    if (sthread == NULL) {
+      g_critical("Could not create signal thread: %s", serror->message);
+      g_error_free(serror);
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  for (n = 0; n < num_threads; n++) {
+    nits[n] = 0;
+    nitl[n] = NULL;
+  }
+
+  metadata_partial_filename = g_strdup_printf("%s/metadata.partial", dump_directory);
+  metadata_filename = g_strndup(metadata_partial_filename, (unsigned)strlen(metadata_partial_filename) - 8);
+
+  FILE *mdfile = g_fopen(metadata_partial_filename, "w");
+  if (!mdfile) {
+    g_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
+    exit(EXIT_FAILURE);
+  }
+
+  if (updated_since > 0) {
+    u = g_strdup_printf("%s/not_updated_tables", dump_directory);
+    nufile = g_fopen(u, "w");
+    if (!nufile) {
+      g_critical("Couldn't write not_updated_tables file (%d)", errno);
+      exit(EXIT_FAILURE);
+    }
+    get_not_updated(conn, nufile);
+  }
+
+  if (!no_locks) {
+  // We check SHOW PROCESSLIST, and if there're queries
+  // larger than preset value, we terminate the process.
+  // This avoids stalling whole server with flush.
+		long_query_wait(conn);
+	}
+
+  if (detected_server == SERVER_TYPE_TIDB) {
+    g_message("Skipping locks because of TiDB");
+    if (!tidb_snapshot) {
+
+      // Generate a @@tidb_snapshot to use for the worker threads since
+      // the tidb-snapshot argument was not specified when starting mydumper
+
+      if (mysql_query(conn, "SHOW MASTER STATUS")) {
+        g_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
+        exit(EXIT_FAILURE);
+      } else {
+
+        MYSQL_RES *result = mysql_store_result(conn);
+        MYSQL_ROW row = mysql_fetch_row(
+            result); /* There should never be more than one row */
+        tidb_snapshot = g_strdup(row[1]);
+        mysql_free_result(result);
       }
     }
-  } else {
-    g_warning("Executing in no-locks mode, snapshot will not be consistent");
-  }
+
+    // Need to set the @@tidb_snapshot for the master thread
+    gchar *query =
+        g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+
+    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+
+    if (mysql_query(conn, query)) {
+      g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
+      exit(EXIT_FAILURE);
+    }
+    g_free(query);
+
+  }else{
+
+    if (!no_locks) {
+	  	// This backup will lock the database
+
+      if (!no_backup_locks)
+        determine_ddl_lock_function(&second_conn,&acquire_ddl_lock_function,&release_ddl_lock_function);
+
+  		if (lock_all_tables) {
+        send_lock_all_tables(conn);
+      } else {
+        g_message("Acquiring FTWRL");
+        if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+          g_critical("Couldn't acquire global lock, snapshots will not be "
+                   "consistent: %s",
+                   mysql_error(conn));
+          errors++;
+        }
+        if (acquire_ddl_lock_function != NULL) {
+          g_message("Acquiring DDL lock");
+          acquire_ddl_lock_function(second_conn);
+        }
+      }
+    } else {
+      g_warning("Executing in no-locks mode, snapshot will not be consistent");
+    }
   }
 
 
@@ -925,22 +969,23 @@ if (detected_server == SERVER_TYPE_TIDB) {
     if (res)
       mysql_free_result(res);
   }
+
   GDateTime *datetime = g_date_time_new_now_local();
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   fprintf(mdfile, "Started dump at: %s\n", datetimestr);
-
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
 
   if (detected_server == SERVER_TYPE_MYSQL) {
     if (set_names_str)
   		mysql_query(conn, set_names_str);
-
     write_snapshot_info(conn, mdfile);
   }
+
   if (stream){
     initialize_stream();
   }
+
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
   struct thread_data *td =
       g_new(struct thread_data, num_threads * (less_locking + 1));
@@ -995,9 +1040,11 @@ if (detected_server == SERVER_TYPE_TIDB) {
       if (!no_schemas)
         create_job_to_dump_schema(db_items[i], &conf);
     }
-  } else if (tables) {
-    get_tables(conn, &conf);
-  } else {
+  } 
+  if (tables) {
+    get_table_info_to_process_from_list(conn, &conf, tables);
+  } 
+  if (( db == NULL ) && ( tables == NULL )) {
     MYSQL_RES *databases;
     MYSQL_ROW row;
     if (mysql_query(conn, "SHOW DATABASES") ||
@@ -1108,8 +1155,6 @@ if (detected_server == SERVER_TYPE_TIDB) {
   for (iter = view_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     create_job_to_dump_view(dbt, &conf);
-    g_free(dbt->table);
-    g_free(dbt);
   }
   g_list_free(view_schemas);
   view_schemas=NULL;
@@ -1137,9 +1182,6 @@ if (detected_server == SERVER_TYPE_TIDB) {
     if (have_percona_backup_locks)
       mysql_query(conn, "UNLOCK BINLOG");
   }
-  // close main connection
-  mysql_close(conn);
-  g_message("Main connection closed");
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
@@ -1150,6 +1192,14 @@ if (detected_server == SERVER_TYPE_TIDB) {
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+
+  if (release_ddl_lock_function != NULL) {
+    g_message("Releasing DDL lock");
+    release_ddl_lock_function(second_conn);
+  }
+  // close main connection
+  mysql_close(conn);
+  g_message("Main connection closed");  
 
   // TODO: We need to create jobs for metadata.
   table_schemas = g_list_reverse(table_schemas);

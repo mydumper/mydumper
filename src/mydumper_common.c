@@ -170,3 +170,16 @@ gchar * build_filename(char *database, char *table, guint part, guint sub_part, 
 gchar * build_data_filename(char *database, char *table, guint part, guint sub_part){
   return build_filename(database,table,part,sub_part,"sql");
 }
+
+
+
+void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol){
+  MYSQL_FIELD *fields = mysql_fetch_fields(result);
+  guint i = 0;
+  for (i = 0; i < mysql_num_fields(result); i++) {
+    if (!strcasecmp(fields[i].name, "Engine"))
+      *ecol = i;
+    else if (!strcasecmp(fields[i].name, "Comment"))
+      *ccol = i;
+  }
+}

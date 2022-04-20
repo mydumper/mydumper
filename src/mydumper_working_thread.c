@@ -694,52 +694,51 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   return dbt; 
 }
 
-void green_light(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *datalength, gchar *ecol){
     /* Green light! */
- g_mutex_lock(database->ad_mutex);
- if (!database->already_dumped){
-   create_job_to_dump_schema(database->name, conf);
-   database->already_dumped=TRUE;
- }
- g_mutex_unlock(database->ad_mutex);
+  g_mutex_lock(database->ad_mutex);
+  if (!database->already_dumped){
+    create_job_to_dump_schema(database->name, conf);
+    database->already_dumped=TRUE;
+  }
+  g_mutex_unlock(database->ad_mutex);
 
-    struct db_table *dbt = new_db_table( conn, database, (*row)[0], (*row)[6]);
+  struct db_table *dbt = new_db_table( conn, database, table, datalength);// (*row)[0], (*row)[6]);
 
-    // if is a view we care only about schema
-    if (!is_view) {
-      // with trx_consistency_only we dump all as innodb_tables
-      if (!no_data) {
-        if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-          if (trx_consistency_only ||
-              (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else if (ecol != NULL &&
-                     !g_ascii_strcasecmp("TokuDB", ecol)) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else {
-            g_mutex_lock(non_innodb_table_mutex);
-            non_innodb_table = g_list_prepend(non_innodb_table, dbt);
-            g_mutex_unlock(non_innodb_table_mutex);
-          }
+ // if is a view we care only about schema
+  if (!is_view) {
+  // with trx_consistency_only we dump all as innodb_tables
+    if (!no_data) {
+      if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
+        if (trx_consistency_only ||
+          (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
+          g_mutex_lock(innodb_tables_mutex);
+          innodb_tables = g_list_prepend(innodb_tables, dbt);
+          g_mutex_unlock(innodb_tables_mutex);
+        } else if (ecol != NULL &&
+                   !g_ascii_strcasecmp("TokuDB", ecol)) {
+          g_mutex_lock(innodb_tables_mutex);
+          innodb_tables = g_list_prepend(innodb_tables, dbt);
+          g_mutex_unlock(innodb_tables_mutex);
+        } else {
+          g_mutex_lock(non_innodb_table_mutex);
+          non_innodb_table = g_list_prepend(non_innodb_table, dbt);
+          g_mutex_unlock(non_innodb_table_mutex);
         }
       }
-      if (!no_schemas) {
-        g_mutex_lock(table_schemas_mutex);
-        table_schemas = g_list_prepend(table_schemas, dbt);
-        g_mutex_unlock(table_schemas_mutex);
-      }
-    } else {
-      if (!no_schemas) {
-        g_mutex_lock(view_schemas_mutex);
-        view_schemas = g_list_prepend(view_schemas, dbt);
-        g_mutex_unlock(view_schemas_mutex);
-      }
     }
-
+    if (!no_schemas) {
+      g_mutex_lock(table_schemas_mutex);
+      table_schemas = g_list_prepend(table_schemas, dbt);
+      g_mutex_unlock(table_schemas_mutex);
+    }
+  } else {
+    if (!no_schemas) {
+      g_mutex_lock(view_schemas_mutex);
+      view_schemas = g_list_prepend(view_schemas, dbt);
+      g_mutex_unlock(view_schemas_mutex);
+    }
+  }
 }
 
 gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct database *database){
@@ -851,22 +850,15 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   }
 
   MYSQL_RES *result = mysql_store_result(conn);
-  MYSQL_FIELD *fields = mysql_fetch_fields(result);
-  guint i;
-  int ecol = -1, ccol = -1;
-  for (i = 0; i < mysql_num_fields(result); i++) {
-    if (!strcasecmp(fields[i].name, "Engine"))
-      ecol = i;
-    else if (!strcasecmp(fields[i].name, "Comment"))
-      ccol = i;
-  }
-
+  guint ecol = -1;
+  guint ccol = -1;
+  determine_ecol_ccol(result, &ecol, &ccol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
     return;
   }
-
+  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -954,7 +946,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
 
-    green_light(conn,conf, is_view,database,&row,row[ecol]);
+    new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
 
   }
 
