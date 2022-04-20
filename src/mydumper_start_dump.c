@@ -113,6 +113,7 @@ gboolean no_backup_locks = FALSE;
 GList *innodb_tables = NULL;
 GList *non_innodb_table = NULL;
 GList *table_schemas = NULL;
+GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
 GList *schema_post = NULL;
 gint non_innodb_table_counter = 0;
@@ -1026,7 +1027,13 @@ void start_dump() {
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
-    create_job_to_dump_table_schema(conn, dbt, &conf);
+    create_job_to_dump_table_schema( dbt, &conf);
+  }
+
+  trigger_schemas = g_list_reverse(trigger_schemas);
+  for (iter = trigger_schemas; iter != NULL; iter = iter->next) {
+    dbt = (struct db_table *)iter->data;
+    create_job_to_dump_triggers(conn, dbt, &conf);
   }
 
   non_innodb_table = g_list_reverse(non_innodb_table);

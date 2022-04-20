@@ -709,30 +709,7 @@ void create_job_to_dump_schema(char *database, struct configuration *conf) {
   return;
 }
 
-void create_job_to_dump_triggers(struct db_table *dbt, struct configuration *conf) {
-  struct job *t = g_new0(struct job, 1);
-  struct schema_job *st = g_new0(struct schema_job, 1);
-  t->job_data = (void *)st;
-  st->database = dbt->database->name;
-  st->table = g_strdup(dbt->table);
-  t->conf = conf;
-  t->type = JOB_TRIGGERS;
-  st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
-  g_async_queue_push(conf->queue, t);
-}
-
-void create_job_to_dump_table_schema(MYSQL *conn, struct db_table *dbt,
-                 struct configuration *conf) {
-  struct job *j = g_new0(struct job, 1);
-  struct schema_job *sj = g_new0(struct schema_job, 1);
-  j->job_data = (void *)sj;
-  sj->database = dbt->database->name;
-  sj->table = g_strdup(dbt->table);
-  j->conf = conf;
-  j->type = JOB_SCHEMA;
-  sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
-  g_async_queue_push(conf->queue, j);
-
+void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf) {
   if (dump_triggers) {
     char *query = NULL;
     MYSQL_RES *result = NULL;
@@ -745,7 +722,15 @@ void create_job_to_dump_table_schema(MYSQL *conn, struct db_table *dbt,
       errors++;
     } else {
       if (mysql_num_rows(result)) {
-        create_job_to_dump_triggers(dbt,conf);
+        struct job *t = g_new0(struct job, 1);
+        struct schema_job *st = g_new0(struct schema_job, 1);
+        t->job_data = (void *)st;
+        st->database = dbt->database->name;
+        st->table = g_strdup(dbt->table);
+        t->conf = conf;
+        t->type = JOB_TRIGGERS;
+        st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
+        g_async_queue_push(conf->queue, t);
       }
     }
     g_free(query);
@@ -753,7 +738,19 @@ void create_job_to_dump_table_schema(MYSQL *conn, struct db_table *dbt,
       mysql_free_result(result);
     }
   }
-  return;
+
+}
+
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
+  struct job *j = g_new0(struct job, 1);
+  struct schema_job *sj = g_new0(struct schema_job, 1);
+  j->job_data = (void *)sj;
+  sj->database = dbt->database->name;
+  sj->table = g_strdup(dbt->table);
+  j->conf = conf;
+  j->type = JOB_SCHEMA;
+  sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
+  g_async_queue_push(conf->queue, j);
 }
 
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
