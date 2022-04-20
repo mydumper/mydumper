@@ -1242,7 +1242,7 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
       int nchunk = 0;
       GList *citer;
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        struct table_job *tj = new_table_job(dbt, NULL, (char *)citer->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }

@@ -190,8 +190,6 @@ static GOptionEntry working_thread_entries[] = {
      "Build dump files even if no data available from table", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
-    {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
-     "Transactional consistency only", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
@@ -396,43 +394,43 @@ void thd_JOB_LOCK_DUMP_NON_INNODB(struct configuration *conf, struct thread_data
   GString *query=g_string_new(NULL);
   GList *glj;
   struct table_job *tj;
-      struct tables_job *mj = (struct tables_job *)job->job_data;
-      for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
-        tj = (struct table_job *)glj->data;
-        if (*first) {
-          g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                          tj->database, tj->table);
-          *first = 0;
-        } else {
-          if (g_ascii_strcasecmp(prev_database->str, tj->database) ||
-              g_ascii_strcasecmp(prev_table->str, tj->table)) {
-            g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",
-                                   tj->database, tj->table);
-          }
-        }
-        g_string_printf(prev_table, "%s", tj->table);
-        g_string_printf(prev_database, "%s", tj->database);
+  struct tables_job *mj = (struct tables_job *)job->job_data;
+  for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
+    tj = (struct table_job *)glj->data;
+    if (*first) {
+      g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",
+                      tj->database, tj->table);
+      *first = 0;
+    } else {
+      if (g_ascii_strcasecmp(prev_database->str, tj->database) ||
+          g_ascii_strcasecmp(prev_table->str, tj->table)) {
+        g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",
+            tj->database, tj->table);
       }
-      *first = 1;
-      if (mysql_query(td->thrconn, query->str)) {
-        g_critical("Non Innodb lock tables fail: %s", mysql_error(td->thrconn));
-        exit(EXIT_FAILURE);
-      }
-      if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
-          g_atomic_int_get(&non_innodb_done)) {
-        g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
-      }
-      for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
-        tj = (struct table_job *)glj->data;
-        message_dumping_data(td,tj);
-        write_table_job_into_file(td->thrconn, tj);
-        free_table_job(tj);
-        g_free(tj);
-      }
-      mysql_query(td->thrconn, "UNLOCK TABLES /* Non Innodb */");
-      g_list_free(mj->table_job_list);
-      g_free(mj);
-      g_free(job);
+    }
+    g_string_printf(prev_table, "%s", tj->table);
+    g_string_printf(prev_database, "%s", tj->database);
+  }
+  *first = 1;
+  if (mysql_query(td->thrconn, query->str)) {
+    g_critical("Non Innodb lock tables fail: %s", mysql_error(td->thrconn));
+    exit(EXIT_FAILURE);
+  }
+  if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
+      g_atomic_int_get(&non_innodb_done)) {
+    g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
+  }
+  for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
+    tj = (struct table_job *)glj->data;
+    message_dumping_data(td,tj);
+    write_table_job_into_file(td->thrconn, tj);
+    free_table_job(tj);
+    g_free(tj);
+  }
+  mysql_query(td->thrconn, "UNLOCK TABLES /* Non Innodb */");
+  g_list_free(mj->table_job_list);
+  g_free(mj);
+  g_free(job);
 }
 
 void initialize_thread(struct thread_data *td){
