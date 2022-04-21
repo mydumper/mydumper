@@ -487,7 +487,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
 
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", dt[0],
+      g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
                  mysql_error(conn));
       errors++;
       return;
