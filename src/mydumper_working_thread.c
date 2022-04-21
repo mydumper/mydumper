@@ -145,6 +145,7 @@ extern gchar *set_names_str;
 gchar *where_option=NULL;
 extern GHashTable *all_anonymized_function;
 
+gboolean dump_checksums = FALSE;
 
 // For daemon mode
 extern guint dump_number;
@@ -164,6 +165,8 @@ static GOptionEntry working_thread_entries[] = {
      "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
+    {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
+     "Dump table checksums with the data", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
      "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
      "when a server has data in different time zones or data is being moved "
@@ -710,40 +713,43 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
  // if is a view we care only about schema
   if (!is_view) {
   // with trx_consistency_only we dump all as innodb_tables
+    if (!no_schemas) {
+//        g_mutex_lock(table_schemas_mutex);
+//        table_schemas = g_list_prepend(table_schemas, dbt);
+//        g_mutex_unlock(table_schemas_mutex);
+      create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
+    }
+
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
+        if (dump_checksums) {
+          create_job_to_dump_checksum(dbt, conf);
+        }
         if (trx_consistency_only ||
-          (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
-          g_mutex_lock(innodb_tables_mutex);
-          innodb_tables = g_list_prepend(innodb_tables, dbt);
-          g_mutex_unlock(innodb_tables_mutex);
-        } else if (ecol != NULL &&
-                   !g_ascii_strcasecmp("TokuDB", ecol)) {
-          g_mutex_lock(innodb_tables_mutex);
-          innodb_tables = g_list_prepend(innodb_tables, dbt);
-          g_mutex_unlock(innodb_tables_mutex);
+          (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
+          create_job_to_dump_table(conn, dbt, conf, TRUE);
+//          g_mutex_lock(innodb_tables_mutex);
+//          innodb_tables = g_list_prepend(innodb_tables, dbt);
+//          g_mutex_unlock(innodb_tables_mutex);
         } else {
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
           g_mutex_unlock(non_innodb_table_mutex);
         }
       }
-      if (!no_schemas) {
-        g_mutex_lock(table_schemas_mutex);
-        table_schemas = g_list_prepend(table_schemas, dbt);
-        g_mutex_unlock(table_schemas_mutex);
-      }
       if (dump_triggers) {
-        g_mutex_lock(trigger_schemas_mutex);
-        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
-        g_mutex_unlock(trigger_schemas_mutex);
+        create_job_to_dump_triggers(conn, dbt, conf);
+//        g_mutex_lock(trigger_schemas_mutex);
+//        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
+//        g_mutex_unlock(trigger_schemas_mutex);
       }      
     }
   } else {
     if (!no_schemas) {
-      g_mutex_lock(view_schemas_mutex);
-      view_schemas = g_list_prepend(view_schemas, dbt);
-      g_mutex_unlock(view_schemas_mutex);
+      create_job_to_dump_view(dbt, conf);
+//      g_mutex_lock(view_schemas_mutex);
+//      view_schemas = g_list_prepend(view_schemas, dbt);
+//      g_mutex_unlock(view_schemas_mutex);
     }
   }
 }
@@ -960,9 +966,10 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   mysql_free_result(result);
 
   if (determine_if_schema_is_elected_to_dump_post(conn,database)) {
-    struct schema_post *sp = g_new(struct schema_post, 1);
-    sp->database = database;
-    schema_post = g_list_prepend(schema_post, sp);
+    create_job_to_dump_post(database, conf);
+//    struct schema_post *sp = g_new(struct schema_post, 1);
+//    sp->database = database;
+//    schema_post = g_list_prepend(schema_post, sp);
   }
 
   g_free(query);

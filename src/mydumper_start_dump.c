@@ -105,13 +105,12 @@ int compress_output = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
 gboolean no_schemas = FALSE;
-gboolean dump_checksums = FALSE;
 gboolean no_locks = FALSE;
 gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
 
-GList *innodb_tables = NULL;
+//GList *innodb_tables = NULL;
 GList *non_innodb_table = NULL;
 GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
@@ -139,8 +138,6 @@ extern guint errors;
 static GOptionEntry start_dump_entries[] = {
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
-    {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
-     "Dump table checksums with the data", NULL},
     {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
      "Retry checking for long queries, default 0 (do not retry)", NULL},
     {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
@@ -616,8 +613,6 @@ void long_query_wait(MYSQL *conn){
     }
 }
 
-
-
 void send_percona57_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
     g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
@@ -829,7 +824,7 @@ void start_dump() {
   int tn = 0;
   guint64 min = 0;
   struct db_table *dbt=NULL;
-  struct schema_post *sp;
+//  struct schema_post *sp;
   guint n;
   FILE *nufile = NULL;
   guint have_percona_backup_locks = 0;
@@ -1098,18 +1093,6 @@ void start_dump() {
   }
 
   GList *iter;
-  table_schemas = g_list_reverse(table_schemas);
-  for (iter = table_schemas; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-    create_job_to_dump_table_schema( dbt, &conf);
-  }
-
-  trigger_schemas = g_list_reverse(trigger_schemas);
-  for (iter = trigger_schemas; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-    create_job_to_dump_triggers(conn, dbt, &conf);
-  }
-
   non_innodb_table = g_list_reverse(non_innodb_table);
   if (less_locking) {
 
@@ -1141,7 +1124,7 @@ void start_dump() {
       g_atomic_int_inc(&non_innodb_done);
     else
       g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
-
+    g_message("Shutdown jobs for less locking enqueued");
     for (n = 0; n < num_threads; n++) {
       struct job *j = g_new0(struct job, 1);
       j->type = JOB_SHUTDOWN;
@@ -1150,9 +1133,6 @@ void start_dump() {
   } else {
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
-      if (dump_checksums) {
-        create_job_to_dump_checksum(dbt, &conf);
-      }
       create_job_to_dump_table(conn, dbt, &conf, FALSE);
       g_atomic_int_inc(&non_innodb_table_counter);
     }
@@ -1160,35 +1140,8 @@ void start_dump() {
     g_atomic_int_inc(&non_innodb_done);
   }
 
-  innodb_tables = g_list_reverse(innodb_tables);
-  for (iter = innodb_tables; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-    if (dump_checksums) {
-      create_job_to_dump_checksum(dbt, &conf);
-    }
-    create_job_to_dump_table(conn, dbt, &conf, TRUE);
-  }
-  g_list_free(innodb_tables);
-  innodb_tables=NULL;
-
-  view_schemas = g_list_reverse(view_schemas);
-  for (iter = view_schemas; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-    create_job_to_dump_view(dbt, &conf);
-  }
-  g_list_free(view_schemas);
-  view_schemas=NULL;
-
-  schema_post = g_list_reverse(schema_post);
-  for (iter = schema_post; iter != NULL; iter = iter->next) {
-    sp = (struct schema_post *)iter->data;
-    create_job_to_dump_post(sp->database, &conf);
-    g_free(sp);
-  }
-  g_list_free(schema_post);
-  schema_post=NULL;
-
   if (less_locking) {
+    g_message("Waiting less locking jobs to complete");
     for (n = num_threads; n < num_threads * 2; n++) {
       g_thread_join(threads[n]);
     }
@@ -1203,12 +1156,14 @@ void start_dump() {
       mysql_query(conn, "UNLOCK BINLOG");
   }
 
+  g_message("Shutdown jobs enqueued");
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.queue, j);
   }
 
+  g_message("Waiting jobs to complete");
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
