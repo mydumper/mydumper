@@ -613,6 +613,35 @@ void long_query_wait(MYSQL *conn){
     }
 }
 
+void send_mariadb_backup_locks(MYSQL *conn){
+  if (mysql_query(conn, "BACKUP STAGE START")) {
+    g_critical("Couldn't acquire BACKUP STAGE START: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
+  }
+
+  if (mysql_query(conn, "BACKUP STAGE FLUSH")) {
+    g_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
+  }
+  if (mysql_query(conn, "BACKUP STAGE BLOCK_DDL")) {
+    g_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
+  }
+
+  if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
+    g_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
+               mysql_error(conn));
+    errors++;
+    exit(EXIT_FAILURE);
+  }
+}
+
 void send_percona57_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
     g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
@@ -653,6 +682,10 @@ void send_unlock_instance_backup(MYSQL *conn){
   mysql_query(conn, "UNLOCK INSTANCE");
 }
 
+void send_backup_stage_end(MYSQL *conn){
+  mysql_query(conn, "BACKUP STAGE END");
+}
+
 void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *)) {
   mysql_query(*conn, "SELECT @@version_comment, @@version");
   MYSQL_RES *res2 = mysql_store_result(*conn);
@@ -670,13 +703,19 @@ void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(M
         *conn = create_main_connection();
         break;
       }
-
-
     }
     if (g_str_has_prefix(ver[0], "MySQL")){
       if (g_str_has_prefix(ver[1], "8.")) {
         *acquire_lock_function = &send_lock_instance_backup;
         *release_lock_function = &send_unlock_instance_backup;
+        break;
+      }
+    }
+    if (g_str_has_prefix(ver[0], "mariadb")){
+      if ((g_str_has_prefix(ver[1], "10.5")) || 
+          (g_str_has_prefix(ver[1], "10.6"))) {
+        *acquire_lock_function = &send_mariadb_backup_locks;
+        *release_lock_function = &send_backup_stage_end;
         break;
       }
     }
