@@ -41,7 +41,7 @@ struct schema_post_job {
 void initialize_dump_into_file();
 void load_dump_into_file_entries(GOptionGroup *main_group);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf, GAsyncQueue *queue);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
 void create_job_to_dump_database(struct database *database, struct configuration *conf, gboolean less_locking);

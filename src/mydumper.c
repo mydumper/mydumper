@@ -31,16 +31,16 @@
 #include <gio/gio.h>
 #include <glib-unix.h>
 #include <locale.h>
-#include "src/config.h"
-#include "src/connection.h"
-#include "src/common_options.h"
-#include "src/common.h"
-#include "src/logging.h"
-#include "src/set_verbose.h"
-#include "src/tables_skiplist.h"
-#include "src/regex.h"
-#include "src/mydumper_start_dump.h"
-#include "src/mydumper_daemon_thread.h"
+#include "config.h"
+#include "connection.h"
+#include "common_options.h"
+#include "common.h"
+#include "logging.h"
+#include "set_verbose.h"
+#include "tables_skiplist.h"
+#include "regex.h"
+#include "mydumper_start_dump.h"
+#include "mydumper_daemon_thread.h"
 const char DIRECTORY[] = "export";
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */

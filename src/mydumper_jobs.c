@@ -741,7 +741,7 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
 
 }
 
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf, GAsyncQueue *queue) {
   struct job *j = g_new0(struct job, 1);
   struct schema_job *sj = g_new0(struct schema_job, 1);
   j->job_data = (void *)sj;
@@ -750,7 +750,7 @@ void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration 
   j->conf = conf;
   j->type = JOB_SCHEMA;
   sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
-  g_async_queue_push(conf->queue, j);
+  g_async_queue_push(queue, j);
 }
 
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
@@ -1242,7 +1242,7 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
       int nchunk = 0;
       GList *citer;
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        struct table_job *tj = new_table_job(dbt, NULL, (char *)citer->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }

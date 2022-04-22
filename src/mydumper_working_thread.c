@@ -106,7 +106,7 @@ extern GString *set_session;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
-
+extern GMutex *ready_database_dump_mutex;
 gint database_counter = 0;
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -145,6 +145,7 @@ extern gchar *set_names_str;
 gchar *where_option=NULL;
 extern GHashTable *all_anonymized_function;
 
+gboolean dump_checksums = FALSE;
 
 // For daemon mode
 extern guint dump_number;
@@ -164,6 +165,8 @@ static GOptionEntry working_thread_entries[] = {
      "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
+    {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
+     "Dump table checksums with the data", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
      "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
      "when a server has data in different time zones or data is being moved "
@@ -190,8 +193,6 @@ static GOptionEntry working_thread_entries[] = {
      "Build dump files even if no data available from table", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
-    {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
-     "Transactional consistency only", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
@@ -373,7 +374,8 @@ void thd_JOB_DUMP_DATABASE(struct configuration *conf, struct thread_data *td, s
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
-   g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+//   g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+    g_mutex_unlock(ready_database_dump_mutex);
   }
 }
 
@@ -396,43 +398,43 @@ void thd_JOB_LOCK_DUMP_NON_INNODB(struct configuration *conf, struct thread_data
   GString *query=g_string_new(NULL);
   GList *glj;
   struct table_job *tj;
-      struct tables_job *mj = (struct tables_job *)job->job_data;
-      for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
-        tj = (struct table_job *)glj->data;
-        if (*first) {
-          g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                          tj->database, tj->table);
-          *first = 0;
-        } else {
-          if (g_ascii_strcasecmp(prev_database->str, tj->database) ||
-              g_ascii_strcasecmp(prev_table->str, tj->table)) {
-            g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",
-                                   tj->database, tj->table);
-          }
-        }
-        g_string_printf(prev_table, "%s", tj->table);
-        g_string_printf(prev_database, "%s", tj->database);
+  struct tables_job *mj = (struct tables_job *)job->job_data;
+  for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
+    tj = (struct table_job *)glj->data;
+    if (*first) {
+      g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",
+                      tj->database, tj->table);
+      *first = 0;
+    } else {
+      if (g_ascii_strcasecmp(prev_database->str, tj->database) ||
+          g_ascii_strcasecmp(prev_table->str, tj->table)) {
+        g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",
+            tj->database, tj->table);
       }
-      *first = 1;
-      if (mysql_query(td->thrconn, query->str)) {
-        g_critical("Non Innodb lock tables fail: %s", mysql_error(td->thrconn));
-        exit(EXIT_FAILURE);
-      }
-      if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
-          g_atomic_int_get(&non_innodb_done)) {
-        g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
-      }
-      for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
-        tj = (struct table_job *)glj->data;
-        message_dumping_data(td,tj);
-        write_table_job_into_file(td->thrconn, tj);
-        free_table_job(tj);
-        g_free(tj);
-      }
-      mysql_query(td->thrconn, "UNLOCK TABLES /* Non Innodb */");
-      g_list_free(mj->table_job_list);
-      g_free(mj);
-      g_free(job);
+    }
+    g_string_printf(prev_table, "%s", tj->table);
+    g_string_printf(prev_database, "%s", tj->database);
+  }
+  *first = 1;
+  if (mysql_query(td->thrconn, query->str)) {
+    g_critical("Non Innodb lock tables fail: %s", mysql_error(td->thrconn));
+    exit(EXIT_FAILURE);
+  }
+  if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
+      g_atomic_int_get(&non_innodb_done)) {
+    g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
+  }
+  for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
+    tj = (struct table_job *)glj->data;
+    message_dumping_data(td,tj);
+    write_table_job_into_file(td->thrconn, tj);
+    free_table_job(tj);
+    g_free(tj);
+  }
+  mysql_query(td->thrconn, "UNLOCK TABLES /* Non Innodb */");
+  g_list_free(mj->table_job_list);
+  g_free(mj);
+  g_free(job);
 }
 
 void initialize_thread(struct thread_data *td){
@@ -676,8 +678,6 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
         anonymized_function_list=g_list_append(anonymized_function_list,&identity_function);
       }
     }
-  }else{
-    g_message("No anonymized func for that");
   }
   mysql_free_result(res);
   g_free(k);
@@ -700,57 +700,59 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   return dbt; 
 }
 
-void green_light(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, MYSQL_ROW *row, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *datalength, gchar *ecol){
     /* Green light! */
- g_mutex_lock(database->ad_mutex);
- if (!database->already_dumped){
-   create_job_to_dump_schema(database->name, conf);
-   database->already_dumped=TRUE;
- }
- g_mutex_unlock(database->ad_mutex);
+  g_mutex_lock(database->ad_mutex);
+  if (!database->already_dumped){
+    create_job_to_dump_schema(database->name, conf);
+    database->already_dumped=TRUE;
+  }
+  g_mutex_unlock(database->ad_mutex);
 
-    struct db_table *dbt = new_db_table( conn, database, (*row)[0], (*row)[6]);
+  struct db_table *dbt = new_db_table( conn, database, table, datalength);// (*row)[0], (*row)[6]);
 
-    // if is a view we care only about schema
-    if (!is_view) {
-      // with trx_consistency_only we dump all as innodb_tables
-      if (!no_data) {
-        if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-          if (trx_consistency_only ||
-              (ecol != NULL && !g_ascii_strcasecmp("InnoDB", ecol))) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else if (ecol != NULL &&
-                     !g_ascii_strcasecmp("TokuDB", ecol)) {
-            g_mutex_lock(innodb_tables_mutex);
-            innodb_tables = g_list_prepend(innodb_tables, dbt);
-            g_mutex_unlock(innodb_tables_mutex);
-          } else {
-            g_mutex_lock(non_innodb_table_mutex);
-            non_innodb_table = g_list_prepend(non_innodb_table, dbt);
-            g_mutex_unlock(non_innodb_table_mutex);
-          }
-        }
-      }
-      if (!no_schemas) {
-        g_mutex_lock(table_schemas_mutex);
-        table_schemas = g_list_prepend(table_schemas, dbt);
-        g_mutex_unlock(table_schemas_mutex);
-      }
-      if (dump_triggers) {
-        g_mutex_lock(trigger_schemas_mutex);
-        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
-        g_mutex_unlock(trigger_schemas_mutex);
-      }      
-    } else {
-      if (!no_schemas) {
-        g_mutex_lock(view_schemas_mutex);
-        view_schemas = g_list_prepend(view_schemas, dbt);
-        g_mutex_unlock(view_schemas_mutex);
-      }
+ // if is a view we care only about schema
+  if (!is_view) {
+  // with trx_consistency_only we dump all as innodb_tables
+    if (!no_schemas) {
+//        g_mutex_lock(table_schemas_mutex);
+//        table_schemas = g_list_prepend(table_schemas, dbt);
+//        g_mutex_unlock(table_schemas_mutex);
+      create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
     }
 
+    if (!no_data) {
+      if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
+        if (dump_checksums) {
+          create_job_to_dump_checksum(dbt, conf);
+        }
+        if (trx_consistency_only ||
+          (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
+          create_job_to_dump_table(conn, dbt, conf, TRUE);
+//          g_mutex_lock(innodb_tables_mutex);
+//          innodb_tables = g_list_prepend(innodb_tables, dbt);
+//          g_mutex_unlock(innodb_tables_mutex);
+        } else {
+          g_mutex_lock(non_innodb_table_mutex);
+          non_innodb_table = g_list_prepend(non_innodb_table, dbt);
+          g_mutex_unlock(non_innodb_table_mutex);
+        }
+      }
+      if (dump_triggers) {
+        create_job_to_dump_triggers(conn, dbt, conf);
+//        g_mutex_lock(trigger_schemas_mutex);
+//        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
+//        g_mutex_unlock(trigger_schemas_mutex);
+      }      
+    }
+  } else {
+    if (!no_schemas) {
+      create_job_to_dump_view(dbt, conf);
+//      g_mutex_lock(view_schemas_mutex);
+//      view_schemas = g_list_prepend(view_schemas, dbt);
+//      g_mutex_unlock(view_schemas_mutex);
+    }
+  }
 }
 
 gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct database *database){
@@ -862,22 +864,15 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   }
 
   MYSQL_RES *result = mysql_store_result(conn);
-  MYSQL_FIELD *fields = mysql_fetch_fields(result);
-  guint i;
-  int ecol = -1, ccol = -1;
-  for (i = 0; i < mysql_num_fields(result); i++) {
-    if (!strcasecmp(fields[i].name, "Engine"))
-      ecol = i;
-    else if (!strcasecmp(fields[i].name, "Comment"))
-      ccol = i;
-  }
-
+  guint ecol = -1;
+  guint ccol = -1;
+  determine_ecol_ccol(result, &ecol, &ccol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
     return;
   }
-
+  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -965,16 +960,17 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
 
-    green_light(conn,conf, is_view,database,&row,row[ecol]);
+    new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
 
   }
 
   mysql_free_result(result);
 
   if (determine_if_schema_is_elected_to_dump_post(conn,database)) {
-    struct schema_post *sp = g_new(struct schema_post, 1);
-    sp->database = database;
-    schema_post = g_list_prepend(schema_post, sp);
+    create_job_to_dump_post(database, conf);
+//    struct schema_post *sp = g_new(struct schema_post, 1);
+//    sp->database = database;
+//    schema_post = g_list_prepend(schema_post, sp);
   }
 
   g_free(query);

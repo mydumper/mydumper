@@ -16,5 +16,6 @@
 */
 
 
-
-void *process_stream(void *data);
+void initialize_stream();
+void wait_stream_to_finish();
+//void *process_stream(void *data);

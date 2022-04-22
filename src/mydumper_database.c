@@ -19,10 +19,11 @@
 #include "mydumper_common.h"
 #include "mydumper_database.h"
 
-GHashTable *database_hash=NULL;
-
+GHashTable *database_hash = NULL;
+GMutex * database_hash_mutex = NULL;
 void initialize_database(){
   database_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  database_hash_mutex=g_mutex_new(); 
 }
 
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped){
@@ -37,11 +38,14 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
 }
 
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database){
+  g_mutex_lock(database_hash_mutex);
   *database=g_hash_table_lookup(database_hash,database_name);
   if (*database == NULL){
     *database=new_database(conn,database_name,FALSE);
+    g_mutex_unlock(database_hash_mutex);
     return TRUE;
   }
+  g_mutex_unlock(database_hash_mutex);
   return FALSE;
 }
 
