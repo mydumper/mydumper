@@ -126,6 +126,7 @@ guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
 
+GMutex *ready_database_dump_mutex = NULL;
 
 // For daemon mode
 extern guint dump_number;
@@ -506,7 +507,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
           database->already_dumped=TRUE;
         }
         g_mutex_unlock(database->ad_mutex);
-        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+//        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
       }
     }
 
@@ -851,7 +852,7 @@ void send_lock_all_tables(MYSQL *conn){
 void start_dump() {
   MYSQL *conn = create_main_connection();
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
 
@@ -1057,7 +1058,9 @@ void start_dump() {
   conf.queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
-  conf.ready_database_dump = g_async_queue_new();
+  ready_database_dump_mutex = g_mutex_new();
+  g_mutex_lock(ready_database_dump_mutex);
+//  conf.ready_database_dump = g_async_queue_new();
 
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
@@ -1116,23 +1119,17 @@ void start_dump() {
         g_mutex_unlock(db_tmp->ad_mutex);
       }
       create_job_to_dump_database(db_tmp, &conf, less_locking);
-      /* Checks PCRE expressions on 'database' string */
-//      if (!no_schemas && (regexstring == NULL || check_regex(row[0], NULL))){
-//        dump_create_database(row[0], &conf);
-//      }
     }
     mysql_free_result(databases);
   }
-  g_async_queue_pop(conf.ready_database_dump);
-  g_async_queue_unref(conf.ready_database_dump);
+  g_mutex_lock(ready_database_dump_mutex);
   g_list_free(no_updated_tables);
-
-  if (!non_innodb_table) {
-    g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
-  }
 
   GList *iter;
   non_innodb_table = g_list_reverse(non_innodb_table);
+  if (!non_innodb_table) {
+    g_async_queue_push(conf.unlock_tables, GINT_TO_POINTER(1));
+  }
   if (less_locking) {
 
     for (iter = non_innodb_table; iter != NULL; iter = iter->next) {

@@ -106,7 +106,7 @@ extern GString *set_session;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
-
+extern GMutex *ready_database_dump_mutex;
 gint database_counter = 0;
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -374,7 +374,8 @@ void thd_JOB_DUMP_DATABASE(struct configuration *conf, struct thread_data *td, s
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
-   g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+//   g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
+    g_mutex_unlock(ready_database_dump_mutex);
   }
 }
 
