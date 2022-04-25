@@ -53,12 +53,12 @@ void initialize_process(struct configuration *c){
 
 struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement){
   if ( database == NULL || table == NULL){
-    g_critical("It was not possible to process file: %s",filename);
+    g_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
     exit(EXIT_FAILURE);
   }
   char *real_db_name=db_hash_lookup(database);
   if (real_db_name == NULL){
-    g_critical("It was not possible to process file: %s",filename);
+    g_critical("It was not possible to process file: %s as real_db_name is null. Restore without schema-create files is not supported",filename);
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
@@ -311,7 +311,7 @@ void process_table_filename(char * filename){
   }
   char *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
-    g_critical("It was not possible to process file: %s (2) because real_db_name isn't found",filename);
+    g_critical("It was not possible to process file: %s (2) because real_db_name isn't found. Restore without schema-create files is not supported",filename);
     exit(EXIT_FAILURE);
   }
   if (!eval_table(real_db_name, table_name)){
