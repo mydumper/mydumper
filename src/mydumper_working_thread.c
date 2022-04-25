@@ -197,6 +197,8 @@ static GOptionEntry working_thread_entries[] = {
      "Comma delimited list of storage engines to ignore", NULL},
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
      "", NULL },
+    { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
+      "Automatically enables --load-data and set variables to export in CSV format.", NULL },
     {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
     {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
     {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
