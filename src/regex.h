@@ -12,11 +12,9 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Aaron Brady, Shopify (insom)
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _connection_h
-#define _connection_h
-#include <mysql.h>
-
-void configure_connection(MYSQL *conn, const char *name);
-#endif
+gboolean check_filename_regex(char *word);
+gboolean eval_regex(char * a,char * b);
+void load_regex_entries(GOptionGroup *main_group);
+void initialize_regex();

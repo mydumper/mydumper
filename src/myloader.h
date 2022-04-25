@@ -12,52 +12,36 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
-                        Mark Leith, Oracle Corporation (mark dot leith at oracle
-   dot com) Andrew Hutchings, SkySQL (andrew at skysql dot com)
-
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _myloader_h
-#define _myloader_h
+#include <mysql.h>
 
-enum restore_job_type { JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
-enum job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN};
-enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
-
-struct configuration {
-  GAsyncQueue *pre_queue;
-  GAsyncQueue *queue;
-  GAsyncQueue *post_queue;
-  GAsyncQueue *ready;
-  GAsyncQueue *constraints_queue;
-  GList *table_list;
-  GList *schema_view_list;
-  GList *schema_triggers_list;
-  GList *schema_post_list;
-  GList *schema_create_list;
-  GList *checksum_list;
-  GMutex *mutex;
-  int done;
-};
+#ifndef _src_myloader_h
+#define _src_myloader_h
 
 struct thread_data {
   struct configuration *conf;
+  MYSQL *thrconn;
+  gchar *current_database;
   guint thread_id;
 };
 
-struct job {
-  enum job_type type;
-  void *job_data;
-  struct configuration *conf;
-};
-
-struct restore_job {
-  enum restore_job_type type;
-  struct db_table * dbt;
-  char *filename;
-  GString *statement;
-  guint part;
+struct configuration {
+  GAsyncQueue *database_queue;
+  GAsyncQueue *table_queue;
+  GAsyncQueue *data_queue;
+  GAsyncQueue *post_table_queue;
+  GAsyncQueue *post_queue;
+  GAsyncQueue *ready;
+  GAsyncQueue *pause_resume;
+  GList *table_list;
+  GHashTable *table_hash;
+//  GList *schema_create_list;
+  GList *checksum_list;
+  GList *metadata_list;
+  GMutex *mutex;
+  int done;
 };
 
 struct db_table {
@@ -74,8 +58,12 @@ struct db_table {
   GString *indexes;
   GString *constraints;
   guint count;
+  gboolean schema_created;
   GDateTime * start_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
 };
+
+enum file_type { INIT, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA, SHUTDOWN};
+
 #endif

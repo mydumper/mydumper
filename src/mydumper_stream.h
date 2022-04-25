@@ -12,21 +12,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors: 	Domas Mituzas, Facebook ( domas at fb dot com )
-                        Mark Leith, Oracle Corporation (mark dot leith at oracle
-   dot com) Andrew Hutchings, SkySQL (andrew at skysql dot com)
-
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#ifndef _binlog_h
-#define _binlog_h
-#include "mydumper.h"
 
-void get_binlogs(MYSQL *conn, struct configuration *conf);
-void get_binlog_file(MYSQL *conn, char *binlog_file,
-                     const char *binlog_directory, guint64 start_position,
-                     guint64 stop_position, gboolean continuous);
-unsigned int get_event(const char *buf, unsigned int len);
-void write_binlog(FILE *file, const char *data, guint64 len);
-
-#endif
+void initialize_stream();
+void wait_stream_to_finish();
+//void *process_stream(void *data);

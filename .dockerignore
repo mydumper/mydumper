@@ -1,0 +1,7 @@
+.bzrignore
+.dockerignore
+.gitignore
+.github
+.circleci
+Dockerfile
+

@@ -15,6 +15,8 @@ Command executed:
 * mydumper with all the parameters
 * myloader with all the parameters
 
+What mydumper and myloader version has been used?
+
 **Expected behavior**
 A clear and concise description of what you expected to happen.
 

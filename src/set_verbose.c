@@ -33,6 +33,24 @@
 
 #include "logging.h"
 
+/* two handlers currently defined: no_log, write_log_file */
+#define total_handlers 2
+#define use_no_log 0
+#define use_write_log_file 1
+
+static guint log_handlers[total_handlers] = {};
+
+static void free_log_handlers() {
+  int x = 0;
+  for (x = 0; x < total_handlers; x++) {
+    if (log_handlers[x] != 0) {
+      g_log_remove_handler(NULL, log_handlers[x]);
+      log_handlers[x] = 0;
+    }
+  }
+}
+
+
 void set_verbose(guint verbosity) {
   if (logfile) {
     logoutfile = g_fopen(logfile, "w");
@@ -43,24 +61,29 @@ void set_verbose(guint verbosity) {
     }
   }
 
+  free_log_handlers();
+
   switch (verbosity) {
   case 0:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK), no_log, NULL);
+    log_handlers[use_no_log] = g_log_set_handler(
+        NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
+        no_log, NULL);
     break;
   case 1:
-    g_log_set_handler(
+    log_handlers[use_no_log] = g_log_set_handler(
         NULL, (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_MESSAGE),
         no_log, NULL);
     if (logfile)
-      g_log_set_handler(
+      log_handlers[use_write_log_file] = g_log_set_handler(
           NULL, (GLogLevelFlags)(G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL),
           write_log_file, NULL);
     break;
   case 2:
-    g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE), no_log,
-                      NULL);
+    log_handlers[use_no_log] = g_log_set_handler(
+        NULL, (GLogLevelFlags)(G_LOG_LEVEL_MESSAGE),
+        no_log, NULL);
     if (logfile)
-      g_log_set_handler(
+      log_handlers[use_write_log_file] = g_log_set_handler(
           NULL,
           (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
                            G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
@@ -69,8 +92,9 @@ void set_verbose(guint verbosity) {
     break;
   default:
     if (logfile)
-      g_log_set_handler(NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
-                        write_log_file, NULL);
+      log_handlers[use_write_log_file] = g_log_set_handler(
+          NULL, (GLogLevelFlags)(G_LOG_LEVEL_MASK),
+          write_log_file, NULL);
     break;
   }
 }

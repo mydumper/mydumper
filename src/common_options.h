@@ -14,13 +14,9 @@
 
     Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
 */
-#ifndef _common_h
-#define _common_h
+#ifndef _common_options_h
+#define _common_options_h
 
-char *hostname = NULL;
-char *username = NULL;
-char *password = NULL;
-char *socket_path = NULL;
 char *db = NULL;
 char *defaults_file = NULL;
 #ifdef WITH_SSL
@@ -32,34 +28,25 @@ char *cipher = NULL;
 char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
-gchar *config_file;
+int detected_server = 0;
 GString *set_session=NULL;
+gboolean stream = FALSE;
+gboolean no_delete = FALSE;
+gboolean no_data = FALSE;
 
-FILE * (*m_open)(const char *filename, const char *);
-int (*m_close)(void *file) = NULL;
-void load_config_file(gchar * cf, GOptionContext *context, const gchar * group, GString *ss);
-void execute_gstring(MYSQL *conn, GString *ss);
+gchar *compress_extension = NULL;
 
-gboolean askPassword = FALSE;
-guint port = 0;
 guint num_threads = 4;
 guint verbose = 2;
 gboolean ssl = FALSE;
 gboolean compress_protocol = FALSE;
 gboolean program_version = FALSE;
 
+gchar *tables_list = NULL;
+gchar *tables_skiplist_file = NULL;
+char **tables = NULL;
+
 GOptionEntry common_entries[] = {
-    {"host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to",
-     NULL},
-    {"user", 'u', 0, G_OPTION_ARG_STRING, &username,
-     "Username with the necessary privileges", NULL},
-    {"password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL},
-    {"ask-password", 'a', 0, G_OPTION_ARG_NONE, &askPassword,
-     "Prompt For User password", NULL},
-    {"port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to",
-     NULL},
-    {"socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path,
-     "UNIX domain socket file to use for connection", NULL},
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, default 4", NULL},
     {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
@@ -91,10 +78,20 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
-    { "config", 0, 0, G_OPTION_ARG_STRING, &config_file,
-      "Configuration file", NULL },
+    {"stream", 0, 0, G_OPTION_ARG_NONE, &stream,
+     "It will stream over STDOUT once the files has been written", NULL},
+    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
+      "It will not delete the files after stream has been completed", NULL},
+    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
+     "File containing a list of database.table entries to skip, one per line "
+     "(skips before applying regex option)",
+     NULL},
+    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
+     "Comma delimited table list to dump (does not exclude regex option)",
+     NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
+int (*m_close)(void *file) = NULL;
+int (*m_write)(FILE * file, const char * buff, int len);
 #endif
 
-char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
