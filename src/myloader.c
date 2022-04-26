@@ -57,6 +57,7 @@
 #include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
+#include "myloader_pmm_thread.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -86,6 +87,10 @@ const char DIRECTORY[] = "import";
 
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void checksum_databases(struct thread_data *td);
+
+gchar *pmm_resolution = NULL;
+gchar *pmm_path = NULL;
+gboolean pmm = FALSE;
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
@@ -124,6 +129,10 @@ static GOptionEntry entries[] = {
       "Table recreation will be executed in serie, one thread at a time",NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
+    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
+      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
+    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
+      "which default will be high", NULL },    
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
@@ -221,15 +230,37 @@ int main(int argc, char *argv[]) {
     set_names_str=tmp_str;
   } else 
     set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
-  initialize_job(purge_mode_str);
 
-  pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):g_get_current_dir();
+  if (pmm_path){
+    pmm=TRUE;
+    if (!pmm_resolution){
+      pmm_resolution=g_strdup("high");
+    }
+  }else if (pmm_resolution){
+    pmm=TRUE;
+    pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
+  }
+
+  GThread *pmmthread = NULL;
+  if (pmm){
+
+    g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
+    GError *serror;
+    pmmthread =
+        g_thread_create(pmm_thread, &conf, FALSE, &serror);
+    if (pmmthread == NULL) {
+      g_critical("Could not create pmm thread: %s", serror->message);
+      g_error_free(serror);
+      exit(EXIT_FAILURE);
+    }
+  }
+  initialize_job(purge_mode_str);
   if (!input_directory) {
     if (stream){
       GDateTime * datetime = g_date_time_new_now_local();
       char *datetimestr;
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-      directory = g_strdup_printf("%s/%s-%s",pwd, DIRECTORY, datetimestr);
+      directory = g_strdup_printf("%s/%s-%s",g_get_current_dir(), DIRECTORY, datetimestr);
       create_backup_dir(directory);
       g_free(datetimestr); 
     }else{
@@ -237,11 +268,17 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     }
   } else {
-    if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
-      g_critical("the specified directory doesn't exists\n");
-      exit(EXIT_FAILURE);
-    }
+    pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):g_get_current_dir();
     directory=g_strdup_printf("%s/%s", pwd, input_directory);
+    g_free(pwd);
+    if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
+      if (stream){
+        create_backup_dir(directory);
+      }else{
+        g_critical("the specified directory doesn't exists\n");
+        exit(EXIT_FAILURE);
+      }
+    }
     if (!stream){
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
@@ -254,11 +291,9 @@ int main(int argc, char *argv[]) {
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
-
   initialize_process(&conf);
   initialize_common();
   initialize_regex();
-
   GError *serror;
   GThread *sthread =
       g_thread_create(signal_thread, &conf, FALSE, &serror);
@@ -287,7 +322,6 @@ int main(int argc, char *argv[]) {
 
 //  if (!enable_binlog)
 //    mysql_query(conn, "SET SQL_LOG_BIN=0");
-
   if (disable_redo_log){
     g_message("Disabling redologs");
     mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
@@ -338,12 +372,13 @@ int main(int argc, char *argv[]) {
   wait_loader_threads_to_finish();
 
   g_async_queue_unref(conf.ready);
+  conf.ready=NULL;
 
   if (disable_redo_log)
     mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
 
   g_async_queue_unref(conf.data_queue);
-
+  conf.data_queue=NULL;
   checksum_databases(&t);
 
   if (stream && no_delete == FALSE && input_directory == NULL){
@@ -362,6 +397,11 @@ int main(int argc, char *argv[]) {
   mysql_library_end();
   g_free(directory);
   free_loader_threads();
+
+  if (pmm){
+    kill_pmm_thread();
+//    g_thread_join(pmmthread);
+  }
 
   if (logoutfile) {
     fclose(logoutfile);
