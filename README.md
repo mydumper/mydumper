@@ -27,7 +27,8 @@ dpkg -i mydumper_0.9.5-1.xenial_amd64.deb
 Run:
 
 ```bash
-cmake .
+cd mydumper && mkdir bld && cd bld
+cmake ..
 make
 ```
 
