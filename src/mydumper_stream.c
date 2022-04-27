@@ -60,7 +60,7 @@ void *process_stream(void *data){
     total_size+=strlen(used_filemame);
     free(used_filemame);
     g_message("Opening: %s",filename);
-    f=m_open(filename,"r");
+//    f=m_open(filename,"r");
     not_compressed= g_str_has_suffix(filename, compress_extension);
     if (not_compressed)
       f=g_fopen(filename,"r");

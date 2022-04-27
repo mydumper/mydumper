@@ -329,7 +329,9 @@ void *process_stream(){
           
         }else{
           from_pos=pos;
-          pos++;
+          if (buffer[pos] != '\0'){
+            pos++;
+          }
         }
       }
       if (buffer[pos] != '\0')

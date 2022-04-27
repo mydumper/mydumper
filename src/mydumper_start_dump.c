@@ -67,6 +67,7 @@
 #include "mydumper_stream.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
+#include "mydumper_pmm_thread.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -121,6 +122,9 @@ gint non_innodb_done = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
 gchar *set_names_str=NULL;
+gchar *pmm_resolution = NULL;
+gchar *pmm_path = NULL;
+gboolean pmm = FALSE;
 GHashTable *all_anonymized_function=NULL;
 guint pause_at=0;
 guint resume_at=0;
@@ -167,6 +171,10 @@ static GOptionEntry start_dump_entries[] = {
      "Kill long running queries (instead of aborting)", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
+    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
+      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
+    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
+      "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void load_start_dump_entries(GOptionGroup *main_group){
@@ -203,6 +211,15 @@ void initialize_start_dump(){
     db_items=g_strsplit(db,",",0);
   }
 
+  if (pmm_path){
+    pmm=TRUE;
+    if (!pmm_resolution){
+      pmm_resolution=g_strdup("high");
+    }
+  }else if (pmm_resolution){
+    pmm=TRUE;
+    pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
+  }
 }
 
 /* Write some stuff we know about snapshot, before it changes */
@@ -885,6 +902,21 @@ void start_dump() {
     }
   }
 
+
+  GThread *pmmthread = NULL;
+  if (pmm){
+
+    g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
+    GError *serror;
+    pmmthread =
+        g_thread_create(pmm_thread, &conf, FALSE, &serror);
+    if (pmmthread == NULL) {
+      g_critical("Could not create pmm thread: %s", serror->message);
+      g_error_free(serror);
+      exit(EXIT_FAILURE);
+    }
+  }
+
   for (n = 0; n < num_threads; n++) {
     nits[n] = 0;
     nitl[n] = NULL;
@@ -1053,6 +1085,7 @@ void start_dump() {
       g_async_queue_pop(conf.ready_less_locking);
     }
     g_async_queue_unref(conf.ready_less_locking);
+    conf.ready_less_locking=NULL;
   }
 
   conf.queue = g_async_queue_new();
@@ -1076,6 +1109,7 @@ void start_dump() {
   // IMPORTANT: At this point, all the threads are in sync
 
   g_async_queue_unref(conf.ready);
+  conf.ready=NULL;
 
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
@@ -1182,6 +1216,7 @@ void start_dump() {
       g_thread_join(threads[n]);
     }
     g_async_queue_unref(conf.queue_less_locking);
+    conf.queue_less_locking=NULL;
   }
 
   if (!no_locks && !trx_consistency_only) {
@@ -1220,9 +1255,14 @@ void start_dump() {
   }
   g_list_free(table_schemas);
   table_schemas=NULL;
-
+  if (pmm){
+    kill_pmm_thread();
+//    g_thread_join(pmmthread);
+  }
   g_async_queue_unref(conf.queue);
+  conf.queue=NULL;
   g_async_queue_unref(conf.unlock_tables);
+  conf.unlock_tables=NULL;
 
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
@@ -1251,6 +1291,5 @@ void start_dump() {
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
-
 }
 

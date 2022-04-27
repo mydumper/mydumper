@@ -88,8 +88,8 @@ void write_table_metadata_into_file(struct db_table * dbt){
     exit(EXIT_FAILURE);
   }
   fprintf(table_meta, "%d", dbt->rows);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   fclose(table_meta);
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
 }
 
 void write_schema_definition_into_file(MYSQL *conn, char *database, char *filename) {
