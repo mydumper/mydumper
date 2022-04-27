@@ -159,8 +159,9 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          char * from=g_strstr_len(data->str,30," DEFINER")+1;
+          char * from=g_strstr_len(data->str,30," DEFINER");
           if (from){
+            from++;
             char * to=g_strstr_len(from,30," ");
             if (to){
               while(from != to){

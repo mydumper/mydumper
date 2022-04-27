@@ -243,7 +243,7 @@ void *process_stream_queue(struct thread_data * td) {
     }
     
   }
-  g_message("Shutting down stream thread");
+  g_message("Shutting down stream thread %d", td->thread_id);
   return NULL;
 }
 
@@ -346,6 +346,7 @@ void *process_stream(){
     g_async_queue_push(intermidiate_queue, filename);
   gchar *e=g_strdup("END");
   g_async_queue_push(intermidiate_queue, e);
+  g_thread_join(stream_intermidiate_thread);
   guint n=0;
   for (n = 0; n < num_threads *2 ; n++) {
     g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
@@ -353,7 +354,6 @@ void *process_stream(){
     g_async_queue_push(stream_conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_queue, GINT_TO_POINTER(SHUTDOWN));
   }
-
   return NULL;
 }
 
