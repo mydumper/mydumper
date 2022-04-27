@@ -368,7 +368,7 @@ void process_schema_filename(gchar *filename, const char * object) {
     }
     struct restore_job *rj = //new_restore_job(g_strdup(filename), /*real_db_name,*/ NULL , NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
       new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
-    g_message("DB: %s for: %s",real_db_name,filename);
+    g_message("DB %s: %s for: %s",object, real_db_name,filename);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 
