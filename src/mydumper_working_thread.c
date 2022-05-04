@@ -717,12 +717,11 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (!is_view) {
   // with trx_consistency_only we dump all as innodb_tables
     if (!no_schemas) {
-//        g_mutex_lock(table_schemas_mutex);
-//        table_schemas = g_list_prepend(table_schemas, dbt);
-//        g_mutex_unlock(table_schemas_mutex);
       create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
     }
-
+    if (dump_triggers) {
+      create_job_to_dump_triggers(conn, dbt, conf);
+    }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (dump_checksums) {
@@ -731,28 +730,16 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           create_job_to_dump_table(conn, dbt, conf, TRUE);
-//          g_mutex_lock(innodb_tables_mutex);
-//          innodb_tables = g_list_prepend(innodb_tables, dbt);
-//          g_mutex_unlock(innodb_tables_mutex);
         } else {
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
           g_mutex_unlock(non_innodb_table_mutex);
         }
       }
-      if (dump_triggers) {
-        create_job_to_dump_triggers(conn, dbt, conf);
-//        g_mutex_lock(trigger_schemas_mutex);
-//        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
-//        g_mutex_unlock(trigger_schemas_mutex);
-      }      
     }
   } else {
     if (!no_schemas) {
       create_job_to_dump_view(dbt, conf);
-//      g_mutex_lock(view_schemas_mutex);
-//      view_schemas = g_list_prepend(view_schemas, dbt);
-//      g_mutex_unlock(view_schemas_mutex);
     }
   }
 }
