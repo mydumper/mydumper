@@ -58,7 +58,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   }
   char *real_db_name=db_hash_lookup(database);
   if (real_db_name == NULL){
-    g_critical("It was not possible to process file: %s as real_db_name is null. Restore without schema-create files is not supported",filename);
+    g_critical("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
@@ -128,6 +128,9 @@ void load_schema(struct db_table *dbt, gchar *filename){
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
   GString *alter_table_constraint_statement=g_string_sized_new(512);
+  g_string_set_size(data,0);
+  g_string_set_size(create_table_statement,0);
+  g_string_set_size(alter_table_constraint_statement,0);
   guint line=0;
   if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");

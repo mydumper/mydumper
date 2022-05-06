@@ -107,7 +107,7 @@ void free_restore_job(struct restore_job * rj){
 }
 
 void free_schema_restore_job(struct schema_restore_job *srj){
-  g_free(srj->database);
+//  g_free(srj->database);
   if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
   g_free(srj);
 };
@@ -163,7 +163,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
                 dbt->real_database, dbt->real_table, rj->filename);
       restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter);
-      free_schema_restore_job((struct schema_restore_job *)&(rj->data));
+      free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
@@ -182,7 +182,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }
       dbt->schema_created=TRUE;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
-      free_schema_restore_job((struct schema_restore_job *)&(rj->data));
+      free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
@@ -210,7 +210,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_message("Thread %d restoring %s on `%s` from %s", td->thread_id, rj->data.srj->object,
                 rj->data.srj->database, rj->filename);
       restore_data_from_file(td, rj->data.srj->database, NULL, rj->filename, TRUE );
-      free_schema_restore_job((struct schema_restore_job *)&(rj->data));
+      free_schema_restore_job(rj->data.srj);
       break;
     default:
       g_critical("Something very bad happened!");
