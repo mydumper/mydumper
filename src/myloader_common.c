@@ -196,6 +196,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
   gchar **split_filename = g_strsplit(filename, sufix, 0);
   gchar **split = g_strsplit(split_filename[0],".",0);
+  g_strfreev(split_filename);
   guint count=g_strv_length(split);
   if (count > 2){
     g_warning("We need to get the db and table name from the create table statement");
@@ -203,6 +204,7 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   }
   *table=g_strdup(split[1]);
   *database=g_strdup(split[0]);
+  g_strfreev(split);
 }
 
 void append_alter_table(GString * alter_table_statement, char *database, char *table){
@@ -298,12 +300,15 @@ void refresh_table_list(struct configuration *conf){
 void checksum_databases(struct thread_data *td) {
   g_message("Starting table checksum verification");
 
-  const gchar *filename = NULL;
-  GList *e = td->conf->checksum_list;
+  gchar *filename = NULL;
+  GList *e = td->conf->checksum_list, *p;
   while (e){
     filename=e->data;
     checksum_table_filename(filename, td->thrconn);
+    g_free(filename);
+    p=e;
     e=e->next;
+    g_free(p);
   }
 }
 
@@ -312,6 +317,8 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   get_database_table_from_file(filename,"-checksum",&database,&table);
   gchar *real_database=db_hash_lookup(database);
   gchar *real_table=g_hash_table_lookup(tbl_hash,table);
+  g_free(database);
+  g_free(table);
   void *infile;
   char checksum[256];
   int errn=0;
@@ -338,10 +345,10 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
     if(strcmp(checksum, row) != 0) {
       g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : real_database, real_table, row, checksum);
       errors++;
-    }
-    else {
+    } else {
       g_message("Checksum confirmed for `%s`.`%s`", db ? db : real_database, real_table);
     }
+    g_free(row);
   } else {
     g_critical("error reading file %s (%d)", filename, errno);
     errors++;

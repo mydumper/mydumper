@@ -78,6 +78,7 @@ enum file_type process_filename(char *filename){
         //m_remove(directory,filename);
         break;
       case SCHEMA_TABLE:
+        // filename is free
         process_table_filename(filename);
         g_mutex_lock(table_list_mutex);
         refresh_table_list(stream_conf);
@@ -96,12 +97,12 @@ enum file_type process_filename(char *filename){
           process_schema_filename(filename,"post");
         break;
       case CHECKSUM:
-        stream_conf->checksum_list=g_list_insert(stream_conf->checksum_list,g_strdup(filename),-1);
+        stream_conf->checksum_list=g_list_insert(stream_conf->checksum_list,filename,-1);
         break;
       case METADATA_GLOBAL:
         break;
       case METADATA_TABLE:
-        stream_conf->metadata_list=g_list_insert(stream_conf->metadata_list,g_strdup(filename),-1);
+        stream_conf->metadata_list=g_list_insert(stream_conf->metadata_list,filename,-1);
         process_metadata_filename(stream_conf->table_hash,filename);
         g_mutex_lock(table_list_mutex);
         refresh_table_list(stream_conf);
@@ -251,7 +252,10 @@ void *intermidiate_thread(){
   char * filename=NULL;
   do{
     filename = (gchar *)g_async_queue_pop(intermidiate_queue);
-    if ( g_strcmp0(filename,"END") == 0 ) break;
+    if ( g_strcmp0(filename,"END") == 0 ){ 
+      g_free(filename);
+      break;
+    }
     process_stream_filename(filename);
   } while (filename != NULL);
   return NULL;
@@ -281,9 +285,11 @@ void *process_stream(){
   FILE *file=NULL;
   gboolean eof=FALSE;
   stream_conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  int pos=0,buffer_len=0i, from_pos=0;
-  int diff=0;
-
+  int pos=0,buffer_len=0, from_pos=0;
+  int diff=0, i=0;
+  for(i=0;i<STREAM_BUFFER_SIZE;i++){
+    buffer[i]='\0';
+  }
   do {
     pos=0,from_pos=0;
     buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff);
@@ -296,9 +302,9 @@ void *process_stream(){
           pos++;
         }
         flush(buffer,from_pos,pos-1,file);
-        if (buffer[pos] == EOF)
+        if (buffer[pos] == EOF ) // || pos == buffer_len)
           break;
-        if (g_str_has_prefix(&(buffer[pos+1]),"-- ")){
+        if ((pos < buffer_len) && (g_str_has_prefix(&(buffer[pos+1]),"-- "))){
           from_pos=pos;
           pos++;
           while (pos < buffer_len && buffer[pos] !='\n'){
@@ -348,8 +354,8 @@ void *process_stream(){
   g_async_queue_push(intermidiate_queue, e);
   g_thread_join(stream_intermidiate_thread);
   guint n=0;
-  for (n = 0; n < num_threads *2 ; n++) {
-    g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+  for (n = 0; n < num_threads ; n++) {
+//    g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_queue, GINT_TO_POINTER(SHUTDOWN));

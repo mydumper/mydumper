@@ -58,7 +58,7 @@
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_pmm_thread.h"
-
+#include "myloader_restore_job.h"
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
@@ -84,9 +84,6 @@ extern GHashTable *db_hash;
 extern gboolean shutdown_triggered;
 
 const char DIRECTORY[] = "import";
-
-void checksum_table_filename(const gchar *filename, MYSQL *conn);
-void checksum_databases(struct thread_data *td);
 
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
@@ -201,7 +198,7 @@ int main(int argc, char *argv[]) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
   }
-
+  g_strfreev(tmpargv);
   set_verbose(verbose);
 
   if (defaults_file != NULL){
@@ -255,20 +252,23 @@ int main(int argc, char *argv[]) {
     }
   }
   initialize_job(purge_mode_str);
+  char *current_dir=g_get_current_dir();
   if (!input_directory) {
     if (stream){
       GDateTime * datetime = g_date_time_new_now_local();
       char *datetimestr;
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-      directory = g_strdup_printf("%s/%s-%s",g_get_current_dir(), DIRECTORY, datetimestr);
+
+      directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
       create_backup_dir(directory);
+      g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
       g_critical("a directory needs to be specified, see --help\n");
       exit(EXIT_FAILURE);
     }
   } else {
-    pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):g_get_current_dir();
+    pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):current_dir;
     directory=g_strdup_printf("%s/%s", pwd, input_directory);
     g_free(pwd);
     if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
@@ -287,6 +287,7 @@ int main(int argc, char *argv[]) {
       }
     }
   }
+  g_free(current_dir);
   g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
@@ -335,7 +336,7 @@ int main(int argc, char *argv[]) {
   conf.post_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
-  db_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
   if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){
     g_critical("Resume file not found");
@@ -392,6 +393,15 @@ int main(int argc, char *argv[]) {
     if (g_rmdir(directory) != 0)
         g_critical("Restore directory not removed: %s", directory);
   }
+
+  g_async_queue_unref(conf.database_queue);
+  g_async_queue_unref(conf.table_queue);
+  g_async_queue_unref(conf.pause_resume);
+  g_async_queue_unref(conf.post_table_queue);
+  g_async_queue_unref(conf.post_queue);
+  free_hash(set_session_hash);
+  g_hash_table_remove_all(set_session_hash);
+  g_hash_table_unref(set_session_hash);
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -402,11 +412,15 @@ int main(int argc, char *argv[]) {
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
   }
+  free_table_hash(conf.table_hash);
+  g_hash_table_remove_all(conf.table_hash);
+  g_hash_table_unref(conf.table_hash);
 
   if (logoutfile) {
     fclose(logoutfile);
   }
 
+  stop_signal_thread();
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

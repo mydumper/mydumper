@@ -71,7 +71,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     dbt->database=database;
     // This should be the only place where we should use `db ? db : `
     dbt->real_database = g_strdup(db ? db : real_db_name);
-    dbt->table=g_strdup(table);
+    dbt->table=table;
     dbt->real_table=dbt->table;
     dbt->rows=number_rows;
     dbt->restore_job_list = NULL;
@@ -87,6 +87,8 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     dbt->count=0;
     g_hash_table_insert(table_hash, g_strdup_printf("%s_%s",dbt->database,dbt->table),dbt);
   }else{
+    g_free(table);
+    g_free(database);
     if (number_rows>0) dbt->rows=number_rows;
     if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
@@ -95,7 +97,29 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   return dbt;
 }
 
+void free_dbt(struct db_table * dbt){
+  g_free(dbt->database);
+  g_free(dbt->real_database);
+  g_free(dbt->table);
+  g_async_queue_unref(dbt->queue);
+  
+}
 
+void free_table_hash(GHashTable *table_hash){
+  g_mutex_lock(table_hash_mutex);
+  GHashTableIter iter;
+  gchar * lkey;
+  if (table_hash){
+    g_hash_table_iter_init ( &iter, table_hash );
+    struct db_table *dbt=NULL;
+    while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
+      free_dbt(dbt);
+      g_free((gchar*)lkey);
+      g_free(dbt);
+    }
+  } 
+  g_mutex_unlock(table_hash_mutex);
+}
 
 void load_schema(struct db_table *dbt, gchar *filename){
   void *infile;
@@ -103,7 +127,6 @@ void load_schema(struct db_table *dbt, gchar *filename){
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
-  GString *alter_table_statement=g_string_sized_new(512);
   GString *alter_table_constraint_statement=g_string_sized_new(512);
   guint line=0;
   if (!g_str_has_suffix(filename, compress_extension)) {
@@ -132,6 +155,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
           g_strfreev(create_table);
         }
         if (innodb_optimize_keys){
+          GString *alter_table_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
           if (g_strrstr(data->str,"/*!40")){
             g_string_append(alter_table_statement,data->str);
@@ -151,13 +175,11 @@ void load_schema(struct db_table *dbt, gchar *filename){
               g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
               dbt->indexes=alter_table_statement;
               if (stream){
-                struct restore_job *rj = //new_restore_job(filename, /*dbt->real_database,*/ dbt, dbt->indexes, 0, 0, JOB_RESTORE_STRING, "indexes");
-                new_schema_restore_job(filename,JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
               }
               if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = //new_restore_job(g_strdup(filename), /*dbt->real_database,*/ dbt, alter_table_constraint_statement, 0, 0, JOB_RESTORE_STRING, "constraint");
-                new_schema_restore_job(filename,JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
+                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
@@ -177,8 +199,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
       }
     }
   }
-  struct restore_job * rj = //new_restore_job(g_strdup(filename), /*dbt->real_database,*/ dbt, create_table_statement, 0, 0, JOB_RESTORE_SCHEMA_STRING, "");
-  new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->real_database, create_table_statement, "");
+  struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->real_database, create_table_statement, "");
   g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
   if (!is_compressed) {
     fclose(infile);
@@ -201,8 +222,8 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
   gchar **split_db_tbl = g_strsplit(f, ".", -1);
   g_free(f);
   if (g_strv_length(split_db_tbl)>=3){
-    *database=g_strdup(split_db_tbl[0]);
-    *table=g_strdup(split_db_tbl[1]);
+    (*database)=g_strdup(split_db_tbl[0]);
+    (*table)=g_strdup(split_db_tbl[1]);
     *part=g_ascii_strtoull(split_db_tbl[2], NULL, 10);
     if (g_strv_length(split_db_tbl)>3) *sub_part=g_ascii_strtoull(split_db_tbl[3], NULL, 10);
   }else{
@@ -295,8 +316,7 @@ void process_database_filename(char * filename, const char *object) {
   db_hash_insert(db_kname, db_vname);
 
   if (!db){
-    struct restore_job *rj = //new_restore_job(g_strdup(filename), /*db_vname,*/ NULL, NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
-    new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, db_vname, NULL, object);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, db_vname, NULL, object);
     g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
   }
 }
@@ -320,6 +340,7 @@ void process_table_filename(char * filename){
   }
   dbt=append_new_db_table(NULL, db_name, table_name,0,conf->table_hash,NULL);
   load_schema(dbt, g_build_filename(directory,filename,NULL));
+  g_free(filename);
 }
 
 void process_metadata_filename( GHashTable *table_hash, char * filename){
@@ -366,8 +387,7 @@ void process_schema_filename(gchar *filename, const char * object) {
       g_warning("File %s has been filter out",filename);
       return;
     }
-    struct restore_job *rj = //new_restore_job(g_strdup(filename), /*real_db_name,*/ NULL , NULL, 0, 0, JOB_RESTORE_SCHEMA_FILENAME, object);
-      new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
     g_message("DB %s: %s for: %s",object, real_db_name,filename);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
