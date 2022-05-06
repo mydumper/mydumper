@@ -81,8 +81,10 @@ int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_s
          GString *str=g_string_new(line[i]);
          g_string_append_c(str,';');
          r+=restore_data_in_gstring_by_statement(td, str, is_schema, query_counter);
+         g_string_free(str,TRUE);
        }
     }
+    g_strfreev(line);
   }
   return r;
 }

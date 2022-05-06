@@ -415,7 +415,7 @@ int main(int argc, char *argv[]) {
   free_table_hash(conf.table_hash);
   g_hash_table_remove_all(conf.table_hash);
   g_hash_table_unref(conf.table_hash);
-
+  g_list_free_full(conf.checksum_list,g_free);
   if (logoutfile) {
     fclose(logoutfile);
   }

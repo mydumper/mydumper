@@ -301,14 +301,11 @@ void checksum_databases(struct thread_data *td) {
   g_message("Starting table checksum verification");
 
   gchar *filename = NULL;
-  GList *e = td->conf->checksum_list, *p;
+  GList *e = td->conf->checksum_list;//, *p;
   while (e){
     filename=e->data;
     checksum_table_filename(filename, td->thrconn);
-    g_free(filename);
-    p=e;
     e=e->next;
-    g_free(p);
   }
 }
 

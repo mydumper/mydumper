@@ -84,6 +84,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     dbt->start_index_time=NULL;
     dbt->finish_time=NULL;
     dbt->schema_created=FALSE;
+    dbt->constraints=NULL;
     dbt->count=0;
     g_hash_table_insert(table_hash, g_strdup_printf("%s_%s",dbt->database,dbt->table),dbt);
   }else{
@@ -101,8 +102,9 @@ void free_dbt(struct db_table * dbt){
   g_free(dbt->database);
   g_free(dbt->real_database);
   g_free(dbt->table);
+  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
   g_async_queue_unref(dbt->queue);
-  
+  g_mutex_clear(dbt->mutex); 
 }
 
 void free_table_hash(GHashTable *table_hash){
@@ -127,10 +129,8 @@ void load_schema(struct db_table *dbt, gchar *filename){
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
-  GString *alter_table_constraint_statement=g_string_sized_new(512);
   g_string_set_size(data,0);
   g_string_set_size(create_table_statement,0);
-  g_string_set_size(alter_table_constraint_statement,0);
   guint line=0;
   if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
@@ -159,6 +159,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
         }
         if (innodb_optimize_keys){
           GString *alter_table_statement=g_string_sized_new(512);
+          GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
           if (g_strrstr(data->str,"/*!40")){
             g_string_append(alter_table_statement,data->str);
@@ -212,6 +213,8 @@ void load_schema(struct db_table *dbt, gchar *filename){
   if (stream && no_delete == FALSE){
     m_remove(NULL,filename);
   }
+  g_string_free(data,TRUE);
+
 }
 
 
@@ -418,8 +421,7 @@ void process_data_filename(char * filename){
   struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
   g_mutex_lock(dbt->mutex);
   dbt->count++; 
-  struct restore_job *rj = //new_restore_job(g_strdup(filename), /*dbt->real_database,*/ dbt, NULL, part, sub_part, JOB_RESTORE_FILENAME, "");
-    new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
+  struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
   g_mutex_unlock(dbt->mutex);
 }

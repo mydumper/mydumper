@@ -317,6 +317,7 @@ void *process_stream(){
             continue;
           }
           previous_filename=g_strdup(filename);
+          g_free(filename);
           filename=g_strndup(&(buffer[from_pos+4]),pos-(from_pos+4));
           real_filename = g_build_filename(directory,filename,NULL);
           if (has_mydumper_suffix(filename)){
@@ -332,6 +333,7 @@ void *process_stream(){
           }else{
             flush(buffer,from_pos,pos-1,file);
           }
+          g_free(real_filename);
           
         }else{
           from_pos=pos;
@@ -349,7 +351,8 @@ void *process_stream(){
   if (file) 
     m_close(file);
   if (filename)
-    g_async_queue_push(intermidiate_queue, filename);
+    g_async_queue_push(intermidiate_queue, strdup(filename));
+  g_free(filename);
   gchar *e=g_strdup("END");
   g_async_queue_push(intermidiate_queue, e);
   g_thread_join(stream_intermidiate_thread);
