@@ -70,7 +70,6 @@ struct table_job {
   guint nchunk;
   char *filename;
   char *where;
-  gboolean has_generated_fields;
   char *order_by;
   struct db_table *dbt;
 };
@@ -111,6 +110,8 @@ struct db_table {
   char *table;
   char *table_filename;
   char *escaped_table;
+  GString *select_fields;
+  gboolean has_generated_fields;
   guint64 datalength;
   guint rows;
   GMutex *rows_lock;
