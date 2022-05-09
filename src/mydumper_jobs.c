@@ -1052,7 +1052,7 @@ cleanup:
 }
 
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, char *where, guint nchunk, gboolean has_generated_fields, char *order_by){
+struct table_job * new_table_job(struct db_table *dbt, char *partition, char *where, guint nchunk, char *order_by){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
@@ -1064,7 +1064,6 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, char *wh
   tj->order_by=order_by;
   tj->nchunk=nchunk;
   tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, 0);
-  tj->has_generated_fields=has_generated_fields;
   tj->dbt=dbt;
   return tj;
 }
@@ -1115,35 +1114,6 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
   }
 }
 
-gboolean detect_generated_fields(MYSQL *conn, struct db_table *dbt) {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  gboolean result = FALSE;
-  if (ignore_generated_fields)
-    return FALSE;
-
-  gchar *query = g_strdup_printf(
-      "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
-      dbt->database->escaped, dbt->escaped_table);
-
-  mysql_query(conn, query);
-  g_free(query);
-
-  res = mysql_store_result(conn);
-  if (res == NULL){
-    return FALSE;
-  }
-
-  if ((row = mysql_fetch_row(res))) {
-    result = TRUE;
-  }
-  mysql_free_result(res);
-
-  return result;
-}
-
 void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
                 struct configuration *conf, gboolean is_innodb) {
 //  char *database = dbt->database;
@@ -1156,9 +1126,6 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
   if (rows_per_file)
     chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
 
-  gboolean has_generated_fields =
-    detect_generated_fields(conn, dbt);
-
   if (partitions){
     int npartition=0;
     for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
@@ -1167,7 +1134,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
       j->job_data=(void*) tj;
       j->conf=conf;
       j->type= is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-      tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, get_primary_key_string(conn, dbt->database->name, dbt->table));
       j->job_data = (void *)tj;
       if (!is_innodb && npartition)
         g_atomic_int_inc(&non_innodb_table_counter);
@@ -1184,7 +1151,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
       struct table_job *tj = NULL;
       j->conf = conf;
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-      tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      tj = new_table_job(dbt, NULL, (char *)iter->data, nchunk, get_primary_key_string(conn, dbt->database->name, dbt->table));
       j->job_data = (void *)tj;
       if (!is_innodb && nchunk)
         g_atomic_int_inc(&non_innodb_table_counter);
@@ -1197,7 +1164,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
     struct table_job *tj = NULL;
     j->conf = conf;
     j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-    tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+    tj = new_table_job(dbt, NULL, NULL, 0, get_primary_key_string(conn, dbt->database->name, dbt->table));
     j->job_data = (void *)tj;
     g_async_queue_push(conf->queue, j);
   }
@@ -1222,8 +1189,6 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
 
     if (rows_per_file)
       chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
-    gboolean has_generated_fields =
-      detect_generated_fields(conn, dbt);
 
     if (split_partitions)
       partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
@@ -1232,7 +1197,7 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
       int npartition=0;
       for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
         struct table_job *tj = NULL;
-        tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, get_primary_key_string(conn, dbt->database->name, dbt->table));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         npartition++;
       }
@@ -1242,14 +1207,14 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
       int nchunk = 0;
       GList *citer;
       for (citer = chunks; citer != NULL; citer = citer->next) {
-        struct table_job *tj = new_table_job(dbt, NULL, (char *)citer->data, nchunk, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+        struct table_job *tj = new_table_job(dbt, NULL, (char *)citer->data, nchunk, get_primary_key_string(conn, dbt->database->name, dbt->table));
         tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
         nchunk++;
       }
       g_list_free(chunks);
     } else {
       struct table_job *tj = NULL;
-      tj = new_table_job(dbt, NULL, NULL, 0, has_generated_fields, get_primary_key_string(conn, dbt->database->name, dbt->table));
+      tj = new_table_job(dbt, NULL, NULL, 0, get_primary_key_string(conn, dbt->database->name, dbt->table));
       tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
     }
   }

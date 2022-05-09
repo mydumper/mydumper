@@ -686,6 +686,35 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   return anonymized_function_list;
 }
 
+gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gboolean result = FALSE;
+  if (ignore_generated_fields)
+    return FALSE;
+
+  gchar *query = g_strdup_printf(
+      "select COLUMN_NAME from information_schema.COLUMNS where "
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      database, table);
+
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  if (res == NULL){
+    return FALSE;
+  }
+
+  if ((row = mysql_fetch_row(res))) {
+    result = TRUE;
+  }
+  mysql_free_result(res);
+
+  return result;
+}
+
 struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
@@ -693,7 +722,14 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
-  dbt->anonymized_function=get_anonymized_function_for(conn, database->name, table);
+  dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
+  dbt->has_generated_fields = detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+  if (dbt->has_generated_fields) {
+    dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+  } else {
+    dbt->select_fields = g_string_new("*");
+  }
+
   dbt->rows=0;
   if (!datalength)
     dbt->datalength = 0;
@@ -1059,29 +1095,18 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
     fcfile = g_strdup(tj->filename);
 //  }
 
-  gboolean has_generated_fields = tj->has_generated_fields;
-
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
   GString *statement = g_string_sized_new(statement_size);
   GString *statement_row = g_string_sized_new(0);
 
-  GString *select_fields;
-
-  if (has_generated_fields) {
-    select_fields = get_insertable_fields(conn, tj->database, tj->table);
-  } else {
-    select_fields = g_string_new("*");
-  }
-
   /* Poor man's database code */
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
+      tj->dbt->select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
       tj->where ? tj->where : "",  (tj->where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
       tj->order_by ? tj->order_by : "");
-  g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
@@ -1172,7 +1197,7 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
           first_time=FALSE;
         }
       }else{
-        append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
+        append_insert ((complete_insert || tj->dbt->has_generated_fields), statement, tj->table, fields, num_fields);
       }
       num_rows_st = 0;
     }
