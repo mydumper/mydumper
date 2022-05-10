@@ -184,6 +184,9 @@ static GOptionEntry working_thread_entries[] = {
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
+    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
+     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
+     NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
      "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
