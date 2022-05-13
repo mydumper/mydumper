@@ -193,7 +193,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if (stream && !dbt->schema_created){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
         int i=0;
-        while (!dbt->schema_created && i<100){
+        while (!dbt->schema_created && i<10000){
           usleep(1000);
           i++;
         }

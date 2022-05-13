@@ -56,13 +56,10 @@ void initialize_common(){
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
-  char *str2=g_strdup(str);
-  if (g_str_has_suffix(str2, compress_extension)){
-    str2[strlen(str)-strlen(compress_extension)]='\0';
+  if (g_str_has_suffix(str, compress_extension)){
+    return g_strstr_len(&(str[strlen(str)-strlen(compress_extension)-strlen(suffix)]), strlen(str)-strlen(compress_extension),suffix) != NULL; 
   }
-  gboolean b=g_str_has_suffix(str2,suffix);
-  g_free(str2);
-  return b;
+  return g_str_has_suffix(str,suffix);
 }
 
 void db_hash_insert(gchar *k, gchar *v){
