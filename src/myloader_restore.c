@@ -55,7 +55,9 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     return 1;
   }
   *query_counter=*query_counter+1;
-  if (!is_schema && (commit_count > 1) &&(*query_counter == commit_count)) {
+  if (is_schema==FALSE) {
+	if (commit_count > 1) {
+if (*query_counter == commit_count) {
     *query_counter= 0;
     if (mysql_query(td->thrconn, "COMMIT")) {
       errors++;
@@ -63,6 +65,7 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     }
     mysql_query(td->thrconn, "START TRANSACTION");
   }
+}}
   g_string_set_size(data, 0);
   return 0;
 }
@@ -78,8 +81,10 @@ int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_s
          GString *str=g_string_new(line[i]);
          g_string_append_c(str,';');
          r+=restore_data_in_gstring_by_statement(td, str, is_schema, query_counter);
+         g_string_free(str,TRUE);
        }
     }
+    g_strfreev(line);
   }
   return r;
 }
@@ -129,12 +134,12 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
 
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema){
-  FILE *infile;
+  FILE *infile=NULL;
   int r=0;
   gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   guint query_counter = 0;
-  GString *data = g_string_sized_new(512);
+  GString *data = g_string_sized_new(256);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   ml_open(&infile,path,&is_compressed);

@@ -829,6 +829,7 @@ void send_lock_all_tables(MYSQL *conn){
   // Try three times to get the lock, this is in case of tmp tables
   // disappearing
     while (!success && retry < 4) {
+      g_string_set_size(query,0);
       g_string_append(query, "LOCK TABLE");
       for (iter = tables_lock; iter != NULL; iter = iter->next) {
         g_string_append_printf(query, "%s READ,", (char *)iter->data);

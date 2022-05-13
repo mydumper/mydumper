@@ -1281,7 +1281,12 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
                 sub_part++;
               }
               m_close(file);
-              if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+              if (stream) { 
+                g_async_queue_push(stream_queue, g_strdup(fcfile));
+		if (load_data){
+                  g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+		}
+	      }
               g_free(fcfile);
               fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
               file = m_open(fcfile,"w");
@@ -1348,9 +1353,19 @@ cleanup:
       g_warning("Failed to remove empty file : %s\n", fcfile);
     }
   } else if (chunk_filesize) {
-    if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+    if (stream) {
+      g_async_queue_push(stream_queue, g_strdup(fcfile));
+      if (load_data && load_data_fn !=NULL){
+        g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+      }
+    }
   }else{
-    if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
+    if (stream) {
+      g_async_queue_push(stream_queue, g_strdup(tj->filename));
+      if (load_data && load_data_fn !=NULL){
+        g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+      }
+    }
   }
 
   g_mutex_lock(dbt->rows_lock);

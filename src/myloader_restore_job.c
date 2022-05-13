@@ -100,10 +100,17 @@ struct restore_job * new_schema_restore_job( char * filename, enum restore_job_t
 
 void free_restore_job(struct restore_job * rj){
   // We consider that
+  if (rj->filename != NULL ) g_free(rj->filename);
 //  if ( !shutdown_triggered && rj->filename != NULL ) g_free(rj->filename);
 //  if (rj->statement != NULL ) g_string_free(rj->statement,TRUE);
   if (rj != NULL ) g_free(rj);
 }
+
+void free_schema_restore_job(struct schema_restore_job *srj){
+//  g_free(srj->database);
+  if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
+  g_free(srj);
+};
 
 int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
   int truncate_or_delete_failed=0;
@@ -114,6 +121,7 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
     query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
                             database, table);
     mysql_query(conn, query);
+    g_free(query);
     query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", database,
                             table);
     mysql_query(conn, query);
@@ -135,7 +143,7 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
 }
 
 void process_restore_job(struct thread_data *td, struct restore_job *rj){
-  if (td->conf->pause_resume){
+  if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (resume_mutex != NULL){
       g_mutex_lock(resume_mutex);
@@ -149,12 +157,13 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     goto cleanup;
   }
   struct db_table *dbt=rj->dbt;
+  guint query_counter=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
       g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
                 dbt->real_database, dbt->real_table, rj->filename);
-      guint query_counter=0;
       restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter);
+      free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
@@ -173,6 +182,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }
       dbt->schema_created=TRUE;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
+      free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
@@ -183,7 +193,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if (stream && !dbt->schema_created){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
         int i=0;
-        while (!dbt->schema_created && i<100){
+        while (!dbt->schema_created && i<10000){
           usleep(1000);
           i++;
         }
@@ -195,18 +205,20 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if (restore_data_from_file(td, dbt->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
+      g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
       g_message("Thread %d restoring %s on `%s` from %s", td->thread_id, rj->data.srj->object,
                 rj->data.srj->database, rj->filename);
       restore_data_from_file(td, rj->data.srj->database, NULL, rj->filename, TRUE );
+      free_schema_restore_job(rj->data.srj);
       break;
     default:
       g_critical("Something very bad happened!");
       exit(EXIT_FAILURE);
     }
 cleanup:
-  free_restore_job(rj);
+  if (rj != NULL ) free_restore_job(rj);
 }
 
 
@@ -278,13 +290,19 @@ gboolean sig_triggered_term(void * user_data) {
   return sig_triggered(user_data,SIGTERM);
 }
 
+GMainLoop * loop=NULL;
+
 void *signal_thread(void *data) {
-  GMainLoop * loop=NULL;
   g_unix_signal_add(SIGINT, sig_triggered_int, data);
   g_unix_signal_add(SIGTERM, sig_triggered_term, data);
   loop = g_main_loop_new (NULL, TRUE);
   g_main_loop_run (loop);
   return NULL;
+}
+
+void stop_signal_thread(){
+  g_main_loop_unref(loop);
+//  g_main_loop_quit(loop);
 }
 
 void restore_job_finish(){
