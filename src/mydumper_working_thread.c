@@ -1056,12 +1056,23 @@ void append_insert (gboolean condition, GString *statement, char *table, MYSQL_F
 gboolean write_data(FILE *file, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
+  gboolean second_write_zero = FALSE;
   while (written < data->len) {
     r=m_write(file, data->str + written, data->len);
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
       errors++;
       return FALSE;
+    }
+    if ( r == 0 ) {
+      if (second_write_zero){
+        g_critical("Couldn't write data to a file: %s", strerror(errno));
+        errors++;
+        return FALSE;        
+      }
+      second_write_zero=TRUE;
+    }else{
+      second_write_zero=FALSE;
     }
     written += r;
   }
