@@ -268,9 +268,7 @@ int main(int argc, char *argv[]) {
       exit(EXIT_FAILURE);
     }
   } else {
-    pwd=g_str_has_prefix(input_directory,"/")?g_strdup(""):current_dir;
-    directory=g_strdup_printf("%s/%s", pwd, input_directory);
-    g_free(pwd);
+    directory=g_strdup_printf("%s/%s", g_str_has_prefix(input_directory,"/")?"":current_dir, input_directory);
     if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
       if (stream){
         create_backup_dir(directory);
