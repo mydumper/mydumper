@@ -44,7 +44,7 @@ void *process_stream(void *data){
   GDateTime *total_start_time=g_date_time_new_now_local();
   GTimeSpan diff=0,total_diff=0;
 //  gboolean not_compressed = FALSE;
-  guint sz=0;
+//  guint sz=0;
   ssize_t len=0;
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
@@ -98,19 +98,19 @@ exit(EXIT_FAILURE);
         buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
       }
 //      if (not_compressed && total_len != sz){
-      if (total_len != sz){
-        g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
+//      if (total_len != sz){
+//        g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
 //        exit(EXIT_FAILURE);
-      }else{
+//      }else{
         diff=g_date_time_difference(g_date_time_new_now_local(),start_time)/G_TIME_SPAN_SECOND;
         total_diff=g_date_time_difference(g_date_time_new_now_local(),total_start_time)/G_TIME_SPAN_SECOND;
         if (diff > 0){
-          g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,sz/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+          g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }else{
           g_message("File %s transfered | Global: %ld MB/s",filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }
-        total_size+=sz;
-      }
+        total_size+=total_len;
+//      }
       fclose(f);
     }
     if (no_delete == FALSE){

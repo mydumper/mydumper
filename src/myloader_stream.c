@@ -133,6 +133,9 @@ enum file_type process_filename(char *filename){
 
 gboolean has_mydumper_suffix(gchar *line){
   return 
+    g_str_has_suffix(line,".dat") ||
+    g_str_has_suffix(line,".dat.gz") ||
+    g_str_has_suffix(line,".dat.zst") ||
     g_str_has_suffix(line,".sql") || 
     g_str_has_suffix(line,".sql.gz") || 
     g_str_has_suffix(line,".sql.zst") ||
