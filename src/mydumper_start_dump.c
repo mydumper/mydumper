@@ -74,6 +74,7 @@
 #endif
 
 /* Program options */
+extern gint database_counter;
 extern GAsyncQueue *stream_queue;
 extern gchar *output_directory;
 extern gchar *output_directory_param;
@@ -1159,7 +1160,8 @@ void start_dump() {
     }
     mysql_free_result(databases);
   }
-  g_mutex_lock(ready_database_dump_mutex);
+  if (database_counter > 0)
+    g_mutex_lock(ready_database_dump_mutex);
   g_list_free(no_updated_tables);
 
   GList *iter;
