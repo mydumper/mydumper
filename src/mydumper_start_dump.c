@@ -1148,7 +1148,7 @@ void start_dump() {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (!eval_regex(row[0], NULL))){
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
         g_mutex_lock(db_tmp->ad_mutex);
         if (!db_tmp->already_dumped){
           create_job_to_dump_schema(db_tmp->name, &conf);
