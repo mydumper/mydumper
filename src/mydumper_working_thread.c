@@ -1327,7 +1327,8 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
       /* strange, should not happen */
       g_string_append(statement, statement_row->str);
     } else {
-      append_insert (complete_insert, statement, tj->table, fields, num_fields); 
+      if (load_data)
+        append_insert (complete_insert, statement, tj->table, fields, num_fields); 
       g_string_append(statement, statement_row->str);
     }
   }
