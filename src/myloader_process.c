@@ -102,7 +102,8 @@ void free_dbt(struct db_table * dbt){
   g_free(dbt->database);
   g_free(dbt->real_database);
   g_free(dbt->table);
-  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
+//  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
+  dbt->constraints = NULL; // It should be free after constraint is executed
   g_async_queue_unref(dbt->queue);
   g_mutex_clear(dbt->mutex); 
 }
@@ -183,7 +184,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
               }
               if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
+                struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
