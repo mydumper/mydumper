@@ -170,6 +170,17 @@ void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
   }
 }
 
+void free_hash(GHashTable * set_session_hash){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, set_session_hash );
+  gchar *e=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
+    g_free(e);
+    g_free(lkey);
+  }
+}
+
 void execute_gstring(MYSQL *conn, GString *ss)
 {
   if (ss != NULL ){
@@ -180,6 +191,7 @@ void execute_gstring(MYSQL *conn, GString *ss)
          g_warning("Set session failed: %s",line[i]);
        }
     }
+    g_strfreev(line);
   }
 }
 

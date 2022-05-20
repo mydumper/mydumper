@@ -51,9 +51,11 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
       return FALSE;
       break;
     default:
+      g_free(job);
       g_critical("Something very bad happened!");
       exit(EXIT_FAILURE);
   }
+  g_free(job);
   return TRUE;
 }
 

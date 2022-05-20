@@ -184,6 +184,9 @@ static GOptionEntry working_thread_entries[] = {
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
+    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
+     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
+     NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
      "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
@@ -686,6 +689,35 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   return anonymized_function_list;
 }
 
+gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gboolean result = FALSE;
+  if (ignore_generated_fields)
+    return FALSE;
+
+  gchar *query = g_strdup_printf(
+      "select COLUMN_NAME from information_schema.COLUMNS where "
+      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      database, table);
+
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  if (res == NULL){
+    return FALSE;
+  }
+
+  if ((row = mysql_fetch_row(res))) {
+    result = TRUE;
+  }
+  mysql_free_result(res);
+
+  return result;
+}
+
 struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
@@ -693,7 +725,14 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
-  dbt->anonymized_function=get_anonymized_function_for(conn, database->name, table);
+  dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
+  dbt->has_generated_fields = detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+  if (dbt->has_generated_fields) {
+    dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+  } else {
+    dbt->select_fields = g_string_new("*");
+  }
+
   dbt->rows=0;
   if (!datalength)
     dbt->datalength = 0;
@@ -717,12 +756,11 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (!is_view) {
   // with trx_consistency_only we dump all as innodb_tables
     if (!no_schemas) {
-//        g_mutex_lock(table_schemas_mutex);
-//        table_schemas = g_list_prepend(table_schemas, dbt);
-//        g_mutex_unlock(table_schemas_mutex);
       create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
     }
-
+    if (dump_triggers) {
+      create_job_to_dump_triggers(conn, dbt, conf);
+    }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (dump_checksums) {
@@ -731,28 +769,16 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           create_job_to_dump_table(conn, dbt, conf, TRUE);
-//          g_mutex_lock(innodb_tables_mutex);
-//          innodb_tables = g_list_prepend(innodb_tables, dbt);
-//          g_mutex_unlock(innodb_tables_mutex);
         } else {
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
           g_mutex_unlock(non_innodb_table_mutex);
         }
       }
-      if (dump_triggers) {
-        create_job_to_dump_triggers(conn, dbt, conf);
-//        g_mutex_lock(trigger_schemas_mutex);
-//        trigger_schemas = g_list_prepend(trigger_schemas, dbt);
-//        g_mutex_unlock(trigger_schemas_mutex);
-      }      
     }
   } else {
     if (!no_schemas) {
       create_job_to_dump_view(dbt, conf);
-//      g_mutex_lock(view_schemas_mutex);
-//      view_schemas = g_list_prepend(view_schemas, dbt);
-//      g_mutex_unlock(view_schemas_mutex);
     }
   }
 }
@@ -1030,12 +1056,23 @@ void append_insert (gboolean condition, GString *statement, char *table, MYSQL_F
 gboolean write_data(FILE *file, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
+  gboolean second_write_zero = FALSE;
   while (written < data->len) {
     r=m_write(file, data->str + written, data->len);
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
       errors++;
       return FALSE;
+    }
+    if ( r == 0 ) {
+      if (second_write_zero){
+        g_critical("Couldn't write data to a file: %s", strerror(errno));
+        errors++;
+        return FALSE;        
+      }
+      second_write_zero=TRUE;
+    }else{
+      second_write_zero=FALSE;
     }
     written += r;
   }
@@ -1072,29 +1109,18 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
     fcfile = g_strdup(tj->filename);
 //  }
 
-  gboolean has_generated_fields = tj->has_generated_fields;
-
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
   GString *statement = g_string_sized_new(statement_size);
   GString *statement_row = g_string_sized_new(0);
 
-  GString *select_fields;
-
-  if (has_generated_fields) {
-    select_fields = get_insertable_fields(conn, tj->database, tj->table);
-  } else {
-    select_fields = g_string_new("*");
-  }
-
   /* Poor man's database code */
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
+      tj->dbt->select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
       tj->where ? tj->where : "",  (tj->where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
       tj->order_by ? tj->order_by : "");
-  g_string_free(select_fields, TRUE);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
@@ -1185,7 +1211,7 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
           first_time=FALSE;
         }
       }else{
-        append_insert ((complete_insert || has_generated_fields), statement, tj->table, fields, num_fields);
+        append_insert ((complete_insert || tj->dbt->has_generated_fields), statement, tj->table, fields, num_fields);
       }
       num_rows_st = 0;
     }
@@ -1266,7 +1292,12 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
                 sub_part++;
               }
               m_close(file);
-              if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+              if (stream) { 
+                g_async_queue_push(stream_queue, g_strdup(fcfile));
+		if (load_data){
+                  g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+		}
+	      }
               g_free(fcfile);
               fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
               file = m_open(fcfile,"w");
@@ -1333,9 +1364,19 @@ cleanup:
       g_warning("Failed to remove empty file : %s\n", fcfile);
     }
   } else if (chunk_filesize) {
-    if (stream) g_async_queue_push(stream_queue, g_strdup(fcfile));
+    if (stream) {
+      g_async_queue_push(stream_queue, g_strdup(fcfile));
+      if (load_data && load_data_fn !=NULL){
+        g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+      }
+    }
   }else{
-    if (stream) g_async_queue_push(stream_queue, g_strdup(tj->filename));
+    if (stream) {
+      g_async_queue_push(stream_queue, g_strdup(tj->filename));
+      if (load_data && load_data_fn !=NULL){
+        g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+      }
+    }
   }
 
   g_mutex_lock(dbt->rows_lock);

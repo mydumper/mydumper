@@ -74,6 +74,7 @@
 #endif
 
 /* Program options */
+extern gint database_counter;
 extern GAsyncQueue *stream_queue;
 extern gchar *output_directory;
 extern gchar *output_directory_param;
@@ -691,8 +692,7 @@ void send_unlock_tables(MYSQL *conn){
   mysql_query(conn, "UNLOCK TABLES");
 }
 
-void send_unlock_tables_and_binlogs(MYSQL *conn){
-  send_unlock_tables(conn);
+void send_unlock_binlogs(MYSQL *conn){
   mysql_query(conn, "UNLOCK BINLOG");
 }
 
@@ -704,7 +704,7 @@ void send_backup_stage_end(MYSQL *conn){
   mysql_query(conn, "BACKUP STAGE END");
 }
 
-void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *)) {
+void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
   mysql_query(*conn, "SELECT @@version_comment, @@version");
   MYSQL_RES *res2 = mysql_store_result(*conn);
   MYSQL_ROW ver;
@@ -717,7 +717,8 @@ void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(M
       }
       if (g_str_has_prefix(ver[1], "5.7.")) {
         *acquire_lock_function = &send_percona57_backup_locks;
-        *release_lock_function = &send_unlock_tables_and_binlogs;
+        *release_binlog_function = &send_unlock_binlogs;
+        *release_lock_function = &send_unlock_tables;
         *conn = create_main_connection();
         break;
       }
@@ -829,6 +830,7 @@ void send_lock_all_tables(MYSQL *conn){
   // Try three times to get the lock, this is in case of tmp tables
   // disappearing
     while (!success && retry < 4) {
+      g_string_set_size(query,0);
       g_string_append(query, "LOCK TABLE");
       for (iter = tables_lock; iter != NULL; iter = iter->next) {
         g_string_append_printf(query, "%s READ,", (char *)iter->data);
@@ -875,6 +877,7 @@ void start_dump() {
 
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
+  void (*release_binlog_function)(MYSQL *) = NULL;
 
   guint64 nits[num_threads];
   GList *nitl[num_threads];
@@ -884,7 +887,6 @@ void start_dump() {
 //  struct schema_post *sp;
   guint n;
   FILE *nufile = NULL;
-  guint have_percona_backup_locks = 0;
   GThread *disk_check_thread = NULL;
   if (disk_limits!=NULL){
     conf.pause_resume = g_async_queue_new();
@@ -986,7 +988,7 @@ void start_dump() {
 	  	// This backup will lock the database
 
       if (!no_backup_locks)
-        determine_ddl_lock_function(&second_conn,&acquire_ddl_lock_function,&release_ddl_lock_function);
+        determine_ddl_lock_function(&second_conn,&acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
 
   		if (lock_all_tables) {
         send_lock_all_tables(conn);
@@ -1114,8 +1116,10 @@ void start_dump() {
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
     mysql_query(conn, "UNLOCK TABLES /* trx-only */");
-    if (have_percona_backup_locks)
-      mysql_query(conn, "UNLOCK BINLOG");
+    if (release_binlog_function != NULL){
+      g_message("Releasing binlog lock");
+      release_binlog_function(second_conn);
+    }
   }
 
   if (db) {
@@ -1144,7 +1148,7 @@ void start_dump() {
           (!strcasecmp(row[0], "data_dictionary")))
         continue;
       struct database * db_tmp=NULL;
-      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (!eval_regex(row[0], NULL))){
+      if (get_database(conn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
         g_mutex_lock(db_tmp->ad_mutex);
         if (!db_tmp->already_dumped){
           create_job_to_dump_schema(db_tmp->name, &conf);
@@ -1156,7 +1160,8 @@ void start_dump() {
     }
     mysql_free_result(databases);
   }
-  g_mutex_lock(ready_database_dump_mutex);
+  if (database_counter > 0)
+    g_mutex_lock(ready_database_dump_mutex);
   g_list_free(no_updated_tables);
 
   GList *iter;
@@ -1223,8 +1228,11 @@ void start_dump() {
     g_async_queue_pop(conf.unlock_tables);
     g_message("Non-InnoDB dump complete, unlocking tables");
     mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-    if (have_percona_backup_locks)
-      mysql_query(conn, "UNLOCK BINLOG");
+    g_message("Releasing DDL lock");
+    if (release_binlog_function != NULL){
+      g_message("Releasing binlog lock");
+      release_binlog_function(second_conn);
+    }
   }
 
   g_message("Shutdown jobs enqueued");

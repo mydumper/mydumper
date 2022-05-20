@@ -6,7 +6,9 @@
 MyDumper is a MySQL Logical Backup Tool. It has 2 tools:
 * `mydumper` which is responsible to export a consistent backup of MySQL databases
 * `myloader` reads the backup from mydumper, connects the to destination database and imports the backup.
-Both tools use multithreading capabilities
+
+Both tools use multithreading capabilities.
+<br>MyDumper is Open Source and maintained by the community, it is not a Percona, MariaDB or MySQL product.
 
 # Why do we need MyDumper?
 * Parallelism (hence, speed) and performance (avoids expensive character set conversion routines, efficient code overall)
