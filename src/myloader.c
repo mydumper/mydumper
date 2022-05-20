@@ -65,6 +65,8 @@ gchar *directory = NULL;
 gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
+gboolean innodb_optimize_keys_per_table = FALSE;
+gboolean innodb_optimize_keys_all_tables = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 gboolean skip_triggers = FALSE;
@@ -88,6 +90,24 @@ const char DIRECTORY[] = "import";
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
+    innodb_optimize_keys = TRUE;
+    if (g_strstr_len(value,22,"AFTER_IMPORT_PER_TABLE")){
+      innodb_optimize_keys_per_table = TRUE;
+      innodb_optimize_keys_all_tables = FALSE;
+      return TRUE;
+    }
+    if (g_strstr_len(value,23,"AFTER_IMPORT_ALL_TABLES")){
+      innodb_optimize_keys_all_tables = TRUE;
+      innodb_optimize_keys_per_table = FALSE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
@@ -102,7 +122,7 @@ static GOptionEntry entries[] = {
      "Database to restore", NULL},
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
-    {"innodb-optimize-keys", 0, 0, G_OPTION_ARG_NONE, &innodb_optimize_keys,
+    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes and it adds them at the end", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
       "Sets the names, use it at your own risk, default binary", NULL },
