@@ -38,26 +38,41 @@ GHashTable * initialize_hash_of_session_variables(){
   return set_session_hash;
 }
 
-char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
+char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
   *errn=0;
-  char *query = g_strdup_printf("CHECKSUM TABLE `%s`.`%s`", database, table);
+  char *query = g_strdup_printf(query_template, database, table);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     g_critical("Error dumping checksum (%s.%s): %s", database, table, mysql_error(conn));
     *errn=mysql_errno(conn);
     g_free(query);
     return NULL;
   }
+  g_debug("Query: %s",query);
   g_free(query);
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  char * r=g_strdup_printf("%s",row[1]);
+  char * r=g_strdup_printf("%s",row[column_number]);
   mysql_free_result(result);
   return r;
 }
 
+char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn, "CHECKSUM TABLE `%s`.`%s`", 1);
+}
+
+
+char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type,column_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
+}
+
+char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn){
+  (void) table;
+  (void) errn;
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 0);
+}
 
 void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group){
   GError *error = NULL;

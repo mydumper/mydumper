@@ -293,30 +293,20 @@ void refresh_table_list(struct configuration *conf){
   conf->table_list=table_list;
 }
 
-// this can be moved to the table structure and executed before index creation.
-void checksum_databases(struct thread_data *td) {
-  g_message("Starting table checksum verification");
-
-  gchar *filename = NULL;
-  GList *e = td->conf->checksum_list;//, *p;
-  while (e){
-    filename=e->data;
-    checksum_table_filename(filename, td->thrconn);
-    e=e->next;
-  }
-}
-
-void checksum_table_filename(const gchar *filename, MYSQL *conn) {
+void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
   gchar *database = NULL, *table = NULL;
-  get_database_table_from_file(filename,"-checksum",&database,&table);
+  get_database_table_from_file(filename,suffix,&database,&table);
   gchar *real_database=db_hash_lookup(database);
-  gchar *real_table=g_hash_table_lookup(tbl_hash,table);
+  gchar *real_table=NULL;
+  if (table != NULL ){
+    real_table=g_hash_table_lookup(tbl_hash,table);
+    g_free(table);
+  }
   g_free(database);
-  g_free(table);
   void *infile;
   char checksum[256];
   int errn=0;
-  char * row=checksum_table(conn, db ? db : real_database, real_table, &errn);
+  char * row=fun(conn, db ? db : real_database, real_table, &errn);
   gboolean is_compressed = FALSE;
   gchar *path = g_build_filename(directory, filename, NULL);
 
@@ -336,11 +326,11 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
 
   char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
   if (cs != NULL) {
-    if(strcmp(checksum, row) != 0) {
-      g_warning("Checksum mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", db ? db : real_database, real_table, row, checksum);
+    if(g_strcasecmp(checksum, row) != 0) {
+      g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", message, db ? db : real_database, real_table, row, checksum);
       errors++;
     } else {
-      g_message("Checksum confirmed for `%s`.`%s`", db ? db : real_database, real_table);
+      g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database, real_table);
     }
     g_free(row);
   } else {
@@ -355,6 +345,25 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn) {
   }
 }
 
+// this can be moved to the table structure and executed before index creation.
+void checksum_databases(struct thread_data *td) {
+  g_message("Starting table checksum verification");
+
+  gchar *filename = NULL;
+  GList *e = td->conf->checksum_list;//, *p;
+  while (e){
+    filename=e->data;
+    if (g_str_has_suffix(filename,"-schema-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-checksum", "Structure checksum", checksum_table_structure);
+    }else{
+    if (g_str_has_suffix(filename,"-schema-post-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-post-checksum", "Post checksum", checksum_process_structure);
+    }else{
+      checksum_filename(filename, td->thrconn, "-checksum", "Checksum", checksum_table);
+    }}
+    e=e->next;
+  }
+}
 
 void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
   if (!g_str_has_suffix(filename, compress_extension)) {

@@ -37,6 +37,12 @@ struct schema_post_job {
   char *filename;
 };
 
+struct table_checksum_job {
+  char *database;
+  char *table;
+  char *filename;
+  char *schema_filename;
+};
 
 void initialize_dump_into_file();
 void load_dump_into_file_entries(GOptionGroup *main_group);

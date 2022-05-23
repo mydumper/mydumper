@@ -74,12 +74,6 @@ struct table_job {
   struct db_table *dbt;
 };
 
-struct table_checksum_job {
-  char *database;
-  char *table;
-  char *filename;
-};
-
 struct tables_job {
   GList *table_job_list;
 };

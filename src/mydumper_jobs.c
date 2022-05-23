@@ -397,6 +397,33 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
 
   return;
 }
+
+void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename, gchar *fun()) {
+  void *outfile = NULL;
+
+  outfile = g_fopen(filename, "w");
+
+  if (!outfile) {
+    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
+               database, table, filename, errno);
+    errors++;
+    return;
+  }
+  int errn=0;
+  gchar * checksum=fun(conn, database, table, &errn);
+  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
+    errors++;
+    return;
+  }
+  fprintf(outfile, "%s", checksum);
+  fclose(outfile);
+
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  g_free(checksum);
+
+  return;
+}
+
 // Routines, Functions and Events
 // TODO: We need to split it in 3 functions 
 void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename) {
@@ -508,6 +535,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       }
       g_string_set_size(statement, 0);
     }
+    g_message("Checksum routing");
+    write_checksum_into_file(conn, database->name, NULL, build_meta_filename(database->name,NULL,"schema-post-checksum"), checksum_process_structure);
   }
 
   // get events
@@ -563,33 +592,6 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     mysql_free_result(result);
   if (result2)
     mysql_free_result(result2);
-
-  return;
-}
-
-void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename) {
-  void *outfile = NULL;
-
-  outfile = g_fopen(filename, "w");
-
-  if (!outfile) {
-    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
-               database, table, filename, errno);
-    errors++;
-    return;
-  }
-  int errn=0;
-
-  gchar * checksum=checksum_table(conn, database, table, &errn);
-  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
-    errors++;
-    return;
-  }
-  fprintf(outfile, "%s", checksum);
-  fclose(outfile);
-
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  g_free(checksum);
 
   return;
 }
@@ -686,7 +688,8 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
   }
-  write_table_checksum_into_file(td->thrconn, tcj->database, tcj->table, tcj->filename);
+  write_checksum_into_file(td->thrconn, tcj->database, tcj->table, tcj->schema_filename, checksum_table_structure);
+  write_checksum_into_file(td->thrconn, tcj->database, tcj->table, tcj->filename, checksum_table);
   if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
@@ -788,6 +791,7 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   tcj->filename = build_meta_filename(dbt->database->filename, dbt->table_filename,"checksum");
+  tcj->schema_filename = build_meta_filename(dbt->database->filename, dbt->table_filename,"schema-checksum");
   g_async_queue_push(conf->queue, j);
   return;
 }
