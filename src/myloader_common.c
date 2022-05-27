@@ -327,10 +327,16 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
   char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
   if (cs != NULL) {
     if(g_strcasecmp(checksum, row) != 0) {
-      g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", message, db ? db : real_database, real_table, row, checksum);
+      if (real_table != NULL)
+        g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database, real_table, row, checksum, filename);
+      else 
+        g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database, row, checksum, filename);
       errors++;
     } else {
-      g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database, real_table);
+      if (real_table != NULL)
+        g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database, real_table);
+      else
+        g_message("%s confirmed for `%s`", message, db ? db : real_database);
     }
     g_free(row);
   } else {
@@ -359,8 +365,17 @@ void checksum_databases(struct thread_data *td) {
     if (g_str_has_suffix(filename,"-schema-post-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-post-checksum", "Post checksum", checksum_process_structure);
     }else{
+    if (g_str_has_suffix(filename,"-schema-triggers-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-triggers-checksum", "Trigger checksum", checksum_trigger_structure);
+    }else{
+    if (g_str_has_suffix(filename,"-schema-view-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-view-checksum", "View checksum", checksum_view_structure);
+    }else{
+    if (g_str_has_suffix(filename,"-schema-create-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-create-checksum", "Schema create checksum", checksum_database_defaults);
+    }else{
       checksum_filename(filename, td->thrconn, "-checksum", "Checksum", checksum_table);
-    }}
+    }}}}}
     e=e->next;
   }
 }

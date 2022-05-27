@@ -80,6 +80,33 @@ void initialize_dump_into_file(){
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 }
 
+void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename, gchar *fun()) {
+  void *outfile = NULL;
+
+  outfile = g_fopen(filename, "w");
+
+  if (!outfile) {
+    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
+               database, table, filename, errno);
+    errors++;
+    return;
+  }
+  int errn=0;
+  gchar * checksum=fun(conn, database, table, &errn);
+  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
+    errors++;
+    return;
+  }
+  fprintf(outfile, "%s", checksum);
+  fclose(outfile);
+
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  g_free(checksum);
+
+  return;
+}
+
+
 void write_table_metadata_into_file(struct db_table * dbt){
   char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
   FILE *table_meta = g_fopen(filename, "w");
@@ -139,6 +166,7 @@ void write_schema_definition_into_file(MYSQL *conn, char *database, char *filena
   if (result)
     mysql_free_result(result);
 
+  write_checksum_into_file(conn, database, NULL, build_meta_filename(database,NULL,"schema-create-checksum"), checksum_database_defaults);
   return;
 }
 
@@ -274,7 +302,7 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     }
     g_string_set_size(statement, 0);
   }
-
+  write_checksum_into_file(conn, database, NULL, build_meta_filename(database,NULL,"schema-triggers-checksum"), checksum_trigger_structure);
   g_free(query);
   m_close(outfile);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
@@ -388,6 +416,7 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
   }
   g_free(query);
   m_close(outfile);
+
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
   m_close(outfile2);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename2));
@@ -395,32 +424,7 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
   if (result)
     mysql_free_result(result);
 
-  return;
-}
-
-void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename, gchar *fun()) {
-  void *outfile = NULL;
-
-  outfile = g_fopen(filename, "w");
-
-  if (!outfile) {
-    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
-               database, table, filename, errno);
-    errors++;
-    return;
-  }
-  int errn=0;
-  gchar * checksum=fun(conn, database, table, &errn);
-  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
-    errors++;
-    return;
-  }
-  fprintf(outfile, "%s", checksum);
-  fclose(outfile);
-
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  g_free(checksum);
-
+  write_checksum_into_file(conn, database, table, build_meta_filename(database,table,"schema-view-checksum"), checksum_view_structure);
   return;
 }
 
@@ -535,7 +539,6 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       }
       g_string_set_size(statement, 0);
     }
-    g_message("Checksum routing");
     write_checksum_into_file(conn, database->name, NULL, build_meta_filename(database->name,NULL,"schema-post-checksum"), checksum_process_structure);
   }
 

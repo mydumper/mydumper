@@ -49,7 +49,6 @@ char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const
     g_free(query);
     return NULL;
   }
-  g_debug("Query: %s",query);
   g_free(query);
 
   /* There should never be more than one row */
@@ -72,6 +71,18 @@ char * checksum_process_structure(MYSQL *conn, char *database, char *table, int 
   (void) table;
   (void) errn;
   return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 0);
+}
+
+char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(ACTION_STATEMENT) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' order by EVENT_OBJECT_TABLE;",0);
+}
+
+char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",0);
+}
+
+char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
 }
 
 void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group){
