@@ -82,11 +82,6 @@ struct dump_database_job {
   struct database *database;
 };
 
-struct create_database_job {
-  char *database;
-  char *filename;
-};
-
 struct restore_job {
   char *database;
   char *table;

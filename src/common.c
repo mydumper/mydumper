@@ -74,7 +74,7 @@ char * checksum_process_structure(MYSQL *conn, char *database, char *table, int 
 }
 
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(ACTION_STATEMENT) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' order by EVENT_OBJECT_TABLE;",0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(ACTION_STATEMENT) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
 }
 
 char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn){

@@ -55,6 +55,9 @@ gboolean order_by_primary_key = FALSE;
 guint64 max_rows=1000000;
 gboolean ignore_generated_fields = FALSE;
 
+extern gboolean schema_checksums;
+extern gboolean routine_checksums;
+
 static GOptionEntry dump_into_file_entries[] = {
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
      NULL},
@@ -119,7 +122,7 @@ void write_table_metadata_into_file(struct db_table * dbt){
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
 }
 
-void write_schema_definition_into_file(MYSQL *conn, char *database, char *filename) {
+void write_schema_definition_into_file(MYSQL *conn, char *database, char *filename, char *checksum_filename) {
   void *outfile = NULL;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -166,12 +169,14 @@ void write_schema_definition_into_file(MYSQL *conn, char *database, char *filena
   if (result)
     mysql_free_result(result);
 
-  write_checksum_into_file(conn, database, NULL, build_meta_filename(database,NULL,"schema-create-checksum"), checksum_database_defaults);
+
+  if (schema_checksums)
+    write_checksum_into_file(conn, database, NULL, checksum_filename, checksum_database_defaults);
   return;
 }
 
 void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
-                      char *filename) {
+                      char *filename, char *checksum_filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -240,10 +245,12 @@ void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
   if (result)
     mysql_free_result(result);
 
+  if (checksum_filename)
+    write_checksum_into_file(conn, database, table, checksum_filename, checksum_table_structure);  
   return;
 }
 
-void write_triggers_definition_into_file(MYSQL *conn, char *database, char *table, char *filename) {
+void write_triggers_definition_into_file(MYSQL *conn, char *database, char *table, char *filename, char *checksum_filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -302,7 +309,6 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     }
     g_string_set_size(statement, 0);
   }
-  write_checksum_into_file(conn, database, NULL, build_meta_filename(database,NULL,"schema-triggers-checksum"), checksum_trigger_structure);
   g_free(query);
   m_close(outfile);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
@@ -312,11 +318,12 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     mysql_free_result(result);
   if (result2)
     mysql_free_result(result2);
-
+  if (checksum_filename)
+    write_checksum_into_file(conn, database, table, checksum_filename, checksum_trigger_structure);
   return;
 }
 
-void write_view_definition_into_file(MYSQL *conn, char *database, char *table, char *filename, char *filename2) {
+void write_view_definition_into_file(MYSQL *conn, char *database, char *table, char *filename, char *filename2, char *checksum_filename) {
   void *outfile, *outfile2;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -424,13 +431,15 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
   if (result)
     mysql_free_result(result);
 
-  write_checksum_into_file(conn, database, table, build_meta_filename(database,table,"schema-view-checksum"), checksum_view_structure);
+  if (checksum_filename)
+    // build_meta_filename(database,table,"schema-view-checksum"),
+    write_checksum_into_file(conn, database, table, checksum_filename, checksum_view_structure);
   return;
 }
 
 // Routines, Functions and Events
 // TODO: We need to split it in 3 functions 
-void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename) {
+void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename, char *checksum_filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -539,7 +548,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       }
       g_string_set_size(statement, 0);
     }
-    write_checksum_into_file(conn, database->name, NULL, build_meta_filename(database->name,NULL,"schema-post-checksum"), checksum_process_structure);
+    if (checksum_filename)
+      write_checksum_into_file(conn, database->name, NULL, checksum_filename, checksum_process_structure);
   }
 
   // get events
@@ -641,7 +651,7 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
   struct create_database_job * cdj = (struct create_database_job *)job->job_data;
   g_message("Thread %d dumping schema create for `%s`", td->thread_id,
             cdj->database);
-  write_schema_definition_into_file(td->thrconn, cdj->database, cdj->filename);
+  write_schema_definition_into_file(td->thrconn, cdj->database, cdj->filename, cdj->checksum_filename);
   free_create_database_job(cdj);
   g_free(job);
 }
@@ -650,7 +660,7 @@ void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
   struct schema_post_job * sp = (struct schema_post_job *)job->job_data;
   g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
             sp->database->name);
-  write_routines_definition_into_file(td->thrconn, sp->database, sp->filename);
+  write_routines_definition_into_file(td->thrconn, sp->database, sp->filename, sp->checksum_filename);
   free_schema_post_job(sp);
   g_free(job);
 }
@@ -660,7 +670,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
   g_message("Thread %d dumping view for `%s`.`%s`", td->thread_id,
             vj->database, vj->table);
   write_view_definition_into_file(td->thrconn, vj->database, vj->table, vj->filename,
-                 vj->filename2);
+                 vj->filename2, vj->checksum_filename);
   free_view_job(vj);
   g_free(job);
 }
@@ -669,7 +679,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *sj = (struct schema_job *)job->job_data;
   g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
-  write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename);
+  write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename);
   free_schema_job(sj);
   g_free(job);
 }
@@ -678,7 +688,7 @@ void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   struct schema_job * sj = (struct schema_job *)job->job_data;
   g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
-  write_triggers_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename);
+  write_triggers_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename);
   free_schema_job(sj);
   g_free(job);
 }
@@ -691,7 +701,6 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
   }
-  write_checksum_into_file(td->thrconn, tcj->database, tcj->table, tcj->schema_filename, checksum_table_structure);
   write_checksum_into_file(td->thrconn, tcj->database, tcj->table, tcj->filename, checksum_table);
   if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
@@ -711,6 +720,8 @@ void create_job_to_dump_schema(char *database, struct configuration *conf) {
   j->conf = conf;
   j->type = JOB_CREATE_DATABASE;
   cdj->filename = build_schema_filename(d, "schema-create");
+  if (schema_checksums)
+    cdj->checksum_filename = build_meta_filename(database,NULL,"schema-create-checksum"); 
   g_async_queue_push(conf->queue, j);
   return;
 }
@@ -736,6 +747,8 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
         t->conf = conf;
         t->type = JOB_TRIGGERS;
         st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
+        if ( routine_checksums )
+          st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
         g_async_queue_push(conf->queue, t);
       }
     }
@@ -756,6 +769,8 @@ void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration 
   j->conf = conf;
   j->type = JOB_SCHEMA;
   sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
+  if ( schema_checksums )
+    sj->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-checksum");
   g_async_queue_push(queue, j);
 }
 
@@ -769,6 +784,8 @@ void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
   j->type = JOB_VIEW;
   vj->filename  = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
   vj->filename2 = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-view");
+  if ( schema_checksums )
+    vj->checksum_filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "schema-view-checksum");
   g_async_queue_push(conf->queue, j);
   return;
 }
@@ -781,6 +798,8 @@ void create_job_to_dump_post(struct database *database, struct configuration *co
   j->conf = conf;
   j->type = JOB_SCHEMA_POST;
   sp->filename = build_schema_filename(sp->database->filename,"schema-post");
+  if ( routine_checksums )
+    sp->checksum_filename = build_meta_filename(sp->database->filename, NULL, "schema-post-checksum");
   g_async_queue_push(conf->queue, j);
   return;
 }
@@ -794,7 +813,6 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   tcj->filename = build_meta_filename(dbt->database->filename, dbt->table_filename,"checksum");
-  tcj->schema_filename = build_meta_filename(dbt->database->filename, dbt->table_filename,"schema-checksum");
   g_async_queue_push(conf->queue, j);
   return;
 }
