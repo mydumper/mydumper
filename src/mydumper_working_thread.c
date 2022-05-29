@@ -146,6 +146,9 @@ gchar *where_option=NULL;
 extern GHashTable *all_anonymized_function;
 
 gboolean dump_checksums = FALSE;
+gboolean data_checksums = FALSE;
+gboolean schema_checksums = FALSE;
+gboolean routine_checksums = FALSE;
 
 // For daemon mode
 extern guint dump_number;
@@ -165,8 +168,14 @@ static GOptionEntry working_thread_entries[] = {
      "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
-    {"table-checksums", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
+    {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
+     "Dump checksums for all elements", NULL},
+    {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
      "Dump table checksums with the data", NULL},
+    {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
+     "Dump schema table and view creation checksums", NULL},
+    {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
+     "Dump triggers, functions and routines checksums", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
      "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
      "when a server has data in different time zones or data is being moved "
@@ -347,6 +356,12 @@ void initialize_working_thread(){
     compress_extension = g_strdup(".gz");
 #endif
   }
+  if (dump_checksums){
+    data_checksums = TRUE;
+    schema_checksums = TRUE;
+    routine_checksums = TRUE;
+  }
+
 }
 
 
@@ -763,7 +778,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-        if (dump_checksums) {
+        if (data_checksums) {
           create_job_to_dump_checksum(dbt, conf);
         }
         if (trx_consistency_only ||
