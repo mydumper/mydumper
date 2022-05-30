@@ -24,7 +24,7 @@ jobs:
     steps:
     - checkout
     - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget
+    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
     - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
     - run: sudo dpkg -i percona-release_latest.focal_all.deb
     - run: sudo percona-release setup -y ps80
@@ -32,7 +32,6 @@ jobs:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    - run: mysql  -h 127.0.0.1 -u root -e  "select 1" 
     
 
 workflows:
