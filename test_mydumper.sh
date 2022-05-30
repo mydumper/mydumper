@@ -92,13 +92,13 @@ full_test(){
 
   echo "Import testing database"
   DATABASE=myd_test
-  mysql --no-defaults -f -u root < mydumper_testing_db.sql
+  mysql --no-defaults -f -h 127.0.0.1 -u root < mydumper_testing_db.sql
 
 
   # export -- import
   # 1000 rows -- database must not exist
 
-  general_options="-u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
+  general_options="-h 127.0.0.1 -u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
 
 
 
