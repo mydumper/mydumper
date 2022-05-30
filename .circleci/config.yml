@@ -5,6 +5,17 @@ executors:
   base:
     docker:
     - image: cimg/base:stable-20.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
 
 jobs:
   build:
@@ -13,10 +24,15 @@ jobs:
     steps:
     - checkout
     - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libmysqlclient-dev
+    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
+    - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
+    - run: sudo dpkg -i percona-release_latest.focal_all.deb
+    - run: sudo percona-release setup -y ps80
+    - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
     - run: cmake .
     - run: make
     - run: ./mydumper --version
+    - run: bash ./test_mydumper.sh
 
 workflows:
   version: 2
