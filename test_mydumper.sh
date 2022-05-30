@@ -35,6 +35,7 @@ test_case_dir (){
     if (( $error > 0 ))
     then
       echo "Error running: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      cat $mydumper_log
       exit $error
     fi
   fi
@@ -49,6 +50,7 @@ test_case_dir (){
     if (( $error > 0 ))
     then
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters}"
+      cat $myloader_log
       exit $error
     fi
   fi
@@ -78,6 +80,8 @@ test_case_stream (){
     then
       echo "Error running: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+      cat $mydumper_log
+      cat $myloader_log
       exit $error
     fi
   fi
