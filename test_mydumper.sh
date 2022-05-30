@@ -29,12 +29,12 @@ test_case_dir (){
     mkdir -p ${mydumper_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters}"
-    eval $mydumper --defaults-file="$empty" -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+    eval $mydumper --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --defaults-file="$empty" -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       exit $error
     fi
   fi
@@ -43,12 +43,12 @@ test_case_dir (){
     # Import
     echo "Importing database: ${myloader_parameters}"
 
-    eval $myloader --defaults-file="$empty" -v 4 -L $tmp_myloader_log ${myloader_parameters}
+    eval $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      echo "Error running: $myloader --defaults-file="$empty" -v 4 -L $myloader_log ${myloader_parameters}"
+      echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters}"
       exit $error
     fi
   fi
@@ -70,14 +70,14 @@ test_case_stream (){
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters} | ${myloader_parameters}"
-    $mydumper --stream --defaults-file="$empty" -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --stream --defaults-file="$empty" -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader --defaults-file="$empty" -v 4 -L $myloader_log ${myloader_parameters} --stream"
+      echo "Error running: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       exit $error
     fi
   fi
@@ -88,13 +88,13 @@ full_test(){
 
   echo "Import testing database"
   DATABASE=myd_test
-  mysql --no-defaults -f  < mydumper_testing_db.sql
+  mysql --no-defaults -f -u root < mydumper_testing_db.sql
 
 
   # export -- import
   # 1000 rows -- database must not exist
 
-  general_options="-R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
+  general_options="-u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
 
 
 
