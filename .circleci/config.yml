@@ -22,6 +22,7 @@ jobs:
     - run: make
     - run: ./mydumper --version
     - run: sudo apt-get install -y percona-server-server
+    - run: echo "select 1" | mysql
     - run: sudo service mysql stop
     - run: sudo rm -rf /var/lib/mysql/*
     - run: sudo mysqld -u mysql --initialize-insecure
