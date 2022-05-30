@@ -24,7 +24,7 @@ jobs:
     - run: sudo apt-get install -y percona-server-server
     - run: sudo service mysql start
     - run: sudo cat /var/log/mysql/error.log
-    - run: echo "select 1" | mysql -u root -p'password'
+    - run: echo "select 1" | mysql -u root -p''
     - run: sudo service mysql stop
     - run: sudo rm -rf /var/lib/mysql/*
     - run: sudo mysqld -u mysql --initialize-insecure 2>&1
