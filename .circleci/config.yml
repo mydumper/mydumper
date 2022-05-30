@@ -5,6 +5,17 @@ executors:
   base:
     docker:
     - image: cimg/base:stable-20.04
+        environment:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_DB: mate
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_PASSWORD:
+      - image: percona:8
+        command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_bin --innodb-large-prefix=true --innodb-file-format=Barracuda
+        environment:
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
 
 jobs:
   build:
@@ -21,13 +32,7 @@ jobs:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    - run: sudo apt-get install -y percona-server-server
-    - run: sudo service mysql start
-    - run: sudo cat /var/log/mysql/error.log
-    - run: echo "select 1" | mysql -u root -p''
-    - run: sudo service mysql stop
-    - run: sudo rm -rf /var/lib/mysql/*
-    - run: sudo mysqld -u mysql --initialize-insecure 2>&1
+    - run: mysql  -h 127.0.0.1 -u root -e  "select 1" 
     
 
 workflows:
