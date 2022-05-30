@@ -13,7 +13,12 @@ jobs:
     steps:
     - checkout
     - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libmysqlclient-dev
+    
+    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
+    - run: https://repo.percona.com/apt/percona-release_latest.focal_all.deb
+    - run: dpkg -i percona-release_latest.focal_all.deb
+    - run: percona-release setup -y ps80
+    - run: sudo apt-get install -y libperconaserverclient21 percona-server-server libperconaserverclient21-dev
     - run: cmake .
     - run: make
     - run: ./mydumper --version
