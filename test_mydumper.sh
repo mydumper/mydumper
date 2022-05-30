@@ -128,3 +128,6 @@ full_test(){
 }
 
 full_test
+cat $mydumper_log
+cat $myloader_log
+
