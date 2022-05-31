@@ -92,7 +92,7 @@ gchar *statement_terminated_by_ld=NULL;
 gchar *fields_terminated_by_ld=NULL;
 guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
-
+const gchar *insert_statement=INSERT;
 extern gboolean dump_triggers;
 extern gboolean stream;
 extern int detected_server;
@@ -125,6 +125,7 @@ gboolean no_dump_views = FALSE;
 extern gboolean less_locking;
 gboolean success_on_1146 = FALSE;
 gboolean insert_ignore = FALSE;
+gboolean replace = FALSE;
 
 extern GList *innodb_tables;
 GMutex *innodb_tables_mutex = NULL;
@@ -189,6 +190,8 @@ static GOptionEntry working_thread_entries[] = {
      "Snapshot to use for TiDB", NULL},
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
      "Dump rows with INSERT IGNORE", NULL},
+    {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
+     "Dump rows with REPLACE", NULL},
     {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
@@ -362,6 +365,16 @@ void initialize_working_thread(){
     routine_checksums = TRUE;
   }
 
+  if ( insert_ignore && replace ){
+    g_critical("You can't use --insert-ignore and --replace at the same time");
+    exit(EXIT_FAILURE);
+  }
+
+  if (insert_ignore)
+    insert_statement=INSERT_IGNORE;
+
+  if (replace)
+    insert_statement=REPLACE;
 }
 
 
@@ -1052,19 +1065,11 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
 void append_insert (gboolean condition, GString *statement, char *table, MYSQL_FIELD *fields, guint num_fields){
   if (condition) {
-    if (insert_ignore) {
-      g_string_printf(statement, "INSERT IGNORE INTO `%s` (", table);
-    } else {
-      g_string_printf(statement, "INSERT INTO `%s` (", table);
-    }
+    g_string_printf(statement, "%s INTO `%s` (", insert_statement, table);
     append_columns(statement,fields,num_fields);
     g_string_append(statement, ") VALUES");
   } else {
-    if (insert_ignore) {
-      g_string_printf(statement, "INSERT IGNORE INTO `%s` VALUES", table);
-    } else {
-      g_string_printf(statement, "INSERT INTO `%s` VALUES", table);
-    }
+    g_string_printf(statement, "%s INTO `%s` VALUES", insert_statement, table);
   }
 }
 
