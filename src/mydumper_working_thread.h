@@ -19,6 +19,10 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#define INSERT_IGNORE "INSERT IGNORE"
+#define INSERT "INSERT"
+#define REPLACE "REPLACE"
+
 typedef gchar * (*fun_ptr2)(gchar **);
 
 
