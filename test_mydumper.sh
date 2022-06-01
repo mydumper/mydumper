@@ -105,7 +105,6 @@ full_test(){
   # single file compressed -- overriting database
   test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
 
-
   for test in test_case_dir test_case_stream
   do
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
@@ -117,14 +116,22 @@ full_test(){
     $test -F 100 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # statement size to 2MB -- overriting database
     $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
-    # exporting specific database -- overriting database
-    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
-    # exporting specific table -- overriting database
-    $test -B myd_test -T myd_test.mydumper_aipk_uuid ${general_options}	-- -h 127.0.0.1 -o -d ${myloader_stor_dir}
     # compress and rows
     $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     myloader_stor_dir=$stream_stor_dir
   done
+  myloader_stor_dir=$mydumper_stor_dir
+  for test in test_case_dir test_case_stream
+    # exporting specific database -- overriting database
+    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
+    # exporting specific table -- overriting database
+    $test -B myd_test -T myd_test.mydumper_aipk_uuid ${general_options}	-- -h 127.0.0.1 -o -d ${myloader_stor_dir}
+    # exporting specific database -- overriting database
+    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -B myd_test_2 -d ${myloader_stor_dir}
+    myloader_stor_dir=$stream_stor_dir
+  done
+
+
 }
 
 full_test
