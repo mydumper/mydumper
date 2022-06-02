@@ -68,6 +68,8 @@
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_pmm_thread.h"
+#include "mydumper_exec_command.h"
+
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -140,10 +142,13 @@ extern GAsyncQueue *start_scheduled_dump;
 
 extern guint errors;
 
+gchar *exec_command=NULL;
 
 static GOptionEntry start_dump_entries[] = {
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
+    {"exec", 0, 0, G_OPTION_ARG_STRING, &exec_command,
+      "Command to execute using the file as parameter", NULL},
     {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
      "Retry checking for long queries, default 0 (do not retry)", NULL},
     {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
@@ -220,6 +225,11 @@ void initialize_start_dump(){
   }else if (pmm_resolution){
     pmm=TRUE;
     pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
+  }
+
+  if (stream && exec_command != NULL){
+    g_critical("Stream and execute a command is not supported");
+    exit(EXIT_FAILURE);
   }
 }
 
@@ -1065,8 +1075,15 @@ void start_dump() {
     write_snapshot_info(conn, mdfile);
   }
 
+
   if (stream){
     initialize_stream();
+  }
+
+  if (exec_command != NULL){
+    initialize_exec_command();
+    stream=TRUE;
+  
   }
 
   GThread **threads = g_new(GThread *, num_threads * (less_locking + 1));
@@ -1289,11 +1306,15 @@ void start_dump() {
 
   if (stream) {
     g_async_queue_push(stream_queue, g_strdup(""));
-		wait_stream_to_finish();
+    if (exec_command!=NULL){
+      wait_exec_command_to_finish();
+    }else
+      wait_stream_to_finish();
     if (no_delete == FALSE && output_directory_param == NULL)
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);
   }
+
   g_free(td);
   g_free(threads);
   if (disk_check_thread!=NULL){
