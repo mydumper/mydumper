@@ -372,7 +372,7 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    db_hash_insert(db, db);
+    db_hash_insert(g_strdup(db), g_strdup(db));
     create_database(&t, db);
   }
 
