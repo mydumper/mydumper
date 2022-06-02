@@ -122,6 +122,7 @@ full_test(){
   done
   myloader_stor_dir=$mydumper_stor_dir
   for test in test_case_dir test_case_stream
+  do
     # exporting specific database -- overriting database
     $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
     # exporting specific table -- overriting database
