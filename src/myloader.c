@@ -79,7 +79,7 @@ gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
-gboolean append_if_not_exist=fALSE;
+gboolean append_if_not_exist=FALSE;
 //unsigned long long int total_data_sql_files = 0;
 //unsigned long long int progress = 0;
 //GHashTable *db_hash=NULL;
@@ -117,8 +117,8 @@ static GOptionEntry entries[] = {
      "Number of queries per transaction, default 1000", NULL},
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
-    {"append-if-not-exist", 0, 0, ,&append_if_not_exist,
-      "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL}
+    {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
+      "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
