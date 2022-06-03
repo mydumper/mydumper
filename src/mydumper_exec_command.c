@@ -27,6 +27,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include "common.h"
+#include <sys/wait.h>
 
 extern FILE * (*m_open)(const char *filename, const char *);
 extern gchar *compress_extension;
@@ -57,8 +58,10 @@ void *process_exec_command(void *data){
       if (g_strcmp0(c_arg[i],"FILENAME") == 0)
         c_arg[i]=filename;
     }
-    if(!vfork())
+    int childpid=vfork();
+    if(!childpid)
       i=execv(bin,c_arg);
+    wait(&childpid);
     free(used_filemame);
     if (no_delete == FALSE)
       remove(filename);
