@@ -1005,7 +1005,7 @@ void start_dump() {
       } else {
         g_message("Sending Flush Table");
         if (mysql_query(conn, "FLUSH TABLES")) {
-          g_warning("Flush tables failed, we are continuing anyways",
+          g_warning("Flush tables failed, we are continuing anyways: %s",
                    mysql_error(conn));
         }
         g_message("Acquiring FTWRL");
