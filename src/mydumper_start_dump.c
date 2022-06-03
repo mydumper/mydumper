@@ -1003,6 +1003,11 @@ void start_dump() {
   		if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
+        g_message("Sending Flush Table");
+        if (mysql_query(conn, "FLUSH TABLES")) {
+          g_warning("Flush tables failed, we are continuing anyways",
+                   mysql_error(conn));
+        }
         g_message("Acquiring FTWRL");
         if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
           g_critical("Couldn't acquire global lock, snapshots will not be "
