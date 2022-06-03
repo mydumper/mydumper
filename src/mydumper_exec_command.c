@@ -42,7 +42,6 @@ void *process_exec_command(void *data){
   guint len = strlen(exec_command) - strlen(space);
   char * filename=NULL;
   char * bin=g_strndup(exec_command,len);
-  space++;
   gchar ** arguments=g_strsplit(space," ", 0);
   gchar ** c_arg=NULL;
   guint i=0;
