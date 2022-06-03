@@ -43,6 +43,7 @@ extern guint total_data_sql_files;
 extern gboolean no_delete;
 extern GHashTable *tbl_hash;
 extern gboolean innodb_optimize_keys;
+extern gboolean append_if_not_exist;
 
 struct configuration *conf;
 GMutex *table_hash_mutex=NULL;
@@ -102,7 +103,8 @@ void free_dbt(struct db_table * dbt){
   g_free(dbt->database);
   g_free(dbt->real_database);
   g_free(dbt->table);
-  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
+//  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
+  dbt->constraints = NULL; // It should be free after constraint is executed
   g_async_queue_unref(dbt->queue);
   g_mutex_clear(dbt->mutex); 
 }
@@ -147,7 +149,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if (g_strrstr(data->str,"CREATE ")){
+        if (g_strstr_len(data->str,13,"CREATE TABLE ")){
           gchar** create_table= g_strsplit(data->str, "`", 3);
           dbt->real_table=g_strdup(create_table[1]);
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
@@ -156,7 +158,17 @@ void load_schema(struct db_table *dbt, gchar *filename){
             g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
           }
           g_strfreev(create_table);
+          if (append_if_not_exist){
+            if ((g_strstr_len(data->str,13,"CREATE TABLE ")) && !(g_strstr_len(data->str,15,"CREATE TABLE IF"))){
+              GString *tmp_data=g_string_sized_new(data->len);
+              g_string_append(tmp_data, "CREATE TABLE IF NOT EXISTS ");
+              g_string_append(tmp_data, &(data->str[13]));
+              g_string_free(data,TRUE);
+              data=tmp_data;
+            }
+          }
         }
+
         if (innodb_optimize_keys){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
@@ -183,7 +195,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
               }
               if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
+                struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
@@ -394,7 +406,6 @@ void process_schema_filename(gchar *filename, const char * object) {
       return;
     }
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
-    g_message("DB %s: %s for: %s",object, real_db_name,filename);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 

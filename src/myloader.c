@@ -65,6 +65,8 @@ gchar *directory = NULL;
 gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean innodb_optimize_keys = FALSE;
+gboolean innodb_optimize_keys_per_table = FALSE;
+gboolean innodb_optimize_keys_all_tables = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 gboolean skip_triggers = FALSE;
@@ -77,6 +79,7 @@ gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
+gboolean append_if_not_exist=FALSE;
 //unsigned long long int total_data_sql_files = 0;
 //unsigned long long int progress = 0;
 //GHashTable *db_hash=NULL;
@@ -88,6 +91,24 @@ const char DIRECTORY[] = "import";
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
+    innodb_optimize_keys = TRUE;
+    if (g_strstr_len(value,22,"AFTER_IMPORT_PER_TABLE")){
+      innodb_optimize_keys_per_table = TRUE;
+      innodb_optimize_keys_all_tables = FALSE;
+      return TRUE;
+    }
+    if (g_strstr_len(value,23,"AFTER_IMPORT_ALL_TABLES")){
+      innodb_optimize_keys_all_tables = TRUE;
+      innodb_optimize_keys_per_table = FALSE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
@@ -96,13 +117,15 @@ static GOptionEntry entries[] = {
      "Number of queries per transaction, default 1000", NULL},
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
+    {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
+      "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
      "Database to restore", NULL},
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
-    {"innodb-optimize-keys", 0, 0, G_OPTION_ARG_NONE, &innodb_optimize_keys,
+    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes and it adds them at the end", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
       "Sets the names, use it at your own risk, default binary", NULL },
@@ -352,7 +375,7 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    db_hash_insert(db, db);
+    db_hash_insert(g_strdup(db), g_strdup(db));
     create_database(&t, db);
   }
 

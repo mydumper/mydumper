@@ -23,6 +23,13 @@ struct schema_job {
   char *database;
   char *table;
   char *filename;
+  char *checksum_filename;
+};
+
+struct create_database_job {
+  char *database;
+  char *filename;
+  char *checksum_filename;
 };
 
 struct view_job {
@@ -30,13 +37,21 @@ struct view_job {
   char *table;
   char *filename;
   char *filename2;
+  char *checksum_filename;
 };
 
 struct schema_post_job {
   struct database *database;
   char *filename;
+  char *checksum_filename;
 };
 
+struct table_checksum_job {
+  char *database;
+  char *table;
+  char *filename;
+//  char *schema_filename;
+};
 
 void initialize_dump_into_file();
 void load_dump_into_file_entries(GOptionGroup *main_group);

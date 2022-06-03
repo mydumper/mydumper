@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a report to help us improve
 title: "[BUG]"
-labels: ''
+labels: 'bug'
 assignees: ''
 
 ---
@@ -25,6 +25,9 @@ If applicable, add the --verbose 3 / -v 3 and --logfile / -L <filename> to the e
 
 **Backup**
 If applicable, add the list of content of the database path, an `ls -l` will be enough
+
+**How to repeat**
+If applicable, add the minimal table structure and data that we need to reproduce the issue.
 
 **Environment (please complete the following information):**
  - OS version: [e.g. CentOS 7.9, Ubuntu 20.04]

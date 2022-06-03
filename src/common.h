@@ -20,8 +20,12 @@
 
 #define STREAM_BUFFER_SIZE 1000000
 
-
+char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
+char * checksum_process_structure(MYSQL *conn, char *database);
+char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn);
+char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn);
+char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);

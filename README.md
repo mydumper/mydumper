@@ -86,7 +86,7 @@ apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
 ```
 * Fedora, RedHat and CentOS: 
 ```shell
-yum install -y glib2-devel mysql-devel openssl-devel pcre-devel zlib-devel libzstd-devel
+yum install -y glib2-devel openssl-devel pcre-devel zlib-devel libzstd-devel
 ```
 * openSUSE: 
 ```shell
