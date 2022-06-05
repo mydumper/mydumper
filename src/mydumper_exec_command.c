@@ -44,7 +44,7 @@ void *process_exec_command(void *data){
   char * filename=NULL;
   char * bin=g_strndup(exec_command,len);
   gchar ** arguments=g_strsplit(space," ", 0);
-  gchar ** c_arg=NULL;
+  gchar ** volatile c_arg=NULL;
   guint i=0;
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
