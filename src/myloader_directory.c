@@ -36,6 +36,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 
+extern guint total_data_sql_files;
 extern guint num_threads;
 extern gboolean innodb_optimize_keys;
 extern gboolean innodb_optimize_keys_per_table;
@@ -46,6 +47,13 @@ extern gboolean skip_post;
 extern gchar *source_db;
 extern gboolean skip_triggers;
 extern gboolean no_data;
+
+GAsyncQueue *data_filename_queue;
+GAsyncQueue *data_filename_queue_completed;
+void initialize_directory(){
+  data_filename_queue = g_async_queue_new();
+  data_filename_queue_completed = g_async_queue_new();
+}
 
 gint compare_by_time(gconstpointer a, gconstpointer b){
   return
@@ -147,6 +155,9 @@ gboolean append_filename_to_list (
   return TRUE;
 }
 
+gint compare_filename_part (gconstpointer a, gconstpointer b){
+    return ((struct restore_job *)a)->data.drj->part == ((struct restore_job *)b)->data.drj->part ? ((struct restore_job *)a)->data.drj->sub_part > ((struct restore_job *)b)->data.drj->sub_part : ((struct restore_job *)a)->data.drj->part > ((struct restore_job *)b)->data.drj->part ;
+}
 
 void load_directory_information(struct configuration *conf) {
   GError *error = NULL;
@@ -173,13 +184,14 @@ void load_directory_information(struct configuration *conf) {
   g_dir_close(dir);
 
   gchar *f = NULL;
+  g_debug("Processing database files");
   // CREATE DATABASE
   while (schema_create_list){
     f = schema_create_list->data;
     process_database_filename(f, "create database");
     schema_create_list=schema_create_list->next;
   }
-
+  g_debug("Processing table schema files");
   // CREATE TABLE
   conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while (create_table_list != NULL){
@@ -187,39 +199,75 @@ void load_directory_information(struct configuration *conf) {
     process_table_filename(f);
     create_table_list=create_table_list->next;
   }
-
+  g_debug("Processing table data files");
   // DATA FILES
   while (data_files_list != NULL){
-    f = data_files_list->data;
-    process_data_filename(f);
-
+    g_async_queue_push(data_filename_queue, data_files_list->data);
+//    f = data_files_list->data;
+//    process_data_filename(f);
     data_files_list=data_files_list->next;
   }
+  guint j;
+  for(j=0;j< num_threads; j++){
+    g_async_queue_push(data_filename_queue, g_strdup("END") );
+  }
+  for(j=0;j< num_threads; j++){
+    g_async_queue_pop(data_filename_queue_completed);
+  }  
+  g_debug("Sorting data files");
+  // SORT DATA FILES TO ENQUEUE
+  // iterates over the dbt to create the jobs in the dbt->queue
+  // and sorts the dbt for the conf->table_list
+  // in stream mode, it is not possible to sort the tables as
+  // we don't know the amount the rows, .metadata are sent at the end.
+  GList * table_list=NULL;
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, conf->table_hash );
+  struct db_table *dbt=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
+    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
+    dbt->restore_job_list=g_list_sort(dbt->restore_job_list,&compare_filename_part);
+    GList *i=dbt->restore_job_list;
+    while (i) {
+      g_async_queue_push(dbt->queue, new_job(JOB_RESTORE ,i->data,dbt->real_database));
+      i=i->next;
+    }
+    dbt->count=g_list_length(dbt->restore_job_list);
+    total_data_sql_files+=dbt->count;
+//    g_debug("Setting count to: %d", dbt->count);
+  }
+  conf->table_list=table_list;
+  // conf->table needs to be set.
 
+  g_debug("Processing table metadata files");
   // METADATA FILES
   while (metadata_list != NULL){
     f = metadata_list->data;
     process_metadata_filename(conf->table_hash,f);
     metadata_list=metadata_list->next;
   }
-
+  g_debug("Processing view files");
   while (view_list != NULL){
     f = view_list->data;
     process_schema_filename(f,"view");
     view_list=view_list->next;
   }
-
+  g_debug("Processing trigger files");
   while (trigger_list != NULL){
     f = trigger_list->data;
     process_schema_filename(f, "trigger");
     trigger_list=trigger_list->next;
   }
-
+  g_debug("Processing post files");
   while (post_list != NULL){
     f = post_list->data;
     process_schema_filename(f,"post");
     post_list=post_list->next;
   }
+
+/*
+  g_debug("Sorting data files");
   // SORT DATA FILES TO ENQUEUE
   // iterates over the dbt to create the jobs in the dbt->queue
   // and sorts the dbt for the conf->table_list
@@ -242,6 +290,8 @@ void load_directory_information(struct configuration *conf) {
   }
   conf->table_list=table_list;
   // conf->table needs to be set.
+*/
+  g_debug("Loading file completed");
 }
 
 void *process_directory_queue(struct thread_data * td) {
@@ -249,7 +299,16 @@ void *process_directory_queue(struct thread_data * td) {
   struct control_job *job = NULL;
   gboolean cont=TRUE;
 
+  // Step 0: Load data jobs
+  // DATA FILES
+  gchar * f= (gchar *)g_async_queue_pop(data_filename_queue);
+  while (g_strcmp0(f,"END") != 0){
+    process_data_filename(f);
+    f = (gchar *)g_async_queue_pop(data_filename_queue);
+  }
+  g_async_queue_push(data_filename_queue_completed, GINT_TO_POINTER(1) );
   // Step 1: creating databases
+  cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(td->conf->database_queue);
     cont=process_job(td, job);
