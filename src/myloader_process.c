@@ -422,7 +422,6 @@ void process_data_filename(char * filename){
   gchar *db_name, *table_name;
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
-  g_debug("process_data_filename: %s", filename);
   guint part=0,sub_part=0;
   get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part,&sub_part);
   if (db_name == NULL || table_name == NULL){
