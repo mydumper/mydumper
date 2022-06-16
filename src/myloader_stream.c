@@ -103,7 +103,7 @@ enum file_type process_filename(char *filename){
         break;
       case METADATA_TABLE:
         stream_conf->metadata_list=g_list_insert(stream_conf->metadata_list,filename,-1);
-        process_metadata_filename(stream_conf->table_hash,filename);
+        process_metadata_filename(filename);
         g_mutex_lock(table_list_mutex);
         refresh_table_list(stream_conf);
         g_mutex_unlock(table_list_mutex);

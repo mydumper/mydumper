@@ -96,6 +96,11 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
   (void) data;
   if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
     innodb_optimize_keys = TRUE;
+    if (value==NULL){
+      innodb_optimize_keys_per_table = TRUE;
+      innodb_optimize_keys_all_tables = FALSE;
+      return TRUE;
+    }
     if (g_strstr_len(value,22,"AFTER_IMPORT_PER_TABLE")){
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
