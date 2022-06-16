@@ -324,7 +324,6 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
               if (file){
                 m_close(file);
                 g_async_queue_push(intermidiate_queue, previous_filename);
-                g_debug("File enqueued: %s",previous_filename);
               }
               file = g_fopen(real_filename, "w");
               m_write=(void *)&write_file;
@@ -337,7 +336,6 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
           if (pos == buffer_len){
 
             diff=buffer_len-line_from;
-            g_message("Not new line in %s %d:%s",filename,diff,&(buffer[line_from]));
             g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
             goto read_more;
           }
@@ -345,10 +343,6 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         flush(buffer,line_from,line_end,file);
         next_line_from=last_pos;
       }
-/*      if (buffer[pos] != '\0')
-        flush(buffer,from_pos,pos-2,file);
-      else
-        flush(buffer,from_pos,pos-1,file);*/
     }
   } while (eof == FALSE);
   if (file) 
