@@ -828,7 +828,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     // SP
     query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -851,7 +851,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       // FUNCTIONS
       query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
       if (mysql_query(conn, (query))) {
-        g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+        g_critical("Error showing function on: %s - Could not execute query: %s", database->name,
                    mysql_error(conn));
         errors++;
         g_free(query);
@@ -876,7 +876,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     // EVENTS
     query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing events on: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -912,7 +912,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
                         database->escaped);
 
   if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
     g_free(query);
