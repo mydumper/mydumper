@@ -32,7 +32,7 @@
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
-
+extern gchar *where_option;
 extern gboolean success_on_1146;
 extern int detected_server;
 extern FILE * (*m_open)(const char *filename, const char *);
@@ -1003,11 +1003,11 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
 
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
+                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` %s %s",
                         (detected_server == SERVER_TYPE_MYSQL)
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
-                        field, field, database, table));
+                        field, field, database, table, where_option ? "WHERE" : "", where_option ? where_option : ""));
   g_free(query);
   minmax = mysql_store_result(conn);
 
