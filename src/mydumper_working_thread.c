@@ -150,7 +150,7 @@ gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
-
+gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
 extern guint dump_number;
 extern gboolean shutdown_triggered;
@@ -192,6 +192,8 @@ static GOptionEntry working_thread_entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
      "Dump rows with REPLACE", NULL},
+    {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
+      "Exits if a broken table has been found", NULL},
     {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
@@ -948,6 +950,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!is_view && row[ecol] == NULL) {
       g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
+      if (exit_if_broken_table_found)
+        exit(EXIT_FAILURE);
       dump = 0;
     }
 
