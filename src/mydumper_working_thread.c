@@ -150,7 +150,7 @@ gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
-
+gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
 extern guint dump_number;
 extern gboolean shutdown_triggered;
@@ -192,6 +192,8 @@ static GOptionEntry working_thread_entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
      "Dump rows with REPLACE", NULL},
+    {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
+      "Exits if a broken table has been found", NULL},
     {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
@@ -829,7 +831,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     // SP
     query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -852,7 +854,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       // FUNCTIONS
       query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
       if (mysql_query(conn, (query))) {
-        g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+        g_critical("Error showing function on: %s - Could not execute query: %s", database->name,
                    mysql_error(conn));
         errors++;
         g_free(query);
@@ -877,7 +879,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     // EVENTS
     query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing events on: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));
       errors++;
       g_free(query);
@@ -913,7 +915,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
                         database->escaped);
 
   if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", database->name,
+      g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
     g_free(query);
@@ -949,6 +951,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!is_view && row[ecol] == NULL) {
       g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
+      if (exit_if_broken_table_found)
+        exit(EXIT_FAILURE);
       dump = 0;
     }
 
