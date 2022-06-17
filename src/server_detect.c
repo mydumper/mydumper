@@ -85,3 +85,43 @@ int detect_server(MYSQL *conn) {
 
   return SERVER_TYPE_UNKNOWN;
 }
+
+int product=0;
+int major=0;
+int secondary=0;
+int revision=0;
+
+void detect_server_version(MYSQL * conn) {
+  mysql_query(conn, "SELECT @@version_comment, @@version");
+  MYSQL_RES *res = mysql_store_result(conn);
+  MYSQL_ROW ver;
+  ver = mysql_fetch_row(res);
+  
+  if (g_str_has_prefix(ver[0], "Percona")){
+    product = SERVER_TYPE_PERCONA;
+  }else
+  if (g_str_has_prefix(ver[0], "MySQL")){
+    product = SERVER_TYPE_MYSQL;    
+  }else 
+  if (g_str_has_prefix(ver[0], "mariadb")){
+    product = SERVER_TYPE_MARIADB;
+  }
+  gchar ** sver=g_strsplit(ver[1],".",3);
+  major=strtol(sver[0], NULL, 10);
+  secondary=strtol(sver[1], NULL, 10);
+  revision=strtol(sver[2], NULL, 10);
+  mysql_free_result(res);
+}
+
+int get_product(){
+  return product;
+}
+int get_major(){
+    return major;
+}
+int get_secondary(){
+      return secondary;
+}
+int get_revision(){
+      return revision;
+}

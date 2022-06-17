@@ -612,6 +612,9 @@ void *working_thread(struct thread_data *td) {
     case JOB_CREATE_DATABASE:
       do_JOB_CREATE_DATABASE(td,job);
       break;
+    case JOB_CREATE_TABLESPACE:
+      do_JOB_CREATE_TABLESPACE(td,job);
+      break;
     case JOB_SCHEMA:
       do_JOB_SCHEMA(td,job);
       break;

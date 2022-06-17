@@ -78,12 +78,16 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
   return r;
 }
 
-gchar * build_schema_filename(char *database, const char *suffix){
+gchar * build_schema_filename(const char *database, const char *suffix){
   GString *filename = g_string_sized_new(20);
   g_string_append_printf(filename, "%s-%s.sql%s", database, suffix, compress_extension);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
+}
+
+gchar * build_tablespace_filename(){
+  return g_build_filename(dump_directory, "all-schema-create-tablespace.sql", NULL);;
 }
 
 gchar * build_meta_filename(char *database, char *table, const char *suffix){

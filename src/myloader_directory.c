@@ -74,6 +74,9 @@ gboolean append_filename_to_list (
         switch (ft){
           case INIT:
             break;
+          case SCHEMA_TABLESPACE:
+            process_tablespace_filename(g_strdup(filename));
+            break;
           case SCHEMA_TABLE:
             *create_table_list=g_list_append(*create_table_list,g_strdup(filename));
             break;

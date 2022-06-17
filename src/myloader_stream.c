@@ -73,6 +73,9 @@ enum file_type process_filename(char *filename){
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
     switch (ft){
       case INIT:
+        break;
+      case SCHEMA_TABLESPACE:
+        break;
       case SCHEMA_CREATE:
         process_database_filename(filename, "create database");
         //m_remove(directory,filename);
