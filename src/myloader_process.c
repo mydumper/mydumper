@@ -177,8 +177,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
             }
           }
         }
-
-        if (innodb_optimize_keys){
+        if (innodb_optimize_keys && (dbt->rows == 0 || dbt->rows >= 1000000)){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
@@ -224,6 +223,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
       }
     }
   }
+  
   struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->real_database, create_table_statement, "");
   g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
   if (!is_compressed) {

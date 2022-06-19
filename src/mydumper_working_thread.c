@@ -789,7 +789,8 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (!is_view) {
   // with trx_consistency_only we dump all as innodb_tables
     if (!no_schemas) {
-      write_table_metadata_into_file(dbt);
+//      write_table_metadata_into_file(dbt);
+      table_schemas=g_list_append( table_schemas, dbt) ;
       create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
     }
     if (dump_triggers) {
