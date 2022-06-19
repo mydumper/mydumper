@@ -43,6 +43,7 @@ extern guint num_threads;
 extern GAsyncQueue *stream_queue;
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
+extern guint total_data_sql_files;
 
 GAsyncQueue *intermidiate_queue = NULL;
 GThread *stream_thread = NULL;
@@ -73,6 +74,9 @@ enum file_type process_filename(char *filename){
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
     switch (ft){
       case INIT:
+        break;
+      case SCHEMA_TABLESPACE:
+        break;
       case SCHEMA_CREATE:
         process_database_filename(filename, "create database");
         //m_remove(directory,filename);
@@ -113,6 +117,7 @@ enum file_type process_filename(char *filename){
           process_data_filename(filename);
         else
           m_remove(directory,filename);
+        total_data_sql_files++;
         break;
       case RESUME:
         g_critical("We don't expect to find resume files in a stream scenario");
@@ -288,67 +293,59 @@ void *process_stream(){
   FILE *file=NULL;
   gboolean eof=FALSE;
   stream_conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  int pos=0,buffer_len=0, from_pos=0;
-  int diff=0, i=0;
+  int pos=0,buffer_len=0;
+  int diff=0, i=0, line_from=0, line_end=0, last_pos=0, next_line_from=0;
   for(i=0;i<STREAM_BUFFER_SIZE;i++){
     buffer[i]='\0';
   }
   do {
-    pos=0,from_pos=0;
-    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff);
+read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff)+diff;
+
+    next_line_from=0;
+    pos=0;
     diff=0;
     if (!buffer_len){ 
       break;
     }else{
       while (pos < buffer_len){
+        if (buffer[pos] =='\n')
+          pos++;
+        line_from=next_line_from;
         while (pos < buffer_len && buffer[pos] !='\n' ){
           pos++;
         }
-        flush(buffer,from_pos,pos-1,file);
-        if (buffer[pos] == EOF ) // || pos == buffer_len)
-          break;
-        if ((pos < buffer_len) && (g_str_has_prefix(&(buffer[pos+1]),"-- "))){
-          from_pos=pos;
-          pos++;
-          while (pos < buffer_len && buffer[pos] !='\n'){
-            pos++;
+        last_pos=pos;
+        line_end=pos-1;
+        // Is a header?
+        if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
+          if (buffer[last_pos] == '\n'){
+            previous_filename=g_strdup(filename);
+            g_free(filename);
+            filename=g_strndup(&(buffer[line_from+4]),last_pos-(line_from+4));
+            real_filename = g_build_filename(directory,filename,NULL);
+            if (has_mydumper_suffix(filename)){
+              if (file){
+                m_close(file);
+                g_async_queue_push(intermidiate_queue, previous_filename);
+              }
+              file = g_fopen(real_filename, "w");
+              m_write=(void *)&write_file;
+              m_close=(void *) &fclose;
+            }
+            next_line_from=last_pos+1;
+            continue;
           }
 
           if (pos == buffer_len){
-            g_strlcpy(buffer,&(buffer[from_pos+1]),pos-(from_pos+2));
-            diff=pos-(from_pos+1);
-            continue;
-          }
-          previous_filename=g_strdup(filename);
-          g_free(filename);
-          filename=g_strndup(&(buffer[from_pos+4]),pos-(from_pos+4));
-          real_filename = g_build_filename(directory,filename,NULL);
-          if (has_mydumper_suffix(filename)){
-            if (file){
-              m_close(file);
-              g_async_queue_push(intermidiate_queue, previous_filename);
-            }
-            file = g_fopen(real_filename, "w");
-            m_write=(void *)&write_file;
-            m_close=(void *) &fclose;
-            pos++;
-            from_pos=pos;
-          }else{
-            flush(buffer,from_pos,pos-1,file);
-          }
-          g_free(real_filename);
-          
-        }else{
-          from_pos=pos;
-          if (buffer[pos] != '\0'){
-            pos++;
+
+            diff=buffer_len-line_from;
+            g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
+            goto read_more;
           }
         }
+        flush(buffer,line_from,line_end,file);
+        next_line_from=last_pos;
       }
-      if (buffer[pos] != '\0')
-        flush(buffer,from_pos,pos-2,file);
-      else
-        flush(buffer,from_pos,pos-1,file);
     }
   } while (eof == FALSE);
   if (file) 

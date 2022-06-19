@@ -26,6 +26,11 @@ struct schema_job {
   char *checksum_filename;
 };
 
+struct create_tablespace_job{
+  char *filename;
+};
+
+
 struct create_database_job {
   char *database;
   char *filename;
@@ -55,6 +60,7 @@ struct table_checksum_job {
 
 void initialize_dump_into_file();
 void load_dump_into_file_entries(GOptionGroup *main_group);
+void create_job_to_dump_tablespaces(MYSQL *conn, struct configuration *conf);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf, GAsyncQueue *queue);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
@@ -69,6 +75,7 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
 void write_table_metadata_into_file(struct db_table * dbt);
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
+void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job);
 void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);

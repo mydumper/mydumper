@@ -39,7 +39,6 @@ extern gboolean stream;
 extern guint max_threads_per_table; 
 extern gchar *directory;
 extern guint errors;
-extern guint total_data_sql_files;
 extern gboolean no_delete;
 extern GHashTable *tbl_hash;
 extern gboolean innodb_optimize_keys;
@@ -63,39 +62,49 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
-  g_mutex_lock(table_hash_mutex);
   struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
-  g_free(lkey);
   if (dbt == NULL){
-    dbt=g_new(struct db_table,1);
+    g_mutex_lock(table_hash_mutex);
+//struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
+    dbt=g_hash_table_lookup(table_hash,lkey);
+    if (dbt == NULL){
+      dbt=g_new(struct db_table,1);
 //    dbt->filename=filename;
-    dbt->database=database;
+      dbt->database=database;
     // This should be the only place where we should use `db ? db : `
-    dbt->real_database = g_strdup(db ? db : real_db_name);
-    dbt->table=table;
-    dbt->real_table=dbt->table;
-    dbt->rows=number_rows;
-    dbt->restore_job_list = NULL;
-    dbt->queue=g_async_queue_new();
-    dbt->current_threads=0;
-    dbt->max_threads=max_threads_per_table;
-    dbt->mutex=g_mutex_new();
-    dbt->indexes=alter_table_statement;
-    dbt->start_time=NULL;
-    dbt->start_index_time=NULL;
-    dbt->finish_time=NULL;
-    dbt->schema_created=FALSE;
-    dbt->constraints=NULL;
-    dbt->count=0;
-    g_hash_table_insert(table_hash, g_strdup_printf("%s_%s",dbt->database,dbt->table),dbt);
-  }else{
-    g_free(table);
-    g_free(database);
-    if (number_rows>0) dbt->rows=number_rows;
-    if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
+      dbt->real_database = g_strdup(db ? db : real_db_name);
+      dbt->table=table;
+      dbt->real_table=dbt->table;
+      dbt->rows=number_rows;
+      dbt->restore_job_list = NULL;
+      dbt->queue=g_async_queue_new();
+      dbt->current_threads=0;
+      dbt->max_threads=max_threads_per_table;
+      dbt->mutex=g_mutex_new();
+      dbt->indexes=alter_table_statement;
+      dbt->start_time=NULL;
+      dbt->start_index_time=NULL;
+      dbt->finish_time=NULL;
+      dbt->schema_created=FALSE;
+      dbt->constraints=NULL;
+      dbt->count=0;
+      g_hash_table_insert(table_hash, lkey, dbt);
+    }else{
+      g_free(table);
+      g_free(database);
+      g_free(lkey);
+      if (number_rows>0) dbt->rows=number_rows;
+      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
+    }
+    g_mutex_unlock(table_hash_mutex);
+  }else{
+      g_free(table);
+      g_free(database);
+      g_free(lkey);
+      if (number_rows>0) dbt->rows=number_rows;
+      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
   }
-  g_mutex_unlock(table_hash_mutex);
   return dbt;
 }
 
@@ -315,6 +324,12 @@ gchar * get_database_name_from_content(const gchar *filename){
   return real_database;
 }
 
+void process_tablespace_filename(char * filename) {
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, "tablespace");
+  g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
+}
+
+
 void process_database_filename(char * filename, const char *object) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
@@ -405,13 +420,8 @@ void process_schema_filename(gchar *filename, const char * object) {
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 
-gint compare_filename_part (gconstpointer a, gconstpointer b){
-  return ((struct restore_job *)a)->data.drj->part == ((struct restore_job *)b)->data.drj->part ? ((struct restore_job *)a)->data.drj->sub_part > ((struct restore_job *)b)->data.drj->sub_part : ((struct restore_job *)a)->data.drj->part > ((struct restore_job *)b)->data.drj->part ;
-}
-
 void process_data_filename(char * filename){
   gchar *db_name, *table_name;
-  total_data_sql_files++;
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
   guint part=0,sub_part=0;
@@ -426,10 +436,11 @@ void process_data_filename(char * filename){
     return;
   }
   struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
+  struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
   dbt->count++; 
-  struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
-  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+//  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
+  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
   g_mutex_unlock(dbt->mutex);
 }
 
