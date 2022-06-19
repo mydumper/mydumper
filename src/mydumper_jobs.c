@@ -32,7 +32,7 @@
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
-
+extern gchar *where_option;
 extern gboolean success_on_1146;
 extern int detected_server;
 extern FILE * (*m_open)(const char *filename, const char *);
@@ -120,6 +120,58 @@ void write_table_metadata_into_file(struct db_table * dbt){
   fprintf(table_meta, "%d", dbt->rows);
   fclose(table_meta);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+}
+
+gchar * get_tablespace_query(){
+  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL){
+    if ( get_major() == 5 && get_secondary() == 7)
+      return g_strdup("select NAME, PATH, FS_BLOCK_SIZE from information_schema.INNODB_SYS_TABLESPACES join information_schema.INNODB_SYS_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
+    if ( get_major() == 8 )
+      return g_strdup("select NAME,PATH,FS_BLOCK_SIZE,ENCRYPTION from information_schema.INNODB_TABLESPACES join information_schema.INNODB_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
+  }
+  return NULL;
+}
+
+void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
+  void *outfile = NULL;
+  char *query = NULL;
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row;
+  outfile = m_open(filename,"w");
+  if (!outfile) {
+    g_critical("Error: Could not create output file %s (%d)",
+               filename, errno);
+    errors++;
+    return;
+  }
+  query=get_tablespace_query();
+  if (query == NULL ){
+    g_warning("Tablespace resquested, but not possible due to server version not supported");
+    return;
+  }
+  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+    if (success_on_1146 && mysql_errno(conn) == 1146) {
+      g_warning("Error dumping create tablespace: %s",
+                mysql_error(conn));
+    } else {
+      g_critical("Error dumping create tablespace: %s",
+                 mysql_error(conn));
+      errors++;
+    }
+    g_free(query);
+    return;
+  }
+  GString *statement = g_string_sized_new(statement_size);
+
+  while ((row = mysql_fetch_row(result))) {
+    g_string_printf(statement, "CREATE TABLESPACE `%s` ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", row[0],row[1],row[2]);
+    if (!write_data((FILE *)outfile, statement)) {
+      g_critical("Could not write tablespace data for %s", row[0]);
+      errors++;
+      return;
+    }
+    g_string_set_size(statement, 0);
+  }
 }
 
 void write_schema_definition_into_file(MYSQL *conn, char *database, char *filename, char *checksum_filename) {
@@ -632,10 +684,15 @@ void free_schema_post_job(struct schema_post_job *sp){
     g_free(sp->filename);
 //  g_free(sp);
 }
-
 void free_create_database_job(struct create_database_job * cdj){
   if (cdj->filename)
     g_free(cdj->filename);
+//  g_free(cdj);
+}
+
+void free_create_tablespace_job(struct create_tablespace_job * ctj){
+  if (ctj->filename)
+    g_free(ctj->filename);
 //  g_free(cdj);
 }
 
@@ -653,6 +710,14 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
             cdj->database);
   write_schema_definition_into_file(td->thrconn, cdj->database, cdj->filename, cdj->checksum_filename);
   free_create_database_job(cdj);
+  g_free(job);
+}
+
+void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
+  struct create_tablespace_job * ctj = (struct create_tablespace_job *)job->job_data;
+  g_message("Thread %d dumping create tablespace if any", td->thread_id);
+  write_tablespace_definition_into_file(td->thrconn, ctj->filename);
+  free_create_tablespace_job(ctj);
   g_free(job);
 }
 
@@ -708,6 +773,19 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   }
   free_table_checksum_job(tcj);
   g_free(job);
+}
+
+void create_job_to_dump_tablespaces(MYSQL *conn, struct configuration *conf){
+(void)conn;
+(void)conf;
+  struct job *j = g_new0(struct job, 1);
+  struct create_tablespace_job *ctj = g_new0(struct create_tablespace_job, 1);
+  j->job_data = (void *)ctj;
+  j->conf = conf;
+  j->type = JOB_CREATE_TABLESPACE;
+  ctj->filename = build_tablespace_filename();
+  g_async_queue_push(conf->queue, j);
+  return;
 }
 
 
@@ -1003,11 +1081,11 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
 
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`",
+                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` %s %s",
                         (detected_server == SERVER_TYPE_MYSQL)
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
-                        field, field, database, table));
+                        field, field, database, table, where_option ? "WHERE" : "", where_option ? where_option : ""));
   g_free(query);
   minmax = mysql_store_result(conn);
 

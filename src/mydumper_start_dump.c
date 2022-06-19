@@ -113,7 +113,7 @@ gboolean no_locks = FALSE;
 gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
-
+gboolean dump_tablespaces = FALSE;
 //GList *innodb_tables = NULL;
 GList *non_innodb_table = NULL;
 GList *table_schemas = NULL;
@@ -163,6 +163,8 @@ static GOptionEntry start_dump_entries[] = {
      "Do not execute the temporary shared read lock.  WARNING: This will cause "
      "inconsistent backups",
      NULL},
+    {"all-tablespaces", 'Y', 0 , G_OPTION_ARG_NONE, &dump_tablespaces,
+    "Dump all the tablespaces.", NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
     {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
@@ -516,7 +518,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
 
     if (mysql_query(conn, (query))) {
-      g_critical("Error: DB: %s - Could not execute query: %s", dt[0],
+      g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
                  mysql_error(conn));
       errors++;
       return;
@@ -884,7 +886,7 @@ void start_dump() {
   struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
-
+  detect_server_version(conn);
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_binlog_function)(MYSQL *) = NULL;
@@ -1142,6 +1144,9 @@ void start_dump() {
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
+  }
+  if (dump_tablespaces){
+    create_job_to_dump_tablespaces(conn,&conf);
   }
 
   if (db) {

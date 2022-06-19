@@ -311,6 +311,7 @@ int main(int argc, char *argv[]) {
         g_critical("the specified directory %s is not a mydumper backup",directory);
         exit(EXIT_FAILURE);
       }
+      initialize_directory();
     }
   }
   g_free(current_dir);
