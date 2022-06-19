@@ -194,9 +194,18 @@ void load_directory_information(struct configuration *conf) {
     process_database_filename(f, "create database");
     schema_create_list=schema_create_list->next;
   }
+  
+  g_debug("Processing table metadata files");
+  conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  // METADATA FILES
+  while (metadata_list != NULL){
+    f = metadata_list->data;
+    process_metadata_filename(f);
+    metadata_list=metadata_list->next;
+  }
+
   g_debug("Processing table schema files");
   // CREATE TABLE
-  conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   while (create_table_list != NULL){
     f = create_table_list->data;
     process_table_filename(f);
@@ -243,13 +252,6 @@ void load_directory_information(struct configuration *conf) {
   conf->table_list=table_list;
   // conf->table needs to be set.
 
-  g_debug("Processing table metadata files");
-  // METADATA FILES
-  while (metadata_list != NULL){
-    f = metadata_list->data;
-    process_metadata_filename(conf->table_hash,f);
-    metadata_list=metadata_list->next;
-  }
   g_debug("Processing view files");
   while (view_list != NULL){
     f = view_list->data;

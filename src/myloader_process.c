@@ -376,7 +376,7 @@ void process_table_filename(char * filename){
   g_free(filename);
 }
 
-void process_metadata_filename( GHashTable *table_hash, char * filename){
+void process_metadata_filename(char * filename){
   gchar *db_name, *table_name;
   get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
@@ -402,11 +402,7 @@ void process_metadata_filename( GHashTable *table_hash, char * filename){
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
-  gchar *lkey=g_strdup_printf("%s_%s",db_name, table_name);
-  struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
-  g_free(lkey);
-  if (dbt != NULL)
-    dbt->rows=g_ascii_strtoull(cs, NULL, 10);
+  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),conf->table_hash,NULL);
 }
 
 void process_schema_filename(gchar *filename, const char * object) {
