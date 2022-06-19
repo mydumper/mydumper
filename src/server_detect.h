@@ -28,7 +28,16 @@ enum server_type {
   SERVER_TYPE_UNKNOWN,
   SERVER_TYPE_MYSQL,
   SERVER_TYPE_DRIZZLE,
-  SERVER_TYPE_TIDB
+  SERVER_TYPE_TIDB,
+  SERVER_TYPE_MARIADB,
+  SERVER_TYPE_PERCONA
 };
 int detect_server(MYSQL *conn);
+void detect_server_version(MYSQL * conn);
+int get_product();
+int get_major();
+int get_secondary();
+int get_revision();
 #endif
+
+

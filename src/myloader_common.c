@@ -131,6 +131,8 @@ enum file_type get_file_type (const char * filename){
     return METADATA_TABLE;
   } else if ( strcmp(filename, "metadata") == 0 ){
     return METADATA_GLOBAL;
+  } else if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 ){
+    return SCHEMA_TABLESPACE;
   } else if ( strcmp(filename, "resume") == 0 ){
     if (!resume){
       g_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");

@@ -315,6 +315,12 @@ gchar * get_database_name_from_content(const gchar *filename){
   return real_database;
 }
 
+void process_tablespace_filename(char * filename) {
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, "tablespace");
+  g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
+}
+
+
 void process_database_filename(char * filename, const char *object) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);

@@ -16,6 +16,7 @@
 */
 
 
+void process_tablespace_filename( char * filename) ;
 void process_database_filename(char * filename, const char *object);
 void process_table_filename(char * filename);
 void process_metadata_filename( GHashTable *table_hash, char * filename);
