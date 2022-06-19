@@ -26,21 +26,6 @@ CREATE VIEW v AS SELECT qty, price, qty*price AS value FROM t;
 CREATE TABLE t_w_g (   `id` bigint(20) NOT NULL AUTO_INCREMENT,   `val` VARCHAR(30) NOT NULL,   `short_val` VARCHAR(10) GENERATED ALWAYS AS (left(val,10)) STORED NOT NULL,   PRIMARY KEY (`id`)  );
 INSERT into t_w_g (val) values ("asdfljlkjgsadklfjewtjgasd");
 
--- Tables with constraints
-CREATE TABLE `parent` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `val` varchar(30) NOT NULL,
-  PRIMARY KEY (`id`)
-) ;
-
-CREATE TABLE `child` (
-  `id` bigint(20) NOT NULL AUTO_INCREMENT,
-  `parent_id` bigint(20) NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `parent_id` (`parent_id`),
-  CONSTRAINT `child_ibfk_1` FOREIGN KEY (`parent_id`) REFERENCES `parent` (`id`)
-) ;
-
 
 -- Tables with special characters
 CREATE table IF NOT EXISTS `mydumper_aipk_uuid_%` (id int primary key auto_increment, val varchar(36));
