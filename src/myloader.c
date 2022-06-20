@@ -230,7 +230,8 @@ int main(int argc, char *argv[]) {
   set_verbose(verbose);
 
   if (defaults_file != NULL){
-    load_config_file(defaults_file, context, "myloader");
+    key_file=load_config_file(defaults_file);
+    load_config_group(key_file, context, "myloader");
   }
   g_option_context_free(context);
 
@@ -339,7 +340,7 @@ int main(int argc, char *argv[]) {
   detected_server = detect_server(conn);
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
   if (defaults_file)
-    load_hash_from_key_file(set_session_hash, NULL, defaults_file, "myloader_variables");
+    load_session_hash_from_key_file(key_file,set_session_hash,"myloader_variables");
   refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
 

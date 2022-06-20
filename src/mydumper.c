@@ -133,7 +133,8 @@ int main(int argc, char *argv[]) {
   set_verbose(verbose);
 
   if (defaults_file != NULL){
-    load_config_file(defaults_file, context, "mydumper");
+    key_file=load_config_file(defaults_file);
+    load_config_group(key_file, context, "mydumper");
   }
   g_option_context_free(context);
 

@@ -33,7 +33,7 @@ GString *set_session=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 gboolean no_data = FALSE;
-
+GKeyFile *key_file = NULL;
 gchar *compress_extension = NULL;
 
 guint num_threads = 4;

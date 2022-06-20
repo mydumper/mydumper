@@ -20,10 +20,9 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include "server_detect.h"
+#include "common.h"
 extern gboolean no_delete;
 extern gboolean stream;
-
-typedef gchar * (*fun_ptr)(gchar **);
 
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
@@ -85,16 +84,21 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int 
   return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
 }
 
-void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group){
+GKeyFile * load_config_file(gchar * config_file){
   GError *error = NULL;
   GKeyFile *kf = g_key_file_new ();
   // Loads the config_file
   if (!g_key_file_load_from_file (kf, config_file,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
     g_warning ("Failed to load config file %s: %s", config_file, error->message);
-    return;
+    return NULL;
   }
+  return kf;
+}
+
+void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group){
   gsize len=0;
+  GError *error = NULL;
   gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
   gsize i=0;
   GSList *list = NULL;
@@ -128,49 +132,26 @@ void load_config_file(gchar * config_file, GOptionContext *context, const gchar 
   }
 }
 
-gchar * identity_function(gchar ** r){
-  return *r;
-}
-
-gchar * random_int_function(gchar ** r){
-  // TODO: This function is not near to be ok, it is just for testing.
-  gchar * new_number=g_strdup_printf("%u",g_random_int());
-  g_strlcpy(*r,new_number,strlen(*r)+1);
-  return *r;
-}
-
-fun_ptr get_function_pointer_for (gchar *function_char){
-  if (!g_strcmp0(function_char,"random_int"))
-    return &random_int_function;
-  // TODO: more functions needs to be added.
-  if (!g_strcmp0(function_char,""))
-    return &identity_function;
-  if (!g_strcmp0(function_char,""))
-    return &identity_function;     
-  return &identity_function;
-}
-
-
-void load_hash_from_key_file(GHashTable * set_session_hash, GHashTable *all_anonymized_function, gchar * config_file, const gchar * group_variables){
-  guint i=0,j=0;
+void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables){
+  guint i=0;
   GError *error = NULL;
   gchar *value=NULL;
-  gsize len=0,len2=0;
-  GKeyFile *kf = g_key_file_new ();
-  // Loads the config_file
-  if (!g_key_file_load_from_file (kf, config_file,
-                                  G_KEY_FILE_KEEP_COMMENTS, &error)) {
-    g_warning ("Failed to load config file %s: %s", config_file, error->message);
-    return;
-  }
+  gsize len=0;
   gchar **keys=g_key_file_get_keys(kf,group_variables, &len, &error);
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
       g_hash_table_insert(set_session_hash, keys[i],value);
   }
+}
+void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for()){
+  gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
   GHashTable *ht=NULL;
+  GError *error = NULL;
+  guint i=0,j=0;
+  gchar *value=NULL;
+  gchar **keys=NULL;
   for (i=0; i < len; i++){
     if (g_strstr_len(groups[i],strlen(groups[i]),"`.`") && g_str_has_prefix(groups[i],"`") && g_str_has_suffix(groups[i],"`")){
       ht=g_hash_table_new ( g_str_hash, g_str_equal );

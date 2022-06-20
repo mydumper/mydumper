@@ -67,6 +67,7 @@
 #include "mydumper_stream.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
+#include "mydumper_masquerade.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -1253,10 +1254,10 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
 
     g_string_append(statement_row, lines_starting_by);
     GList *f = dbt->anonymized_function;
-    gchar * (*fun_ptr)(gchar **) = &identity_function;
+    gchar * (*fun_ptr_i)(gchar **) = &identity_function;
     for (i = 0; i < num_fields; i++) {
       if (f){
-      fun_ptr=f->data;
+      fun_ptr_i=f->data;
       f=f->next;
       }
       if (load_data){
@@ -1267,22 +1268,22 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
         }else if (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT ){
           g_string_append(statement_row,fields_enclosed_by);
           g_string_set_size(escaped, lengths[i] * 2 + 1);
-          mysql_real_escape_string(conn, escaped->str, fun_ptr(&(row[i])), lengths[i]);
+          mysql_real_escape_string(conn, escaped->str, fun_ptr_i(&(row[i])), lengths[i]);
           g_string_append(statement_row,escaped->str);
           g_string_append(statement_row,fields_enclosed_by);
         }else
-          g_string_append(statement_row,fun_ptr(&(row[i])));
+          g_string_append(statement_row,fun_ptr_i(&(row[i])));
       }else{
         /* Don't escape safe formats, saves some time */
         if (!row[i]) {
           g_string_append(statement_row, "NULL");
         } else if (fields[i].flags & NUM_FLAG) {
-          g_string_append(statement_row, fun_ptr(&(row[i])));
+          g_string_append(statement_row, fun_ptr_i(&(row[i])));
         } else {
           /* We reuse buffers for string escaping, growing is expensive just at
            * the beginning */
           g_string_set_size(escaped, lengths[i] * 2 + 1);
-          mysql_real_escape_string(conn, escaped->str, fun_ptr(&(row[i])), lengths[i]);
+          mysql_real_escape_string(conn, escaped->str, fun_ptr_i(&(row[i])), lengths[i]);
           if (fields[i].type == MYSQL_TYPE_JSON)
             g_string_append(statement_row, "CONVERT(");
           g_string_append_c(statement_row, '\"');
