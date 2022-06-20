@@ -164,18 +164,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          char * from=g_strstr_len(data->str,30," DEFINER");
-          if (from){
-            from++;
-            char * to=g_strstr_len(from,30," ");
-            if (to){
-              while(from != to){
-                from[0]=' ';
-                from++;
-              }
-              g_message("It is a create statement %s: %s",filename,from);
-            }
-          }
+          remove_definer(data);
         }
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
           tr=split_and_restore_data_in_gstring_by_statement(td,
