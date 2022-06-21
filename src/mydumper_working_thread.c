@@ -1204,7 +1204,7 @@ guint64 write_table_data_into_file(MYSQL *conn, FILE *file, struct table_job * t
       }
       if ( load_data ){
         if (first_time){
-          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, "dat");
+          load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, sub_part, "dat");
           char * basename=g_path_get_basename(load_data_fn);
   	      g_string_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ",basename,tj->table);
           g_free(basename);
