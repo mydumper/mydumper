@@ -19,10 +19,12 @@
 #define _src_common_h
 
 #define STREAM_BUFFER_SIZE 1000000
+typedef gchar * (*fun_ptr)(gchar **);
 
 char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
-char * checksum_process_structure(MYSQL *conn, char *database);
+//char * checksum_process_structure(MYSQL *conn, char *database);
+char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn);
@@ -30,11 +32,14 @@ int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory) ;
 guint strcount(gchar *text);
 gboolean m_remove(gchar * directory, const gchar * filename);
-void load_config_file(gchar * config_file, GOptionContext *context, const gchar * group);
+GKeyFile * load_config_file(gchar * config_file);
+void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
 void execute_gstring(MYSQL *conn, GString *ss);
-gchar * identity_function(gchar ** r);
 gchar *replace_escaped_strings(gchar *c);
-void load_hash_from_key_file(GHashTable * set_session_hash, GHashTable *all_anonymized_function, gchar * config_file, const gchar * group_variables);
+void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
+//void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, gchar*** get_function_pointer_for());
+void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
+//void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, GHashTable *all_anonymized_function, const gchar * group_variables, char* get_function_pointer_for());
 //void load_hash_from_key_file(GHashTable * set_session_hash, gchar * config_file, const gchar * group_variables);
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **table_list);

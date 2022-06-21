@@ -60,7 +60,7 @@
 
 #include "tables_skiplist.h"
 #include "regex.h"
-
+#include "common.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_jobs.h"
 #include "mydumper_common.h"
@@ -69,13 +69,14 @@
 #include "mydumper_working_thread.h"
 #include "mydumper_pmm_thread.h"
 #include "mydumper_exec_command.h"
-
+#include "mydumper_masquerade.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
 #endif
 
 /* Program options */
+extern GKeyFile * key_file;
 extern gint database_counter;
 extern GAsyncQueue *stream_queue;
 extern gchar *output_directory;
@@ -458,8 +459,9 @@ MYSQL *create_main_connection() {
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
   GHashTable * set_session_hash = initialize_hash_of_session_variables();
-  if (defaults_file){
-    load_hash_from_key_file(set_session_hash, all_anonymized_function, defaults_file, "mydumper_variables");
+  if (key_file != NULL ){
+    load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_variables");
+    load_anonymized_functions_from_key_file(key_file, all_anonymized_function, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);
