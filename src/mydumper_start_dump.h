@@ -69,7 +69,7 @@ struct table_job {
   char *table;
   char *partition;
   guint nchunk;
-  char *filename;
+//  char *filename;
   char *where;
   char *order_by;
   struct db_table *dbt;
