@@ -1342,8 +1342,8 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
       }
       g_string_set_size(statement, 0);
     } else {
-      if (num_rows_st && ! load_data)
-            g_string_append_c(statement, ',');
+      if (num_rows_st)
+        g_string_append_c(statement, ',');
       g_string_append(statement, statement_row->str);
       num_rows_st++;
       g_string_set_size(statement_row, 0);
@@ -1378,7 +1378,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
       g_async_queue_push(stream_queue, g_strdup(sql_fn));
     }
   }
-
+  m_close(sql_file);
   g_mutex_lock(dbt->rows_lock);
   dbt->rows+=num_rows;
   g_mutex_unlock(dbt->rows_lock);
