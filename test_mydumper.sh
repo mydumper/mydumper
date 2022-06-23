@@ -13,7 +13,6 @@ myloader="./myloader"
 > $myloader_log
 echo "[mydumper]" > $empty
 echo "[myloader]" >> $empty
-
 test_case_dir (){
   # Test case
   # We should consider each test case, with different mydumper/myloader parameters
@@ -118,6 +117,10 @@ full_test(){
     $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # compress and rows
     $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # --load-data
+    $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # --csv
+    $test --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
