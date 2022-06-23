@@ -1185,8 +1185,9 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
     g_string_append_printf(statement_row,"%s", lines_terminated_by);
 }
 
-void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk){
+guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk){
   guint num_fields = mysql_num_fields(result);
+  guint64 num_rows=0;
   GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
@@ -1201,6 +1202,7 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
   gboolean first_time = TRUE;
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
+    num_rows++;
     if ((chunk_filesize &&
         (guint)ceil((float)filesize / 1024 / 1024) >
             chunk_filesize) || first_time) {
@@ -1235,7 +1237,7 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
       }
       if (!write_data(sql_file, statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-        return;
+        return num_rows;
       }
       g_string_set_size(statement, 0);
       filesize=0;
@@ -1250,19 +1252,25 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
     if (statement->len + statement_row->len + 1 > statement_size) {
       if (!write_data(load_data_file, statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-        return;
+        return num_rows;
       } 
     }
 	}
   if (statement->len > 0)
     if (!write_data(load_data_file, statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-      return;
+      return num_rows;
     }
+  return num_rows;
 }
 
 
-void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk, guint sections){
+guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk, guint sections){
+  // There are 2 possible options to chunk the files:
+  // - no chunk: this means that will be just 1 data file
+  // - chunk_filesize: this function will be spliting the per filesize, this means that multiple files will be created
+  // Split by row is before this step
+  // It could write multiple INSERT statments in a data file if statement_size is reached
   guint num_fields = mysql_num_fields(result);
   GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
@@ -1292,7 +1300,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
         initialize_sql_statement(statement);
         if (!write_data(sql_file, statement)) {
           g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-          return ;
+          return num_rows;
         }
       }
       append_insert ((complete_insert || dbt->has_generated_fields), statement, dbt->table, fields, num_fields);
@@ -1319,7 +1327,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
 
       if (!write_data(sql_file, statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-        return;
+        return num_rows;
       }
       filesize+=statement_row->len+1;
       st_in_file++;
@@ -1360,7 +1368,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
       g_critical(
           "Could not write out closing newline for %s.%s, now this is sad!",
           dbt->database->name, dbt->table);
-      return;
+      return num_rows;
     }
     st_in_file++;
   }
@@ -1382,38 +1390,15 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct db_t
   g_mutex_lock(dbt->rows_lock);
   dbt->rows+=num_rows;
   g_mutex_unlock(dbt->rows_lock);
+  return num_rows;
 }
 
 /* Do actual data chunk reading/writing magic */
 guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
-  // There are 2 possible options to chunk the files:
-  // - no chunk: this means that will be just 1 data file
-  // - chunk_filesize: this function will be spliting the per filesize, this means that multiple files will be created
-  // Split by row is before this step
-  // It could write multiple INSERT statments in a data file if statement_size is reached
-
-//  guint sub_part=0;
-//  FILE *file = NULL;
-//  gchar * filename = NULL;
-
-//  guint fn = 0;
-//  guint st_in_file = 0;
-//  guint num_fields = 0;
-//  guint64 num_rows = 0;
+  guint64 num_rows = 0;
 //  guint64 num_rows_st = 0;
   MYSQL_RES *result = NULL;
   char *query = NULL;
-//  gchar *fcfile = NULL;
-//  gchar *load_data_fn=NULL;
-//  gchar *filename_prefix = NULL;
-//  struct db_table * dbt = tj->dbt;
-  /* Buffer for escaping field values */
-//  GString *escaped = g_string_sized_new(3000);
-//  if (chunk_filesize) {
-//    fcfile = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
-//  }else{
-//    fcfile = g_strdup(tj->filename);
-//  }
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
@@ -1438,18 +1423,11 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
     goto cleanup;
   }
 
-//  num_fields = mysql_num_fields(result);
-//  MYSQL_FIELD *fields = mysql_fetch_fields(result);
-//  MYSQL_ROW row;
-//  filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, sub_part);
-//  file = m_open(filename,"w");
-//  g_string_set_size(statement, 0);
-//  gboolean first_time=TRUE;
   /* Poor man's data dump code */
   if (load_data)
-    write_row_into_file_in_load_data_mode(conn, result, tj->dbt, tj->nchunk);
+    num_rows = write_row_into_file_in_load_data_mode(conn, result, tj->dbt, tj->nchunk);
   else
-    write_row_into_file_in_sql_mode(conn, result, tj->dbt, tj->nchunk, tj->where==NULL?1:2);
+    num_rows=write_row_into_file_in_sql_mode(conn, result, tj->dbt, tj->nchunk, tj->where==NULL?1:2);
   if (mysql_errno(conn)) {
     g_critical("Could not read data from %s.%s: %s", tj->database, tj->table,
                mysql_error(conn));
@@ -1460,20 +1438,11 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
 cleanup:
   g_free(query);
 
-//  g_string_free(escaped, TRUE);
-//  g_string_free(statement, TRUE);
-//  g_string_free(statement_row, TRUE);
-
   if (result) {
     mysql_free_result(result);
   }
 
-//  if (file) {
- //   m_close(file);
-//  }
-
-//  return num_rows;
-  return 0;
+  return num_rows;
 }
 
 
