@@ -1,3 +1,5 @@
+SET GLOBAL local_infile=ON;
+
 DROP DATABASE IF EXISTS myd_test;
 CREATE DATABASE myd_test;
 -- Tables and views
