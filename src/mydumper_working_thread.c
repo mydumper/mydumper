@@ -1275,7 +1275,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
   GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
-  guint filesize = 0;
+  guint64 filesize = 0;
   guint sub_part=0;
   GString *statement = g_string_sized_new(statement_size);
   GString *statement_row = g_string_sized_new(0);
@@ -1329,7 +1329,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
         return num_rows;
       }
-      filesize+=statement_row->len+1;
+      filesize+=statement->len+1;
       st_in_file++;
       if (chunk_filesize &&
           (guint)ceil((float)filesize / 1024 / 1024) >
@@ -1343,10 +1343,11 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
         if (stream) {
           g_async_queue_push(stream_queue, g_strdup(sql_fn));
         }
-        g_free(sql_file);
+        g_free(sql_fn);
         sql_fn = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
         sql_file = m_open(sql_fn,"w");
         st_in_file = 0;
+	filesize = 0;
       }
       g_string_set_size(statement, 0);
     } else {
