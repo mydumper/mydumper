@@ -19,6 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include "string.h"
+#include <stdlib.h>
 #include <mysql.h>
 #include <glib.h>
 #include <glib/gstdio.h>

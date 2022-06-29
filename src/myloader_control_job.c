@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <glib.h>
+#include <stdlib.h>
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 
