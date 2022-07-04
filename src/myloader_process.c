@@ -18,6 +18,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #ifdef ZWRAP_USE_ZSTD
