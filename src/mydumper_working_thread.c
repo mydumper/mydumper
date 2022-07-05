@@ -1360,6 +1360,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
   }
   if (statement_row->len > 0) {
     /* this last row has not been written out */
+    if (!statement->len)
+      append_insert ((complete_insert || dbt->has_generated_fields), statement, dbt->table, fields, num_fields);
     g_string_append(statement, statement_row->str);
   }
 
