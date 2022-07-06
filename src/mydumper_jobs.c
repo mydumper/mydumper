@@ -1167,7 +1167,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, char *wh
   tj->where=where;
   tj->order_by=order_by;
   tj->nchunk=nchunk;
-  tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, 0);
+//  tj->filename = build_data_filename(dbt->database->filename, dbt->table_filename, tj->nchunk, 0);
   tj->dbt=dbt;
   return tj;
 }

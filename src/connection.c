@@ -69,7 +69,7 @@ void configure_connection(MYSQL *conn, const char *name) {
     mysql_options(conn, MYSQL_READ_DEFAULT_FILE, defaults_file);
   }
   mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
-
+  mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
   if (compress_protocol)
     mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
 
