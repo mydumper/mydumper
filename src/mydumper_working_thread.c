@@ -1191,7 +1191,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
-  guint filesize = 0;
+  float filesize = 0;
   guint sub_part=0;
   GString *statement = g_string_sized_new(statement_size);
   GString *statement_row = g_string_sized_new(0);
@@ -1261,9 +1261,10 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (!write_data(load_data_file, statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
         return num_rows;
-      } 
+      }
+      g_string_set_size(statement, 0); 
     }
-	}
+  }
   if (statement->len > 0)
     if (!write_data(load_data_file, statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
