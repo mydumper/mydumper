@@ -1191,7 +1191,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
-  guint filesize = 0;
+  float filesize = 0;
   guint sub_part=0;
   GString *statement = g_string_sized_new(statement_size);
   GString *statement_row = g_string_sized_new(0);
@@ -1214,15 +1214,23 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       g_free(basename);
       if (!compress_output) {
         if (!first_time){
-					fclose((FILE *)sql_file);
-					fclose((FILE *)load_data_file);
+          fclose((FILE *)sql_file);
+          fclose((FILE *)load_data_file);
           if (stream) {
             g_async_queue_push(stream_queue, g_strdup(sql_fn));
             g_async_queue_push(stream_queue, g_strdup(load_data_fn));
           }
-				}
+        }
         sql_file = g_fopen(sql_fn, "a");
+        if (!sql_file){
+          g_critical("Could not open file: %s", sql_fn);
+          exit(EXIT_FAILURE);
+        }
         load_data_file = g_fopen(load_data_fn, "a");
+        if (!load_data_file){
+          g_critical("Could not open file: %s", load_data_fn);
+          exit(EXIT_FAILURE);
+        }
       } else {
         if (!first_time){
           gzclose((gzFile)sql_file);
@@ -1232,7 +1240,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
             g_async_queue_push(stream_queue, g_strdup(load_data_fn));
           }
         }
-				load_data_file = (void *)gzopen(load_data_fn, "a");
+        load_data_file = (void *)gzopen(load_data_fn, "a");
         sql_file = (void *)gzopen(sql_fn, "a");
       }
       if (!write_data(sql_file, statement)) {
@@ -1253,14 +1261,34 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (!write_data(load_data_file, statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
         return num_rows;
-      } 
+      }
+      g_string_set_size(statement, 0); 
     }
-	}
+  }
   if (statement->len > 0)
     if (!write_data(load_data_file, statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
       return num_rows;
     }
+      if (!compress_output) {
+          if (sql_file) { 
+            fclose((FILE *)sql_file);
+            if (stream && sql_fn) g_async_queue_push(stream_queue, g_strdup(sql_fn));
+          }
+          if (load_data_file){
+            fclose((FILE *)load_data_file);
+            if (stream && load_data_fn) g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+          }
+        }else{
+          if (sql_file) {
+            gzclose((gzFile)sql_file);
+            if (stream && sql_fn) g_async_queue_push(stream_queue, g_strdup(sql_fn));
+          }
+          if (load_data_file){
+            gzclose((gzFile)load_data_file);
+            if (stream && load_data_fn) g_async_queue_push(stream_queue, g_strdup(load_data_fn));
+          }
+}
   return num_rows;
 }
 
