@@ -12,7 +12,7 @@ INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
--- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;

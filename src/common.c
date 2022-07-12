@@ -24,6 +24,8 @@
 #include "common.h"
 extern gboolean no_delete;
 extern gboolean stream;
+extern gchar *defaults_file;
+extern GKeyFile * key_file;
 
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
@@ -279,3 +281,22 @@ gboolean is_table_in_list(gchar *table_name, gchar **table_list){
       return TRUE;
   return FALSE;
 }
+
+
+void initialize_common_options(GOptionContext *context){
+
+  if (defaults_file != NULL){
+    if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
+      g_critical("Default file not found");
+      exit(EXIT_FAILURE);
+    }
+    if (!g_path_is_absolute(defaults_file)){
+      gchar *new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
+      g_free(defaults_file);
+      defaults_file=new_defaults_file;
+    }
+    key_file=load_config_file(defaults_file);
+    load_config_group(key_file, context, "mydumper");
+  }
+}
+
