@@ -227,12 +227,9 @@ int main(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   g_strfreev(tmpargv);
-  set_verbose(verbose);
 
-  if (defaults_file != NULL){
-    key_file=load_config_file(defaults_file);
-    load_config_group(key_file, context, "myloader");
-  }
+  set_verbose(verbose);
+  initialize_common_options(context);
   g_option_context_free(context);
 
   hide_password(argc, argv);
