@@ -94,7 +94,6 @@ CREATE VIEW `table_view_2_a` AS SELECT
  1 AS `id`,
  1 AS `val` FROM table_view_2_b LIMIT 1;
 
-
 -- Store procedures and functions
 
 DELIMITER ;;
@@ -119,3 +118,10 @@ BEGIN
     SELECT * FROM perftest;
 END ;;
 DELIMITER ;
+
+
+DROP TABLE IF EXISTS `table_view_function`;
+CREATE VIEW `table_view_function` AS SELECT
+ 1 AS `id`,
+ 1 AS `val`,
+ count_perftest_higher_than(2) FROM table_view_2_b LIMIT 1;

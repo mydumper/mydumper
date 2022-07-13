@@ -7,8 +7,9 @@ tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 myloader_stor_dir=$mydumper_stor_dir
 stream_stor_dir="/tmp/stream_data"
-mydumper="./mydumper"
-myloader="./myloader"
+mydumper_base="~/issue_755/0.12.1/mydumper"
+mydumper="${mydumper_base}/mydumper"
+myloader="${mydumper_base}/myloader"
 > $mydumper_log
 > $myloader_log
 echo "[mydumper]" > $empty
@@ -38,6 +39,9 @@ test_case_dir (){
       exit $error
     fi
   fi
+  echo "DROP DATABASE IF EXISTS myd_test;
+DROP DATABASE IF EXISTS myd_test_no_fk;
+DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
   if [ "${myloader_parameters}" != "" ]
   then
     # Import
