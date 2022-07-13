@@ -119,6 +119,12 @@ BEGIN
 END ;;
 DELIMITER ;
 
+DELIMITER ;;
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_all_table_view_function`()
+BEGIN
+    SELECT * FROM table_view_function;
+END ;;
+DELIMITER ;
 
 DROP TABLE IF EXISTS `table_view_function`;
 CREATE VIEW `table_view_function` AS SELECT
