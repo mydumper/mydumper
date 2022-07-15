@@ -131,7 +131,7 @@ int main(int argc, char *argv[]) {
   }
 
   set_verbose(verbose);
-  initialize_common_options(context);
+  initialize_common_options(context,"mydumper");
   g_option_context_free(context);
 
   initialize_main();

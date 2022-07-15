@@ -283,7 +283,7 @@ gboolean is_table_in_list(gchar *table_name, gchar **table_list){
 }
 
 
-void initialize_common_options(GOptionContext *context){
+void initialize_common_options(GOptionContext *context, const gchar *group){
 
   if (defaults_file != NULL){
     if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
@@ -296,7 +296,7 @@ void initialize_common_options(GOptionContext *context){
       defaults_file=new_defaults_file;
     }
     key_file=load_config_file(defaults_file);
-    load_config_group(key_file, context, "mydumper");
+    load_config_group(key_file, context, group);
   }
 }
 

@@ -46,6 +46,5 @@ gboolean is_table_in_list(gchar *table_name, gchar **table_list);
 GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
 void free_hash(GHashTable * set_session_hash);
-void initialize_common_options(GOptionContext *context);
+void initialize_common_options(GOptionContext *context, const gchar *group);
 #endif
-

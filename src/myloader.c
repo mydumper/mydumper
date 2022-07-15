@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
   g_strfreev(tmpargv);
 
   set_verbose(verbose);
-  initialize_common_options(context);
+  initialize_common_options(context,"myloader");
   g_option_context_free(context);
 
   hide_password(argc, argv);
