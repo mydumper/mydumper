@@ -1,0 +1,39 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: configure
+      run: |
+           ./configure
+           apt update && apt upgrade
+           apt install libatomic1
+           apt install libmariadbclient-dev
+    - name: cmake
+      run: cmake .
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: make distcheck
+      run: make distcheck
+    - name: Provide myloader
+      uses: actions/upload-artifact@v3
+      with:
+        name: myloader
+        path: myloader
+    - name: Provide mydumper
+      uses: actions/upload-artifact@v3
+      with:
+        name: mydumper
+        path: mydumper
