@@ -152,7 +152,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
     is_compressed = TRUE;
   }
   if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
+    g_critical("cannot open schema file %s (%d)", filename, errno);
     errors++;
     return;
   }
@@ -298,7 +298,7 @@ gchar * get_database_name_from_content(const gchar *filename){
     is_compressed = TRUE;
   }*/
   if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
+    g_critical("cannot open database schema file %s (%d)", filename, errno);
     errors++;
     return NULL;
   }
@@ -397,13 +397,18 @@ void process_metadata_filename(char * filename){
   }
 
   if (!infile) {
-    g_critical("cannot open file %s (%d)", path, errno);
+    g_critical("cannot open metadata file %s (%d)", path, errno);
     errors++;
     return;
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
   append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),conf->table_hash,NULL);
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 void process_schema_filename(gchar *filename, const char * object) {
