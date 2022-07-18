@@ -322,7 +322,7 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
   }
 
   if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
+    g_critical("cannot open checksum file %s (%d)", filename, errno);
     errors++;
     return;
   }
@@ -406,3 +406,4 @@ void remove_definer(GString * data){
     }
   }
 }
+
