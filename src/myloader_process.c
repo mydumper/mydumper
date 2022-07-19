@@ -249,7 +249,7 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
   gchar *f=g_strndup(filename, l);
   gchar **split_db_tbl = g_strsplit(f, ".", -1);
   g_free(f);
-  if (g_strv_length(split_db_tbl)>=3) {
+  if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
     (*table)=g_strdup(split_db_tbl[1]);
     if (g_strv_length(split_db_tbl)>=3) {
