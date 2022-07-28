@@ -1008,7 +1008,7 @@ void start_dump() {
         send_lock_all_tables(conn);
       } else {
         g_message("Sending Flush Table");
-        if (mysql_query(conn, "FLUSH TABLES")) {
+        if (mysql_query(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
           g_warning("Flush tables failed, we are continuing anyways: %s",
                    mysql_error(conn));
         }
