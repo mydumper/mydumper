@@ -490,6 +490,13 @@ void get_not_updated(MYSQL *conn, FILE *file) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
+  if (detected_server == SERVER_TYPE_MYSQL &&
+      mysql_query(conn, "/*!80003 SET SESSION information_schema_stats_expiry=0 */"))
+  {
+    g_critical("Failed to set information_schema_stats_expiry, some tables may be missing: %s", mysql_error(conn));
+    errors++;
+  }
+
   gchar *query =
       g_strdup_printf("SELECT CONCAT(TABLE_SCHEMA,'.',TABLE_NAME) FROM "
                       "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
