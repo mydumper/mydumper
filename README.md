@@ -190,3 +190,14 @@ If you want to dump a couple of databases but discard some tables, you can do:
 Which will dump all the tables in db1 and db2 but it will exclude db1.table1 and db2.table2
 
 Of course, regex functionality can be used to describe pretty much any list of tables.
+
+
+## How to use --exec?
+
+You can execute external commands with --exec like this:
+
+```bash
+ mydumper --exec "/usr/bin/gzip FILENAME"
+```
+
+--exec is single threaded, similar implementation than Stream. The exec program must be an absolute path. FILENAME will be replaced by the filename that you want to be processed. You can set FILENAME in any place as argument.

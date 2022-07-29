@@ -152,7 +152,7 @@ void load_schema(struct db_table *dbt, gchar *filename){
     is_compressed = TRUE;
   }
   if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
+    g_critical("cannot open schema file %s (%d)", filename, errno);
     errors++;
     return;
   }
@@ -243,18 +243,22 @@ void load_schema(struct db_table *dbt, gchar *filename){
 
 void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part, guint *sub_part){
   guint l = strlen(filename)-4;
-  if (g_str_has_suffix(filename, compress_extension)){
+  if (g_str_has_suffix(filename, compress_extension)) {
     l-=strlen(compress_extension);
   }
-  gchar *f=g_strndup(filename,l);
+  gchar *f=g_strndup(filename, l);
   gchar **split_db_tbl = g_strsplit(f, ".", -1);
   g_free(f);
-  if (g_strv_length(split_db_tbl)>=3){
+  if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
     (*table)=g_strdup(split_db_tbl[1]);
-    *part=g_ascii_strtoull(split_db_tbl[2], NULL, 10);
+    if (g_strv_length(split_db_tbl)>=3) {
+      *part=g_ascii_strtoull(split_db_tbl[2], NULL, 10);
+    }else {
+      *part=0;
+    }
     if (g_strv_length(split_db_tbl)>3) *sub_part=g_ascii_strtoull(split_db_tbl[3], NULL, 10);
-  }else{
+  }else {
     *database=NULL;
     *table=NULL;
     *part=0;
@@ -298,7 +302,7 @@ gchar * get_database_name_from_content(const gchar *filename){
     is_compressed = TRUE;
   }*/
   if (!infile) {
-    g_critical("cannot open file %s (%d)", filename, errno);
+    g_critical("cannot open database schema file %s (%d)", filename, errno);
     errors++;
     return NULL;
   }
@@ -397,13 +401,18 @@ void process_metadata_filename(char * filename){
   }
 
   if (!infile) {
-    g_critical("cannot open file %s (%d)", path, errno);
+    g_critical("cannot open metadata file %s (%d)", path, errno);
     errors++;
     return;
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
   append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),conf->table_hash,NULL);
+  if (!is_compressed) {
+    fclose(infile);
+  } else {
+    gzclose((gzFile)infile);
+  }
 }
 
 void process_schema_filename(gchar *filename, const char * object) {
