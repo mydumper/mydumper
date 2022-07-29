@@ -106,6 +106,7 @@ struct db_table {
   guint rows;
   GMutex *rows_lock;
   GList *anonymized_function;
+  gchar *where;
 };
 
 struct schema_post {

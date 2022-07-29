@@ -108,6 +108,7 @@ extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
 extern GMutex *ready_database_dump_mutex;
+extern GHashTable *all_where_per_table;
 gint database_counter = 0;
 gchar *ignore_engines = NULL;
 char **ignore = NULL;
@@ -395,11 +396,14 @@ void free_table_job(struct table_job *tj){
 }
 
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
-  g_message("Thread %d dumping data for `%s`.`%s`%s%s%s%s%s%s | Remaining jobs: %d",
-                    td->thread_id, tj->database, tj->table, 
-		    (tj->where || where_option ) ? " WHERE " : "", tj->where ? tj->where : "",
-		    (tj->where && where_option ) ? " AND " : "", where_option ? where_option : "", 
-                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "", g_async_queue_length(td->queue));
+  g_message("Thread %d dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s | Remaining jobs: %d",
+                    td->thread_id, 
+                    tj->database, tj->table, tj->partition?tj->partition:"",
+                     (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",
+                     (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
+                    ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
+                    tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
+                    g_async_queue_length(td->queue));
 }
 
 void thd_JOB_DUMP_DATABASE(struct configuration *conf, struct thread_data *td, struct job *job){
@@ -760,6 +764,9 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
+  gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->name,dbt->table);
+  dbt->where=g_hash_table_lookup(all_where_per_table, k);
+  g_free(k);
   dbt->has_generated_fields = detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
   if (dbt->has_generated_fields) {
     dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
@@ -1436,11 +1443,14 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s",
-      (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
-      tj->dbt->select_fields->str, tj->database, tj->table, tj->partition?tj->partition:"", (tj->where || where_option ) ? "WHERE" : "",
-      tj->where ? tj->where : "",  (tj->where && where_option ) ? "AND" : "", where_option ? where_option : "", tj->order_by ? "ORDER BY" : "",
-      tj->order_by ? tj->order_by : "");
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s",
+      (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", 
+      tj->dbt->select_fields->str, 
+      tj->database, tj->table, tj->partition?tj->partition:"", 
+       (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",  
+       (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "", 
+      ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "", 
+      tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "");
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
