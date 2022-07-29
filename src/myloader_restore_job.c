@@ -88,7 +88,7 @@ struct restore_job * new_restore_job( char * filename, struct db_table * dbt, en
 
 struct restore_job * new_data_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, guint part, guint sub_part){
   struct restore_job *rj = new_restore_job(filename, dbt, type);
-  rj->data.drj=new_data_restore_job_internal( dbt->count, part, sub_part);
+  rj->data.drj=new_data_restore_job_internal( dbt->count + 1, part, sub_part);
   return rj;
 }
 
