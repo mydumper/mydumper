@@ -130,6 +130,7 @@ gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
 GHashTable *all_anonymized_function=NULL;
+GHashTable *all_where_per_table=NULL;
 guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
@@ -197,6 +198,7 @@ void initialize_start_dump(){
   initialize_common();
   initialize_working_thread();
   all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
+  all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   if (set_names_str){
     if (strlen(set_names_str)!=0){
@@ -461,7 +463,7 @@ MYSQL *create_main_connection() {
   GHashTable * set_session_hash = initialize_hash_of_session_variables();
   if (key_file != NULL ){
     load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_variables");
-    load_anonymized_functions_from_key_file(key_file, all_anonymized_function, &get_function_pointer_for);
+    load_where_per_table_and_anonymized_functions_from_key_file(key_file, all_where_per_table, all_anonymized_function, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
   execute_gstring(conn, set_session);

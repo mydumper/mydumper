@@ -147,7 +147,7 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
       g_hash_table_insert(set_session_hash, keys[i],value);
   }
 }
-void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for()){
+void load_where_per_table_and_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_where_per_table, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for()){
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
   GHashTable *ht=NULL;
@@ -160,8 +160,15 @@ void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anony
       ht=g_hash_table_new ( g_str_hash, g_str_equal );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
-        value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-        g_hash_table_insert(ht,g_strdup(keys[j]),get_function_pointer_for(value));
+        if (g_str_has_prefix(keys[j],"`") && g_str_has_suffix(keys[j],"`")){
+          value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+          g_hash_table_insert(ht,g_strdup(keys[j]),get_function_pointer_for(value));
+        }else{
+          if (g_strcmp0(keys[j],"where") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(all_where_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+        }
       }
       g_hash_table_insert(all_anonymized_function,g_strdup(groups[i]),ht);
     }
@@ -283,7 +290,7 @@ gboolean is_table_in_list(gchar *table_name, gchar **table_list){
 }
 
 
-void initialize_common_options(GOptionContext *context){
+void initialize_common_options(GOptionContext *context, const gchar *group){
 
   if (defaults_file != NULL){
     if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
@@ -296,7 +303,7 @@ void initialize_common_options(GOptionContext *context){
       defaults_file=new_defaults_file;
     }
     key_file=load_config_file(defaults_file);
-    load_config_group(key_file, context, "mydumper");
+    load_config_group(key_file, context, group);
   }
 }
 
