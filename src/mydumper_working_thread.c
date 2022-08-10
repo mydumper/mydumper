@@ -498,6 +498,8 @@ void initialize_thread(struct thread_data *td){
 
 
 gboolean are_all_threads_in_same_pos(struct thread_data *td){
+  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0)
+    return TRUE;
   gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
   g_mutex_lock(consistent_snapshot_token_I);
   g_message("Thread %d: All threads in same pos check",td->thread_id);
@@ -544,7 +546,6 @@ gboolean are_all_threads_in_same_pos(struct thread_data *td){
   return binlog_snapshot_gtid_executed_status_local;
 }
 
-
 void initialize_consistent_snapshot(struct thread_data *td){
   if ( sync_wait != -1 && mysql_query(td->thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
     g_critical("Failed to set wsrep_sync_wait for the thread: %s",
@@ -555,33 +556,43 @@ void initialize_consistent_snapshot(struct thread_data *td){
   guint start_transaction_retry=0;
   gboolean cont = FALSE; 
   while ( !cont && (start_transaction_retry < 5)){
-// Uncomment the sleep will cause inconsitent scenarios always, which is useful for debugging 
-//  sleep(td->thread_id);
-  g_debug("Thread %d: Start trasaction #%d", td->thread_id, start_transaction_retry);
-  if (mysql_query(td->thrconn,
+//  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
+//    sleep(td->thread_id);
+    g_debug("Thread %d: Start trasaction #%d", td->thread_id, start_transaction_retry);
+    if (mysql_query(td->thrconn,
                   "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
-    g_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-    exit(EXIT_FAILURE);
-  }
-  if (mysql_query(td->thrconn,
-                  "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
-    g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-  }else{
-    MYSQL_RES *res = mysql_store_result(td->thrconn);
-    MYSQL_ROW row = mysql_fetch_row(res);
-    td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-  }
-  start_transaction_retry++;
-  cont=are_all_threads_in_same_pos(td);
-  } 
-  if (cont){
-    g_message("All threads in same position. This will be a consistent backup.");
-  }else{
-    if (no_locks){ 
-      g_warning("Backup will not be consistent, but we are continuing because you use --no-locks");
-    }else{
-      g_error("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect non consistent backups");
+      g_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
       exit(EXIT_FAILURE);
+    }
+    if (mysql_query(td->thrconn,
+                  "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
+      g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+    }else{
+      MYSQL_RES *res = mysql_store_result(td->thrconn);
+      MYSQL_ROW row = mysql_fetch_row(res);
+      if (row!=NULL)
+        td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+      else
+        td->binlog_snapshot_gtid_executed=g_strdup("");
+    }
+    start_transaction_retry++;
+    cont=are_all_threads_in_same_pos(td);
+  } 
+
+  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){
+    if (no_locks){
+      g_warning("We are not able to determine if the backup will be consistent.");
+    }
+  }else{
+    if (cont){
+        g_message("All threads in same position. This will be a consistent backup.");
+    }else{
+      if (no_locks){ 
+        g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
+      }else{
+        g_error("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
+        exit(EXIT_FAILURE);
+      }
     }
   }
 }
