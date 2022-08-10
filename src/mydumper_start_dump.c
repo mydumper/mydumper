@@ -1001,12 +1001,11 @@ void start_dump() {
   }else{
 
     if (!no_locks) {
-	  	// This backup will lock the database
-
+      // This backup will lock the database
       if (!no_backup_locks)
         determine_ddl_lock_function(&second_conn,&acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
 
-  		if (lock_all_tables) {
+      if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
         g_message("Sending Flush Table");
@@ -1027,7 +1026,7 @@ void start_dump() {
         }
       }
     } else {
-      g_warning("Executing in no-locks mode, snapshot will not be consistent");
+      g_warning("Executing in no-locks mode, snapshot might not be consistent");
     }
   }
 
@@ -1056,6 +1055,7 @@ void start_dump() {
   // since it can implicitly release read locks we hold
   // TODO: this should be deleted as main connection is not being used for export data
   if (!lock_all_tables) {
+    g_message("Sending start transaction in main connection");
     mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
   }
 
@@ -1110,6 +1110,7 @@ void start_dump() {
       td[n].queue = conf.queue_less_locking;
       td[n].ready = conf.ready_less_locking;
       td[n].less_locking_stage = TRUE;
+      td[n].binlog_snapshot_gtid_executed = NULL;
       threads[n] = g_thread_create((GThreadFunc)working_thread,
                                    &td[n], TRUE, NULL);
       g_async_queue_pop(conf.ready_less_locking);
@@ -1131,10 +1132,16 @@ void start_dump() {
     td[n].queue = conf.queue;
     td[n].ready = conf.ready;
     td[n].less_locking_stage = FALSE;
+    td[n].binlog_snapshot_gtid_executed = NULL;
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
+ //   g_async_queue_pop(conf.ready);
+  }
+
+  for (n = 0; n < num_threads; n++) {
     g_async_queue_pop(conf.ready);
   }
+
 
   // IMPORTANT: At this point, all the threads are in sync
 

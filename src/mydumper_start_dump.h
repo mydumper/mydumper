@@ -53,6 +53,7 @@ struct thread_data {
   GAsyncQueue *queue;
   GAsyncQueue *ready;
   gboolean less_locking_stage;
+  gchar *binlog_snapshot_gtid_executed;
 };
 
 struct job {
