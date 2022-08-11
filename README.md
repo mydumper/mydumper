@@ -201,3 +201,41 @@ You can execute external commands with --exec like this:
 ```
 
 --exec is single threaded, similar implementation than Stream. The exec program must be an absolute path. FILENAME will be replaced by the filename that you want to be processed. You can set FILENAME in any place as argument.
+
+## Defaults file
+
+The default file (aka: --defaults-file parameter) is starting to be more important in MyDumper
+- mydumper and myloader sections: 
+
+```bash
+[mydumper]
+host = 127.0.0.1
+user = root
+password = p455w0rd
+database = db
+rows = 10000
+
+[myloader]
+host = 127.0.0.1
+user = root
+password = p455w0rd
+database = new_db
+innodb-optimize-keys = AFTER_IMPORT_PER_TABLE
+```
+
+- Variables for mydumper and myloader executions:
+```bash
+[mydumper_variables]
+wait_timeout = 300
+sql_mode = ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+[myloader_variables]
+long_query_time = 300
+innodb_flush_log_at_trx_commit = 0
+```
+
+- Per table sections:
+```bash
+[`db`.`table`]
+where = column > 20
+```
