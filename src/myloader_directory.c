@@ -253,12 +253,6 @@ void load_directory_information(struct configuration *conf) {
   conf->table_list=table_list;
   // conf->table needs to be set.
 
-  g_debug("Processing view files");
-  while (view_list != NULL){
-    f = view_list->data;
-    process_schema_filename(f,"view");
-    view_list=view_list->next;
-  }
   g_debug("Processing trigger files");
   while (trigger_list != NULL){
     f = trigger_list->data;
@@ -272,31 +266,13 @@ void load_directory_information(struct configuration *conf) {
     post_list=post_list->next;
   }
 
-/*
-  g_debug("Sorting data files");
-  // SORT DATA FILES TO ENQUEUE
-  // iterates over the dbt to create the jobs in the dbt->queue
-  // and sorts the dbt for the conf->table_list
-  // in stream mode, it is not possible to sort the tables as 
-  // we don't know the amount the rows, .metadata are sent at the end.
-  GList * table_list=NULL;
-  GHashTableIter iter;
-  gchar * lkey;
-  g_hash_table_iter_init ( &iter, conf->table_hash );
-  struct db_table *dbt=NULL;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
-    GList *i=dbt->restore_job_list; 
-    while (i) {
-      g_async_queue_push(dbt->queue, new_job(JOB_RESTORE ,i->data,dbt->real_database));
-      i=i->next;
-    }
-    dbt->count=g_async_queue_length(dbt->queue);
-//    g_debug("Setting count to: %d", dbt->count);
+  g_debug("Processing view files");
+  while (view_list != NULL){
+    f = view_list->data;
+    process_schema_filename(f,"view");
+    view_list=view_list->next;
   }
-  conf->table_list=table_list;
-  // conf->table needs to be set.
-*/
+
   g_debug("Loading file completed");
 }
 

@@ -7,8 +7,9 @@ tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 myloader_stor_dir=$mydumper_stor_dir
 stream_stor_dir="/tmp/stream_data"
-mydumper="./mydumper"
-myloader="./myloader"
+mydumper_base="."
+mydumper="${mydumper_base}/mydumper"
+myloader="${mydumper_base}/myloader"
 > $mydumper_log
 > $myloader_log
 echo "[mydumper]" > $empty
@@ -37,6 +38,12 @@ test_case_dir (){
       cat $mydumper_log
       exit $error
     fi
+  fi
+  if (( $PARTIAL != 1 ))
+  then
+  echo "DROP DATABASE IF EXISTS myd_test;
+DROP DATABASE IF EXISTS myd_test_no_fk;
+DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
   fi
   if [ "${myloader_parameters}" != "" ]
   then
@@ -103,7 +110,7 @@ full_test(){
 
   # single file compressed -- overriting database
   test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
-
+  PARTIAL=0
   for test in test_case_dir test_case_stream
   do
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
@@ -124,6 +131,7 @@ full_test(){
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
+  PARTIAL=1
   for test in test_case_dir test_case_stream
   do
     # exporting specific database -- overriting database
