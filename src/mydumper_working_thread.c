@@ -542,7 +542,7 @@ gboolean are_all_threads_in_same_pos(struct thread_data *td){
     g_mutex_unlock(consistent_snapshot_token_I);
     g_debug("Thread %d: Consistent_snapshot_token_I unlocked",td->thread_id);
   }
-  g_message("Thread %d: binlog_snapshot_gtid_executed_status_local %s with gtid: '%s'.", td->thread_id, binlog_snapshot_gtid_executed_status_local?"succeded":"failed", td->binlog_snapshot_gtid_executed);
+  g_message("Thread %d: binlog_snapshot_gtid_executed_status_local %s with gtid: '%s'.", td->thread_id, binlog_snapshot_gtid_executed_status_local?"succeeded":"failed", td->binlog_snapshot_gtid_executed);
   return binlog_snapshot_gtid_executed_status_local;
 }
 
@@ -585,7 +585,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
     }
   }else{
     if (cont){
-        g_message("All threads in same position. This will be a consistent backup.");
+        g_message("All threads in the same position. This will be a consistent backup.");
     }else{
       if (no_locks){ 
         g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
