@@ -75,6 +75,7 @@
 
 GMutex *init_mutex = NULL;
 /* Program options */
+extern gboolean no_locks;
 extern GAsyncQueue *stream_queue;
 guint complete_insert = 0;
 gboolean load_data = FALSE;
@@ -111,6 +112,9 @@ extern GMutex *ready_database_dump_mutex;
 extern GHashTable *all_where_per_table;
 gint database_counter = 0;
 gchar *ignore_engines = NULL;
+gchar *binlog_snapshot_gtid_executed = NULL;
+gboolean binlog_snapshot_gtid_executed_status = FALSE;
+guint binlog_snapshot_gtid_executed_count = 0;
 char **ignore = NULL;
 extern gchar *tidb_snapshot;
 extern GList *no_updated_tables;
@@ -164,6 +168,10 @@ extern guint errors;
 guint statement_size = 1000000;
 guint chunk_filesize = 0;
 int build_empty_files = 0;
+
+GMutex *consistent_snapshot = NULL;
+GMutex *consistent_snapshot_token_I = NULL;
+GMutex *consistent_snapshot_token_II = NULL;
 
 static GOptionEntry working_thread_entries[] = {
     {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
@@ -262,6 +270,11 @@ void initialize_working_thread(){
   init_mutex = g_mutex_new();
   ll_mutex = g_mutex_new();
   ll_cond = g_cond_new();
+  consistent_snapshot = g_mutex_new();;
+  g_mutex_lock(consistent_snapshot);
+  consistent_snapshot_token_I = g_mutex_new();
+  consistent_snapshot_token_II = g_mutex_new();
+  g_mutex_lock(consistent_snapshot_token_II);
   if (less_locking)
     less_locking_threads = num_threads;
   initialize_dump_into_file();
@@ -483,6 +496,56 @@ void initialize_thread(struct thread_data *td){
             td->thread_id, mysql_thread_id(td->thrconn));
 }
 
+
+gboolean are_all_threads_in_same_pos(struct thread_data *td){
+  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0)
+    return TRUE;
+  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
+  g_mutex_lock(consistent_snapshot_token_I);
+  g_message("Thread %d: All threads in same pos check",td->thread_id);
+  if (binlog_snapshot_gtid_executed == NULL){
+    binlog_snapshot_gtid_executed_count=0;
+    binlog_snapshot_gtid_executed=g_strdup(td->binlog_snapshot_gtid_executed);
+    binlog_snapshot_gtid_executed_status=TRUE;
+  }else 
+    if (!(( binlog_snapshot_gtid_executed_status) && (g_strcmp0(td->binlog_snapshot_gtid_executed,binlog_snapshot_gtid_executed) == 0))){
+      binlog_snapshot_gtid_executed_status=FALSE;
+    }
+  binlog_snapshot_gtid_executed_count++;
+  if (binlog_snapshot_gtid_executed_count < num_threads){
+    g_debug("Thread %d: Consistent_snapshot_token_I trying unlock",td->thread_id);
+    g_mutex_unlock(consistent_snapshot_token_I);
+    g_debug("Thread %d: Consistent_snapshot_token_I unlocked",td->thread_id);
+    g_mutex_lock(consistent_snapshot_token_II);
+    g_debug("Thread %d: Consistent_snapshot_token_II locked",td->thread_id);
+    binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status;
+    binlog_snapshot_gtid_executed_count--;
+    if (binlog_snapshot_gtid_executed_count == 1){
+      if (!binlog_snapshot_gtid_executed_status_local)
+        binlog_snapshot_gtid_executed=NULL;
+      g_debug("Thread %d: Consistent_snapshot trying unlock",td->thread_id);
+      g_mutex_unlock(consistent_snapshot);
+      g_debug("Thread %d: Consistent_snapshot unlocked",td->thread_id);
+    }else{
+      g_debug("Thread %d: 1- Consistent_snapshot_token_II trying unlock",td->thread_id);
+      g_mutex_unlock(consistent_snapshot_token_II);
+      g_debug("Thread %d: 1- Consistent_snapshot_token_II unlocked",td->thread_id);
+    }
+  }else{
+    binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status;
+    g_debug("Thread %d: 2- Consistent_snapshot_token_II trying unlock",td->thread_id);
+    g_mutex_unlock(consistent_snapshot_token_II);
+    g_debug("Thread %d: 2- Consistent_snapshot_token_II unlocked",td->thread_id);
+    g_mutex_lock(consistent_snapshot);
+    g_debug("Thread %d: Consistent_snapshot locked",td->thread_id);
+    g_debug("Thread %d: Consistent_snapshot_token_I trying unlock",td->thread_id);
+    g_mutex_unlock(consistent_snapshot_token_I);
+    g_debug("Thread %d: Consistent_snapshot_token_I unlocked",td->thread_id);
+  }
+  g_message("Thread %d: binlog_snapshot_gtid_executed_status_local %s with gtid: '%s'.", td->thread_id, binlog_snapshot_gtid_executed_status_local?"succeded":"failed", td->binlog_snapshot_gtid_executed);
+  return binlog_snapshot_gtid_executed_status_local;
+}
+
 void initialize_consistent_snapshot(struct thread_data *td){
   if ( sync_wait != -1 && mysql_query(td->thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
     g_critical("Failed to set wsrep_sync_wait for the thread: %s",
@@ -490,10 +553,47 @@ void initialize_consistent_snapshot(struct thread_data *td){
     exit(EXIT_FAILURE);
   }
   set_transaction_isolation_level_repeatable_read(td->thrconn);
-  if (mysql_query(td->thrconn,
+  guint start_transaction_retry=0;
+  gboolean cont = FALSE; 
+  while ( !cont && (start_transaction_retry < 5)){
+//  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
+//    sleep(td->thread_id);
+    g_debug("Thread %d: Start trasaction #%d", td->thread_id, start_transaction_retry);
+    if (mysql_query(td->thrconn,
                   "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
-    g_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-    exit(EXIT_FAILURE);
+      g_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
+      exit(EXIT_FAILURE);
+    }
+    if (mysql_query(td->thrconn,
+                  "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
+      g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+    }else{
+      MYSQL_RES *res = mysql_store_result(td->thrconn);
+      MYSQL_ROW row = mysql_fetch_row(res);
+      if (row!=NULL)
+        td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+      else
+        td->binlog_snapshot_gtid_executed=g_strdup("");
+    }
+    start_transaction_retry++;
+    cont=are_all_threads_in_same_pos(td);
+  } 
+
+  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){
+    if (no_locks){
+      g_warning("We are not able to determine if the backup will be consistent.");
+    }
+  }else{
+    if (cont){
+        g_message("All threads in same position. This will be a consistent backup.");
+    }else{
+      if (no_locks){ 
+        g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
+      }else{
+        g_error("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
+        exit(EXIT_FAILURE);
+      }
+    }
   }
 }
 
