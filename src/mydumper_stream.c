@@ -31,7 +31,7 @@ extern FILE * (*m_open)(const char *filename, const char *);
 extern gchar *compress_extension;
 extern GAsyncQueue *stream_queue;
 extern gboolean no_delete;
-
+extern gboolean no_stream;
 GThread *stream_thread = NULL;
 
 void *process_stream(void *data){
@@ -58,60 +58,41 @@ void *process_stream(void *data){
     total_size+=5;
     total_size+=strlen(used_filemame);
     free(used_filemame);
-    g_message("Opening: %s",filename);
-//    f=m_open(filename,"r");
-//    not_compressed= g_str_has_suffix(filename, compress_extension);
-//    if (not_compressed)
+
+    if (no_stream == FALSE){
+      g_message("Opening: %s",filename);
       f=g_fopen(filename,"r");
-//    else
- //     f=m_open(filename,"r");
-    if (!f){
-      g_error("File failed to open: %s",filename);
-    }else{
-//      if (not_compressed){
-//        fseek(f, 0, SEEK_END);
-//        sz = ftell(f);
-//fseek(f, 0, SEEK_SET);
-//        m_close(f);
-//        f=g_fopen(filename,"r");
-//      }
-if (!f){
-      g_critical("File failed to open: %s. Reetrying",filename);
-      f=g_fopen(filename,"r");
-if (!f){
-g_error("File failed to open: %s. Cancelling",filename);
-exit(EXIT_FAILURE);
-}
-}
-      guint total_len=0;
-      GDateTime *start_time=g_date_time_new_now_local();
-//      buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
-      buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
-      while(buflen > 0){
-        len=write(fileno(stdout), buf, buflen);
-        total_len=total_len + buflen;
-        if (len != buflen){
-          g_critical("Stream failed during transmition of file: %s",filename);
-          exit(EXIT_FAILURE);
+      if (!f){
+        g_error("File failed to open: %s",filename);
+      }else{
+        if (!f){
+          g_critical("File failed to open: %s. Reetrying",filename);
+          f=g_fopen(filename,"r");
+          if (!f){
+            g_error("File failed to open: %s. Cancelling",filename);
+            exit(EXIT_FAILURE);
+          }
         }
-//        buflen = not_compressed ? read(fileno(f), buf, STREAM_BUFFER_SIZE): gzread((gzFile)f, buf, STREAM_BUFFER_SIZE);
+        guint total_len=0;
+        GDateTime *start_time=g_date_time_new_now_local();
         buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
-      }
-//      if (not_compressed && total_len != sz){
-//      if (total_len != sz){
-//        g_critical("Data transmited for %s doesn't match. File size: %d Transmited: %d",filename,sz,total_len);
-//        exit(EXIT_FAILURE);
-//      }else{
-        diff=g_date_time_difference(g_date_time_new_now_local(),start_time)/G_TIME_SPAN_SECOND;
-        total_diff=g_date_time_difference(g_date_time_new_now_local(),total_start_time)/G_TIME_SPAN_SECOND;
-        if (diff > 0){
-          g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+        while(buflen > 0){
+          len=write(fileno(stdout), buf, buflen);
+          total_len=total_len + buflen;
+          if (len != buflen)
+            g_error("Stream failed during transmition of file: %s",filename);
+          buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+        }
+          diff=g_date_time_difference(g_date_time_new_now_local(),start_time)/G_TIME_SPAN_SECOND;
+          total_diff=g_date_time_difference(g_date_time_new_now_local(),total_start_time)/G_TIME_SPAN_SECOND;
+          if (diff > 0){
+            g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }else{
           g_message("File %s transfered | Global: %ld MB/s",filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }
         total_size+=total_len;
-//      }
-      fclose(f);
+        fclose(f);
+      }
     }
     if (no_delete == FALSE){
       remove(filename);

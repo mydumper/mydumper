@@ -80,6 +80,9 @@ gchar *set_names_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
 gboolean append_if_not_exist=FALSE;
+gboolean stream = FALSE;
+gboolean no_delete = FALSE;
+
 //unsigned long long int total_data_sql_files = 0;
 //unsigned long long int progress = 0;
 //GHashTable *db_hash=NULL;
@@ -158,6 +161,10 @@ static GOptionEntry entries[] = {
       "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
     { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
       "which default will be high", NULL },    
+    {"stream", 0, 0, G_OPTION_ARG_NONE, &stream,
+     "It will receive the streamo from STDIN and creates the file in the disk before start processing", NULL},
+    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
+      "It will not delete the files after stream has been completed", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
