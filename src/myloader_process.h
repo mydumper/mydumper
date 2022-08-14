@@ -18,10 +18,13 @@
 
 void process_tablespace_filename( char * filename) ;
 void process_database_filename(char * filename, const char *object);
-void process_table_filename(char * filename);
-void process_metadata_filename( char * filename);
+//void process_table_filename(char * filename);
+gboolean process_table_filename(char * filename);
+//void process_metadata_filename( char * filename);
+gboolean process_metadata_filename(char * filename);
 void process_schema_filename(gchar *filename, const char * object);
-void process_data_filename(char * filename);
+//void process_data_filename(char * filename);
+gboolean process_data_filename(char * filename);
 //struct job * new_job (enum job_type type, void *job_data, char *use_database);
 //struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement);
 void initialize_process(struct configuration *c);

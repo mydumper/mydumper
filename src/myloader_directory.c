@@ -210,6 +210,7 @@ void load_directory_information(struct configuration *conf) {
   while (create_table_list != NULL){
     f = create_table_list->data;
     process_table_filename(f);
+    g_free(f);
     create_table_list=create_table_list->next;
   }
   g_debug("Processing table data files");
