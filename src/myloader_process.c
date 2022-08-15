@@ -59,7 +59,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   }
   char *real_db_name=db_hash_lookup(database);
   if (real_db_name == NULL){
-    g_critical("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
+    g_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
@@ -359,7 +359,7 @@ void process_database_filename(char * filename, const char *object) {
   }
 }
 
-void process_table_filename(char * filename){
+gboolean process_table_filename(char * filename){
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
   get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
@@ -369,24 +369,30 @@ void process_table_filename(char * filename){
   }
   char *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
-    g_critical("It was not possible to process file: %s (2) because real_db_name isn't found. Restore without schema-create files is not supported",filename);
-    exit(EXIT_FAILURE);
+    g_warning("It was not possible to process file: %s (1) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+    return FALSE;
   }
   if (!eval_table(real_db_name, table_name)){
     g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
-    return;
+    return TRUE;
   }
   dbt=append_new_db_table(NULL, db_name, table_name,0,conf->table_hash,NULL);
   load_schema(dbt, g_build_filename(directory,filename,NULL));
-  g_free(filename);
+  return TRUE;
+//  g_free(filename);
 }
 
-void process_metadata_filename(char * filename){
+gboolean process_metadata_filename(char * filename){
   gchar *db_name, *table_name;
   get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
       g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
+  }
+  char *real_db_name=db_hash_lookup(db_name);
+  if (real_db_name==NULL){
+    g_warning("It was not possible to process file: %s (2) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+    return FALSE;
   }
   void *infile;
   gboolean is_compressed = FALSE;
@@ -403,7 +409,7 @@ void process_metadata_filename(char * filename){
   if (!infile) {
     g_critical("cannot open metadata file %s (%d)", path, errno);
     errors++;
-    return;
+    return TRUE;
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
@@ -413,6 +419,7 @@ void process_metadata_filename(char * filename){
   } else {
     gzclose((gzFile)infile);
   }
+  return TRUE;
 }
 
 void process_schema_filename(gchar *filename, const char * object) {
@@ -430,7 +437,7 @@ void process_schema_filename(gchar *filename, const char * object) {
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
 }
 
-void process_data_filename(char * filename){
+gboolean process_data_filename(char * filename){
   gchar *db_name, *table_name;
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
@@ -441,9 +448,13 @@ void process_data_filename(char * filename){
     exit(EXIT_FAILURE);
   }
   char *real_db_name=db_hash_lookup(db_name);
+  if (real_db_name==NULL){
+    g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+    return FALSE;
+  }
   if (!eval_table(real_db_name, table_name)){
     g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
-    return;
+    return TRUE;
   }
   struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
@@ -452,6 +463,7 @@ void process_data_filename(char * filename){
 //  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
   dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
   g_mutex_unlock(dbt->mutex);
+  return TRUE;
 }
 
 

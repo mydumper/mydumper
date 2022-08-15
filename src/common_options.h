@@ -30,8 +30,6 @@ gchar *ssl_mode = NULL;
 #endif
 int detected_server = 0;
 GString *set_session=NULL;
-gboolean stream = FALSE;
-gboolean no_delete = FALSE;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
 gchar *compress_extension = NULL;
@@ -78,10 +76,6 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
-    {"stream", 0, 0, G_OPTION_ARG_NONE, &stream,
-     "It will stream over STDOUT once the files has been written", NULL},
-    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-      "It will not delete the files after stream has been completed", NULL},
     {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
      "File containing a list of database.table entries to skip, one per line "
      "(skips before applying regex option)",

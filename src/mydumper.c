@@ -54,11 +54,35 @@ gchar *output_directory_param = NULL;
 gchar *dump_directory = NULL;
 gboolean daemon_mode = FALSE;
 gchar *disk_limits=NULL;
-
+gboolean stream = FALSE;
+gboolean no_delete = FALSE;
+gboolean no_stream = FALSE;
 // For daemon mode
 gboolean shutdown_triggered = FALSE;
 
 guint errors;
+
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,8,"--stream")){
+    stream = TRUE;
+    if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
+      return TRUE;
+    }
+    if (g_strstr_len(value,9,"NO_DELETE")){
+      no_delete=TRUE;
+      return TRUE;
+    }
+    if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
+      no_delete=TRUE;
+      no_stream=TRUE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
 
 static GOptionEntry entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
@@ -68,6 +92,10 @@ static GOptionEntry entries[] = {
      NULL},
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
+    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
+    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
+      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,

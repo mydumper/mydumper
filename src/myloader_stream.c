@@ -84,10 +84,14 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_TABLE:
         // filename is free
-        process_table_filename(filename);
-        g_mutex_lock(table_list_mutex);
-        refresh_table_list(stream_conf);
-        g_mutex_unlock(table_list_mutex);        
+        if (!process_table_filename(filename)){
+          return INCOMPLETE;
+        }else{
+          g_free(filename);
+          g_mutex_lock(table_list_mutex);
+          refresh_table_list(stream_conf);
+          g_mutex_unlock(table_list_mutex);
+        }
         break;
       case SCHEMA_VIEW:
         process_schema_filename(filename,"view");
@@ -108,15 +112,17 @@ enum file_type process_filename(char *filename){
         break;
       case METADATA_TABLE:
         stream_conf->metadata_list=g_list_insert(stream_conf->metadata_list,filename,-1);
-        process_metadata_filename(filename);
+        if (!process_metadata_filename(filename))
+          return INCOMPLETE;
         g_mutex_lock(table_list_mutex);
         refresh_table_list(stream_conf);
         g_mutex_unlock(table_list_mutex);
         break;
       case DATA:
-        if (!no_data)
-          process_data_filename(filename);
-        else
+        if (!no_data){
+          if (!process_data_filename(filename))
+            return INCOMPLETE;
+        }else
           m_remove(directory,filename);
         total_data_sql_files++;
         break;
@@ -131,6 +137,8 @@ enum file_type process_filename(char *filename){
         g_message("Load data file found: %s", filename);
         break;
       case SHUTDOWN:
+        break;
+      case INCOMPLETE:
         break;
     }
   }
@@ -153,12 +161,17 @@ gboolean has_mydumper_suffix(gchar *line){
 
 void process_stream_filename(gchar * filename){
   enum file_type current_ft=process_filename(filename);
+  if (current_ft == INCOMPLETE ){
+    g_debug("Requeuing in intermediate queue: %s", filename);
+    g_async_queue_push(intermidiate_queue, filename);
+    return;
+  }
   if (current_ft != SCHEMA_VIEW &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&
       current_ft != METADATA_TABLE )
-  g_async_queue_push(stream_queue, GINT_TO_POINTER(current_ft));
+    g_async_queue_push(stream_queue, GINT_TO_POINTER(current_ft));
 }
 
 struct control_job * give_any_data_job(){
@@ -261,7 +274,11 @@ void *intermidiate_thread(){
   char * filename=NULL;
   do{
     filename = (gchar *)g_async_queue_pop(intermidiate_queue);
-    if ( g_strcmp0(filename,"END") == 0 ){ 
+    if ( g_strcmp0(filename,"END") == 0 ){
+      if (g_async_queue_length(intermidiate_queue)>0){
+        g_async_queue_push(intermidiate_queue,filename);
+        continue;
+      }
       g_free(filename);
       break;
     }
@@ -322,16 +339,28 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
           if (buffer[last_pos] == '\n'){
             previous_filename=g_strdup(filename);
             g_free(filename);
+            gchar a=buffer[last_pos-(line_from+4)];
+            buffer[last_pos-(line_from)]='\0';
             filename=g_strndup(&(buffer[line_from+4]),last_pos-(line_from+4));
+            buffer[last_pos-(line_from+4)]=a;
             real_filename = g_build_filename(directory,filename,NULL);
             if (has_mydumper_suffix(filename)){
               if (file){
                 m_close(file);
-                g_async_queue_push(intermidiate_queue, previous_filename);
               }
-              file = g_fopen(real_filename, "w");
-              m_write=(void *)&write_file;
-              m_close=(void *) &fclose;
+              if (previous_filename)
+                g_async_queue_push(intermidiate_queue, previous_filename);
+              if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
+                g_debug("Stream Thread: File exists in datadir: %s", real_filename);
+                last_pos++;
+                file = NULL;
+              }else{
+                file = g_fopen(real_filename, "w");
+                m_write=(void *)&write_file;
+                m_close=(void *) &fclose;
+              }
+            }else{
+              g_debug("Not a mydumper file: %s", filename);
             }
             next_line_from=last_pos+1;
             continue;
