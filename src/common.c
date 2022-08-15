@@ -144,7 +144,7 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
-      g_hash_table_insert(set_session_hash, keys[i],value);
+      g_hash_table_insert(set_session_hash, keys[i], value);
   }
 }
 void load_where_per_table_and_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_where_per_table, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for()){
@@ -182,8 +182,15 @@ void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
   gchar * lkey;
   g_hash_table_iter_init ( &iter, set_session_hash );
   gchar *e=NULL;
+  gchar *c=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
-    g_string_append_printf(ss,"SET SESSION %s = %s ;\n",lkey,e);
+    c=g_strstr_len(e,strlen(e),"/*!");
+    if (c!=NULL){
+      c[0]='\0';
+      c++;
+      g_string_append_printf(ss,"/%s SET SESSION %s = %s */;\n",c,lkey,e);
+    }else
+      g_string_append_printf(ss,"SET SESSION %s = %s ;\n",lkey,e);
   }
 }
 
