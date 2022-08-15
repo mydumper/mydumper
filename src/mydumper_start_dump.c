@@ -450,6 +450,12 @@ void *signal_thread(void *data) {
 }
 
 
+GHashTable * mydumper_initialize_hash_of_session_variables(){
+  GHashTable * set_session_hash=initialize_hash_of_session_variables();
+  g_hash_table_insert(set_session_hash,g_strdup("information_schema_stats_expiry"),g_strdup("0 /*!80003"));
+  return set_session_hash;
+}
+
 MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
@@ -458,7 +464,7 @@ MYSQL *create_main_connection() {
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
-  GHashTable * set_session_hash = initialize_hash_of_session_variables();
+  GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   if (key_file != NULL ){
     load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_variables");
     load_anonymized_functions_from_key_file(key_file, all_anonymized_function, &get_function_pointer_for);
