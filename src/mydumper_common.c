@@ -30,6 +30,7 @@
 extern gchar *compress_extension;
 extern gchar *dump_directory;
 extern guint errors;
+extern gchar *fields_escaped_by;
 
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
@@ -179,7 +180,85 @@ gchar * build_data_filename(char *database, char *table, guint part, guint sub_p
   return build_filename(database,table,part,sub_part,"sql");
 }
 
+unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length){
+  (void) conn;
+  (void) to;
+  (void) from;
+  guint to_length = 2*length+1;
+  const char *to_start = to;
+  const char *end, *to_end = to_start + (to_length ? to_length - 1 : 2 * length);;
+  int tmp_length = 0;
+  for (end = from + length; from < end; from++) {
+    char escape = 0;
+/*    if (use_mb_flag && (tmp_length = my_ismbchar(charset_info, from, end))) {
+      if (to + tmp_length > to_end) {
+        overflow = true;
+        break;
+      }
+      while (tmp_length--) *to++ = *from++;
+      from--;
+      continue;
+    }
+*/
+    /*
+ *      If the next character appears to begin a multi-byte character, we
+ *      escape that first byte of that apparent multi-byte character. (The
+ *      character just looks like a multi-byte character -- if it were actually
+ *      a multi-byte character, it would have been passed through in the test
+ *      above.)
+ *      Without this check, we can create a problem by converting an invalid
+ *      multi-byte character into a valid one. For example, 0xbf27 is not
+ *      a valid GBK character, but 0xbf5c is. (0x27 = ', 0x5c = \)
+ *      */
 
+//    tmp_length = use_mb_flag ? my_mbcharlen_ptr(charset_info, from, end) : 0;
+
+    if (tmp_length > 1)
+      escape = *from;
+    else
+      switch (*from) {
+        case 0: /* Must be escaped for 'mysql' */
+          escape = '0';
+          break;
+        case '\n': /* Must be escaped for logs */
+          escape = 'n';
+          break;
+        case '\r':
+          escape = 'r';
+          break;
+        case '\\':
+          escape = '\\';
+          break;
+        case '\'':
+          escape = '\'';
+          break;
+        case '"': /* Better safe than sorry */
+          escape = '"';
+          break;
+        case '\032': /* This gives problems on Win32 */
+          escape = 'Z';
+          break;
+      }
+    if (escape) {
+      if (to + 2 > to_end) {
+//        overflow = true;
+        break;
+      }
+      *to++ = *fields_escaped_by;
+      *to++ = escape;
+    } else {
+      if (to + 1 > to_end) {
+//        overflow = true;
+        break;
+      }
+      *to++ = *from;
+    }
+  }
+  *to = 0;
+
+  return //overflow ? (size_t)-1 : 
+         (size_t)(to - to_start);
+}
 
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol){
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
