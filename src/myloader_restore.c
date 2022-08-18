@@ -132,7 +132,7 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
 
 }
 
-void send_file_to_fifo(gchar *compressed_filename){
+void *send_file_to_fifo(gchar *compressed_filename){
   gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
   g_message("Fifname: %s", fifo_name);
 //  mkfifo(fifo_name,0666);
@@ -153,6 +153,7 @@ void send_file_to_fifo(gchar *compressed_filename){
     write(fileno(fd), buffer, strlen(buffer));
   } while (eof == FALSE);
   fclose(fd);
+  return NULL;
 }
 
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
