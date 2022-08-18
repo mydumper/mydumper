@@ -134,8 +134,6 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
 
 void *send_file_to_fifo(gchar *compressed_filename){
   gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
-  g_message("Fifname: %s", fifo_name);
-//  mkfifo(fifo_name,0666);
   FILE * fd = g_fopen(fifo_name, "w");
   FILE *file=NULL;
   gboolean is_compressed = FALSE;
@@ -143,6 +141,7 @@ void *send_file_to_fifo(gchar *compressed_filename){
   ml_open(&file,path,&is_compressed);
   char buffer[256];
   gboolean eof=FALSE;
+  guint l;
   do {
       if (!gzgets((gzFile)file, buffer, 256)) {
         if (gzeof((gzFile)file)) {
@@ -150,7 +149,9 @@ void *send_file_to_fifo(gchar *compressed_filename){
           buffer[0] = '\0';
         }
       }
-    write(fileno(fd), buffer, strlen(buffer));
+    l=write(fileno(fd), buffer, strlen(buffer));
+    if (l!=strlen(buffer))
+      g_critical("Incomplete data transfered to FIFO: %s", fifo_name);
   } while (eof == FALSE);
   fclose(fd);
   return NULL;
