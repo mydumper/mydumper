@@ -132,6 +132,29 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
 
 }
 
+void send_file_to_fifo(gchar *compressed_filename){
+  gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
+  g_message("Fifname: %s", fifo_name);
+//  mkfifo(fifo_name,0666);
+  FILE * fd = g_fopen(fifo_name, "w");
+  FILE *file=NULL;
+  gboolean is_compressed = FALSE;
+  gchar *path = g_build_filename(directory, compressed_filename, NULL);
+  ml_open(&file,path,&is_compressed);
+  char buffer[256];
+  gboolean eof=FALSE;
+  do {
+      if (!gzgets((gzFile)file, buffer, 256)) {
+        if (gzeof((gzFile)file)) {
+          eof = TRUE;
+          buffer[0] = '\0';
+        }
+      }
+    write(fileno(fd), buffer, strlen(buffer));
+  } while (eof == FALSE);
+  fclose(fd);
+}
+
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema){
   FILE *infile=NULL;
@@ -169,8 +192,23 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
         if (rows > 0 && g_strrstr_len(data->str,6,"INSERT"))
           tr=split_and_restore_data_in_gstring_by_statement(td,
             data, is_schema, &query_counter,preline);
-        else
+        else{
+          if (g_strrstr_len(data->str,10,"LOAD DATA ")){
+            gchar *from = g_strstr_len(data->str, -1, "'");
+            from++;
+            gchar *to = g_strstr_len(from, -1, "'");
+            gchar *fff=g_strndup(from, to-from);
+            if (has_compession_extension(fff)){
+              gchar *fifo_name=g_strndup(fff,g_strrstr(fff,".")-fff);
+              mkfifo(fifo_name,0666);
+              g_thread_create((GThreadFunc)send_file_to_fifo, fff, TRUE, NULL);
+              for(from=g_strstr_len(to-4,-1,"."); from<to ; from++){
+                *from=' ';
+              }
+            }
+          }
           tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+        }
         r+=tr;
         if (tr > 0){
             g_critical("Error occurs between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));

@@ -42,4 +42,5 @@ void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
 void remove_definer(GString * data);
+gboolean has_compession_extension(const gchar *filename);
 #endif
