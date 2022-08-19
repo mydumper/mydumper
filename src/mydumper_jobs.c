@@ -118,7 +118,7 @@ void write_table_metadata_into_file(struct db_table * dbt){
     g_critical("Couldn't write table metadata file %s (%d)", filename, errno);
     exit(EXIT_FAILURE);
   }
-  fprintf(table_meta, "%llu", dbt->rows);
+  fprintf(table_meta, "%"G_GUINT64_FORMAT, dbt->rows);
   fclose(table_meta);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
 }
