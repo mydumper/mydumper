@@ -104,7 +104,7 @@ struct db_table {
   GString *select_fields;
   gboolean has_generated_fields;
   guint64 datalength;
-  guint rows;
+  guint64 rows;
   GMutex *rows_lock;
   GList *anonymized_function;
   gchar *where;
