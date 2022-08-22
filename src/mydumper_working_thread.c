@@ -173,6 +173,8 @@ GMutex *consistent_snapshot = NULL;
 GMutex *consistent_snapshot_token_I = NULL;
 GMutex *consistent_snapshot_token_II = NULL;
 
+unsigned long (*escape_function)(MYSQL *, char *, const char *, unsigned long );
+
 static GOptionEntry working_thread_entries[] = {
     {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
     {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
@@ -262,6 +264,7 @@ void load_working_thread_entries(GOptionGroup *main_group){
 
 
 void initialize_working_thread(){
+  escape_function=&mysql_real_escape_string;
   non_innodb_table_mutex = g_mutex_new();
   innodb_tables_mutex = g_mutex_new();
   view_schemas_mutex = g_mutex_new();
@@ -303,6 +306,8 @@ void initialize_working_thread(){
         exit(EXIT_FAILURE);
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
+      }else{
+        escape_function=&m_real_escape_string;
       }
     }else{
       fields_escaped_by=g_strdup("\\\\");
@@ -1247,7 +1252,7 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, escaped->str, fun_ptr_i(column), length);
+      escape_function(conn, escaped->str, fun_ptr_i(column), length);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else
