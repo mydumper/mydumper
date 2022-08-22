@@ -112,7 +112,8 @@ full_test(){
   test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
   PARTIAL=0
   for test in test_case_dir test_case_stream
-  do
+  do 
+    echo "Execuing tests: $test"
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
     $test -r 10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
@@ -128,12 +129,20 @@ full_test(){
     $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # --csv
     $test --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # --csv
+    $test -c --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # --csv
+    $test -c -r 10000 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # --csv
+    $test -c -F 10 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
   PARTIAL=1
+  echo "Starting per table tests"
   for test in test_case_dir test_case_stream
   do
+    echo "Execuing tests: $test"
     # exporting specific database -- overriting database
     $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
     # exporting specific table -- overriting database

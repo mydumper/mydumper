@@ -155,7 +155,7 @@ enum file_type get_file_type (const char * filename){
     return SCHEMA_CREATE;
   } else if (m_filename_has_suffix(filename, ".sql") ){
     return DATA;
-  }else if (g_str_has_suffix(filename, ".dat"))
+  }else if (m_filename_has_suffix(filename, ".dat"))
     return LOAD_DATA;
   return IGNORED;
 }
@@ -383,8 +383,12 @@ void checksum_databases(struct thread_data *td) {
   }
 }
 
+gboolean has_compession_extension(const gchar *filename){
+  return g_str_has_suffix(filename, compress_extension);
+}
+
 void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
-  if (!g_str_has_suffix(filename, compress_extension)) {
+  if (!has_compession_extension(filename)) {
     *infile = g_fopen(filename, "r");
     *is_compressed = FALSE;
   } else {
