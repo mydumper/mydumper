@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
-
+#include "myloader_common.h"
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {
   struct control_job *j = g_new0(struct control_job, 1);
   j->type = type;
@@ -60,3 +60,99 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
   return TRUE;
 }
 
+
+struct control_job * give_any_data_job(struct configuration * conf){
+  g_mutex_lock(conf->table_list_mutex);
+  GList * iter=conf->table_list;
+  GList * next = NULL;
+  struct control_job *job = NULL;
+
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    if (g_list_length(dbt->restore_job_list) > 0){
+      job = dbt->restore_job_list->data;
+      next = dbt->restore_job_list->next;
+      g_list_free_1(dbt->restore_job_list);
+      dbt->restore_job_list = next;
+      g_mutex_unlock(dbt->mutex);
+      break;
+    }
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(conf->table_list_mutex);
+
+  return job;
+}
+
+struct restore_job * give_me_next_data_job(struct configuration * conf){
+  g_mutex_lock(conf->table_list_mutex);
+  GList * iter=conf->table_list;
+  GList * next = NULL;
+  struct restore_job *job = NULL;
+//  g_message("Elemetns in table_list: %d",g_list_length(stream_conf->table_list));
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+//    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
+    if (dbt->current_threads < dbt->max_threads){
+      // I could do some job in here, do we have some for me?
+      g_mutex_lock(dbt->mutex);
+      if (g_list_length(dbt->restore_job_list) > 0){
+        job = dbt->restore_job_list->data;
+        next = dbt->restore_job_list->next;
+        g_list_free_1(dbt->restore_job_list);
+        dbt->restore_job_list = next;
+        g_mutex_unlock(dbt->mutex);
+        break;
+      }
+      g_mutex_unlock(dbt->mutex);
+    }
+    iter=iter->next;
+  }
+  g_mutex_unlock(conf->table_list_mutex);
+  return job;
+}
+
+void *process_stream_queue(struct thread_data * td) {
+  struct control_job *job = NULL;
+  gboolean cont=TRUE;
+  enum file_type ft=0;
+//  enum file_type ft;
+  while (cont){
+    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
+    job=g_async_queue_try_pop(td->conf->database_queue);
+    if (job != NULL){
+      g_debug("Restoring database");
+      cont=process_job(td, job);
+      continue;
+    }
+    job=g_async_queue_try_pop(td->conf->table_queue);
+    if (job != NULL){
+      execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+      cont=process_job(td, job);
+      continue;
+    }
+    struct restore_job *rj = give_me_next_data_job(td->conf);
+    if (rj != NULL){
+      job=new_job(JOB_RESTORE,rj,rj->dbt->database);
+      execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
+      cont=process_job(td, job);
+      continue;
+    }
+    job=give_any_data_job(td->conf);
+    if (job != NULL){
+      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
+      cont=process_job(td, job);
+      continue;
+    }else{
+      if (ft==SHUTDOWN)
+        cont=FALSE;
+      else
+        g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+    }
+
+  }
+  g_message("Shutting down stream thread %d", td->thread_id);
+  return NULL;
+}

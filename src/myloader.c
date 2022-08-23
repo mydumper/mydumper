@@ -59,6 +59,7 @@
 #include "myloader_restore.h"
 #include "myloader_pmm_thread.h"
 #include "myloader_restore_job.h"
+#include "myloader_intermediate_queue.h"
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
@@ -205,7 +206,7 @@ void create_database(struct thread_data *td, gchar *database) {
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -316,7 +317,7 @@ int main(int argc, char *argv[]) {
         g_critical("the specified directory %s is not a mydumper backup",directory);
         exit(EXIT_FAILURE);
       }
-      initialize_directory();
+//      initialize_directory();
     }
   }
   g_free(current_dir);
@@ -368,6 +369,8 @@ int main(int argc, char *argv[]) {
   conf.post_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
+  conf.table_list_mutex = g_mutex_new();
+  conf.stream_queue = g_async_queue_new();
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
   if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){
@@ -390,16 +393,19 @@ int main(int argc, char *argv[]) {
     create_database(&t, db);
   }
 
+  initialize_intermediate_queue(&conf);
+
   if (stream){
     initialize_stream(&conf);
   }
 
   initialize_loader_threads(&conf);
-  
+ 
   if (stream){
     wait_stream_to_finish();
   }else{
-    restore_from_directory(&conf);
+    process_stream_directory(&conf);
+//    restore_from_directory(&conf);
   }
 
   wait_loader_threads_to_finish();

@@ -31,20 +31,20 @@ extern gboolean overwrite_tables;
 extern gchar *db;
 extern gboolean stream;
 extern guint num_threads;
-
 gboolean shutdown_triggered=FALSE;
 GAsyncQueue *file_list_to_do=NULL;
 static GMutex *progress_mutex = NULL;
 static GMutex *single_threaded_create_table = NULL;
 unsigned long long int progress = 0;
 unsigned long long int total_data_sql_files = 0;
-
+static GMutex *table_list_mutex = NULL;
 enum purge_mode purge_mode;
 
 void initialize_restore_job(gchar * purge_mode_str){
   file_list_to_do = g_async_queue_new();
   single_threaded_create_table = g_mutex_new();
   progress_mutex = g_mutex_new();
+  table_list_mutex = g_mutex_new();
   if (purge_mode_str){
     if (!strcmp(purge_mode_str,"TRUNCATE")){
       purge_mode=TRUNCATE;

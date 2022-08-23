@@ -75,12 +75,14 @@ void *loader_thread(struct thread_data *td) {
   if (stream){
     process_stream_queue(td);
   }else{
-    process_directory_queue(td);
+//    process_directory_queue(td);
+//    prepare_directory();
+    process_stream_queue(td);
   }
   struct control_job *job = NULL;
   gboolean cont=TRUE;
 
-//  g_message("Thread %d: Starting post import task over table", td->thread_id);
+  g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);

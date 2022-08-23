@@ -56,4 +56,5 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj);
 void restore_job_finish();
 void stop_signal_thread();
 void *signal_thread(void *data);
+void *process_stream_queue(struct thread_data * td);
 #endif

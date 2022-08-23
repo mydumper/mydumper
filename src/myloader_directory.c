@@ -36,13 +36,15 @@
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_intermediate_queue.h"
 
-extern guint total_data_sql_files;
+extern gchar *directory;
 extern guint num_threads;
+/*
+extern guint total_data_sql_files;
 extern gboolean innodb_optimize_keys;
 extern gboolean innodb_optimize_keys_per_table;
 extern gboolean innodb_optimize_keys_all_tables;
-extern gchar *directory;
 extern guint errors;
 extern gboolean skip_post;
 extern gchar *source_db;
@@ -55,7 +57,6 @@ void initialize_directory(){
   data_filename_queue = g_async_queue_new();
   data_filename_queue_completed = g_async_queue_new();
 }
-
 gint compare_by_time(gconstpointer a, gconstpointer b){
   return
     g_date_time_difference(((struct db_table *)a)->finish_time,((struct db_table *)a)->start_time) >
@@ -457,3 +458,24 @@ void restore_from_directory(struct configuration *conf){
   g_debug("Step 5 started");
 
 }
+*/
+
+
+void *process_stream_directory(struct configuration *conf){
+  GError *error = NULL;
+  const gchar *filename = NULL;
+  conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  GDir *dir = g_dir_open(directory, 0, &error);
+  while ((filename = g_dir_read_name(dir))){
+    intermediate_queue_new(g_strdup(filename)); 
+  }
+  intermediate_queue_end();
+  guint n=0;
+  for (n = 0; n < num_threads ; n++) {
+    g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+  }
+  return NULL;
+}
+

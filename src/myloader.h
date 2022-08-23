@@ -35,7 +35,9 @@ struct configuration {
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
   GAsyncQueue *pause_resume;
+  GAsyncQueue *stream_queue;
   GList *table_list;
+  GMutex * table_list_mutex;
   GHashTable *table_hash;
 //  GList *schema_create_list;
   GList *checksum_list;
