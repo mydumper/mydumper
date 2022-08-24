@@ -27,7 +27,7 @@ guint execute_use(struct thread_data *td, const gchar * msg);
 void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg);
 enum file_type get_file_type (const char * filename);
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof, guint *line);
-void db_hash_insert(gchar *k, gchar *v);
+struct database * db_hash_insert(gchar *k, gchar *v);
 //struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object);
 //char * db_hash_lookup(gchar *database);
 struct database * db_hash_lookup(gchar *database);

@@ -129,12 +129,18 @@ void *process_stream_queue(struct thread_data * td) {
     if (job != NULL){
       g_debug("Restoring database");
       cont=process_job(td, job);
+      struct database * d=db_hash_lookup(job->use_database);
+      d->schema_created=TRUE;      
       continue;
     }
     job=g_async_queue_try_pop(td->conf->table_queue);
     if (job != NULL){
-      execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
-      cont=process_job(td, job);
+      struct database *real_db_name=db_hash_lookup(job->use_database); 
+      if (real_db_name->schema_created){
+        execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+        cont=process_job(td, job);
+      }else
+        g_async_queue_push(td->conf->table_queue,job);
       continue;
     }
     struct restore_job *rj = give_me_next_data_job(td->conf);
