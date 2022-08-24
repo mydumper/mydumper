@@ -128,9 +128,9 @@ void *process_stream_queue(struct thread_data * td) {
     job=g_async_queue_try_pop(td->conf->database_queue);
     if (job != NULL){
       g_debug("Restoring database");
+      struct database * d=db_hash_lookup(job->data.restore_job->data.srj->database);
       cont=process_job(td, job);
-      struct database * d=db_hash_lookup(job->use_database);
-      d->schema_created=TRUE;      
+      d->schema_created=TRUE;
       continue;
     }
     job=g_async_queue_try_pop(td->conf->table_queue);
