@@ -206,7 +206,7 @@ void create_database(struct thread_data *td, gchar *database) {
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -367,6 +367,7 @@ int main(int argc, char *argv[]) {
   conf.data_queue = g_async_queue_new();
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
+  conf.view_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
   conf.table_list_mutex = g_mutex_new();

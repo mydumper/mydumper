@@ -175,6 +175,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 //    g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(stream_conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(stream_conf->view_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   return NULL;
 }

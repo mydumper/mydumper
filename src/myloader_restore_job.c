@@ -175,7 +175,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
         g_message("Skipping table creation `%s`.`%s` from %s", dbt->real_database, dbt->real_table, rj->filename);
       }else{
-        g_message("Creating table `%s`.`%s` from content in %s", dbt->real_database, dbt->real_table, rj->filename);
+        g_message("Thread %d: Creating table `%s`.`%s` from content in %s", td->thread_id, dbt->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }

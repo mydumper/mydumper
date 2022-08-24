@@ -15,6 +15,5 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include "myloader.h"
-void *process_stream_queue(struct thread_data * td);
 void initialize_stream (struct configuration *conf);
 void wait_stream_to_finish();

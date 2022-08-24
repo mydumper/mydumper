@@ -32,6 +32,7 @@ struct configuration {
   GAsyncQueue *table_queue;
   GAsyncQueue *data_queue;
   GAsyncQueue *post_table_queue;
+  GAsyncQueue *view_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
   GAsyncQueue *pause_resume;
@@ -44,6 +45,11 @@ struct configuration {
   GList *metadata_list;
   GMutex *mutex;
   int done;
+};
+
+struct database {
+  gchar *name;
+  gboolean schema_created;
 };
 
 struct db_table {

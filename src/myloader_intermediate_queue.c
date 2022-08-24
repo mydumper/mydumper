@@ -103,7 +103,7 @@ enum file_type process_filename(char *filename){
         }
         break;
       case SCHEMA_VIEW:
-        process_schema_filename(filename,"view");
+        process_schema_view_filename(filename);
         break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
@@ -184,8 +184,10 @@ void *intermediate_thread(){
     process_stream_filename(filename);
   } while (filename != NULL);
   guint n=0;
-  for (n = 0; n < num_threads; n++)
+  for (n = 0; n < num_threads; n++){
     g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
+  }
+  g_message("Intermediate thread ended");
   return NULL;
 }
 

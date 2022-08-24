@@ -475,6 +475,7 @@ void *process_stream_directory(struct configuration *conf){
     g_async_queue_push(conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->view_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   return NULL;
 }

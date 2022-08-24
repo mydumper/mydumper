@@ -72,13 +72,13 @@ void *loader_thread(struct thread_data *td) {
   }
 
   g_debug("Thread %d: Starting import", td->thread_id);
-  if (stream){
-    process_stream_queue(td);
-  }else{
+//  if (stream){
+  process_stream_queue(td);
+//  }else{
 //    process_directory_queue(td);
 //    prepare_directory();
-    process_stream_queue(td);
-  }
+//    process_stream_queue(td);
+//  }
   struct control_job *job = NULL;
   gboolean cont=TRUE;
 
@@ -95,6 +95,13 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
+    cont=process_job(td, job);
+  }
+
+  cont=TRUE;
+  while (cont){
+    job = (struct control_job *)g_async_queue_pop(conf->view_queue);
+    execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
     cont=process_job(td, job);
   }
 

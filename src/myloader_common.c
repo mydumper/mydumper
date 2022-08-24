@@ -62,15 +62,23 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
   }
   return g_str_has_suffix(str,suffix);
 }
+struct database * new_database(gchar *database){
+  struct database * d = g_new(struct database, 1);
+  d->name=database;
+  d->schema_created=FALSE;
+  return d;
+}
 
 void db_hash_insert(gchar *k, gchar *v){
   g_mutex_lock(db_hash_mutex);
-  g_hash_table_insert(db_hash, k, v);
+  struct database * d=g_hash_table_lookup(db_hash, k);
+  if (d==NULL)
+    g_hash_table_insert(db_hash, k, new_database(v));
   g_mutex_unlock(db_hash_mutex);
 }
 
-char * db_hash_lookup(gchar *database){
-  char *r=NULL;
+struct database * db_hash_lookup(gchar *database){
+  struct database *r=NULL;
   g_mutex_lock(db_hash_mutex);
   r=g_hash_table_lookup(db_hash,database);
   g_mutex_unlock(db_hash_mutex);
@@ -106,7 +114,7 @@ gboolean eval_table( char *db_name, char * table_name){
 guint execute_use(struct thread_data *td, const gchar * msg){
   gchar *query = g_strdup_printf("USE `%s`", td->current_database);
   if (mysql_query(td->thrconn, query)) {
-    g_critical("Error switching to database `%s` %s", td->current_database, msg);
+    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
     g_free(query);
     return 1;
   }
@@ -299,7 +307,7 @@ void refresh_table_list(struct configuration *conf){
 void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
   gchar *database = NULL, *table = NULL;
   get_database_table_from_file(filename,suffix,&database,&table);
-  gchar *real_database=db_hash_lookup(database);
+  struct database *real_database=db_hash_lookup(database);
   gchar *real_table=NULL;
   if (table != NULL ){
     real_table=g_hash_table_lookup(tbl_hash,table);
@@ -309,7 +317,7 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
   void *infile;
   char checksum[256];
   int errn=0;
-  char * row=fun(conn, db ? db : real_database, real_table, &errn);
+  char * row=fun(conn, db ? db : real_database->name, real_table, &errn);
   gboolean is_compressed = FALSE;
   gchar *path = g_build_filename(directory, filename, NULL);
 
@@ -331,15 +339,15 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
   if (cs != NULL) {
     if(g_strcasecmp(checksum, row) != 0) {
       if (real_table != NULL)
-        g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database, real_table, row, checksum, filename);
+        g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, real_table, row, checksum, filename);
       else 
-        g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database, row, checksum, filename);
+        g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, row, checksum, filename);
       errors++;
     } else {
       if (real_table != NULL)
-        g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database, real_table);
+        g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database->name, real_table);
       else
-        g_message("%s confirmed for `%s`", message, db ? db : real_database);
+        g_message("%s confirmed for `%s`", message, db ? db : real_database->name);
     }
     g_free(row);
   } else {

@@ -61,29 +61,31 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
 }
 
 
-struct control_job * give_any_data_job(struct configuration * conf){
+struct restore_job * give_any_data_job(struct configuration * conf){
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
   GList * next = NULL;
-  struct control_job *job = NULL;
-
+//  struct control_job *job = NULL;
+  struct restore_job *rj =NULL;
   while (iter != NULL){
     struct db_table * dbt = iter->data;
-    g_mutex_lock(dbt->mutex);
-    if (g_list_length(dbt->restore_job_list) > 0){
-      job = dbt->restore_job_list->data;
-      next = dbt->restore_job_list->next;
-      g_list_free_1(dbt->restore_job_list);
-      dbt->restore_job_list = next;
+    if (dbt->schema_created){
+      g_mutex_lock(dbt->mutex);
+      if (g_list_length(dbt->restore_job_list) > 0){
+        rj = dbt->restore_job_list->data;
+        next = dbt->restore_job_list->next;
+        g_list_free_1(dbt->restore_job_list);
+        dbt->restore_job_list = next;
+        g_mutex_unlock(dbt->mutex);
+        break;
+      }
       g_mutex_unlock(dbt->mutex);
-      break;
     }
-    g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);
 
-  return job;
+  return rj;
 }
 
 struct restore_job * give_me_next_data_job(struct configuration * conf){
@@ -95,7 +97,7 @@ struct restore_job * give_me_next_data_job(struct configuration * conf){
   while (iter != NULL){
     struct db_table * dbt = iter->data;
 //    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
-    if (dbt->current_threads < dbt->max_threads){
+    if (dbt->schema_created && dbt->current_threads < dbt->max_threads){
       // I could do some job in here, do we have some for me?
       g_mutex_lock(dbt->mutex);
       if (g_list_length(dbt->restore_job_list) > 0){
@@ -120,6 +122,8 @@ void *process_stream_queue(struct thread_data * td) {
   enum file_type ft=0;
 //  enum file_type ft;
   while (cont){
+    if (ft==SHUTDOWN)
+      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
     job=g_async_queue_try_pop(td->conf->database_queue);
     if (job != NULL){
@@ -140,8 +144,9 @@ void *process_stream_queue(struct thread_data * td) {
       cont=process_job(td, job);
       continue;
     }
-    job=give_any_data_job(td->conf);
-    if (job != NULL){
+    rj=give_any_data_job(td->conf);
+    if (rj != NULL){
+      job=new_job(JOB_RESTORE,rj,rj->dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
       cont=process_job(td, job);
       continue;
