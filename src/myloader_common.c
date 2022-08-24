@@ -72,8 +72,10 @@ struct database * new_database(gchar *database){
 struct database * db_hash_insert(gchar *k, gchar *v){
   g_mutex_lock(db_hash_mutex);
   struct database * d=g_hash_table_lookup(db_hash, k);
-  if (d==NULL)
-    g_hash_table_insert(db_hash, k, new_database(v));
+  if (d==NULL){
+    d=new_database(v);
+    g_hash_table_insert(db_hash, k, d);
+  }
   g_mutex_unlock(db_hash_mutex);
   return d;
 }
