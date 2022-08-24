@@ -19,4 +19,3 @@ void intermediate_queue_incomplete(gchar *filename);
 void intermediate_queue_end();
 void intermediate_queue_new(gchar *filename);
 void initialize_intermediate_queue (struct configuration *c);
-void *process_stream_directory();

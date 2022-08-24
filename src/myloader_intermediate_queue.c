@@ -15,34 +15,17 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <mysql.h>
-#include <glib.h>
 #include <glib/gstdio.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "common.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
-#include "myloader_stream.h"
-#include "myloader_restore_job.h"
-#include "myloader_control_job.h"
 
-extern gchar *compress_extension;
-extern gchar *db;
 extern gchar *directory;
 extern gchar *source_db;
 extern gboolean no_data;
 extern gboolean skip_triggers;
 extern gboolean skip_post;
 extern guint num_threads;
-extern int (*m_close)(void *file);
-extern int (*m_write)(FILE * file, const char * buff, int len);
 extern guint total_data_sql_files;
 
 GAsyncQueue *intermediate_queue = NULL;
@@ -57,7 +40,6 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_queue = g_async_queue_new();
   table_list_mutex = g_mutex_new();
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
-//  stream_thread = g_thread_create((GThreadFunc)process_stream_directory, NULL, TRUE, NULL);
 }
 
 void intermediate_queue_new(gchar *filename){

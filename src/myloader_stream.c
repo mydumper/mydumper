@@ -15,35 +15,16 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <mysql.h>
-#include <glib.h>
 #include <glib/gstdio.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "common.h"
 #include "myloader_common.h"
-#include "myloader_process.h"
-#include "myloader_jobs_manager.h"
-#include "myloader_stream.h"
-#include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
-extern gchar *compress_extension;
-extern gchar *db;
+
 extern gchar *directory;
-extern gchar *source_db;
-extern gboolean no_data;
-extern gboolean skip_triggers;
-extern gboolean skip_post;
 extern guint num_threads;
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
-extern guint total_data_sql_files;
 
 GThread *stream_thread = NULL;
 

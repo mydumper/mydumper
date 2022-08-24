@@ -406,8 +406,7 @@ int main(int argc, char *argv[]) {
   if (stream){
     wait_stream_to_finish();
   }else{
-    process_stream_directory(&conf);
-//    restore_from_directory(&conf);
+    process_directory(&conf);
   }
 
   wait_loader_threads_to_finish();

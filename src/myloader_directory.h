@@ -13,8 +13,5 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
-
 */
-void initialize_directory();
-void restore_from_directory(struct configuration *conf);
-void *process_directory_queue(struct thread_data * td);
+void *process_directory(struct configuration *conf);
