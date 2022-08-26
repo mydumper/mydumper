@@ -421,7 +421,7 @@ gboolean process_metadata_filename(char * filename){
   return TRUE;
 }
 
-void process_schema_view_filename(gchar *filename) {
+gboolean process_schema_view_filename(gchar *filename) {
     gchar *database=NULL, *table_name=NULL;
     struct database *real_db_name=NULL;
     get_database_table_from_file(filename,"-schema",&database,&table_name);
@@ -429,15 +429,20 @@ void process_schema_view_filename(gchar *filename) {
       g_critical("Database is null on: %s",filename);
     }
     real_db_name=db_hash_lookup(database);
+    if (real_db_name==NULL){
+      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+      return FALSE;
+    }
     if (!eval_table(real_db_name->name, table_name)){
       g_warning("File %s has been filter out",filename);
-      return;
+      return TRUE;
     }
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
     g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  return TRUE;
 }
 
-void process_schema_filename(gchar *filename, const char * object) {
+gboolean process_schema_filename(gchar *filename, const char * object) {
     gchar *database=NULL, *table_name=NULL;
     struct database *real_db_name=NULL;
     get_database_table_from_file(filename,"-schema",&database,&table_name);
@@ -445,12 +450,17 @@ void process_schema_filename(gchar *filename, const char * object) {
       g_critical("Database is null on: %s",filename);
     }
     real_db_name=db_hash_lookup(database);
+    if (real_db_name==NULL){
+      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+      return FALSE;
+    }
     if (!eval_table(real_db_name->name, table_name)){
       g_warning("File %s has been filter out",filename);
-      return;
+      return TRUE;
     }
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, object);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  return TRUE;
 }
 
 gboolean process_data_filename(char * filename){
