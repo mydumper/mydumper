@@ -83,6 +83,13 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
     if (!test_condition || (dbt->schema_created && dbt->current_threads < dbt->max_threads)){
       // I could do some job in here, do we have some for me?
       g_mutex_lock(dbt->mutex);
+      if (!dbt->schema_created){
+        iter=iter->next;
+        g_mutex_unlock(dbt->mutex);
+        continue;
+      }
+
+
       if (dbt->completed){
         iter=iter->next;
         g_mutex_unlock(dbt->mutex);
