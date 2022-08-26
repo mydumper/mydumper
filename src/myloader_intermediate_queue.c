@@ -33,7 +33,6 @@ extern gboolean innodb_optimize_keys_all_tables;
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
-static GMutex *table_list_mutex = NULL;
 
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
@@ -42,7 +41,6 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_conf=c;
   intermediate_queue = g_async_queue_new();
   intermediate_queue_ended=FALSE;
-  table_list_mutex = g_mutex_new();
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
 }
 
@@ -84,9 +82,9 @@ enum file_type process_filename(char *filename){
           return INCOMPLETE;
         }else{
           g_free(filename);
-          g_mutex_lock(table_list_mutex);
+          g_mutex_lock(intermediate_conf->table_list_mutex);
           refresh_table_list(intermediate_conf);
-          g_mutex_unlock(table_list_mutex);
+          g_mutex_unlock(intermediate_conf->table_list_mutex);
         }
         break;
       case SCHEMA_VIEW:
@@ -113,9 +111,9 @@ enum file_type process_filename(char *filename){
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
         if (!process_metadata_filename(filename))
           return INCOMPLETE;
-        g_mutex_lock(table_list_mutex);
+        g_mutex_lock(intermediate_conf->table_list_mutex);
         refresh_table_list(intermediate_conf);
-        g_mutex_unlock(table_list_mutex);
+        g_mutex_unlock(intermediate_conf->table_list_mutex);
         break;
       case DATA:
         if (!no_data){
