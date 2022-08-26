@@ -90,16 +90,19 @@ enum file_type process_filename(char *filename){
         }
         break;
       case SCHEMA_VIEW:
-        process_schema_view_filename(filename);
+        if (!process_schema_view_filename(filename))
+          return INCOMPLETE;
         break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
-          process_schema_filename(filename,"trigger");
+          if (!process_schema_filename(filename,"trigger"))
+            return INCOMPLETE;
         break;
       case SCHEMA_POST:
         // can be enqueued in any order
         if (!skip_post)
-          process_schema_filename(filename,"post");
+          if (!process_schema_filename(filename,"post"))
+            return INCOMPLETE;
         break;
       case CHECKSUM:
         intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
