@@ -83,10 +83,13 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->max_threads=max_threads_per_table;
       dbt->mutex=g_mutex_new();
       dbt->indexes=alter_table_statement;
-      dbt->start_time=NULL;
+      dbt->start_data_time=NULL;
+      dbt->finish_data_time=NULL;
       dbt->start_index_time=NULL;
       dbt->finish_time=NULL;
+      dbt->completed=FALSE;
       dbt->schema_created=FALSE;
+      dbt->index_enqueued=FALSE;
       dbt->constraints=NULL;
       dbt->count=0;
       g_hash_table_insert(table_hash, lkey, dbt);
@@ -199,10 +202,6 @@ void load_schema(struct db_table *dbt, gchar *filename){
               }
               g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
               dbt->indexes=alter_table_statement;
-              if (stream){
-                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
-                g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-              }
               if (flag & INCLUDE_CONSTRAINT){
                 struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));

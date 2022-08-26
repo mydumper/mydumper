@@ -22,7 +22,6 @@
 
 enum control_job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN };
 
-
 union control_job_data {
   struct restore_job *restore_job;
   GAsyncQueue *queue;
@@ -37,5 +36,4 @@ struct control_job {
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database);
 gboolean process_job(struct thread_data *td, struct control_job *job);
 void *process_stream_queue(struct thread_data * td);
-
 #endif

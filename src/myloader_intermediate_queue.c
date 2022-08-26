@@ -19,7 +19,8 @@
 #include "common.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-
+#include "myloader_restore_job.h"
+#include "myloader_control_job.h"
 extern gchar *directory;
 extern gchar *source_db;
 extern gboolean no_data;
@@ -27,7 +28,9 @@ extern gboolean skip_triggers;
 extern gboolean skip_post;
 extern guint num_threads;
 extern guint total_data_sql_files;
+extern gboolean innodb_optimize_keys_all_tables;
 
+gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
 static GMutex *table_list_mutex = NULL;
@@ -38,6 +41,7 @@ struct configuration *intermediate_conf = NULL;
 void initialize_intermediate_queue (struct configuration *c){
   intermediate_conf=c;
   intermediate_queue = g_async_queue_new();
+  intermediate_queue_ended=FALSE;
   table_list_mutex = g_mutex_new();
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
 }
@@ -51,6 +55,7 @@ void intermediate_queue_end(){
   g_message("Intermediate queue ending");
   g_thread_join(stream_intermediate_thread);
   g_message("Intermediate thread ended");
+  intermediate_queue_ended=TRUE;
 }
 
 void intermediate_queue_incomplete(gchar *filename){
@@ -151,6 +156,22 @@ void process_stream_filename(gchar * filename){
     g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
+void enqueue_all_index_jobs(struct configuration *conf){
+  GList * iter=conf->table_list;
+  struct db_table * dbt;
+  while (iter != NULL){
+    dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    if (!dbt->index_enqueued){
+      struct restore_job *rj = new_schema_restore_job(strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+      dbt->index_enqueued=TRUE;
+    }
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+}
+
 void *intermediate_thread(){
   char * filename=NULL;
   do{
@@ -169,6 +190,8 @@ void *intermediate_thread(){
   for (n = 0; n < num_threads; n++){
     g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
   }
+  if (innodb_optimize_keys_all_tables)
+    enqueue_all_index_jobs(intermediate_conf);
   g_message("Intermediate thread ended");
   return NULL;
 }

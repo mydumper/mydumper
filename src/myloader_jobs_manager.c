@@ -38,12 +38,42 @@ extern gchar *set_names_str;
 extern GString *set_session;
 extern guint num_threads;
 extern gboolean stream;
+extern guint max_threads_for_index_creation;
+extern gboolean innodb_optimize_keys_all_tables;
 
 static GMutex *init_mutex=NULL;
+static GMutex *index_mutex=NULL;
+guint index_threads_counter = 0;
+
 
 void initialize_job(gchar * purge_mode_str){
   initialize_restore_job(purge_mode_str);
   init_mutex = g_mutex_new();
+  index_mutex = g_mutex_new();
+  index_threads_counter = 0;
+}
+
+
+gboolean process_index(struct thread_data * td){
+  gboolean b=FALSE;
+  g_mutex_lock(index_mutex);
+  if ( max_threads_for_index_creation > index_threads_counter){
+    struct control_job *job=g_async_queue_try_pop(td->conf->index_queue);
+    if (job != NULL){
+      index_threads_counter++;
+      g_mutex_unlock(index_mutex);
+      execute_use_if_needs_to(td, job->use_database, "Restoring index");
+      job->data.restore_job->dbt->start_index_time=g_date_time_new_now_local();
+      b=process_job(td, job);
+      job->data.restore_job->dbt->finish_time=g_date_time_new_now_local();
+//      job->data.restore_job->dbt->index_completed=TRUE;
+      g_mutex_lock(index_mutex);
+      index_threads_counter--;
+      b=TRUE;
+    }
+  }
+  g_mutex_unlock(index_mutex);
+  return b;
 }
 
 void *loader_thread(struct thread_data *td) {
@@ -72,24 +102,23 @@ void *loader_thread(struct thread_data *td) {
   }
 
   g_debug("Thread %d: Starting import", td->thread_id);
-//  if (stream){
   process_stream_queue(td);
-//  }else{
-//    process_directory_queue(td);
-//    prepare_directory();
-//    process_stream_queue(td);
-//  }
   struct control_job *job = NULL;
   gboolean cont=TRUE;
+
+  cont=TRUE;
+  while (cont){
+    cont=process_index(td);
+  }
 
   g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
-//    g_message("%s",((struct restore_job *)job->job_data)->object);
     execute_use_if_needs_to(td, job->use_database, "Restoring post table");
     cont=process_job(td, job);
   }
+
 //  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
   cont=TRUE;
   while (cont){

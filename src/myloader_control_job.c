@@ -19,6 +19,11 @@
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 #include "myloader_common.h"
+#include "myloader_restore.h"
+#include "myloader_jobs_manager.h"
+extern gboolean intermediate_queue_ended;
+extern gboolean innodb_optimize_keys_per_table;
+
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {
   struct control_job *j = g_new0(struct control_job, 1);
   j->type = type;
@@ -53,7 +58,7 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
       break;
     default:
       g_free(job);
-      g_critical("Something very bad happened!");
+      g_critical("Something very bad happened!(1)");
       exit(EXIT_FAILURE);
   }
   g_free(job);
@@ -61,11 +66,54 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
 }
 
 
-struct restore_job * give_any_data_job(struct configuration * conf){
-  g_mutex_lock(conf->table_list_mutex);
+struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean test_condition){
+  g_mutex_lock(td->conf->table_list_mutex);
+  GList * iter=td->conf->table_list;
+  GList * next = NULL;
+  struct restore_job *job = NULL;
+//  g_message("Elemetns in table_list: %d",g_list_length(stream_conf->table_list));
+//  We are going to check every table and see if there is any missing job
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    if (dbt->completed){
+      iter=iter->next;
+      continue;
+    }
+//    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
+    if (!test_condition || (dbt->schema_created && dbt->current_threads < dbt->max_threads)){
+      // I could do some job in here, do we have some for me?
+      g_mutex_lock(dbt->mutex);
+      if (dbt->completed){
+        iter=iter->next;
+        g_mutex_unlock(dbt->mutex);
+        continue;
+      }
+      if (g_list_length(dbt->restore_job_list) > 0){
+        // We found a job that we can process!
+        job = dbt->restore_job_list->data;
+        next = dbt->restore_job_list->next;
+        g_list_free_1(dbt->restore_job_list);
+        dbt->restore_job_list = next;
+        g_mutex_unlock(dbt->mutex);
+        break;
+      }
+      if (intermediate_queue_ended)
+        dbt->completed=TRUE;
+      g_mutex_unlock(dbt->mutex);
+    }
+    iter=iter->next;
+  }
+  g_mutex_unlock(td->conf->table_list_mutex);
+  return job;
+}
+
+
+struct restore_job * give_any_data_job(struct thread_data * td){
+ return give_me_next_data_job(td,FALSE);
+/*  g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
   GList * next = NULL;
-//  struct control_job *job = NULL;
+ //  struct control_job *job = NULL;
   struct restore_job *rj =NULL;
   while (iter != NULL){
     struct db_table * dbt = iter->data;
@@ -86,34 +134,29 @@ struct restore_job * give_any_data_job(struct configuration * conf){
   g_mutex_unlock(conf->table_list_mutex);
 
   return rj;
+*/
 }
 
-struct restore_job * give_me_next_data_job(struct configuration * conf){
-  g_mutex_lock(conf->table_list_mutex);
+void enqueue_indexes_if_possible(struct configuration *conf){
+  (void )conf;
   GList * iter=conf->table_list;
-  GList * next = NULL;
-  struct restore_job *job = NULL;
-//  g_message("Elemetns in table_list: %d",g_list_length(stream_conf->table_list));
+  struct db_table * dbt;
   while (iter != NULL){
-    struct db_table * dbt = iter->data;
-//    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
-    if (dbt->schema_created && dbt->current_threads < dbt->max_threads){
-      // I could do some job in here, do we have some for me?
-      g_mutex_lock(dbt->mutex);
-      if (g_list_length(dbt->restore_job_list) > 0){
-        job = dbt->restore_job_list->data;
-        next = dbt->restore_job_list->next;
-        g_list_free_1(dbt->restore_job_list);
-        dbt->restore_job_list = next;
-        g_mutex_unlock(dbt->mutex);
-        break;
+    dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    if (dbt->schema_created && !dbt->index_enqueued){
+      if (intermediate_queue_ended){
+        if (dbt->indexes != NULL){
+          g_message("Enqueuing index for table: %s", dbt->table);
+          struct restore_job *rj = new_schema_restore_job(strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+          g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+        }
+        dbt->index_enqueued=TRUE;
       }
-      g_mutex_unlock(dbt->mutex);
     }
+    g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
-  g_mutex_unlock(conf->table_list_mutex);
-  return job;
 }
 
 void *process_stream_queue(struct thread_data * td) {
@@ -133,37 +176,56 @@ void *process_stream_queue(struct thread_data * td) {
       d->schema_created=TRUE;
       continue;
     }
+
+    // Enqueue index to add
+    enqueue_indexes_if_possible(td->conf);
+
+   // Check if are index and can be added
+
+    if (innodb_optimize_keys_per_table){
+      enqueue_indexes_if_possible(td->conf);
+
+      gboolean b=process_index(td);
+      if (b){
+        g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+        continue;
+      }
+    }
+
     job=g_async_queue_try_pop(td->conf->table_queue);
     if (job != NULL){
       struct database *real_db_name=db_hash_lookup(job->use_database); 
       if (real_db_name->schema_created){
         execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
         cont=process_job(td, job);
-      }else
+      }else{
         g_async_queue_push(td->conf->table_queue,job);
+        g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+      }
       continue;
     }
-    struct restore_job *rj = give_me_next_data_job(td->conf);
+    struct restore_job *rj = give_me_next_data_job(td, TRUE);
     if (rj != NULL){
       job=new_job(JOB_RESTORE,rj,rj->dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
       cont=process_job(td, job);
       continue;
     }
-    rj=give_any_data_job(td->conf);
+    rj=give_any_data_job(td);
     if (rj != NULL){
       job=new_job(JOB_RESTORE,rj,rj->dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
       cont=process_job(td, job);
       continue;
     }else{
-      if (ft==SHUTDOWN)
+      if (ft==SHUTDOWN){
         cont=FALSE;
-      else
+      }else
         g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
     }
 
   }
-  g_message("Shutting down stream thread %d", td->thread_id);
+  enqueue_indexes_if_possible(td->conf);
+  g_message("Thread %d: Data import ended", td->thread_id);
   return NULL;
 }

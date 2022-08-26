@@ -150,7 +150,6 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
     intermediate_queue_new(strdup(filename));
   g_free(filename);
   intermediate_queue_end();
-//  g_thread_join(stream_intermidiate_thread);
   guint n=0;
   for (n = 0; n < num_threads ; n++) {
 //    g_async_queue_push(stream_conf->data_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
