@@ -75,7 +75,6 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
 //  We are going to check every table and see if there is any missing job
   while (iter != NULL){
     struct db_table * dbt = iter->data;
-    g_message("Iter in %s %s", dbt->database, dbt->table);
     if (dbt->completed){
       iter=iter->next;
       continue;
@@ -184,7 +183,6 @@ void *process_stream_queue(struct thread_data * td) {
       g_error("Max shutdonw reached");
     }
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
-    g_message("Processing %d", ft);
     job=g_async_queue_try_pop(td->conf->database_queue);
     if (job != NULL){
       g_debug("Restoring database");
@@ -228,10 +226,8 @@ void *process_stream_queue(struct thread_data * td) {
       job=new_job(JOB_RESTORE,rj,rj->dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
       cont=process_job(td, job);
-      g_message("Restoring data job");
       continue;
     }
-    g_message("No next data job");
     rj=give_any_data_job(td);
     if (rj != NULL){
       job=new_job(JOB_RESTORE,rj,rj->dbt->database);
@@ -239,11 +235,9 @@ void *process_stream_queue(struct thread_data * td) {
       cont=process_job(td, job);
       continue;
     }else{
-      g_message("No more jobs??? %d", ft);
       if (ft==SHUTDOWN){
         cont=FALSE;
       }else{
-        g_message("Enqueing %d", ft);
         g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
       }
     }
