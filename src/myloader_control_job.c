@@ -121,6 +121,7 @@ struct restore_job * give_any_data_job(struct thread_data * td){
 
 void enqueue_indexes_if_possible(struct configuration *conf){
   (void )conf;
+  g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
   struct db_table * dbt;
   while (iter != NULL){
@@ -139,6 +140,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
+  g_mutex_unlock(conf->table_list_mutex);
 }
 
 void *process_stream_queue(struct thread_data * td) {
