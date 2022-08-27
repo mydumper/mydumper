@@ -82,9 +82,7 @@ enum file_type process_filename(char *filename){
           return INCOMPLETE;
         }else{
           g_free(filename);
-          g_mutex_lock(intermediate_conf->table_list_mutex);
           refresh_table_list(intermediate_conf);
-          g_mutex_unlock(intermediate_conf->table_list_mutex);
         }
         break;
       case SCHEMA_VIEW:
@@ -111,9 +109,7 @@ enum file_type process_filename(char *filename){
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
         if (!process_metadata_filename(filename))
           return INCOMPLETE;
-        g_mutex_lock(intermediate_conf->table_list_mutex);
         refresh_table_list(intermediate_conf);
-        g_mutex_unlock(intermediate_conf->table_list_mutex);
         break;
       case DATA:
         if (!no_data){

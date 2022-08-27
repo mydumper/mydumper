@@ -298,6 +298,8 @@ void refresh_table_list(struct configuration *conf){
   GList * table_list=NULL;
   GHashTableIter iter;
   gchar * lkey;
+  g_mutex_lock(conf->table_hash_mutex);
+  g_mutex_lock(conf->table_list_mutex);
   g_hash_table_iter_init ( &iter, conf->table_hash );
   struct db_table *dbt=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
@@ -305,6 +307,8 @@ void refresh_table_list(struct configuration *conf){
   }
   g_list_free(conf->table_list);
   conf->table_list=table_list;
+  g_mutex_unlock(conf->table_hash_mutex);
+  g_mutex_unlock(conf->table_list_mutex);
 }
 
 void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
