@@ -154,6 +154,7 @@ void process_stream_filename(gchar * filename){
 }
 
 void enqueue_all_index_jobs(struct configuration *conf){
+  g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
   struct db_table * dbt;
   while (iter != NULL){
@@ -167,6 +168,7 @@ void enqueue_all_index_jobs(struct configuration *conf){
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
+  g_mutex_unlock(conf->table_list_mutex);
 }
 
 void *intermediate_thread(){

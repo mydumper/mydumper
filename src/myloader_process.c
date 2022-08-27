@@ -370,10 +370,12 @@ gboolean process_table_filename(char * filename){
     g_warning("It was not possible to process file: %s (1) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
   }
+  g_mutex_lock(conf->table_list_mutex);
   if (!eval_table(real_db_name->name, table_name)){
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
+  g_mutex_unlock(conf->table_list_mutex);
   dbt=append_new_db_table(NULL, db_name, table_name,0,NULL);
   load_schema(dbt, g_build_filename(directory,filename,NULL));
   return TRUE;
@@ -432,10 +434,12 @@ gboolean process_schema_view_filename(gchar *filename) {
       g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
       return FALSE;
     }
+  g_mutex_lock(conf->table_list_mutex);
     if (!eval_table(real_db_name->name, table_name)){
       g_warning("File %s has been filter out",filename);
       return TRUE;
     }
+  g_mutex_unlock(conf->table_list_mutex);
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
     g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
@@ -453,10 +457,12 @@ gboolean process_schema_filename(gchar *filename, const char * object) {
       g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
       return FALSE;
     }
+  g_mutex_lock(conf->table_list_mutex);
     if (!eval_table(real_db_name->name, table_name)){
       g_warning("File %s has been filter out",filename);
       return TRUE;
     }
+  g_mutex_unlock(conf->table_list_mutex);
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, object);
     g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
@@ -477,10 +483,12 @@ gboolean process_data_filename(char * filename){
     g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
   }
+  g_mutex_lock(conf->table_list_mutex);
   if (!eval_table(real_db_name->name, table_name)){
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
+  g_mutex_unlock(conf->table_list_mutex);
   struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
