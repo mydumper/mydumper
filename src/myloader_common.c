@@ -294,6 +294,10 @@ gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
   return a_val->rows < b_val->rows;
 }
 
+gint compare_dbt_short(gconstpointer a, gconstpointer b){
+  return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
+}
+
 void refresh_table_list(struct configuration *conf){
   GList * table_list=NULL;
   GHashTableIter iter;
@@ -303,7 +307,8 @@ void refresh_table_list(struct configuration *conf){
   g_hash_table_iter_init ( &iter, conf->table_hash );
   struct db_table *dbt=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-    table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
+ //   table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
+    table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
   }
   g_list_free(conf->table_list);
   conf->table_list=table_list;
