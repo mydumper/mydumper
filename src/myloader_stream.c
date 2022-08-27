@@ -76,7 +76,6 @@ void *process_stream(struct configuration *stream_conf){
   char buffer[STREAM_BUFFER_SIZE];
   FILE *file=NULL;
   gboolean eof=FALSE;
-  stream_conf->table_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   int pos=0,buffer_len=0;
   int diff=0, i=0, line_from=0, line_end=0, last_pos=0, next_line_from=0;
   for(i=0;i<STREAM_BUFFER_SIZE;i++){

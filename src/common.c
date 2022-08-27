@@ -288,10 +288,10 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   return TRUE;
 }
 
-gboolean is_table_in_list(gchar *table_name, gchar **table_list){
+gboolean is_table_in_list(gchar *table_name, gchar **tl){
   guint i = 0;
-  for (i = 0; table_list[i] != NULL; i++)
-    if (g_ascii_strcasecmp(table_list[i], table_name) == 0)
+  for (i = 0; tl[i] != NULL; i++)
+    if (g_ascii_strcasecmp(tl[i], table_name) == 0)
       return TRUE;
   return FALSE;
 }

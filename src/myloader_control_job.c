@@ -117,31 +117,6 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
 
 struct restore_job * give_any_data_job(struct thread_data * td){
  return give_me_next_data_job(td,FALSE);
-/*  g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  GList * next = NULL;
- //  struct control_job *job = NULL;
-  struct restore_job *rj =NULL;
-  while (iter != NULL){
-    struct db_table * dbt = iter->data;
-    if (dbt->schema_created){
-      g_mutex_lock(dbt->mutex);
-      if (g_list_length(dbt->restore_job_list) > 0){
-        rj = dbt->restore_job_list->data;
-        next = dbt->restore_job_list->next;
-        g_list_free_1(dbt->restore_job_list);
-        dbt->restore_job_list = next;
-        g_mutex_unlock(dbt->mutex);
-        break;
-      }
-      g_mutex_unlock(dbt->mutex);
-    }
-    iter=iter->next;
-  }
-  g_mutex_unlock(conf->table_list_mutex);
-
-  return rj;
-*/
 }
 
 void enqueue_indexes_if_possible(struct configuration *conf){

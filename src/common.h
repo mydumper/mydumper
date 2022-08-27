@@ -39,7 +39,7 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
 //void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
 void load_where_per_table_and_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_where_per_table, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
-gboolean is_table_in_list(gchar *table_name, gchar **table_list);
+gboolean is_table_in_list(gchar *table_name, gchar **tl);
 GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
 void free_hash(GHashTable * set_session_hash);
