@@ -227,7 +227,7 @@ void create_database(struct thread_data *td, gchar *database) {
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -394,6 +394,8 @@ int main(int argc, char *argv[]) {
   conf.pause_resume = g_async_queue_new();
   conf.table_list_mutex = g_mutex_new();
   conf.stream_queue = g_async_queue_new();
+  conf.table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  conf.table_hash_mutex=g_mutex_new();
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
   if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){

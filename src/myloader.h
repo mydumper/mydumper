@@ -43,6 +43,7 @@ struct configuration {
   GList *table_list;
   GMutex * table_list_mutex;
   GHashTable *table_hash;
+  GMutex *table_hash_mutex;
 //  GList *schema_create_list;
   GList *checksum_list;
   GList *metadata_list;

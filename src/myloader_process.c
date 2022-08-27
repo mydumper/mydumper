@@ -46,13 +46,11 @@ extern gboolean innodb_optimize_keys;
 extern gboolean append_if_not_exist;
 
 struct configuration *conf;
-GMutex *table_hash_mutex=NULL;
 void initialize_process(struct configuration *c){
   conf=c;
-  table_hash_mutex=g_mutex_new();
 }
 
-struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement){
+struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
   if ( database == NULL || table == NULL){
     g_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
     exit(EXIT_FAILURE);
@@ -63,11 +61,11 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
-  struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
+  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
   if (dbt == NULL){
-    g_mutex_lock(table_hash_mutex);
+    g_mutex_lock(conf->table_hash_mutex);
 //struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
-    dbt=g_hash_table_lookup(table_hash,lkey);
+    dbt=g_hash_table_lookup(conf->table_hash,lkey);
     if (dbt == NULL){
       dbt=g_new(struct db_table,1);
 //    dbt->filename=filename;
@@ -92,7 +90,8 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->index_enqueued=FALSE;
       dbt->constraints=NULL;
       dbt->count=0;
-      g_hash_table_insert(table_hash, lkey, dbt);
+      g_hash_table_insert(conf->table_hash, lkey, dbt);
+      g_debug("New dbt: %s", lkey);
     }else{
       g_free(table);
       g_free(database);
@@ -101,7 +100,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
     }
-    g_mutex_unlock(table_hash_mutex);
+    g_mutex_unlock(conf->table_hash_mutex);
   }else{
       g_free(table);
       g_free(database);
@@ -123,7 +122,7 @@ void free_dbt(struct db_table * dbt){
 }
 
 void free_table_hash(GHashTable *table_hash){
-  g_mutex_lock(table_hash_mutex);
+  g_mutex_lock(conf->table_hash_mutex);
   GHashTableIter iter;
   gchar * lkey;
   if (table_hash){
@@ -135,7 +134,7 @@ void free_table_hash(GHashTable *table_hash){
       g_free(dbt);
     }
   } 
-  g_mutex_unlock(table_hash_mutex);
+  g_mutex_unlock(conf->table_hash_mutex);
 }
 
 void load_schema(struct db_table *dbt, gchar *filename){
@@ -375,7 +374,7 @@ gboolean process_table_filename(char * filename){
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
-  dbt=append_new_db_table(NULL, db_name, table_name,0,conf->table_hash,NULL);
+  dbt=append_new_db_table(NULL, db_name, table_name,0,NULL);
   load_schema(dbt, g_build_filename(directory,filename,NULL));
   return TRUE;
 //  g_free(filename);
@@ -412,7 +411,7 @@ gboolean process_metadata_filename(char * filename){
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
-  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),conf->table_hash,NULL);
+  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),NULL);
   if (!is_compressed) {
     fclose(infile);
   } else {
@@ -482,7 +481,7 @@ gboolean process_data_filename(char * filename){
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
-  struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
+  struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
   dbt->count++; 

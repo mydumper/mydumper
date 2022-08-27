@@ -25,7 +25,6 @@ extern guint num_threads;
 void *process_directory(struct configuration *conf){
   GError *error = NULL;
   const gchar *filename = NULL;
-  conf->table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   GDir *dir = g_dir_open(directory, 0, &error);
   while ((filename = g_dir_read_name(dir))){
     intermediate_queue_new(g_strdup(filename));
