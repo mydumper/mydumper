@@ -155,7 +155,7 @@ void *process_stream_queue(struct thread_data * td) {
       i++;
     }
     if (i==num_threads){
-      g_error("Max shutdonw reached");
+      g_warning("Max shutdonw reached");
     }
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
     job=g_async_queue_try_pop(td->conf->database_queue);
