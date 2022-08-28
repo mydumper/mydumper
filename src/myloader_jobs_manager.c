@@ -60,13 +60,14 @@ gboolean process_index(struct thread_data * td){
   if ( max_threads_for_index_creation > index_threads_counter){
     struct control_job *job=g_async_queue_try_pop(td->conf->index_queue);
     if (job != NULL){
+      struct db_table *dbt=job->data.restore_job->dbt;
       index_threads_counter++;
       g_mutex_unlock(index_mutex);
       execute_use_if_needs_to(td, job->use_database, "Restoring index");
-      job->data.restore_job->dbt->start_index_time=g_date_time_new_now_local();
-      g_message("restoring index: %s.%s", job->data.restore_job->dbt->database, job->data.restore_job->dbt->table);
+      dbt->start_index_time=g_date_time_new_now_local();
+      g_message("restoring index: %s.%s", dbt->database, dbt->table);
       b=process_job(td, job);
-      job->data.restore_job->dbt->finish_time=g_date_time_new_now_local();
+      dbt->finish_time=g_date_time_new_now_local();
 //      job->data.restore_job->dbt->index_completed=TRUE;
       g_mutex_lock(index_mutex);
       index_threads_counter--;
