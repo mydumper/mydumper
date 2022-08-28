@@ -51,11 +51,12 @@ char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const
     g_free(query);
     return NULL;
   }
-  g_free(query);
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  char * r=g_strdup_printf("%s",row[column_number]);
+  char * r=NULL;
+  if (row != NULL) r=g_strdup_printf("%s",row[column_number]);
+  g_free(query);
   mysql_free_result(result);
   return r;
 }
@@ -85,6 +86,11 @@ char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *er
 
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn){
   return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
+}
+
+
+char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn){
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(table_name,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc from information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s' group by INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
 }
 
 GKeyFile * load_config_file(gchar * config_file){

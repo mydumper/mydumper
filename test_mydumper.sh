@@ -116,23 +116,23 @@ full_test(){
     echo "Execuing tests: $test"
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
-    $test -r 10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -r 10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # chunking the file to 10MB -- overriting database
-    $test -F 10 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -F 10 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # chunking the file to 100MB -- overriting database
-    $test -F 100 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -F 100 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # statement size to 2MB -- overriting database
-    $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
-    $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --load-data
-    $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
-    $test --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
-    $test -c --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -c --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
-    $test -c -r 10000 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -c -r 10000 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
     $test -c -F 10 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     myloader_stor_dir=$stream_stor_dir

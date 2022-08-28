@@ -85,6 +85,17 @@ void initialize_dump_into_file(){
 }
 
 void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename, gchar *fun()) {
+  int errn=0;
+  gchar * checksum=fun(conn, database, table, &errn);
+
+  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
+    errors++;
+    return;
+  }
+
+  if (checksum == NULL)
+    checksum = g_strdup("0");
+
   void *outfile = NULL;
 
   outfile = g_fopen(filename, "w");
@@ -95,12 +106,7 @@ void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *fi
     errors++;
     return;
   }
-  int errn=0;
-  gchar * checksum=fun(conn, database, table, &errn);
-  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
-    errors++;
-    return;
-  }
+
   fprintf(outfile, "%s", checksum);
   fclose(outfile);
 
@@ -229,7 +235,7 @@ void write_schema_definition_into_file(MYSQL *conn, char *database, char *filena
 }
 
 void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
-                      char *filename, char *checksum_filename) {
+                      char *filename, char *checksum_filename, char *checksum_index_filename) {
   void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
@@ -299,7 +305,9 @@ void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
     mysql_free_result(result);
 
   if (checksum_filename)
-    write_checksum_into_file(conn, database, table, checksum_filename, checksum_table_structure);  
+    write_checksum_into_file(conn, database, table, checksum_filename, checksum_table_structure);
+  if (checksum_index_filename)
+    write_checksum_into_file(conn, database, table, checksum_index_filename, checksum_table_indexes);
   return;
 }
 
@@ -745,7 +753,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *sj = (struct schema_job *)job->job_data;
   g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
-  write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename);
+  write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
   free_schema_job(sj);
   g_free(job);
 }
@@ -848,8 +856,10 @@ void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration 
   j->conf = conf;
   j->type = JOB_SCHEMA;
   sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
-  if ( schema_checksums )
+  if ( schema_checksums ){
     sj->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-checksum");
+    sj->checksum_index_filename = build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-indexes-checksum");
+  }
   g_async_queue_push(queue, j);
 }
 

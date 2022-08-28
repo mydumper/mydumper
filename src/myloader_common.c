@@ -330,6 +330,9 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
   char checksum[256];
   int errn=0;
   char * row=fun(conn, db ? db : real_database->name, real_table, &errn);
+  if (row == NULL)
+    row = g_strdup("0");
+
   gboolean is_compressed = FALSE;
   gchar *path = g_build_filename(directory, filename, NULL);
 
@@ -397,8 +400,11 @@ void checksum_databases(struct thread_data *td) {
     if (g_str_has_suffix(filename,"-schema-create-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-create-checksum", "Schema create checksum", checksum_database_defaults);
     }else{
+    if (g_str_has_suffix(filename,"-schema-indexes-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-indexes-checksum", "Schema index checksum", checksum_table_indexes);
+    }else{
       checksum_filename(filename, td->thrconn, "-checksum", "Checksum", checksum_table);
-    }}}}}
+    }}}}}}
     e=e->next;
   }
 }

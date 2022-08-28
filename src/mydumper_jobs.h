@@ -24,6 +24,7 @@ struct schema_job {
   char *table;
   char *filename;
   char *checksum_filename;
+  char *checksum_index_filename;
 };
 
 struct create_tablespace_job{
