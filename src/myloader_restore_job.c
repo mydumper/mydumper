@@ -144,8 +144,10 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (resume_mutex != NULL){
+      g_message("Thread %d: Stop", td->thread_id);
       g_mutex_lock(resume_mutex);
       g_mutex_unlock(resume_mutex);
+      g_message("Thread %d: Resumming", td->thread_id);
       resume_mutex=NULL;
     }
   }
