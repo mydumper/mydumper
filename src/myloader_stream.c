@@ -146,7 +146,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
   if (file) 
     m_close(file);
   if (filename)
-    intermediate_queue_new(strdup(filename));
+    intermediate_queue_new(g_strdup(filename));
   g_free(filename);
   intermediate_queue_end();
   guint n=0;
