@@ -20,6 +20,9 @@
 #ifndef _src_myloader_h
 #define _src_myloader_h
 
+#define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
+#define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
+
 struct thread_data {
   struct configuration *conf;
   MYSQL *thrconn;
@@ -32,16 +35,26 @@ struct configuration {
   GAsyncQueue *table_queue;
   GAsyncQueue *data_queue;
   GAsyncQueue *post_table_queue;
+  GAsyncQueue *view_queue;
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
   GAsyncQueue *pause_resume;
+  GAsyncQueue *stream_queue;
   GList *table_list;
+  GMutex * table_list_mutex;
   GHashTable *table_hash;
+  GMutex *table_hash_mutex;
 //  GList *schema_create_list;
   GList *checksum_list;
   GList *metadata_list;
   GMutex *mutex;
+  GAsyncQueue *index_queue;
   int done;
+};
+
+struct database {
+  gchar *name;
+  gboolean schema_created;
 };
 
 struct db_table {
@@ -59,9 +72,12 @@ struct db_table {
   GString *constraints;
   guint count;
   gboolean schema_created;
-  GDateTime * start_time;
+  gboolean index_enqueued;
+  GDateTime * start_data_time;
+  GDateTime * finish_data_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
+  gboolean completed;
 };
 
 enum file_type { INIT, SCHEMA_TABLESPACE, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA, SHUTDOWN, INCOMPLETE };

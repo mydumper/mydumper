@@ -31,14 +31,12 @@ extern gboolean overwrite_tables;
 extern gchar *db;
 extern gboolean stream;
 extern guint num_threads;
-
 gboolean shutdown_triggered=FALSE;
 GAsyncQueue *file_list_to_do=NULL;
 static GMutex *progress_mutex = NULL;
 static GMutex *single_threaded_create_table = NULL;
 unsigned long long int progress = 0;
 unsigned long long int total_data_sql_files = 0;
-
 enum purge_mode purge_mode;
 
 void initialize_restore_job(gchar * purge_mode_str){
@@ -146,8 +144,10 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (resume_mutex != NULL){
+      g_message("Thread %d: Stop", td->thread_id);
       g_mutex_lock(resume_mutex);
       g_mutex_unlock(resume_mutex);
+      g_message("Thread %d: Resumming", td->thread_id);
       resume_mutex=NULL;
     }
   }
@@ -175,7 +175,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
         g_message("Skipping table creation `%s`.`%s` from %s", dbt->real_database, dbt->real_table, rj->filename);
       }else{
-        g_message("Creating table `%s`.`%s` from content in %s", dbt->real_database, dbt->real_table, rj->filename);
+        g_message("Thread %d: Creating table `%s`.`%s` from content in %s", td->thread_id, dbt->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }

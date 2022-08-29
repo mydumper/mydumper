@@ -12,6 +12,10 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        David Ducos, Percona (david dot ducos at percona dot com)
+        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-void *process_directory(struct configuration *conf);
+#include "myloader.h"
+void intermediate_queue_incomplete(gchar *filename);
+void intermediate_queue_end();
+void intermediate_queue_new(gchar *filename);
+void initialize_intermediate_queue (struct configuration *c);

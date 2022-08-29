@@ -59,6 +59,7 @@
 #include "myloader_restore.h"
 #include "myloader_pmm_thread.h"
 #include "myloader_restore_job.h"
+#include "myloader_intermediate_queue.h"
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
@@ -79,6 +80,7 @@ gchar *purge_mode_str=NULL;
 gchar *set_names_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
+guint max_threads_for_index_creation=4;
 gboolean append_if_not_exist=FALSE;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -104,12 +106,12 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,22,"AFTER_IMPORT_PER_TABLE")){
+    if (g_strstr_len(value,22,AFTER_IMPORT_PER_TABLE)){
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,23,"AFTER_IMPORT_ALL_TABLES")){
+    if (g_strstr_len(value,23,AFTER_IMPORT_ALL_TABLES)){
       innodb_optimize_keys_all_tables = TRUE;
       innodb_optimize_keys_per_table = FALSE;
       return TRUE;
@@ -134,7 +136,7 @@ static GOptionEntry entries[] = {
     {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
      "Enable binary logging of the restore data", NULL},
     {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Creates the table without the indexes and it adds them at the end", NULL},
+     "Creates the table without the indexes and it adds them at the end. Options: AFTER_IMPORT_PER_TABLE and AFTER_IMPORT_ALL_TABLES. Default: AFTER_IMPORT_PER_TABLE", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str, 
       "Sets the names, use it at your own risk, default binary", NULL },
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
@@ -147,6 +149,8 @@ static GOptionEntry entries[] = {
      "Split the INSERT statement into this many rows.", NULL},
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
      "Maximum number of threads per table to use, default 4", NULL},
+    {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
+     "Maximum number of threads for index creation, default 4", NULL},
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
@@ -177,6 +181,24 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   return set_session_hash;
 }
 
+
+gchar * print_time(GTimeSpan timespan){
+  GTimeSpan days   = timespan/G_TIME_SPAN_DAY;
+  GTimeSpan hours  =(timespan-(days*G_TIME_SPAN_DAY))/G_TIME_SPAN_HOUR;
+  GTimeSpan minutes=(timespan-(days*G_TIME_SPAN_DAY)-(hours*G_TIME_SPAN_HOUR))/G_TIME_SPAN_MINUTE;
+  GTimeSpan seconds=(timespan-(days*G_TIME_SPAN_DAY)-(hours*G_TIME_SPAN_HOUR)-(minutes*G_TIME_SPAN_MINUTE))/G_TIME_SPAN_SECOND;
+  return g_strdup_printf("%ld %02ld:%02ld:%02ld",days,hours,minutes,seconds);
+}
+
+
+gint compare_by_time(gconstpointer a, gconstpointer b){
+  return
+    g_date_time_difference(((struct db_table *)a)->finish_time,((struct db_table *)a)->start_data_time) >
+    g_date_time_difference(((struct db_table *)b)->finish_time,((struct db_table *)b)->start_data_time);
+}
+
+
+
 void create_database(struct thread_data *td, gchar *database) {
   gchar *query = NULL;
 
@@ -205,7 +227,7 @@ void create_database(struct thread_data *td, gchar *database) {
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -316,7 +338,7 @@ int main(int argc, char *argv[]) {
         g_critical("the specified directory %s is not a mydumper backup",directory);
         exit(EXIT_FAILURE);
       }
-      initialize_directory();
+//      initialize_directory();
     }
   }
   g_free(current_dir);
@@ -366,8 +388,14 @@ int main(int argc, char *argv[]) {
   conf.data_queue = g_async_queue_new();
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
+  conf.index_queue = g_async_queue_new();
+  conf.view_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
+  conf.table_list_mutex = g_mutex_new();
+  conf.stream_queue = g_async_queue_new();
+  conf.table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  conf.table_hash_mutex=g_mutex_new();
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
   if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){
@@ -386,20 +414,23 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    db_hash_insert(g_strdup(db), g_strdup(db));
+    struct database * d=db_hash_insert(g_strdup(db), g_strdup(db));
     create_database(&t, db);
+    d->schema_created=TRUE;
   }
+
+  initialize_intermediate_queue(&conf);
 
   if (stream){
     initialize_stream(&conf);
   }
 
   initialize_loader_threads(&conf);
-  
+ 
   if (stream){
     wait_stream_to_finish();
   }else{
-    restore_from_directory(&conf);
+    process_directory(&conf);
   }
 
   wait_loader_threads_to_finish();
@@ -453,6 +484,19 @@ int main(int argc, char *argv[]) {
   }
 
   stop_signal_thread();
+/*
+  GList * tl=g_list_sort(conf.table_list, compare_by_time);
+  g_message("Import timings:");
+  g_message("Data      \t| Index    \t| Total   \t| Table");
+  while (tl != NULL){
+    struct db_table * dbt=tl->data;
+    GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
+    GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->real_database,dbt->real_table);
+    tl=tl->next;
+  }
+*/
+
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

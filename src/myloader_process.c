@@ -46,34 +46,32 @@ extern gboolean innodb_optimize_keys;
 extern gboolean append_if_not_exist;
 
 struct configuration *conf;
-GMutex *table_hash_mutex=NULL;
 void initialize_process(struct configuration *c){
   conf=c;
-  table_hash_mutex=g_mutex_new();
 }
 
-struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GHashTable *table_hash, GString *alter_table_statement){
+struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
   if ( database == NULL || table == NULL){
     g_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
     exit(EXIT_FAILURE);
   }
-  char *real_db_name=db_hash_lookup(database);
+  struct database *real_db_name=db_hash_lookup(database);
   if (real_db_name == NULL){
     g_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
     exit(EXIT_FAILURE);
   }
   gchar *lkey=g_strdup_printf("%s_%s",database, table);
-  struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
+  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
   if (dbt == NULL){
-    g_mutex_lock(table_hash_mutex);
+    g_mutex_lock(conf->table_hash_mutex);
 //struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
-    dbt=g_hash_table_lookup(table_hash,lkey);
+    dbt=g_hash_table_lookup(conf->table_hash,lkey);
     if (dbt == NULL){
       dbt=g_new(struct db_table,1);
 //    dbt->filename=filename;
       dbt->database=database;
     // This should be the only place where we should use `db ? db : `
-      dbt->real_database = g_strdup(db ? db : real_db_name);
+      dbt->real_database = g_strdup(db ? db : real_db_name->name);
       dbt->table=table;
       dbt->real_table=dbt->table;
       dbt->rows=number_rows;
@@ -83,13 +81,16 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->max_threads=max_threads_per_table;
       dbt->mutex=g_mutex_new();
       dbt->indexes=alter_table_statement;
-      dbt->start_time=NULL;
+      dbt->start_data_time=NULL;
+      dbt->finish_data_time=NULL;
       dbt->start_index_time=NULL;
       dbt->finish_time=NULL;
+      dbt->completed=FALSE;
       dbt->schema_created=FALSE;
+      dbt->index_enqueued=FALSE;
       dbt->constraints=NULL;
       dbt->count=0;
-      g_hash_table_insert(table_hash, lkey, dbt);
+      g_hash_table_insert(conf->table_hash, lkey, dbt);
     }else{
       g_free(table);
       g_free(database);
@@ -98,7 +99,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
     }
-    g_mutex_unlock(table_hash_mutex);
+    g_mutex_unlock(conf->table_hash_mutex);
   }else{
       g_free(table);
       g_free(database);
@@ -120,7 +121,7 @@ void free_dbt(struct db_table * dbt){
 }
 
 void free_table_hash(GHashTable *table_hash){
-  g_mutex_lock(table_hash_mutex);
+  g_mutex_lock(conf->table_hash_mutex);
   GHashTableIter iter;
   gchar * lkey;
   if (table_hash){
@@ -132,7 +133,7 @@ void free_table_hash(GHashTable *table_hash){
       g_free(dbt);
     }
   } 
-  g_mutex_unlock(table_hash_mutex);
+  g_mutex_unlock(conf->table_hash_mutex);
 }
 
 void load_schema(struct db_table *dbt, gchar *filename){
@@ -199,10 +200,6 @@ void load_schema(struct db_table *dbt, gchar *filename){
               }
               g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
               dbt->indexes=alter_table_statement;
-              if (stream){
-                struct restore_job *rj = new_schema_restore_job(filename,JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
-                g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
-              }
               if (flag & INCLUDE_CONSTRAINT){
                 struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->real_database, alter_table_constraint_statement, "constraint");
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
@@ -367,16 +364,18 @@ gboolean process_table_filename(char * filename){
       g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
   }
-  char *real_db_name=db_hash_lookup(db_name);
+  struct database *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
     g_warning("It was not possible to process file: %s (1) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
   }
-  if (!eval_table(real_db_name, table_name)){
-    g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
+  g_mutex_lock(conf->table_list_mutex);
+  if (!eval_table(real_db_name->name, table_name)){
+    g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
-  dbt=append_new_db_table(NULL, db_name, table_name,0,conf->table_hash,NULL);
+  g_mutex_unlock(conf->table_list_mutex);
+  dbt=append_new_db_table(NULL, db_name, table_name,0,NULL);
   load_schema(dbt, g_build_filename(directory,filename,NULL));
   return TRUE;
 //  g_free(filename);
@@ -389,7 +388,7 @@ gboolean process_metadata_filename(char * filename){
       g_critical("It was not possible to process file: %s (1)",filename);
       exit(EXIT_FAILURE);
   }
-  char *real_db_name=db_hash_lookup(db_name);
+  struct database *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
     g_warning("It was not possible to process file: %s (2) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
@@ -413,7 +412,7 @@ gboolean process_metadata_filename(char * filename){
   }
 
   char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
-  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),conf->table_hash,NULL);
+  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),NULL);
   if (!is_compressed) {
     fclose(infile);
   } else {
@@ -422,19 +421,50 @@ gboolean process_metadata_filename(char * filename){
   return TRUE;
 }
 
-void process_schema_filename(gchar *filename, const char * object) {
-    gchar *database=NULL, *table_name=NULL, *real_db_name=NULL;
+gboolean process_schema_view_filename(gchar *filename) {
+    gchar *database=NULL, *table_name=NULL;
+    struct database *real_db_name=NULL;
     get_database_table_from_file(filename,"-schema",&database,&table_name);
     if (database == NULL){
       g_critical("Database is null on: %s",filename);
     }
     real_db_name=db_hash_lookup(database);
-    if (!eval_table(real_db_name, table_name)){
-      g_warning("File %s has been filter out",filename);
-      return;
+    if (real_db_name==NULL){
+      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+      return FALSE;
     }
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
-    g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name));
+  g_mutex_lock(conf->table_list_mutex);
+    if (!eval_table(real_db_name->name, table_name)){
+      g_warning("File %s has been filter out",filename);
+      return TRUE;
+    }
+  g_mutex_unlock(conf->table_list_mutex);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
+    g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  return TRUE;
+}
+
+gboolean process_schema_filename(gchar *filename, const char * object) {
+    gchar *database=NULL, *table_name=NULL;
+    struct database *real_db_name=NULL;
+    get_database_table_from_file(filename,"-schema",&database,&table_name);
+    if (database == NULL){
+      g_critical("Database is null on: %s",filename);
+    }
+    real_db_name=db_hash_lookup(database);
+    if (real_db_name==NULL){
+      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+      return FALSE;
+    }
+  g_mutex_lock(conf->table_list_mutex);
+    if (!eval_table(real_db_name->name, table_name)){
+      g_warning("File %s has been filter out",filename);
+      return TRUE;
+    }
+  g_mutex_unlock(conf->table_list_mutex);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, object);
+    g_async_queue_push(conf->post_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  return TRUE;
 }
 
 gboolean process_data_filename(char * filename){
@@ -447,16 +477,18 @@ gboolean process_data_filename(char * filename){
     g_critical("It was not possible to process file: %s (3)",filename);
     exit(EXIT_FAILURE);
   }
-  char *real_db_name=db_hash_lookup(db_name);
+  struct database *real_db_name=db_hash_lookup(db_name);
   if (real_db_name==NULL){
     g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
   }
-  if (!eval_table(real_db_name, table_name)){
-    g_warning("Skiping table: `%s`.`%s`",real_db_name, table_name);
+  g_mutex_lock(conf->table_list_mutex);
+  if (!eval_table(real_db_name->name, table_name)){
+    g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
-  struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,conf->table_hash,NULL);
+  g_mutex_unlock(conf->table_list_mutex);
+  struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
   dbt->count++; 
