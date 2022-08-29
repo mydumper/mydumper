@@ -161,7 +161,7 @@ void enqueue_all_index_jobs(struct configuration *conf){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
     if (!dbt->index_enqueued){
-      struct restore_job *rj = new_schema_restore_job(strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
       g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
       dbt->index_enqueued=TRUE;
     }
