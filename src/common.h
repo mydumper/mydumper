@@ -18,6 +18,13 @@
 #ifndef _src_common_h
 #define _src_common_h
 
+struct configuration_per_table{
+  GHashTable *all_anonymized_function;
+  GHashTable *all_where_per_table;
+  GHashTable *all_limit_per_table;
+  GHashTable *all_num_threads_per_table;
+};
+
 #define STREAM_BUFFER_SIZE 1000000
 typedef gchar * (*fun_ptr)(gchar **);
 
@@ -38,7 +45,7 @@ void execute_gstring(MYSQL *conn, GString *ss);
 gchar *replace_escaped_strings(gchar *c);
 void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
 //void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
-void load_where_per_table_and_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_where_per_table, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
+void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **tl);
 GHashTable * initialize_hash_of_session_variables();

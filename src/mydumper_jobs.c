@@ -1032,18 +1032,103 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
   return (count);
 }
 
-GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
+
+
+
+GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *field){
+  GList *chunks = NULL;
+  gchar *query = NULL;
+  MYSQL_ROW row;
+  MYSQL_RES *minmax = NULL;
+  int showed_nulls = 0;
+  /* Get minimum/maximum */
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` %s %s",
+                        (detected_server == SERVER_TYPE_MYSQL)
+                            ? "/*!40001 SQL_NO_CACHE */"
+                            : "",
+                        field, field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
+  g_free(query);
+  minmax = mysql_store_result(conn);
+
+  if (!minmax)
+    goto cleanup;
+
+  row = mysql_fetch_row(minmax);
+  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
+
+  /* Check if all values are NULL */
+  if (row[0] == NULL)
+    goto cleanup;
+
+  char *min = row[0];
+  char *max = row[1];
+
+  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
+
+  /* Support just bigger INTs for now, very dumb, no verify approach */
+  switch (fields[0].type) {
+  case MYSQL_TYPE_LONG:
+  case MYSQL_TYPE_LONGLONG:
+  case MYSQL_TYPE_INT24:
+  case MYSQL_TYPE_SHORT:
+    /* Got total number of rows, skip chunk logic if estimates are low */
+    rows = estimate_count(conn, dbt->database->name, dbt->table, field, min, max);
+    if (rows <= rows_per_file){
+      g_message("Table %s.%s too small to split", dbt->database->name, dbt->table);
+      goto cleanup;
+    }
+
+    /* This is estimate, not to use as guarantee! Every chunk would have eventual
+ *      * adjustments */
+    estimated_chunks = rows / rows_per_file;
+    /* static stepping */
+    nmin = strtoul(min, NULL, 10);
+    nmax = strtoul(max, NULL, 10);
+    estimated_step = (nmax - nmin) / estimated_chunks + 1;
+    if (estimated_step > max_rows)
+      estimated_step = max_rows;
+    cutoff = nmin;
+    while (cutoff <= nmax) {
+      chunks = g_list_prepend(
+          chunks,
+          g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? " IS NULL OR " : "", field,
+                          (unsigned long long)cutoff, field,
+                          (unsigned long long)(cutoff + estimated_step)));
+      cutoff += estimated_step;
+      showed_nulls = 1;
+    }
+    chunks = g_list_reverse(chunks);
+    default:
+      ;
+   }
+cleanup:
+  if (minmax)
+    mysql_free_result(minmax);
+  return chunks;
+}
+
+
+
+
+GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf) {
 
   GList *chunks = NULL;
-  MYSQL_RES *indexes = NULL, *minmax = NULL, *total = NULL;
+  MYSQL_RES *indexes = NULL;
   MYSQL_ROW row;
   char *field = NULL;
-  int showed_nulls = 0;
+
+  if (dbt->limit != NULL)
+    return chunks;
 
   /* first have to pick index, in future should be able to preset in
    * configuration too */
-  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", database, table);
+  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", dbt->database->name, dbt->table);
   mysql_query(conn, query);
   g_free(query);
   indexes = mysql_store_result(conn);
@@ -1089,79 +1174,11 @@ GList *get_chunks_for_table(MYSQL *conn, char *database, char *table,
   /* Oh well, no chunks today - no suitable index */
   if (!field)
     goto cleanup;
-
-  /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` %s %s",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, field, database, table, where_option ? "WHERE" : "", where_option ? where_option : ""));
-  g_free(query);
-  minmax = mysql_store_result(conn);
-
-  if (!minmax)
-    goto cleanup;
-
-  row = mysql_fetch_row(minmax);
-  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-
-  /* Check if all values are NULL */
-  if (row[0] == NULL)
-    goto cleanup;
-
-  char *min = row[0];
-  char *max = row[1];
-
-  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
-
-  /* Support just bigger INTs for now, very dumb, no verify approach */
-  switch (fields[0].type) {
-  case MYSQL_TYPE_LONG:
-  case MYSQL_TYPE_LONGLONG:
-  case MYSQL_TYPE_INT24:
-  case MYSQL_TYPE_SHORT:
-    /* Got total number of rows, skip chunk logic if estimates are low */
-    rows = estimate_count(conn, database, table, field, min, max);
-    if (rows <= rows_per_file)
-      goto cleanup;
-
-    /* This is estimate, not to use as guarantee! Every chunk would have eventual
-     * adjustments */
-    estimated_chunks = rows / rows_per_file;
-    /* static stepping */
-    nmin = strtoul(min, NULL, 10);
-    nmax = strtoul(max, NULL, 10);
-    estimated_step = (nmax - nmin) / estimated_chunks + 1;
-    if (estimated_step > max_rows)
-      estimated_step = max_rows;
-    cutoff = nmin;
-    while (cutoff <= nmax) {
-      chunks = g_list_prepend(
-          chunks,
-          g_strdup_printf("%s%s%s%s(`%s` >= %llu AND `%s` < %llu)",
-                          !showed_nulls ? "`" : "",
-                          !showed_nulls ? field : "",
-                          !showed_nulls ? "`" : "",
-                          !showed_nulls ? " IS NULL OR " : "", field,
-                          (unsigned long long)cutoff, field,
-                          (unsigned long long)(cutoff + estimated_step)));
-      cutoff += estimated_step;
-      showed_nulls = 1;
-    }
-    chunks = g_list_reverse(chunks);
-// TODO: We need to add more chunk options for different types
-  default:
-    goto cleanup;
-  }
+  chunks = get_chunks_for_table_by_rows(conn,dbt,field);
 
 cleanup:
   if (indexes)
     mysql_free_result(indexes);
-  if (minmax)
-    mysql_free_result(minmax);
-  if (total)
-    mysql_free_result(total);
   return chunks;
 }
 
@@ -1238,7 +1255,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
 
   GList *chunks = NULL;
   if (rows_per_file)
-    chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
+    chunks = get_chunks_for_table(conn, dbt, conf);
 
   if (partitions){
     int npartition=0;
@@ -1302,7 +1319,7 @@ void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GLi
     dbt = (struct db_table *)iter->data;
 
     if (rows_per_file)
-      chunks = get_chunks_for_table(conn, dbt->database->name, dbt->table, conf);
+      chunks = get_chunks_for_table(conn, dbt, conf);
 
     if (split_partitions)
       partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);

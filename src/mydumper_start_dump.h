@@ -108,6 +108,8 @@ struct db_table {
   GMutex *rows_lock;
   GList *anonymized_function;
   gchar *where;
+  gchar *limit;
+  guint num_threads;
 };
 
 struct schema_post {
