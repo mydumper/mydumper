@@ -150,7 +150,8 @@ guint less_locking_threads = 0;
 extern guint trx_consistency_only;
 extern gchar *set_names_str;
 gchar *where_option=NULL;
-extern GHashTable *all_anonymized_function;
+
+extern struct configuration_per_table conf_per_table;
 
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
@@ -251,8 +252,6 @@ static GOptionEntry working_thread_entries[] = {
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-GList *get_chunks_for_table(MYSQL *, char *, char *,
-                            struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 guint64 write_table_data_into_file(MYSQL *conn, struct table_job *tj);
@@ -815,7 +814,7 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   GList *anonymized_function_list=NULL;
   res = mysql_store_result(conn);
   gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
-  GHashTable *ht = g_hash_table_lookup(all_anonymized_function,k);
+  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
   fun_ptr2 f;
   if (ht){
     while ((row = mysql_fetch_row(res))) {
@@ -870,7 +869,9 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
   gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->name,dbt->table);
-  dbt->where=g_hash_table_lookup(all_where_per_table, k);
+  dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, k);
+  dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
+  dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   g_free(k);
   dbt->has_generated_fields = detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
   if (dbt->has_generated_fields) {
@@ -1548,14 +1549,15 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
 
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s",
+      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", 
       tj->dbt->select_fields->str, 
       tj->database, tj->table, tj->partition?tj->partition:"", 
-       (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",  
-       (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "", 
-      ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "", 
-      tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "");
+       (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",  
+       (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "", 
+      ((tj->where || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "", 
+      tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "", 
+      tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : "");
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
