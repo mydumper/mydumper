@@ -1063,7 +1063,7 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
 
   char *min = row[0];
   char *max = row[1];
-
+  char cmin,cmax;
   guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
 
   /* Support just bigger INTs for now, very dumb, no verify approach */
@@ -1103,6 +1103,26 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
       showed_nulls = 1;
     }
     chunks = g_list_reverse(chunks);
+    break;
+  case MYSQL_TYPE_STRING:
+    /* static stepping */
+    cmin = min[0];
+    cmax = max[0];
+    while (cmin <= cmax ) {
+      chunks = g_list_prepend(
+          chunks,
+          g_strdup_printf("%s%s%s%s(`%s` like '%c%%')",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? " IS NULL OR " : "", field,
+                          cmin
+                          ));
+      cmin++;
+      showed_nulls = 1;
+    }
+    chunks = g_list_reverse(chunks);   
+    break;
     default:
       ;
    }
