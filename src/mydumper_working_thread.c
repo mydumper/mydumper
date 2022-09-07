@@ -872,8 +872,8 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
     gchar *query =
-      g_strdup_printf("select CHARACTER_SET_NAME from INFORMATION_SCHEMA.COLLATIONS "
-                      "where collation_name='%s'",
+      g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
+                      "WHERE collation_name='%s'",
                       collation);
     mysql_query(conn, query);
     g_free(query);

@@ -37,7 +37,7 @@ INSERT INTO `table_varchar_pk` VALUES("bsdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("asdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("Öasdf",3);
 INSERT INTO `table_varchar_pk` VALUES(binary "Asdfg",3);
-INSERT INTO `table_varchar_pk` VALUES("Bsdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("Btdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("Csdfg",3);
 
 -- Tables with special characters
