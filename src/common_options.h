@@ -81,7 +81,7 @@ GOptionEntry common_entries[] = {
      "(skips before applying regex option)",
      NULL},
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
-     "Comma delimited table list to dump (does not exclude regex option)",
+     "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

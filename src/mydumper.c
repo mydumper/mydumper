@@ -207,8 +207,8 @@ int main(int argc, char *argv[]) {
 
   /* Give ourselves an array of tables to dump */
   if (tables_list)
-    tables = g_strsplit(tables_list, ",", 0);
-
+    tables = get_table_list(tables_list);
+    
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);

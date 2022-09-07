@@ -52,4 +52,5 @@ GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
 void free_hash(GHashTable * set_session_hash);
 void initialize_common_options(GOptionContext *context, const gchar *group);
+gchar **get_table_list(gchar *tables_list);
 #endif

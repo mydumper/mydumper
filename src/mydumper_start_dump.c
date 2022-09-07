@@ -1274,7 +1274,7 @@ void start_dump() {
     g_async_queue_pop(conf.unlock_tables);
     g_message("Non-InnoDB dump complete, unlocking tables");
     mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-    g_message("Releasing DDL lock");
+    g_message("Releasing FTWR lock");
     if (release_binlog_function != NULL){
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
