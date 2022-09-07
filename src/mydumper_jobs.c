@@ -1032,7 +1032,41 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
   return (count);
 }
 
+gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min){
+  MYSQL_ROW row;
+  MYSQL_RES *max = NULL;
+  gchar *query = NULL;
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s MAX(%s) FROM `%s`.`%s` WHERE BINARY %s like '%c%%'",
+                        (detected_server == SERVER_TYPE_MYSQL)
+                            ? "/*!40001 SQL_NO_CACHE */"
+                            : "",
+                        field, dbt->database->name, dbt->table, field, min));
+  g_free(query);
+  max= mysql_store_result(conn);
+  row = mysql_fetch_row(max);
+  gchar * r = g_strdup(row[0]);
+  mysql_free_result(max);
+  return r;
+}
 
+gchar *get_next_min_char( MYSQL *conn, struct db_table *dbt, char *field, gchar *max){
+  MYSQL_ROW row;
+  MYSQL_RES *min = NULL;
+  gchar *query = NULL;
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s MIN(%s) FROM `%s`.`%s` WHERE BINARY %s > '%s'",
+                        (detected_server == SERVER_TYPE_MYSQL)
+                            ? "/*!40001 SQL_NO_CACHE */"
+                            : "",
+                        field, dbt->database->name, dbt->table, field, max));
+  g_free(query);
+  min= mysql_store_result(conn);
+  row = mysql_fetch_row(min);
+  gchar * r = g_strdup(row[0]);
+  mysql_free_result(min);
+  return r;
+}
 
 
 GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *field){
@@ -1063,8 +1097,8 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
 
   char *min = row[0];
   char *max = row[1];
-
   guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, rows;
+  char *new_max=NULL,*new_min=NULL;
 
   /* Support just bigger INTs for now, very dumb, no verify approach */
   switch (fields[0].type) {
@@ -1103,6 +1137,26 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
       showed_nulls = 1;
     }
     chunks = g_list_reverse(chunks);
+    break;
+  case MYSQL_TYPE_STRING:
+    /* static stepping */
+    new_min = min;
+    while (g_strcmp0(new_max,max)) {
+      new_max=get_max_char(conn, dbt, field, new_min[0]);
+      chunks = g_list_prepend(
+          chunks,
+          g_strdup_printf("%s%s%s%s(`%s` BETWEEN BINARY '%s' AND BINARY '%s')",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? field : "",
+                          !showed_nulls ? "`" : "",
+                          !showed_nulls ? " IS NULL OR " : "", field,
+                          new_min, new_max
+                          ));
+      new_min = get_next_min_char(conn, dbt, field,new_max);
+      showed_nulls = 1;
+    }
+    chunks = g_list_reverse(chunks);   
+    break;
     default:
       ;
    }

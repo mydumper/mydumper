@@ -537,8 +537,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     }
 
     MYSQL_RES *result = mysql_store_result(conn);
-    guint ecol = -1, ccol = -1;
-    determine_ecol_ccol(result, &ecol, &ccol);
+    guint ecol = -1, ccol = -1, collcol;
+    determine_ecol_ccol(result, &ecol, &ccol, &collcol);
 
     struct database * database=NULL;
     if (get_database(conn, dt[0], &database)){
@@ -576,7 +576,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
+      new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
     }
   }
 

@@ -153,6 +153,9 @@ gchar *where_option=NULL;
 
 extern struct configuration_per_table conf_per_table;
 
+GHashTable *character_set_hash=NULL;
+GMutex *character_set_hash_mutex = NULL;
+
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
@@ -263,6 +266,8 @@ void load_working_thread_entries(GOptionGroup *main_group){
 
 
 void initialize_working_thread(){
+  character_set_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  character_set_hash_mutex = g_mutex_new();
   escape_function=&mysql_real_escape_string;
   non_innodb_table_mutex = g_mutex_new();
   innodb_tables_mutex = g_mutex_new();
@@ -860,11 +865,33 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   return result;
 }
 
-struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *datalength){
+gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
+  g_mutex_lock(character_set_hash_mutex);
+  gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
+  if (character_set == NULL){
+    MYSQL_RES *res = NULL;
+    MYSQL_ROW row;
+    gchar *query =
+      g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
+                      "WHERE collation_name='%s'",
+                      collation);
+    mysql_query(conn, query);
+    g_free(query);
+    res = mysql_store_result(conn);
+    row = mysql_fetch_row(res);
+    g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
+    mysql_free_result(res);
+  }
+  g_mutex_unlock(character_set_hash_mutex);
+  return character_set;
+}
+
+struct db_table *new_db_table( MYSQL *conn, struct database *database, char *table, char *table_collation, char *datalength){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
+  dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
@@ -888,7 +915,7 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   return dbt; 
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *datalength, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *collation, char *datalength, gchar *ecol){
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -897,7 +924,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   }
   g_mutex_unlock(database->ad_mutex);
 
-  struct db_table *dbt = new_db_table( conn, database, table, datalength);// (*row)[0], (*row)[6]);
+  struct db_table *dbt = new_db_table( conn, database, table, collation, datalength);// (*row)[0], (*row)[6]);
 
  // if is a view we care only about schema
   if (!is_view) {
@@ -1043,7 +1070,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   MYSQL_RES *result = mysql_store_result(conn);
   guint ecol = -1;
   guint ccol = -1;
-  determine_ecol_ccol(result, &ecol, &ccol);
+  guint collcol = -1;
+  determine_ecol_ccol(result, &ecol, &ccol, &collcol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
@@ -1139,7 +1167,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
 
-    new_table_to_dump(conn, conf, is_view, database, row[0], row[6], row[ecol]);
+    new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
 
   }
 
@@ -1213,8 +1241,10 @@ gboolean write_data(FILE *file, GString *data) {
   return TRUE;
 }
 
-void initialize_load_data_statement(GString *statement, gchar * table, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
+void initialize_load_data_statement(GString *statement, gchar * table, gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
   g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ", basename, table);
+  if (character_set)
+    g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
     g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
   if (fields_enclosed_by_ld)
@@ -1323,7 +1353,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       sql_fn = build_data_filename(dbt->database->filename, dbt->table_filename, nchunk, sub_part);
       char * basename=g_path_get_basename(load_data_fn);
       initialize_sql_statement(statement);
-      initialize_load_data_statement(statement, dbt->table, basename, fields, num_fields);
+      initialize_load_data_statement(statement, dbt->table, dbt->character_set, basename, fields, num_fields);
       g_free(basename);
       if (!compress_output) {
         if (!first_time){

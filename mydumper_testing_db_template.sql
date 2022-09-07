@@ -26,6 +26,19 @@ CREATE VIEW v AS SELECT qty, price, qty*price AS value FROM t;
 CREATE TABLE t_w_g (   `id` bigint(20) NOT NULL AUTO_INCREMENT,   `val` VARCHAR(30) NOT NULL,   `short_val` VARCHAR(10) GENERATED ALWAYS AS (left(val,10)) STORED NOT NULL,   PRIMARY KEY (`id`)  );
 INSERT into t_w_g (val) values ("asdfljlkjgsadklfjewtjgasd");
 
+CREATE TABLE `table_varchar_pk` (
+  `id` char(5) NOT NULL COLLATE latin1_bin,
+  `val` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+INSERT INTO `table_varchar_pk` VALUES(binary "csdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("bsdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("asdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("Öasdf",3);
+INSERT INTO `table_varchar_pk` VALUES(binary "Asdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("Btdfg",3);
+INSERT INTO `table_varchar_pk` VALUES("Csdfg",3);
 
 -- Tables with special characters
 CREATE table IF NOT EXISTS `mydumper_aipk_uuid_%` (id int primary key auto_increment, val varchar(36));
