@@ -260,7 +260,7 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
-void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol){
+void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol){
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   guint i = 0;
   for (i = 0; i < mysql_num_fields(result); i++) {
@@ -268,5 +268,7 @@ void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol){
       *ecol = i;
     else if (!strcasecmp(fields[i].name, "Comment"))
       *ccol = i;
+    else if (!strcasecmp(fields[i].name, "Collation"))
+      *collcol = i;
   }
 }

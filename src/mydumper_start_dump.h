@@ -103,6 +103,7 @@ struct db_table {
   char *escaped_table;
   GString *select_fields;
   gboolean has_generated_fields;
+  char *character_set;
   guint64 datalength;
   guint64 rows;
   GMutex *rows_lock;
