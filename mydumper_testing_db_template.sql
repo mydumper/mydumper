@@ -35,7 +35,7 @@ CREATE TABLE `table_varchar_pk` (
 INSERT INTO `table_varchar_pk` VALUES("csdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("bsdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("asdfg",3);
-
+INSERT INTO `table_varchar_pk` VALUES("Öasdf",3);
 -- Tables with special characters
 CREATE table IF NOT EXISTS `mydumper_aipk_uuid_%` (id int primary key auto_increment, val varchar(36));
 INSERT into `mydumper_aipk_uuid_%` (val) values (uuid());
