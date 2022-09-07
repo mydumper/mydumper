@@ -328,3 +328,12 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
   }
 }
 
+gchar **get_table_list(gchar *tables_list){
+  gchar ** tl = g_strsplit(tables_list, ",", 0);
+  guint i=0;
+  for(i=0; i < g_strv_length(tl); i++){
+    if (g_strstr_len(tl[i],strlen(tl[i]),".") == NULL )
+      g_error("Table name %s is not in DATABASE.TABLE format", tl[i]);
+  }
+  return tl;
+}

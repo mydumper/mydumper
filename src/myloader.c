@@ -410,7 +410,7 @@ int main(int argc, char *argv[]) {
   t.current_database=NULL;
 
   if (tables_list)
-    tables = g_strsplit(tables_list, ",", 0);
+    tables = get_table_list(tables_list);
 
   // Create database before the thread, to allow connection
   if (db){
