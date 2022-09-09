@@ -441,8 +441,29 @@ void thd_JOB_DUMP_DATABASE(struct configuration *conf, struct thread_data *td, s
   }
 }
 
+void get_where_clause_for_chunk_step(struct table_job * tj){
+  switch (tj->dbt->chunk_type){
+    case INTEGER:
+      tj->where=g_strdup_printf("%s(`%s` >= %"G_GUINT64_FORMAT" AND `%s` < %"G_GUINT64_FORMAT")",
+                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.nmin,
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.nmax);
+    break;
+  case CHAR:
+    tj->where=g_strdup_printf("%s(`%s` BETWEEN BINARY '%s' AND BINARY '%s')",
+                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
+                          tj->chunk_step->char_step.field,
+                          tj->chunk_step->char_step.cmin,tj->chunk_step->char_step.cmax
+                          );
+     break;
+
+  default: break;
+  }
+}
+
 void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   struct table_job *tj = (struct table_job *)job->job_data;
+  get_where_clause_for_chunk_step(tj);
   message_dumping_data(td,tj);
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
@@ -892,6 +913,7 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
+  dbt->chunk_type = NONE;
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
@@ -1576,7 +1598,6 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
-
   /* Poor man's database code */
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
