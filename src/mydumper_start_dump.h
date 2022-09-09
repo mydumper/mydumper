@@ -33,6 +33,13 @@ enum job_type {
   JOB_DUMP_DATABASE
 };
 
+enum chunk_type{
+  NONE,
+  INTEGER,
+  CHAR,
+  PARTITION
+};
+
 struct configuration {
   char use_any_index;
   GAsyncQueue *queue;
@@ -62,6 +69,31 @@ struct job {
   struct configuration *conf;
 };
 
+
+struct integer_step {
+  gchar *prefix;
+  gchar *field;
+  guint64 nmin;
+  guint64 nmax;
+};
+
+struct char_step {
+  gchar *prefix;
+  gchar *field;
+  gchar *cmin;
+  gchar *cmax;
+};
+
+struct partition_step{
+  gchar *partition;
+};
+
+union chunk_step {
+  struct integer_step integer_step;
+  struct char_step char_step;
+  struct partition_step partition_step;
+};
+
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
 // second number : when load data is used
@@ -72,6 +104,7 @@ struct table_job {
   guint nchunk;
 //  char *filename;
   char *where;
+  union chunk_step *chunk_step;  
   char *order_by;
   struct db_table *dbt;
 };
@@ -111,6 +144,8 @@ struct db_table {
   gchar *where;
   gchar *limit;
   guint num_threads;
+  enum chunk_type chunk_type;
+  gchar *primary_key;
 };
 
 struct schema_post {
