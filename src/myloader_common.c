@@ -427,7 +427,7 @@ void remove_definer(GString * data){
   char * from=g_strstr_len(data->str,50," DEFINER=");
   if (from){
     from++;
-    char * to=g_strstr_len(from,30," ");
+    char * to=g_strstr_len(from,110," ");
     if (to){
       while(from != to){
         from[0]=' ';
