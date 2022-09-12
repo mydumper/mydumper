@@ -728,7 +728,21 @@ void send_backup_stage_end(MYSQL *conn){
   mysql_query(conn, "BACKUP STAGE END");
 }
 
-void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
+void send_flush_table_with_read_lock(MYSQL *conn){
+        g_message("Sending Flush Table");
+        if (mysql_query(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
+          g_warning("Flush tables failed, we are continuing anyways: %s",
+                   mysql_error(conn));
+        }
+        g_message("Acquiring FTWRL");
+       if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+          g_critical("Couldn't acquire global lock, snapshots will not be "
+                   "consistent: %s",
+                   mysql_error(conn));
+          errors++;
+        }
+}
+void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
   mysql_query(*conn, "SELECT @@version_comment, @@version");
   MYSQL_RES *res2 = mysql_store_result(*conn);
   MYSQL_ROW ver;
@@ -757,6 +771,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void (**acquire_lock_function)(M
     if (g_str_has_prefix(ver[0], "mariadb")){
       if ((g_str_has_prefix(ver[1], "10.5")) || 
           (g_str_has_prefix(ver[1], "10.6"))) {
+        *flush_table = NULL;
         *acquire_lock_function = &send_mariadb_backup_locks;
         *release_lock_function = &send_backup_stage_end;
         break;
@@ -899,6 +914,7 @@ void start_dump() {
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   detect_server_version(conn);
+  void (*flush_table_function)(MYSQL *) = &send_flush_table_with_read_lock;
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_binlog_function)(MYSQL *) = NULL;
@@ -1011,22 +1027,13 @@ void start_dump() {
     if (!no_locks) {
       // This backup will lock the database
       if (!no_backup_locks)
-        determine_ddl_lock_function(&second_conn,&acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
+        determine_ddl_lock_function(&second_conn,&flush_table_function, &acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
 
       if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
-        g_message("Sending Flush Table");
-        if (mysql_query(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
-          g_warning("Flush tables failed, we are continuing anyways: %s",
-                   mysql_error(conn));
-        }
-        g_message("Acquiring FTWRL");
-        if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
-          g_critical("Couldn't acquire global lock, snapshots will not be "
-                   "consistent: %s",
-                   mysql_error(conn));
-          errors++;
+        if (flush_table_function != NULL) {
+          flush_table_function(conn);
         }
         if (acquire_ddl_lock_function != NULL) {
           g_message("Acquiring DDL lock");
