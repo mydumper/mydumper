@@ -749,13 +749,11 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
   while ((ver = mysql_fetch_row(res2))) {
     if (g_str_has_prefix(ver[0], "Percona")){
       if (g_str_has_prefix(ver[1], "8.")) {
-        *flush_table= &send_flush_table_with_read_lock;
         *acquire_lock_function = &send_lock_instance_backup;
         *release_lock_function = &send_unlock_instance_backup;
         break;
       }
       if (g_str_has_prefix(ver[1], "5.7.")) {
-        *flush_table= &send_flush_table_with_read_lock;
         *acquire_lock_function = &send_percona57_backup_locks;
         *release_binlog_function = &send_unlock_binlogs;
         *release_lock_function = &send_unlock_tables;
@@ -765,7 +763,6 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
     }
     if (g_str_has_prefix(ver[0], "MySQL")){
       if (g_str_has_prefix(ver[1], "8.")) {
-        *flush_table= &send_flush_table_with_read_lock;
         *acquire_lock_function = &send_lock_instance_backup;
         *release_lock_function = &send_unlock_instance_backup;
         break;
@@ -774,6 +771,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
     if (g_str_has_prefix(ver[0], "mariadb")){
       if ((g_str_has_prefix(ver[1], "10.5")) || 
           (g_str_has_prefix(ver[1], "10.6"))) {
+        *flush_table = NULL;
         *acquire_lock_function = &send_mariadb_backup_locks;
         *release_lock_function = &send_backup_stage_end;
         break;
@@ -916,7 +914,7 @@ void start_dump() {
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   detect_server_version(conn);
-  void (*flush_table_function)(MYSQL *) = NULL;
+  void (*flush_table_function)(MYSQL *) = &send_flush_table_with_read_lock;
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_binlog_function)(MYSQL *) = NULL;
