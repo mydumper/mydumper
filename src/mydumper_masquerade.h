@@ -13,7 +13,8 @@
 */
 #include "common.h"
 
-gchar * identity_function(gchar ** r);
-gchar * random_int_function(gchar ** r);
+gchar * random_uuid_function(gchar ** r, GHashTable * mem);
+gchar *    identity_function(gchar ** r, GHashTable * mem);
+gchar *  random_int_function(gchar ** r, GHashTable * mem);
 fun_ptr get_function_pointer_for (gchar *function_char);
 

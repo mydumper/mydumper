@@ -822,6 +822,8 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   return field_list;
 }
 
+struct function_pointer pp = {&identity_function,NULL};
+
 GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   // TODO #364: this is the place where we need to link the column between file loaded and dbt.
   // Currently, we are using identity_function, which return the same data.
@@ -841,14 +843,14 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   res = mysql_store_result(conn);
   gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
   GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
-  fun_ptr2 f;
+  struct function_pointer *fp;
   if (ht){
     while ((row = mysql_fetch_row(res))) {
-      f=(fun_ptr2)g_hash_table_lookup(ht,row[0]);
-      if (f  != NULL){
-        anonymized_function_list=g_list_append(anonymized_function_list,f);
+      fp=(struct function_pointer*)g_hash_table_lookup(ht,row[0]);
+      if (fp  != NULL){
+        anonymized_function_list=g_list_append(anonymized_function_list,fp);
       }else{
-        anonymized_function_list=g_list_append(anonymized_function_list,&identity_function);
+        anonymized_function_list=g_list_append(anonymized_function_list,&pp);
       }
     }
   }
@@ -1298,29 +1300,29 @@ void initialize_sql_statement(GString *statement){
   }
 }
 
-void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, gchar * (*fun_ptr_i)(gchar **)){
+void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
   if (load_data){
     if (!*column) {
       g_string_append(statement_row, "\\N");
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      escape_function(conn, escaped->str, fun_ptr_i(column), length);
+      escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else
-      g_string_append(statement_row, fun_ptr_i(column));
+      g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
   }else{
     /* Don't escape safe formats, saves some time */
     if (!*column) {
       g_string_append(statement_row, "NULL");
     } else if (field.flags & NUM_FLAG) {
-      g_string_append(statement_row, fun_ptr_i(column));
+      g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
        * the beginning */
       g_string_set_size(escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, escaped->str, fun_ptr_i(column), length);
+      mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(statement_row, "CONVERT(");
       g_string_append_c(statement_row, '\"');
@@ -1336,7 +1338,7 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   guint i = 0;
   g_string_append(statement_row, lines_starting_by);
   GList *f = dbt->anonymized_function;
-    gchar * (*fun_ptr_i)(gchar **) = &identity_function;
+    struct function_pointer *fun_ptr_i=&pp;
     for (i = 0; i < num_fields; i++) {
       if (f){
         fun_ptr_i=f->data;

@@ -23,20 +23,54 @@
 #include <mysql.h>
 #include "mydumper_masquerade.h"
 
-gchar * identity_function(gchar ** r){
+gchar * identity_function(gchar ** r, GHashTable * mem){
+  (void) mem;
   return *r;
 }
 
-gchar * random_int_function(gchar ** r){
-  // TODO: This function is not near to be ok, it is just for testing.
-  gchar * new_number=g_strdup_printf("%u",g_random_int());
-  g_strlcpy(*r,new_number,strlen(*r)+1);
+gchar * random_int_function(gchar ** r,GHashTable * mem){
+  (void) mem;
+  g_snprintf(*r, strlen(*r)+1, "%u", g_random_int());
+  return *r;
+}
+
+gchar * random_int_function_with_mem(gchar ** r, GHashTable * mem){
+  gchar *value=g_hash_table_lookup(mem,*r);
+  if (value==NULL){
+    value=g_strdup_printf("%u", g_random_int());
+    g_hash_table_insert(mem,g_strdup(*r),value);
+  }
+  g_strlcpy(*r, value, strlen(*r)+1);
+  return *r;
+}
+
+gchar * random_uuid_function(gchar ** r, GHashTable * mem){
+  (void) mem;
+  g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
+  return *r;
+}
+
+gchar * random_uuid_function_with_mem(gchar ** r, GHashTable * mem){
+  gchar *value=g_hash_table_lookup(mem,*r);
+  if (value==NULL){
+    value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
+    g_hash_table_insert(mem,g_strdup(*r),value);
+  }
+  g_strlcpy(*r, value, strlen(*r)+1);
   return *r;
 }
 
 fun_ptr get_function_pointer_for (gchar *function_char){
   if (!g_strcmp0(function_char,"random_int"))
     return &random_int_function;
+  if (!g_strcmp0(function_char,"random_int_with_mem"))
+    return &random_int_function_with_mem;
+
+  if (!g_strcmp0(function_char,"random_uuid"))
+    return &random_uuid_function;
+  if (!g_strcmp0(function_char,"random_uuid_with_mem"))
+    return &random_uuid_function_with_mem;
+
   // TODO: more functions needs to be added.
   if (!g_strcmp0(function_char,""))
     return &identity_function;
