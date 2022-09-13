@@ -1342,7 +1342,7 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
     for (i = 0; i < num_fields; i++) {
       if (f){
         fun_ptr_i=f->data;
-       f=f->next;
+        f=f->next;
       }
       write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, fun_ptr_i);
       if (i < num_fields - 1) {
