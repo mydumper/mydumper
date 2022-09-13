@@ -26,7 +26,12 @@ struct configuration_per_table{
 };
 
 #define STREAM_BUFFER_SIZE 1000000
-typedef gchar * (*fun_ptr)(gchar **);
+typedef gchar * (*fun_ptr)(gchar **, GHashTable *);
+
+struct function_pointer{
+  fun_ptr function;
+  GHashTable *memory;
+};
 
 char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);

@@ -168,7 +168,10 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       for (j=0; j < len2; j++){
         if (g_str_has_prefix(keys[j],"`") && g_str_has_suffix(keys[j],"`")){
           value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-          g_hash_table_insert(ht,g_strdup(keys[j]),get_function_pointer_for(value));
+          struct function_pointer *fp = g_new0(struct function_pointer, 1);
+          fp->function=get_function_pointer_for(value);
+          fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
+          g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);

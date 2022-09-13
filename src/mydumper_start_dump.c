@@ -197,6 +197,7 @@ void load_start_dump_entries(GOptionGroup *main_group){
 void initialize_start_dump(){
   initialize_common();
   initialize_working_thread();
+
   conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
