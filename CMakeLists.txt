@@ -32,6 +32,10 @@ if (BUILD_DOCS)
   add_subdirectory(docs)
 endif (BUILD_DOCS)
 
+if (PC_GLIB2_VERSION VERSION_GREATER "2.51")
+  option(WITH_GLIB_uuid_string_random "uuid_string_random not available" ON)
+endif (PC_GLIB2_VERSION VERSION_GREATER "2.51")
+
 option(WITH_SSL "Build SSL support" ON)
 option(WITH_ZSTD "Build ZSTD support" OFF)
 if (WITH_ZSTD)
