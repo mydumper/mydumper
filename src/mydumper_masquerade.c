@@ -44,10 +44,29 @@ gchar * random_int_function_with_mem(gchar ** r, GHashTable * mem){
   return *r;
 }
 
+#ifndef WITH_GLIB_uuid_string_random
+char *rand_string(char *str, size_t size)
+{
+    const char charset[] = "0123456789abcdef";
+    if (size) {
+        --size;
+        size_t n;
+        for (n = 0; n < size; n++) {
+            int key = rand() % (int) (sizeof charset - 1);
+            str[n] = charset[key];
+        }
+        str[size] = '\0';
+    }
+    return str;
+}
+#endif
+
 gchar * random_uuid_function(gchar ** r, GHashTable * mem){
   (void) mem;
 #ifdef WITH_GLIB_uuid_string_random
   g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
+#else
+  rand_string(*r,strlen(*r));
 #endif
   return *r;
 }
@@ -57,6 +76,8 @@ gchar * random_uuid_function_with_mem(gchar ** r, GHashTable * mem){
   if (value==NULL){
 #ifdef WITH_GLIB_uuid_string_random
     value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
+#else
+    rand_string(*r,strlen(*r));
 #endif
     g_hash_table_insert(mem,g_strdup(*r),value);
   }
