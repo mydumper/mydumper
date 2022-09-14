@@ -46,14 +46,18 @@ gchar * random_int_function_with_mem(gchar ** r, GHashTable * mem){
 
 gchar * random_uuid_function(gchar ** r, GHashTable * mem){
   (void) mem;
+#ifdef WITH_GLIB_uuid_string_random
   g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
+#endif
   return *r;
 }
 
 gchar * random_uuid_function_with_mem(gchar ** r, GHashTable * mem){
   gchar *value=g_hash_table_lookup(mem,*r);
   if (value==NULL){
+#ifdef WITH_GLIB_uuid_string_random
     value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
+#endif
     g_hash_table_insert(mem,g_strdup(*r),value);
   }
   g_strlcpy(*r, value, strlen(*r)+1);
