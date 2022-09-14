@@ -1253,8 +1253,8 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, char *wh
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
-  tj->database=dbt->database->name;
-  tj->table=g_strdup(dbt->table);
+//  tj->database=dbt->database->name;
+//  tj->table=g_strdup(dbt->table);
 // end
   tj->partition=partition;
   tj->chunk_step = chunk_step;
