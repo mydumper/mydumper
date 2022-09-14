@@ -98,8 +98,8 @@ union chunk_step {
 // first number : used when rows is used
 // second number : when load data is used
 struct table_job {
-  char *database;
-  char *table;
+//  char *database;
+//  char *table;
   char *partition;
   guint nchunk;
 //  char *filename;

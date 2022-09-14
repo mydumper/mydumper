@@ -406,8 +406,6 @@ void initialize_working_thread(){
 
 // Free structures
 void free_table_job(struct table_job *tj){
-  if (tj->table)
-    g_free(tj->table);
   if (tj->where)
     g_free(tj->where);
   if (tj->order_by)
@@ -420,7 +418,7 @@ void free_table_job(struct table_job *tj){
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
   g_message("Thread %d dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s | Remaining jobs: %d",
                     td->thread_id, 
-                    tj->database, tj->table, tj->partition?tj->partition:"",
+                    tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
                      (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",
                      (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
                     ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
@@ -486,17 +484,17 @@ void thd_JOB_LOCK_DUMP_NON_INNODB(struct configuration *conf, struct thread_data
     tj = (struct table_job *)glj->data;
     if (*first) {
       g_string_printf(query, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                      tj->database, tj->table);
+                      tj->dbt->database->name, tj->dbt->table);
       *first = 0;
     } else {
-      if (g_ascii_strcasecmp(prev_database->str, tj->database) ||
-          g_ascii_strcasecmp(prev_table->str, tj->table)) {
+      if (g_ascii_strcasecmp(prev_database->str, tj->dbt->database->name) ||
+          g_ascii_strcasecmp(prev_table->str, tj->dbt->table)) {
         g_string_append_printf(query, ", `%s`.`%s` READ LOCAL",
-            tj->database, tj->table);
+            tj->dbt->database->name, tj->dbt->table);
       }
     }
-    g_string_printf(prev_table, "%s", tj->table);
-    g_string_printf(prev_database, "%s", tj->database);
+    g_string_printf(prev_table, "%s", tj->dbt->table);
+    g_string_printf(prev_database, "%s", tj->dbt->database->name);
   }
   *first = 1;
   if (mysql_query(td->thrconn, query->str)) {
@@ -1214,7 +1212,7 @@ void write_table_job_into_file(MYSQL *conn, struct table_job *tj) {
       write_table_data_into_file(conn, tj);
 
   if (!rows_count)
-    g_message("Empty table %s.%s", tj->database, tj->table);
+    g_message("Empty table %s.%s", tj->dbt->database->name, tj->dbt->table);
   
 }
 
@@ -1588,6 +1586,9 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
   g_mutex_lock(dbt->rows_lock);
   dbt->rows+=num_rows;
   g_mutex_unlock(dbt->rows_lock);
+  g_string_free(statement, TRUE);
+  g_string_free(escaped, TRUE);
+  g_string_free(statement_row, TRUE);
   return num_rows;
 }
 
@@ -1605,7 +1606,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "", 
       tj->dbt->select_fields->str, 
-      tj->database, tj->table, tj->partition?tj->partition:"", 
+      tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"", 
        (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",  
        (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "", 
       ((tj->where || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "", 
@@ -1614,10 +1615,10 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
-      g_warning("Error dumping table (%s.%s) data: %s ", tj->database, tj->table,
+      g_warning("Error dumping table (%s.%s) data: %s ", tj->dbt->database->name, tj->dbt->table,
                 mysql_error(conn));
     } else {
-      g_critical("Error dumping table (%s.%s) data: %s ", tj->database, tj->table,
+      g_critical("Error dumping table (%s.%s) data: %s ", tj->dbt->database->name, tj->dbt->table,
                  mysql_error(conn));
       errors++;
     }
@@ -1630,7 +1631,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   else
     num_rows=write_row_into_file_in_sql_mode(conn, result, tj->dbt, tj->nchunk, tj->where==NULL?1:2);
   if (mysql_errno(conn)) {
-    g_critical("Could not read data from %s.%s: %s", tj->database, tj->table,
+    g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,
                mysql_error(conn));
     errors++;
   }
