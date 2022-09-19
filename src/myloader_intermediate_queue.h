@@ -15,7 +15,13 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include "myloader.h"
-void intermediate_queue_incomplete(gchar *filename);
+
+struct intermediate_filename{
+  gchar * filename;
+  guint iterations;
+};
+
+void intermediate_queue_incomplete(struct intermediate_filename * iflnm);
 void intermediate_queue_end();
 void intermediate_queue_new(gchar *filename);
 void initialize_intermediate_queue (struct configuration *c);

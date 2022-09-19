@@ -21,6 +21,7 @@
 #include "myloader_process.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_intermediate_queue.h"
 extern gchar *directory;
 extern gchar *source_db;
 extern gboolean no_data;
@@ -45,8 +46,12 @@ void initialize_intermediate_queue (struct configuration *c){
 }
 
 void intermediate_queue_new(gchar *filename){
-  g_async_queue_push(intermediate_queue, filename);
+  struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
+  iflnm->filename = filename;
+  iflnm->iterations=0;
+  g_async_queue_push(intermediate_queue, iflnm);
 }
+
 void intermediate_queue_end(){
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
@@ -56,17 +61,20 @@ void intermediate_queue_end(){
   intermediate_queue_ended=TRUE;
 }
 
-void intermediate_queue_incomplete(gchar *filename){
+void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 // TODO: we need to add the filelist and check the filename iterations
 // the idea is to keep track how many times a filename was incomplete and
 // at what stage
-  g_async_queue_push(intermediate_queue, filename);
+  iflnm->iterations++;
+  g_async_queue_push(intermediate_queue, iflnm);
 }
 
 enum file_type process_filename(char *filename){
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
-    g_str_has_prefix(filename, g_strdup_printf("%s.", source_db))) {
+    g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)) ||
+    g_str_has_prefix(filename, g_strdup_printf("%s-schema-create.sql", source_db) )
+    ) {
     switch (ft){
       case INIT:
         break;
@@ -138,11 +146,16 @@ enum file_type process_filename(char *filename){
   return ft;
 }
 
-void process_stream_filename(gchar * filename){
-  enum file_type current_ft=process_filename(filename);
+void process_stream_filename(struct intermediate_filename  * iflnm){
+  enum file_type current_ft=process_filename(iflnm->filename);
   if (current_ft == INCOMPLETE ){
-    g_debug("Requeuing in intermediate queue: %s", filename);
-    g_async_queue_push(intermediate_queue, filename);
+    if (iflnm->iterations > 5){
+      g_warning("Max renqueing reached for: %s", iflnm->filename);
+    }else{
+      g_debug("Requeuing in intermediate queue %u: %s", iflnm->iterations, iflnm->filename);
+      intermediate_queue_incomplete(iflnm);
+    }
+//    g_async_queue_push(intermediate_queue, filename);
     return;
   }
   if (current_ft != SCHEMA_VIEW &&
@@ -172,19 +185,21 @@ void enqueue_all_index_jobs(struct configuration *conf){
 }
 
 void *intermediate_thread(){
-  char * filename=NULL;
+  struct intermediate_filename  * iflnm=NULL;
   do{
-    filename = (gchar *)g_async_queue_pop(intermediate_queue);
-    if ( g_strcmp0(filename,"END") == 0 ){
+    iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);
+    if ( g_strcmp0(iflnm->filename,"END") == 0 ){
       if (g_async_queue_length(intermediate_queue)>0){
-        g_async_queue_push(intermediate_queue,filename);
+        g_async_queue_push(intermediate_queue,iflnm);
         continue;
       }
-      g_free(filename);
+      g_free(iflnm->filename);
+      g_free(iflnm);
+      iflnm=NULL;
       break;
     }
-    process_stream_filename(filename);
-  } while (filename != NULL);
+    process_stream_filename(iflnm);
+  } while (iflnm != NULL);
   guint n=0;
   for (n = 0; n < num_threads; n++){
     g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
