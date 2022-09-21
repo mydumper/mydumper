@@ -1037,7 +1037,7 @@ gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min)
   MYSQL_RES *max = NULL;
   gchar *query = NULL;
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MAX(%s) FROM `%s`.`%s` WHERE BINARY %s like '%c%%'",
+                        "SELECT %s MAX(BINARY %s) FROM `%s`.`%s` WHERE BINARY %s like '%c%%'",
                         (detected_server == SERVER_TYPE_MYSQL)
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
@@ -1055,7 +1055,7 @@ gchar *get_next_min_char( MYSQL *conn, struct db_table *dbt, char *field, gchar 
   MYSQL_RES *min = NULL;
   gchar *query = NULL;
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(%s) FROM `%s`.`%s` WHERE BINARY %s > '%s'",
+                        "SELECT %s MIN(BINARY %s) FROM `%s`.`%s` WHERE BINARY %s > '%s'",
                         (detected_server == SERVER_TYPE_MYSQL)
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
