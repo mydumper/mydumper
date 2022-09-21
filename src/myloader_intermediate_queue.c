@@ -30,7 +30,7 @@ extern gboolean skip_post;
 extern guint num_threads;
 extern guint total_data_sql_files;
 extern gboolean innodb_optimize_keys_all_tables;
-
+extern gboolean stream;
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
@@ -128,8 +128,10 @@ enum file_type process_filename(char *filename){
         total_data_sql_files++;
         break;
       case RESUME:
-        g_critical("We don't expect to find resume files in a stream scenario");
-        exit(EXIT_FAILURE);
+        if (stream){
+          g_critical("We don't expect to find resume files in a stream scenario");
+          exit(EXIT_FAILURE);
+        }
         break;
       case IGNORED:
         g_warning("Filename %s has been ignored", filename);

@@ -18,16 +18,40 @@
 #include <glib.h>
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
+#include <stdio.h>
+#include <glib/gstdio.h>
+#include "myloader_common.h"
 
 extern gchar *directory;
 extern guint num_threads;
-
+extern gboolean resume;
 void *process_directory(struct configuration *conf){
   GError *error = NULL;
   const gchar *filename = NULL;
-  GDir *dir = g_dir_open(directory, 0, &error);
-  while ((filename = g_dir_read_name(dir))){
-    intermediate_queue_new(g_strdup(filename));
+  if (resume){
+    g_message("Using resume file");
+    FILE *file = g_fopen("resume", "r");
+    GString *data=g_string_sized_new(256);
+    gboolean eof = FALSE;
+    guint line=0;
+    read_data(file, FALSE, data, &eof, &line);
+    gchar **split=NULL;
+    guint i=0;
+    while (!eof){
+      read_data(file, FALSE, data, &eof, &line);
+      split=g_strsplit(data->str,"\n",0);
+      for (i=0; i<g_strv_length(split);i++){
+        if (strlen(split[i])>2)
+          intermediate_queue_new(g_strdup(split[i]));
+      }
+      g_string_set_size(data, 0);
+    } 
+    fclose(file);
+  }else{
+    GDir *dir = g_dir_open(directory, 0, &error);
+    while ((filename = g_dir_read_name(dir))){
+      intermediate_queue_new(g_strdup(filename));
+    }
   }
   intermediate_queue_end();
   guint n=0;

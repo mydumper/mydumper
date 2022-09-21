@@ -398,9 +398,16 @@ int main(int argc, char *argv[]) {
   conf.table_hash_mutex=g_mutex_new();
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
-  if (resume && !g_file_test("resume",G_FILE_TEST_EXISTS)){
-    g_critical("Resume file not found");
-    exit(EXIT_FAILURE);
+  if (g_file_test("resume",G_FILE_TEST_EXISTS)){
+    if (!resume){
+      g_critical("Resume file found but --resume has not been provided");
+      exit(EXIT_FAILURE);
+    }
+  }else{
+    if (resume){
+      g_critical("Resume file not found");
+      exit(EXIT_FAILURE);
+    }
   }
 
   struct thread_data t;
@@ -422,6 +429,10 @@ int main(int argc, char *argv[]) {
   initialize_intermediate_queue(&conf);
 
   if (stream){
+    if (resume){
+      g_critical("We don't expect to find resume files in a stream scenario");
+      exit(EXIT_FAILURE);
+    }
     initialize_stream(&conf);
   }
 
