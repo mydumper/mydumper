@@ -1359,6 +1359,15 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
     g_string_append_printf(statement_row,"%s", lines_terminated_by);
 }
 
+gboolean write_statement(FILE *load_data_file, GString *statement, struct db_table * dbt){
+  if (!write_data(load_data_file, statement)) {
+    g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+    return FALSE;
+  }
+  g_string_set_size(statement, 0);
+  return TRUE;
+}
+
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk){
   guint num_fields = mysql_num_fields(result);
   guint64 num_rows=0;
@@ -1380,6 +1389,11 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     if ((chunk_filesize &&
         (guint)ceil((float)filesize / 1024 / 1024) >
             chunk_filesize) || first_time) {
+
+      if (!first_time && !write_statement(load_data_file, statement, dbt)) {
+        return num_rows;
+      }
+
       load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, nchunk, sub_part, "dat");
       sql_fn = build_data_filename(dbt->database->filename, dbt->table_filename, nchunk, sub_part);
       char * basename=g_path_get_basename(load_data_fn);
@@ -1432,11 +1446,9 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     g_string_append(statement, statement_row->str);
     /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
     if (statement->len + statement_row->len + 1 > statement_size) {
-      if (!write_data(load_data_file, statement)) {
-        g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+      if (!write_statement(load_data_file, statement, dbt)) {
         return num_rows;
       }
-      g_string_set_size(statement, 0); 
     }
   }
   if (statement->len > 0)
