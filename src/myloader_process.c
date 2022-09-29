@@ -91,6 +91,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->constraints=NULL;
       dbt->count=0;
       g_hash_table_insert(conf->table_hash, lkey, dbt);
+      refresh_table_list_without_table_hash_lock(conf);
 //      g_debug("New db_table: %s", lkey);
     }else{
       g_free(table);
@@ -101,7 +102,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
     }
     g_mutex_unlock(conf->table_hash_mutex);
-    refresh_table_list(conf);
+    
   }else{
       g_free(table);
       g_free(database);
