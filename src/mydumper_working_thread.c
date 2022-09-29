@@ -156,6 +156,7 @@ extern struct configuration_per_table conf_per_table;
 GHashTable *character_set_hash=NULL;
 GMutex *character_set_hash_mutex = NULL;
 
+gboolean hex_blob = FALSE;
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
@@ -247,6 +248,8 @@ static GOptionEntry working_thread_entries[] = {
        "also when it is used.", NULL },
     {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
       "This might never be used, unless you know what are you doing", NULL },
+    {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
+      "Dump binary columns using hexadecimal notation", NULL},
     {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
      "Try to split tables into chunks of this many rows. This option turns off "
      "--chunk-filesize",
@@ -815,6 +818,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
     g_string_append(field_list, tb);
     g_free(tb);
   }
+//  g_string_append(field_list, ")");
   mysql_free_result(res);
 
   return field_list;
@@ -922,8 +926,8 @@ struct db_table *new_db_table( MYSQL *conn, struct database *database, char *tab
   dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   g_free(k);
-  dbt->has_generated_fields = detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
-  if (dbt->has_generated_fields) {
+  dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+  if (dbt->complete_insert) {
     dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
   } else {
     dbt->select_fields = g_string_new("*");
@@ -1316,6 +1320,11 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
       g_string_append(statement_row, "NULL");
     } else if (field.flags & NUM_FLAG) {
       g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
+    } else if ( field.type == MYSQL_TYPE_BLOB ) {
+      g_string_set_size(escaped, length * 2 + 1);
+      g_string_append(statement_row,"0x");
+      mysql_hex_string(escaped->str,fun_ptr_i->function(column,fun_ptr_i->memory),length);
+      g_string_append(statement_row,escaped->str);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
        * the beginning */
@@ -1350,6 +1359,15 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
     g_string_append_printf(statement_row,"%s", lines_terminated_by);
 }
 
+gboolean write_statement(FILE *load_data_file, GString *statement, struct db_table * dbt){
+  if (!write_data(load_data_file, statement)) {
+    g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+    return FALSE;
+  }
+  g_string_set_size(statement, 0);
+  return TRUE;
+}
+
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct db_table * dbt, guint nchunk){
   guint num_fields = mysql_num_fields(result);
   guint64 num_rows=0;
@@ -1371,6 +1389,11 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     if ((chunk_filesize &&
         (guint)ceil((float)filesize / 1024 / 1024) >
             chunk_filesize) || first_time) {
+
+      if (!first_time && !write_statement(load_data_file, statement, dbt)) {
+        return num_rows;
+      }
+
       load_data_fn=build_filename(dbt->database->filename, dbt->table_filename, nchunk, sub_part, "dat");
       sql_fn = build_data_filename(dbt->database->filename, dbt->table_filename, nchunk, sub_part);
       char * basename=g_path_get_basename(load_data_fn);
@@ -1423,11 +1446,9 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     g_string_append(statement, statement_row->str);
     /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
     if (statement->len + statement_row->len + 1 > statement_size) {
-      if (!write_data(load_data_file, statement)) {
-        g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+      if (!write_statement(load_data_file, statement, dbt)) {
         return num_rows;
       }
-      g_string_set_size(statement, 0); 
     }
   }
   if (statement->len > 0)
@@ -1496,7 +1517,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
           return num_rows;
         }
       }
-      append_insert ((complete_insert || dbt->has_generated_fields), statement, dbt->table, fields, num_fields);
+      append_insert (dbt->complete_insert, statement, dbt->table, fields, num_fields);
       num_rows_st = 0;
     }
 
@@ -1554,7 +1575,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
   if (statement_row->len > 0) {
     /* this last row has not been written out */
     if (!statement->len)
-      append_insert ((complete_insert || dbt->has_generated_fields), statement, dbt->table, fields, num_fields);
+      append_insert (dbt->complete_insert, statement, dbt->table, fields, num_fields);
     g_string_append(statement, statement_row->str);
   }
 
@@ -1615,11 +1636,11 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
-      g_warning("Error dumping table (%s.%s) data: %s ", tj->dbt->database->name, tj->dbt->table,
-                mysql_error(conn));
+      g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
+                mysql_error(conn), query);
     } else {
-      g_critical("Error dumping table (%s.%s) data: %s ", tj->dbt->database->name, tj->dbt->table,
-                 mysql_error(conn));
+      g_critical("Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->dbt->database->name, tj->dbt->table,
+                 mysql_error(conn), query);
       errors++;
     }
     goto cleanup;

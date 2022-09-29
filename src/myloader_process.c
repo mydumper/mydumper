@@ -436,13 +436,18 @@ gboolean process_schema_view_filename(gchar *filename) {
       return FALSE;
     }
   g_mutex_lock(conf->table_list_mutex);
-    if (!eval_table(real_db_name->name, table_name)){
-      g_warning("File %s has been filter out",filename);
-      return TRUE;
-    }
+  if (!eval_table(real_db_name->name, table_name)){
+    g_warning("File %s has been filter out",filename);
+    return TRUE;
+  }
+  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
+  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
+  g_free(lkey);
+  if (dbt==NULL)
+    return FALSE;
   g_mutex_unlock(conf->table_list_mutex);
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
-    g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
+  g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
 }
 

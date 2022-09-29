@@ -135,7 +135,7 @@ struct db_table {
   char *table_filename;
   char *escaped_table;
   GString *select_fields;
-  gboolean has_generated_fields;
+  gboolean complete_insert;
   char *character_set;
   guint64 datalength;
   guint64 rows;
