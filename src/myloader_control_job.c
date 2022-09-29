@@ -24,6 +24,7 @@
 extern gboolean intermediate_queue_ended;
 extern gboolean innodb_optimize_keys_per_table;
 extern guint num_threads;
+extern gboolean resume;
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {
   struct control_job *j = g_new0(struct control_job, 1);
   j->type = type;
@@ -71,7 +72,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
   GList * iter=td->conf->table_list;
   GList * next = NULL;
   struct restore_job *job = NULL;
-//  g_message("Elemetns in table_list: %d",g_list_length(stream_conf->table_list));
+//  g_debug("Elements in table_list: %d",g_list_length(td->conf->table_list));
 //  We are going to check every table and see if there is any missing job
   while (iter != NULL){
     struct db_table * dbt = iter->data;
@@ -79,11 +80,11 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       iter=iter->next;
       continue;
     }
-//    g_message("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
+//    g_debug("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
     if (!test_condition || (dbt->schema_created && dbt->current_threads < dbt->max_threads)){
       // I could do some job in here, do we have some for me?
       g_mutex_lock(dbt->mutex);
-      if (!dbt->schema_created){
+      if (!resume && !dbt->schema_created){
         iter=iter->next;
         g_mutex_unlock(dbt->mutex);
         continue;
@@ -163,7 +164,7 @@ void *process_stream_queue(struct thread_data * td) {
     job=g_async_queue_try_pop(td->conf->database_queue);
     if (job != NULL){
       g_debug("Restoring database");
-      struct database * d=db_hash_lookup(job->data.restore_job->data.srj->database);
+      struct database * d=get_db_hash(job->data.restore_job->data.srj->database, job->data.restore_job->data.srj->database);
       cont=process_job(td, job);
       d->schema_created=TRUE;
       continue;
@@ -187,7 +188,7 @@ void *process_stream_queue(struct thread_data * td) {
 
     job=g_async_queue_try_pop(td->conf->table_queue);
     if (job != NULL){
-      struct database *real_db_name=db_hash_lookup(job->use_database); 
+      struct database *real_db_name=get_db_hash(job->use_database,job->use_database); 
       if (real_db_name->schema_created){
         execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
         cont=process_job(td, job);
