@@ -47,6 +47,7 @@ void *process_directory(struct configuration *conf){
       g_string_set_size(data, 0);
     } 
     fclose(file);
+    refresh_table_list(conf);
   }else{
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){

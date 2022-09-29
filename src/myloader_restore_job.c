@@ -153,7 +153,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   }
   if (shutdown_triggered){
 //    g_message("file enqueued to allow resume: %s", rj->filename);
-    g_async_queue_push(file_list_to_do,rj->filename);
+    g_async_queue_push(file_list_to_do,g_strdup(rj->filename));
     goto cleanup;
   }
   struct db_table *dbt=rj->dbt;
@@ -270,8 +270,9 @@ gboolean sig_triggered(void * user_data, int signal) {
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
 
   void *outfile = g_fopen(p, "w");
-  filename=g_async_queue_pop(file_list_to_do);
+  filename = g_async_queue_pop(file_list_to_do);
   while(g_strcmp0(filename,"NO_MORE_FILES")!=0){
+    g_debug("Adding %s to resume file", filename);
     fprintf(outfile, "%s\n", filename);
     filename=g_async_queue_pop(file_list_to_do);
   }

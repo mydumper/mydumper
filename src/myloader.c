@@ -421,7 +421,7 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    struct database * d=db_hash_insert(g_strdup(db), g_strdup(db));
+    struct database * d=get_db_hash(g_strdup(db), g_strdup(db));
     create_database(&t, db);
     d->schema_created=TRUE;
   }
