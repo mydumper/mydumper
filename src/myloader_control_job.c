@@ -72,7 +72,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
   GList * iter=td->conf->table_list;
   GList * next = NULL;
   struct restore_job *job = NULL;
-  g_debug("Elemetns in table_list: %d",g_list_length(td->conf->table_list));
+//  g_debug("Elements in table_list: %d",g_list_length(td->conf->table_list));
 //  We are going to check every table and see if there is any missing job
   while (iter != NULL){
     struct db_table * dbt = iter->data;
@@ -80,7 +80,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       iter=iter->next;
       continue;
     }
-    g_debug("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
+//    g_debug("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
     if (!test_condition || (dbt->schema_created && dbt->current_threads < dbt->max_threads)){
       // I could do some job in here, do we have some for me?
       g_mutex_lock(dbt->mutex);
