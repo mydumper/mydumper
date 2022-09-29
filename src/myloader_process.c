@@ -102,7 +102,6 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
 //    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
     }
     g_mutex_unlock(conf->table_hash_mutex);
-    
   }else{
       g_free(table);
       g_free(database);
@@ -441,12 +440,12 @@ gboolean process_schema_view_filename(gchar *filename) {
     g_warning("File %s has been filter out",filename);
     return TRUE;
   }
-  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
-  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
-  g_free(lkey);
-  if (dbt==NULL)
-    return FALSE;
   g_mutex_unlock(conf->table_list_mutex);
+//  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
+//  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
+//  g_free(lkey);
+//  if (dbt==NULL)
+//    return FALSE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "view");
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
