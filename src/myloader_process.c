@@ -91,7 +91,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->constraints=NULL;
       dbt->count=0;
       g_hash_table_insert(conf->table_hash, lkey, dbt);
-      g_debug("New db_table: %s", lkey);
+//      g_debug("New db_table: %s", lkey);
     }else{
       g_free(table);
       g_free(database);
