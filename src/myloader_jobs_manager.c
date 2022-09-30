@@ -39,17 +39,20 @@ extern GString *set_session;
 extern guint num_threads;
 extern gboolean stream;
 extern guint max_threads_for_index_creation;
-extern gboolean innodb_optimize_keys_all_tables;
 
 static GMutex *init_mutex=NULL;
 static GMutex *index_mutex=NULL;
 guint index_threads_counter = 0;
-
+guint sync_threads_remaining;
+static GMutex *sync_mutex;
 
 void initialize_job(gchar * purge_mode_str){
   initialize_restore_job(purge_mode_str);
   init_mutex = g_mutex_new();
   index_mutex = g_mutex_new();
+  sync_threads_remaining=num_threads;
+  sync_mutex = g_mutex_new();
+  g_mutex_lock(sync_mutex);
   index_threads_counter = 0;
 }
 
@@ -76,6 +79,15 @@ gboolean process_index(struct thread_data * td){
   }
   g_mutex_unlock(index_mutex);
   return b;
+}
+
+void sync_threads(){
+  if (g_atomic_int_dec_and_test(&sync_threads_remaining)){
+    g_mutex_unlock(sync_mutex);
+  }else{
+    g_mutex_lock(sync_mutex);
+    g_mutex_unlock(sync_mutex);
+  }
 }
 
 void *loader_thread(struct thread_data *td) {
@@ -112,7 +124,7 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     cont=process_index(td);
   }
-
+  sync_threads();
   g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
