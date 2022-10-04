@@ -22,13 +22,12 @@
 #define INSERT_IGNORE "INSERT IGNORE"
 #define INSERT "INSERT"
 #define REPLACE "REPLACE"
-
+#define UNLOCK_TABLES "UNLOCK TABLES"
 typedef gchar * (*fun_ptr2)(gchar **);
 
 
 void load_working_thread_entries(GOptionGroup *main_group);
 void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);
-void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list, struct configuration *conf);
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *collation, char *datalength, gchar *ecol);
 void initialize_working_thread();

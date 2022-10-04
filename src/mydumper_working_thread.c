@@ -68,6 +68,7 @@
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_masquerade.h"
+#include "mydumper_jobs.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -109,8 +110,10 @@ extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
 extern GMutex *ready_database_dump_mutex;
+
 extern GHashTable *all_where_per_table;
 gint database_counter = 0;
+gint table_counter = 0;
 gchar *ignore_engines = NULL;
 gchar *binlog_snapshot_gtid_executed = NULL;
 gboolean binlog_snapshot_gtid_executed_status = FALSE;
@@ -167,7 +170,6 @@ extern guint dump_number;
 extern gboolean shutdown_triggered;
 extern GAsyncQueue *start_scheduled_dump;
 GCond *ll_cond = NULL;
-GMutex *ll_mutex = NULL;
 
 extern guint errors;
 guint statement_size = 1000000;
@@ -278,7 +280,6 @@ void initialize_working_thread(){
   table_schemas_mutex = g_mutex_new();
   trigger_schemas_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
-  ll_mutex = g_mutex_new();
   ll_cond = g_cond_new();
   consistent_snapshot = g_mutex_new();;
   g_mutex_lock(consistent_snapshot);
@@ -426,20 +427,53 @@ void message_dumping_data(struct thread_data *td, struct table_job *tj){
                      (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
                     ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
                     tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
-                    g_async_queue_length(td->queue));
+                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
 }
 
-void thd_JOB_DUMP_DATABASE(struct configuration *conf, struct thread_data *td, struct job *job){
+void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
   g_message("Thread %d dumping db information for `%s`", td->thread_id,
             ddj->database->name);
-  dump_database_thread(td->thrconn, conf, ddj->database);
+  dump_database_thread(td->thrconn, td->conf, ddj->database);
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
 //   g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
     g_mutex_unlock(ready_database_dump_mutex);
   }
+}
+
+void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
+    (void) job;
+    // TODO: This should be in a job as needs to be done by a thread.
+    MYSQL_RES *databases;
+    MYSQL_ROW row;
+    if (mysql_query(td->thrconn, "SHOW DATABASES") ||
+        !(databases = mysql_store_result(td->thrconn))) {
+      g_critical("Unable to list databases: %s", mysql_error(td->thrconn));
+      exit(EXIT_FAILURE);
+    }
+
+    while ((row = mysql_fetch_row(databases))) {
+      if (!strcasecmp(row[0], "information_schema") ||
+          !strcasecmp(row[0], "performance_schema") ||
+          (!strcasecmp(row[0], "data_dictionary")))
+        continue;
+      struct database * db_tmp=NULL;
+      if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
+        g_mutex_lock(db_tmp->ad_mutex);
+        if (!db_tmp->already_dumped){
+          create_job_to_dump_schema(db_tmp->name, td->conf);
+          db_tmp->already_dumped=TRUE;
+        }
+        g_mutex_unlock(db_tmp->ad_mutex);
+      }
+      create_job_to_dump_database(db_tmp, td->conf, less_locking);
+    }
+    if (g_atomic_int_dec_and_test(&database_counter)) {
+      g_mutex_unlock(ready_database_dump_mutex);
+    }
+    mysql_free_result(databases);
 }
 
 void get_where_clause_for_chunk_step(struct table_job * tj){
@@ -478,7 +512,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
-void thd_JOB_LOCK_DUMP_NON_INNODB(struct configuration *conf, struct thread_data *td, struct job *job, gboolean *first,GString *prev_database,GString *prev_table){
+void thd_JOB_LOCK_DUMP_NON_INNODB(struct thread_data *td, struct job *job, gboolean *first,GString *prev_database,GString *prev_table){
   GString *query=g_string_new(NULL);
   GList *glj;
   struct table_job *tj;
@@ -506,7 +540,7 @@ void thd_JOB_LOCK_DUMP_NON_INNODB(struct configuration *conf, struct thread_data
   }
   if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
       g_atomic_int_get(&non_innodb_done)) {
-    g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
+    g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
   for (glj = mj->table_job_list; glj != NULL; glj = glj->next) {
     tj = (struct table_job *)glj->data;
@@ -661,8 +695,187 @@ void check_connection_status(struct thread_data *td){
   }
 }
 
+
+/* Write some stuff we know about snapshot, before it changes */
+void write_snapshot_info(MYSQL *conn, FILE *file) {
+  MYSQL_RES *master = NULL, *slave = NULL, *mdb = NULL;
+  MYSQL_FIELD *fields;
+  MYSQL_ROW row;
+
+  char *masterlog = NULL;
+  char *masterpos = NULL;
+  char *mastergtid = NULL;
+
+  char *connname = NULL;
+  char *slavehost = NULL;
+  char *slavelog = NULL;
+  char *slavepos = NULL;
+  char *slavegtid = NULL;
+  guint isms;
+  guint i;
+
+  mysql_query(conn, "SHOW MASTER STATUS");
+  master = mysql_store_result(conn);
+  if (master && (row = mysql_fetch_row(master))) {
+    masterlog = row[0];
+    masterpos = row[1];
+    /* Oracle/Percona GTID */
+    if (mysql_num_fields(master) == 5) {
+      mastergtid = row[4];
+    } else {
+      /* Let's try with MariaDB 10.x */
+      /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
+ *        * cluster, gtid_binlog_pos works as well with normal mariadb server
+ *               * https://jira.mariadb.org/browse/MDEV-10279 */
+      mysql_query(conn, "SELECT @@gtid_binlog_pos");
+      mdb = mysql_store_result(conn);
+      if (mdb && (row = mysql_fetch_row(mdb))) {
+        mastergtid = row[0];
+      }
+    }
+  }
+
+  if (masterlog) {
+    fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",
+            masterlog, masterpos, mastergtid);
+    g_message("Written master status");
+  }
+
+  isms = 0;
+  mysql_query(conn, "SELECT @@default_master_connection");
+  MYSQL_RES *rest = mysql_store_result(conn);
+  if (rest != NULL && mysql_num_rows(rest)) {
+    mysql_free_result(rest);
+    g_message("Multisource slave detected.");
+    isms = 1;
+  }
+
+  if (isms)
+    mysql_query(conn, "SHOW ALL SLAVES STATUS");
+  else
+    mysql_query(conn, "SHOW SLAVE STATUS");
+
+  guint slave_count=0;
+  slave = mysql_store_result(conn);
+  while (slave && (row = mysql_fetch_row(slave))) {
+    fields = mysql_fetch_fields(slave);
+    for (i = 0; i < mysql_num_fields(slave); i++) {
+      if (isms && !strcasecmp("connection_name", fields[i].name))
+        connname = row[i];
+      if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
+        slavepos = row[i];
+      } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
+        slavelog = row[i];
+      } else if (!strcasecmp("master_host", fields[i].name)) {
+        slavehost = row[i];
+      } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name) ||
+                 !strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
+        slavegtid = row[i];
+      }
+    }
+    if (slavehost) {
+      slave_count++;
+      fprintf(file, "SHOW SLAVE STATUS:");
+      if (isms)
+        fprintf(file, "\n\tConnection name: %s", connname);
+      fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",
+              slavehost, slavelog, slavepos, slavegtid);
+      g_message("Written slave status");
+    }
+  }
+  if (slave_count > 1)
+    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
+
+  fflush(file);
+  if (master)
+    mysql_free_result(master);
+  if (slave)
+    mysql_free_result(slave);
+  if (mdb)
+    mysql_free_result(mdb);
+}
+
+
+gboolean process_job(struct thread_data *td, struct job *job){
+
+    switch (job->type) {
+    case JOB_DUMP:
+      thd_JOB_DUMP(td, job);
+      break;
+    case JOB_DUMP_NON_INNODB:
+      thd_JOB_DUMP(td, job);
+      if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
+          g_atomic_int_get(&non_innodb_done)) {
+        g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+      }
+      break;
+    case JOB_CHECKSUM:
+      do_JOB_CHECKSUM(td,job);
+      break;
+    case JOB_DUMP_DATABASE:
+      thd_JOB_DUMP_DATABASE(td,job);
+      break;
+    case JOB_DUMP_ALL_DATABASES:
+      thd_JOB_DUMP_ALL_DATABASES(td,job);
+      break;
+    case JOB_CREATE_DATABASE:
+      do_JOB_CREATE_DATABASE(td,job);
+      break;
+    case JOB_CREATE_TABLESPACE:
+      do_JOB_CREATE_TABLESPACE(td,job);
+      break;
+    case JOB_SCHEMA:
+      do_JOB_SCHEMA(td,job);
+      break;
+    case JOB_VIEW:
+      do_JOB_VIEW(td,job);
+      break;
+    case JOB_TRIGGERS:
+      do_JOB_TRIGGERS(td,job);
+      break;
+    case JOB_SCHEMA_POST:
+      do_JOB_SCHEMA_POST(td,job);
+      break;
+    case JOB_WRITE_MASTER_STATUS:
+      write_snapshot_info(td->thrconn, job->job_data);
+      break;
+    case JOB_SHUTDOWN:
+      return FALSE;
+      break;
+    default:
+      g_critical("Something very bad happened!");
+      exit(EXIT_FAILURE);
+    }
+  return TRUE;
+}
+
+
+
+void process_queue(GAsyncQueue * queue, struct thread_data *td, GMutex *resume_mutex){
+  struct job *job = NULL;
+  for (;;) {
+    if (td->conf->pause_resume){
+      resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
+      if (resume_mutex != NULL){
+        g_mutex_lock(resume_mutex);
+        g_mutex_unlock(resume_mutex);
+        resume_mutex=NULL;
+        continue;
+      }
+    }
+
+    job = (struct job *)g_async_queue_pop(queue);
+    if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
+      continue;
+    }
+
+    if (!process_job(td, job)){
+      break;
+    }
+  }
+}
+
 void *working_thread(struct thread_data *td) {
-  struct configuration *conf = td->conf;
   // mysql_init is not thread safe, especially in Connector/C
   g_mutex_lock(init_mutex);
   td->thrconn = mysql_init(NULL);
@@ -687,104 +900,40 @@ void *working_thread(struct thread_data *td) {
   if (set_names_str)
     mysql_query(td->thrconn, set_names_str);
 
-  g_async_queue_push(td->ready, GINT_TO_POINTER(1));
+  g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   // Thread Ready to process jobs
- 
-  struct job *job = NULL;
-  int first = 1;
-  GString *query = g_string_new(NULL);
-  GString *prev_table = g_string_new(NULL);
-  GString *prev_database = g_string_new(NULL);
-  /* if less locking we need to wait until that threads finish
-      progressively waking up these threads */
-  if (!td->less_locking_stage && less_locking) {
-    g_mutex_lock(ll_mutex);
-
-    while (less_locking_threads >= td->thread_id) {
-      g_cond_wait(ll_cond, ll_mutex);
-    }
-
-    g_mutex_unlock(ll_mutex);
-  }
-
+  
   GMutex *resume_mutex=NULL;
 
-  for (;;) {
-    if (conf->pause_resume){
-      resume_mutex = (GMutex *)g_async_queue_try_pop(conf->pause_resume);
-      if (resume_mutex != NULL){
-        g_mutex_lock(resume_mutex);
-        g_mutex_unlock(resume_mutex);
-        resume_mutex=NULL;
-        continue;
-      }
-    }
+  process_queue(td->conf->schema_queue,td, resume_mutex);
 
-    job = (struct job *)g_async_queue_pop(td->queue);
-    if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
-      continue;
-    }
+  g_message("Thread %d Schema Done, Starting Non-Innodb", td->thread_id);
 
-    switch (job->type) {
-    case JOB_LOCK_DUMP_NON_INNODB:
-      thd_JOB_LOCK_DUMP_NON_INNODB(conf, td, job, &first, prev_database, prev_table);
-      break;
-    case JOB_DUMP:
-      thd_JOB_DUMP(td, job);
-      break;
-    case JOB_DUMP_NON_INNODB:
-      thd_JOB_DUMP(td, job);
-      if (g_atomic_int_dec_and_test(&non_innodb_table_counter) &&
-          g_atomic_int_get(&non_innodb_done)) {
-        g_async_queue_push(conf->unlock_tables, GINT_TO_POINTER(1));
-      }
-      break;
-    case JOB_CHECKSUM:
-      do_JOB_CHECKSUM(td,job);
-      break;
-    case JOB_DUMP_DATABASE:
-      thd_JOB_DUMP_DATABASE(conf,td,job);
-      break;
-    case JOB_CREATE_DATABASE:
-      do_JOB_CREATE_DATABASE(td,job);
-      break;
-    case JOB_CREATE_TABLESPACE:
-      do_JOB_CREATE_TABLESPACE(td,job);
-      break;
-    case JOB_SCHEMA:
-      do_JOB_SCHEMA(td,job);
-      break;
-    case JOB_VIEW:
-      do_JOB_VIEW(td,job);
-      break;
-    case JOB_TRIGGERS:
-      do_JOB_TRIGGERS(td,job);
-      break;
-    case JOB_SCHEMA_POST:
-      do_JOB_SCHEMA_POST(td,job);
-      break;
-    case JOB_SHUTDOWN:
-      g_message("Thread %d shutting down", td->thread_id);
-      if (td->less_locking_stage){
-        g_mutex_lock(ll_mutex);
-        less_locking_threads--;
-        g_cond_broadcast(ll_cond);
-        g_mutex_unlock(ll_mutex);
-        g_string_free(query, TRUE);
-        g_string_free(prev_table, TRUE);
-        g_string_free(prev_database, TRUE);
-      }
-      if (td->thrconn)
-        mysql_close(td->thrconn);
-      g_free(job);
-      mysql_thread_end();
-      return NULL;
-      break;
-    default:
-      g_critical("Something very bad happened!");
-      exit(EXIT_FAILURE);
+  g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
+  g_async_queue_pop(td->conf->ready_non_innodb_queue);
+  if (less_locking){
+    if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
+      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
     }
+    // This push will unlock the the FTWRL on the Main Connection
+    g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+    process_queue(td->conf->non_innodb_queue, td, resume_mutex);
+    if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
+      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+    }
+  }else{
+    process_queue(td->conf->non_innodb_queue, td, resume_mutex);
+    g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
+
+  g_message("Thread %d Non-Innodb Done, Starting Innodb", td->thread_id);
+
+  process_queue(td->conf->innodb_queue, td, resume_mutex);
+
+  process_queue(td->conf->post_data_queue, td, resume_mutex);
+
+  g_message("Thread %d shutting down", td->thread_id);
+
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
@@ -950,7 +1099,9 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   }
   g_mutex_unlock(database->ad_mutex);
 
-  struct db_table *dbt = new_db_table( conn, database, table, collation, datalength);// (*row)[0], (*row)[6]);
+  g_atomic_int_inc(&table_counter);
+
+  struct db_table *dbt = new_db_table( conn, database, table, collation, datalength);
 
  // if is a view we care only about schema
   if (!is_view) {
@@ -958,7 +1109,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     if (!no_schemas) {
 //      write_table_metadata_into_file(dbt);
       table_schemas=g_list_append( table_schemas, dbt) ;
-      create_job_to_dump_table_schema( dbt, conf, less_locking ? conf->queue_less_locking : conf->queue);
+      create_job_to_dump_table_schema( dbt, conf);
     }
     if (dump_triggers) {
       create_job_to_dump_triggers(conn, dbt, conf);
@@ -972,6 +1123,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           create_job_to_dump_table(conn, dbt, conf, TRUE);
         } else {
+          create_job_to_dump_table(conn, dbt, conf, FALSE);
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
           g_mutex_unlock(non_innodb_table_mutex);

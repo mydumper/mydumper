@@ -41,8 +41,10 @@ void append_pmm_entry(GString *content, const gchar *key, GAsyncQueue * queue){
 
 void write_pmm_entries(const gchar* filename, GString *content, struct configuration* conf){
   g_string_set_size(content,0);
-  append_pmm_entry(content,"queue",             conf->queue);
-  append_pmm_entry(content,"queue_less_locking",conf->queue_less_locking);
+  append_pmm_entry(content,"schema_queue",      conf->schema_queue);
+  append_pmm_entry(content,"non_innodb_queue",  conf->non_innodb_queue);
+  append_pmm_entry(content,"innodb_queue",      conf->innodb_queue);
+  append_pmm_entry(content,"post_data_queue",   conf->post_data_queue);
   append_pmm_entry(content,"ready",             conf->ready);
   append_pmm_entry(content,"ready_less_locking",conf->ready_less_locking);
   append_pmm_entry(content,"unlock_tables",     conf->unlock_tables);

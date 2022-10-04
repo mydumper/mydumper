@@ -48,8 +48,10 @@ extern gboolean dump_routines;
 extern gboolean dump_events;
 extern gboolean use_savepoints;
 extern gint database_counter;
+extern gint table_counter;
 extern guint rows_per_file;
 extern gint non_innodb_table_counter;
+extern GMutex *ready_table_dump_mutex;
 gboolean dump_triggers = FALSE;
 gboolean split_partitions = FALSE;
 gboolean order_by_primary_key = FALSE;
@@ -756,6 +758,10 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
   free_schema_job(sj);
   g_free(job);
+//  if (g_atomic_int_dec_and_test(&table_counter)) {
+//    g_message("Unlocing ready_table_dump_mutex");
+//    g_mutex_unlock(ready_table_dump_mutex);
+//  }
 }
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
@@ -784,21 +790,28 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
-void create_job_to_dump_tablespaces(MYSQL *conn, struct configuration *conf){
-(void)conn;
-(void)conf;
+
+void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
+  struct job *j = g_new0(struct job, 1);
+  j->job_data = (void *)mdfile;
+  j->conf = conf;
+  j->type = JOB_WRITE_MASTER_STATUS;
+  g_async_queue_push(conf->schema_queue, j);
+}
+
+void create_job_to_dump_tablespaces(struct configuration *conf){
   struct job *j = g_new0(struct job, 1);
   struct create_tablespace_job *ctj = g_new0(struct create_tablespace_job, 1);
   j->job_data = (void *)ctj;
   j->conf = conf;
   j->type = JOB_CREATE_TABLESPACE;
   ctj->filename = build_tablespace_filename();
-  g_async_queue_push(conf->queue, j);
-  return;
+  g_async_queue_push(conf->schema_queue, j);
 }
 
-
 void create_job_to_dump_schema(char *database, struct configuration *conf) {
+  g_atomic_int_inc(&database_counter);
+
   struct job *j = g_new0(struct job, 1);
   struct create_database_job *cdj = g_new0(struct create_database_job, 1);
   j->job_data = (void *)cdj;
@@ -809,7 +822,7 @@ void create_job_to_dump_schema(char *database, struct configuration *conf) {
   cdj->filename = build_schema_filename(d, "schema-create");
   if (schema_checksums)
     cdj->checksum_filename = build_meta_filename(database,NULL,"schema-create-checksum"); 
-  g_async_queue_push(conf->queue, j);
+  g_async_queue_push(conf->schema_queue, j);
   return;
 }
 
@@ -836,7 +849,7 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
         st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
         if ( routine_checksums )
           st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
-        g_async_queue_push(conf->queue, t);
+        g_async_queue_push(conf->schema_queue, t);
       }
     }
     g_free(query);
@@ -847,7 +860,7 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
 
 }
 
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf, GAsyncQueue *queue) {
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct schema_job *sj = g_new0(struct schema_job, 1);
   j->job_data = (void *)sj;
@@ -860,7 +873,7 @@ void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration 
     sj->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-checksum");
     sj->checksum_index_filename = build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-indexes-checksum");
   }
-  g_async_queue_push(queue, j);
+  g_async_queue_push(conf->schema_queue, j);
 }
 
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
@@ -875,7 +888,7 @@ void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
   vj->filename2 = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-view");
   if ( schema_checksums )
     vj->checksum_filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "schema-view-checksum");
-  g_async_queue_push(conf->queue, j);
+  g_async_queue_push(conf->post_data_queue, j);
   return;
 }
 
@@ -889,7 +902,7 @@ void create_job_to_dump_post(struct database *database, struct configuration *co
   sp->filename = build_schema_filename(sp->database->filename,"schema-post");
   if ( routine_checksums )
     sp->checksum_filename = build_meta_filename(sp->database->filename, NULL, "schema-post-checksum");
-  g_async_queue_push(conf->queue, j);
+  g_async_queue_push(conf->post_data_queue, j);
   return;
 }
 
@@ -902,27 +915,33 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   j->conf = conf;
   j->type = JOB_CHECKSUM;
   tcj->filename = build_meta_filename(dbt->database->filename, dbt->table_filename,"checksum");
-  g_async_queue_push(conf->queue, j);
+  g_async_queue_push(conf->post_data_queue, j);
   return;
 }
 
 void create_job_to_dump_database(struct database *database, struct configuration *conf, gboolean less_locking) {
-
-  g_atomic_int_inc(&database_counter);
-
   struct job *j = g_new0(struct job, 1);
+  (void) less_locking;
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
   j->job_data = (void *)ddj;
   ddj->database = database;
   j->conf = conf;
   j->type = JOB_DUMP_DATABASE;
-
-  if (less_locking)
-    g_async_queue_push(conf->queue_less_locking, j);
-  else
-    g_async_queue_push(conf->queue, j);
+  g_async_queue_push(conf->schema_queue, j);
   return;
 }
+
+void create_job_to_dump_all_databases(struct configuration *conf, gboolean less_locking) {
+  g_atomic_int_inc(&database_counter);
+  (void) less_locking;
+  struct job *j = g_new0(struct job, 1);
+  j->job_data = NULL;
+  j->conf = conf;
+  j->type = JOB_DUMP_ALL_DATABASES;
+  g_async_queue_push(conf->schema_queue, j);
+  return;
+}
+
 
 void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
   // Each job weights 500 bytes aprox.
@@ -1317,6 +1336,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
 //  char *database = dbt->database;
 //  char *table = dbt->table;
   GList * partitions = NULL;
+  GAsyncQueue *queue = is_innodb ? conf->innodb_queue : conf->non_innodb_queue;
   if (split_partitions)
     partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
 
@@ -1334,7 +1354,7 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
       j->job_data = (void *)tj;
       if (!is_innodb && npartition)
         g_atomic_int_inc(&non_innodb_table_counter);
-      g_async_queue_push(conf->queue,j);
+      g_async_queue_push(queue,j);
       npartition++;
     }
     g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
@@ -1348,14 +1368,13 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
       GList *iter;
       for (iter = chunks; iter != NULL; iter = iter->next) {
         struct job *j = g_new0(struct job, 1);
-        struct table_job *tj = NULL;
+        struct table_job *tj = new_table_job(dbt, NULL, NULL, nchunk, get_primary_key_string(conn, dbt->database->name, dbt->table), iter->data);
         j->conf = conf;
         j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-        tj = new_table_job(dbt, NULL, NULL, nchunk, get_primary_key_string(conn, dbt->database->name, dbt->table), iter->data);
         j->job_data = (void *)tj;
         if (!is_innodb && nchunk)
           g_atomic_int_inc(&non_innodb_table_counter);
-        m_async_queue_push_conservative(conf->queue, j);
+        m_async_queue_push_conservative(queue, j);
         nchunk++;
       }
       g_list_free(chunks);
@@ -1366,61 +1385,8 @@ void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
       j->type = is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
       tj = new_table_job(dbt, NULL, NULL, 0, get_primary_key_string(conn, dbt->database->name, dbt->table), NULL);
       j->job_data = (void *)tj;
-      g_async_queue_push(conf->queue, j);
+      g_async_queue_push(queue, j);
     }
   }
 }
 
-void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
-                 struct configuration *conf) {
-  struct db_table *dbt=NULL;
-  GList *chunks = NULL;
-  GList * partitions = NULL;
-
-  struct job *j = g_new0(struct job, 1);
-  struct tables_job *tjs = g_new0(struct tables_job, 1);
-  j->conf = conf;
-  j->type = JOB_LOCK_DUMP_NON_INNODB;
-  j->job_data = (void *)tjs;
-
-  GList *iter;
-
-  for (iter = noninnodb_tables_list; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-
-    if (split_partitions)
-      partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
-
-    if (partitions){
-      int npartition=0;
-      for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
-        struct table_job *tj = NULL;
-        tj = new_table_job(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), NULL, npartition, get_primary_key_string(conn, dbt->database->name, dbt->table), new_partition_step(partitions->data));
-        tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
-        npartition++;
-      }
-      g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
-
-    } else {
-      if (rows_per_file)
-        chunks = get_chunks_for_table(conn, dbt, conf);
-
-      if (chunks) {
-        int nchunk = 0;
-        GList *citer;
-        for (citer = chunks; citer != NULL; citer = citer->next) {
-          struct table_job *tj = new_table_job(dbt, NULL, (char *)citer->data, nchunk, get_primary_key_string(conn, dbt->database->name, dbt->table), citer->data);
-          tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
-          nchunk++;
-        }
-        g_list_free(chunks);
-      } else {
-        struct table_job *tj = NULL;
-        tj = new_table_job(dbt, NULL, NULL, 0, get_primary_key_string(conn, dbt->database->name, dbt->table), NULL);
-        tjs->table_job_list = g_list_prepend(tjs->table_job_list, tj);
-      }
-    }
-  }
-  tjs->table_job_list = g_list_reverse(tjs->table_job_list);
-  g_async_queue_push(conf->queue_less_locking, j);
-}

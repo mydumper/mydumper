@@ -27,10 +27,11 @@ enum job_type {
   JOB_TRIGGERS,
   JOB_SCHEMA_POST,
   JOB_BINLOG,
-  JOB_LOCK_DUMP_NON_INNODB,
   JOB_CREATE_DATABASE,
   JOB_CREATE_TABLESPACE,
-  JOB_DUMP_DATABASE
+  JOB_DUMP_DATABASE,
+  JOB_DUMP_ALL_DATABASES,
+  JOB_WRITE_MASTER_STATUS
 };
 
 enum chunk_type{
@@ -42,13 +43,18 @@ enum chunk_type{
 
 struct configuration {
   char use_any_index;
-  GAsyncQueue *queue;
-  GAsyncQueue *queue_less_locking;
+  GAsyncQueue *schema_queue;
+  GAsyncQueue *non_innodb_queue;
+  GAsyncQueue *innodb_queue;
+  GAsyncQueue *post_data_queue;
   GAsyncQueue *ready;
+  GAsyncQueue *schema_done;
+  GAsyncQueue *ready_non_innodb_queue;
   GAsyncQueue *ready_less_locking;
 //  GAsyncQueue *ready_database_dump;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
+  GString *lock_tables_statement;
   GMutex *mutex;
   int done;
 };
@@ -57,8 +63,6 @@ struct thread_data {
   struct configuration *conf;
   guint thread_id;
   MYSQL *thrconn;
-  GAsyncQueue *queue;
-  GAsyncQueue *ready;
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
 };
