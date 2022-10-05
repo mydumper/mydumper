@@ -69,12 +69,12 @@ void create_job_to_dump_post(struct database *database, struct configuration *co
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
-void create_job_to_dump_all_databases(struct configuration *conf, gboolean less_locking);
-void create_job_to_dump_database(struct database *database, struct configuration *conf, gboolean less_locking);
+void create_job_to_dump_all_databases(struct configuration *conf);
+void create_job_to_dump_database(struct database *database, struct configuration *conf);
 void create_job_to_dump_schema(char *database, struct configuration *conf);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
-                    struct configuration *conf, gboolean is_innodb);
+void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
+void job_creator_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
 void write_table_metadata_into_file(struct db_table * dbt);
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
@@ -85,5 +85,6 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
 
+void create_job_to_dump_chunk(struct configuration *conf, struct db_table *dbt, char *partition, char *where, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue);
 #endif
 gchar *get_ref_table(gchar *k);

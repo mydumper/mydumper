@@ -46,7 +46,6 @@ void write_pmm_entries(const gchar* filename, GString *content, struct configura
   append_pmm_entry(content,"innodb_queue",      conf->innodb_queue);
   append_pmm_entry(content,"post_data_queue",   conf->post_data_queue);
   append_pmm_entry(content,"ready",             conf->ready);
-  append_pmm_entry(content,"ready_less_locking",conf->ready_less_locking);
   append_pmm_entry(content,"unlock_tables",     conf->unlock_tables);
   append_pmm_entry(content,"pause_resume",      conf->pause_resume);
   append_pmm_entry(content,"stream_queue",      stream_queue);

@@ -70,6 +70,7 @@
 #include "mydumper_pmm_thread.h"
 #include "mydumper_exec_command.h"
 #include "mydumper_masquerade.h"
+#include "mydumper_chunks.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -78,7 +79,7 @@
 /* Program options */
 extern GKeyFile * key_file;
 extern gint database_counter;
-extern gint table_counter;
+//extern gint table_counter;
 extern GAsyncQueue *stream_queue;
 extern gchar *output_directory;
 extern gchar *output_directory_param;
@@ -122,7 +123,8 @@ GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
 GList *schema_post = NULL;
-gint non_innodb_table_counter = 0;
+//gint non_innodb_table_counter = 0;
+gint schema_counter = 0;
 gint non_innodb_done = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
@@ -191,6 +193,7 @@ static GOptionEntry start_dump_entries[] = {
 
 void load_start_dump_entries(GOptionGroup *main_group){
   load_dump_into_file_entries(main_group);
+  load_chunks_entries(main_group);
   load_working_thread_entries(main_group);
   g_option_group_add_entries(main_group, start_dump_entries);
 }
@@ -912,7 +915,7 @@ void send_lock_all_tables(MYSQL *conn){
 void start_dump() {
   MYSQL *conn = create_main_connection();
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   detect_server_version(conn);
@@ -1101,13 +1104,12 @@ void start_dump() {
   struct thread_data *td =
       g_new(struct thread_data, num_threads * (less_locking + 1));
 
+  conf.initial_queue = g_async_queue_new();
   conf.schema_queue = g_async_queue_new();
   conf.post_data_queue = g_async_queue_new();
-  conf.ready_less_locking = g_async_queue_new();
   conf.innodb_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.non_innodb_queue = g_async_queue_new();
-  conf.schema_done = g_async_queue_new();
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
   ready_database_dump_mutex = g_mutex_new();
@@ -1159,7 +1161,7 @@ void start_dump() {
   if (db) {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
-      create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf, less_locking);
+      create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf);
       if (!no_schemas)
         create_job_to_dump_schema(db_items[i], &conf);
     }
@@ -1168,7 +1170,7 @@ void start_dump() {
     get_table_info_to_process_from_list(conn, &conf, tables);
   } 
   if (( db == NULL ) && ( tables == NULL )) {
-    create_job_to_dump_all_databases(&conf, less_locking);
+    create_job_to_dump_all_databases(&conf);
   }
 
   // End Job Creation
@@ -1176,9 +1178,16 @@ void start_dump() {
   if (database_counter > 0)
     g_mutex_lock(ready_database_dump_mutex);
   g_list_free(no_updated_tables);
-  g_message("Waiting table finish");
-//  if (table_counter > 0)
-//    g_mutex_lock(ready_table_dump_mutex);
+
+  for (n = 0; n < num_threads; n++) {
+    struct job *j = g_new0(struct job, 1);
+    j->type = JOB_SHUTDOWN;
+    g_async_queue_push(conf.initial_queue, j);
+  }
+
+  for (n = 0; n < num_threads; n++) {
+    g_async_queue_pop(conf.ready);
+  }
 
   g_message("Shutdown jobs for less locking enqueued");
   for (n = 0; n < num_threads; n++) {
@@ -1187,9 +1196,6 @@ void start_dump() {
     g_async_queue_push(conf.schema_queue, j);
   }
 
-  for (n = 0; n < num_threads; n++) {
-    g_async_queue_pop(conf.ready);
-  }
 
   GList *iter = non_innodb_table;
   if (less_locking && iter != NULL){
@@ -1248,6 +1254,7 @@ void start_dump() {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
   }
+  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue), g_async_queue_length(conf.schema_queue), g_async_queue_length(conf.non_innodb_queue), g_async_queue_length(conf.innodb_queue), g_async_queue_length(conf.post_data_queue));
   // close main connection
   mysql_close(conn);
   g_message("Main connection closed");  
