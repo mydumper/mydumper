@@ -46,6 +46,9 @@ guint index_threads_counter = 0;
 guint sync_threads_remaining;
 static GMutex *sync_mutex;
 
+guint sync_threads_remaining2;
+static GMutex *sync_mutex2;
+
 void initialize_job(gchar * purge_mode_str){
   initialize_restore_job(purge_mode_str);
   init_mutex = g_mutex_new();
@@ -53,6 +56,11 @@ void initialize_job(gchar * purge_mode_str){
   sync_threads_remaining=num_threads;
   sync_mutex = g_mutex_new();
   g_mutex_lock(sync_mutex);
+
+  sync_threads_remaining2=num_threads;
+  sync_mutex2 = g_mutex_new();
+  g_mutex_lock(sync_mutex2);
+
   index_threads_counter = 0;
 }
 
@@ -81,12 +89,12 @@ gboolean process_index(struct thread_data * td){
   return b;
 }
 
-void sync_threads(){
-  if (g_atomic_int_dec_and_test(&sync_threads_remaining)){
-    g_mutex_unlock(sync_mutex);
+void sync_threads(guint *counter, GMutex *mutex){
+  if (g_atomic_int_dec_and_test(counter)){
+    g_mutex_unlock(mutex);
   }else{
-    g_mutex_lock(sync_mutex);
-    g_mutex_unlock(sync_mutex);
+    g_mutex_lock(mutex);
+    g_mutex_unlock(mutex);
   }
 }
 
@@ -124,7 +132,7 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     cont=process_index(td);
   }
-  sync_threads();
+  sync_threads(&sync_threads_remaining,sync_mutex);
   g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
@@ -140,7 +148,7 @@ void *loader_thread(struct thread_data *td) {
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
     cont=process_job(td, job);
   }
-
+  sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
