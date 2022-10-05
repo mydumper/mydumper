@@ -1126,6 +1126,30 @@ void start_dump() {
 */
   }
 
+  // Begin Job Creation
+
+  if (dump_tablespaces){
+    create_job_to_dump_tablespaces(&conf);
+  }
+
+  if (db) {
+    guint i=0;
+    for (i=0;i<g_strv_length(db_items);i++){
+      create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf);
+      if (!no_schemas)
+        create_job_to_dump_schema(db_items[i], &conf);
+    }
+  }
+  if (tables) {
+    get_table_info_to_process_from_list(conn, &conf, tables);
+  }
+  if (( db == NULL ) && ( tables == NULL )) {
+    create_job_to_dump_all_databases(&conf);
+  }
+
+  // End Job Creation
+
+
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
     td[n].thread_id = n + 1;
@@ -1152,28 +1176,6 @@ void start_dump() {
   }
 
   
-  // Begin Job Creation
-
-  if (dump_tablespaces){
-    create_job_to_dump_tablespaces(&conf);
-  }
-
-  if (db) {
-    guint i=0;
-    for (i=0;i<g_strv_length(db_items);i++){
-      create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf);
-      if (!no_schemas)
-        create_job_to_dump_schema(db_items[i], &conf);
-    }
-  } 
-  if (tables) {
-    get_table_info_to_process_from_list(conn, &conf, tables);
-  } 
-  if (( db == NULL ) && ( tables == NULL )) {
-    create_job_to_dump_all_databases(&conf);
-  }
-
-  // End Job Creation
   g_message("Waiting database finish");
   if (database_counter > 0)
     g_mutex_lock(ready_database_dump_mutex);
