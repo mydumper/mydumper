@@ -50,7 +50,7 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
     if (is_schema)
-      g_critical("Error restoring: %s %s", data->str, mysql_error(td->thrconn));
+      g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
     errors++;
     return 1;
   }
