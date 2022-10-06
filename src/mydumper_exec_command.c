@@ -28,13 +28,16 @@
 #include <unistd.h>
 #include "common.h"
 #include <sys/wait.h>
+#include <errno.h>
+
+extern int errno;
 
 extern FILE * (*m_open)(const char *filename, const char *);
 extern gchar *compress_extension;
 extern GAsyncQueue *stream_queue;
 extern gboolean no_delete;
-
-GThread *exec_command_thread = NULL;
+extern guint num_threads;
+GThread **exec_command_thread = NULL;
 extern gchar *exec_command;
 
 void *process_exec_command(void *data){
@@ -46,18 +49,28 @@ void *process_exec_command(void *data){
   gchar ** arguments=g_strsplit(space," ", 0);
   gchar ** volatile c_arg=NULL;
   guint i=0;
+  GList *filename_pos=NULL;
+  GList *iter;
+  c_arg=g_strdupv(arguments);
+  for(i=0; i<g_strv_length(c_arg); i++){
+    if (g_strcmp0(c_arg[i],"FILENAME") == 0){
+      int *c=g_new(int, 1);
+      *c=i;
+      filename_pos=g_list_prepend(filename_pos,c);
+    }
+  }
+
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
     if (strlen(filename) == 0){
       break;
     }
     char *used_filemame=g_path_get_basename(filename);
-    g_strfreev(c_arg);
-    c_arg=g_strdupv(arguments);
-    for(i=0; i<g_strv_length(c_arg); i++){
-      if (g_strcmp0(c_arg[i],"FILENAME") == 0)
-        c_arg[i]=filename;
-    }
+    iter=filename_pos;
+    while (iter!=NULL){
+      c_arg[(*((guint *)(iter->data)))]=filename;
+      iter=iter->next;
+    } 
     int childpid=vfork();
     if(!childpid)
       i=execv(bin,c_arg);
@@ -72,9 +85,19 @@ void *process_exec_command(void *data){
 void initialize_exec_command(){
   g_message("Initializing Execcommand");
   stream_queue = g_async_queue_new();
-  exec_command_thread = g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
+  exec_command_thread=g_new(GThread * , num_threads) ;
+  guint i;
+  for(i=0;i<num_threads;i++){
+    exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
+  }
 }
 
 void wait_exec_command_to_finish(){
-  g_thread_join(exec_command_thread);
+  guint i;
+  for(i=0;i<num_threads;i++){
+    g_async_queue_push(stream_queue, g_strdup(""));
+  }
+  for(i=0;i<num_threads;i++){
+    g_thread_join(exec_command_thread[i]);
+  }
 }

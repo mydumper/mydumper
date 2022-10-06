@@ -1294,11 +1294,12 @@ void start_dump() {
   g_free(datetimestr);
 
   if (stream) {
-    g_async_queue_push(stream_queue, g_strdup(""));
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
-    }else
+    }else{
+      g_async_queue_push(stream_queue, g_strdup(""));
       wait_stream_to_finish();
+    }
     if (no_delete == FALSE && output_directory_param == NULL)
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);
