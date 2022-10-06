@@ -36,9 +36,9 @@ extern FILE * (*m_open)(const char *filename, const char *);
 extern gchar *compress_extension;
 extern GAsyncQueue *stream_queue;
 extern gboolean no_delete;
-extern guint num_threads;
 GThread **exec_command_thread = NULL;
 extern gchar *exec_command;
+guint num_exec_threads = 4;
 
 void *process_exec_command(void *data){
   (void)data;
@@ -82,22 +82,31 @@ void *process_exec_command(void *data){
   return NULL;
 }
 
+
+static GOptionEntry exec_entries[] = {
+    {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
+     "", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+void load_exec_entries(GOptionGroup *main_group){
+  g_option_group_add_entries(main_group, exec_entries);
+}
+
 void initialize_exec_command(){
-  g_message("Initializing Execcommand");
   stream_queue = g_async_queue_new();
-  exec_command_thread=g_new(GThread * , num_threads) ;
+  exec_command_thread=g_new(GThread * , num_exec_threads) ;
   guint i;
-  for(i=0;i<num_threads;i++){
+  for(i=0;i<num_exec_threads;i++){
     exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
   }
 }
 
 void wait_exec_command_to_finish(){
   guint i;
-  for(i=0;i<num_threads;i++){
+  for(i=0;i<num_exec_threads;i++){
     g_async_queue_push(stream_queue, g_strdup(""));
   }
-  for(i=0;i<num_threads;i++){
+  for(i=0;i<num_exec_threads;i++){
     g_thread_join(exec_command_thread[i]);
   }
 }

@@ -100,7 +100,6 @@ extern GString *set_session;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
-
 gchar *tidb_snapshot = NULL;
 GList *no_updated_tables = NULL;
 int longquery = 60;
@@ -195,6 +194,7 @@ void load_start_dump_entries(GOptionGroup *main_group){
   load_dump_into_file_entries(main_group);
   load_chunks_entries(main_group);
   load_working_thread_entries(main_group);
+  load_exec_entries(main_group);
   g_option_group_add_entries(main_group, start_dump_entries);
 }
 
