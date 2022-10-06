@@ -65,7 +65,7 @@ void *process_exec_command(void *data){
     if (strlen(filename) == 0){
       break;
     }
-    char *used_filemame=g_path_get_basename(filename);
+//    char *used_filemame=g_path_get_basename(filename);
     iter=filename_pos;
     while (iter!=NULL){
       c_arg[(*((guint *)(iter->data)))]=filename;
@@ -75,7 +75,7 @@ void *process_exec_command(void *data){
     if(!childpid)
       i=execv(bin,c_arg);
     wait(&childpid);
-    free(used_filemame);
+//    free(used_filemame);
     if (no_delete == FALSE)
       remove(filename);
   }
