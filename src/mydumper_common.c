@@ -166,7 +166,7 @@ void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
 // Global Var used:
 // - dump_directory
 // - compress_extension
-gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, gchar *second_extension){
+gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, const gchar *second_extension){
   GString *filename = g_string_sized_new(20);
   sub_part == 0 ?
     g_string_append_printf(filename, "%s.%s.%05d.%s%s%s%s", database, table, part, extension, compress_extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
@@ -180,8 +180,8 @@ gchar * build_data_filename(char *database, char *table, guint part, guint sub_p
   return build_filename(database,table,part,sub_part,"sql",NULL);
 }
 
-gchar * build_fifo_filename(char *database, char *table, guint part, guint sub_part){
-  return build_filename(database,table,part,sub_part,"fifo", NULL);
+gchar * build_fifo_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
+  return build_filename(database,table,part,sub_part, extension,"fifo");
 }
 
 gchar * build_stdout_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, gchar *second_extension){

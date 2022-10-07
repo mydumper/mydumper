@@ -1617,27 +1617,27 @@ void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
 
 }
 
-void initialize_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part, const gchar *extesion){
+void initialize_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part, const gchar *extension, gchar * f()){
   gchar *stdout_fn=NULL;
   if (use_fifo){
     if (*sql_fn != NULL){
       remove(*sql_fn);
       g_free(*sql_fn);
     }
-    *sql_fn = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
+    *sql_fn = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
     mkfifo(*sql_fn,0666);
-    stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extesion, exec_per_thread_extension);
+    stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
     execute_file_per_thread(*sql_fn,stdout_fn);
   }else
-    *sql_fn = build_data_filename(dbt->database->filename, dbt->table_filename, fn, sub_part);
+    *sql_fn = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
 }
 
 void initialize_sql_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part){
-  initialize_fn(sql_fn,dbt,fn,sub_part,"sql");
+  initialize_fn(sql_fn,dbt,fn,sub_part,"sql", &build_data_filename);
 }
 
 void initialize_load_data_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part){
-  initialize_fn(sql_fn,dbt,fn,sub_part,"dat");
+  initialize_fn(sql_fn,dbt,fn,sub_part,"dat",&build_load_data_filename);
 }
 
 
@@ -1778,7 +1778,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct d
   guint st_in_file = 0;
   guint fn = nchunk;
 
-  initialize_load_data_fn(&sql_fn, dbt, fn, sub_part);
+  initialize_sql_fn(&sql_fn, dbt, fn, sub_part);
 
   sql_file = m_open(sql_fn,"w");
 
