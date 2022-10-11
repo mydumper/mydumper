@@ -373,6 +373,7 @@ gboolean process_table_filename(char * filename){
   }
   g_mutex_lock(conf->table_list_mutex);
   if (!eval_table(real_db_name->name, table_name)){
+    g_mutex_unlock(conf->table_list_mutex);
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
@@ -491,6 +492,7 @@ gboolean process_data_filename(char * filename){
   }
   g_mutex_lock(conf->table_list_mutex);
   if (real_db_name!=NULL && !eval_table(real_db_name->name, table_name)){
+    g_mutex_unlock(conf->table_list_mutex);
     g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
     return TRUE;
   }
