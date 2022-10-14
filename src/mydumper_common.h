@@ -35,4 +35,4 @@ gchar * build_filename(char *database, char *table, guint part, guint sub_part, 
 gchar * build_data_filename(char *database, char *table, guint part, guint sub_part);
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
-
+void free_common();

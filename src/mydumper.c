@@ -21,7 +21,6 @@
 
 #define _LARGEFILE64_SOURCE
 #define _FILE_OFFSET_BITS 64
-
 #if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
 #define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
 #endif
@@ -148,18 +147,21 @@ int main(int argc, char *argv[]) {
   if (tmpargc > 1 ){
     int pos=0;
     stream=TRUE;
-    db=tmpargv[1];
+    db=strdup(tmpargv[1]);
     if (tmpargc > 2 ){
       GString *s = g_string_new(tmpargv[2]);
       for (pos=3; pos<tmpargc;pos++){
         g_string_append_printf(s,",%s",tmpargv[pos]);
       }
       tables_list=g_strdup(s->str);
+      g_string_free(s, TRUE);
     }
   }
-
+  g_strfreev(tmpargv);
   set_verbose(verbose);
-  initialize_common_options(context, "mydumper");
+  gchar *mydumper = g_strdup("mydumper");
+  initialize_common_options(context, mydumper);
+  g_free(mydumper);
   g_option_context_free(context);
 
   initialize_main();
@@ -198,6 +200,7 @@ int main(int argc, char *argv[]) {
   }else{
     output_directory=output_directory_param;
   }
+  g_date_time_unref(datetime);
   create_backup_dir(output_directory);
   if (daemon_mode) {
     initialize_daemon_thread();
@@ -225,7 +228,9 @@ int main(int argc, char *argv[]) {
   if (logoutfile) {
     fclose(logoutfile);
   }
-
+  g_key_file_free(key_file);
+//  g_strfreev(argv);
+  g_free(compress_extension);
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 

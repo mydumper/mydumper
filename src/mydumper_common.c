@@ -38,8 +38,14 @@ guint table_number=0;
 
 void initialize_common(){
   ref_table_mutex = g_mutex_new();
-  ref_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
 }
+
+void free_common(){
+  g_mutex_free(ref_table_mutex);
+  g_hash_table_destroy(ref_table);
+}
+
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename

@@ -24,3 +24,7 @@ GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
+
+
+void free_char_step(union chunk_step * cs);
+void free_integer_step(union chunk_step * cs);

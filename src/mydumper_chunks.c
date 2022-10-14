@@ -84,7 +84,7 @@ gchar *get_next_min_char( MYSQL *conn, struct db_table *dbt, char *field, gchar 
 
 union chunk_step *new_char_step(gchar *prefix, gchar *field, gchar *cmin, gchar *cmax){
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  cs->char_step.prefix = prefix;
+  cs->char_step.prefix = g_strdup(prefix);
   cs->char_step.cmin = cmin;
   cs->char_step.cmax = cmax;
   cs->char_step.field = g_strdup(field);
@@ -93,12 +93,25 @@ union chunk_step *new_char_step(gchar *prefix, gchar *field, gchar *cmin, gchar 
 
 union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax){
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  cs->integer_step.prefix = prefix;
+  cs->integer_step.prefix = g_strdup(prefix);
   cs->integer_step.nmin = nmin;
   cs->integer_step.nmax = nmax;
   cs->integer_step.field = g_strdup(field);
   return cs;
 }
+
+void free_char_step(union chunk_step * cs){
+  g_free(cs->char_step.field);
+  g_free(cs->char_step.prefix);
+  g_free(cs);
+}
+
+void free_integer_step(union chunk_step * cs){
+  g_free(cs->integer_step.field);
+  g_free(cs->integer_step.prefix);
+  g_free(cs);
+}
+
 
 GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *field){
   GList *chunks = NULL;
@@ -160,6 +173,7 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
           chunks,
           new_integer_step(prefix, field, cutoff, cutoff + estimated_step));
       cutoff += estimated_step;
+      g_free(prefix);
       prefix=NULL;
     }
     chunks = g_list_reverse(chunks);
@@ -174,6 +188,7 @@ GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt, char *fie
       chunks = g_list_prepend(
           chunks, 
           new_char_step(prefix, field, new_min, new_max));
+      g_free(prefix);
       prefix=NULL;
       new_min = get_next_min_char(conn, dbt, field,new_max);
     }

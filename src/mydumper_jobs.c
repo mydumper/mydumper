@@ -124,6 +124,7 @@ void write_table_metadata_into_file(struct db_table * dbt){
   fprintf(table_meta, "%"G_GUINT64_FORMAT, dbt->rows);
   fclose(table_meta);
   if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  g_free(filename);
 }
 
 gchar * get_tablespace_query(){
@@ -672,7 +673,7 @@ void free_schema_job(struct schema_job *sj){
     g_free(sj->table);
   if (sj->filename)
     g_free(sj->filename);
-//  g_free(sj);
+  g_free(sj);
 }
 
 void free_view_job(struct view_job *vj){
@@ -693,7 +694,9 @@ void free_schema_post_job(struct schema_post_job *sp){
 void free_create_database_job(struct create_database_job * cdj){
   if (cdj->filename)
     g_free(cdj->filename);
-//  g_free(cdj);
+  if (cdj->database)
+    g_free(cdj->database);
+  g_free(cdj);
 }
 
 void free_create_tablespace_job(struct create_tablespace_job * ctj){
@@ -707,7 +710,7 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
         g_free(tcj->table);
       if (tcj->filename)
         g_free(tcj->filename);
- //     g_free(tcj);
+      g_free(tcj);
 }
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){

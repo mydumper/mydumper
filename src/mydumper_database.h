@@ -26,4 +26,4 @@ struct database {
 void initialize_database();
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
-
+void free_databases();

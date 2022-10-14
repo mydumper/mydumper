@@ -469,7 +469,9 @@ MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  m_connect(conn, "mydumper",db_items!=NULL?db_items[0]:db);
+  char *mydumper=g_strdup("mydumper");
+  m_connect(conn, mydumper ,db_items!=NULL?db_items[0]:db);
+  g_free(mydumper);
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
@@ -479,6 +481,8 @@ MYSQL *create_main_connection() {
     load_per_table_info_from_key_file(key_file, &conf_per_table, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
+  free_hash_table(set_session_hash);
+  g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_session);
 
   switch (detected_server) {
@@ -583,6 +587,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
       new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
     }
+    mysql_free_result(result);
+    g_strfreev(dt);
   }
 
   g_free(query);
@@ -1251,6 +1257,7 @@ void start_dump() {
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+  finalize_working_thread();
 
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
@@ -1258,6 +1265,8 @@ void start_dump() {
   }
   g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue), g_async_queue_length(conf.schema_queue), g_async_queue_length(conf.non_innodb_queue), g_async_queue_length(conf.innodb_queue), g_async_queue_length(conf.post_data_queue));
   // close main connection
+  if (conn != second_conn)
+    mysql_close(second_conn);
   mysql_close(conn);
   g_message("Main connection closed");  
 
@@ -1266,20 +1275,36 @@ void start_dump() {
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     write_table_metadata_into_file(dbt);
+    free_db_table(dbt);
   }
-  g_list_free(table_schemas);
-  table_schemas=NULL;
+//  g_list_free(table_schemas);
+//  table_schemas=NULL;
   if (pmm){
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
   }
   g_async_queue_unref(conf.innodb_queue);
   conf.innodb_queue=NULL;
+  g_async_queue_unref(conf.non_innodb_queue);
+  conf.non_innodb_queue=NULL;
   g_async_queue_unref(conf.unlock_tables);
   conf.unlock_tables=NULL;
+  g_async_queue_unref(conf.ready);
+  conf.ready=NULL;
+  g_async_queue_unref(conf.schema_queue);
+  conf.schema_queue=NULL;
+  g_async_queue_unref(conf.initial_queue);
+  conf.initial_queue=NULL;
+  g_async_queue_unref(conf.post_data_queue);
+  conf.post_data_queue=NULL;
 
+  g_async_queue_unref(conf.ready_non_innodb_queue);
+  conf.ready_non_innodb_queue=NULL;
+
+  g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  g_date_time_unref(datetime);
   fprintf(mdfile, "Finished dump at: %s\n", datetimestr);
   fclose(mdfile);
   if (updated_since > 0)
@@ -1307,8 +1332,11 @@ void start_dump() {
 
   g_free(td);
   g_free(threads);
+  free_databases();
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
+  g_string_free(set_session, TRUE);
+  free_common();
 }
 
