@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
   if (logoutfile) {
     fclose(logoutfile);
   }
-  g_key_file_free(key_file);
+  if (key_file)  g_key_file_free(key_file);
 //  g_strfreev(argv);
   g_free(compress_extension);
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);

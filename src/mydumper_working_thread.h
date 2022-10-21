@@ -33,3 +33,4 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
 void initialize_working_thread();
 void finalize_working_thread();
 void free_db_table(struct db_table * dbt);
+void build_lock_tables_statement(struct configuration *conf);

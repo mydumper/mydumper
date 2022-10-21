@@ -120,6 +120,7 @@ void free_dbt(struct db_table * dbt){
   dbt->constraints = NULL; // It should be free after constraint is executed
   g_async_queue_unref(dbt->queue);
   g_mutex_clear(dbt->mutex); 
+  
 }
 
 void free_table_hash(GHashTable *table_hash){

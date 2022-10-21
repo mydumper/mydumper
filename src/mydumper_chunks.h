@@ -25,6 +25,15 @@ GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
 
-
+char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration *conf);
+void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt);
 void free_char_step(union chunk_step * cs);
 void free_integer_step(union chunk_step * cs);
+union chunk_step *get_next_chunk(struct db_table *dbt);
+gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min);
+GList * get_partitions_for_table(MYSQL *conn, char *database, char *table);
+void *chunk_builder_thread(struct configuration *conf);
+void initialize_chunk();
+
+void give_me_another_non_innodb_chunk_step();
+void give_me_another_innodb_chunk_step();

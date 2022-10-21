@@ -100,6 +100,7 @@ extern GString *set_session;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
+extern gboolean no_data;
 gchar *tidb_snapshot = NULL;
 GList *no_updated_tables = NULL;
 int longquery = 60;
@@ -116,8 +117,6 @@ gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
-//GList *innodb_tables = NULL;
-GList *non_innodb_table = NULL;
 GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
@@ -1154,7 +1153,10 @@ void start_dump() {
   }
 
   // End Job Creation
-
+  GThread *chunk_builder=NULL;
+  if (!no_data){
+    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
+  }
 
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
@@ -1204,29 +1206,21 @@ void start_dump() {
     g_async_queue_push(conf.schema_queue, j);
   }
 
-
-  GList *iter = non_innodb_table;
-  if (less_locking && iter != NULL){
-    dbt = (struct db_table *)iter->data;
-    conf.lock_tables_statement = g_string_sized_new(30); 
-    g_string_printf(conf.lock_tables_statement, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
-    iter = iter->next;
-    for (; iter != NULL; iter = iter->next) {
-      dbt = (struct db_table *)iter->data;
-      g_string_append_printf(conf.lock_tables_statement, ", `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
-    }
+ 
+  if (less_locking){
+    build_lock_tables_statement(&conf);
   }
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.ready_non_innodb_queue, GINT_TO_POINTER(1));
   }
 
+/*
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.non_innodb_queue, j);
   }
+*/
 
   if (!no_locks && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
@@ -1241,19 +1235,24 @@ void start_dump() {
     }
   }
 
+/*
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.innodb_queue, j);
   }
-
+*/
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.post_data_queue, j);
   }
 
-  g_message("Waiting jobs to complete");
+  if (!no_data){
+    g_thread_join(chunk_builder);
+  }
+
+  g_message("Waiting threads to complete");
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
@@ -1270,6 +1269,7 @@ void start_dump() {
   mysql_close(conn);
   g_message("Main connection closed");  
 
+  GList *iter = NULL;
   // TODO: We need to create jobs for metadata.
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {

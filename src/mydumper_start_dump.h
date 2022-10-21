@@ -69,7 +69,7 @@ struct thread_data {
 struct job {
   enum job_type type;
   void *job_data;
-  struct configuration *conf;
+//  struct configuration *conf;
 };
 
 
@@ -77,7 +77,13 @@ struct integer_step {
   gchar *prefix;
   gchar *field;
   guint64 nmin;
+  guint64 cursor;
+  guint64 step;
   guint64 nmax;
+  guint number;
+  guint deep;
+  GMutex *mutex;
+  gboolean assigned;
 };
 
 struct char_step {
@@ -85,10 +91,20 @@ struct char_step {
   gchar *field;
   gchar *cmin;
   gchar *cmax;
+  guint number;
+  guint deep;
+  GList *list;
+  GMutex *mutex;
+  gboolean assigned;
 };
 
 struct partition_step{
-  gchar *partition;
+  GList *list;
+  gchar *current_partition;
+  guint number;
+  guint deep;
+  GMutex *mutex;
+  gboolean assigned;
 };
 
 union chunk_step {
@@ -110,6 +126,12 @@ struct table_job {
   union chunk_step *chunk_step;  
   char *order_by;
   struct db_table *dbt;
+  gchar *sql_filename;
+  FILE *sql_file;
+  gchar *dat_filename;
+  FILE *dat_file;
+  float filesize;
+  guint st_in_file;
 };
 
 struct tables_job {
@@ -137,6 +159,9 @@ struct db_table {
   char *table;
   char *table_filename;
   char *escaped_table;
+  char *min;
+  char *max;
+  char *field;
   GString *select_fields;
   gboolean complete_insert;
   gboolean is_innodb;
@@ -149,6 +174,8 @@ struct db_table {
   gchar *limit;
   guint num_threads;
   enum chunk_type chunk_type;
+  GList *chunks;
+  GMutex *chunks_mutex;
   gchar *primary_key;
 };
 
