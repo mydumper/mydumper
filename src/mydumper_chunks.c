@@ -172,8 +172,8 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 
     if (cs->integer_step.nmin + (5 * cs->integer_step.step) < cs->integer_step.nmax){
       guint64 new_minmax = cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2;
-      cs->integer_step.deep--;
-      union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep, cs->integer_step.number+pow(2,cs->integer_step.deep));
+      union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep));
+      cs->integer_step.deep++;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
       cs->integer_step.nmax = new_minmax;
       new_cs->integer_step.assigned=TRUE;
@@ -207,8 +207,8 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
       GList *new_list=g_list_nth(cs->char_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      cs->char_step.deep--;
-      union chunk_step * new_cs = new_char_step(NULL, dbt->field, new_list, cs->char_step.deep, cs->char_step.number+pow(2,cs->char_step.deep));
+      union chunk_step * new_cs = new_char_step(NULL, dbt->field, new_list, cs->char_step.deep + 1, cs->char_step.number+pow(2,cs->char_step.deep));
+      cs->char_step.deep++;
       new_cs->char_step.assigned=TRUE;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
 
@@ -242,8 +242,8 @@ union chunk_step *get_next_partition_chunk(struct db_table *dbt){
       GList *new_list=g_list_nth(cs->partition_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      cs->partition_step.deep--;
-      union chunk_step * new_cs = new_real_partition_step(new_list, cs->partition_step.deep, cs->partition_step.number+pow(2,cs->partition_step.deep));
+      union chunk_step * new_cs = new_real_partition_step(new_list, cs->partition_step.deep+1, cs->partition_step.number+pow(2,cs->partition_step.deep));
+      cs->partition_step.deep++;
       new_cs->partition_step.assigned=TRUE;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
 
@@ -334,7 +334,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
 
   if (partitions){
     dbt->chunk_type=PARTITION;
-    dbt->chunks=g_list_prepend(dbt->chunks,new_real_partition_step(partitions,0,8));
+    dbt->chunks=g_list_prepend(dbt->chunks,new_real_partition_step(partitions,0,0));
     return;
   }
 
@@ -375,14 +375,14 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     nmax = strtoul(dbt->max, NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
       dbt->chunk_type=INTEGER;
-      dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, nmin, nmax, 8, 0));
+      dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, nmin, nmax, 0, 0));
     }else{
       dbt->chunk_type=NONE;
     } 
     break;
   case MYSQL_TYPE_STRING:
     dbt->chunk_type=CHAR;
-    dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, get_chunk_list_of_chars(conn,dbt), 8, 0));
+    dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, get_chunk_list_of_chars(conn,dbt), 0, 0));
     break;
   default:
     break;

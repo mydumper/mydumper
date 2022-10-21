@@ -121,6 +121,7 @@ struct table_job {
 //  char *table;
   char *partition;
   guint nchunk;
+  guint sub_part;
 //  char *filename;
   char *where;
   union chunk_step *chunk_step;  
@@ -191,7 +192,7 @@ void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
-gboolean write_data(FILE *, GString *);
+//gboolean write_data(FILE *, GString *);
 
 
 

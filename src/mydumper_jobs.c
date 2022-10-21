@@ -33,6 +33,7 @@
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
+#include "mydumper_working_thread.h"
 extern gchar *where_option;
 extern gboolean success_on_1146;
 extern int detected_server;
@@ -167,7 +168,6 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
     return;
   }
   GString *statement = g_string_sized_new(statement_size);
-
   while ((row = mysql_fetch_row(result))) {
     g_string_printf(statement, "CREATE TABLESPACE `%s` ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", row[0],row[1],row[2]);
     if (!write_data((FILE *)outfile, statement)) {
@@ -948,6 +948,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->where=NULL;
   tj->order_by=g_strdup(order_by);
   tj->nchunk=nchunk;
+  tj->sub_part = 0;
   tj->dat_file = NULL;
   tj->dat_filename = NULL;
   tj->sql_file = NULL;
