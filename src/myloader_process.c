@@ -485,7 +485,7 @@ gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2){
     
     return a%2 > b%2;
   }
-  return 0;
+  return ((struct restore_job *)rj1)->data.drj->sub_part > ((struct restore_job *)rj2)->data.drj->sub_part;
 }
 
 gboolean process_data_filename(char * filename){
