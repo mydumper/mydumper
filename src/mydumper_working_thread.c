@@ -180,6 +180,11 @@ GMutex *consistent_snapshot = NULL;
 GMutex *consistent_snapshot_token_I = NULL;
 GMutex *consistent_snapshot_token_II = NULL;
 
+gchar *exec_per_thread = NULL;
+gchar *exec_per_thread_extension = NULL;
+gboolean use_fifo = FALSE;
+gchar **exec_per_thread_cmd=NULL;
+
 unsigned long (*escape_function)(MYSQL *, char *, const char *, unsigned long );
 
 gboolean split_partitions = FALSE;
@@ -260,6 +265,10 @@ static GOptionEntry working_thread_entries[] = {
      "Try to split tables into chunks of this many rows. This option turns off "
      "--chunk-filesize",
      NULL},
+    {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread, 
+     "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
+    {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
+     "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
@@ -410,6 +419,16 @@ void initialize_working_thread(){
 
   if (replace)
     insert_statement=REPLACE;
+
+  if (exec_per_thread_extension != NULL){
+    if(exec_per_thread == NULL)
+      g_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+  }
+
+  if (exec_per_thread!=NULL){
+    use_fifo=TRUE;
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+  }
 }
 
 
@@ -1801,6 +1820,19 @@ gboolean write_statement(FILE *load_data_file, float *filessize, GString *statem
   return TRUE;
 }
 
+void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
+  int childpid=fork();
+  if(!childpid){
+    FILE *sql_file2 = m_open(sql_fn,"r");
+    FILE *sql_file3 = m_open(sql_fn3,"w");
+    dup2(fileno(sql_file2), STDIN_FILENO);
+    dup2(fileno(sql_file3), STDOUT_FILENO);
+    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+    m_close(sql_file2);
+    m_close(sql_file3);
+  }
+}
+
 
 gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, guint num_fields){
   GString *statement = g_string_sized_new(statement_size);
@@ -1814,8 +1846,35 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   return TRUE;
 }
 
+void initialize_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part, const gchar *extension, gchar * f()){
+  gchar *stdout_fn=NULL;
+  if (use_fifo){
+    if (*sql_fn != NULL){
+      remove(*sql_fn);
+      g_free(*sql_fn);
+    }
+    *sql_fn = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
+    mkfifo(*sql_fn,0666);
+    stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
+    execute_file_per_thread(*sql_fn,stdout_fn);
+  }else{
+    g_free(tj->sql_filename);
+    tj->sql_filename = build_data_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part);
+    tj->sql_file = m_open(tj->sql_filename,"w");
+    tj->st_in_file = 0;
+    tj->filesize = 0;
+  }
+}
+
+void initialize_sql_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part){
+  initialize_fn(sql_fn,dbt,fn,sub_part,"sql", &build_data_filename);
+}
+
+void initialize_load_data_fn(gchar ** sql_fn, struct db_table * dbt, guint fn, guint sub_part){
+  initialize_fn(sql_fn,dbt,fn,sub_part,"dat",&build_load_data_filename);
+}
+
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
-  g_message("write_row_into_file_in_load_data_mode");
   struct db_table * dbt = tj->dbt;
   guint fn = tj->nchunk;
   guint64 num_rows=0;
@@ -1847,6 +1906,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
         return num_rows;
       }
 
+
       m_close(tj->sql_file);
       m_close(tj->dat_file);
       tj->sql_file=NULL;
@@ -1855,14 +1915,19 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (stream) {
         g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
         g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
+  
       }
+
+      char * basename=g_path_get_basename(load_data_fn);
+
+      initialize_sql_statement(statement);
+      initialize_load_data_statement(statement, dbt->table, dbt->character_set, basename, fields, num_fields);
 
       tj->sql_filename = build_data_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part);
       tj->sql_file = m_open(tj->sql_filename,"w");
       tj->dat_filename = build_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part, "dat");
       tj->dat_file = m_open(tj->dat_filename,"w");
       write_load_data_statement(tj, fields, num_fields);
-      tj->filesize=0;
       first_time=FALSE;
       if (sections == 1){
         fn++;
@@ -1909,9 +1974,12 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (stream && tj->dat_filename) g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
     }
   }
+  if (use_fifo && (load_data_fn != NULL)){
+    remove(load_data_fn);
+    g_free(load_data_fn);
+  }
   return num_rows;
 }
-
 
 guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
   // There are 2 possible options to chunk the files:
@@ -1930,11 +1998,10 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
   gulong *lengths = NULL;
   guint64 num_rows = 0;
   guint64 num_rows_st = 0;  
-  guint fn = tj->nchunk;
+  guint fn = nchunk;
   if (tj->sql_file == NULL){
-    tj->sql_filename = build_data_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part);
-    tj->sql_file = m_open(tj->sql_filename,"w");
-  }
+    initialize_sql_fn(&sql_fn, dbt, fn, sub_part);
+
   while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     num_rows++;
@@ -1992,11 +2059,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         if (stream) {
           g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
         }
-        g_free(tj->sql_filename);
-        tj->sql_filename = build_data_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part);
-        tj->sql_file = m_open(tj->sql_filename,"w");
-        tj->st_in_file = 0;
-	tj->filesize = 0;
+        initialize_sql_fn(&sql_fn, dbt, fn, sub_part);
+        st_in_file = 0;
       }
       g_string_set_size(statement, 0);
     } else {
@@ -2024,8 +2088,6 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
     tj->st_in_file++;
   }
-//  g_free(tj->sql_filename);
-//  m_close(sql_file);
   g_mutex_lock(dbt->rows_lock);
   dbt->rows+=num_rows;
   g_mutex_unlock(dbt->rows_lock);
