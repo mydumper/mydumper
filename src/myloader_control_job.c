@@ -66,6 +66,21 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
   return TRUE;
 }
 
+gboolean are_available_data_jobs(struct thread_data * td){
+  g_mutex_lock(td->conf->table_list_mutex);
+  GList * iter=td->conf->table_list;
+
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    if (!dbt->schema_created || g_list_length(dbt->restore_job_list) > 0){
+      g_mutex_unlock(td->conf->table_list_mutex);
+      return TRUE;
+    }
+    iter=iter->next;
+  }
+  g_mutex_unlock(td->conf->table_list_mutex);
+  return FALSE;
+}
 
 struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean test_condition){
   g_mutex_lock(td->conf->table_list_mutex);
@@ -148,18 +163,12 @@ void *process_stream_queue(struct thread_data * td) {
   struct control_job *job = NULL;
   gboolean cont=TRUE;
   enum file_type ft=-1;
-  guint i=0;
 //  enum file_type ft;
   while (cont){
-    i=0;
-    while (ft==SHUTDOWN && i<num_threads){
-      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
-      ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
-      i++;
-    }
-    if (i==num_threads){
-      g_warning("Max shutdown reached");
-    }
+    if (ft == SHUTDOWN)
+      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
+
+
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
     job=g_async_queue_try_pop(td->conf->database_queue);
     if (job != NULL){
@@ -205,6 +214,8 @@ void *process_stream_queue(struct thread_data * td) {
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
       cont=process_job(td, job);
       continue;
+    }else{
+//      g_message("Thread %d: No data job founded(1)", td->thread_id);
     }
     rj=give_any_data_job(td);
     if (rj != NULL){
@@ -213,8 +224,14 @@ void *process_stream_queue(struct thread_data * td) {
       cont=process_job(td, job);
       continue;
     }else{
-      if (ft==SHUTDOWN){
-        cont=FALSE;
+      if (intermediate_queue_ended){
+        if (are_available_data_jobs(td)){
+          g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+        }else if (ft == SHUTDOWN){
+          cont=FALSE;
+        }else{
+          g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+        }
       }else{
         g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
       }
