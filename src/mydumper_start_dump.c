@@ -71,6 +71,7 @@
 #include "mydumper_exec_command.h"
 #include "mydumper_masquerade.h"
 #include "mydumper_chunks.h"
+#include "mydumper_write.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -194,6 +195,7 @@ void load_start_dump_entries(GOptionGroup *main_group){
   load_chunks_entries(main_group);
   load_working_thread_entries(main_group);
   load_exec_entries(main_group);
+  load_write_entries(main_group);
   g_option_group_add_entries(main_group, start_dump_entries);
 }
 

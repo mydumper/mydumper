@@ -694,8 +694,8 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
       create_job_to_dump_chunk(dbt, NULL, cs->partition_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
       break;
     case NONE:
-     create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue);
-    break;
+      create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue);
+      break;
     }
   }
 }

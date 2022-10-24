@@ -34,6 +34,8 @@
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
+#include "mydumper_write.h"
+
 extern gchar *where_option;
 extern gboolean success_on_1146;
 extern int detected_server;
@@ -58,9 +60,14 @@ gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
 gboolean ignore_generated_fields = FALSE;
 
+gchar *exec_per_thread = NULL;
+gchar *exec_per_thread_extension = NULL;
+gboolean use_fifo = FALSE;
+gchar **exec_per_thread_cmd=NULL;
+
 extern gboolean schema_checksums;
 extern gboolean routine_checksums;
-
+extern gboolean use_fifo;
 static GOptionEntry dump_into_file_entries[] = {
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
      NULL},
@@ -70,16 +77,30 @@ static GOptionEntry dump_into_file_entries[] = {
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
+    {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
+     "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
+    {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
+     "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void load_dump_into_file_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, dump_into_file_entries);
 }
 
-void initialize_dump_into_file(){
+void initialize_jobs(){
   initialize_database();
   if (ignore_generated_fields)
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
+
+  if (exec_per_thread_extension != NULL){
+    if(exec_per_thread == NULL)
+      g_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+  }
+
+  if (exec_per_thread!=NULL){
+    use_fifo=TRUE;
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+  }
 }
 
 void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename, gchar *fun()) {
@@ -936,6 +957,56 @@ void update_where_on_table_job(struct table_job *tj){
   }
 }
 
+
+void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
+  int childpid=fork();
+  if(!childpid){
+    FILE *sql_file2 = m_open(sql_fn,"r");
+    FILE *sql_file3 = m_open(sql_fn3,"w");
+    dup2(fileno(sql_file2), STDIN_FILENO);
+    dup2(fileno(sql_file3), STDOUT_FILENO);
+    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+    m_close(sql_file2);
+    m_close(sql_file3);
+  }
+}
+
+void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint fn, guint sub_part, const gchar *extension, gchar * f()){
+  gchar *stdout_fn=NULL;
+  if (*sql_filename != NULL){
+    remove(*sql_filename);
+    g_free(*sql_filename);
+  }
+  if (use_fifo){
+    *sql_filename = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
+    mkfifo(*sql_filename,0666);
+    stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
+    execute_file_per_thread(*sql_filename,stdout_fn);
+  }else{
+    *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
+  }
+  *sql_file = m_open(*sql_filename,"w");
+}
+
+void initialize_sql_fn(struct table_job * tj){
+  initialize_fn(&(tj->sql_filename),tj->dbt,&(tj->sql_file), tj->nchunk, tj->sub_part,"sql", &build_data_filename);
+}
+
+void initialize_load_data_fn(struct table_job * tj){
+  initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part,"dat", &build_load_data_filename);
+}
+
+void update_files_on_table_job(struct table_job *tj){
+  if (tj->sql_file == NULL){
+     initialize_load_data_fn(tj);
+     tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+     tj->sql_file = m_open(tj->sql_filename,"w");
+//     write_load_data_statement(tj, fields, num_fields);
+  }
+
+}
+
+
 struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
@@ -957,6 +1028,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->st_in_file=0;
   tj->filesize=0;
   update_where_on_table_job(tj);
+  update_files_on_table_job(tj);
   return tj;
 }
 

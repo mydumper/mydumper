@@ -57,7 +57,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     then
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $myloader_log
+      cat $tmp_myloader_log
       exit $error
     fi
   fi
@@ -87,8 +87,8 @@ test_case_stream (){
     then
       echo "Error running: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
-      cat $mydumper_log
-      cat $myloader_log
+      cat $tmp_mydumper_log
+      cat $tmp_myloader_log
       exit $error
     fi
   fi
