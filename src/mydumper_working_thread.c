@@ -460,6 +460,9 @@ void free_table_job(struct table_job *tj){
   if (tj->order_by)
     g_free(tj->order_by);
   if (tj->chunk_step){
+    g_mutex_lock(tj->dbt->chunks_mutex);
+    tj->dbt->chunks=g_list_remove(tj->dbt->chunks, tj->chunk_step);
+    g_mutex_unlock(tj->dbt->chunks_mutex);
     switch (tj->dbt->chunk_type){
      case INTEGER:
        free_integer_step(tj->chunk_step);
@@ -470,7 +473,6 @@ void free_table_job(struct table_job *tj){
      default:
        break;
     };
-   
   }
   if (tj->sql_file){
     m_close(tj->sql_file);
@@ -1858,7 +1860,6 @@ void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_fil
     stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
     execute_file_per_thread(*sql_filename,stdout_fn);
   }else{
-    g_free(sql_filename);
     *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
   }
   *sql_file = m_open(*sql_filename,"w");

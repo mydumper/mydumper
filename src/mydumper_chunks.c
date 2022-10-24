@@ -653,7 +653,6 @@ void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList *
   }
 }
 
-
 void give_me_another_non_innodb_chunk_step(){
   g_async_queue_push(give_me_another_non_innodb_chunk_step_queue, GINT_TO_POINTER(1));
 }
@@ -661,52 +660,6 @@ void give_me_another_non_innodb_chunk_step(){
 void give_me_another_innodb_chunk_step(){
   g_async_queue_push(give_me_another_innodb_chunk_step_queue, GINT_TO_POINTER(1));
 }
-
-
-
-
-/*void process_integer_chunk(struct thread_data *td, struct db_table *dbt, union chunk_step *cs){
-  g_mutex_lock(cs->integer_step.mutex);
-  cs->integer_step.cursor = cs->integer_step.nmin + cs->integer_step.step;
-  g_mutex_unlock(cs->integer_step.mutex);
-  struct table_job *tj = new_table_job(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs);
-  message_dumping_data(td,tj);
-  write_table_job_into_file(td->thrconn, tj);
-  g_mutex_lock(cs->integer_step.mutex);
-  cs->integer_step.nmin = cs->integer_step.cursor;
-  g_mutex_unlock(cs->integer_step.mutex);
-  if (cs->integer_step.prefix)
-    g_free(cs->integer_step.prefix);
-  cs->integer_step.prefix=NULL;
-  while ( cs->integer_step.nmax - cs->integer_step.nmin > rows_per_file ){
-    g_mutex_lock(cs->integer_step.mutex);
-    cs->integer_step.cursor = cs->integer_step.nmin + cs->integer_step.step;
-    g_mutex_unlock(cs->integer_step.mutex);
-    update_where_on_table_job(tj);
-    message_dumping_data(td,tj);
-    write_table_job_into_file(td->thrconn, tj);
-    g_mutex_lock(cs->integer_step.mutex);
-    cs->integer_step.nmin=cs->integer_step.cursor;
-    g_mutex_unlock(cs->integer_step.mutex);
-  }
-  g_mutex_lock(cs->integer_step.mutex);
-  cs->integer_step.cursor = cs->integer_step.nmax;
-  g_mutex_unlock(cs->integer_step.mutex);
-  update_where_on_table_job(tj);
-  message_dumping_data(td,tj);
-  write_table_job_into_file(td->thrconn, tj);
-  g_mutex_lock(cs->integer_step.mutex);
-  g_mutex_lock(dbt->chunks_mutex);
-  dbt->chunks=g_list_remove(dbt->chunks,cs);
-  if (g_list_length(dbt->chunks) == 0){
-    g_message("Thread %d: Table %s completed ",td->thread_id,dbt->table);
-    dbt->chunks=NULL;
-  }
-  g_message("Thread %d:Remaining 2 chunks: %d",td->thread_id,g_list_length(dbt->chunks));
-  g_mutex_unlock(dbt->chunks_mutex);
-  g_mutex_unlock(cs->integer_step.mutex);
-  free_table_job(tj);
-}*/
 
 void enqueue_shutdown_jobs(GAsyncQueue * queue){
   struct job *j=NULL;
@@ -722,7 +675,6 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
   struct db_table *dbt;
   union chunk_step *cs;
   for (;;) {
-    g_message("g_async_queue_pop(pop_queue)");
     g_async_queue_pop(pop_queue);
     dbt=NULL;
     cs=NULL;
@@ -733,15 +685,12 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     }
     switch (dbt->chunk_type) {
     case INTEGER:
-      g_message("New INTEGER");
       create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
       break;
     case CHAR:
-      g_message("New CHAR");
       create_job_to_dump_chunk(dbt, NULL, cs->char_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
       break;
     case PARTITION:
-      g_message("New PARTITION");
       create_job_to_dump_chunk(dbt, NULL, cs->partition_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
       break;
     case NONE:
