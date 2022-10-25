@@ -69,6 +69,10 @@ gchar **exec_per_thread_cmd=NULL;
 extern gboolean schema_checksums;
 extern gboolean routine_checksums;
 extern gboolean use_fifo;
+
+
+gboolean skip_definer = FALSE;
+
 static GOptionEntry dump_into_file_entries[] = {
     {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
      NULL},
@@ -82,6 +86,8 @@ static GOptionEntry dump_into_file_entries[] = {
      "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
      "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
+    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
+     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void load_dump_into_file_entries(GOptionGroup *main_group){
@@ -495,6 +501,9 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
   set_charset(statement, row[2], row[3]);
+  if ( skip_definer && g_str_has_prefix(row[1],"CREATE")){
+    remove_definer_from_gchar(row[1]);
+  }
   g_string_append(statement, row[1]);
   g_string_append(statement, ";\n");
   restore_charset(statement);
@@ -573,6 +582,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
       g_string_printf(statement, "%s", row2[2]);
+      if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
+        remove_definer(statement);
+      }
       splited_st = g_strsplit(statement->str, ";\n", 0);
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");
@@ -617,6 +629,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       result2 = mysql_store_result(conn);
       row2 = mysql_fetch_row(result2);
       g_string_printf(statement, "%s", row2[2]);
+      if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
+        remove_definer(statement);
+      }
       splited_st = g_strsplit(statement->str, ";\n", 0);
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");
@@ -664,6 +679,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       // DROP EVENT IF EXISTS event_name
       row2 = mysql_fetch_row(result2);
       g_string_printf(statement, "%s", row2[3]);
+      if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
+        remove_definer(statement);
+      }
       splited_st = g_strsplit(statement->str, ";\n", 0);
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");

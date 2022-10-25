@@ -59,4 +59,6 @@ void free_hash(GHashTable * set_session_hash);
 void initialize_common_options(GOptionContext *context, const gchar *group);
 gchar **get_table_list(gchar *tables_list);
 void free_hash_table(GHashTable * hash);
+void remove_definer(GString * data);
+void remove_definer_from_gchar(char * str);
 #endif
