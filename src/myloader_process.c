@@ -120,6 +120,7 @@ void free_dbt(struct db_table * dbt){
   dbt->constraints = NULL; // It should be free after constraint is executed
   g_async_queue_unref(dbt->queue);
   g_mutex_clear(dbt->mutex); 
+  
 }
 
 void free_table_hash(GHashTable *table_hash){
@@ -475,6 +476,19 @@ gboolean process_schema_filename(gchar *filename, const char * object) {
   return TRUE;
 }
 
+gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2){
+  if (((struct restore_job *)rj1)->data.drj->part != ((struct restore_job *)rj2)->data.drj->part ){
+    guint a=((struct restore_job *)rj1)->data.drj->part, b=((struct restore_job *)rj2)->data.drj->part;
+    while ( a%2 == b%2 ){
+      a=a>>1;
+      b=b>>1;
+    }
+    
+    return a%2 > b%2;
+  }
+  return ((struct restore_job *)rj1)->data.drj->sub_part > ((struct restore_job *)rj2)->data.drj->sub_part;
+}
+
 gboolean process_data_filename(char * filename){
   gchar *db_name, *table_name;
   // TODO: check if it is a data file
@@ -501,8 +515,8 @@ gboolean process_data_filename(char * filename){
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
   dbt->count++; 
-//  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&compare_filename_part);
-  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
+  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&cmp_restore_job);
+//  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
   g_mutex_unlock(dbt->mutex);
   return TRUE;
 }

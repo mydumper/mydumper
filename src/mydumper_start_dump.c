@@ -71,6 +71,7 @@
 #include "mydumper_exec_command.h"
 #include "mydumper_masquerade.h"
 #include "mydumper_chunks.h"
+#include "mydumper_write.h"
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
@@ -100,6 +101,7 @@ extern GString *set_session;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
+extern gboolean no_data;
 gchar *tidb_snapshot = NULL;
 GList *no_updated_tables = NULL;
 int longquery = 60;
@@ -116,8 +118,6 @@ gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
-//GList *innodb_tables = NULL;
-GList *non_innodb_table = NULL;
 GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
@@ -195,6 +195,7 @@ void load_start_dump_entries(GOptionGroup *main_group){
   load_chunks_entries(main_group);
   load_working_thread_entries(main_group);
   load_exec_entries(main_group);
+  load_write_entries(main_group);
   g_option_group_add_entries(main_group, start_dump_entries);
 }
 
@@ -469,7 +470,9 @@ MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  m_connect(conn, "mydumper",db_items!=NULL?db_items[0]:db);
+  char *mydumper=g_strdup("mydumper");
+  m_connect(conn, mydumper ,db_items!=NULL?db_items[0]:db);
+  g_free(mydumper);
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
@@ -479,6 +482,8 @@ MYSQL *create_main_connection() {
     load_per_table_info_from_key_file(key_file, &conf_per_table, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
+  free_hash_table(set_session_hash);
+  g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_session);
 
   switch (detected_server) {
@@ -583,6 +588,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
       new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
     }
+    mysql_free_result(result);
+    g_strfreev(dt);
   }
 
   g_free(query);
@@ -1148,7 +1155,10 @@ void start_dump() {
   }
 
   // End Job Creation
-
+  GThread *chunk_builder=NULL;
+  if (!no_data){
+    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
+  }
 
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
@@ -1198,29 +1208,21 @@ void start_dump() {
     g_async_queue_push(conf.schema_queue, j);
   }
 
-
-  GList *iter = non_innodb_table;
-  if (less_locking && iter != NULL){
-    dbt = (struct db_table *)iter->data;
-    conf.lock_tables_statement = g_string_sized_new(30); 
-    g_string_printf(conf.lock_tables_statement, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
-    iter = iter->next;
-    for (; iter != NULL; iter = iter->next) {
-      dbt = (struct db_table *)iter->data;
-      g_string_append_printf(conf.lock_tables_statement, ", `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
-    }
+ 
+  if (less_locking){
+    build_lock_tables_statement(&conf);
   }
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.ready_non_innodb_queue, GINT_TO_POINTER(1));
   }
 
+/*
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.non_innodb_queue, j);
   }
+*/
 
   if (!no_locks && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
@@ -1235,22 +1237,28 @@ void start_dump() {
     }
   }
 
+/*
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.innodb_queue, j);
   }
-
+*/
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.post_data_queue, j);
   }
 
-  g_message("Waiting jobs to complete");
+  if (!no_data){
+    g_thread_join(chunk_builder);
+  }
+
+  g_message("Waiting threads to complete");
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+  finalize_working_thread();
 
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
@@ -1258,28 +1266,47 @@ void start_dump() {
   }
   g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue), g_async_queue_length(conf.schema_queue), g_async_queue_length(conf.non_innodb_queue), g_async_queue_length(conf.innodb_queue), g_async_queue_length(conf.post_data_queue));
   // close main connection
+  if (conn != second_conn)
+    mysql_close(second_conn);
   mysql_close(conn);
   g_message("Main connection closed");  
 
+  GList *iter = NULL;
   // TODO: We need to create jobs for metadata.
   table_schemas = g_list_reverse(table_schemas);
   for (iter = table_schemas; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
     write_table_metadata_into_file(dbt);
+    free_db_table(dbt);
   }
-  g_list_free(table_schemas);
-  table_schemas=NULL;
+//  g_list_free(table_schemas);
+//  table_schemas=NULL;
   if (pmm){
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
   }
   g_async_queue_unref(conf.innodb_queue);
   conf.innodb_queue=NULL;
+  g_async_queue_unref(conf.non_innodb_queue);
+  conf.non_innodb_queue=NULL;
   g_async_queue_unref(conf.unlock_tables);
   conf.unlock_tables=NULL;
+  g_async_queue_unref(conf.ready);
+  conf.ready=NULL;
+  g_async_queue_unref(conf.schema_queue);
+  conf.schema_queue=NULL;
+  g_async_queue_unref(conf.initial_queue);
+  conf.initial_queue=NULL;
+  g_async_queue_unref(conf.post_data_queue);
+  conf.post_data_queue=NULL;
 
+  g_async_queue_unref(conf.ready_non_innodb_queue);
+  conf.ready_non_innodb_queue=NULL;
+
+  g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  g_date_time_unref(datetime);
   fprintf(mdfile, "Finished dump at: %s\n", datetimestr);
   fclose(mdfile);
   if (updated_since > 0)
@@ -1307,8 +1334,11 @@ void start_dump() {
 
   g_free(td);
   g_free(threads);
+  free_databases();
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
+  g_string_free(set_session, TRUE);
+  free_common();
 }
 

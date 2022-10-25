@@ -61,7 +61,7 @@ struct table_checksum_job {
 //  char *schema_filename;
 };
 
-void initialize_dump_into_file();
+void initialize_jobs();
 void load_dump_into_file_entries(GOptionGroup *main_group);
 void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
 void create_job_to_dump_tablespaces(struct configuration *conf);
@@ -84,7 +84,10 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
-
-void create_job_to_dump_chunk(struct configuration *conf, struct db_table *dbt, char *partition, char *where, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue);
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step);
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue);
+void update_where_on_table_job(struct table_job *tj);
+void update_files_on_table_job(struct table_job *tj);
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step);
 #endif
 gchar *get_ref_table(gchar *k);

@@ -23,6 +23,8 @@
 #include <mysql.h>
 #include "mydumper_masquerade.h"
 
+struct function_pointer pp = {&identity_function,NULL};
+
 gchar * identity_function(gchar ** r, GHashTable * mem){
   (void) mem;
   return *r;

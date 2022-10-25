@@ -138,7 +138,9 @@ void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * grou
     }else{
       g_message("Config file loaded");
     }
+    g_strfreev(gclist);
   }
+  g_strfreev(keys);
 }
 
 void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables){
@@ -150,9 +152,11 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
-      g_hash_table_insert(set_session_hash, keys[i], value);
+      g_hash_table_insert(set_session_hash, g_strdup(keys[i]), g_strdup(value));
   }
+  g_strfreev(keys);
 }
+
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for()){
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
@@ -190,9 +194,20 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);
     }
   }
-
+  g_strfreev(groups);
 }
 
+
+void free_hash_table(GHashTable * hash){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, hash );
+  gchar *e=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
+    g_free(lkey);
+    g_free(e);
+  }
+}
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
   GHashTableIter iter;

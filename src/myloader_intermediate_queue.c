@@ -137,7 +137,6 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
-        g_message("Load data file found: %s", filename);
         break;
       case SHUTDOWN:
         break;
