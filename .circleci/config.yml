@@ -32,7 +32,11 @@ jobs:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    - run: bash ./test_mydumper.sh
+    - run: bash ./test_mydumper.sh SSL GZIP
+    - run: cmake . -DWITH_ZSTD=ON
+    - run: make
+    - run: ./mydumper --version
+    - run: bash ./test_mydumper.sh SSL ZSTD
 
 workflows:
   version: 2
