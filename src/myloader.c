@@ -265,8 +265,7 @@ int main(int argc, char *argv[]) {
   ask_password();
 
   if (program_version) {
-    g_print("myloader %s, built against MySQL %s\n", VERSION,
-            MYSQL_VERSION_STR);
+    print_version("myloader");
     exit(EXIT_SUCCESS);
   }
 

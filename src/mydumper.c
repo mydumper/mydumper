@@ -175,8 +175,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (program_version) {
-    g_print("mydumper %s, built against MySQL %s\n", VERSION,
-            MYSQL_VERSION_STR);
+    print_version("mydumper");
     exit(EXIT_SUCCESS);
   }
 
