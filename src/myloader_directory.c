@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <glib/gstdio.h>
 #include "myloader_common.h"
+#include <string.h>
 
 extern gchar *directory;
 extern guint num_threads;
