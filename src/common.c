@@ -355,3 +355,21 @@ gchar **get_table_list(gchar *tables_list){
   }
   return tl;
 }
+
+void remove_definer_from_gchar(char * str){
+  char * from = g_strstr_len(str,50," DEFINER=");
+  if (from){
+    from++;
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      while(from != to){
+        from[0]=' ';
+        from++;
+      }
+    }
+  }
+}
+
+void remove_definer(GString * data){
+  remove_definer_from_gchar(data->str);
+}
