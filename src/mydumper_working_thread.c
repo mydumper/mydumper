@@ -84,6 +84,7 @@ guint complete_insert = 0;
 
 guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
+extern gboolean load_data;
 extern struct function_pointer pp;
 extern gboolean dump_triggers;
 extern GAsyncQueue *stream_queue;
@@ -498,8 +499,18 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     }else{
       g_message("File removed: %s", tj->sql_filename);
     }
+    if (load_data){
+      if (remove(tj->dat_filename)) {
+        g_warning("Failed to remove empty file : %s", tj->dat_filename);
+      }else{
+        g_message("File removed: %s", tj->dat_filename);
+      }
+    }
   } else if (stream) {
       g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
+      if (load_data){
+        g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
+      }
   }
 
   if (use_savepoints &&

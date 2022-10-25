@@ -317,8 +317,6 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   return TRUE;
 }
 
-
-
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
   g_message("Thread %d dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs: %d",
                     td->thread_id,
@@ -330,7 +328,6 @@ void message_dumping_data(struct thread_data *td, struct table_job *tj){
                     tj->sql_filename,
                     g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
 }
-
 
 void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
   if (load_data){
@@ -410,7 +407,6 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     if (chunk_filesize &&
         (guint)ceil((float)tj->filesize / 1024 / 1024) >
             chunk_filesize ) {
-      g_message("File size limit reached");
       if (!write_statement(tj->dat_file, &(tj->filesize), statement_row, dbt)) {
         return num_rows;
       }
@@ -440,15 +436,12 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       update_files_on_table_job(tj);
       tj->st_in_file = 0;
       tj->filesize = 0;
-//      tj->sql_filename = build_data_filename(dbt->database->filename, dbt->table_filename, fn, tj->sub_part);
-//      tj->sql_file = m_open(tj->sql_filename,"w");
       
       write_load_data_statement(tj, fields, num_fields);
 
     }
     g_string_set_size(statement_row, 0);
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row);
-//    g_message("Data: %s", statement_row->str);
     tj->filesize+=statement_row->len+1;
     g_string_append(statement, statement_row->str);
     /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
@@ -460,7 +453,6 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     }
   }
   if (statement->len > 0){
-    g_message("Data: %s", statement->str);
     if (!real_write_data(tj->dat_file, &(tj->filesize), statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
       return num_rows;

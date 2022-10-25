@@ -76,7 +76,7 @@ gboolean process_index(struct thread_data * td){
       g_mutex_unlock(index_mutex);
       execute_use_if_needs_to(td, job->use_database, "Restoring index");
       dbt->start_index_time=g_date_time_new_now_local();
-      g_message("restoring index: %s.%s", dbt->database, dbt->table);
+//      g_message("restoring index: %s.%s", dbt->database, dbt->table);
       b=process_job(td, job);
       dbt->finish_time=g_date_time_new_now_local();
 //      job->data.restore_job->dbt->index_completed=TRUE;

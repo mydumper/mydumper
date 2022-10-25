@@ -36,6 +36,7 @@
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
 
+extern gboolean load_data;
 extern gchar *where_option;
 extern gboolean success_on_1146;
 extern int detected_server;
@@ -998,9 +999,13 @@ void initialize_load_data_fn(struct table_job * tj){
 
 void update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-     initialize_load_data_fn(tj);
-     tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-     tj->sql_file = m_open(tj->sql_filename,"w");
+     if (load_data){
+       initialize_load_data_fn(tj);
+       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+       tj->sql_file = m_open(tj->sql_filename,"w");
+     }else{
+       initialize_sql_fn(tj);
+     }
 //     write_load_data_statement(tj, fields, num_fields);
   }
 

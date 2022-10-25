@@ -633,7 +633,6 @@ void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList *
 
   while (iter){
     d=iter->data;
-    g_message("Checking %s ", d->table);
     if (d->chunk_type == NONE){
       *dbt=iter->data;
       *dbt_list=g_list_remove(*dbt_list,d);
@@ -700,20 +699,16 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
   }
 }
 
-
-
-
 void *chunk_builder_thread(struct configuration *conf){
 
+  g_message("Starting Non-InnoDB tables");
   table_job_enqueue(give_me_another_non_innodb_chunk_step_queue, conf->non_innodb_queue, &non_innodb_table);
-
+  g_message("Non-InnoDB tables completed");
   enqueue_shutdown_jobs(conf->non_innodb_queue);
 
-  g_message("chunk_builder_thread: Starting innodb tables");
-
+  g_message("Starting InnoDB tables");
   table_job_enqueue(give_me_another_innodb_chunk_step_queue, conf->innodb_queue, &innodb_table);
-
-  g_message("innodb tables completed");
+  g_message("InnoDB tables completed");
   enqueue_shutdown_jobs(conf->innodb_queue);
 
   return NULL;
