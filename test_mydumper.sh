@@ -12,6 +12,18 @@ mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
 > $mydumper_log
 > $myloader_log
+for i in $*
+do
+  if [ "$($mydumper --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+  if [ "$($myloader --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+done
+
 echo "[mydumper]" > $empty
 echo "[myloader]" >> $empty
 test_case_dir (){

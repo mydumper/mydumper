@@ -22,6 +22,7 @@
 #include <glib/gstdio.h>
 #include "server_detect.h"
 #include "common.h"
+#include "config.h"
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -373,3 +374,19 @@ void remove_definer_from_gchar(char * str){
 void remove_definer(GString * data){
   remove_definer_from_gchar(data->str);
 }
+
+void print_version(const gchar *program){
+    GString *str=g_string_new(program);
+    g_string_append_printf(str, "%s, built against MySQL %s", VERSION, MYSQL_VERSION_STR);
+#ifdef WITH_SSL
+    g_string_append(str," with SSL support");
+#endif
+#ifdef ZWRAP_USE_ZSTD
+    g_string_append(str," with ZSTD");
+#else
+    g_string_append(str," with GZIP");
+#endif
+    g_print("%s\n", str->str);
+}
+
+
