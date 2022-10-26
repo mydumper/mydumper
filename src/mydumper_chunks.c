@@ -155,8 +155,8 @@ void free_integer_step(union chunk_step * cs){
 
 
 union chunk_step *get_next_integer_chunk(struct db_table *dbt){
-  GList *l=dbt->chunks;
   g_mutex_lock(dbt->chunks_mutex);
+  GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   while (l!=NULL){
     g_message("IN WHILE");
@@ -189,8 +189,8 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 }
 
 union chunk_step *get_next_char_chunk(struct db_table *dbt){
-  GList *l=dbt->chunks;
   g_mutex_lock(dbt->chunks_mutex);
+  GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   while (l!=NULL){
     cs=l->data;
@@ -224,8 +224,8 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
 }
 
 union chunk_step *get_next_partition_chunk(struct db_table *dbt){
-  GList *l=dbt->chunks;
   g_mutex_lock(dbt->chunks_mutex);
+  GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   while (l!=NULL){
     cs=l->data;
