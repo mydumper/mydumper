@@ -35,6 +35,7 @@
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
+#include "mydumper_chunks.h"
 
 extern gboolean load_data;
 extern gchar *where_option;
@@ -142,6 +143,11 @@ void write_checksum_into_file(MYSQL *conn, char *database, char *table, char *fi
   return;
 }
 
+void write_my_data_into_file(const char *filename, gchar * str){
+  FILE *table_meta = g_fopen(filename, "w");
+  write_file(table_meta, str, strlen(str));
+  fclose(table_meta);
+}
 
 void write_table_metadata_into_file(struct db_table * dbt){
   char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
@@ -957,7 +963,7 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
 
 
 
-void update_where_on_table_job(struct table_job *tj){
+void update_where_on_table_job(MYSQL * conn, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=g_strdup_printf("%s(`%s` >= %"G_GUINT64_FORMAT" AND `%s` < %"G_GUINT64_FORMAT")",
@@ -966,11 +972,21 @@ void update_where_on_table_job(struct table_job *tj){
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
     break;
   case CHAR:
-    tj->where=g_strdup_printf("%s(`%s` BETWEEN BINARY '%s' AND BINARY '%s')",
+    if (conn != NULL){
+      if (tj->chunk_step->char_step.cmax == NULL){
+        tj->where=g_strdup_printf("%s(`%s` >= '%s')",
                           tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
-                          tj->chunk_step->char_step.field,
-                          tj->chunk_step->char_step.cmin,tj->chunk_step->char_step.cmax
+                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped
+                          );	  
+      }else{
+        update_cursor(conn,tj);
+        tj->where=g_strdup_printf("%s(`%s` > '%s' AND `%s` <= '%s')",
+                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
+                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped,
+                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cursor_escaped
                           );
+      }
+     }
      break;
   default: break;
   }
@@ -1050,7 +1066,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
-  update_where_on_table_job(tj);
+  update_where_on_table_job(NULL, tj);
   update_files_on_table_job(tj);
   return tj;
 }
@@ -1081,6 +1097,17 @@ void create_job_to_dump_all_databases(struct configuration *conf) {
   j->job_data = NULL;
 //  j->conf = conf;
   j->type = JOB_DUMP_ALL_DATABASES;
+  g_async_queue_push(conf->initial_queue, j);
+  return;
+}
+
+void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf) {
+  g_atomic_int_inc(&database_counter);
+  struct job *j = g_new0(struct job, 1);
+  struct dump_table_list_job *dtlj = g_new0(struct dump_table_list_job, 1);
+  j->job_data = (void *)dtlj;
+  dtlj->table_list = table_list;
+  j->type = JOB_DUMP_TABLE_LIST;
   g_async_queue_push(conf->initial_queue, j);
   return;
 }

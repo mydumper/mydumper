@@ -601,7 +601,8 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
        (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
       ((tj->where || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
       tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "",
-      tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : "");
+      tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
+  );
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
