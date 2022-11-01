@@ -268,7 +268,7 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
       g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
-    if (cs->char_step.deep < num_threads/2 && g_strcmp0(cs->char_step.cmax, cs->char_step.cmin)!=0){
+    if (cs->char_step.deep < num_threads/2 && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
       union chunk_step * new_cs = split_char_step(
           cs->char_step.deep + 1, cs->char_step.number+pow(2,cs->char_step.deep), cs);
       cs->char_step.deep++;
