@@ -32,6 +32,7 @@ enum job_type {
   JOB_CREATE_TABLESPACE,
   JOB_DUMP_DATABASE,
   JOB_DUMP_ALL_DATABASES,
+  JOB_DUMP_TABLE_LIST,
   JOB_WRITE_MASTER_STATUS
 };
 
@@ -72,6 +73,7 @@ struct job {
 //  struct configuration *conf;
 };
 
+union chunk_step;
 
 struct integer_step {
   gchar *prefix;
@@ -89,13 +91,29 @@ struct integer_step {
 struct char_step {
   gchar *prefix;
   gchar *field;
+
   gchar *cmin;
+  guint cmin_len;
+  guint cmin_clen;
+  gchar *cmin_escaped;
+
+  gchar *cursor;
+  guint cursor_len;
+  guint cursor_clen;
+  gchar *cursor_escaped;
+
   gchar *cmax;
+  guint cmax_len;
+  guint cmax_clen;
+  gchar *cmax_escaped;
+
   guint number;
   guint deep;
   GList *list;
   GMutex *mutex;
   gboolean assigned;
+  guint64 step;
+  union chunk_step *previous;
 };
 
 struct partition_step{
@@ -141,6 +159,10 @@ struct tables_job {
 
 struct dump_database_job {
   struct database *database;
+};
+
+struct dump_table_list_job{
+  gchar **table_list;
 };
 
 struct restore_job {

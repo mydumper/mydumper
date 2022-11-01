@@ -527,74 +527,6 @@ void get_not_updated(MYSQL *conn, FILE *file) {
   fflush(file);
 }
 
-void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
-
-  gchar **dt = NULL;
-  char *query = NULL;
-  guint x;
-
-  for (x = 0; table_list[x] != NULL; x++) {
-    dt = g_strsplit(table_list[x], ".", 0);
-
-    query =
-        g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
-
-    if (mysql_query(conn, (query))) {
-      g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
-                 mysql_error(conn));
-      errors++;
-      return;
-    }
-
-    MYSQL_RES *result = mysql_store_result(conn);
-    guint ecol = -1, ccol = -1, collcol;
-    determine_ecol_ccol(result, &ecol, &ccol, &collcol);
-
-    struct database * database=NULL;
-    if (get_database(conn, dt[0], &database)){
-      if (!database->already_dumped){
-        g_mutex_lock(database->ad_mutex);
-        if (!database->already_dumped){
-          create_job_to_dump_schema(database->name, conf);
-          database->already_dumped=TRUE;
-        }
-        g_mutex_unlock(database->ad_mutex);
-//        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
-      }
-    }
-
-    if (!result) {
-      g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
-      errors++;
-      return;
-    }
-
-    MYSQL_ROW row;
-    while ((row = mysql_fetch_row(result))) {
-
-      int is_view = 0;
-
-      if ((detected_server == SERVER_TYPE_MYSQL) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
-        is_view = 1;
-
-      /* Checks skip list on 'database.table' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[0]))
-        continue;
-
-      /* Checks PCRE expressions on 'database.table' string */
-      if (!eval_regex(database->name, row[0]))
-        continue;
-
-      new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
-    }
-    mysql_free_result(result);
-    g_strfreev(dt);
-  }
-
-  g_free(query);
-}
-
 void long_query_wait(MYSQL *conn){
   char *p3=NULL;
     while (TRUE) {
@@ -1148,7 +1080,7 @@ void start_dump() {
     }
   }
   if (tables) {
-    get_table_info_to_process_from_list(conn, &conf, tables);
+    create_job_to_dump_table_list(tables, &conf);
   }
   if (( db == NULL ) && ( tables == NULL )) {
     create_job_to_dump_all_databases(&conf);
