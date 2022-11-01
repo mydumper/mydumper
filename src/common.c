@@ -68,7 +68,7 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
 
 
 char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type,column_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
 }
 
 char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn){
