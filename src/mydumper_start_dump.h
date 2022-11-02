@@ -114,6 +114,8 @@ struct char_step {
   gboolean assigned;
   guint64 step;
   union chunk_step *previous;
+
+  guint status;
 };
 
 struct partition_step{
