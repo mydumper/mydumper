@@ -1046,7 +1046,7 @@ void update_files_on_table_job(struct table_job *tj){
 }
 
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step){
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
@@ -1066,14 +1066,15 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
-  update_where_on_table_job(NULL, tj);
+  if (update_where)
+    update_where_on_table_job(NULL, tj);
   update_files_on_table_job(tj);
   return tj;
 }
 
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step){
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
   struct job *j = g_new0(struct job,1);
-  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step);
+  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
   j->job_data=(void*) tj;
 //  j->conf=conf;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
@@ -1081,12 +1082,11 @@ struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, ch
   return j;
 }
 
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue){
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where){
   struct job *j = g_new0(struct job,1);
-  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step);
+  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
   j->job_data=(void*) tj;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-  j->job_data = (void *)tj;
   f(queue,j);
 }
 
@@ -1120,16 +1120,6 @@ void create_job_to_dump_database(struct database *database, struct configuration
   ddj->database = database;
 //  j->conf = conf;
   j->type = JOB_DUMP_DATABASE;
-  g_async_queue_push(conf->initial_queue, j);
-  return;
-}
-
-void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf) {
-  g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
-  j->job_data = (void *)dbt;
-//  j->conf = conf;
-  j->type = JOB_TABLE;
   g_async_queue_push(conf->initial_queue, j);
   return;
 }

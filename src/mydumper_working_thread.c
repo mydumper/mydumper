@@ -308,14 +308,12 @@ void finalize_working_thread(){
 
 // Free structures
 void free_table_job(struct table_job *tj){
+  g_message("free_table_job");
   if (tj->where)
     g_free(tj->where);
   if (tj->order_by)
     g_free(tj->order_by);
   if (tj->chunk_step){
-    g_mutex_lock(tj->dbt->chunks_mutex);
-    tj->dbt->chunks=g_list_remove(tj->dbt->chunks, tj->chunk_step);
-    g_mutex_unlock(tj->dbt->chunks_mutex);
     switch (tj->dbt->chunk_type){
      case INTEGER:
        free_integer_step(tj->chunk_step);
@@ -481,7 +479,7 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
   }
   g_async_queue_push(queue, element);
 }
-
+/*
 void thd_JOB_TABLE(struct thread_data *td, struct job *job){
 //  char *database = dbt->database;
 //  char *table = dbt->table;
@@ -495,7 +493,7 @@ void thd_JOB_TABLE(struct thread_data *td, struct job *job){
     int npartition=0;
     dbt->chunk_type=PARTITION;
     for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
-      create_job_to_dump_chunk(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), npartition, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), new_partition_step(partitions->data), &g_async_queue_push, queue);
+      create_job_to_dump_chunk(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), npartition, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), new_partition_step(partitions->data), &g_async_queue_push, queue, TRUE);
       npartition++;
     }
     g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
@@ -506,13 +504,14 @@ void thd_JOB_TABLE(struct thread_data *td, struct job *job){
     if (chunks) {
       int nchunk = 0;
       GList *iter;
+      g_error("YES IM HERE");
       for (iter = chunks; iter != NULL; iter = iter->next) {
-        create_job_to_dump_chunk( dbt, NULL, nchunk, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), iter->data, &m_async_queue_push_conservative, queue);
+        create_job_to_dump_chunk( dbt, NULL, nchunk, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), iter->data, &m_async_queue_push_conservative, queue, TRUE);
         nchunk++;
       }
       g_list_free(chunks);
     } else {
-      create_job_to_dump_chunk( dbt, NULL, 0, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), NULL, &g_async_queue_push, queue);
+      create_job_to_dump_chunk( dbt, NULL, 0, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), NULL, &g_async_queue_push, queue, TRUE);
     }
   }
   if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -520,7 +519,7 @@ void thd_JOB_TABLE(struct thread_data *td, struct job *job){
   }
   g_free(job);
 }
-
+*/
 void process_integer_chunk(struct thread_data *td, struct table_job *tj);
 void process_char_chunk(struct thread_data *td, struct table_job *tj);
 void process_partition_chunk(struct thread_data *td, struct table_job *tj);
@@ -577,7 +576,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
-  free_table_job(tj);
+//  free_table_job(tj);
   g_free(job);
 }
 
@@ -837,9 +836,9 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_DUMP_ALL_DATABASES:
       thd_JOB_DUMP_ALL_DATABASES(td,job);
       break;
-    case JOB_TABLE:
-      thd_JOB_TABLE(td, job);
-      break;
+//    case JOB_TABLE:
+//      thd_JOB_TABLE(td, job);
+//      break;
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
@@ -989,32 +988,43 @@ void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
 
 void process_char_chunk(struct thread_data *td, struct table_job *tj){
   struct db_table *dbt = tj->dbt;
-  union chunk_step *cs = tj->chunk_step;
+  union chunk_step *cs = tj->chunk_step, *previous = cs->char_step.previous;
+  gboolean cont=FALSE;
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor))){
     if (cs->char_step.previous != NULL){
-//      g_message("Thread %d: New job that needs to be set the new max and new min", td->thread_id);
-      if (get_new_minmax(td, tj)){
-//         g_message("Thread %d: New max and new min assigned", td->thread_id);
-//        g_mutex_unlock(cs->char_step.previous->char_step.mutex);
+      
+      cont=get_new_minmax(td, tj->dbt, tj->chunk_step);
+      if (cont == TRUE){
+        
         cs->char_step.previous=NULL;
-        process_char_chunk_job(td,tj);
+        g_mutex_lock(cs->char_step.mutex);
+        tj->dbt->chunks=g_list_append(tj->dbt->chunks,cs);
+
+        g_mutex_unlock(tj->dbt->chunks_mutex);
+        g_mutex_unlock(previous->char_step.mutex);
+        g_mutex_unlock(cs->char_step.mutex);
       }else{
-        break;
-        // free tj->chunk_step
- //      g_mutex_unlock(cs->char_step.previous->char_step.mutex);
+        previous->char_step.status=2;
+        g_mutex_unlock(dbt->chunks_mutex);
+        g_mutex_unlock(previous->char_step.mutex);
+        return;
       }
     }else{
-      if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0)
+      if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
         process_char_chunk_job(td,tj);
+      }else{
+        g_mutex_lock(cs->char_step.mutex);
+        cs->char_step.status=2;
+        g_mutex_unlock(cs->char_step.mutex);
+      }
     }
   }
-//  g_message("Thread %d: processing last char chunk", td->thread_id);
   if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0)
     process_char_chunk_job(td,tj);
-//  g_message("Thread %d: char chunk ended", td->thread_id);
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->char_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
+  g_mutex_unlock(cs->char_step.mutex);
   g_mutex_unlock(dbt->chunks_mutex);
 }
 
@@ -1308,14 +1318,12 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           dbt->is_innodb=TRUE;
-//          create_job_to_dump_table(dbt,conf);
           g_mutex_lock(innodb_table_mutex);
           innodb_table=g_list_prepend(innodb_table,dbt);
           g_mutex_unlock(innodb_table_mutex);
 
         } else {
           dbt->is_innodb=FALSE;
-//          create_job_to_dump_table(dbt,conf);
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
           g_mutex_unlock(non_innodb_table_mutex);

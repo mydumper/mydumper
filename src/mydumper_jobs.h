@@ -84,11 +84,11 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step);
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue);
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where);
 void update_where_on_table_job(MYSQL *conn, struct table_job *tj);
 void update_files_on_table_job(struct table_job *tj);
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step);
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
 #endif
 gchar *get_ref_table(gchar *k);
 void write_my_data_into_file(const char *filename, gchar * str);

@@ -37,6 +37,6 @@ void initialize_chunk();
 
 void give_me_another_non_innodb_chunk_step();
 void give_me_another_innodb_chunk_step();
-gboolean get_new_minmax (struct thread_data *td, struct table_job *tj);
+gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);
 gchar* update_cursor (MYSQL *conn, struct table_job *tj);
 void next_chunk_in_char_step(union chunk_step * cs);

@@ -143,6 +143,7 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
 
 //  g_message("new_char_step: min: %s | max: %s ", cs->char_step.cmin_escaped, cs->char_step.cmax_escaped);
 
+  cs->char_step.status = 0;
   return cs;
 }
 
@@ -164,6 +165,7 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
   cs->char_step.step=rows_per_file;
   cs->char_step.field = g_strdup(previous_cs->char_step.field);
   cs->char_step.previous=previous_cs;
+  cs->char_step.status = 0;
 //  cs->char_step.list = list;
   return cs;
 }
@@ -198,9 +200,10 @@ union chunk_step *new_real_partition_step(GList *partition, guint deep, guint nu
 
 
 void free_char_step(union chunk_step * cs){
-//  g_message("Freeing free_char_step");
+  g_mutex_lock(cs->char_step.mutex);
   g_free(cs->char_step.field);
   g_free(cs->char_step.prefix);
+  g_mutex_unlock(cs->char_step.mutex);
   g_free(cs);
 }
 
@@ -268,10 +271,11 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
       g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
-    if (cs->char_step.deep < num_threads/2 && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
+    if (cs->char_step.deep < 2*num_threads && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0 && cs->char_step.status == 0){
       union chunk_step * new_cs = split_char_step(
           cs->char_step.deep + 1, cs->char_step.number+pow(2,cs->char_step.deep), cs);
       cs->char_step.deep++;
+      cs->char_step.status = 1;
       new_cs->char_step.assigned=TRUE;
       return new_cs;
     }
@@ -399,52 +403,44 @@ cleanup:
 }
 
 
-gboolean get_new_minmax (struct thread_data *td, struct table_job *tj){
+gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs){
  //
 //  "SELECT `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT hex(conv(hex('%s'),16,10)+(conv(hex('%s'),16,10)-conv(hex('%s'),16,10))/2)) ORDER BY `%s` LIMIT1"
-
+//  g_message("Thread %d: get_new_minmax", td->thread_id);
   gchar *query = NULL;
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
-  union chunk_step * previous=tj->chunk_step->char_step.previous, *cs=tj->chunk_step;
+  union chunk_step * previous=cs->char_step.previous;
   /* Get minimum/maximum */
   guint i = previous->char_step.cmax_clen > previous->char_step.cmin_clen ? previous->char_step.cmin_clen : previous->char_step.cmax_clen;
   i=i==0?1:i;
   guint j =0;
   gchar c[4], d[4];
-  for(j=0; j < i; j++){
+  for(j=0; j < i && j < 4; j++){
     c[j]=abs(previous->char_step.cmax[j]-previous->char_step.cmin[j]);
   }
   c[j]='\0';
-  mysql_real_escape_string(td->thrconn, d, c, i);
-//  g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
+  mysql_real_escape_string(td->thrconn, d, c, i<4?i:4);
+  g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
   mysql_query(td->thrconn, query = g_strdup_printf(
-//unhex(conv(((ord(left(MAX(`char_id`),1))-ord(@newmin))/2 + ord(@newmin)),10,16))
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND `%s` < '%s' AND `%s` > '%s' ORDER BY `%s` LIMIT 1",
                         (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",
-                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, tj->dbt->field, tj->dbt->field, tj->dbt->database->name, tj->dbt->table, tj->dbt->field, d, tj->dbt->field, tj->dbt->field, previous->char_step.cmax_escaped, tj->dbt->field, previous->char_step.cursor_escaped, tj->dbt->field));
-//  g_message("Query: %s", query);
+                        dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, d, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field, previous->char_step.cursor_escaped, dbt->field));
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
-//    g_message("get_new_minmax: NULL");
-    g_mutex_unlock(tj->dbt->chunks_mutex);
-    g_mutex_unlock(previous->char_step.mutex);
+    mysql_free_result(minmax);
     return FALSE;
   }
 
   row = mysql_fetch_row(minmax);
   if (row == NULL){
-//    g_message("get_new_minmax: NULL");
-    g_mutex_unlock(tj->dbt->chunks_mutex);
-    g_mutex_unlock(previous->char_step.mutex);
+    mysql_free_result(minmax);
     return FALSE;
   }
 
   gulong *lengths = mysql_fetch_lengths(minmax);
-
-//  g_message("Result: %s", row[0]);
 
   cs->char_step.cmax_clen = previous->char_step.cmax_clen;
   cs->char_step.cmax_len = previous->char_step.cmax_len;
@@ -458,15 +454,16 @@ gboolean get_new_minmax (struct thread_data *td, struct table_job *tj){
   previous->char_step.cmax_escaped = g_new(char, lengths[0] * 2 + 1);
   mysql_real_escape_string(td->thrconn, previous->char_step.cmax_escaped, row[0], lengths[0]);
 
+  previous->char_step.status=0;
+
   cs->char_step.cmin_clen = lengths[0];
   cs->char_step.cmin_len = lengths[0]+1;
   cs->char_step.cmin = g_new(char, cs->char_step.cmin_len);
   g_strlcpy(cs->char_step.cmin, row[0], cs->char_step.cmin_len);
   cs->char_step.cmin_escaped = g_new(char, lengths[0] * 2 + 1);
   mysql_real_escape_string(td->thrconn, cs->char_step.cmin_escaped, row[0], lengths[0]);
-  tj->dbt->chunks=g_list_append(tj->dbt->chunks,cs);
-  g_mutex_unlock(tj->dbt->chunks_mutex);
-  g_mutex_unlock(previous->char_step.mutex);
+
+  mysql_free_result(minmax);
   return TRUE;
 }
 
@@ -837,7 +834,6 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
   union chunk_step *cs;
   for (;;) {
     g_async_queue_pop(pop_queue);
-//    g_message("g_async_queue_pop(pop_queue!!!");
     dbt=NULL;
     cs=NULL;
     get_next_dbt_and_chunk(&dbt,&cs,table_list);
@@ -847,16 +843,16 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     }
     switch (dbt->chunk_type) {
     case INTEGER:
-      create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
+      create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
       break;
     case CHAR:
-      create_job_to_dump_chunk(dbt, NULL, cs->char_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
+      create_job_to_dump_chunk(dbt, NULL, cs->char_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue, FALSE);
       break;
     case PARTITION:
-      create_job_to_dump_chunk(dbt, NULL, cs->partition_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue);
+      create_job_to_dump_chunk(dbt, NULL, cs->partition_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
       break;
     case NONE:
-      create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue);
+      create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
       break;
     }
   }
