@@ -78,7 +78,7 @@ char * checksum_process_structure(MYSQL *conn, char *database, char *table, int 
 }
 
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(ACTION_STATEMENT) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
 }
 
 char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn){
@@ -91,7 +91,7 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int 
 
 
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(table_name,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc from information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s' group by INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(table_name,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc from information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s' group by INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME ORDER BY CAST(INDEX_NAME AS char(64)), SEQ_IN_INDEX", 0);
 }
 
 GKeyFile * load_config_file(gchar * config_file){
