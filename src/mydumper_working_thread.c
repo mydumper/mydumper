@@ -242,6 +242,7 @@ void parse_rows_per_chunk(){
   switch (len){
    case 0:
      g_critical("This should not happend");
+     break;
    case 1:
      rows_per_file=strtol(split[0],NULL, 10);
      min_rows_per_file=rows_per_file;
