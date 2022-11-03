@@ -368,7 +368,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
   }
   c[j]='\0';
   mysql_real_escape_string(td->thrconn, d, c, 2);
-  g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
+//  g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
   mysql_query(td->thrconn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND `%s` < '%s' AND `%s` > '%s' ORDER BY `%s` LIMIT 1",
                         (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",

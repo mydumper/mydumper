@@ -131,6 +131,7 @@ void initialize_write(){
     g_warning("We are going to chunk by row and by filesize");
   }
 
+  fields_enclosed_by=g_strdup("\"");
   if (csv){
     load_data=TRUE;
     if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
@@ -140,6 +141,7 @@ void initialize_write(){
   }
   if (load_data){
     if (!fields_enclosed_by_ld){
+      g_free(fields_enclosed_by);
       fields_enclosed_by=g_strdup("");
       fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
@@ -347,6 +349,9 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
       g_string_append(statement_row, "NULL");
     } else if (field.flags & NUM_FLAG) {
       g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
+    } else if ( length == 0){
+      g_string_append(statement_row,fields_enclosed_by);
+      g_string_append(statement_row,fields_enclosed_by);
     } else if ( field.type == MYSQL_TYPE_BLOB ) {
       g_string_set_size(escaped, length * 2 + 1);
       g_string_append(statement_row,"0x");
@@ -359,9 +364,9 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
       mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(statement_row, "CONVERT(");
-      g_string_append_c(statement_row, '\"');
+      g_string_append(statement_row, fields_enclosed_by);
       g_string_append(statement_row, escaped->str);
-      g_string_append_c(statement_row, '\"');
+      g_string_append(statement_row, fields_enclosed_by);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(statement_row, " USING UTF8MB4)");
     }
