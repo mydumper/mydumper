@@ -164,7 +164,7 @@ gchar *where_option=NULL;
 GMutex *consistent_snapshot = NULL;
 GMutex *consistent_snapshot_token_I = NULL;
 GMutex *consistent_snapshot_token_II = NULL;
-
+gchar *rows_per_chunk=NULL;
 gboolean split_partitions = FALSE;
 
 static GOptionEntry working_thread_entries[] = {
@@ -213,9 +213,11 @@ static GOptionEntry working_thread_entries[] = {
      "Comma delimited list of storage engines to ignore", NULL},
     {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
       "Dump binary columns using hexadecimal notation", NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
-     "Try to split tables into chunks of this many rows. This option turns off "
-     "--chunk-filesize",
+    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
+     "Try to split tables into chunks of this many rows.",
+//    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
+//     "Try to split tables into chunks of this many rows. This option turns off "
+//     "--chunk-filesize",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -231,7 +233,39 @@ void load_working_thread_entries(GOptionGroup *main_group){
 }
 
 
+guint min_rows_per_file = 0;
+guint max_rows_per_file = 0;
+
+void parse_rows_per_chunk(){
+  gchar **split=g_strsplit(rows_per_chunk, ":", 0);
+  guint len = g_strv_length(split);
+  switch (len){
+   case 0:
+     g_critical("This should not happend");
+   case 1:
+     rows_per_file=strtol(split[0],NULL, 10);
+     min_rows_per_file=rows_per_file;
+     max_rows_per_file=rows_per_file;
+     break;
+   case 2:
+     min_rows_per_file=strtol(split[0],NULL, 10);
+     rows_per_file=strtol(split[1],NULL, 10);
+     max_rows_per_file=rows_per_file;
+     break;
+   default:
+     min_rows_per_file=strtol(split[0],NULL, 10);
+     rows_per_file=strtol(split[1],NULL, 10);
+     max_rows_per_file=strtol(split[2],NULL, 10);
+     break;
+  }
+  g_strfreev(split);
+}
+
+
 void initialize_working_thread(){
+
+  if (rows_per_chunk)
+    parse_rows_per_chunk();
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
   non_innodb_table_mutex = g_mutex_new();
@@ -286,6 +320,8 @@ void initialize_working_thread(){
     routine_checksums = TRUE;
   }
 
+  min_rows_per_file = rows_per_file / 100;
+  max_rows_per_file = rows_per_file * 100;
 }
 
 
@@ -903,7 +939,23 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   update_where_on_table_job(td->thrconn, tj);
   message_dumping_data(td,tj);
+
+  GDateTime *from = g_date_time_new_now_local();
   write_table_job_into_file(td->thrconn, tj);
+  GDateTime *to = g_date_time_new_now_local();
+
+  GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+
+  if (diff > 2){
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  / 2;
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+  }else if (diff < 1){
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  * 2;
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+  }
+
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   tj->chunk_step->integer_step.nmin=tj->chunk_step->integer_step.cursor;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
@@ -931,12 +983,29 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   g_mutex_unlock(cs->integer_step.mutex);
 }
 
+
 void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->char_step.mutex);
   update_where_on_table_job(td->thrconn, tj);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
   message_dumping_data(td,tj);
+
+  GDateTime *from = g_date_time_new_now_local();
   write_table_job_into_file(td->thrconn, tj);
+  GDateTime *to = g_date_time_new_now_local();
+
+  GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+
+  if (diff > 2){
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  / 2;
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+  }else if (diff < 1){
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  * 2;
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+  }
+
   if (tj->chunk_step->char_step.prefix)
     g_free(tj->chunk_step->char_step.prefix);
   tj->chunk_step->char_step.prefix=NULL;
