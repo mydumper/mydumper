@@ -26,6 +26,7 @@
 
 #include "myloader_common.h"
 
+extern gboolean intermediate_queue_ended;
 extern gboolean serial_tbl_creation;
 extern gboolean overwrite_tables;
 extern gchar *db;
@@ -207,6 +208,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if (restore_data_from_file(td, dbt->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
+      g_atomic_int_dec_and_test(&(dbt->remaining_jobs));
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
