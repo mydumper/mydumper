@@ -479,47 +479,7 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
   }
   g_async_queue_push(queue, element);
 }
-/*
-void thd_JOB_TABLE(struct thread_data *td, struct job *job){
-//  char *database = dbt->database;
-//  char *table = dbt->table;
-  struct db_table * dbt = job->job_data;
-  GList * partitions = NULL;
-  GAsyncQueue *queue = dbt->is_innodb ? td->conf->innodb_queue : td->conf->non_innodb_queue;
-  if (split_partitions)
-    partitions = get_partitions_for_table(td->thrconn, dbt->database->name, dbt->table);
 
-  if (partitions){
-    int npartition=0;
-    dbt->chunk_type=PARTITION;
-    for (partitions = g_list_first(partitions); partitions; partitions=g_list_next(partitions)) {
-      create_job_to_dump_chunk(dbt, (char *) g_strdup_printf(" PARTITION (%s) ", (char *)partitions->data), npartition, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), new_partition_step(partitions->data), &g_async_queue_push, queue, TRUE);
-      npartition++;
-    }
-    g_list_free_full(g_list_first(partitions), (GDestroyNotify)g_free);
-  }else{
-    GList *chunks = NULL;
-    if (rows_per_file)
-      chunks = get_chunks_for_table(td->thrconn, dbt, td->conf);
-    if (chunks) {
-      int nchunk = 0;
-      GList *iter;
-      g_error("YES IM HERE");
-      for (iter = chunks; iter != NULL; iter = iter->next) {
-        create_job_to_dump_chunk( dbt, NULL, nchunk, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), iter->data, &m_async_queue_push_conservative, queue, TRUE);
-        nchunk++;
-      }
-      g_list_free(chunks);
-    } else {
-      create_job_to_dump_chunk( dbt, NULL, 0, get_primary_key_string(td->thrconn, dbt->database->name, dbt->table), NULL, &g_async_queue_push, queue, TRUE);
-    }
-  }
-  if (g_atomic_int_dec_and_test(&database_counter)) {
-    g_mutex_unlock(ready_database_dump_mutex);
-  }
-  g_free(job);
-}
-*/
 void process_integer_chunk(struct thread_data *td, struct table_job *tj);
 void process_char_chunk(struct thread_data *td, struct table_job *tj);
 void process_partition_chunk(struct thread_data *td, struct table_job *tj);

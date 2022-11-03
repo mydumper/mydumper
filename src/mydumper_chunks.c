@@ -55,60 +55,8 @@ void initialize_chunk(){
   give_me_another_non_innodb_chunk_step_queue=g_async_queue_new();
 }
 
-
 void load_chunks_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, chunks_entries);
-}
-
-gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min){
-  MYSQL_ROW row;
-  MYSQL_RES *max = NULL;
-  gchar *query = NULL;
-  gchar *from = g_new(char, 2 + 1);
-  from[0]=min;
-  from[1]='\0';
-  gchar *escaped = g_new(char, 2 + 1);
-  mysql_real_escape_string(conn, escaped, from, 1);
-
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s %s FROM `%s`.`%s` ORDER BY %s LIMIT 10000",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, dbt->database->name, dbt->table, field));
-  max= mysql_store_result(conn);
-  row = mysql_fetch_row(max);
-  g_free(escaped);
-  if (row[0] != NULL){
-    escaped = g_new(char, strlen(row[0])*2 + 1);
-    mysql_real_escape_string(conn, escaped, row[0], strlen(row[0]));
-//    g_strdup_printf("%02x", )
-//  gchar * r = g_strdup(row[0]);
-  }else{
-    g_message("ROW[0] is NULL");
-    escaped=NULL;
-  }
-  g_free(query);
-  mysql_free_result(max);
-  return escaped;
-}
-
-gchar *get_next_min_char( MYSQL *conn, struct db_table *dbt, char *field, gchar *max){
-  MYSQL_ROW row;
-  MYSQL_RES *min = NULL;
-  gchar *query = NULL;
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(BINARY %s) FROM `%s`.`%s` WHERE BINARY %s > '%s'",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, dbt->database->name, dbt->table, field, max));
-  g_free(query);
-  min= mysql_store_result(conn);
-  row = mysql_fetch_row(min);
-  gchar * r = g_strdup(row[0]);
-  mysql_free_result(min);
-  return r;
 }
 
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
@@ -196,8 +144,6 @@ union chunk_step *new_real_partition_step(GList *partition, guint deep, guint nu
   cs->partition_step.number = number;
   return cs;
 }
-
-
 
 void free_char_step(union chunk_step * cs){
   g_mutex_lock(cs->char_step.mutex);
@@ -415,12 +361,13 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
   guint i = previous->char_step.cmax_clen > previous->char_step.cmin_clen ? previous->char_step.cmin_clen : previous->char_step.cmax_clen;
   i=i==0?1:i;
   guint j =0;
-  gchar c[4], d[4];
-  for(j=0; j < i && j < 4; j++){
+  gchar c[4];
+  gchar *d=g_new(char, 4 * 2 + 1);
+  for(j=0; ((j < i) && (j < 2)); j++){
     c[j]=abs(previous->char_step.cmax[j]-previous->char_step.cmin[j]);
   }
   c[j]='\0';
-  mysql_real_escape_string(td->thrconn, d, c, i<4?i:4);
+  mysql_real_escape_string(td->thrconn, d, c, 2);
   g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
   mysql_query(td->thrconn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND `%s` < '%s' AND `%s` > '%s' ORDER BY `%s` LIMIT 1",
@@ -507,18 +454,18 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   /* Check if all values are NULL */
   if (row[0] == NULL)
     goto cleanup;
-  gchar *escaped = g_new(char, lengths[0] * 2 + 1);
-  g_strlcpy(escaped, row[0], lengths[0]);
-  escaped[lengths[0]]='\0';
+//  gchar *escaped = g_new(char, lengths[0] * 2 + 1);
+//  g_strlcpy(escaped, row[0], lengths[0]);
+//  escaped[lengths[0]]='\0';
 //  mysql_real_escape_string(conn, escaped, row[0], lengths[0]);
 //  mysql_hex_string(escaped, row[0], lengths[0]);
 //  g_message("Min: `%s` | `%s` | %ld",row[0], row[2], lengths[2]);
-  dbt->min = escaped;
+//  dbt->min = escaped;
 //  dbt->min_len = lengths[0];
-  escaped = g_new(char, lengths[1] + 2);
-  g_strlcpy(escaped, row[1], lengths[1]+1);
-  escaped[lengths[1]+2]='\0';
-  dbt->max = escaped;
+//  escaped = g_new(char, lengths[1] + 2);
+//  g_strlcpy(escaped, row[1], lengths[1]+1);
+//  escaped[lengths[1]+2]='\0';
+//  dbt->max = escaped;
 //  g_message("Max: `%s` | `%s` | %ld | %s",row[1], row[3], lengths[3], dbt->max);
 //  g_message("Min: `%s` | max: `%s` ", dbt->min, dbt->max);
 //  write_my_data_into_file("david.log",escaped);
@@ -529,8 +476,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
-    nmin = strtoul(dbt->min, NULL, 10);
-    nmax = strtoul(dbt->max, NULL, 10) + 1;
+    nmin = strtoul(row[0], NULL, 10);
+    nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
       dbt->chunk_type=INTEGER;
       dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, nmin, nmax, 0, 0));
@@ -550,96 +497,6 @@ cleanup:
   if (minmax)
     mysql_free_result(minmax);
 }
-}
-
-GList *get_chunks_for_table_by_rows(MYSQL *conn, struct db_table *dbt){
-  GList *chunks = NULL;
-  gchar *query = NULL;
-  MYSQL_ROW row;
-  MYSQL_RES *minmax = NULL;
-  /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` %s %s",
-                        (detected_server == SERVER_TYPE_MYSQL)
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        dbt->field, dbt->field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
-  g_free(query);
-  minmax = mysql_store_result(conn);
-
-  if (!minmax)
-    goto cleanup;
-
-  row = mysql_fetch_row(minmax);
-  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-
-  /* Check if all values are NULL */
-  if (row[0] == NULL)
-    goto cleanup;
-
-  char *min = row[0];
-  char *max = row[1];
-  guint64 estimated_chunks, estimated_step, nmin, nmax, cutoff, erows;
-  char *new_max=NULL,*new_min=NULL;
-  gchar *prefix=NULL;
-  /* Support just bigger INTs for now, very dumb, no verify approach */
-  switch (fields[0].type) {
-  case MYSQL_TYPE_LONG:
-  case MYSQL_TYPE_LONGLONG:
-  case MYSQL_TYPE_INT24:
-  case MYSQL_TYPE_SHORT:
-    /* Got total number of rows, skip chunk logic if estimates are low */
-    erows = estimate_count(conn, dbt->database->name, dbt->table, dbt->field, min, max);
-    if (erows <= rows_per_file){
-      g_message("Table %s.%s too small to split", dbt->database->name, dbt->table);
-      goto cleanup;
-    }
-
-    /* This is estimate, not to use as guarantee! Every chunk would have eventual
- *      * adjustments */
-    estimated_chunks = erows / rows_per_file;
-    /* static stepping */
-    nmin = strtoul(min, NULL, 10);
-    nmax = strtoul(max, NULL, 10);
-    estimated_step = (nmax - nmin) / estimated_chunks + 1;
-    if (estimated_step > max_rows)
-      estimated_step = max_rows;
-    cutoff = nmin;
-    dbt->chunk_type=INTEGER;
-    prefix=g_strdup_printf("`%s` IS NULL OR ",dbt->field);
-    while (cutoff <= nmax) {
-      chunks = g_list_prepend(
-          chunks,
-          new_integer_step(prefix, dbt->field, cutoff, cutoff + estimated_step, 0, 0));
-      cutoff += estimated_step;
-      g_free(prefix);
-      prefix=NULL;
-    }
-    chunks = g_list_reverse(chunks);
-    break;
-  case MYSQL_TYPE_STRING:
-    /* static stepping */
-    dbt->chunk_type=CHAR;
-    new_min = g_strdup(min);
-    prefix=g_strdup_printf("`%s` IS NULL OR ",dbt->field);
-    while (g_strcmp0(new_max,max)) {
-      new_max=get_max_char(conn, dbt, dbt->field, new_min[0]);
-      chunks = g_list_prepend(
-          chunks, NULL);
-          //new_char_step(prefix, dbt->field, /*NULL,*/ 0, 0, dbt->cmin, dbt->cmax));
-      g_free(prefix);
-      prefix=NULL;
-      new_min = get_next_min_char(conn, dbt, dbt->field,new_max);
-    }
-    chunks = g_list_reverse(chunks);   
-    break;
-    default:
-      ;
-   }
-cleanup:
-  if (minmax)
-    mysql_free_result(minmax);
-  return chunks;
 }
 
 char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
@@ -697,20 +554,6 @@ char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration
   return field;
 }
 
-
-GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
-                            struct configuration *conf) {
-
-  GList *chunks = NULL;
-  if (dbt->limit != NULL)
-    return chunks;
-  char *field=get_field_for_dbt(conn,dbt,conf);
-  if (!field)
-    return NULL;
-  chunks = get_chunks_for_table_by_rows(conn,dbt);
-
-  return chunks;
-}
 
 /* Try to get EXPLAIN'ed estimates of row in resultset */
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
