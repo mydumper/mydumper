@@ -715,10 +715,14 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
 }
 
 void free_schema_job(struct schema_job *sj){
-  if (sj->table)
+  if (sj->table){
     g_free(sj->table);
-  if (sj->filename)
+    sj->table=NULL;
+  }
+  if (sj->filename){
     g_free(sj->filename);
+    sj->filename=NULL;
+  }
   g_free(sj);
 }
 
@@ -791,7 +795,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
             vj->database, vj->table);
   write_view_definition_into_file(td->thrconn, vj->database, vj->table, vj->filename,
                  vj->filename2, vj->checksum_filename);
-  free_view_job(vj);
+//  free_view_job(vj);
   g_free(job);
 }
 
@@ -800,7 +804,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
   write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
-  free_schema_job(sj);
+//  free_schema_job(sj);
   g_free(job);
 //  if (g_atomic_int_dec_and_test(&table_counter)) {
 //    g_message("Unlocing ready_table_dump_mutex");
