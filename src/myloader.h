@@ -78,6 +78,7 @@ struct db_table {
   GDateTime * start_index_time;
   GDateTime * finish_time;
   gboolean completed;
+  gint remaining_jobs;
 };
 
 enum file_type { INIT, SCHEMA_TABLESPACE, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA, SHUTDOWN, INCOMPLETE };

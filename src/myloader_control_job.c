@@ -146,11 +146,13 @@ void enqueue_indexes_if_possible(struct configuration *conf){
     if (dbt->schema_created && !dbt->index_enqueued){
       if (intermediate_queue_ended){
         if (dbt->indexes != NULL){
-          g_message("Enqueuing index for table: %s", dbt->table);
-          struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
-          g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+          if (g_atomic_int_get(&(dbt->remaining_jobs)) == 0){
+            g_message("Enqueuing index for table: %s", dbt->table);
+            struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+            g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+            dbt->index_enqueued=TRUE;
+          }
         }
-        dbt->index_enqueued=TRUE;
       }
     }
     g_mutex_unlock(dbt->mutex);

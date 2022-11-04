@@ -514,6 +514,7 @@ gboolean process_data_filename(char * filename){
   struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
+  g_atomic_int_add(&(dbt->remaining_jobs), 1);
   dbt->count++; 
   dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&cmp_restore_job);
 //  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
