@@ -305,7 +305,7 @@ void escape_tab_with(gchar *to){
     i++;
     j++;
   }
-  to[i]=from[i];
+  to[j]=from[i];
   g_free(from);
 //  return to;
 }
