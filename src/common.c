@@ -299,8 +299,9 @@ void escape_tab_with(gchar *to){
     if (from[i]=='\t'){
       to[i]='\\';
       i++;
-    }
-    to[i]=from[i];
+      to[i]='t';
+    }else
+      to[i]=from[i];
     i++; 
   }
   to[i]=from[i];
