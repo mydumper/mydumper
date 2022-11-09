@@ -343,7 +343,8 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      //escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      m_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
       escape_tab(escaped->str);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
