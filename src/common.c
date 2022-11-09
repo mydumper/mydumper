@@ -294,15 +294,16 @@ gchar *replace_escaped_strings(gchar *c){
 
 void escape_tab_with(gchar *to){
   gchar *from=g_strdup(to);
-  guint i=0;
+  guint i=0,j=0;
   while (from[i]!='\0'){
     if (from[i]=='\t'){
-      to[i]='\\';
-      i++;
-      to[i]='t';
+      to[j]='\\';
+      j++;
+      to[j]='t';
     }else
-      to[i]=from[i];
-    i++; 
+      to[j]=from[i];
+    i++;
+    j++;
   }
   to[i]=from[i];
   g_free(from);
