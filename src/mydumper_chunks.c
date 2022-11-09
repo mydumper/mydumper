@@ -44,15 +44,27 @@ GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 
 extern GList *innodb_table, *non_innodb_table;
 
+guint char_chunk=0;
+guint char_deep=0;
+
 static GOptionEntry chunks_entries[] = {
     {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
      "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
+    {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
+     "",NULL},
+    {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
+     "",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
 };
 
 void initialize_chunk(){
   give_me_another_innodb_chunk_step_queue=g_async_queue_new();
   give_me_another_non_innodb_chunk_step_queue=g_async_queue_new();
+  
+  if (rows_per_file>0){
+    char_chunk=char_chunk==0?num_threads:char_chunk;
+    char_deep=char_deep==0?num_threads:char_deep;
+  }
 }
 
 void load_chunks_entries(GOptionGroup *main_group){
@@ -217,13 +229,15 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
       g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
-    if (cs->char_step.deep < 2*num_threads && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0 && cs->char_step.status == 0){
+    if (cs->char_step.deep <= char_deep && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0 && cs->char_step.status == 0){
       union chunk_step * new_cs = split_char_step(
           cs->char_step.deep + 1, cs->char_step.number+pow(2,cs->char_step.deep), cs);
       cs->char_step.deep++;
       cs->char_step.status = 1;
       new_cs->char_step.assigned=TRUE;
       return new_cs;
+    }else{
+//      g_message("Not able to split because %d > %d | %s == %s | %d != 0", cs->char_step.deep,num_threads, cs->char_step.cmax, cs->char_step.cursor, cs->char_step.status);
     }
     g_mutex_unlock(cs->char_step.mutex);
     l=l->next;
@@ -306,6 +320,30 @@ GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
   return partition_list;
 }
 
+gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, guint c2len, guint part){
+  guint cresultlen = c1len < c2len ? c1len: c2len;
+  gchar *cresult = g_new(gchar, cresultlen + 1);
+  guint i =0;
+  guchar cu1=c1[0],cu2=c2[0];
+//  g_message("get_escaped_middle_char: %u %u %u %d", cu1, abs(cu2-cu1) , cu2, part);
+  for(i=0; i < cresultlen; i++){
+    cu1=c1[i];
+    cu2=c2[i];
+    if (cu2!=cu1)
+      cresult[i]=(cu2>cu1?cu1:cu2)+abs(cu2-cu1)/part;
+    else
+      cresultlen=i;
+  }
+  cu1=c1[0];cu2=c2[0];
+//  guchar cur=cresult[0];
+//  g_message("get_escaped_middle_char: %u %u %u %d", cu1, cur , cu2, part);
+  cresult[cresultlen]='\0';
+
+  gchar *escapedresult=g_new(char, cresultlen * 2 + 1);
+  mysql_real_escape_string(conn, escapedresult, cresult, cresultlen);
+  g_free(cresult);
+  return escapedresult;
+}
 
 gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   union chunk_step *cs= tj->chunk_step;
@@ -313,20 +351,22 @@ gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
+  gchar * middle = get_escaped_middle_char(conn, cs->char_step.cmax, cs->char_step.cmax_clen, cs->char_step.cmin, cs->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT %ld,1",
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
                         (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",
-                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, tj->dbt->field, tj->dbt->field, cs->char_step.cmax_escaped, tj->dbt->field, cs->char_step.step));
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, tj->dbt->field, middle, tj->dbt->field, tj->dbt->field, cs->char_step.cmax_escaped, tj->dbt->field));
   g_free(query);
   minmax = mysql_store_result(conn);
 
   if (!minmax){
+//    g_message("No middle point");
     goto cleanup;
   }
-
   row = mysql_fetch_row(minmax);
 
   if (row==NULL){
+//    g_message("No middle point");
 cleanup:
     cs->char_step.cursor_clen = cs->char_step.cmax_clen;
     cs->char_step.cursor_len = cs->char_step.cmax_len;
@@ -334,59 +374,61 @@ cleanup:
     cs->char_step.cursor_escaped = cs->char_step.cmax_escaped;
     return NULL;
   }
-
+//  guchar d=middle[0];
+//  g_message("updated point: `%s` | `%c` %u", middle, middle[0], d);
   gulong *lengths = mysql_fetch_lengths(minmax);
 
-  cs->char_step.cursor_clen = lengths[0];
-  cs->char_step.cursor_len = lengths[0]+1;
-  cs->char_step.cursor = g_new(char, cs->char_step.cursor_len);
-  g_strlcpy(cs->char_step.cursor, row[0], cs->char_step.cursor_len);
-  cs->char_step.cursor_escaped = g_new(char, lengths[0] * 2 + 1);
-  mysql_real_escape_string(conn, cs->char_step.cursor_escaped, row[0], lengths[0]);
+  tj->char_chunk_part--;
 
+  if (g_strcmp0(row[0], cs->char_step.cmax)!=0 && g_strcmp0(row[0], cs->char_step.cmin)!=0){
+    cs->char_step.cursor_clen = lengths[0];
+    cs->char_step.cursor_len = lengths[0]+1;
+    cs->char_step.cursor = g_new(char, cs->char_step.cursor_len);
+    g_strlcpy(cs->char_step.cursor, row[0], cs->char_step.cursor_len);
+    cs->char_step.cursor_escaped = g_new(char, lengths[0] * 2 + 1);
+    mysql_real_escape_string(conn, cs->char_step.cursor_escaped, row[0], lengths[0]);
+  }else{
+    cs->char_step.cursor_clen = cs->char_step.cmax_clen;
+    cs->char_step.cursor_len = cs->char_step.cmax_len;
+    cs->char_step.cursor = cs->char_step.cmax;
+    cs->char_step.cursor_escaped = cs->char_step.cmax_escaped;
+  }
 
-  return g_strdup(row[0]);
+  return NULL;
 }
 
-
 gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs){
- //
-//  "SELECT `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT hex(conv(hex('%s'),16,10)+(conv(hex('%s'),16,10)-conv(hex('%s'),16,10))/2)) ORDER BY `%s` LIMIT1"
 //  g_message("Thread %d: get_new_minmax", td->thread_id);
   gchar *query = NULL;
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   union chunk_step * previous=cs->char_step.previous;
   /* Get minimum/maximum */
-  guint i = previous->char_step.cmax_clen > previous->char_step.cmin_clen ? previous->char_step.cmin_clen : previous->char_step.cmax_clen;
-  i=i==0?1:i;
-  guint j =0;
-  gchar c[4];
-  gchar *d=g_new(char, 4 * 2 + 1);
-  for(j=0; ((j < i) && (j < 2)); j++){
-    c[j]=abs(previous->char_step.cmax[j]-previous->char_step.cmin[j]);
-  }
-  c[j]='\0';
-  mysql_real_escape_string(td->thrconn, d, c, 2);
-//  g_message("Middle point: `%s` | `%c` | %d", d, d[0], i);
+
+  gchar *middle=get_escaped_middle_char(td->thrconn, previous->char_step.cmax, previous->char_step.cmax_clen, previous->char_step.cursor != NULL ? previous->char_step.cursor: previous->char_step.cmin, previous->char_step.cursor != NULL ?previous->char_step.cursor_len:previous->char_step.cmin_clen, char_chunk);
+//  guchar d=middle[0];
+//  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
   mysql_query(td->thrconn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND `%s` < '%s' AND `%s` > '%s' ORDER BY `%s` LIMIT 1",
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
                         (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",
-                        dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, d, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field, previous->char_step.cursor_escaped, dbt->field));
+                        dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, middle, dbt->field, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field));
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
     mysql_free_result(minmax);
+//    g_message("No middle point");
     return FALSE;
   }
 
   row = mysql_fetch_row(minmax);
   if (row == NULL){
     mysql_free_result(minmax);
+//    g_message("No middle point");
     return FALSE;
   }
-
+//  guchar c=row[0][0];
+//  g_message("First char %u ", c);
   gulong *lengths = mysql_fetch_lengths(minmax);
 
   cs->char_step.cmax_clen = previous->char_step.cmax_clen;
@@ -454,21 +496,6 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   /* Check if all values are NULL */
   if (row[0] == NULL)
     goto cleanup;
-//  gchar *escaped = g_new(char, lengths[0] * 2 + 1);
-//  g_strlcpy(escaped, row[0], lengths[0]);
-//  escaped[lengths[0]]='\0';
-//  mysql_real_escape_string(conn, escaped, row[0], lengths[0]);
-//  mysql_hex_string(escaped, row[0], lengths[0]);
-//  g_message("Min: `%s` | `%s` | %ld",row[0], row[2], lengths[2]);
-//  dbt->min = escaped;
-//  dbt->min_len = lengths[0];
-//  escaped = g_new(char, lengths[1] + 2);
-//  g_strlcpy(escaped, row[1], lengths[1]+1);
-//  escaped[lengths[1]+2]='\0';
-//  dbt->max = escaped;
-//  g_message("Max: `%s` | `%s` | %ld | %s",row[1], row[3], lengths[3], dbt->max);
-//  g_message("Min: `%s` | max: `%s` ", dbt->min, dbt->max);
-//  write_my_data_into_file("david.log",escaped);
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 nmin,nmax;
   switch (fields[0].type) {

@@ -37,6 +37,7 @@
 #include "mydumper_write.h"
 #include "mydumper_chunks.h"
 
+extern guint char_chunk;
 extern gboolean load_data;
 extern gchar *where_option;
 extern gboolean success_on_1146;
@@ -965,38 +966,6 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-
-
-void update_where_on_table_job(MYSQL * conn, struct table_job *tj){
-  switch (tj->dbt->chunk_type){
-    case INTEGER:
-      tj->where=g_strdup_printf("%s(`%s` >= %"G_GUINT64_FORMAT" AND `%s` < %"G_GUINT64_FORMAT")",
-                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.nmin,
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
-    break;
-  case CHAR:
-    if (conn != NULL){
-      if (tj->chunk_step->char_step.cmax == NULL){
-        tj->where=g_strdup_printf("%s(`%s` >= '%s')",
-                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
-                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped
-                          );	  
-      }else{
-        update_cursor(conn,tj);
-        tj->where=g_strdup_printf("%s(`%s` > '%s' AND `%s` <= '%s')",
-                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
-                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped,
-                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cursor_escaped
-                          );
-      }
-     }
-     break;
-  default: break;
-  }
-}
-
-
 void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
   int childpid=fork();
   if(!childpid){
@@ -1070,6 +1039,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
+  tj->char_chunk_part=char_chunk;
   if (update_where)
     update_where_on_table_job(NULL, tj);
   update_files_on_table_job(tj);
