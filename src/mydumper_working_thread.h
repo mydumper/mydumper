@@ -36,4 +36,3 @@ void free_db_table(struct db_table * dbt);
 void build_lock_tables_statement(struct configuration *conf);
 gboolean write_data(FILE *file, GString *data) ;
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj);
-void initialize_load_data_statement(GString *statement, gchar * table, gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields);
