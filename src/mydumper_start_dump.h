@@ -153,6 +153,7 @@ struct table_job {
   FILE *dat_file;
   float filesize;
   guint st_in_file;
+  int char_chunk_part;
 };
 
 struct tables_job {

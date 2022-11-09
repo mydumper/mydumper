@@ -415,7 +415,6 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   }
 }
 
-
 void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
 
   gchar **dt = NULL;
@@ -537,6 +536,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       process_partition_chunk(td, tj);
       break;
     case NONE:
+      message_dumping_data(td,tj);
       write_table_job_into_file(td->thrconn, tj);
       break;
   }
@@ -551,15 +551,15 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   if (tj->filesize == 0 && !build_empty_files) {
     // dropping the useless file
     if (remove(tj->sql_filename)) {
-      g_warning("Failed to remove empty file : %s", tj->sql_filename);
+      g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->sql_filename);
     }else{
-      g_message("File removed: %s", tj->sql_filename);
+      g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
     }
     if (load_data){
       if (remove(tj->dat_filename)) {
-        g_warning("Failed to remove empty file : %s", tj->dat_filename);
+        g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
       }else{
-        g_message("File removed: %s", tj->dat_filename);
+        g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
       }
     }
   } else if (stream) {
@@ -934,11 +934,41 @@ void build_lock_tables_statement(struct configuration *conf){
   g_mutex_unlock(non_innodb_table_mutex);
 }
 
+void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
+  switch (tj->dbt->chunk_type){
+    case INTEGER:
+      tj->where=g_strdup_printf("%s(`%s` >= %"G_GUINT64_FORMAT" AND `%s` < %"G_GUINT64_FORMAT")",
+                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.nmin,
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
+    break;
+  case CHAR:
+    if (td != NULL){
+      if (tj->chunk_step->char_step.cmax == NULL){
+        tj->where=g_strdup_printf("%s(`%s` >= '%s')",
+                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
+                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped
+                          );
+      }else{
+        update_cursor(td->thrconn,tj);
+        tj->where=g_strdup_printf("%s('%s' < `%s` AND `%s` <= '%s')",
+                          tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
+                          tj->chunk_step->char_step.cmin_escaped, tj->chunk_step->char_step.field,
+                          tj->chunk_step->char_step.field, tj->chunk_step->char_step.cursor_escaped
+                          );
+//        g_message("Thread %d: Cursor char: %c New where: %s", td->thread_id, tj->chunk_step->char_step.cursor[0], tj->where);
+      }
+     }
+     break;
+  default: break;
+  }
+}
+
 void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
-  update_where_on_table_job(td->thrconn, tj);
+  update_where_on_table_job(td, tj);
   message_dumping_data(td,tj);
 
   GDateTime *from = g_date_time_new_now_local();
@@ -987,8 +1017,9 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
 
 void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->char_step.mutex);
-  update_where_on_table_job(td->thrconn, tj);
+  update_where_on_table_job(td, tj);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
+
   message_dumping_data(td,tj);
 
   GDateTime *from = g_date_time_new_now_local();
@@ -1020,7 +1051,8 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step, *previous = cs->char_step.previous;
   gboolean cont=FALSE;
-  while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor))){
+  while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
+
     if (cs->char_step.previous != NULL){
       
       cont=get_new_minmax(td, tj->dbt, tj->chunk_step);
@@ -1034,7 +1066,7 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
         g_mutex_unlock(previous->char_step.mutex);
         g_mutex_unlock(cs->char_step.mutex);
       }else{
-        previous->char_step.status=2;
+        previous->char_step.status=0;
         g_mutex_unlock(dbt->chunks_mutex);
         g_mutex_unlock(previous->char_step.mutex);
         return;
@@ -1046,10 +1078,11 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
         g_mutex_lock(cs->char_step.mutex);
         cs->char_step.status=2;
         g_mutex_unlock(cs->char_step.mutex);
+        break;
       }
     }
   }
-  if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0)
+  if (g_strcmp0(cs->char_step.cursor, cs->char_step.cmin)!=0)
     process_char_chunk_job(td,tj);
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->char_step.mutex);

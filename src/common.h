@@ -48,6 +48,7 @@ GKeyFile * load_config_file(gchar * config_file);
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
 void execute_gstring(MYSQL *conn, GString *ss);
 gchar *replace_escaped_strings(gchar *c);
+void escape_tab_with(gchar *to);
 void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
 //void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());

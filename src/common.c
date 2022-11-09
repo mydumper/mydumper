@@ -292,6 +292,24 @@ gchar *replace_escaped_strings(gchar *c){
   return c;
 }
 
+void escape_tab_with(gchar *to){
+  gchar *from=g_strdup(to);
+  guint i=0,j=0;
+  while (from[i]!='\0'){
+    if (from[i]=='\t'){
+      to[j]='\\';
+      j++;
+      to[j]='t';
+    }else
+      to[j]=from[i];
+    i++;
+    j++;
+  }
+  to[j]=from[i];
+  g_free(from);
+//  return to;
+}
+
 void create_backup_dir(char *new_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {

@@ -115,7 +115,7 @@ static GOptionEntry write_entries[] = {
 
 
 unsigned long (*escape_function)(MYSQL *, char *, const char *, unsigned long );
-
+void (*escape_tab)(char * ) = NULL;
 void load_write_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, write_entries);
 }
@@ -169,8 +169,13 @@ void initialize_write(){
     if (load_data){
       fields_terminated_by=g_strdup("\t");
       fields_terminated_by_ld=g_strdup("\\t");
+      escape_tab=&escape_tab_with;
     }else
       fields_terminated_by=g_strdup(",");
+  }else if (g_strcmp0(fields_terminated_by_ld, "\\t")){
+      fields_terminated_by=g_strdup("\t");
+      fields_terminated_by_ld=g_strdup("\\t");
+      escape_tab=&escape_tab_with;
   }else
     fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
   if (!lines_starting_by_ld){
@@ -263,7 +268,7 @@ gboolean write_data(FILE *file, GString *data) {
 }
 
 
-void initialize_load_data_statement(GString *statement, gchar * table, gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
+void initialize_load_data_statement(GString *statement, gchar * table, const gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
   g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ", basename, table);
   if (character_set)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
@@ -311,7 +316,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->dat_filename);
   initialize_sql_statement(statement);
-  initialize_load_data_statement(statement, tj->dbt->table, tj->dbt->character_set, basename, fields, num_fields);
+  initialize_load_data_statement(statement, tj->dbt->table, "BINARY", basename, fields, num_fields);
   if (!write_data(tj->sql_file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
     return FALSE;
@@ -338,7 +343,9 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      //escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      m_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      escape_tab(escaped->str);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else
