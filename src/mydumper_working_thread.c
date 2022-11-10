@@ -267,6 +267,10 @@ void initialize_working_thread(){
 
   if (rows_per_chunk)
     parse_rows_per_chunk();
+  else {
+    min_rows_per_file = rows_per_file / 100;
+    max_rows_per_file = rows_per_file * 100;
+  }
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
   non_innodb_table_mutex = g_mutex_new();
@@ -321,8 +325,6 @@ void initialize_working_thread(){
     routine_checksums = TRUE;
   }
 
-  min_rows_per_file = rows_per_file / 100;
-  max_rows_per_file = rows_per_file * 100;
 }
 
 
@@ -978,13 +980,13 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
 
   if (diff > 2){
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  / 2;
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
-//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  / 2;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
+//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }else if (diff < 1){
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  * 2;
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
-//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
+//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }
 
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
