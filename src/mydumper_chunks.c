@@ -131,8 +131,8 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
 }
 
 
-union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint number){
-  g_message("New Integer Step");
+union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint number, gboolean check_min, gboolean check_max){
+//  g_message("New Integer Step");
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.prefix = g_strdup(prefix);
   cs->integer_step.nmin = nmin;
@@ -144,6 +144,8 @@ union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, gu
   cs->integer_step.field = g_strdup(field);
   cs->integer_step.mutex = g_mutex_new(); 
   cs->integer_step.assigned = FALSE;
+  cs->integer_step.check_max=check_max;
+  cs->integer_step.check_min=check_min;
   return cs;
 }
 
@@ -194,8 +196,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 
     if (cs->integer_step.nmin + (5 * cs->integer_step.step) < cs->integer_step.nmax){
       guint64 new_minmax = cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2;
-      union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep));
+      union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
       cs->integer_step.deep++;
+      cs->integer_step.check_max=TRUE;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
       cs->integer_step.nmax = new_minmax;
       new_cs->integer_step.assigned=TRUE;
@@ -343,6 +346,65 @@ gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, 
   mysql_real_escape_string(conn, escapedresult, cresult, cresultlen);
   g_free(cresult);
   return escapedresult;
+}
+
+void update_integer_min(MYSQL *conn, struct table_job *tj){
+  union chunk_step *cs= tj->chunk_step;
+  gchar *query = NULL;
+  MYSQL_ROW row = NULL;
+  MYSQL_RES *minmax = NULL;
+  /* Get minimum/maximum */
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
+                        (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
+  g_free(query);
+  minmax = mysql_store_result(conn);
+
+  if (!minmax){
+    return;
+  }
+  row = mysql_fetch_row(minmax);
+
+  if (row==NULL || row[0]==NULL){
+    return;
+  }
+
+  guint64 nmin = strtoul(row[0], NULL, 10);
+
+  cs->integer_step.nmin = nmin;
+}
+
+void update_integer_max(MYSQL *conn, struct table_job *tj){
+  union chunk_step *cs= tj->chunk_step;
+  gchar *query = NULL;
+  MYSQL_ROW row = NULL;
+  MYSQL_RES *minmax = NULL;
+  /* Get minimum/maximum */
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
+                        (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
+//  g_free(query);
+  minmax = mysql_store_result(conn);
+
+  if (!minmax){
+//    g_message("No middle point");
+    goto cleanup;
+  }
+  row = mysql_fetch_row(minmax);
+
+  if (row==NULL || row[0]==NULL){
+//    g_message("No middle point");
+cleanup:
+    cs->integer_step.nmax = cs->integer_step.nmin;
+    return;
+  }
+
+  guint64 nmax = strtoul(row[0], NULL, 10); 
+  
+  cs->integer_step.nmax = nmax;
+  g_free(query);
 }
 
 gchar* update_cursor (MYSQL *conn, struct table_job *tj){
@@ -507,7 +569,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
       dbt->chunk_type=INTEGER;
-      dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR ",dbt->field), dbt->field, nmin, nmax, 0, 0));
+      dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, 0, FALSE, FALSE));
     }else{
       dbt->chunk_type=NONE;
     } 

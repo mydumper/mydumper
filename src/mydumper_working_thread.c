@@ -939,9 +939,9 @@ void build_lock_tables_statement(struct configuration *conf){
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
-      tj->where=g_strdup_printf("%s(`%s` >= %"G_GUINT64_FORMAT" AND `%s` < %"G_GUINT64_FORMAT")",
+      tj->where=g_strdup_printf("%s( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT")",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.nmin,
+                          tj->chunk_step->integer_step.nmin, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
     break;
   case CHAR:
@@ -968,8 +968,22 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
 
 void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
+  if (tj->chunk_step->integer_step.check_max){
+//    g_message("thread: %d Updating MAX", td->thread_id);
+    update_integer_max(td->thrconn, tj);
+    tj->chunk_step->integer_step.check_max=FALSE;
+  }
+  if (tj->chunk_step->integer_step.check_min){
+//    g_message("thread: %d Updating MIN", td->thread_id);
+    update_integer_min(td->thrconn, tj);
+    tj->chunk_step->integer_step.check_min=FALSE;
+  }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
+    return;
+  }
+//  g_message("CONTINUE");
   update_where_on_table_job(td, tj);
   message_dumping_data(td,tj);
 
@@ -1011,7 +1025,7 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
     g_message("Thread %d: Table %s completed ",td->thread_id,dbt->table);
     dbt->chunks=NULL;
   }
-  g_message("Thread %d:Remaining 2 chunks: %d",td->thread_id,g_list_length(dbt->chunks));
+//  g_message("Thread %d:Remaining 2 chunks: %d",td->thread_id,g_list_length(dbt->chunks));
   g_mutex_unlock(dbt->chunks_mutex);
   g_mutex_unlock(cs->integer_step.mutex);
 }
