@@ -939,7 +939,11 @@ void build_lock_tables_statement(struct configuration *conf){
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
-      tj->where=g_strdup_printf("%s( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT")",
+      tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
+                g_strdup_printf("%s( `%s` = %"G_GUINT64_FORMAT")",
+                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor):
+                g_strdup_printf("%s( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT")",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.nmin, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
@@ -980,9 +984,9 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
-  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
+/*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
     return;
-  }
+  }*/
 //  g_message("CONTINUE");
   update_where_on_table_job(td, tj);
   message_dumping_data(td,tj);
