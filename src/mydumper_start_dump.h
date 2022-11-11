@@ -86,6 +86,8 @@ struct integer_step {
   guint deep;
   GMutex *mutex;
   gboolean assigned;
+  gboolean check_max;
+  gboolean check_min;
 };
 
 struct char_step {
