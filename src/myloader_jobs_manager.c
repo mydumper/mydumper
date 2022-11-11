@@ -48,6 +48,7 @@ static GMutex *sync_mutex;
 
 guint sync_threads_remaining2;
 static GMutex *sync_mutex2;
+GMutex *view_mutex;
 
 void initialize_job(gchar * purge_mode_str){
   initialize_restore_job(purge_mode_str);
@@ -56,6 +57,7 @@ void initialize_job(gchar * purge_mode_str){
   sync_threads_remaining=num_threads;
   sync_mutex = g_mutex_new();
   g_mutex_lock(sync_mutex);
+  view_mutex=g_mutex_new();
 
   sync_threads_remaining2=num_threads;
   sync_mutex2 = g_mutex_new();
@@ -150,11 +152,13 @@ void *loader_thread(struct thread_data *td) {
   }
   sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
+  g_mutex_lock(view_mutex);
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
     cont=process_job(td, job);
   }
+  g_mutex_unlock(view_mutex);
 
   if (td->thrconn)
     mysql_close(td->thrconn);
