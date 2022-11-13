@@ -40,6 +40,27 @@ GThread **exec_command_thread = NULL;
 extern gchar *exec_command;
 guint num_exec_threads = 4;
 
+GHashTable* pid_file_table=NULL;
+
+void exec_this_command(gchar * bin,gchar **c_arg,gchar *filename){
+  int childpid=vfork();
+  if(!childpid){
+    g_hash_table_insert(pid_file_table,g_strdup_printf("%d",getpid()),g_strdup(filename));
+    execv(bin,c_arg);
+  }else{
+    int wstatus;
+    int waitchildpid=wait(&wstatus);
+    // TODO: do we want to keep the file depending og the wstatus ??
+    if (no_delete == FALSE){
+      gchar *key=g_strdup_printf("%d",waitchildpid);
+      filename=g_hash_table_lookup(pid_file_table, key);
+      remove(filename);
+      g_hash_table_remove(pid_file_table, key);
+    }
+  }
+}
+
+
 void *process_exec_command(void *data){
   (void)data;
   gchar *space=g_strstr_len(exec_command,-1," ");
@@ -71,13 +92,7 @@ void *process_exec_command(void *data){
       c_arg[(*((guint *)(iter->data)))]=filename;
       iter=iter->next;
     } 
-    int childpid=vfork();
-    if(!childpid)
-      i=execv(bin,c_arg);
-    wait(&childpid);
-//    free(used_filemame);
-    if (no_delete == FALSE)
-      remove(filename);
+    exec_this_command(bin,c_arg,filename);
   }
   return NULL;
 }
@@ -96,6 +111,8 @@ void initialize_exec_command(){
   stream_queue = g_async_queue_new();
   exec_command_thread=g_new(GThread * , num_exec_threads) ;
   guint i;
+  pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
+
   for(i=0;i<num_exec_threads;i++){
     exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
   }
