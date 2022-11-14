@@ -105,7 +105,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       g_mutex_lock(dbt->mutex);
       if (!resume && dbt->schema_state!=CREATED ){
         if (dont_wait_for_schema_create && dbt->schema_state!=CREATING){
-          g_hash_table_insert(tbl_hash, dbt->table, dbt->table);
+          g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
           dbt->schema_state=CREATED;
         }else{
           iter=iter->next;
