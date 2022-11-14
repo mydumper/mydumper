@@ -114,15 +114,11 @@ static GOptionEntry write_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
-unsigned long (*escape_function)(MYSQL *, char *, const char *, unsigned long );
-void (*escape_tab)(char * ) = NULL;
 void load_write_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, write_entries);
 }
 
 void initialize_write(){
-
-  escape_function=&mysql_real_escape_string;
 
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
@@ -157,25 +153,21 @@ void initialize_write(){
         exit(EXIT_FAILURE);
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
-      }else{
-        escape_function=&m_real_escape_string;
       }
     }else{
       fields_escaped_by=g_strdup("\\\\");
     }
   }
 
-  if (!fields_terminated_by_ld){
+  if (fields_terminated_by_ld==NULL){
     if (load_data){
       fields_terminated_by=g_strdup("\t");
       fields_terminated_by_ld=g_strdup("\\t");
-      escape_tab=&escape_tab_with;
     }else
       fields_terminated_by=g_strdup(",");
-  }else if (g_strcmp0(fields_terminated_by_ld, "\\t")){
+  }else if (g_strcmp0(fields_terminated_by_ld, "\\t")==0){
       fields_terminated_by=g_strdup("\t");
       fields_terminated_by_ld=g_strdup("\\t");
-      escape_tab=&escape_tab_with;
   }else
     fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
   if (!lines_starting_by_ld){
@@ -343,9 +335,8 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      //escape_function(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
-      m_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
-      escape_tab(escaped->str);
+      mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      m_replace_char_with_char('\\',*fields_escaped_by,escaped->str,escaped->len);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else

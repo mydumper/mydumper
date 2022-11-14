@@ -278,6 +278,16 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
+void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length){
+  const char *end = from + length;
+  for (end = from + length; from < end; from++) {
+    if ( *from == neddle ){
+      *from = replace;
+      from++;
+    }
+  }
+}
+
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol){
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   guint i = 0;
