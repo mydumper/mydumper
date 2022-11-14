@@ -201,7 +201,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           if (i % 1000 == 0)
             g_message("Waiting table to be created %s", rj->filename);
         }
-        if (!dbt->schema_state!=CREATED){
+        if (dbt->schema_state!=CREATED){
           g_critical("Table has not been created in more than 10 seconds");
           exit(EXIT_FAILURE);
         }
