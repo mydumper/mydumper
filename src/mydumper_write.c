@@ -556,7 +556,6 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         }
         //initialize_sql_fn(tj);
         update_files_on_table_job(tj);
-g_message("New file: %s %lf", tj->sql_filename, tj->filesize);
         tj->st_in_file = 0;
         tj->filesize = 0;
       }
