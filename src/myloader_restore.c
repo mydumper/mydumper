@@ -151,7 +151,7 @@ void *send_file_to_fifo(gchar *compressed_filename){
       }
     l=write(fileno(fd), buffer, strlen(buffer));
     if (l!=strlen(buffer))
-      g_critical("Incomplete data transfered to FIFO: %s", fifo_name);
+      g_critical("Incomplete data transferred to FIFO: %s", fifo_name);
   } while (eof == FALSE);
   fclose(fd);
   return NULL;
