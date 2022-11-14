@@ -86,14 +86,16 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->start_index_time=NULL;
       dbt->finish_time=NULL;
       dbt->completed=FALSE;
-      dbt->schema_created=FALSE;
+      dbt->schema_state=NOT_CREATED;
+//      dbt->schema_created=FALSE;
       dbt->index_enqueued=FALSE;
       dbt->constraints=NULL;
       dbt->count=0;
       g_hash_table_insert(conf->table_hash, lkey, dbt);
       refresh_table_list_without_table_hash_lock(conf);
-//      g_debug("New db_table: %s", lkey);
+//      g_message("New db_table: %s", lkey);
     }else{
+//      g_message("Found db_table: %s", lkey);
       g_free(table);
       g_free(database);
       g_free(lkey);
@@ -103,6 +105,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     }
     g_mutex_unlock(conf->table_hash_mutex);
   }else{
+//      g_message("Found db_table: %s", lkey);
       g_free(table);
       g_free(database);
       g_free(lkey);

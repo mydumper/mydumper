@@ -167,6 +167,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
+      dbt->schema_state=CREATING;
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
       g_message("Thread %d restoring table `%s`.`%s` from %s", td->thread_id,
                 dbt->real_database, dbt->real_table, rj->filename);
@@ -181,7 +182,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
       }
-      dbt->schema_created=TRUE;
+      dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
       free_schema_restore_job(rj->data.srj);
       break;
@@ -191,16 +192,16 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu.", td->thread_id,
                 dbt->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
-      if (stream && !dbt->schema_created){
+      if (stream && dbt->schema_state!=CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
         int i=0;
-        while (!dbt->schema_created && i<10000){
+        while (dbt->schema_state!=CREATED && i<10000){
           usleep(1000);
           i++;
           if (i % 1000 == 0)
             g_message("Waiting table to be created %s", rj->filename);
         }
-        if (!dbt->schema_created){
+        if (!dbt->schema_state!=CREATED){
           g_critical("Table has not been created in more than 10 seconds");
           exit(EXIT_FAILURE);
         }

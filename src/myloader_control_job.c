@@ -25,6 +25,10 @@ extern gboolean intermediate_queue_ended;
 extern gboolean innodb_optimize_keys_per_table;
 extern guint num_threads;
 extern gboolean resume;
+extern GHashTable *tbl_hash;
+
+gboolean dont_wait_for_schema_create=FALSE;
+
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {
   struct control_job *j = g_new0(struct control_job, 1);
   j->type = type;
@@ -72,7 +76,7 @@ gboolean are_available_data_jobs(struct thread_data * td){
 
   while (iter != NULL){
     struct db_table * dbt = iter->data;
-    if (!dbt->schema_created || g_list_length(dbt->restore_job_list) > 0){
+    if (dbt->schema_state!=CREATED || g_list_length(dbt->restore_job_list) > 0){
       g_mutex_unlock(td->conf->table_list_mutex);
       return TRUE;
     }
@@ -96,15 +100,19 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       continue;
     }
 //    g_debug("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
-    if (!test_condition || (dbt->schema_created && dbt->current_threads < dbt->max_threads)){
+    if (!test_condition || (dbt->schema_state!=CREATED && dbt->current_threads < dbt->max_threads)){
       // I could do some job in here, do we have some for me?
       g_mutex_lock(dbt->mutex);
-      if (!resume && !dbt->schema_created){
-        iter=iter->next;
-        g_mutex_unlock(dbt->mutex);
-        continue;
+      if (!resume && dbt->schema_state!=CREATED ){
+        if (dont_wait_for_schema_create && dbt->schema_state!=CREATING){
+          g_hash_table_insert(tbl_hash, dbt->table, dbt->table);
+          dbt->schema_state=CREATED;
+        }else{
+          iter=iter->next;
+          g_mutex_unlock(dbt->mutex);
+          continue;
+        }
       }
-
 
       if (dbt->completed){
         iter=iter->next;
@@ -143,7 +151,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
   while (iter != NULL){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
-    if (dbt->schema_created && !dbt->index_enqueued){
+    if (dbt->schema_state==CREATED && !dbt->index_enqueued){
       if (intermediate_queue_ended){
         if (dbt->indexes != NULL){
           if (g_atomic_int_get(&(dbt->remaining_jobs)) == 0){
@@ -166,6 +174,7 @@ void *process_stream_queue(struct thread_data * td) {
   gboolean cont=TRUE;
   enum file_type ft=-1;
 //  enum file_type ft;
+  int remaining_shutdown_pass=2*num_threads;
   while (cont){
     if (ft == SHUTDOWN)
       g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
@@ -229,6 +238,10 @@ void *process_stream_queue(struct thread_data * td) {
       if (intermediate_queue_ended){
         if (are_available_data_jobs(td)){
           g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+          remaining_shutdown_pass-= ft == SHUTDOWN ? 1:0;
+          if (remaining_shutdown_pass < 0){
+            dont_wait_for_schema_create=TRUE;
+          }
         }else if (ft == SHUTDOWN){
           cont=FALSE;
         }else{
@@ -238,7 +251,6 @@ void *process_stream_queue(struct thread_data * td) {
         g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
       }
     }
-
   }
   enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);

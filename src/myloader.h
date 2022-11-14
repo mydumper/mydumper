@@ -57,6 +57,8 @@ struct database {
   gboolean schema_created;
 };
 
+enum schema_status { NOT_CREATED, CREATING, CREATED };
+
 struct db_table {
   char *database;
   char *real_database;
@@ -71,7 +73,7 @@ struct db_table {
   GString *indexes;
   GString *constraints;
   guint count;
-  gboolean schema_created;
+  enum schema_status schema_state;
   gboolean index_enqueued;
   GDateTime * start_data_time;
   GDateTime * finish_data_time;
