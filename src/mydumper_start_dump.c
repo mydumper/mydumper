@@ -246,105 +246,6 @@ void initialize_start_dump(){
   }
 }
 
-/* Write some stuff we know about snapshot, before it changes */
-/*void write_snapshot_info(MYSQL *conn, FILE *file) {
-  MYSQL_RES *master = NULL, *slave = NULL, *mdb = NULL;
-  MYSQL_FIELD *fields;
-  MYSQL_ROW row;
-
-  char *masterlog = NULL;
-  char *masterpos = NULL;
-  char *mastergtid = NULL;
-
-  char *connname = NULL;
-  char *slavehost = NULL;
-  char *slavelog = NULL;
-  char *slavepos = NULL;
-  char *slavegtid = NULL;
-  guint isms;
-  guint i;
-
-  mysql_query(conn, "SHOW MASTER STATUS");
-  master = mysql_store_result(conn);
-  if (master && (row = mysql_fetch_row(master))) {
-    masterlog = row[0];
-    masterpos = row[1];
-    // Oracle/Percona GTID 
-    if (mysql_num_fields(master) == 5) {
-      mastergtid = row[4];
-    } else {
-      // Let's try with MariaDB 10.x 
-      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
-      // cluster, gtid_binlog_pos works as well with normal mariadb server
-      // https://jira.mariadb.org/browse/MDEV-10279 
-      mysql_query(conn, "SELECT @@gtid_binlog_pos");
-      mdb = mysql_store_result(conn);
-      if (mdb && (row = mysql_fetch_row(mdb))) {
-        mastergtid = row[0];
-      }
-    }
-  }
-
-  if (masterlog) {
-    fprintf(file, "SHOW MASTER STATUS:\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",
-            masterlog, masterpos, mastergtid);
-    g_message("Written master status");
-  }
-
-  isms = 0;
-  mysql_query(conn, "SELECT @@default_master_connection");
-  MYSQL_RES *rest = mysql_store_result(conn);
-  if (rest != NULL && mysql_num_rows(rest)) {
-    mysql_free_result(rest);
-    g_message("Multisource slave detected.");
-    isms = 1;
-  }
-
-  if (isms)
-    mysql_query(conn, "SHOW ALL SLAVES STATUS");
-  else
-    mysql_query(conn, "SHOW SLAVE STATUS");
-
-  guint slave_count=0;
-  slave = mysql_store_result(conn);
-  while (slave && (row = mysql_fetch_row(slave))) {
-    fields = mysql_fetch_fields(slave);
-    for (i = 0; i < mysql_num_fields(slave); i++) {
-      if (isms && !strcasecmp("connection_name", fields[i].name))
-        connname = row[i];
-      if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
-        slavepos = row[i];
-      } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
-        slavelog = row[i];
-      } else if (!strcasecmp("master_host", fields[i].name)) {
-        slavehost = row[i];
-      } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name) ||
-                 !strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
-        slavegtid = row[i];
-      }
-    }
-    if (slavehost) {
-      slave_count++;
-      fprintf(file, "SHOW SLAVE STATUS:");
-      if (isms)
-        fprintf(file, "\n\tConnection name: %s", connname);
-      fprintf(file, "\n\tHost: %s\n\tLog: %s\n\tPos: %s\n\tGTID:%s\n\n",
-              slavehost, slavelog, slavepos, slavegtid);
-      g_message("Written slave status");
-    }
-  }
-  if (slave_count > 1)
-    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
-
-  fflush(file);
-  if (master)
-    mysql_free_result(master);
-  if (slave)
-    mysql_free_result(slave);
-  if (mdb)
-    mysql_free_result(mdb);
-}
-*/
 void set_disk_limits(guint p_at, guint r_at){
   pause_at=p_at;
   resume_at=r_at;
@@ -922,7 +823,7 @@ void start_dump() {
   // larger than preset value, we terminate the process.
   // This avoids stalling whole server with flush.
 		long_query_wait(conn);
-	}
+  }
 
   if (detected_server == SERVER_TYPE_TIDB) {
     g_message("Skipping locks because of TiDB");
@@ -1003,10 +904,10 @@ void start_dump() {
   // Do not start a transaction when lock all tables instead of FTWRL,
   // since it can implicitly release read locks we hold
   // TODO: this should be deleted as main connection is not being used for export data
-  if (!lock_all_tables) {
-    g_message("Sending start transaction in main connection");
-    mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
-  }
+//  if (!lock_all_tables) {
+//    g_message("Sending start transaction in main connection");
+//    mysql_query(conn, "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */");
+//  }
 
   if (need_dummy_read) {
     mysql_query(conn,
