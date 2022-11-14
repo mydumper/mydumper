@@ -981,10 +981,11 @@ void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
 
 void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint fn, guint sub_part, const gchar *extension, gchar * f()){
   gchar *stdout_fn=NULL;
-  if (*sql_filename != NULL){
+/*  if (*sql_filename != NULL){
     remove(*sql_filename);
     g_free(*sql_filename);
   }
+*/
   if (use_fifo){
     *sql_filename = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
     mkfifo(*sql_filename,0666);

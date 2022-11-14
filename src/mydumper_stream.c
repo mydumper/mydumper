@@ -61,7 +61,7 @@ void *process_stream(void *data){
     free(used_filemame);
 
     if (no_stream == FALSE){
-      g_message("Opening: %s",filename);
+//      g_message("Opening: %s",filename);
       f=g_fopen(filename,"r");
       if (!f){
         g_error("File failed to open: %s",filename);
@@ -90,9 +90,9 @@ void *process_stream(void *data){
         total_diff=g_date_time_difference(datetime,total_start_time)/G_TIME_SPAN_SECOND;
         g_date_time_unref(datetime);
         if (diff > 0){
-          g_message("File %s transfered in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+          g_message("File %s transferred in %ld seconds at %ld MB/s | Global: %ld MB/s",filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }else{
-          g_message("File %s transfered | Global: %ld MB/s",filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+          g_message("File %s transferred | Global: %ld MB/s",filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }
         total_size+=total_len;
         fclose(f);
@@ -108,7 +108,7 @@ void *process_stream(void *data){
   total_diff=g_date_time_difference(datetime,total_start_time)/G_TIME_SPAN_SECOND;
   g_date_time_unref(total_start_time);
   g_date_time_unref(datetime);
-  g_message("All data transfered was %ld at a rate of %ld MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
+  g_message("All data transferred was %ld at a rate of %ld MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
   return NULL;
 }
 
