@@ -60,7 +60,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     g_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
     exit(EXIT_FAILURE);
   }
-  gchar *lkey=g_strdup_printf("%s_%s",database, table);
+  gchar *lkey=build_dbt_key(database, table);
   struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
   if (dbt == NULL){
     g_mutex_lock(conf->table_hash_mutex);
