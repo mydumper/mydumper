@@ -285,9 +285,13 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   return flag;
 }
 
+gchar *build_dbt_key(gchar *a, gchar *b){
+  return g_strdup_printf("`%s`_`%s`", a, b);
+}
+
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
-  gchar *a_key=g_strdup_printf("%s_%s",((struct db_table *)a)->database,((struct db_table *)a)->table);
-  gchar *b_key=g_strdup_printf("%s_%s",((struct db_table *)b)->database,((struct db_table *)b)->table);
+  gchar *a_key=build_dbt_key(((struct db_table *)a)->database,((struct db_table *)a)->table);
+  gchar *b_key=build_dbt_key(((struct db_table *)b)->database,((struct db_table *)b)->table);
   struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
   struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
   g_free(a_key);
