@@ -91,3 +91,4 @@ struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, ch
 #endif
 gchar *get_ref_table(gchar *k);
 void write_my_data_into_file(const char *filename, gchar * str);
+void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);

@@ -1065,6 +1065,12 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchun
   f(queue,j);
 }
 
+void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue){
+  struct job *j = g_new0(struct job,1);
+  j->type = JOB_DETERMINE_CHUNK_TYPE;
+  j->job_data=(void*) dbt;
+  f(queue,j);
+}
 
 void create_job_to_dump_all_databases(struct configuration *conf) {
   g_atomic_int_inc(&database_counter);

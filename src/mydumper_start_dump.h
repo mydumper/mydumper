@@ -21,6 +21,7 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_DETERMINE_CHUNK_TYPE,
   JOB_TABLE,
   JOB_CHECKSUM,
   JOB_SCHEMA,
@@ -37,6 +38,8 @@ enum job_type {
 };
 
 enum chunk_type{
+  UNDEFINED,
+  DEFINING,
   NONE,
   INTEGER,
   CHAR,

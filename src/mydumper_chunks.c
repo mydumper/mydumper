@@ -580,6 +580,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(conn, dbt->field, 0, 0, row, lengths));
     break;
   default:
+    dbt->chunk_type=NONE;
     break;
   }
 cleanup:
@@ -724,20 +725,27 @@ void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList *
 
   while (iter){
     d=iter->data;
-    if (d->chunk_type == NONE){
-      *dbt=iter->data;
-      *dbt_list=g_list_remove(*dbt_list,d);
-      break;
-    }
-    lcs=get_next_chunk(d);
-    if (lcs!=NULL){
-      *cs=lcs;
-      *dbt=iter->data;
-      break;
-    }else{
-      iter=iter->next;
-      *dbt_list=g_list_remove(*dbt_list,d);
-      continue;
+    if (d->chunk_type != DEFINING){
+      if (d->chunk_type == NONE){
+        *dbt=iter->data;
+        *dbt_list=g_list_remove(*dbt_list,d);
+        break;
+      }
+      if (d->chunk_type == UNDEFINED){
+        *dbt=iter->data;
+        d->chunk_type = DEFINING;
+        break;
+      }
+      lcs=get_next_chunk(d);
+      if (lcs!=NULL){
+        *cs=lcs;
+        *dbt=iter->data;
+        break;
+      }else{
+        iter=iter->next;
+        *dbt_list=g_list_remove(*dbt_list,d);
+        continue;
+      }
     }
     iter=iter->next;
   }
@@ -786,7 +794,13 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     case NONE:
       create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
       break;
-    }
+    case DEFINING:
+      create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
+      break;
+    default:
+      g_error("This should not happen");
+      break;
+    } 
   }
 }
 
