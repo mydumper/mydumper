@@ -383,6 +383,7 @@ gboolean process_table_filename(char * filename){
   }
   g_mutex_unlock(conf->table_list_mutex);
   dbt=append_new_db_table(NULL, db_name, table_name,0,NULL);
+  dbt->schema_state=CREATING;
   load_schema(dbt, g_build_filename(directory,filename,NULL));
   return TRUE;
 //  g_free(filename);

@@ -361,6 +361,8 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
 
   char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
   if (cs != NULL) {
+    if (checksum[strlen(checksum)-1]=='\n')
+      checksum[strlen(checksum)-1]='\0';
     if(g_strcasecmp(checksum, row) != 0) {
       if (real_table != NULL)
         g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, real_table, row, checksum, filename);

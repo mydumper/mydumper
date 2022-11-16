@@ -73,7 +73,7 @@ gboolean has_mydumper_suffix(gchar *line){
 
 void *process_stream(struct configuration *stream_conf){
   char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
-  char buffer[STREAM_BUFFER_SIZE];
+  char *buffer=g_new(char, STREAM_BUFFER_SIZE);
   FILE *file=NULL;
   gboolean eof=FALSE;
   int pos=0,buffer_len=0;
@@ -87,6 +87,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
     next_line_from=0;
     pos=0;
     diff=0;
+//g_message("Buffer_len %d", buffer_len);
     if (!buffer_len){ 
       break;
     }else{
@@ -106,6 +107,9 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             g_free(filename);
             gchar a=buffer[last_pos-(line_from+4)];
             buffer[last_pos-(line_from)]='\0';
+//g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
+//            if (line_from==last_pos)
+//g_error("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
             filename=g_strndup(&(buffer[line_from+4]),last_pos-(line_from+4));
             buffer[last_pos-(line_from+4)]=a;
             real_filename = g_build_filename(directory,filename,NULL);
