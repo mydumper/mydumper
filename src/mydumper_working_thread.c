@@ -854,7 +854,6 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 gboolean process_job(struct thread_data *td, struct job *job){
     switch (job->type) {
     case JOB_DETERMINE_CHUNK_TYPE:
-g_message("JOB_DETERMINE_CHUNK_TYPE `%s`.`%s`",  ((struct db_table *)(job->job_data))->database->name, ((struct db_table *)(job->job_data))->table);
       set_chunk_strategy_for_dbt(td->thrconn, (struct db_table *)(job->job_data));
       break;
     case JOB_DUMP:

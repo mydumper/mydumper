@@ -794,7 +794,7 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
       if (are_there_jobs_defining){
         continue;
       }
-      g_message("There re not job defined");
+//      g_message("There re not job defined");
       break;
     }
     switch (dbt->chunk_type) {
