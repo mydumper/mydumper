@@ -790,8 +790,10 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     are_there_jobs_defining=get_next_dbt_and_chunk(&dbt,&cs,table_list);
 
     if ((cs==NULL) && (dbt==NULL)){
-      if (are_there_jobs_defining)
+      if (are_there_jobs_defining){
         continue;
+      }
+      g_message("There re not job defined");
       break;
     }
     switch (dbt->chunk_type) {
