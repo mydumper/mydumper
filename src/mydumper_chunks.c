@@ -740,6 +740,7 @@ gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GLi
       if (d->chunk_type == UNDEFINED){
         *dbt=iter->data;
         d->chunk_type = DEFINING;
+        are_there_jobs_defining=TRUE;
         break;
       }
       lcs=get_next_chunk(d);
