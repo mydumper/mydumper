@@ -724,11 +724,11 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 }
 
 
-void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList **dbt_list){
+gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList **dbt_list){
   GList *iter=*dbt_list;
   union chunk_step *lcs;
   struct db_table *d;
-
+  gboolean are_there_jobs_defining=FALSE;
   while (iter){
     d=iter->data;
     if (d->chunk_type != DEFINING){
@@ -752,9 +752,12 @@ void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList *
         *dbt_list=g_list_remove(*dbt_list,d);
         continue;
       }
+    }else{
+      are_there_jobs_defining=TRUE;
     }
     iter=iter->next;
   }
+  return are_there_jobs_defining;
 }
 
 void give_me_another_non_innodb_chunk_step(){
@@ -778,13 +781,17 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
 void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList **table_list){
   struct db_table *dbt;
   union chunk_step *cs;
+  gboolean are_there_jobs_defining=FALSE;
   for (;;) {
     g_async_queue_pop(pop_queue);
     dbt=NULL;
     cs=NULL;
-    get_next_dbt_and_chunk(&dbt,&cs,table_list);
+    are_there_jobs_defining=FALSE;
+    are_there_jobs_defining=get_next_dbt_and_chunk(&dbt,&cs,table_list);
 
     if ((cs==NULL) && (dbt==NULL)){
+      if (are_there_jobs_defining)
+        continue;
       break;
     }
     switch (dbt->chunk_type) {
