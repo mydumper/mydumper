@@ -548,16 +548,20 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_free(query);
   minmax = mysql_store_result(conn);
 
-  if (!minmax)
+  if (!minmax){
+    dbt->chunk_type=NONE;
     goto cleanup;
+  }
 
   row = mysql_fetch_row(minmax);
 
   MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
   gulong *lengths = mysql_fetch_lengths(minmax);
   /* Check if all values are NULL */
-  if (row[0] == NULL)
+  if (row[0] == NULL){
+    dbt->chunk_type=NONE;
     goto cleanup;
+  }
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 nmin,nmax;
   switch (fields[0].type) {
@@ -586,7 +590,9 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
 cleanup:
   if (minmax)
     mysql_free_result(minmax);
-}
+  }else{
+    dbt->chunk_type=NONE;
+  }
 }
 
 char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
