@@ -541,6 +541,9 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       message_dumping_data(td,tj);
       write_table_job_into_file(td->thrconn, tj);
       break;
+    default: 
+      g_error("dbt on UNDEFINED shouldn't happen. This must be a bug");
+      break;
   }
   if (tj->sql_file){
     m_close(tj->sql_file);
@@ -850,6 +853,9 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 
 gboolean process_job(struct thread_data *td, struct job *job){
     switch (job->type) {
+    case JOB_DETERMINE_CHUNK_TYPE:
+      set_chunk_strategy_for_dbt(td->thrconn, (struct db_table *)(job->job_data));
+      break;
     case JOB_DUMP:
       thd_JOB_DUMP(td, job);
       break;
@@ -1325,7 +1331,6 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
-  dbt->chunk_type = NONE;
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
@@ -1335,11 +1340,12 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->min=NULL;
   dbt->max=NULL;
+  dbt->chunk_type = UNDEFINED;
   dbt->chunks=NULL;
   dbt->chunks_mutex=g_mutex_new();
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
-  set_chunk_strategy_for_dbt(conn, dbt);
+//  set_chunk_strategy_for_dbt(conn, dbt);
   g_free(k);
   dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
   if (dbt->complete_insert) {

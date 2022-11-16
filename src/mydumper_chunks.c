@@ -548,16 +548,20 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_free(query);
   minmax = mysql_store_result(conn);
 
-  if (!minmax)
+  if (!minmax){
+    dbt->chunk_type=NONE;
     goto cleanup;
+  }
 
   row = mysql_fetch_row(minmax);
 
   MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
   gulong *lengths = mysql_fetch_lengths(minmax);
   /* Check if all values are NULL */
-  if (row[0] == NULL)
+  if (row[0] == NULL){
+    dbt->chunk_type=NONE;
     goto cleanup;
+  }
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 nmin,nmax;
   switch (fields[0].type) {
@@ -580,12 +584,15 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(conn, dbt->field, 0, 0, row, lengths));
     break;
   default:
+    dbt->chunk_type=NONE;
     break;
   }
 cleanup:
   if (minmax)
     mysql_free_result(minmax);
-}
+  }else{
+    dbt->chunk_type=NONE;
+  }
 }
 
 char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
@@ -717,30 +724,41 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 }
 
 
-void get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList **dbt_list){
+gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList **dbt_list){
   GList *iter=*dbt_list;
   union chunk_step *lcs;
   struct db_table *d;
-
+  gboolean are_there_jobs_defining=FALSE;
   while (iter){
     d=iter->data;
-    if (d->chunk_type == NONE){
-      *dbt=iter->data;
-      *dbt_list=g_list_remove(*dbt_list,d);
-      break;
-    }
-    lcs=get_next_chunk(d);
-    if (lcs!=NULL){
-      *cs=lcs;
-      *dbt=iter->data;
-      break;
+    if (d->chunk_type != DEFINING){
+      if (d->chunk_type == NONE){
+        *dbt=iter->data;
+        *dbt_list=g_list_remove(*dbt_list,d);
+        break;
+      }
+      if (d->chunk_type == UNDEFINED){
+        *dbt=iter->data;
+        d->chunk_type = DEFINING;
+        are_there_jobs_defining=TRUE;
+        break;
+      }
+      lcs=get_next_chunk(d);
+      if (lcs!=NULL){
+        *cs=lcs;
+        *dbt=iter->data;
+        break;
+      }else{
+        iter=iter->next;
+        *dbt_list=g_list_remove(*dbt_list,d);
+        continue;
+      }
     }else{
-      iter=iter->next;
-      *dbt_list=g_list_remove(*dbt_list,d);
-      continue;
+      are_there_jobs_defining=TRUE;
     }
     iter=iter->next;
   }
+  return are_there_jobs_defining;
 }
 
 void give_me_another_non_innodb_chunk_step(){
@@ -764,13 +782,19 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
 void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList **table_list){
   struct db_table *dbt;
   union chunk_step *cs;
+  gboolean are_there_jobs_defining=FALSE;
   for (;;) {
     g_async_queue_pop(pop_queue);
     dbt=NULL;
     cs=NULL;
-    get_next_dbt_and_chunk(&dbt,&cs,table_list);
+    are_there_jobs_defining=FALSE;
+    are_there_jobs_defining=get_next_dbt_and_chunk(&dbt,&cs,table_list);
 
     if ((cs==NULL) && (dbt==NULL)){
+      if (are_there_jobs_defining){
+        continue;
+      }
+//      g_message("There re not job defined");
       break;
     }
     switch (dbt->chunk_type) {
@@ -786,7 +810,13 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     case NONE:
       create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
       break;
-    }
+    case DEFINING:
+      create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
+      break;
+    default:
+      g_error("This should not happen");
+      break;
+    } 
   }
 }
 
