@@ -39,4 +39,5 @@ gchar * build_load_data_filename(char *database, char *table, guint part, guint 
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
+void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
 void free_common();

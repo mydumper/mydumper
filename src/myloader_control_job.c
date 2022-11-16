@@ -69,17 +69,78 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
   g_free(job);
   return TRUE;
 }
+void schema_file_missed_lets_continue(struct thread_data * td){
+  g_mutex_lock(td->conf->table_list_mutex);
+  GList * iter=td->conf->table_list;
+  guint i=0;
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    dbt->schema_state=CREATED;
+    for(i=0; i<g_list_length(dbt->restore_job_list); i++){
+      g_async_queue_push(td->conf->stream_queue, GINT_TO_POINTER(DATA));
+    }
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(td->conf->table_list_mutex);
+}
 
-gboolean are_available_data_jobs(struct thread_data * td){
+gboolean are_we_waiting_for_schema_jobs_to_complete(struct thread_data * td){
+  if (g_async_queue_length(td->conf->database_queue)>0 || g_async_queue_length(td->conf->table_queue)>0)
+    return TRUE;
+
+  g_mutex_lock(td->conf->table_list_mutex);
+  GList * iter=td->conf->table_list;
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    if (dbt->schema_state==CREATING){
+      g_mutex_unlock(dbt->mutex);
+      g_mutex_unlock(td->conf->table_list_mutex);
+      return TRUE;
+    }
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(td->conf->table_list_mutex);
+  return FALSE;
+}
+
+gboolean are_we_waiting_for_create_schema_jobs_to_complete(struct thread_data * td){
+  if (g_async_queue_length(td->conf->database_queue)>0 )
+    return TRUE;
+
+  g_mutex_lock(td->conf->table_list_mutex);
+  GList * iter=td->conf->table_list;
+  while (iter != NULL){
+    struct db_table * dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
+    if (dbt->schema_state==CREATING){
+      g_mutex_unlock(dbt->mutex);
+      g_mutex_unlock(td->conf->table_list_mutex);
+      return TRUE;
+    }
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(td->conf->table_list_mutex);
+  return FALSE;
+}
+
+gboolean are_available_jobs(struct thread_data * td){
   g_mutex_lock(td->conf->table_list_mutex);
   GList * iter=td->conf->table_list;
 
   while (iter != NULL){
     struct db_table * dbt = iter->data;
+    g_mutex_lock(dbt->mutex);
     if (dbt->schema_state!=CREATED || g_list_length(dbt->restore_job_list) > 0){
+      g_mutex_unlock(dbt->mutex);
       g_mutex_unlock(td->conf->table_list_mutex);
       return TRUE;
     }
+    g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
   g_mutex_unlock(td->conf->table_list_mutex);
@@ -105,6 +166,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       g_mutex_lock(dbt->mutex);
       if (!resume && dbt->schema_state!=CREATED ){
         if (dont_wait_for_schema_create && dbt->schema_state!=CREATING){
+//g_message("dont_wait_for_schema_create");
           g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
           dbt->schema_state=CREATED;
         }else{
@@ -174,22 +236,31 @@ void *process_stream_queue(struct thread_data * td) {
   gboolean cont=TRUE;
   enum file_type ft=-1;
 //  enum file_type ft;
-  int remaining_shutdown_pass=2*num_threads;
+//  int remaining_shutdown_pass=2*num_threads;
+  struct restore_job *rj=NULL;
+  guint pass=0;
   while (cont){
-    if (ft == SHUTDOWN)
-      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
+//    if (ft == SHUTDOWN)
+//      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
 
 
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(td->conf->stream_queue));
-    job=g_async_queue_try_pop(td->conf->database_queue);
-    if (job != NULL){
-      g_debug("Restoring database");
-      struct database * d=get_db_hash(job->data.restore_job->data.srj->database, job->data.restore_job->data.srj->database);
-      cont=process_job(td, job);
-      d->schema_created=TRUE;
-      continue;
-    }
+    switch (ft){
+    case SCHEMA_CREATE:
+      job=g_async_queue_pop(td->conf->database_queue);
+      if (job->type != JOB_SHUTDOWN){
+        g_debug("Restoring database");
+        struct database * d=get_db_hash(job->data.restore_job->data.srj->database, job->data.restore_job->data.srj->database);
+        cont=process_job(td, job);
+        d->schema_created=TRUE;
+//        continue;
+      }else{
+        g_async_queue_push(td->conf->database_queue, job);
+      }
+      break;
+    case SCHEMA_TABLE:
 
+/*
     // Enqueue index to add
     enqueue_indexes_if_possible(td->conf);
 
@@ -202,57 +273,85 @@ void *process_stream_queue(struct thread_data * td) {
       if (b){
         g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
         ft=-1;
-        continue;
+//        continue;
       }
+    }
+*/
+
+    job=g_async_queue_pop(td->conf->table_queue);
+    if (job->type != JOB_SHUTDOWN){
+    struct database *real_db_name=get_db_hash(job->use_database,job->use_database); 
+    if (real_db_name->schema_created){
+      execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+      cont=process_job(td, job);
+    }else{
+      g_async_queue_push(td->conf->table_queue,job);
+      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+      if (pass>2)
+        real_db_name->schema_created=TRUE;
+//      ft=-1;
+    }
+    
+//      continue;
     }
 
-    job=g_async_queue_try_pop(td->conf->table_queue);
-    if (job != NULL){
-      struct database *real_db_name=get_db_hash(job->use_database,job->use_database); 
-      if (real_db_name->schema_created){
-        execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+      break;
+
+    case DATA:
+      rj = give_me_next_data_job(td, TRUE);
+      if (rj != NULL){
+        job=new_job(JOB_RESTORE,rj,rj->dbt->database);
+        execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
         cont=process_job(td, job);
+//        continue;
       }else{
-        g_async_queue_push(td->conf->table_queue,job);
-        g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
-        ft=-1;
+  //      g_message("Thread %d: No data job founded(1)", td->thread_id);
       }
-      continue;
-    }
-    struct restore_job *rj = give_me_next_data_job(td, TRUE);
-    if (rj != NULL){
-      job=new_job(JOB_RESTORE,rj,rj->dbt->database);
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
-      cont=process_job(td, job);
-      continue;
-    }else{
-//      g_message("Thread %d: No data job founded(1)", td->thread_id);
-    }
-    rj=give_any_data_job(td);
-    if (rj != NULL){
-      job=new_job(JOB_RESTORE,rj,rj->dbt->database);
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
-      cont=process_job(td, job);
-      continue;
-    }else{
-      if (intermediate_queue_ended){
-        if (are_available_data_jobs(td)){
-          g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
-          remaining_shutdown_pass-= ft == SHUTDOWN ? 1:0;
-          if (remaining_shutdown_pass < 0){
-            dont_wait_for_schema_create=TRUE;
+      rj=give_any_data_job(td);
+      if (rj != NULL){
+        job=new_job(JOB_RESTORE,rj,rj->dbt->database);
+        execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
+        cont=process_job(td, job);
+//        continue;
+      }
+      // NO DATA JOB available, no worries, there will be another one shortly...
+      break;
+      case SHUTDOWN:
+        cont=FALSE;
+        break;
+      case INTERMEDIATE_ENDED:
+        g_async_queue_push(td->conf->database_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+        if ( are_available_jobs(td) ){
+          if (!are_we_waiting_for_schema_jobs_to_complete(td)){
+            g_warning("Schema files missed, we continue...");
+            schema_file_missed_lets_continue(td);
           }
-        }else if (ft == SHUTDOWN){
-          cont=FALSE;
-        }else{
-          g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+          pass++;
         }
+      default:
+        NULL;
+//        g_message("What do we do with: %d", ft);
+
+    }
+    enqueue_indexes_if_possible(td->conf);
+    if (innodb_optimize_keys_per_table){
+      process_index(td);
+    }
+    if (intermediate_queue_ended) {
+      if ( are_available_jobs(td) ){
+        if (!are_we_waiting_for_schema_jobs_to_complete(td)){
+//          g_warning("Schema files missed, we continue...");
+          schema_file_missed_lets_continue(td);
+        }else{
+//          g_message("Thread %d: There ar jobs %d", td->thread_id, ft);
+        }     
+        pass++;
       }else{
-        g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
+        g_async_queue_push(td->conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
       }
     }
   }
-  enqueue_indexes_if_possible(td->conf);
+//  enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);
   return NULL;
 }

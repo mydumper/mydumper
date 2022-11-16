@@ -337,6 +337,7 @@ void write_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, g
       g_string_set_size(escaped, length * 2 + 1);
       mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
       m_replace_char_with_char('\\',*fields_escaped_by,escaped->str,escaped->len);
+      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str,escaped->len);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else

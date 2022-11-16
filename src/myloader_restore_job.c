@@ -159,6 +159,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   }
   struct db_table *dbt=rj->dbt;
   guint query_counter=0;
+  guint i=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
       g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
@@ -184,6 +185,11 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }
       dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
+      g_mutex_lock(dbt->mutex);
+      for(i=0; i<g_list_length(dbt->restore_job_list); i++){
+        g_async_queue_push(td->conf->stream_queue, GINT_TO_POINTER(DATA)); 
+      }
+      g_mutex_unlock(dbt->mutex);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
@@ -194,7 +200,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_mutex_unlock(progress_mutex);
       if (stream && dbt->schema_state!=CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
-        int i=0;
+        i=0;
         while (dbt->schema_state!=CREATED && i<10000){
           usleep(1000);
           i++;
