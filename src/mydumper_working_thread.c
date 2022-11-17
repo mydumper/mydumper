@@ -1346,6 +1346,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
 //  set_chunk_strategy_for_dbt(conn, dbt);
+//  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
   g_free(k);
   dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
   if (dbt->complete_insert) {
