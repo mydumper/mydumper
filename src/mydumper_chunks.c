@@ -525,8 +525,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   }
 
   if (partitions){
-    dbt->chunk_type=PARTITION;
     dbt->chunks=g_list_prepend(dbt->chunks,new_real_partition_step(partitions,0,0));
+    dbt->chunk_type=PARTITION;
     return;
   }
 
@@ -572,16 +572,20 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     nmin = strtoul(row[0], NULL, 10);
     nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
-      dbt->chunk_type=INTEGER;
       dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, 0, FALSE, FALSE));
+      dbt->chunk_type=INTEGER;
     }else{
       dbt->chunk_type=NONE;
-    } 
+    }
+    if (minmax) mysql_free_result(minmax);
+    return;
     break;
   case MYSQL_TYPE_STRING:
   case MYSQL_TYPE_VAR_STRING:
-    dbt->chunk_type=CHAR;
     dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(conn, dbt->field, 0, 0, row, lengths));
+    dbt->chunk_type=CHAR;
+    if (minmax) mysql_free_result(minmax);
+    return;
     break;
   default:
     dbt->chunk_type=NONE;
@@ -590,9 +594,9 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
 cleanup:
   if (minmax)
     mysql_free_result(minmax);
-  }else{
+
+  }else
     dbt->chunk_type=NONE;
-  }
 }
 
 char *get_field_for_dbt(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
