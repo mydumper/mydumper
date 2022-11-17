@@ -158,7 +158,7 @@ static GOptionEntry entries[] = {
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation, 
-      "Table recreation will be executed in serie, one thread at a time",NULL},
+      "Table recreation will be executed in series, one thread at a time",NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
