@@ -148,17 +148,19 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
+    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
+    g_mutex_unlock(view_mutex);
   }
   sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
-  g_mutex_lock(view_mutex);
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
+    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
+    g_mutex_unlock(view_mutex);
   }
-  g_mutex_unlock(view_mutex);
 
   if (td->thrconn)
     mysql_close(td->thrconn);
