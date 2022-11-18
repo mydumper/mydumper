@@ -255,6 +255,7 @@ void *process_stream_queue(struct thread_data * td) {
 //  int remaining_shutdown_pass=2*num_threads;
   struct restore_job *rj=NULL;
   guint pass=0;
+  guint max_jobs_to_wait=0;
   while (cont){
 //    if (ft == SHUTDOWN)
 //      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
@@ -303,7 +304,7 @@ void *process_stream_queue(struct thread_data * td) {
     }else{
       g_async_queue_push(td->conf->table_queue,job);
       g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
-      if (pass>2)
+      if (pass>max_jobs_to_wait)
         real_db_name->schema_created=TRUE;
 //      ft=-1;
     }
@@ -344,6 +345,7 @@ void *process_stream_queue(struct thread_data * td) {
           }
           pass++;
         }
+        max_jobs_to_wait=g_async_queue_length(td->conf->stream_queue)+1;
       default:
         NULL;
 //        g_message("What do we do with: %d", ft);
