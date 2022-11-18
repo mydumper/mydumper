@@ -130,7 +130,7 @@ full_test(){
 
 
   # single file compressed -- overriting database
-  test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
+#  test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
   PARTIAL=0
   for test in test_case_dir test_case_stream
   do 
