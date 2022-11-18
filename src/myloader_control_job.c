@@ -147,6 +147,16 @@ gboolean are_available_jobs(struct thread_data * td){
   return FALSE;
 }
 
+void create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
+  if (dbt->indexes != NULL && ! dbt->index_enqueued){
+//    if (g_atomic_int_get(&(dbt->remaining_jobs)) == 0){
+      g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database, dbt->table);
+      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
+      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+      dbt->index_enqueued=TRUE;
+    }
+//  }
+}
 struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean test_condition){
   g_mutex_lock(td->conf->table_list_mutex);
   GList * iter=td->conf->table_list;
@@ -190,8 +200,11 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
         g_mutex_unlock(dbt->mutex);
         break;
       }
-      if (intermediate_queue_ended)
+      if (intermediate_queue_ended){
         dbt->completed=TRUE;
+        create_index_job(td->conf, dbt, td->thread_id);
+      }
+
       g_mutex_unlock(dbt->mutex);
     }
     iter=iter->next;
@@ -214,7 +227,9 @@ void enqueue_indexes_if_possible(struct configuration *conf){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
     if (dbt->schema_state==CREATED && !dbt->index_enqueued){
-      if (intermediate_queue_ended){
+      if (intermediate_queue_ended && (g_atomic_int_get(&(dbt->remaining_jobs)) == 0)){
+        create_index_job(conf, dbt, 0);
+/*
         if (dbt->indexes != NULL){
           if (g_atomic_int_get(&(dbt->remaining_jobs)) == 0){
             g_message("Enqueuing index for table: %s", dbt->table);
@@ -223,6 +238,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
             dbt->index_enqueued=TRUE;
           }
         }
+*/
       }
     }
     g_mutex_unlock(dbt->mutex);
@@ -351,7 +367,7 @@ void *process_stream_queue(struct thread_data * td) {
       }
     }
   }
-//  enqueue_indexes_if_possible(td->conf);
+  enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);
   return NULL;
 }

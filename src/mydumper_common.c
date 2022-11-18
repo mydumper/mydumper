@@ -279,7 +279,8 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
 }
 
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length){
-  gchar *from=g_strdup(to);
+  gchar *from=g_new(char, length);
+  memcpy(from, to, length);
   gchar *ffrom=from;
   const char *end = from + length;
   for (end = from + length; from < end; from++) {
