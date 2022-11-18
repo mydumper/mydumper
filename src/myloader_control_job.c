@@ -304,9 +304,11 @@ void *process_stream_queue(struct thread_data * td) {
     }else{
       g_async_queue_push(td->conf->table_queue,job);
       g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));
-      if (pass>max_jobs_to_wait)
+      if (pass>max_jobs_to_wait){
+        g_message("Max jobs waited (%d) for schema: %s", max_jobs_to_wait, real_db_name->name);
         real_db_name->schema_created=TRUE;
 //      ft=-1;
+      }
     }
     
 //      continue;
