@@ -16,6 +16,7 @@
 */
 
 
+void load_exec_entries(GOptionGroup *main_group);
 void initialize_exec_command();
 void wait_exec_command_to_finish();
 //void *process_stream(void *data);

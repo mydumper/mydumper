@@ -39,17 +39,30 @@ extern GString *set_session;
 extern guint num_threads;
 extern gboolean stream;
 extern guint max_threads_for_index_creation;
-extern gboolean innodb_optimize_keys_all_tables;
 
 static GMutex *init_mutex=NULL;
 static GMutex *index_mutex=NULL;
 guint index_threads_counter = 0;
+guint sync_threads_remaining;
+static GMutex *sync_mutex;
 
+guint sync_threads_remaining2;
+static GMutex *sync_mutex2;
+GMutex *view_mutex;
 
 void initialize_job(gchar * purge_mode_str){
   initialize_restore_job(purge_mode_str);
   init_mutex = g_mutex_new();
   index_mutex = g_mutex_new();
+  sync_threads_remaining=num_threads;
+  sync_mutex = g_mutex_new();
+  g_mutex_lock(sync_mutex);
+  view_mutex=g_mutex_new();
+
+  sync_threads_remaining2=num_threads;
+  sync_mutex2 = g_mutex_new();
+  g_mutex_lock(sync_mutex2);
+
   index_threads_counter = 0;
 }
 
@@ -65,7 +78,7 @@ gboolean process_index(struct thread_data * td){
       g_mutex_unlock(index_mutex);
       execute_use_if_needs_to(td, job->use_database, "Restoring index");
       dbt->start_index_time=g_date_time_new_now_local();
-      g_message("restoring index: %s.%s", dbt->database, dbt->table);
+//      g_message("restoring index: %s.%s", dbt->database, dbt->table);
       b=process_job(td, job);
       dbt->finish_time=g_date_time_new_now_local();
 //      job->data.restore_job->dbt->index_completed=TRUE;
@@ -76,6 +89,15 @@ gboolean process_index(struct thread_data * td){
   }
   g_mutex_unlock(index_mutex);
   return b;
+}
+
+void sync_threads(guint *counter, GMutex *mutex){
+  if (g_atomic_int_dec_and_test(counter)){
+    g_mutex_unlock(mutex);
+  }else{
+    g_mutex_lock(mutex);
+    g_mutex_unlock(mutex);
+  }
 }
 
 void *loader_thread(struct thread_data *td) {
@@ -112,13 +134,15 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     cont=process_index(td);
   }
-
+  sync_threads(&sync_threads_remaining,sync_mutex);
   g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post table");
+    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
+    g_mutex_unlock(view_mutex);
   }
 
 //  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
@@ -126,14 +150,18 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
+    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
+    g_mutex_unlock(view_mutex);
   }
-
+  sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
+    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
+    g_mutex_unlock(view_mutex);
   }
 
   if (td->thrconn)

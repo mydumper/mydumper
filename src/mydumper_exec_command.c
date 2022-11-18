@@ -28,14 +28,38 @@
 #include <unistd.h>
 #include "common.h"
 #include <sys/wait.h>
+#include <errno.h>
+
+extern int errno;
 
 extern FILE * (*m_open)(const char *filename, const char *);
 extern gchar *compress_extension;
 extern GAsyncQueue *stream_queue;
 extern gboolean no_delete;
-
-GThread *exec_command_thread = NULL;
+GThread **exec_command_thread = NULL;
 extern gchar *exec_command;
+guint num_exec_threads = 4;
+
+GHashTable* pid_file_table=NULL;
+
+void exec_this_command(gchar * bin,gchar **c_arg,gchar *filename){
+  int childpid=vfork();
+  if(!childpid){
+    g_hash_table_insert(pid_file_table,g_strdup_printf("%d",getpid()),g_strdup(filename));
+    execv(bin,c_arg);
+  }else{
+    int wstatus;
+    int waitchildpid=wait(&wstatus);
+    // TODO: do we want to keep the file depending og the wstatus ??
+    if (no_delete == FALSE){
+      gchar *key=g_strdup_printf("%d",waitchildpid);
+      filename=g_hash_table_lookup(pid_file_table, key);
+      remove(filename);
+      g_hash_table_remove(pid_file_table, key);
+    }
+  }
+}
+
 
 void *process_exec_command(void *data){
   (void)data;
@@ -46,35 +70,60 @@ void *process_exec_command(void *data){
   gchar ** arguments=g_strsplit(space," ", 0);
   gchar ** volatile c_arg=NULL;
   guint i=0;
+  GList *filename_pos=NULL;
+  GList *iter;
+  c_arg=g_strdupv(arguments);
+  for(i=0; i<g_strv_length(c_arg); i++){
+    if (g_strcmp0(c_arg[i],"FILENAME") == 0){
+      int *c=g_new(int, 1);
+      *c=i;
+      filename_pos=g_list_prepend(filename_pos,c);
+    }
+  }
+
   for(;;){
     filename=(char *)g_async_queue_pop(stream_queue);
     if (strlen(filename) == 0){
       break;
     }
-    char *used_filemame=g_path_get_basename(filename);
-    g_strfreev(c_arg);
-    c_arg=g_strdupv(arguments);
-    for(i=0; i<g_strv_length(c_arg); i++){
-      if (g_strcmp0(c_arg[i],"FILENAME") == 0)
-        c_arg[i]=filename;
-    }
-    int childpid=vfork();
-    if(!childpid)
-      i=execv(bin,c_arg);
-    wait(&childpid);
-    free(used_filemame);
-    if (no_delete == FALSE)
-      remove(filename);
+//    char *used_filemame=g_path_get_basename(filename);
+    iter=filename_pos;
+    while (iter!=NULL){
+      c_arg[(*((guint *)(iter->data)))]=filename;
+      iter=iter->next;
+    } 
+    exec_this_command(bin,c_arg,filename);
   }
   return NULL;
 }
 
+
+static GOptionEntry exec_entries[] = {
+    {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
+     "", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+void load_exec_entries(GOptionGroup *main_group){
+  g_option_group_add_entries(main_group, exec_entries);
+}
+
 void initialize_exec_command(){
-  g_message("Initializing Execcommand");
   stream_queue = g_async_queue_new();
-  exec_command_thread = g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
+  exec_command_thread=g_new(GThread * , num_exec_threads) ;
+  guint i;
+  pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
+
+  for(i=0;i<num_exec_threads;i++){
+    exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
+  }
 }
 
 void wait_exec_command_to_finish(){
-  g_thread_join(exec_command_thread);
+  guint i;
+  for(i=0;i<num_exec_threads;i++){
+    g_async_queue_push(stream_queue, g_strdup(""));
+  }
+  for(i=0;i<num_exec_threads;i++){
+    g_thread_join(exec_command_thread[i]);
+  }
 }

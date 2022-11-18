@@ -13,13 +13,26 @@ INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
--- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
--- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
--- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+
+CREATE TABLE `char_hex_test` (  `id` binary(16) NOT NULL,  `val` int(11) DEFAULT NULL,  PRIMARY KEY (`id`),  KEY `val` (`val`));
+INSERT INTO char_hex_test values (unhex(replace(uuid(),'-','')), rand()*1000);
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+
+INSERT INTO `char_hex_test` VALUES("»CY	e1Ìç¥\0\'_˜M",539);
+
 CREATE TABLE t (qty INT, price INT);
 INSERT INTO t VALUES(3, 50);
 CREATE VIEW v AS SELECT qty, price, qty*price AS value FROM t;

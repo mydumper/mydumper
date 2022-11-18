@@ -19,6 +19,8 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#ifndef _src_mydumper_jobs_h
+#define _src_mydumper_jobs_h
 struct schema_job {
   char *database;
   char *table;
@@ -30,7 +32,6 @@ struct schema_job {
 struct create_tablespace_job{
   char *filename;
 };
-
 
 struct create_database_job {
   char *database;
@@ -59,20 +60,21 @@ struct table_checksum_job {
 //  char *schema_filename;
 };
 
-void initialize_dump_into_file();
+void initialize_jobs();
 void load_dump_into_file_entries(GOptionGroup *main_group);
-void create_job_to_dump_tablespaces(MYSQL *conn, struct configuration *conf);
+void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
+void create_job_to_dump_tablespaces(struct configuration *conf);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf, GAsyncQueue *queue);
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
-void create_job_to_dump_database(struct database *database, struct configuration *conf, gboolean less_locking);
+void create_job_to_dump_all_databases(struct configuration *conf);
+void create_job_to_dump_database(struct database *database, struct configuration *conf);
 void create_job_to_dump_schema(char *database, struct configuration *conf);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_table(MYSQL *conn, struct db_table *dbt,
-                    struct configuration *conf, gboolean is_innodb);
-void create_jobs_for_non_innodb_table_list_in_less_locking_mode(MYSQL *conn, GList *noninnodb_tables_list,
-                     struct configuration *conf);
+void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
+void job_creator_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
 void write_table_metadata_into_file(struct db_table * dbt);
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
@@ -82,5 +84,11 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
-
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where);
+void update_files_on_table_job(struct table_job *tj);
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
+#endif
 gchar *get_ref_table(gchar *k);
+void write_my_data_into_file(const char *filename, gchar * str);
+void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);

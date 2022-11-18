@@ -38,14 +38,20 @@ guint table_number=0;
 
 void initialize_common(){
   ref_table_mutex = g_mutex_new();
-  ref_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
 }
+
+void free_common(){
+  g_mutex_free(ref_table_mutex);
+  g_hash_table_destroy(ref_table);
+}
+
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
   if (check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
-    return table;
+    return g_strdup(table);
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
     table_number++;
@@ -166,18 +172,30 @@ void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
 // Global Var used:
 // - dump_directory
 // - compress_extension
-gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
+gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, const gchar *second_extension){
   GString *filename = g_string_sized_new(20);
   sub_part == 0 ?
-    g_string_append_printf(filename, "%s.%s.%05d.%s%s", database, table, part, extension, compress_extension):
-    g_string_append_printf(filename, "%s.%s.%05d.%05d.%s%s", database, table, part, sub_part, extension, compress_extension);
+    g_string_append_printf(filename, "%s.%s.%05u.%s%s%s%s", database, table, part, extension, compress_extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
+    g_string_append_printf(filename, "%s.%s.%05u.%05u.%s%s%s%s", database, table, part, sub_part, extension, compress_extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"");
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
 }
 
 gchar * build_data_filename(char *database, char *table, guint part, guint sub_part){
-  return build_filename(database,table,part,sub_part,"sql");
+  return build_filename(database,table,part,sub_part,"sql",NULL);
+}
+
+gchar * build_fifo_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension){
+  return build_filename(database,table,part,sub_part, extension,"fifo");
+}
+
+gchar * build_stdout_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, gchar *second_extension){
+  return build_filename(database,table,part,sub_part, extension, second_extension);
+}
+
+gchar * build_load_data_filename(char *database, char *table, guint part, guint sub_part){
+  return build_filename(database, table, part, sub_part, "dat", NULL);
 }
 
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length){
@@ -258,6 +276,32 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
 
   return //overflow ? (size_t)-1 : 
          (size_t)(to - to_start);
+}
+
+void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length){
+  gchar *from=g_new(char, length);
+  memcpy(from, to, length);
+  gchar *ffrom=from;
+  const char *end = from + length;
+  for (end = from + length; from < end; from++) {
+    if ( *from == neddle ){
+      *to = replace;
+      to++;
+    }
+    *to=*from;
+    to++;
+  }
+  g_free(ffrom);
+}
+
+void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length){
+  const char *end = from + length;
+  for (end = from + length; from < end; from++) {
+    if ( *from == neddle ){
+      *from = replace;
+      from++;
+    }
+  }
 }
 
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol){

@@ -22,6 +22,7 @@
 #include <glib/gstdio.h>
 #include "server_detect.h"
 #include "common.h"
+#include "config.h"
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -67,7 +68,7 @@ char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
 
 
 char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type,column_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
 }
 
 char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn){
@@ -77,7 +78,7 @@ char * checksum_process_structure(MYSQL *conn, char *database, char *table, int 
 }
 
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(ACTION_STATEMENT) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
 }
 
 char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn){
@@ -88,9 +89,8 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int 
   return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
 }
 
-
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(table_name,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc from information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' and TABLE_NAME='%s' group by INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
+  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
 }
 
 GKeyFile * load_config_file(gchar * config_file){
@@ -138,7 +138,9 @@ void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * grou
     }else{
       g_message("Config file loaded");
     }
+    g_strfreev(gclist);
   }
+  g_strfreev(keys);
 }
 
 void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables){
@@ -150,9 +152,11 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
-      g_hash_table_insert(set_session_hash, keys[i], value);
+      g_hash_table_insert(set_session_hash, g_strdup(keys[i]), g_strdup(value));
   }
+  g_strfreev(keys);
 }
+
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for()){
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
@@ -190,9 +194,20 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);
     }
   }
-
+  g_strfreev(groups);
 }
 
+
+void free_hash_table(GHashTable * hash){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, hash );
+  gchar *e=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
+    g_free(lkey);
+    g_free(e);
+  }
+}
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
   GHashTableIter iter;
@@ -276,6 +291,24 @@ gchar *replace_escaped_strings(gchar *c){
   return c;
 }
 
+void escape_tab_with(gchar *to){
+  gchar *from=g_strdup(to);
+  guint i=0,j=0;
+  while (from[i]!='\0'){
+    if (from[i]=='\t'){
+      to[j]='\\';
+      j++;
+      to[j]='t';
+    }else
+      to[j]=from[i];
+    i++;
+    j++;
+  }
+  to[j]=from[i];
+  g_free(from);
+//  return to;
+}
+
 void create_backup_dir(char *new_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
@@ -340,3 +373,37 @@ gchar **get_table_list(gchar *tables_list){
   }
   return tl;
 }
+
+void remove_definer_from_gchar(char * str){
+  char * from = g_strstr_len(str,50," DEFINER=");
+  if (from){
+    from++;
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      while(from != to){
+        from[0]=' ';
+        from++;
+      }
+    }
+  }
+}
+
+void remove_definer(GString * data){
+  remove_definer_from_gchar(data->str);
+}
+
+void print_version(const gchar *program){
+    GString *str=g_string_new(program);
+    g_string_append_printf(str, "%s, built against MySQL %s", VERSION, MYSQL_VERSION_STR);
+#ifdef WITH_SSL
+    g_string_append(str," with SSL support");
+#endif
+#ifdef ZWRAP_USE_ZSTD
+    g_string_append(str," with ZSTD");
+#else
+    g_string_append(str," with GZIP");
+#endif
+    g_print("%s\n", str->str);
+}
+
+

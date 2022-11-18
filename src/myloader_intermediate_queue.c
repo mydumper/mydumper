@@ -22,6 +22,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
+extern gchar *db;
 extern gchar *directory;
 extern gchar *source_db;
 extern gboolean no_data;
@@ -55,9 +56,9 @@ void intermediate_queue_new(gchar *filename){
 void intermediate_queue_end(){
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
-  g_message("Intermediate queue ending");
+  g_message("Intermediate queue: Sending END job");
   g_thread_join(stream_intermediate_thread);
-  g_message("Intermediate thread ended");
+  g_message("Intermediate thread: SHUTDOWN");
   intermediate_queue_ended=TRUE;
 }
 
@@ -82,6 +83,8 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_CREATE:
         process_database_filename(filename, "create database");
+        if (db)
+          ft=DO_NOT_ENQUEUE;
         //m_remove(directory,filename);
         break;
       case SCHEMA_TABLE:
@@ -137,11 +140,12 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
-        g_message("Load data file found: %s", filename);
         break;
       case SHUTDOWN:
         break;
       case INCOMPLETE:
+        break;
+      default:
         break;
     }
   }
@@ -164,7 +168,8 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&
-      current_ft != METADATA_TABLE )
+      current_ft != METADATA_TABLE &&
+      current_ft != DO_NOT_ENQUEUE )
     g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
@@ -204,11 +209,13 @@ void *intermediate_thread(){
   } while (iflnm != NULL);
   guint n=0;
   for (n = 0; n < num_threads; n++){
-    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
+//    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
   }
   if (innodb_optimize_keys_all_tables)
     enqueue_all_index_jobs(intermediate_conf);
   g_message("Intermediate thread ended");
+
+  g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(INTERMEDIATE_ENDED));
   return NULL;
 }
 

@@ -57,6 +57,8 @@ struct database {
   gboolean schema_created;
 };
 
+enum schema_status { NOT_CREATED, CREATING, CREATED };
+
 struct db_table {
   char *database;
   char *real_database;
@@ -71,15 +73,34 @@ struct db_table {
   GString *indexes;
   GString *constraints;
   guint count;
-  gboolean schema_created;
+  enum schema_status schema_state;
   gboolean index_enqueued;
   GDateTime * start_data_time;
   GDateTime * finish_data_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
   gboolean completed;
+  gint remaining_jobs;
 };
 
-enum file_type { INIT, SCHEMA_TABLESPACE, SCHEMA_CREATE, SCHEMA_TABLE, DATA, SCHEMA_VIEW, SCHEMA_TRIGGER, SCHEMA_POST, CHECKSUM, METADATA_TABLE, METADATA_GLOBAL, RESUME, IGNORED, LOAD_DATA, SHUTDOWN, INCOMPLETE };
+enum file_type { 
+  INIT, 
+  SCHEMA_TABLESPACE, 
+  SCHEMA_CREATE, 
+  SCHEMA_TABLE, 
+  DATA, 
+  SCHEMA_VIEW, 
+  SCHEMA_TRIGGER, 
+  SCHEMA_POST, 
+  CHECKSUM, 
+  METADATA_TABLE,
+  METADATA_GLOBAL, 
+  RESUME, 
+  IGNORED, 
+  LOAD_DATA, 
+  SHUTDOWN, 
+  INCOMPLETE,
+  DO_NOT_ENQUEUE,
+  INTERMEDIATE_ENDED };
 
 #endif

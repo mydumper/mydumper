@@ -110,6 +110,7 @@ void detect_server_version(MYSQL * conn) {
   major=strtol(sver[0], NULL, 10);
   secondary=strtol(sver[1], NULL, 10);
   revision=strtol(sver[2], NULL, 10);
+  g_strfreev(sver);
   mysql_free_result(res);
 }
 

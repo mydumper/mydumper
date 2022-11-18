@@ -158,7 +158,7 @@ static GOptionEntry entries[] = {
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation, 
-      "Table recreation will be executed in serie, one thread at a time",NULL},
+      "Table recreation will be executed in series, one thread at a time",NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
@@ -265,8 +265,7 @@ int main(int argc, char *argv[]) {
   ask_password();
 
   if (program_version) {
-    g_print("myloader %s, built against MySQL %s\n", VERSION,
-            MYSQL_VERSION_STR);
+    print_version("myloader");
     exit(EXIT_SUCCESS);
   }
 
@@ -364,6 +363,7 @@ int main(int argc, char *argv[]) {
 
   set_session = g_string_new(NULL);
   detected_server = detect_server(conn);
+  detect_server_version(conn);
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
   if (defaults_file)
     load_session_hash_from_key_file(key_file,set_session_hash,"myloader_variables");
@@ -378,8 +378,12 @@ int main(int argc, char *argv[]) {
 //  if (!enable_binlog)
 //    mysql_query(conn, "SET SQL_LOG_BIN=0");
   if (disable_redo_log){
-    g_message("Disabling redologs");
-    mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
+    if ((get_major() == 8) && (get_secondary() > 21)){
+      g_message("Disabling redologs");
+      mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
+    }else{
+      g_error("Disabling redologs is not supported for version %d.%d", get_major(), get_secondary());
+    }
   }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   // To here.
@@ -421,7 +425,7 @@ int main(int argc, char *argv[]) {
 
   // Create database before the thread, to allow connection
   if (db){
-    struct database * d=db_hash_insert(g_strdup(db), g_strdup(db));
+    struct database * d=get_db_hash(g_strdup(db), g_strdup(db));
     create_database(&t, db);
     d->schema_created=TRUE;
   }

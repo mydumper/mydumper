@@ -26,6 +26,7 @@
 
 #include "myloader_common.h"
 
+extern gboolean intermediate_queue_ended;
 extern gboolean serial_tbl_creation;
 extern gboolean overwrite_tables;
 extern gchar *db;
@@ -106,7 +107,8 @@ void free_restore_job(struct restore_job * rj){
 
 void free_schema_restore_job(struct schema_restore_job *srj){
 //  g_free(srj->database);
-  if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
+//  if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
+//  srj->statement=NULL;
   g_free(srj);
 };
 
@@ -153,11 +155,12 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   }
   if (shutdown_triggered){
 //    g_message("file enqueued to allow resume: %s", rj->filename);
-    g_async_queue_push(file_list_to_do,rj->filename);
+    g_async_queue_push(file_list_to_do,g_strdup(rj->filename));
     goto cleanup;
   }
   struct db_table *dbt=rj->dbt;
   guint query_counter=0;
+  guint i=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
       g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
@@ -166,6 +169,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
+      dbt->schema_state=CREATING;
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
       g_message("Thread %d restoring table `%s`.`%s` from %s", td->thread_id,
                 dbt->real_database, dbt->real_table, rj->filename);
@@ -180,8 +184,13 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
       }
-      dbt->schema_created=TRUE;
+      dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
+      g_mutex_lock(dbt->mutex);
+      for(i=0; i<g_list_length(dbt->restore_job_list); i++){
+        g_async_queue_push(td->conf->stream_queue, GINT_TO_POINTER(DATA)); 
+      }
+      g_mutex_unlock(dbt->mutex);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
@@ -190,16 +199,16 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu.", td->thread_id,
                 dbt->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
-      if (stream && !dbt->schema_created){
+      if (stream && dbt->schema_state!=CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
-        int i=0;
-        while (!dbt->schema_created && i<10000){
+        i=0;
+        while (dbt->schema_state!=CREATED && i<10000){
           usleep(1000);
           i++;
           if (i % 1000 == 0)
             g_message("Waiting table to be created %s", rj->filename);
         }
-        if (!dbt->schema_created){
+        if (dbt->schema_state!=CREATED){
           g_critical("Table has not been created in more than 10 seconds");
           exit(EXIT_FAILURE);
         }
@@ -207,6 +216,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if (restore_data_from_file(td, dbt->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
+      g_atomic_int_dec_and_test(&(dbt->remaining_jobs));
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
@@ -270,8 +280,9 @@ gboolean sig_triggered(void * user_data, int signal) {
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
 
   void *outfile = g_fopen(p, "w");
-  filename=g_async_queue_pop(file_list_to_do);
+  filename = g_async_queue_pop(file_list_to_do);
   while(g_strcmp0(filename,"NO_MORE_FILES")!=0){
+    g_debug("Adding %s to resume file", filename);
     fprintf(outfile, "%s\n", filename);
     filename=g_async_queue_pop(file_list_to_do);
   }

@@ -21,19 +21,25 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_DETERMINE_CHUNK_TYPE,
+  JOB_TABLE,
   JOB_CHECKSUM,
   JOB_SCHEMA,
   JOB_VIEW,
   JOB_TRIGGERS,
   JOB_SCHEMA_POST,
   JOB_BINLOG,
-  JOB_LOCK_DUMP_NON_INNODB,
   JOB_CREATE_DATABASE,
   JOB_CREATE_TABLESPACE,
-  JOB_DUMP_DATABASE
+  JOB_DUMP_DATABASE,
+  JOB_DUMP_ALL_DATABASES,
+  JOB_DUMP_TABLE_LIST,
+  JOB_WRITE_MASTER_STATUS
 };
 
 enum chunk_type{
+  UNDEFINED,
+  DEFINING,
   NONE,
   INTEGER,
   CHAR,
@@ -42,13 +48,16 @@ enum chunk_type{
 
 struct configuration {
   char use_any_index;
-  GAsyncQueue *queue;
-  GAsyncQueue *queue_less_locking;
+  GAsyncQueue *initial_queue;
+  GAsyncQueue *schema_queue;
+  GAsyncQueue *non_innodb_queue;
+  GAsyncQueue *innodb_queue;
+  GAsyncQueue *post_data_queue;
   GAsyncQueue *ready;
-  GAsyncQueue *ready_less_locking;
-//  GAsyncQueue *ready_database_dump;
+  GAsyncQueue *ready_non_innodb_queue;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
+  GString *lock_tables_statement;
   GMutex *mutex;
   int done;
 };
@@ -57,8 +66,6 @@ struct thread_data {
   struct configuration *conf;
   guint thread_id;
   MYSQL *thrconn;
-  GAsyncQueue *queue;
-  GAsyncQueue *ready;
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
 };
@@ -66,26 +73,63 @@ struct thread_data {
 struct job {
   enum job_type type;
   void *job_data;
-  struct configuration *conf;
+//  struct configuration *conf;
 };
 
+union chunk_step;
 
 struct integer_step {
   gchar *prefix;
   gchar *field;
   guint64 nmin;
+  guint64 cursor;
+  guint64 step;
   guint64 nmax;
+  guint number;
+  guint deep;
+  GMutex *mutex;
+  gboolean assigned;
+  gboolean check_max;
+  gboolean check_min;
 };
 
 struct char_step {
   gchar *prefix;
   gchar *field;
+
   gchar *cmin;
+  guint cmin_len;
+  guint cmin_clen;
+  gchar *cmin_escaped;
+
+  gchar *cursor;
+  guint cursor_len;
+  guint cursor_clen;
+  gchar *cursor_escaped;
+
   gchar *cmax;
+  guint cmax_len;
+  guint cmax_clen;
+  gchar *cmax_escaped;
+
+  guint number;
+  guint deep;
+  GList *list;
+  GMutex *mutex;
+  gboolean assigned;
+  guint64 step;
+  union chunk_step *previous;
+
+  guint status;
 };
 
 struct partition_step{
-  gchar *partition;
+  GList *list;
+  gchar *current_partition;
+  guint number;
+  guint deep;
+  GMutex *mutex;
+  gboolean assigned;
 };
 
 union chunk_step {
@@ -102,11 +146,19 @@ struct table_job {
 //  char *table;
   char *partition;
   guint nchunk;
+  guint sub_part;
 //  char *filename;
   char *where;
   union chunk_step *chunk_step;  
   char *order_by;
   struct db_table *dbt;
+  gchar *sql_filename;
+  FILE *sql_file;
+  gchar *dat_filename;
+  FILE *dat_file;
+  float filesize;
+  guint st_in_file;
+  int char_chunk_part;
 };
 
 struct tables_job {
@@ -115,6 +167,10 @@ struct tables_job {
 
 struct dump_database_job {
   struct database *database;
+};
+
+struct dump_table_list_job{
+  gchar **table_list;
 };
 
 struct restore_job {
@@ -134,8 +190,12 @@ struct db_table {
   char *table;
   char *table_filename;
   char *escaped_table;
+  char *min;
+  char *max;
+  char *field;
   GString *select_fields;
   gboolean complete_insert;
+  gboolean is_innodb;
   char *character_set;
   guint64 datalength;
   guint64 rows;
@@ -145,6 +205,8 @@ struct db_table {
   gchar *limit;
   guint num_threads;
   enum chunk_type chunk_type;
+  GList *chunks;
+  GMutex *chunks_mutex;
   gchar *primary_key;
 };
 
@@ -160,7 +222,7 @@ void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
-gboolean write_data(FILE *, GString *);
+//gboolean write_data(FILE *, GString *);
 
 
 

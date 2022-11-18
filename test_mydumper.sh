@@ -12,6 +12,18 @@ mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
 > $mydumper_log
 > $myloader_log
+for i in $*
+do
+  if [ "$($mydumper --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+  if [ "$($myloader --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+done
+
 echo "[mydumper]" > $empty
 echo "[myloader]" >> $empty
 test_case_dir (){
@@ -35,11 +47,11 @@ test_case_dir (){
     if (( $error > 0 ))
     then
       echo "Error running: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $mydumper_log
+      cat $tmp_mydumper_log
       exit $error
     fi
   fi
-  if (( $PARTIAL != 1 ))
+  if [ "$PARTIAL" != "1" ]
   then
   echo "DROP DATABASE IF EXISTS myd_test;
 DROP DATABASE IF EXISTS myd_test_no_fk;
@@ -56,7 +68,8 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     if (( $error > 0 ))
     then
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters}"
-      cat $myloader_log
+      echo "Error running myloader with mydumper: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      cat $tmp_myloader_log
       exit $error
     fi
   fi
@@ -78,7 +91,7 @@ test_case_stream (){
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters} | ${myloader_parameters}"
-    $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    eval $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
@@ -86,8 +99,8 @@ test_case_stream (){
     then
       echo "Error running: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
-      cat $mydumper_log
-      cat $myloader_log
+      cat $tmp_mydumper_log
+      cat $tmp_myloader_log
       exit $error
     fi
   fi
@@ -95,6 +108,14 @@ test_case_stream (){
 
 
 full_test(){
+
+
+  if [ ! -f "sakila-db.tar.gz" ]; then
+    wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
+  fi
+  tar xzf sakila-db.tar.gz
+  mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-schema.sql
+  mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-data.sql
 
   echo "Import testing database"
   DATABASE=myd_test
@@ -109,14 +130,14 @@ full_test(){
 
 
   # single file compressed -- overriting database
-  test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
+#  test_case_dir -c ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
   PARTIAL=0
   for test in test_case_dir test_case_stream
   do 
-    echo "Execuing tests: $test"
+    echo "Executing test: $test"
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
-    $test -r 10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -r 10:100:10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # chunking the file to 10MB -- overriting database
     $test -F 10 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # chunking the file to 100MB -- overriting database
@@ -156,6 +177,6 @@ full_test(){
 }
 
 full_test
-cat $mydumper_log
-cat $myloader_log
+#cat $mydumper_log
+#cat $myloader_log
 

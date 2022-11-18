@@ -69,17 +69,18 @@ struct database * new_database(gchar *database){
   return d;
 }
 
-struct database * db_hash_insert(gchar *k, gchar *v){
+struct database * get_db_hash(gchar *k, gchar *v){
   g_mutex_lock(db_hash_mutex);
   struct database * d=g_hash_table_lookup(db_hash, k);
   if (d==NULL){
-    d=new_database(v);
+    d=new_database(g_strdup(v));
     g_hash_table_insert(db_hash, k, d);
   }
   g_mutex_unlock(db_hash_mutex);
   return d;
 }
 
+/*
 struct database * db_hash_lookup(gchar *database){
   struct database *r=NULL;
   g_mutex_lock(db_hash_mutex);
@@ -87,7 +88,7 @@ struct database * db_hash_lookup(gchar *database){
   g_mutex_unlock(db_hash_mutex);
   return r;
 }
-
+*/
 gboolean eval_table( char *db_name, char * table_name){
   if ( tables ){
     if ( ! is_table_in_list(table_name, tables) ){
@@ -284,9 +285,13 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   return flag;
 }
 
+gchar *build_dbt_key(gchar *a, gchar *b){
+  return g_strdup_printf("`%s`_`%s`", a, b);
+}
+
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
-  gchar *a_key=g_strdup_printf("%s_%s",((struct db_table *)a)->database,((struct db_table *)a)->table);
-  gchar *b_key=g_strdup_printf("%s_%s",((struct db_table *)b)->database,((struct db_table *)b)->table);
+  gchar *a_key=build_dbt_key(((struct db_table *)a)->database,((struct db_table *)a)->table);
+  gchar *b_key=build_dbt_key(((struct db_table *)b)->database,((struct db_table *)b)->table);
   struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
   struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
   g_free(a_key);
@@ -298,11 +303,10 @@ gint compare_dbt_short(gconstpointer a, gconstpointer b){
   return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
 }
 
-void refresh_table_list(struct configuration *conf){
+void refresh_table_list_without_table_hash_lock(struct configuration *conf){
   GList * table_list=NULL;
   GHashTableIter iter;
   gchar * lkey;
-  g_mutex_lock(conf->table_hash_mutex);
   g_mutex_lock(conf->table_list_mutex);
   g_hash_table_iter_init ( &iter, conf->table_hash );
   struct db_table *dbt=NULL;
@@ -312,14 +316,19 @@ void refresh_table_list(struct configuration *conf){
   }
   g_list_free(conf->table_list);
   conf->table_list=table_list;
-  g_mutex_unlock(conf->table_hash_mutex);
   g_mutex_unlock(conf->table_list_mutex);
+}
+
+void refresh_table_list(struct configuration *conf){
+  g_mutex_lock(conf->table_hash_mutex);
+  refresh_table_list_without_table_hash_lock(conf);
+  g_mutex_unlock(conf->table_hash_mutex);
 }
 
 void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
   gchar *database = NULL, *table = NULL;
   get_database_table_from_file(filename,suffix,&database,&table);
-  struct database *real_database=db_hash_lookup(database);
+  struct database *real_database=get_db_hash(database,database);
   gchar *real_table=NULL;
   if (table != NULL ){
     real_table=g_hash_table_lookup(tbl_hash,table);
@@ -352,6 +361,8 @@ void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, 
 
   char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
   if (cs != NULL) {
+    if (checksum[strlen(checksum)-1]=='\n')
+      checksum[strlen(checksum)-1]='\0';
     if(g_strcasecmp(checksum, row) != 0) {
       if (real_table != NULL)
         g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, real_table, row, checksum, filename);
@@ -422,18 +433,3 @@ void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
     *is_compressed = TRUE;
   }
 }
-
-void remove_definer(GString * data){
-  char * from=g_strstr_len(data->str,50," DEFINER=");
-  if (from){
-    from++;
-    char * to=g_strstr_len(from,110," ");
-    if (to){
-      while(from != to){
-        from[0]=' ';
-        from++;
-      }
-    }
-  }
-}
-

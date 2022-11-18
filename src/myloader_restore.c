@@ -50,22 +50,25 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
     if (is_schema)
-      g_critical("Error restoring: %s %s", data->str, mysql_error(td->thrconn));
+      g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
+    else
+      g_critical("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
     errors++;
     return 1;
   }
   *query_counter=*query_counter+1;
   if (is_schema==FALSE) {
-	if (commit_count > 1) {
-if (*query_counter == commit_count) {
-    *query_counter= 0;
-    if (mysql_query(td->thrconn, "COMMIT")) {
-      errors++;
-      return 2;
+    if (commit_count > 1) {
+      if (*query_counter == commit_count) {
+        *query_counter= 0;
+        if (mysql_query(td->thrconn, "COMMIT")) {
+          errors++;
+          return 2;
+        }
+        mysql_query(td->thrconn, "START TRANSACTION");
+      }
     }
-    mysql_query(td->thrconn, "START TRANSACTION");
   }
-}}
   g_string_set_size(data, 0);
   return 0;
 }
@@ -151,7 +154,7 @@ void *send_file_to_fifo(gchar *compressed_filename){
       }
     l=write(fileno(fd), buffer, strlen(buffer));
     if (l!=strlen(buffer))
-      g_critical("Incomplete data transfered to FIFO: %s", fifo_name);
+      g_critical("Incomplete data transferred to FIFO: %s", fifo_name);
   } while (eof == FALSE);
   fclose(fd);
   return NULL;

@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <glib/gstdio.h>
 #include "myloader_common.h"
+#include <string.h>
 
 extern gchar *directory;
 extern guint num_threads;
@@ -41,8 +42,11 @@ void *process_directory(struct configuration *conf){
       read_data(file, FALSE, data, &eof, &line);
       split=g_strsplit(data->str,"\n",0);
       for (i=0; i<g_strv_length(split);i++){
-        if (strlen(split[i])>2)
-          intermediate_queue_new(g_strdup(split[i]));
+        if (strlen(split[i])>2){
+          filename=split[i];
+          g_debug("Resuming file: %s", filename);
+          intermediate_queue_new(g_strdup(filename));
+        }
       }
       g_string_set_size(data, 0);
     } 
