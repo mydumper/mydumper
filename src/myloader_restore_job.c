@@ -107,7 +107,8 @@ void free_restore_job(struct restore_job * rj){
 
 void free_schema_restore_job(struct schema_restore_job *srj){
 //  g_free(srj->database);
-  if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
+//  if (srj->statement!=NULL) g_string_free(srj->statement, TRUE);
+//  srj->statement=NULL;
   g_free(srj);
 };
 
