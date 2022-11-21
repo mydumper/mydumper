@@ -212,17 +212,27 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
     if (i > 0) {
       g_string_append_c(statement, ',');
     }
-    g_string_append_printf(statement, "`%s`", fields[i].name);
+//    g_string_append_printf(statement, "`%s`", fields[i].name);
+    g_string_append_c(statement,'`');
+    g_string_append(statement, fields[i].name);    
+    g_string_append_c(statement,'`');
   }
 }
 
-void append_insert (gboolean condition, GString *statement, char *table, MYSQL_FIELD *fields, guint num_fields){
-  if (condition) {
-    g_string_printf(statement, "%s INTO `%s` (", insert_statement, table);
-    append_columns(statement,fields,num_fields);
-    g_string_append(statement, ") VALUES");
+void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
+  dbt->insert_statement=g_string_new(insert_statement);
+  g_string_append(dbt->insert_statement, " INTO `");
+  g_string_append(dbt->insert_statement, dbt->table);
+
+  if (dbt->complete_insert) {
+//    g_string_printf(statement, "%s INTO `%s` (", insert_statement, table);
+    g_string_append(dbt->insert_statement, "` (");
+    append_columns(dbt->insert_statement,fields,num_fields);
+
+    g_string_append(dbt->insert_statement, ") VALUES");
   } else {
-    g_string_printf(statement, "%s INTO `%s` VALUES", insert_statement, table);
+//    g_string_printf(statement, "%s INTO `%s` VALUES", insert_statement, table);
+    g_string_append(dbt->insert_statement, "` VALUES");
   }
 }
 
@@ -387,7 +397,8 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
         g_string_append(statement_row, fields_terminated_by);
       }
     }
-    g_string_append_printf(statement_row,"%s", lines_terminated_by);
+//    g_string_append_printf(statement_row,"%s", lines_terminated_by);
+    g_string_append(statement_row, lines_terminated_by);
 }
 
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
@@ -489,6 +500,12 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
 
   update_files_on_table_job(tj);
 
+  if (dbt->insert_statement==NULL){
+    g_mutex_lock(dbt->chunks_mutex);
+    if (dbt->insert_statement==NULL)
+      build_insert_statement(dbt, fields, num_fields);
+    g_mutex_unlock(dbt->chunks_mutex);
+  }
   while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     num_rows++;
@@ -504,7 +521,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
           return num_rows;
         }
       }
-      append_insert (dbt->complete_insert, statement, dbt->table, fields, num_fields);
+      g_string_append(statement, dbt->insert_statement->str);
       num_rows_st = 0;
     }
 
@@ -563,7 +580,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
   if (statement_row->len > 0) {
     /* this last row has not been written out */
     if (!statement->len)
-      append_insert (dbt->complete_insert, statement, dbt->table, fields, num_fields);
+        g_string_append(statement, dbt->insert_statement->str);
     g_string_append(statement, statement_row->str);
   }
 
