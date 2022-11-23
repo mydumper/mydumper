@@ -11,6 +11,10 @@ find_package(GLIB2)
 find_package(PCRE)
 find_package(OpenSSL)
 
+if (NOT MYSQL_FOUND)
+    MESSAGE(FATAL_ERROR "Could not find MySQL or MariaDB client libraries")
+endif ()
+
 get_cmake_property(_variableNames VARIABLES)
 list (SORT _variableNames)
 foreach (_variableName ${_variableNames})
