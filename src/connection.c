@@ -74,6 +74,21 @@ void configure_connection(MYSQL *conn, const char *name) {
     mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
 
 #ifdef WITH_SSL
+#ifdef LIBMARIADB
+  my_bool enable= 1;
+  if (ssl_mode) {
+      if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
+        mysql_options(conn, MYSQL_OPT_SSL_ENFORCE, &enable);
+      }
+      else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
+        mysql_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &enable);
+      }
+      else {
+        g_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
+        exit(EXIT_FAILURE);
+      }
+  }
+#else
   unsigned int i;
   if (ssl) {
     i = SSL_MODE_REQUIRED;
@@ -102,6 +117,7 @@ void configure_connection(MYSQL *conn, const char *name) {
       mysql_options(conn, MYSQL_OPT_SSL_MODE, &i);
     }
   }
+#endif // LIBMARIADB
   if (key) {
     mysql_options(conn, MYSQL_OPT_SSL_KEY, key);
   }
