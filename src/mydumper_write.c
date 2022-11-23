@@ -14,7 +14,7 @@
 
         Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
                     Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
-                    Andrew Hutchings, SkySQL (andrew at skysql dot com)
+                    Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */

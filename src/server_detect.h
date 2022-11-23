@@ -12,7 +12,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 #ifndef _server_detect_h
 #define _server_detect_h
