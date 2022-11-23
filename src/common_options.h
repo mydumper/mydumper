@@ -60,7 +60,11 @@ GOptionEntry common_entries[] = {
 #ifdef WITH_SSL
     {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
     {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
+#ifdef LIBMARIADB
+     "Desired security state of the connection to the server: REQUIRED, VERIFY_IDENTITY", NULL},
+#else
      "Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY", NULL},
+#endif
     {"key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file",
      NULL},
     {"cert", 0, 0, G_OPTION_ARG_STRING, &cert,
