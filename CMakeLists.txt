@@ -89,8 +89,8 @@ INSTALL(TARGETS mydumper myloader
 )
 
 add_custom_target(dist
-  COMMAND bzr export --root=${ARCHIVE_NAME}
-    ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz
+  COMMAND git archive --format=tar.gz --prefix=${ARCHIVE_NAME}/
+  -o ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
