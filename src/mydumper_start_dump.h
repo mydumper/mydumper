@@ -195,6 +195,7 @@ struct db_table {
   char *field;
   GString *select_fields;
   gboolean complete_insert;
+  GString *insert_statement;
   gboolean is_innodb;
   char *character_set;
   guint64 datalength;
