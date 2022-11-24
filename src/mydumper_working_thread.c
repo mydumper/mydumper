@@ -1342,6 +1342,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->max=NULL;
   dbt->chunk_type = UNDEFINED;
   dbt->chunks=NULL;
+  dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
   dbt->chunks_queue=g_async_queue_new();
   dbt->field=get_field_for_dbt(conn,dbt,conf);
