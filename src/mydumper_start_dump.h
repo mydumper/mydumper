@@ -207,6 +207,7 @@ struct db_table {
   enum chunk_type chunk_type;
   GList *chunks;
   GMutex *chunks_mutex;
+  GAsyncQueue *chunks_queue;
   gchar *primary_key;
 };
 
