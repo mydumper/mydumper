@@ -811,7 +811,6 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     are_there_jobs_defining=get_next_dbt_and_chunk(&dbt,&cs,table_list);
 
     if ((cs==NULL) && (dbt==NULL)){
-      
       if (are_there_jobs_defining){
         g_message("chunk_builder_thread: Are jobs defining... show we wait and try again later?");
         g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
