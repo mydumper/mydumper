@@ -185,11 +185,8 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
   if (dbt->chunks!=NULL){
 //    g_message("IN WHILE");
 //    cs=l->data;
-      cs = (union chunk_step *)g_async_queue_pop(dbt->chunks_queue);      
-
+    cs = (union chunk_step *)g_async_queue_pop(dbt->chunks_queue);      
     g_mutex_lock(cs->integer_step.mutex);
-
-
     if (cs->integer_step.assigned==FALSE){
 //      g_message("Not assigned");
       cs->integer_step.assigned=TRUE;
