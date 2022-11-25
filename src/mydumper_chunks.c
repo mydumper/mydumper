@@ -182,29 +182,40 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
-  while (l!=NULL){
+  if (dbt->chunks!=NULL){
 //    g_message("IN WHILE");
-    cs=l->data;
+//    cs=l->data;
+    cs = (union chunk_step *)g_async_queue_pop(dbt->chunks_queue);      
     g_mutex_lock(cs->integer_step.mutex);
     if (cs->integer_step.assigned==FALSE){
 //      g_message("Not assigned");
       cs->integer_step.assigned=TRUE;
+      g_async_queue_push(dbt->chunks_queue, cs);
       g_mutex_unlock(cs->integer_step.mutex);
       g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
 
-    if (cs->integer_step.nmin + (5 * cs->integer_step.step) < cs->integer_step.nmax){
-      guint64 new_minmax = cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2;
+    if (cs->integer_step.cursor < cs->integer_step.nmax){
+      
+      guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
+                           cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2 :
+                           cs->integer_step.cursor;
       union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
       cs->integer_step.deep++;
       cs->integer_step.check_max=TRUE;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
       cs->integer_step.nmax = new_minmax;
       new_cs->integer_step.assigned=TRUE;
+ 
+      g_async_queue_push(dbt->chunks_queue, cs);
+      g_async_queue_push(dbt->chunks_queue, new_cs);
+
       g_mutex_unlock(cs->integer_step.mutex);
       g_mutex_unlock(dbt->chunks_mutex);
       return new_cs;
+    }else{
+      g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
     }
     g_mutex_unlock(cs->integer_step.mutex);
     l=l->next;
@@ -564,6 +575,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   }
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 nmin,nmax;
+  union chunk_step *cs = NULL;
   switch (fields[0].type) {
   case MYSQL_TYPE_LONG:
   case MYSQL_TYPE_LONGLONG:
@@ -572,7 +584,9 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     nmin = strtoul(row[0], NULL, 10);
     nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
-      dbt->chunks=g_list_prepend(dbt->chunks,new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, 0, FALSE, FALSE));
+      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, 0, FALSE, FALSE);
+      dbt->chunks=g_list_prepend(dbt->chunks,cs);
+      g_async_queue_push(dbt->chunks_queue, cs);
       dbt->chunk_type=INTEGER;
     }else{
       dbt->chunk_type=NONE;
@@ -582,7 +596,9 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     break;
   case MYSQL_TYPE_STRING:
   case MYSQL_TYPE_VAR_STRING:
-    dbt->chunks=g_list_prepend(dbt->chunks,new_char_step(conn, dbt->field, 0, 0, row, lengths));
+    cs=new_char_step(conn, dbt->field, 0, 0, row, lengths);
+    dbt->chunks=g_list_prepend(dbt->chunks,cs);
+    g_async_queue_push(dbt->chunks_queue, cs);
     dbt->chunk_type=CHAR;
     if (minmax) mysql_free_result(minmax);
     return;
@@ -796,11 +812,15 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
 
     if ((cs==NULL) && (dbt==NULL)){
       if (are_there_jobs_defining){
+        g_message("chunk_builder_thread: Are jobs defining... show we wait and try again later?");
+        g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
+        usleep(1);
         continue;
       }
-//      g_message("There re not job defined");
+      g_message("chunk_builder_thread: There were not job defined");
       break;
     }
+    g_message("chunk_builder_thread: Job will be enqueued");
     switch (dbt->chunk_type) {
     case INTEGER:
       create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);

@@ -21,7 +21,7 @@
 #include "myloader_common.h"
 #include "myloader_restore.h"
 #include "myloader_jobs_manager.h"
-extern gboolean intermediate_queue_ended;
+gboolean intermediate_queue_ended_local=FALSE;
 extern gboolean innodb_optimize_keys_per_table;
 extern guint num_threads;
 extern gboolean resume;
@@ -200,7 +200,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
         g_mutex_unlock(dbt->mutex);
         break;
       }
-      if (intermediate_queue_ended){
+      if (intermediate_queue_ended_local){
         dbt->completed=TRUE;
         create_index_job(td->conf, dbt, td->thread_id);
       }
@@ -227,7 +227,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
     if (dbt->schema_state==CREATED && !dbt->index_enqueued){
-      if (intermediate_queue_ended && (g_atomic_int_get(&(dbt->remaining_jobs)) == 0)){
+      if (intermediate_queue_ended_local && (g_atomic_int_get(&(dbt->remaining_jobs)) == 0)){
         create_index_job(conf, dbt, 0);
 /*
         if (dbt->indexes != NULL){
@@ -348,6 +348,7 @@ void *process_stream_queue(struct thread_data * td) {
           pass++;
         }
         max_jobs_to_wait=g_async_queue_length(td->conf->stream_queue)+1;
+        intermediate_queue_ended_local=TRUE;
       default:
         NULL;
 //        g_message("What do we do with: %d", ft);
@@ -357,7 +358,7 @@ void *process_stream_queue(struct thread_data * td) {
     if (innodb_optimize_keys_per_table){
       process_index(td);
     }
-    if (intermediate_queue_ended) {
+    if (intermediate_queue_ended_local) {
       if ( are_available_jobs(td) ){
         if (!are_we_waiting_for_schema_jobs_to_complete(td)){
 //          g_warning("Schema files missed, we continue...");

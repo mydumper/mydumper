@@ -1344,6 +1344,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->chunks=NULL;
   dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
+  dbt->chunks_queue=g_async_queue_new();
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
 //  set_chunk_strategy_for_dbt(conn, dbt);
