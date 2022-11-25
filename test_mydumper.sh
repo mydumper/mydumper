@@ -165,11 +165,11 @@ full_test(){
   do
     echo "Execuing tests: $test"
     # exporting specific database -- overriting database
-    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir}
+    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # exporting specific table -- overriting database
     $test -B myd_test -T myd_test.mydumper_aipk_uuid ${general_options}	-- -h 127.0.0.1 -o -d ${myloader_stor_dir}
     # exporting specific database -- overriting database
-    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -B myd_test_2 -d ${myloader_stor_dir}
+    $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -B myd_test_2 -d ${myloader_stor_dir} --serialized-table-creation
     myloader_stor_dir=$stream_stor_dir
   done
 
