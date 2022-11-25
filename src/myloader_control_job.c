@@ -171,9 +171,11 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
       continue;
     }
 //    g_debug("DB: %s Table: %s len: %d", dbt->real_database,dbt->real_table,g_list_length(dbt->restore_job_list));
-    if (!test_condition || (dbt->schema_state!=CREATED && dbt->current_threads < dbt->max_threads)){
+    g_mutex_lock(dbt->mutex);
+    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < dbt->max_threads)){
       // I could do some job in here, do we have some for me?
-      g_mutex_lock(dbt->mutex);
+//      g_message("DB: %s Table: %s max_threads: %d current: %d", dbt->real_database,dbt->real_table, dbt->max_threads,dbt->current_threads);
+//      g_mutex_lock(dbt->mutex);
       if (!resume && dbt->schema_state!=CREATED ){
         if (dont_wait_for_schema_create && dbt->schema_state!=CREATING){
 //g_message("dont_wait_for_schema_create");
@@ -197,6 +199,7 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
         next = dbt->restore_job_list->next;
         g_list_free_1(dbt->restore_job_list);
         dbt->restore_job_list = next;
+        dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
         break;
       }
@@ -205,8 +208,9 @@ struct restore_job * give_me_next_data_job(struct thread_data * td, gboolean tes
         create_index_job(td->conf, dbt, td->thread_id);
       }
 
-      g_mutex_unlock(dbt->mutex);
+//      g_mutex_unlock(dbt->mutex);
     }
+    g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
   g_mutex_unlock(td->conf->table_list_mutex);
@@ -322,16 +326,18 @@ void *process_stream_queue(struct thread_data * td) {
         job=new_job(JOB_RESTORE,rj,rj->dbt->database);
         execute_use_if_needs_to(td, job->use_database, "Restoring tables (1)");
         cont=process_job(td, job);
+        rj->dbt->current_threads--;
 //        continue;
       }else{
-  //      g_message("Thread %d: No data job founded(1)", td->thread_id);
-      }
-      rj=give_any_data_job(td);
-      if (rj != NULL){
-        job=new_job(JOB_RESTORE,rj,rj->dbt->database);
-        execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
-        cont=process_job(td, job);
+        rj=give_any_data_job(td);
+        if (rj != NULL){
+          g_debug("Thread %d: Giving any data job", td->thread_id);
+          job=new_job(JOB_RESTORE,rj,rj->dbt->database);
+          execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
+          cont=process_job(td, job);
+          rj->dbt->current_threads--;
 //        continue;
+        }
       }
       // NO DATA JOB available, no worries, there will be another one shortly...
       break;

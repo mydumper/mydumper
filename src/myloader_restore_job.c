@@ -183,6 +183,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
+        g_message("Thread %d: Creating table `%s`.`%s` from content in %s COMPLETED", td->thread_id, dbt->real_database, dbt->real_table, rj->filename);
       }
       dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
@@ -196,8 +197,8 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu.", td->thread_id,
-                dbt->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files);
+      g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Using %d of %d threads.", td->thread_id,
+                dbt->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, dbt->current_threads, dbt->max_threads);
       g_mutex_unlock(progress_mutex);
       if (stream && dbt->schema_state!=CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
