@@ -12,7 +12,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, SkySQL (andrew at skysql dot com)
+    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 #ifndef _common_options_h
 #define _common_options_h
@@ -60,7 +60,11 @@ GOptionEntry common_entries[] = {
 #ifdef WITH_SSL
     {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
     {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
+#ifdef LIBMARIADB
+     "Desired security state of the connection to the server: REQUIRED, VERIFY_IDENTITY", NULL},
+#else
      "Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY", NULL},
+#endif
     {"key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file",
      NULL},
     {"cert", 0, 0, G_OPTION_ARG_STRING, &cert,

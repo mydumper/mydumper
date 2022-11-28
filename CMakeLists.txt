@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.6)
+cmake_minimum_required(VERSION 2.8.12)
 project(mydumper)
 set(VERSION 0.13.0-6)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
@@ -9,22 +9,10 @@ find_package(MySQL)
 find_package(ZLIB)
 find_package(GLIB2)
 find_package(PCRE)
-find_package(OpenSSL)
 
-get_cmake_property(_variableNames VARIABLES)
-list (SORT _variableNames)
-foreach (_variableName ${_variableNames})
-  string( TOLOWER "${_variableName}" var_lower )
-  if( var_lower STREQUAL "openssl_found" )
-    set(MYDUMPER_OPENSSL_FOUND "${${_variableName}}")
-  endif (var_lower STREQUAL "openssl_found")
-endforeach()
-
-if (NOT (MYDUMPER_OPENSSL_FOUND))
-  option(WITH_SSL FALSE)
-  string(REPLACE "MYSQL_LIBRARIES_ssl-NOTFOUND"    "" MYSQL_LIBRARIES "${MYSQL_LIBRARIES}")
-  string(REPLACE "MYSQL_LIBRARIES_crypto-NOTFOUND" "" MYSQL_LIBRARIES "${MYSQL_LIBRARIES}")
-endif (NOT (MYDUMPER_OPENSSL_FOUND))
+if (NOT MYSQL_FOUND)
+    MESSAGE(FATAL_ERROR "Could not find MySQL or MariaDB client libraries")
+endif ()
 
 option(BUILD_DOCS "Build the documentation" ON)
 
@@ -104,8 +92,8 @@ INSTALL(TARGETS mydumper myloader
 )
 
 add_custom_target(dist
-  COMMAND bzr export --root=${ARCHIVE_NAME}
-    ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz
+  COMMAND git archive --format=tar.gz --prefix=${ARCHIVE_NAME}/
+  -o ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz HEAD
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 OPTION(RUN_CPPCHECK "Run cppcheck" OFF)
@@ -122,7 +110,6 @@ MESSAGE(STATUS "MYSQL_CONFIG = ${MYSQL_CONFIG}")
 MESSAGE(STATUS "CMAKE_INSTALL_PREFIX = ${CMAKE_INSTALL_PREFIX}")
 MESSAGE(STATUS "BUILD_DOCS = ${BUILD_DOCS}")
 MESSAGE(STATUS "WITH_ZSTD = ${WITH_ZSTD}")
-MESSAGE(STATUS "OpenSSL_FOUND = ${MYDUMPER_OPENSSL_FOUND}")
 MESSAGE(STATUS "WITH_SSL = ${WITH_SSL}")
 MESSAGE(STATUS "RUN_CPPCHECK = ${RUN_CPPCHECK}")
 MESSAGE(STATUS "WITH_ASAN = ${WITH_ASAN}")

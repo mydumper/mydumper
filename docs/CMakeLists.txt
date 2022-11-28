@@ -6,7 +6,7 @@ set(GENERATE_DOC TRUE)
 # pages from the user and reference documentation in ReST format.
 find_package(Sphinx QUIET)
 if(NOT SPHINX_FOUND)
-  message(WARNING "Unable to find Sphinx documentation generator")
+  message(WARNING "Unable to find Sphinx documentation generator, documentation building disabled")
   set(GENERATE_DOC FALSE)
 endif(NOT SPHINX_FOUND)
 
