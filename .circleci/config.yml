@@ -39,16 +39,15 @@ jobs:
     - run: ./mydumper --version
     - run: bash ./test_mydumper.sh SSL ZSTD
     - persist_to_workspace:
-      root: mydumper
-      paths:
-            - ./mydumper
-
+         root: mydumper
+         paths:
+           - .
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: ./mydumper
+          at: /tmp/mydumper
       - run:
           name: "Publish Release on GitHub"
           command: |
