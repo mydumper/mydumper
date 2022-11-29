@@ -38,8 +38,9 @@ jobs:
     - run: make
     - run: ./mydumper --version
     # - run: bash ./test_mydumper.sh SSL ZSTD
+    - run: mkdir -p /tmp/package
     - persist_to_workspace:
-         root: .
+         root: /tmp/package
          paths:
            - .
   publish-github-release:
@@ -47,7 +48,7 @@ jobs:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: /tmp/mydumper
+          at: /tmp/package
       - run:
           name: "Publish Release on GitHub"
           command: |
