@@ -33,13 +33,13 @@ jobs:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    - run: bash ./test_mydumper.sh SSL GZIP
+    # - run: bash ./test_mydumper.sh SSL GZIP
     - run: cmake . -DWITH_ZSTD=ON
     - run: make
     - run: ./mydumper --version
-    - run: bash ./test_mydumper.sh SSL ZSTD
+    # - run: bash ./test_mydumper.sh SSL ZSTD
     - persist_to_workspace:
-         root: mydumper
+         root: .
          paths:
            - .
   publish-github-release:
