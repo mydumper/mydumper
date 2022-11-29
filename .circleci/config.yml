@@ -16,6 +16,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/
 
 jobs:
   build:
@@ -37,6 +38,11 @@ jobs:
     - run: make
     - run: ./mydumper --version
     - run: bash ./test_mydumper.sh SSL ZSTD
+    - persist_to_workspace:
+      root: mydumper
+      paths:
+            - ./mydumper
+
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
