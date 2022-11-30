@@ -41,7 +41,7 @@ commands:
 
   prepare_el:
     steps:
-    - run: yum install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
+    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
 
 
 
@@ -54,9 +54,9 @@ commands:
 
   prepare_el_percona80:
     steps:
-    - run: yum install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ps80
-    - run: yum install libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: yum -y install libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
 
   compile_and_test_mydumper:
