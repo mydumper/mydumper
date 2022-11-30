@@ -111,11 +111,11 @@ jobs:
     - prepare_el_percona80
     - compile_gzip
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_gzip 
-    - build
+    #- build
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_gzip/
     - compile_zstd
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_zstd
-    - build
+   # - build
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_zstd/
     - persist_to_workspace:
          root: /tmp/package
