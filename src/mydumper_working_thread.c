@@ -464,7 +464,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
       int is_view = 0;
 
-      if ((detected_server == SERVER_TYPE_MYSQL) &&
+      if ((detected_server == SERVER_TYPE_MYSQL ||
+           detected_server == SERVER_TYPE_MARIADB) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
 
@@ -1523,6 +1524,11 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   if (detected_server == SERVER_TYPE_MYSQL ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
+  else if (detected_server == SERVER_TYPE_MARIADB)
+    query =
+        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
+                        "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s'",
+                        database->escaped);
   else
     query =
         g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
@@ -1559,7 +1565,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL) &&
+    if ((detected_server == SERVER_TYPE_MYSQL ||
+         detected_server == SERVER_TYPE_MARIADB) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 

@@ -289,7 +289,7 @@ void initialize_load_data_statement(GString *statement, gchar * table, const gch
 }
 
 void initialize_sql_statement(GString *statement){
-  if (detected_server == SERVER_TYPE_MYSQL) {
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) {
     if (set_names_str)
       g_string_printf(statement,"%s;\n",set_names_str);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
@@ -616,7 +616,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   /* Poor man's database code */
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
-      (detected_server == SERVER_TYPE_MYSQL) ? "/*!40001 SQL_NO_CACHE */" : "",
+      (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->select_fields->str,
       tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
        (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",

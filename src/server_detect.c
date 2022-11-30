@@ -80,7 +80,7 @@ int detect_server(MYSQL *conn) {
   pcre_free(re);
 
   if (rc > 0) {
-    return SERVER_TYPE_MYSQL;
+    return SERVER_TYPE_MARIADB;
   }
 
   return SERVER_TYPE_UNKNOWN;
