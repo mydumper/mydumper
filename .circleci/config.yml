@@ -74,11 +74,11 @@ workflows:
     - compile_and_test_mydumper_in_ubuntu_2004:
         filters:
           tags:
-#            only: /.*/
-            only: /^\d+\.\d+\.\d+$/
+            only: /.*/
+#            only: /^\d+\.\d+\.\d+$/
     - publish-github-release:
         requires:
-          - build
+          - compile_and_test_mydumper_in_ubuntu_2004
         filters:
           tags:
 #            only: /.*/
