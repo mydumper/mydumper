@@ -16,7 +16,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/
+    working_directory: /tmp/src/mydumper
 
 commands:
   prepare_ubuntu:
