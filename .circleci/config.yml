@@ -111,12 +111,11 @@ jobs:
     - prepare_el_percona80
     - compile_gzip
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_gzip 
-    #- build
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_gzip/
     - compile_zstd
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_zstd
-   # - build
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_zstd/
+    - run: ./build.sh
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -128,7 +127,9 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/package
-      - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete TEST /tmp/package
+      - checkout
+      
+      - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -delete TEST /tmp/package
 
 workflows:
   version: 2
