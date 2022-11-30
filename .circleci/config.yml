@@ -42,6 +42,7 @@ commands:
   prepare_el:
     steps:
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
+    - run: yum -y install wget 
 
 
 
@@ -56,7 +57,7 @@ commands:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ps80
-    - run: yum -y install percona-server-devel 
+    - run: yum -y install percona-server-devel percona-server-client
     # percona-server-server
 
 
