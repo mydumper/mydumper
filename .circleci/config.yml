@@ -16,12 +16,10 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/mydumper
+    working_directory: /tmp/mydumper/
 
-jobs:
-  build:
-    executor: base
-
+commands:
+  prepare_ubuntu:
     steps:
     - checkout
     - run: sudo apt-get update
@@ -38,9 +36,17 @@ jobs:
     - run: make
     - run: ./mydumper --version
     # - run: bash ./test_mydumper.sh SSL ZSTD
-    - run: mkdir -p /tmp/package
+
+jobs:
+  build:
+    executor: base
+    environment:
+      FOO: bar
+    steps:
+    - checkout
+    - prepare_ubuntu
     - persist_to_workspace:
-         root: /tmp/package
+         root: /tmp/src/mydumper
          paths:
            - .
   publish-github-release:
@@ -48,7 +54,7 @@ jobs:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: /tmp/package
+          at: /tmp/src/mydumper
       - run:
           name: "Publish Release on GitHub"
           command: |
