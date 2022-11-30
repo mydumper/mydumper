@@ -102,11 +102,7 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/src/mydumper
-      - run:
-          name: "Publish Release on GitHub"
-          command: |
-            VERSION=$(mydumper --version)
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} /tmp/package
+      - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete TESTING /tmp/package
 
 workflows:
   version: 2
@@ -115,6 +111,9 @@ workflows:
     
     - compile_and_test_mydumper_in_ubuntu_2004:
         filters:
+          branches:
+            ignore: /.*/
+
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
@@ -128,6 +127,8 @@ workflows:
         requires:
           - compile_and_test_mydumper_in_ubuntu_2004
         filters:
+          branches:
+            ignore: /.*/
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
