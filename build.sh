@@ -5,7 +5,7 @@
 # Requirements: yum install rpm-build dpkg dpkg-devel fakeroot
 
 SOURCE=/tmp/src/mydumper
-TARGET=/opt/PKGS
+TARGET=/tmp/package/
 WORK_DIR=/tmp/pkgbuild-`date +%s`
 EXTRA_SUFFIX=""
 set -e
