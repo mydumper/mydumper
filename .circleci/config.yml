@@ -115,7 +115,7 @@ jobs:
     - compile_zstd
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_zstd
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_zstd/
-    - run: ./build.sh
+    - run: bash ./build.sh
     - persist_to_workspace:
          root: /tmp/package
          paths:
