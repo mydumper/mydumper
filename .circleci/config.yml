@@ -60,16 +60,23 @@ commands:
     - run: yum -y install percona-server-devel percona-server-client
     # percona-server-server
 
-
-  compile_and_test_mydumper:
+  compile_gzip:
     steps:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    - run: bash ./test_mydumper.sh SSL GZIP
+
+  compile_zstd:
+    steps:
     - run: cmake . -DWITH_ZSTD=ON
     - run: make
     - run: ./mydumper --version
+
+  compile_and_test_mydumper:
+    steps:
+    - compile_gzip
+    - run: bash ./test_mydumper.sh SSL GZIP
+    - compile_zstd
     - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
@@ -96,12 +103,31 @@ jobs:
          paths:
            - .
 
+  build_el_8:
+    executor: el8
+    steps:
+    - checkout
+    - prepare_el
+    - prepare_el_percona80
+    - compile_gzip
+    - run: mkdir -p /tmp/package/mydumper/el8_percona_80_gzip 
+    - build
+    - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_gzip/
+    - compile_zstd
+    - run: mkdir -p /tmp/package/mydumper/el8_percona_80_zstd
+    - build
+    - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_zstd/
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
       - attach_workspace:
-          at: /tmp/src/mydumper
+          at: /tmp/package
       - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete TESTING /tmp/package
 
 workflows:
@@ -116,8 +142,10 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-    - compile_and_test_mydumper_in_el_8:
+    - build_el_8:
         filters:
+#          branches:
+#            ignore: /.*/
           tags:
             only: /.*/
 #            only: /^\d+\.\d+\.\d+$/
@@ -125,7 +153,7 @@ workflows:
     - publish-github-release:
         requires:
 #          - compile_and_test_mydumper_in_ubuntu_2004
-          - compile_and_test_mydumper_in_el_8
+          - build_el_8
         filters:
 #          branches:
 #            ignore: /.*/
