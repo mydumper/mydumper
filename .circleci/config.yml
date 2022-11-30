@@ -128,7 +128,7 @@ jobs:
     steps:
       - attach_workspace:
           at: /tmp/package
-      - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete TESTING /tmp/package
+      - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete TEST /tmp/package
 
 workflows:
   version: 2
