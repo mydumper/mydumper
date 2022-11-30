@@ -322,7 +322,7 @@ void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *col
 }
 
 void initialize_sql_statement(GString *statement){
-  if (detected_server == SERVER_TYPE_MYSQL) {
+  if ((detected_server == SERVER_TYPE_MYSQL) || (detected_server == SERVER_TYPE_MARIADB))  {
     if (set_names_statement)
       g_string_printf(statement,"%s;\n",set_names_statement);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
