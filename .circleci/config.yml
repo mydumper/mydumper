@@ -56,7 +56,8 @@ commands:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ps80
-    - run: yum -y install libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: yum -y install percona-server-devel 
+    # percona-server-server
 
 
   compile_and_test_mydumper:
