@@ -2,7 +2,7 @@
 version: 2.1
 
 executors:
-  base:
+  ubuntu2004:
     docker:
     - image: cimg/base:stable-20.04
       environment:
@@ -16,39 +16,45 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/mydumper/
+    working_directory: /tmp/src/
 
 commands:
   prepare_ubuntu:
     steps:
-    - checkout
     - run: sudo apt-get update
     - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
+
+  prepare_ubuntu_percona80:
+    steps:
     - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
     - run: sudo dpkg -i percona-release_latest.focal_all.deb
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+
+  compile_and_test_mydumper:
+    steps:
     - run: cmake .
     - run: make
     - run: ./mydumper --version
-    # - run: bash ./test_mydumper.sh SSL GZIP
+    - run: bash ./test_mydumper.sh SSL GZIP
     - run: cmake . -DWITH_ZSTD=ON
     - run: make
     - run: ./mydumper --version
-    # - run: bash ./test_mydumper.sh SSL ZSTD
+    - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
-  build:
-    executor: base
-    environment:
-      FOO: bar
+  compile_and_test_mydumper_in_ubuntu_2004:
+    executor: ubuntu2004
     steps:
     - checkout
     - prepare_ubuntu
+    - prepare_ubuntu_percona80
+#    - compile_and_test_mydumper
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
            - .
+
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
@@ -65,13 +71,16 @@ workflows:
   version: 2
   mydumper:
     jobs:
-    - build:
+    - compile_and_test_mydumper_in_ubuntu_2004:
         filters:
           tags:
-            only: /.*/
+#            only: /.*/
+            only: /^\d+\.\d+\.\d+$/
     - publish-github-release:
         requires:
           - build
         filters:
           tags:
-            only: /.*/
+#            only: /.*/
+            only: /^\d+\.\d+\.\d+$/
+
