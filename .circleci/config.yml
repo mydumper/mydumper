@@ -4,7 +4,8 @@ version: 2.1
 executors:
   ubuntu2004:
     docker:
-    - image: cimg/base:stable-20.04
+#    - image: cimg/base:stable-20.04
+    - image: almalinux:8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
