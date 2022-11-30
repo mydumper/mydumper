@@ -113,7 +113,6 @@ workflows:
         filters:
           branches:
             ignore: /.*/
-
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
@@ -127,8 +126,8 @@ workflows:
         requires:
           - compile_and_test_mydumper_in_ubuntu_2004
         filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
