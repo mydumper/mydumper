@@ -1,10 +1,11 @@
 Source: mydumper
 Section: utils
 Priority: optional
-Maintainer: Max Bubenick <maxbube@gmail.com>
-Homepage: https://github.com/maxbube/mydumper
+Maintainer: David Ducos <david.ducos@gmail.com>
+Homepage: https://github.com/mydumper/mydumper
 Package: mydumper
-Version: %{version}
+Version: %{version}~%{distro}
+Depends: libatomic1
 Architecture: amd64
 Description: mydumper and myloader MySQL backup tools
  This package provides mydumper and myloader MySQL backup tools.
