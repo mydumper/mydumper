@@ -22,5 +22,6 @@
 #define SET_VERBOSE_H
 
 void set_verbose(guint verbosity);
+void set_debug();
 
 #endif
