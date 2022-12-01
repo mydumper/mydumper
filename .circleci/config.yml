@@ -53,6 +53,12 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_el_percona57:
+    steps:
+    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    - run: percona-release setup -y ps57
+    - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
+
   prepare_el_percona80:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
@@ -118,7 +124,7 @@ jobs:
     steps:
     - checkout
     - prepare_el
-    - prepare_el_percona80
+    - prepare_el_percona57
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/package
