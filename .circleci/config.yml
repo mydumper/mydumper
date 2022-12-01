@@ -119,7 +119,8 @@ jobs:
     - compile_zstd
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_zstd
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_zstd/
-    - run: bash ./build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION}
+    - run: yum -y install rpmdevtools
+    - run: bash ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION}
     - persist_to_workspace:
          root: /tmp/package
          paths:
