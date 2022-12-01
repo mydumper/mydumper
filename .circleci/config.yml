@@ -119,9 +119,6 @@ jobs:
 
   build_el_8:
     executor: el8
-    environment:
-      MYDUMPER_VERSION: 0.13.2
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
     - prepare_el
@@ -143,6 +140,9 @@ jobs:
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
+    environment:
+      MYDUMPER_VERSION: 0.13.2
+      MYDUMPER_REVISION: 1
     steps:
     - attach_workspace:
         at: /tmp/src/mydumper      
