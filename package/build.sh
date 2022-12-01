@@ -13,11 +13,13 @@ set -e
 PROJECT=mydumper
 WORKSPACE=$(dirname "$(readlink -f "$0")")
 
-if [ "$#" = 2 ]; then
+if [ "$#" = 4 ]; then
     VERSION=$1
     RELEASE=$2
+    KIND=$3
+    DIR=$4
 else
-    echo "USAGE: sh build.sh <version> <revision>"
+    echo "USAGE: sh build.sh <version> <revision> [rpm|deb] <directory>"
     exit 1
 fi
 
@@ -92,33 +94,12 @@ build_deb() {
 #    rm -rf $WORK_DIR
 }
 
+if [ "$KIND" == "rpm" ]
+then
+        build_rpm $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
+fi
 
-for i in $(find /tmp/src/mydumper/*percona_57* -type d | cut -d'/' -f5 | egrep "el7|stream8|el8" ) ; do
-        echo $i
-        build_rpm $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-for i in $(find /tmp/src/mydumper/*mysql_80* -type d | cut -d'/' -f5 | egrep "el9" ) ; do
-        echo $i
-        build_rpm $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-for i in $(find /tmp/src/mydumper/*percona_57* -type d | cut -d'/' -f5 | egrep -v "el7|stream8|el8" ) ; do
-        echo $i
-        build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-for i in $(find /tmp/src/mydumper/*percona_80*zstd -type d | cut -d'/' -f5 | egrep "bullseye" ) ; do
-        echo $i
-        build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-for i in $(find /tmp/src/mydumper/*percona_80*gzip -type d | cut -d'/' -f5 | egrep "bullseye" ) ; do
-        echo $i
-        build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-
-for i in $(find /tmp/src/mydumper/*mysql_80*zstd -type d | cut -d'/' -f5 | egrep "jammy" ) ; do
-        echo $i
-        build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
-for i in $(find /tmp/src/mydumper/*mysql_80*gzip -type d | cut -d'/' -f5 | egrep "jammy" ) ; do
-        echo $i
-        build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
-done
+if [ "$KIND" == "deb" ]
+then
+        build_deb $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
+fi
