@@ -62,21 +62,22 @@ commands:
 
   compile:
     parameters:
-    D:
-      default: ""
-      type: string
+      CMAKED:
+        default: ""
+        type: string
     steps:
-    - run: cmake . <<parameters.D>>
+    - run: cmake . <<parameters.CMAKED>>
     - run: make
     - run: ./mydumper --version
 
   compile_zstd:
-    D:
-      default: ""
-      type: string
+    parameters:
+      CMAKED:
+        default: ""
+        type: string
     steps:
     - compile:
-      D: -DWITH_ZSTD=ON <<parameters.D>>
+        CMAKED: "-DWITH_ZSTD=ON <<parameters.CMAKED>>"
 
   compile_and_test_mydumper:
     steps:
@@ -118,13 +119,13 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
-    - compile
-      D: -DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/package
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_gzip 
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_gzip/
-    - compile_zstd
-      D: -DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a
+    - compile_zstd:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_zstd
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_zstd/
     - run: yum -y install rpmdevtools
