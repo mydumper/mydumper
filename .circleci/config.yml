@@ -60,21 +60,27 @@ commands:
     - run: yum -y install percona-server-devel percona-server-client
     # percona-server-server
 
-  compile_gzip:
+  compile:
+    parameters:
+    D:
+      default: ""
+      type: string
     steps:
-    - run: cmake .
+    - run: cmake . <<parameters.D>>
     - run: make
     - run: ./mydumper --version
 
   compile_zstd:
+    D:
+      default: ""
+      type: string
     steps:
-    - run: cmake . -DWITH_ZSTD=ON
-    - run: make
-    - run: ./mydumper --version
+    - compile:
+      D: -DWITH_ZSTD=ON <<parameters.D>>
 
   compile_and_test_mydumper:
     steps:
-    - compile_gzip
+    - compile
     - run: bash ./test_mydumper.sh SSL GZIP
     - compile_zstd
     - run: bash ./test_mydumper.sh SSL ZSTD
@@ -112,11 +118,13 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
-    - compile_gzip
+    - compile
+      D: -DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a
     - run: mkdir -p /tmp/package
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_gzip 
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_gzip/
     - compile_zstd
+      D: -DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_zstd
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_zstd/
     - run: yum -y install rpmdevtools
