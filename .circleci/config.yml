@@ -57,6 +57,7 @@ commands:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
     - run: percona-release setup -y ps57
+    - run: dnf module disable mysql
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_percona80:
