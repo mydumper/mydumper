@@ -105,6 +105,9 @@ jobs:
 
   build_el_8:
     executor: el8
+    environment:
+      MYDUMPER_VERSION: 0.13.2
+      MYDUMPER_REVISION: 1
     steps:
     - checkout
     - prepare_el
@@ -115,7 +118,7 @@ jobs:
     - compile_zstd
     - run: mkdir -p /tmp/package/mydumper/el8_percona_80_zstd
     - run: cp mydumper myloader /tmp/package/mydumper/el8_percona_80_zstd/
-    - run: bash ./build.sh
+    - run: bash ./build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION}
     - persist_to_workspace:
          root: /tmp/package
          paths:
