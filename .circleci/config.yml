@@ -113,6 +113,7 @@ jobs:
     - prepare_el
     - prepare_el_percona80
     - compile_gzip
+    - run: mkdir -p /tmp/package
     - run: mkdir -p /tmp/src/mydumper/el8_percona_80_gzip 
     - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_gzip/
     - compile_zstd
