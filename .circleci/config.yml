@@ -146,6 +146,7 @@ jobs:
     steps:
     - attach_workspace:
         at: /tmp/src/mydumper      
+    - checkout
     - run: mkdir -p /tmp/package
 #    - run: yum -y install rpmdevtools
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION}
