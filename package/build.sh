@@ -93,32 +93,32 @@ build_deb() {
 }
 
 
-for i in $(find /tmp/src/mydumper/*percona_57* -type d -printf '%f\n' | egrep "el7|stream8|el8" ) ; do
+for i in $(find /tmp/src/mydumper/*percona_57* -type d | cut -d'/' -f5 | egrep "el7|stream8|el8" ) ; do
         echo $i
         build_rpm $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
-for i in $(find /tmp/src/mydumper/*mysql_80* -type d -printf '%f\n' | egrep "el9" ) ; do
+for i in $(find /tmp/src/mydumper/*mysql_80* -type d | cut -d'/' -f5 | egrep "el9" ) ; do
         echo $i
         build_rpm $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
-for i in $(find /tmp/src/mydumper/*percona_57* -type d -printf '%f\n' | egrep -v "el7|stream8|el8" ) ; do
+for i in $(find /tmp/src/mydumper/*percona_57* -type d | cut -d'/' -f5 | egrep -v "el7|stream8|el8" ) ; do
         echo $i
         build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
-for i in $(find /tmp/src/mydumper/*percona_80*zstd -type d -printf '%f\n' | egrep "bullseye" ) ; do
+for i in $(find /tmp/src/mydumper/*percona_80*zstd -type d | cut -d'/' -f5 | egrep "bullseye" ) ; do
         echo $i
         build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
-for i in $(find /tmp/src/mydumper/*percona_80*gzip -type d -printf '%f\n' | egrep "bullseye" ) ; do
+for i in $(find /tmp/src/mydumper/*percona_80*gzip -type d | cut -d'/' -f5 | egrep "bullseye" ) ; do
         echo $i
         build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
 
-for i in $(find /tmp/src/mydumper/*mysql_80*zstd -type d -printf '%f\n' | egrep "jammy" ) ; do
+for i in $(find /tmp/src/mydumper/*mysql_80*zstd -type d | cut -d'/' -f5 | egrep "jammy" ) ; do
         echo $i
         build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
-for i in $(find /tmp/src/mydumper/*mysql_80*gzip -type d -printf '%f\n' | egrep "jammy" ) ; do
+for i in $(find /tmp/src/mydumper/*mysql_80*gzip -type d | cut -d'/' -f5 | egrep "jammy" ) ; do
         echo $i
         build_deb $i $(echo $i | cut -d'_' -f1) $(echo $i | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 done
