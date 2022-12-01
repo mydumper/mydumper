@@ -148,7 +148,7 @@ jobs:
         at: /tmp/src/mydumper      
     - checkout
     - run: mkdir -p /tmp/package
-#    - run: yum -y install rpmdevtools
+    - run: yum -y install rpmdevtools
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION}
     - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete TEST /tmp/package
 
