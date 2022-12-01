@@ -457,6 +457,35 @@ gboolean process_schema_view_filename(gchar *filename) {
   return TRUE;
 }
 
+gboolean process_schema_sequence_filename(gchar *filename) {
+    gchar *database=NULL, *table_name=NULL;
+    struct database *real_db_name=NULL;
+    get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
+    if (database == NULL){
+      g_critical("Database is null on: %s",filename);
+    }
+    real_db_name=get_db_hash(database,database);
+    if (real_db_name==NULL){
+      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+      return FALSE;
+    }
+  g_mutex_lock(conf->table_list_mutex);
+  if (!eval_table(real_db_name->name, table_name)){
+    g_warning("File %s has been filter out",filename);
+    return TRUE;
+  }
+  g_mutex_unlock(conf->table_list_mutex);
+//  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
+//  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
+//  g_free(lkey);
+//  if (dbt==NULL)
+//    return FALSE;
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "sequence");
+  g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
+  return TRUE;
+}
+
+
 gboolean process_schema_filename(gchar *filename, const char * object) {
     gchar *database=NULL, *table_name=NULL;
     struct database *real_db_name=NULL;
