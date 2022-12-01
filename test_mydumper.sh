@@ -177,6 +177,10 @@ full_test(){
 }
 
 full_test
+
+$test --no-data -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+
+
 #cat $mydumper_log
 #cat $myloader_log
 
