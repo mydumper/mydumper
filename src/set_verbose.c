@@ -51,7 +51,9 @@ static void free_log_handlers() {
 }
 
 void set_debug() {
+#if GLIB_CHECK_VERSION(2,72,0)
   g_log_set_debug_enabled(TRUE);
+#endif
 }
 
 void set_verbose(guint verbosity) {

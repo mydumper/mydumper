@@ -52,10 +52,12 @@ void write_log_file(const gchar *log_domain, GLogLevelFlags log_level,
   struct tm timeinfo;
 
   // Don't log debug if debugging off
+#if GLIB_CHECK_VERSION(2,68,0)
   if ((log_level & G_LOG_LEVEL_DEBUG) &&
       g_log_writer_default_would_drop(log_level, log_domain)) {
     return;
   }
+#endif
 
   time(&rawtime);
   localtime_r(&rawtime, &timeinfo);
