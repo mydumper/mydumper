@@ -134,7 +134,7 @@ full_test(){
   PARTIAL=0
   for test in test_case_dir test_case_stream
   do 
-    $test -G --lock-all-tables -B empty ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    $test -G --lock-all-tables -B empty_db ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     echo "Executing test: $test"
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
