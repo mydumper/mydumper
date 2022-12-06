@@ -745,8 +745,8 @@ void send_lock_all_tables(MYSQL *conn){
       exit(EXIT_FAILURE);
     }
   }else{
-    g_critical("No table found to lock");
-    exit(EXIT_FAILURE);
+    g_warning("No table found to lock");
+//    exit(EXIT_FAILURE);
   }
   g_free(query->str);
   g_list_free(tables_lock);
