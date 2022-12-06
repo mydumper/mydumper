@@ -152,6 +152,8 @@ enum file_type process_filename(char *filename){
       default:
         break;
     }
+  }else{
+    ft=DO_NOT_ENQUEUE;
   }
   return ft;
 }
