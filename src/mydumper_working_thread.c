@@ -1170,29 +1170,33 @@ void *working_thread(struct thread_data *td) {
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   process_queue(td->conf->schema_queue,td, resume_mutex, process_job, NULL);
 
-  g_message("Thread %d Schema Done, Starting Non-Innodb", td->thread_id);
+  if (!no_data){
+    g_message("Thread %d Schema Done, Starting Non-Innodb", td->thread_id);
 
-  g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
-  g_async_queue_pop(td->conf->ready_non_innodb_queue);
-  if (less_locking){
-    // Sending LOCK TABLE over all non-innodb tables
-    if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
-      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+    g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
+    g_async_queue_pop(td->conf->ready_non_innodb_queue);
+    if (less_locking){
+      // Sending LOCK TABLE over all non-innodb tables
+      if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
+        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+      }
+      // This push will unlock the FTWRL on the Main Connection
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
+        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+      }
+    }else{
+      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
-    // This push will unlock the FTWRL on the Main Connection
-    g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-    process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
-    if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
-      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
-    }
+
+    g_message("Thread %d Non-Innodb Done, Starting Innodb", td->thread_id);
+    process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
+  //  start_processing(td, resume_mutex);
   }else{
-    process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
-
-  g_message("Thread %d Non-Innodb Done, Starting Innodb", td->thread_id);
-  process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
-//  start_processing(td, resume_mutex);
 
   process_queue(td->conf->post_data_queue, td, resume_mutex, process_job, NULL);
 
