@@ -74,6 +74,7 @@ enum file_type process_filename(char *filename){
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)) ||
+    g_str_has_prefix(filename, g_strdup_printf("%s-schema-post.sql", source_db)) ||
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-create.sql", source_db) )
     ) {
     switch (ft){
