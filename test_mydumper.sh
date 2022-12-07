@@ -53,7 +53,8 @@ test_case_dir (){
   fi
   if [ "$PARTIAL" != "1" ]
   then
-  echo "DROP DATABASE IF EXISTS myd_test;
+  echo "DROP DATABASE IF EXISTS sakila;
+DROP DATABASE IF EXISTS myd_test;
 DROP DATABASE IF EXISTS myd_test_no_fk;
 DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
   fi
@@ -90,7 +91,7 @@ test_case_stream (){
     rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
-    echo "Exporting database: ${mydumper_parameters} | ${myloader_parameters}"
+    echo "Exporting database: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
     eval $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
@@ -163,7 +164,8 @@ full_test(){
   echo "Starting per table tests"
   for test in test_case_dir test_case_stream
   do
-    echo "Execuing tests: $test"
+    echo "Executing tests: $test"
+    $test -G --lock-all-tables -B empty_db ${general_options}                           -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # exporting specific database -- overriting database
     $test -B myd_test_no_fk ${general_options} -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # exporting specific table -- overriting database
