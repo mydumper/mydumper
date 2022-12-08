@@ -812,15 +812,15 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
 
     if ((cs==NULL) && (dbt==NULL)){
       if (are_there_jobs_defining){
-        g_message("chunk_builder_thread: Are jobs defining... show we wait and try again later?");
+        g_debug("chunk_builder_thread: Are jobs defining... show we wait and try again later?");
         g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
         usleep(1);
         continue;
       }
-      g_message("chunk_builder_thread: There were not job defined");
+      g_debug("chunk_builder_thread: There were not job defined");
       break;
     }
-    g_message("chunk_builder_thread: Job will be enqueued");
+    g_debug("chunk_builder_thread: Job will be enqueued");
     switch (dbt->chunk_type) {
     case INTEGER:
       create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key, cs, g_async_queue_push, push_queue, TRUE);
