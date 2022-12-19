@@ -44,6 +44,7 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_queue = g_async_queue_new();
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
+  initialize_control_job(c);
 }
 
 void intermediate_queue_new(gchar *filename){
@@ -71,6 +72,7 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 }
 
 enum file_type process_filename(char *filename){
+//  g_message("Filename: %s", filename);
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)) ||
@@ -91,7 +93,7 @@ enum file_type process_filename(char *filename){
       case SCHEMA_TABLE:
         // filename is free
         if (!process_table_filename(filename)){
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         }else{
           g_free(filename);
           refresh_table_list(intermediate_conf);
@@ -173,7 +175,8 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
       current_ft != CHECKSUM &&
       current_ft != METADATA_TABLE &&
       current_ft != DO_NOT_ENQUEUE )
-    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
+    refresh_db_and_jobs(current_ft);
+//    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
 void enqueue_all_index_jobs(struct configuration *conf){
@@ -184,8 +187,8 @@ void enqueue_all_index_jobs(struct configuration *conf){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
     if (!dbt->index_enqueued){
-      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
-      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes,"indexes");
+      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->name));
       dbt->index_enqueued=TRUE;
     }
     g_mutex_unlock(dbt->mutex);
@@ -217,8 +220,7 @@ void *intermediate_thread(){
   if (innodb_optimize_keys_all_tables)
     enqueue_all_index_jobs(intermediate_conf);
   g_message("Intermediate thread ended");
-
-  g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(INTERMEDIATE_ENDED));
+  refresh_db_and_jobs(INTERMEDIATE_ENDED);
   return NULL;
 }
 
