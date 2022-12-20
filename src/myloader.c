@@ -427,7 +427,7 @@ int main(int argc, char *argv[]) {
   if (db){
     struct database * d=get_db_hash(g_strdup(db), g_strdup(db));
     create_database(&t, db);
-    d->schema_created=TRUE;
+    d->schema_state=CREATED;
   }
 
   initialize_intermediate_queue(&conf);

@@ -36,4 +36,7 @@ struct control_job {
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database);
 gboolean process_job(struct thread_data *td, struct control_job *job);
 void *process_stream_queue(struct thread_data * td);
+void refresh_db_and_jobs(enum file_type current_ft);
+void initialize_control_job (struct configuration *conf);
+void last_wait_control_job_to_shutdown();
 #endif

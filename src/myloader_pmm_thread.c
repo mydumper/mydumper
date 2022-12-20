@@ -39,13 +39,14 @@ void append_pmm_entry(GString *content, const gchar *key, GAsyncQueue * queue){
 }
 
 void append_pmm_entry_tables(GString *content,struct configuration *conf){
+  (void) content;
   GHashTableIter iter;
   gchar * lkey;
   if (conf->table_hash){
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-      g_string_append_printf(content,"myloader_table{name=\"%s\"} %d\n",lkey,stream?(guint)g_list_length(dbt->restore_job_list):(guint)g_async_queue_length(dbt->queue));
+//      g_string_append_printf(content,"myloader_table{name=\"%s\"} %d\n",lkey,stream?(guint)g_list_length(dbt->restore_job_list):(guint)g_async_queue_length(dbt->queue));
     }
   }
 }
