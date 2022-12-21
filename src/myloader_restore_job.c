@@ -163,7 +163,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   guint i=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
-      g_message("Thread %d restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
+      g_message("Thread %d: restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
                 dbt->database->real_database, dbt->real_table, rj->filename);
       restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter);
       free_schema_restore_job(rj->data.srj);
@@ -171,7 +171,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_SCHEMA_STRING:
       dbt->schema_state=CREATING;
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
-      g_message("Thread %d restoring table `%s`.`%s` from %s", td->thread_id,
+      g_message("Thread %d: restoring table `%s`.`%s` from %s", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->filename);
       int truncate_or_delete_failed=0;
       if (overwrite_tables)
@@ -181,7 +181,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }else{
         g_message("Thread %d: Creating table `%s`.`%s` from content in %s", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
-          g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+          g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
 //        g_message("Thread %d: Creating table `%s`.`%s` from content in %s COMPLETED", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
       }
@@ -197,7 +197,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Using %d of %d threads.", td->thread_id,
+      g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Using %d of %d threads.", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, dbt->current_threads, dbt->max_threads);
       g_mutex_unlock(progress_mutex);
       if (stream && dbt->schema_state<CREATED){
@@ -215,13 +215,13 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         }
       }
       if (restore_data_from_file(td, dbt->database->real_database, dbt->real_table, rj->filename, FALSE) > 0){
-        g_critical("Thread %d issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+        g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
       g_atomic_int_dec_and_test(&(dbt->remaining_jobs));
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
-      g_message("Thread %d restoring %s on `%s` from %s", td->thread_id, rj->data.srj->object,
+      g_message("Thread %d: restoring %s on `%s` from %s", td->thread_id, rj->data.srj->object,
                 rj->data.srj->database->real_database, rj->filename);
       restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE );
       free_schema_restore_job(rj->data.srj);

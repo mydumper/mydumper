@@ -78,7 +78,7 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
       g_async_queue_pop(job->data.queue);
       break;
     case JOB_SHUTDOWN:
-//      g_message("Thread %d shutting down", td->thread_id);
+//      g_message("Thread %d: shutting down", td->thread_id);
       g_free(job);
       return FALSE;
       break;
