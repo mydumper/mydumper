@@ -327,7 +327,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
 }
 
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
-  g_message("Thread %d dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs: %d",
+  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs: %d",
                     td->thread_id,
                     tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
                      (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",

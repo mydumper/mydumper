@@ -407,7 +407,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
 
 void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
-  g_message("Thread %d dumping db information for `%s`", td->thread_id,
+  g_message("Thread %d: dumping db information for `%s`", td->thread_id,
             ddj->database->name);
   dump_database_thread(td->thrconn, td->conf, ddj->database);
   g_free(ddj);
@@ -584,7 +584,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 
 void initialize_thread(struct thread_data *td){
   m_connect(td->thrconn, "mydumper", NULL);
-  g_message("Thread %d connected using MySQL connection ID %lu",
+  g_message("Thread %d: connected using MySQL connection ID %lu",
             td->thread_id, mysql_thread_id(td->thrconn));
 }
 
@@ -701,7 +701,7 @@ void check_connection_status(struct thread_data *td){
       exit(EXIT_FAILURE);
     }
     g_free(query);
-    g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id,
+    g_message("Thread %d: set to tidb_snapshot '%s'", td->thread_id,
               tidb_snapshot);
   }
 
@@ -1171,7 +1171,7 @@ void *working_thread(struct thread_data *td) {
   process_queue(td->conf->schema_queue,td, resume_mutex, process_job, NULL);
 
   if (!no_data){
-    g_message("Thread %d Schema Done, Starting Non-Innodb", td->thread_id);
+    g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
 
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
     g_async_queue_pop(td->conf->ready_non_innodb_queue);
@@ -1191,7 +1191,7 @@ void *working_thread(struct thread_data *td) {
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
-    g_message("Thread %d Non-Innodb Done, Starting Innodb", td->thread_id);
+    g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
     process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
   //  start_processing(td, resume_mutex);
   }else{
@@ -1200,7 +1200,7 @@ void *working_thread(struct thread_data *td) {
 
   process_queue(td->conf->post_data_queue, td, resume_mutex, process_job, NULL);
 
-  g_message("Thread %d shutting down", td->thread_id);
+  g_message("Thread %d: shutting down", td->thread_id);
 
   if (td->binlog_snapshot_gtid_executed!=NULL)
     g_free(td->binlog_snapshot_gtid_executed);
