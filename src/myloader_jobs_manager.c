@@ -167,7 +167,7 @@ void *loader_thread(struct thread_data *td) {
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("Thread %d ending", td->thread_id);
+  g_debug("Thread %d: ending", td->thread_id);
   return NULL;
 }
 
