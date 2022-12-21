@@ -46,6 +46,7 @@ extern gboolean innodb_optimize_keys;
 extern gboolean append_if_not_exist;
 extern gboolean resume;
 struct configuration *conf;
+extern gboolean schema_sequence_fix;
 void initialize_process(struct configuration *c){
   conf=c;
 }
@@ -228,7 +229,13 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
       }
     }
   }
-  
+
+  if (schema_sequence_fix) {
+    gchar *statement = filter_sequence_schemas(create_table_statement->str);
+    g_string_assign(create_table_statement, statement);
+    g_free(statement);
+  }
+
   struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_job(JOB_RESTORE,rj,dbt->database->real_database);
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
@@ -492,7 +499,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
 //  g_free(lkey);
 //  if (dbt==NULL)
 //    return FALSE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name->name, NULL, "sequence");
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, "sequence");
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
 }

@@ -63,5 +63,5 @@ void free_hash_table(GHashTable * hash);
 void remove_definer(GString * data);
 void remove_definer_from_gchar(char * str);
 void print_version(const gchar *program);
-
+gchar *filter_sequence_schemas(const gchar *create_table);
 #endif

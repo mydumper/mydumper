@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <pcre.h>
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
 #include "common.h"
@@ -71,7 +72,7 @@ gchar **exec_per_thread_cmd=NULL;
 extern gboolean schema_checksums;
 extern gboolean routine_checksums;
 extern gboolean use_fifo;
-
+extern gboolean schema_sequence_fix;
 
 gboolean skip_definer = FALSE;
 
@@ -323,7 +324,18 @@ void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_append(statement, row[1]);
+
+  char *create_table;
+  if (schema_sequence_fix) {
+    create_table = filter_sequence_schemas(row[1]);
+  } else {
+    create_table = row[1];
+  }
+
+  g_string_append(statement, create_table);
+  if (schema_sequence_fix) {
+    g_free(create_table);
+  }
   g_string_append(statement, ";\n");
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema for %s.%s", database, table);
@@ -621,7 +633,7 @@ void write_sequence_definition_into_file(MYSQL *conn, char *database, char *tabl
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_printf(statement, "SELECT SETVAL(`%s`.`%s`, %s, 0);\n", database, table, row[0]);
+  g_string_printf(statement, "SELECT SETVAL(`%s`, %s, 0);\n", table, row[0]);
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema for %s.%s", database, table);
     errors++;

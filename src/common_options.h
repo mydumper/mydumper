@@ -43,6 +43,7 @@ gboolean program_version = FALSE;
 gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
 char **tables = NULL;
+gboolean schema_sequence_fix = FALSE;
 
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
@@ -87,6 +88,11 @@ GOptionEntry common_entries[] = {
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
      "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
      NULL},
+    {"remove-schema-on-sequence", 0, 0, G_OPTION_ARG_NONE,
+      &schema_sequence_fix, "Removes the schema for nextval() and lastval() "
+      "in MariaDB tables to workaround a bug where schema is explicit for "
+      "local sequences.",
+      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int (*m_close)(void *file) = NULL;
