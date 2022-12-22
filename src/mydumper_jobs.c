@@ -391,6 +391,9 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     mysql_query(conn, query);
     result2 = mysql_store_result(conn);
     row2 = mysql_fetch_row(result2);
+    if ( skip_definer && g_str_has_prefix(row2[2],"CREATE")){
+      remove_definer_from_gchar(row2[2]);
+    }
     g_string_append_printf(statement, "%s", row2[2]);
     splited_st = g_strsplit(statement->str, ";\n", 0);
     g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
@@ -766,7 +769,7 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
   struct create_database_job * cdj = (struct create_database_job *)job->job_data;
-  g_message("Thread %d dumping schema create for `%s`", td->thread_id,
+  g_message("Thread %d: dumping schema create for `%s`", td->thread_id,
             cdj->database);
   write_schema_definition_into_file(td->thrconn, cdj->database, cdj->filename, cdj->checksum_filename);
   free_create_database_job(cdj);
@@ -775,7 +778,7 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
 
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
   struct create_tablespace_job * ctj = (struct create_tablespace_job *)job->job_data;
-  g_message("Thread %d dumping create tablespace if any", td->thread_id);
+  g_message("Thread %d: dumping create tablespace if any", td->thread_id);
   write_tablespace_definition_into_file(td->thrconn, ctj->filename);
   free_create_tablespace_job(ctj);
   g_free(job);
@@ -783,7 +786,7 @@ void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
   struct schema_post_job * sp = (struct schema_post_job *)job->job_data;
-  g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
+  g_message("Thread %d: dumping SP and VIEWs for `%s`", td->thread_id,
             sp->database->name);
   write_routines_definition_into_file(td->thrconn, sp->database, sp->filename, sp->checksum_filename);
   free_schema_post_job(sp);
@@ -792,7 +795,7 @@ void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
 
 void do_JOB_VIEW(struct thread_data *td, struct job *job){
   struct view_job * vj = (struct view_job *)job->job_data;
-  g_message("Thread %d dumping view for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping view for `%s`.`%s`", td->thread_id,
             vj->database, vj->table);
   write_view_definition_into_file(td->thrconn, vj->database, vj->table, vj->filename,
                  vj->filename2, vj->checksum_filename);
@@ -802,7 +805,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping schema for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
   write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
 //  free_schema_job(sj);
@@ -815,7 +818,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   struct schema_job * sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping triggers for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
   write_triggers_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename);
   free_schema_job(sj);
@@ -825,7 +828,7 @@ void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
 
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   struct table_checksum_job *tcj = (struct table_checksum_job *)job->job_data;
-  g_message("Thread %d dumping checksum for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping checksum for `%s`.`%s`", td->thread_id,
             tcj->database, tcj->table);
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));

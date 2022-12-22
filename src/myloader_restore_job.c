@@ -183,7 +183,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }
-//        g_message("Thread %d: Creating table `%s`.`%s` from content in %s COMPLETED", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
+        g_debug("Thread %d: Creating table `%s`.`%s` from content in %s COMPLETED", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
       }
       dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);

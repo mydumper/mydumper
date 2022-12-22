@@ -394,7 +394,7 @@ void remove_definer(GString * data){
 
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
-    g_string_append_printf(str, "%s, built against MySQL %s", VERSION, MYSQL_VERSION_STR);
+    g_string_append_printf(str, "%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
 #endif
