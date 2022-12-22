@@ -400,7 +400,7 @@ gboolean process_metadata_filename(char * filename){
   gchar *db_name, *table_name;
   get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s (1)",filename);
+      g_critical("It was not possible to process file: %s (2)",filename);
       exit(EXIT_FAILURE);
   }
   struct database *real_db_name=get_db_hash(db_name,db_name);
@@ -516,13 +516,15 @@ gboolean process_checksum_filename(char * filename){
   // TODO: check if it is a data file
   // TODO: we need to count sections of the data file to determine if it is ok.
   get_database_table_from_file(filename,"-",&db_name,&table_name);
-  if (db_name == NULL || table_name == NULL){
-    g_critical("It was not possible to process file: %s (3)",filename);
+  if (db_name == NULL){
+    g_critical("It was not possible to process file: %s (4)",filename);
     exit(EXIT_FAILURE);
   }
-  struct database *real_db_name=get_db_hash(db_name,db_name);
-  if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    return FALSE;
+  if (table_name != NULL) {
+    struct database *real_db_name=get_db_hash(db_name,db_name);
+    if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
+      return FALSE;
+    }
   }
   return TRUE;
 }
