@@ -391,6 +391,9 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     mysql_query(conn, query);
     result2 = mysql_store_result(conn);
     row2 = mysql_fetch_row(result2);
+    if ( skip_definer && g_str_has_prefix(row2[2],"CREATE")){
+      remove_definer_from_gchar(row2[2]);
+    }
     g_string_append_printf(statement, "%s", row2[2]);
     splited_st = g_strsplit(statement->str, ";\n", 0);
     g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
