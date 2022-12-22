@@ -352,7 +352,6 @@ void *control_job_thread(struct configuration *conf){
   gboolean giveup;
   struct database * real_db_name = NULL;
 //  struct control_job *job = NULL;
-  guint i=0;
   gboolean cont=TRUE;
   while(cont){
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 
@@ -383,7 +382,7 @@ void *control_job_thread(struct configuration *conf){
         }else{
 //          g_message("No job available");
           if (intermediate_queue_ended_local && giveup){
-            g_message("Enqueuing shutdown");
+//            g_message("Enqueuing shutdown");
             g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
           }
         }
@@ -409,14 +408,20 @@ void *control_job_thread(struct configuration *conf){
 //          g_message("No job available");
           if (intermediate_queue_ended_local){
             if (giveup){
-//            g_message("Enqueuing shutdown");
-//            for(i=0;i<num_threads;i++)
-              g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+              for(;0<threads_waiting+1;threads_waiting--){
+//                g_message("Enqueuing shutdown");
+                g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+              }
             }else{
-              g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
+            //  g_message("Ignoring");
+            //  g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
+//              g_message("Thread waiting");
+              threads_waiting=threads_waiting<num_threads?threads_waiting+1:num_threads;
             }
-          }else
+          }else{
+//            g_message("Thread waiting");
             threads_waiting=threads_waiting<num_threads?threads_waiting+1:num_threads;
+          }
         }
       }
       break;
@@ -434,7 +439,7 @@ void *control_job_thread(struct configuration *conf){
 //      g_message("INTERMEDIATE_ENDED ACA");
       enqueue_indexes_if_possible(conf);
 //      g_message("INTERMEDIATE_ENDED FINISH");
-      for (i=0; i<threads_waiting; i++){
+      for (; 0<threads_waiting; threads_waiting--){
         giveup=give_any_data_job_conf(conf, &rj);
         if (rj != NULL){
           g_async_queue_push(data_queue,rj);
@@ -442,6 +447,8 @@ void *control_job_thread(struct configuration *conf){
         }else{
           if (giveup)
             g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+          else 
+            g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
         }
         
       }
