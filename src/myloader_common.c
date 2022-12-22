@@ -92,15 +92,19 @@ struct database * db_hash_lookup(gchar *database){
   return r;
 }
 */
-gboolean eval_table( char *db_name, char * table_name){
+gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
+  g_mutex_lock(mutex);
   if ( tables ){
     if ( ! is_table_in_list(table_name, tables) ){
+      g_mutex_unlock(mutex);
       return FALSE;
     }
   }
   if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+    g_mutex_unlock(mutex);
     return FALSE;
   }
+  g_mutex_unlock(mutex);
   return eval_regex(db_name, table_name);
 }
 

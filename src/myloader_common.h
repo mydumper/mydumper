@@ -30,7 +30,7 @@ gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *
 struct database * get_db_hash(gchar *k, gchar *v);
 //struct database * db_hash_insert(gchar *k, gchar *v);
 //struct database * db_hash_lookup(gchar *database);
-gboolean eval_table( char *db_name, char * table_name);
+gboolean eval_table( char *db_name, char * table_name, GMutex * mutex);
 //void load_schema(structconfiguration *conf, struct db_table *dbt, const gchar *filename);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt);
