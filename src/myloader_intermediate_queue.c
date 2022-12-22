@@ -101,20 +101,22 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_VIEW:
         if (!process_schema_view_filename(filename))
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
           if (!process_schema_filename(filename,"trigger"))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         break;
       case SCHEMA_POST:
         // can be enqueued in any order
         if (!skip_post)
           if (!process_schema_filename(filename,"post"))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         break;
       case CHECKSUM:
+        if (!process_checksum_filename(filename))
+          return DO_NOT_ENQUEUE;
         intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
         break;
       case METADATA_GLOBAL:
@@ -122,13 +124,13 @@ enum file_type process_filename(char *filename){
       case METADATA_TABLE:
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
         if (!process_metadata_filename(filename))
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         refresh_table_list(intermediate_conf);
         break;
       case DATA:
         if (!no_data){
           if (!process_data_filename(filename))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         }else
           m_remove(directory,filename);
         total_data_sql_files++;

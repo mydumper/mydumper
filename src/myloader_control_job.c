@@ -442,6 +442,8 @@ void *control_job_thread(struct configuration *conf){
         }else{
           if (giveup)
             g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+          else
+            g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
         }
         
       }
