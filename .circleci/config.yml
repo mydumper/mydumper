@@ -109,7 +109,7 @@ commands:
     - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
-  compile_and_test_mydumper_in_ubuntu_2004:
+  compile_and_test_mydumper_in_ubuntu_2004_percona80:
     executor: ubuntu2004_percona80
     steps:
     - checkout
@@ -182,10 +182,9 @@ workflows:
   version: 2
   mydumper:
     jobs:
-    - compile_and_test_mydumper:
+    - compile_and_test_mydumper_in_ubuntu_2004_percona80:
         requires:
           - compile_and_test_mydumper_in_ubuntu_2204_percona80
-          - compile_and_test_mydumper_in_ubuntu_2004_percona80
           
         filters:
 #          branches:
