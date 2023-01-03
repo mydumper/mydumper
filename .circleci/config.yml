@@ -17,6 +17,21 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/work/mydumper
+  ubuntu2204_percona80:
+    docker:
+    - image: cimg/base:stable-22.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
   el8:
     docker:
     - image: almalinux:8
@@ -105,6 +120,17 @@ jobs:
          root: /tmp/work/mydumper
          paths:
            - .
+  compile_and_test_mydumper_in_ubuntu_2204_percona80:
+    executor: ubuntu2204_percona80
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_ubuntu_percona80
+#    - compile_and_test_mydumper
+    - persist_to_workspace:
+         root: /tmp/work/mydumper
+         paths:
+           - .
   compile_and_test_mydumper_in_el_8:
     executor: el8
     steps:
@@ -156,6 +182,13 @@ workflows:
   version: 2
   mydumper:
     jobs:
+    - compile_and_test_mydumper_in_ubuntu_2204_percona80:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /.*/
+#            only: /^\d+\.\d+\.\d+$/
     
     - compile_and_test_mydumper_in_ubuntu_2004:
         filters:
@@ -169,8 +202,8 @@ workflows:
 #          branches:
 #            ignore: /.*/
           tags:
-            only: /.*/
-#            only: /^\d+\.\d+\.\d+$/
+#            only: /.*/
+            only: /^\d+\.\d+\.\d+$/
 
     - publish-github-release:
         requires:
