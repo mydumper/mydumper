@@ -184,8 +184,8 @@ workflows:
     jobs:
     - compile_and_test_mydumper_in_ubuntu_2204_percona80:
         filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
             only: /.*/
 #            only: /^\d+\.\d+\.\d+$/
@@ -199,8 +199,8 @@ workflows:
             only: /^\d+\.\d+\.\d+$/
     - build_el_8:
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
@@ -210,8 +210,8 @@ workflows:
 #          - compile_and_test_mydumper_in_ubuntu_2004
           - build_el_8
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
