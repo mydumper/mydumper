@@ -25,8 +25,7 @@
 #define UNLOCK_TABLES "UNLOCK TABLES"
 typedef gchar * (*fun_ptr2)(gchar **);
 
-
-void load_working_thread_entries(GOptionGroup *main_group);
+void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
 void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *collation, char *datalength, gchar *ecol);

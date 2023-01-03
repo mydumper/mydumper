@@ -41,3 +41,4 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
 void free_common();
+void initialize_sql_statement(GString *statement);

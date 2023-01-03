@@ -19,8 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-
-void load_write_entries(GOptionGroup *main_group);
+void load_write_entries(GOptionGroup *main_group, GOptionContext *context);
 void initialize_write();
 
 gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt);

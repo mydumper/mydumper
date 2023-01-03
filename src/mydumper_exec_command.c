@@ -100,7 +100,7 @@ void *process_exec_command(void *data){
 
 static GOptionEntry exec_entries[] = {
     {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
-     "", NULL},
+     "Amount of threads to use with --exec", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 void load_exec_entries(GOptionGroup *main_group){

@@ -216,7 +216,7 @@ struct schema_post {
   struct database *database;
 };
 
-void load_start_dump_entries(GOptionGroup *main_group);
+void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();
 void start_dump();
 MYSQL *create_main_connection();

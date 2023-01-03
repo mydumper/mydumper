@@ -76,23 +76,26 @@ extern gboolean use_fifo;
 gboolean skip_definer = FALSE;
 
 static GOptionEntry dump_into_file_entries[] = {
-    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
-     NULL},
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+static GOptionEntry exec_per_thread_entries[] = {
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
      "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
      "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-void load_dump_into_file_entries(GOptionGroup *main_group){
+void load_dump_into_file_entries(GOptionGroup *main_group, GOptionGroup *exec_group){
+
+  g_option_group_add_entries(exec_group, exec_per_thread_entries);
+
   g_option_group_add_entries(main_group, dump_into_file_entries);
 }
 
@@ -284,20 +287,7 @@ void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
 
   GString *statement = g_string_sized_new(statement_size);
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    if (set_names_str)
-      g_string_printf(statement,"%s;\n",set_names_str);
-    g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
-    if (!skip_tz) {
-      g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
-    if (!skip_tz) {
-      g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else {
-    g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
-  }
+  initialize_sql_statement(statement);
 
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", database, table);
@@ -877,37 +867,33 @@ void create_job_to_dump_schema(char *database, struct configuration *conf) {
 }
 
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf) {
-  if (dump_triggers) {
-    char *query = NULL;
-    MYSQL_RES *result = NULL;
+  char *query = NULL;
+  MYSQL_RES *result = NULL;
 
-    query =
-        g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
-    if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-      g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
-                 mysql_error(conn),query);
-      errors++;
-    } else {
-      if (mysql_num_rows(result)) {
-        struct job *t = g_new0(struct job, 1);
-        struct schema_job *st = g_new0(struct schema_job, 1);
-        t->job_data = (void *)st;
-        st->database = dbt->database->name;
-        st->table = g_strdup(dbt->table);
-//        t->conf = conf;
-        t->type = JOB_TRIGGERS;
-        st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
-        if ( routine_checksums )
-          st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
-        g_async_queue_push(conf->post_data_queue, t);
-      }
-    }
-    g_free(query);
-    if (result) {
-      mysql_free_result(result);
+  query =
+      g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
+  if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
+    g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
+               mysql_error(conn),query);
+    errors++;
+  } else {
+    if (mysql_num_rows(result)) {
+      struct job *t = g_new0(struct job, 1);
+      struct schema_job *st = g_new0(struct schema_job, 1);
+      t->job_data = (void *)st;
+      st->database = dbt->database->name;
+      st->table = g_strdup(dbt->table);
+      t->type = JOB_TRIGGERS;
+      st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
+      if ( routine_checksums )
+        st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
+      g_async_queue_push(conf->post_data_queue, t);
     }
   }
-
+  g_free(query);
+  if (result) {
+    mysql_free_result(result);
+  }
 }
 
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {

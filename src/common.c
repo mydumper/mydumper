@@ -27,6 +27,7 @@ extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
 extern GKeyFile * key_file;
+extern gboolean no_stream;
 
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
@@ -406,4 +407,26 @@ void print_version(const gchar *program){
     g_print("%s\n", str->str);
 }
 
+
+
+gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,8,"--stream")){
+    stream = TRUE;
+    if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
+      return TRUE;
+    }
+    if (g_strstr_len(value,9,"NO_DELETE")){
+      no_delete=TRUE;
+      return TRUE;
+    }
+    if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
+      no_delete=TRUE;
+      no_stream=TRUE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
