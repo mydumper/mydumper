@@ -194,9 +194,9 @@ workflows:
 #            only: /^\d+\.\d+\.\d+$/
     
 
-    - build:
+    - build_el8_percona57:
         requires:
-          - build_el8_percona57
+#          - build_el8_percona57
         filters:
           branches:
             ignore: /.*/
