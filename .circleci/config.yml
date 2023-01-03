@@ -2,6 +2,14 @@
 version: 2.1
 
 executors:
+  percona_80:
+    docker:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+
   ubuntu2004_percona80:
     docker:
     - image: cimg/base:stable-20.04
@@ -109,6 +117,11 @@ commands:
     - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
+  percona_80_db:
+    executor: percona_80
+    steps:
+      - checkout
+          
   compile_and_test_mydumper_in_ubuntu_2004_percona80:
     executor: ubuntu2004_percona80
     steps:
@@ -182,9 +195,11 @@ workflows:
   version: 2
   mydumper:
     jobs:
+    - percona_80_db
     - compile_and_test_mydumper_in_ubuntu_2004_percona80:
         requires:
-          - compile_and_test_mydumper_in_ubuntu_2204_percona80
+          - percona_80_db
+
           
         filters:
 #          branches:
@@ -195,7 +210,7 @@ workflows:
     
 
     - build_el8_percona57:
-        requires:
+#        requires:
 #          - build_el8_percona57
         filters:
           branches:
@@ -207,7 +222,7 @@ workflows:
     - publish-github-release:
         requires:
 #          - compile_and_test_mydumper
-          - build
+          - build_el8_percona57
         filters:
           branches:
             ignore: /.*/
