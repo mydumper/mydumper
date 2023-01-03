@@ -2,7 +2,7 @@
 version: 2.1
 
 executors:
-  ubuntu2004:
+  ubuntu2004_percona80:
     docker:
     - image: cimg/base:stable-20.04
       environment:
@@ -110,7 +110,7 @@ commands:
 
 jobs:
   compile_and_test_mydumper_in_ubuntu_2004:
-    executor: ubuntu2004
+    executor: ubuntu2004_percona80
     steps:
     - checkout
     - prepare_ubuntu
@@ -131,7 +131,7 @@ jobs:
          root: /tmp/work/mydumper
          paths:
            - .
-  compile_and_test_mydumper_in_el_8:
+  compile_and_test_mydumper_in_el8_percona80:
     executor: el8
     steps:
     - checkout
@@ -143,7 +143,7 @@ jobs:
          paths:
            - .
 
-  build_el_8:
+  build_el8_percona57:
     executor: el8
     environment:
       MYDUMPER_VERSION: 0.13.3
@@ -182,7 +182,11 @@ workflows:
   version: 2
   mydumper:
     jobs:
-    - compile_and_test_mydumper_in_ubuntu_2204_percona80:
+    - compile_and_test_mydumper:
+        requires:
+          - compile_and_test_mydumper_in_ubuntu_2204_percona80
+          - compile_and_test_mydumper_in_ubuntu_2004_percona80
+          
         filters:
 #          branches:
 #            ignore: /.*/
@@ -190,14 +194,10 @@ workflows:
             only: /.*/
 #            only: /^\d+\.\d+\.\d+$/
     
-    - compile_and_test_mydumper_in_ubuntu_2004:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-#            only: /.*/
-            only: /^\d+\.\d+\.\d+$/
-    - build_el_8:
+
+    - build:
+        requires:
+          - build_el8_percona57
         filters:
           branches:
             ignore: /.*/
@@ -207,8 +207,8 @@ workflows:
 
     - publish-github-release:
         requires:
-#          - compile_and_test_mydumper_in_ubuntu_2004
-          - build_el_8
+#          - compile_and_test_mydumper
+          - build
         filters:
           branches:
             ignore: /.*/
