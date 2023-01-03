@@ -120,7 +120,15 @@ jobs:
   percona_80_db:
     executor: percona_80
     steps:
-      - run: echo ""
+      - when:
+          condition: false
+          steps: 
+            - run: echo ""
+      - unless:
+          condition: false
+          steps:
+            - run: echo ""
+
           
   compile_and_test_mydumper_in_ubuntu_2004_percona80:
     executor: ubuntu2004_percona80
