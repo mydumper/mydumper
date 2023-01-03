@@ -47,8 +47,6 @@ char **tables = NULL;
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, default 4", NULL},
-    {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
-     "Use compression on the MySQL connection", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
      "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
@@ -57,6 +55,22 @@ GOptionEntry common_entries[] = {
      NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
      "Use a specific defaults file", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+GOptionEntry common_filter_entries[] = {
+    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
+     "File containing a list of database.table entries to skip, one per line "
+     "(skips before applying regex option)",
+     NULL},
+    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
+     "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
+     NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+GOptionEntry common_connection_entries[] = {
+    {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
+     "Use compression on the MySQL connection", NULL},
 #ifdef WITH_SSL
     {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
     {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
@@ -80,13 +94,6 @@ GOptionEntry common_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
-    {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
-     "File containing a list of database.table entries to skip, one per line "
-     "(skips before applying regex option)",
-     NULL},
-    {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
-     "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
-     NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 int (*m_close)(void *file) = NULL;

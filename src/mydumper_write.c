@@ -58,15 +58,16 @@ extern int detected_server;
 extern int skip_tz;
 extern gchar *set_names_str;
 extern guint errors;
-extern guint statement_size;
+guint statement_size = 1000000;
 extern gboolean success_on_1146;
 extern gchar *where_option;
 extern gboolean load_data;
 extern guint rows_per_file;
 extern int compress_output;
 extern FILE * (*m_open)(const char *filename, const char *);
+extern gboolean skip_definer;
 
-
+guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
 gboolean csv = FALSE;
@@ -83,11 +84,15 @@ gchar *statement_terminated_by_ld=NULL;
 gchar *fields_terminated_by_ld=NULL;
 gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
+gboolean hex_blob = FALSE;
 
 static GOptionEntry write_entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
      "Split tables into chunks of this output file size. This value is in MB",
      NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry statement_entries[] = {
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
      "", NULL },
     { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
@@ -111,11 +116,32 @@ static GOptionEntry write_entries[] = {
      "Dump rows with INSERT IGNORE", NULL},
     {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
      "Dump rows with REPLACE", NULL},
+    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
+     "Use complete INSERT statements that include column names", NULL},
+    {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
+      "Dump binary columns using hexadecimal notation", NULL},
+    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
+     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
+     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
+    {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
+     "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
+     "when a server has data in different time zones or data is being moved "
+     "between servers with different time zones, defaults to on use "
+     "--skip-tz-utc to disable.",
+     NULL},
+    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
+      "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
-void load_write_entries(GOptionGroup *main_group){
+void load_write_entries(GOptionGroup *main_group, GOptionContext *context){
   g_option_group_add_entries(main_group, write_entries);
+
+  GOptionGroup *statement_group=g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
+  g_option_group_add_entries(statement_group, statement_entries);
+  g_option_context_add_group(context, statement_group);
 }
 
 void initialize_write(){
@@ -286,23 +312,6 @@ void initialize_load_data_statement(GString *statement, gchar * table, const gch
   g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
   append_columns(statement,fields,num_fields);
   g_string_append(statement,");\n");
-}
-
-void initialize_sql_statement(GString *statement){
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    if (set_names_str)
-      g_string_printf(statement,"%s;\n",set_names_str);
-    g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
-    if (!skip_tz) {
-      g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
-    if (!skip_tz) {
-      g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else {
-    g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
-  }
 }
 
 gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt){

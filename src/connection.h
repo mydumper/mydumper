@@ -24,5 +24,5 @@
 void m_connect(MYSQL *conn, const gchar *app, gchar *schema);
 void hide_password(int argc, char *argv[]);
 void ask_password();
-void load_connection_entries(GOptionGroup *main_group);
+GOptionGroup * load_connection_entries(GOptionContext *context);
 #endif

@@ -35,13 +35,13 @@
 extern gchar *where_option;
 extern int detected_server;
 extern guint rows_per_file;
-extern gboolean split_partitions;
+gboolean split_partitions = FALSE;
 extern guint num_threads;
 extern gchar *set_names_str;
 guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
-
+extern gchar *rows_per_chunk;
 extern GList *innodb_table, *non_innodb_table;
 
 guint char_chunk=0;
@@ -54,6 +54,11 @@ static GOptionEntry chunks_entries[] = {
      "",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
      "",NULL},
+    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
+     "Try to split tables into chunks of this many rows.",
+     NULL},
+    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
+      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
 };
 
@@ -67,8 +72,11 @@ void initialize_chunk(){
   }
 }
 
-void load_chunks_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, chunks_entries);
+void load_chunks_entries(GOptionContext *context){
+  GOptionGroup *chunks_group=g_option_group_new("job", "Job Options", "Job Options", NULL, NULL);
+  g_option_group_add_entries(chunks_group, chunks_entries);
+  g_option_context_add_group(context, chunks_group);
+
 }
 
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){

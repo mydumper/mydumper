@@ -61,7 +61,7 @@ struct table_checksum_job {
 };
 
 void initialize_jobs();
-void load_dump_into_file_entries(GOptionGroup *main_group);
+void load_dump_into_file_entries(GOptionGroup *main_group, GOptionGroup *exec_group);
 void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
 void create_job_to_dump_tablespaces(struct configuration *conf);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);

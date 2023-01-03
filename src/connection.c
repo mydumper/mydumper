@@ -60,8 +60,13 @@ extern gchar *ssl_mode;
 #endif
 extern guint compress_protocol;
 
-void load_connection_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, connection_entries);
+GOptionGroup * load_connection_entries(GOptionContext *context){
+//  g_option_group_add_entries(main_group, connection_entries);
+  GOptionGroup *connection_group =
+      g_option_group_new("connectiongroup", "Connection Options", "connection", NULL, NULL);
+  g_option_group_add_entries(connection_group, connection_entries);
+  g_option_context_add_group(context, connection_group);
+  return connection_group;
 }
 
 void configure_connection(MYSQL *conn, const char *name) {

@@ -37,15 +37,6 @@ extern guint rows;
 
 gboolean skip_definer = FALSE;
 
-static GOptionEntry restore_entries[] = {
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void load_restore_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, restore_entries);
-}
-
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {

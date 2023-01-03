@@ -18,8 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-
-void load_chunks_entries(GOptionGroup *main_group);
+void load_chunks_entries(GOptionContext *context);
 GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,

@@ -148,28 +148,24 @@ extern GAsyncQueue *start_scheduled_dump;
 extern guint errors;
 
 gchar *exec_command=NULL;
+extern gboolean use_savepoints;
 
 static GOptionEntry start_dump_entries[] = {
     {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
      "Compress output files", NULL},
-    {"exec", 0, 0, G_OPTION_ARG_STRING, &exec_command,
-      "Command to execute using the file as parameter", NULL},
-    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
-     "Retry checking for long queries, default 0 (do not retry)", NULL},
-    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
-     "Time to wait before retrying the long query check in seconds, default 60", NULL},
-    {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
-     "Set long query timer in seconds, default 60", NULL},    
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
-    {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
-     "Use Update_time to dump only tables updated in the last U days", NULL},
+
     {"no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks,
      "Do not execute the temporary shared read lock.  WARNING: This will cause "
      "inconsistent backups",
      NULL},
-    {"all-tablespaces", 'Y', 0 , G_OPTION_ARG_NONE, &dump_tablespaces,
-    "Dump all the tablespaces.", NULL},
+    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
+     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
+     NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
     {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
@@ -178,25 +174,62 @@ static GOptionEntry start_dump_entries[] = {
      "Minimize locking time on InnoDB tables.", NULL},
     {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
      "Transactional consistency only", NULL},
-    {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
-      "Do not dump table schemas with the data and triggers", NULL},
+
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+static GOptionEntry query_running_entries[] = {
+    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
+     "Retry checking for long queries, default 0 (do not retry)", NULL},
+    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
+     "Time to wait before retrying the long query check in seconds, default 60", NULL},
+    {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
+     "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
      "Kill long running queries (instead of aborting)", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
-      "Sets the names, use it at your own risk, default binary", NULL },
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry exec_entries[] = {
+    {"exec", 0, 0, G_OPTION_ARG_STRING, &exec_command,
+      "Command to execute using the file as parameter", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry pmm_entries[] = {
     { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
       "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
     { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
       "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-void load_start_dump_entries(GOptionGroup *main_group){
-  load_dump_into_file_entries(main_group);
-  load_chunks_entries(main_group);
-  load_working_thread_entries(main_group);
-  load_exec_entries(main_group);
-  load_write_entries(main_group);
-  g_option_group_add_entries(main_group, start_dump_entries);
+
+void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group){
+  GOptionGroup *extra_group=g_option_group_new("extra", "Extra Options", "Extra Options", NULL, NULL);
+
+  GOptionGroup *lock_group=g_option_group_new("lock", "Lock Options", "Lock Options", NULL, NULL);
+  g_option_group_add_entries(lock_group, lock_entries);
+  g_option_context_add_group(context, lock_group);
+
+
+  GOptionGroup *pmm_group=g_option_group_new("pmm", "PMM Options", "PMM Options", NULL, NULL);
+  g_option_group_add_entries(pmm_group, pmm_entries);
+  g_option_context_add_group(context, pmm_group);
+
+  GOptionGroup *exec_group=g_option_group_new("exec", "Exec Options", "Exec Options", NULL, NULL);
+  g_option_group_add_entries(exec_group, exec_entries);
+  g_option_context_add_group(context, exec_group);
+  load_exec_entries(exec_group);
+  load_dump_into_file_entries(extra_group, exec_group);
+
+  GOptionGroup *query_running_group=g_option_group_new("query_running", "If long query running found:", "If long query running found:", NULL, NULL);
+  g_option_group_add_entries(query_running_group, query_running_entries);
+  g_option_context_add_group(context, query_running_group);
+
+  load_chunks_entries(context);
+  load_working_thread_entries(context, extra_group, filter_group);
+  load_write_entries(extra_group, context);
+  g_option_group_add_entries(extra_group, start_dump_entries);
+
+  g_option_context_add_group(context, extra_group);
 }
 
 

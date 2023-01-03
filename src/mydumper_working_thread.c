@@ -79,9 +79,10 @@
 
 GMutex *init_mutex = NULL;
 /* Program options */
+extern guint updated_since;
 extern gboolean no_locks;
-guint complete_insert = 0;
-
+extern guint complete_insert;
+extern gboolean dump_tablespaces;
 guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
 extern gboolean load_data;
@@ -145,7 +146,6 @@ extern struct configuration_per_table conf_per_table;
 GHashTable *character_set_hash=NULL;
 GMutex *character_set_hash_mutex = NULL;
 
-gboolean hex_blob = FALSE;
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
@@ -158,23 +158,14 @@ extern GAsyncQueue *start_scheduled_dump;
 GCond *ll_cond = NULL;
 
 extern guint errors;
-guint statement_size = 1000000;
 int build_empty_files = 0;
 gchar *where_option=NULL;
 GMutex *consistent_snapshot = NULL;
 GMutex *consistent_snapshot_token_I = NULL;
 GMutex *consistent_snapshot_token_II = NULL;
 gchar *rows_per_chunk=NULL;
-gboolean split_partitions = FALSE;
 
-static GOptionEntry working_thread_entries[] = {
-    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
-    {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
-     "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
-    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
-     NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
+static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
      "Dump checksums for all elements", NULL},
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
@@ -183,43 +174,44 @@ static GOptionEntry working_thread_entries[] = {
      "Dump schema table and view creation checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
      "Dump triggers, functions and routines checksums", NULL},
-    {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
-     "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
-     "when a server has data in different time zones or data is being moved "
-     "between servers with different time zones, defaults to on use "
-     "--skip-tz-utc to disable.",
-     NULL},
-    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
-     "Use complete INSERT statements that include column names", NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
-    {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
-     "Snapshot to use for TiDB", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry working_thread_entries[] = {
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
     {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
-    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
-     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
-     NULL},
-    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
-     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
-      "Dump only selected records.", NULL },
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry filter_worker_entries[] = {
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
-    {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
-      "Dump binary columns using hexadecimal notation", NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
-     "Try to split tables into chunks of this many rows.",
-//    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
-//     "Try to split tables into chunks of this many rows. This option turns off "
-//     "--chunk-filesize",
+    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
+      "Dump only selected records.", NULL },
+    {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
+     "Use Update_time to dump only tables updated in the last U days", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry objects_entries[] = {
+    {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
+      "Do not dump table schemas with the data and triggers", NULL},
+    {"all-tablespaces", 'Y', 0 , G_OPTION_ARG_NONE, &dump_tablespaces,
+    "Dump all the tablespaces.", NULL},
+    {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
+     NULL},
+    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
+     NULL},
+    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
+    {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
+     "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
+    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
@@ -228,8 +220,23 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 guint64 write_table_data_into_file(MYSQL *conn, struct table_job *tj);
 void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
-void load_working_thread_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, working_thread_entries);
+void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group){
+
+  g_option_group_add_entries(extra_group, working_thread_entries);
+
+
+  GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
+  g_option_group_add_entries(checksum_group, checksum_entries);
+  g_option_context_add_group(context, checksum_group);
+
+  GOptionGroup *objects_group=g_option_group_new("objects", "Objects Options", "Objects Options", NULL, NULL);
+  g_option_group_add_entries(objects_group, objects_entries);
+  g_option_context_add_group(context, objects_group);
+
+  g_option_group_add_entries(filter_group, filter_worker_entries);
+
+//  g_option_context_add_group(context, main_group);
+
 }
 
 
