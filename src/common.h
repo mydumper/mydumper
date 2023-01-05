@@ -65,3 +65,7 @@ void remove_definer_from_gchar(char * str);
 void print_version(const gchar *program);
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 #endif
+
+/* using fewer than 2 threads can cause mydumper to hang */
+#define MIN_THREAD_COUNT 2
+void check_num_threads();
