@@ -120,6 +120,16 @@ CREATE VIEW `table_view_2_a` AS SELECT
  1 AS `id`,
  1 AS `val` FROM table_view_2_b LIMIT 1;
 
+
+DROP TABLE IF EXISTS `table_json`;
+CREATE TABLE `table_json` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `data` json DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB;
+
+INSERT INTO table_json (data) VALUES ('{"event": {"during_trans_approve": {"td_id": 11680829}}}');
+
 -- Store procedures and functions
 
 DELIMITER ;;
