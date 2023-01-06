@@ -239,7 +239,7 @@ commands:
     steps:
     - run: yum -y install epel-release || true
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-    - run: yum -y install wget
+    - run: yum -y install wget gnupg
 
   prepare_ubuntu2004_percona_package:
     steps:
