@@ -130,6 +130,9 @@ jobs:
             - run: sudo echo ""
 
   compile_and_test_mydumper_percona80:
+    parameters:
+      os:
+        type: executor
     executor: << parameters.os >>
     steps:
     - checkout
@@ -212,13 +215,13 @@ jobs:
     - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete TEST /tmp/package
 
 workflows:
-  version: 2.1
+  version: 2
   mydumper:
     jobs:
     - compile_and_test_mydumper_percona80:
         matrix:
           parameters:
-            os: [ ubuntu_2004_percona80 ]
+            os: [ ubuntu2004_percona80 ]
 
           
         filters:
