@@ -129,6 +129,18 @@ jobs:
           steps:
             - run: sudo echo ""
 
+  compile_and_test_mydumper_percona80:
+    executor: << parameters.os >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_ubuntu_percona80
+#    - compile_and_test_mydumper
+    - persist_to_workspace:
+         root: /tmp/work/mydumper
+         paths:
+           - .
+
           
   compile_and_test_mydumper_in_ubuntu_2004_percona80:
     executor: ubuntu2004_percona80
@@ -200,13 +212,13 @@ jobs:
     - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete TEST /tmp/package
 
 workflows:
-  version: 2
+  version: 2.1
   mydumper:
     jobs:
-    - percona_80_db
-    - compile_and_test_mydumper_in_ubuntu_2004_percona80:
-        requires:
-          - percona_80_db
+    - compile_and_test_mydumper_percona80:
+        matrix:
+          parameters:
+            os: [ ubuntu_2004_percona80 ]
 
           
         filters:
