@@ -174,19 +174,19 @@ commands:
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
     - run: yum -y install wget
 
-  prepare_el9_percona_package:
+  prepare_ubuntu2004_percona_package:
     steps:
 
-    - run: wget https://repo.percona.com/apt/
-    - run: sudo dpkg -i
+    - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
+    - run: sudo dpkg -i percona-release_latest.focal_all.deb
 
-  prepare_el9_percona_package:
+  prepare_ubuntu2204_percona_package:
     steps:
 
-    - run: wget https://repo.percona.com/apt/
-    - run: sudo dpkg -i
+    - run: wget https://repo.percona.com/apt/percona-release_latest.jammy_all.deb
+    - run: sudo dpkg -i percona-release_latest.jammy_all.deb
 
-prepare_ubuntu_percona57:
+  prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
     - run: sudo apt-get install -y libperconaserverclient20 libperconaserverclient20-dev percona-server-client
@@ -690,8 +690,8 @@ workflows:
   version: 2
   mydumper:
     jobs:
-    - compile_and_test_mydumper_in_ubuntu_2004_percona80
-    - compile_and_test_mydumper_in_ubuntu_2204_percona80:
+    - compile_and_test_mydumper_in_ubuntu2004_percona80
+    - compile_and_test_mydumper_in_ubuntu2204_percona80:
 
         filters:
 #          branches:
