@@ -685,7 +685,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-    - compile_and_test_mydumper_in_ubuntu2204_percona57
     - build_ubuntu2204_percona57:
         filters:
           branches:
@@ -733,7 +732,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-    - compile_and_test_mydumper_in_el9_percona57
     - build_el9_percona57:
         filters:
           branches:
@@ -753,13 +751,11 @@ workflows:
         requires:
           - build_ubuntu2004_percona57
           - build_ubuntu2004_percona80
-          - build_ubuntu2204_percona57
           - build_ubuntu2204_percona80
           - build_el7_percona57
           - build_el7_percona80
           - build_el8_percona57
           - build_el8_percona80
-          - build_el9_percona57
           - build_el9_percona80
         filters:
           branches:
