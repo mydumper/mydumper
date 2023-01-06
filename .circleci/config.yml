@@ -2,13 +2,21 @@
 version: 2.1
 
 executors:
-  percona_80:
+  ubuntu2004_percona57:
     docker:
-    - image: percona:8
+    - image: cimg/base:stable-20.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:57
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
 
   ubuntu2004_percona80:
     docker:
@@ -25,6 +33,23 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/work/mydumper
+    
+  ubuntu2204_percona57:
+    docker:
+    - image: cimg/base:current-22.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:57
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
   ubuntu2204_percona80:
     docker:
     - image: cimg/base:current-22.04
@@ -40,7 +65,56 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/work/mydumper
-  el8:
+
+  el7_percona57:
+    docker:
+    - image: almalinux:7
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:57
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+  el7_percona80:
+    docker:
+    - image: almalinux:7
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+  el8_percona57:
+    docker:
+    - image: almalinux:8
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:57
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+  el8_percona80:
     docker:
     - image: almalinux:8
       environment:
@@ -56,6 +130,39 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/work/mydumper
 
+  el9_percona57:
+    docker:
+    - image: almalinux:9
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:57
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+  el9_percona80:
+    docker:
+    - image: almalinux:9
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+
 commands:
   prepare_ubuntu:
     steps:
@@ -68,32 +175,56 @@ commands:
     - run: yum -y install wget 
 
 
+  prepare_ubuntu2004_percona_package:
+    - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
+    - run: sudo dpkg -i percona-release_latest.focal_all.deb
+
+  prepare_ubuntu_percona57:
+    - run: sudo percona-release setup -y ps57
+    - run: sudo apt-get install -y libperconaserverclient20 libperconaserverclient20-dev percona-server-client
 
   prepare_ubuntu_percona80:
-    parameters:
-      arguments:
-        percona_package:
-          description: URL to the percona package
-          type: string
-    steps:
-    - run: wget << parameters.percona_package >>
-    - run: sudo dpkg -i percona-release_latest.focal_all.deb
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
-  prepare_el_percona57:
+  prepare_ubuntu2004_percona57:
+    steps:
+    - prepare_ubuntu2004_percona_package
+    - prepare_ubuntu_percona57
+
+  prepare_ubuntu2004_percona80:
+    steps:
+    - prepare_ubuntu2004_percona_package
+    - prepare_ubuntu_percona80
+
+  prepare_ubuntu2204_percona57:
+    steps:
+    - prepare_ubuntu2004_percona_package
+    - prepare_ubuntu_percona57
+
+  prepare_ubuntu2204_percona80:
+    steps:
+    - prepare_ubuntu2004_percona_package
+    - prepare_ubuntu_percona80
+
+
+  prepare_el_percona_package:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+
+  prepare_el_percona57:
+    steps:
+    - prepare_el_percona_package
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_percona80:
     steps:
-    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+    - prepare_el_percona_package
     - run: percona-release setup -y ps80
     - run: yum -y install percona-server-devel percona-server-client
-    # percona-server-server
 
   compile:
     parameters:
@@ -122,57 +253,54 @@ commands:
     - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
-  percona_80_db:
-    executor: percona_80
-    steps:
-      - when:
-          condition: false
-          steps: 
-            - run: sudo echo ""
-      - unless:
-          condition: false
-          steps:
-            - run: sudo echo ""
-
-  compile_and_test_mydumper_percona80:
-    parameters:
-      os:
-        type: executor
-    executor: << parameters.os[0] >>
+  compile_and_test_mydumper_in_ubuntu_2004_percona57:
+    executor: ubuntu2004_percona57
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80:
-        percona_package: << parameters.os[1] >>
+    - prepare_ubuntu2004_percona57
 #    - compile_and_test_mydumper
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
            - .
 
-          
   compile_and_test_mydumper_in_ubuntu_2004_percona80:
     executor: ubuntu2004_percona80
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu2004_percona80
 #    - compile_and_test_mydumper
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
            - .
+
+  compile_and_test_mydumper_in_ubuntu_2204_percona57:
+    executor: ubuntu2204_percona57
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_ubuntu2204_percona57
+#    - compile_and_test_mydumper
+    - persist_to_workspace:
+         root: /tmp/work/mydumper
+         paths:
+           - .
+
   compile_and_test_mydumper_in_ubuntu_2204_percona80:
     executor: ubuntu2204_percona80
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu2204_percona80
 #    - compile_and_test_mydumper
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
            - .
+
   compile_and_test_mydumper_in_el8_percona80:
     executor: el8
     steps:
@@ -224,11 +352,8 @@ workflows:
   version: 2
   mydumper:
     jobs:
-    - compile_and_test_mydumper_percona80:
-        matrix:
-          parameters:
-            os: [ [ ubuntu2004_percona80 , https://repo.percona.com/apt/percona-release_latest.focal_all.deb ] ]
-
+    - compile_and_test_mydumper_in_ubuntu_2004_percona80
+    - compile_and_test_mydumper_in_ubuntu_2204_percona80
           
         filters:
 #          branches:
