@@ -12,7 +12,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:57
+    - image: percona:5.7
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -44,7 +44,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:57
+    - image: percona:5.7
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -76,7 +76,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:57
+    - image: percona:5.7
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -108,7 +108,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:57
+    - image: percona:5.7
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -140,7 +140,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:57
+    - image: percona:5.7
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -397,7 +397,6 @@ jobs:
          paths:
            - .
 
-
   build_el7_percona57:
     executor: el7_percona57
     environment:
@@ -424,8 +423,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_el7_percona80:
     executor: el7_percona80
     environment:
@@ -452,8 +449,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_el8_percona57:
     executor: el8_percona57
     environment:
@@ -480,8 +475,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_el8_percona80:
     executor: el8_percona80
     environment:
@@ -508,8 +501,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_el9_percona57:
     executor: el9_percona57
     environment:
@@ -536,8 +527,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_el9_percona80:
     executor: el9_percona80
     environment:
@@ -564,8 +553,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_ubuntu2004_percona57:
     executor: ubuntu2004_percona57
     environment:
@@ -592,8 +579,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_ubuntu2004_percona80:
     executor: ubuntu2004_percona80
     environment:
@@ -620,8 +605,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_ubuntu2204_percona57:
     executor: ubuntu2204_percona57
     environment:
@@ -648,8 +631,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   build_ubuntu2204_percona80:
     executor: ubuntu2204_percona80
     environment:
@@ -676,8 +657,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-
-
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
@@ -690,8 +669,6 @@ workflows:
   version: 2
   mydumper:
     jobs:
-
-
     - compile_and_test_mydumper_in_ubuntu2004_percona57
     - build_ubuntu2004_percona57:
         filters:
@@ -700,8 +677,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_ubuntu2004_percona80
     - build_ubuntu2004_percona80:
         filters:
@@ -710,8 +685,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_ubuntu2204_percona57
     - build_ubuntu2204_percona57:
         filters:
@@ -720,8 +693,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_ubuntu2204_percona80
     - build_ubuntu2204_percona80:
         filters:
@@ -730,8 +701,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el7_percona57
     - build_el7_percona57:
         filters:
@@ -740,8 +709,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el7_percona80
     - build_el7_percona80:
         filters:
@@ -750,8 +717,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el8_percona57
     - build_el8_percona57:
         filters:
@@ -760,8 +725,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el8_percona80
     - build_el8_percona80:
         filters:
@@ -770,8 +733,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el9_percona57
     - build_el9_percona57:
         filters:
@@ -780,8 +741,6 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - compile_and_test_mydumper_in_el9_percona80
     - build_el9_percona80:
         filters:
@@ -790,42 +749,18 @@ workflows:
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
-
-
     - publish-github-release:
         requires:
-
-
           - build_ubuntu2004_percona57
-
-
           - build_ubuntu2004_percona80
-
-
           - build_ubuntu2204_percona57
-
-
           - build_ubuntu2204_percona80
-
-
           - build_el7_percona57
-
-
           - build_el7_percona80
-
-
           - build_el8_percona57
-
-
           - build_el8_percona80
-
-
           - build_el9_percona57
-
-
           - build_el9_percona80
-
-
         filters:
           branches:
             ignore: /.*/
