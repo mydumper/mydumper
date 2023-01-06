@@ -176,14 +176,18 @@ commands:
 
 
   prepare_ubuntu2004_percona_package:
+    steps:
+
     - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
     - run: sudo dpkg -i percona-release_latest.focal_all.deb
 
   prepare_ubuntu_percona57:
+    steps:
     - run: sudo percona-release setup -y ps57
     - run: sudo apt-get install -y libperconaserverclient20 libperconaserverclient20-dev percona-server-client
 
   prepare_ubuntu_percona80:
+    steps:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
@@ -314,7 +318,7 @@ jobs:
            - .
 
   build_el8_percona57:
-    executor: el8
+    executor: el8_percona57
     environment:
       MYDUMPER_VERSION: 0.13.3
       MYDUMPER_REVISION: 1
@@ -353,7 +357,7 @@ workflows:
   mydumper:
     jobs:
     - compile_and_test_mydumper_in_ubuntu_2004_percona80
-    - compile_and_test_mydumper_in_ubuntu_2204_percona80
+    - compile_and_test_mydumper_in_ubuntu_2204_percona80:
           
         filters:
 #          branches:
