@@ -321,7 +321,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el7_percona57:
-    executor: el7
+    executor: el7_percona57
     steps:
     - checkout
     - prepare_el
@@ -334,7 +334,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el7_percona80:
-    executor: el7
+    executor: el7_percona80
     steps:
     - checkout
     - prepare_el
@@ -347,7 +347,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el8_percona57:
-    executor: el8
+    executor: el8_percona57
     steps:
     - checkout
     - prepare_el
@@ -360,7 +360,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el8_percona80:
-    executor: el8
+    executor: el8_percona80
     steps:
     - checkout
     - prepare_el
@@ -373,7 +373,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el9_percona57:
-    executor: el9
+    executor: el9_percona57
     steps:
     - checkout
     - prepare_el
@@ -386,7 +386,7 @@ jobs:
 
 
   compile_and_test_mydumper_in_el9_percona80:
-    executor: el9
+    executor: el9_percona80
     steps:
     - checkout
     - prepare_el
@@ -796,34 +796,34 @@ workflows:
         requires:
 
 
-    - build_ubuntu2004_percona57:
+          - build_ubuntu2004_percona57
 
 
-    - build_ubuntu2004_percona80:
+          - build_ubuntu2004_percona80
 
 
-    - build_ubuntu2204_percona57:
+          - build_ubuntu2204_percona57
 
 
-    - build_ubuntu2204_percona80:
+          - build_ubuntu2204_percona80
 
 
-    - build_el7_percona57:
+          - build_el7_percona57
 
 
-    - build_el7_percona80:
+          - build_el7_percona80
 
 
-    - build_el8_percona57:
+          - build_el8_percona57
 
 
-    - build_el8_percona80:
+          - build_el8_percona80
 
 
-    - build_el9_percona57:
+          - build_el9_percona57
 
 
-    - build_el9_percona80:
+          - build_el9_percona80
 
 
         filters:
