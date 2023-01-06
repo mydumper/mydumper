@@ -218,6 +218,9 @@ int main(int argc, char *argv[]) {
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
 
+  /* Validate that thread count passed on CLI is a valid count */
+  check_num_threads();
+
   if (daemon_mode) {
     run_daemon();
   } else {

@@ -29,6 +29,8 @@ extern gchar *defaults_file;
 extern GKeyFile * key_file;
 extern gboolean no_stream;
 
+extern guint num_threads;
+
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
@@ -430,3 +432,10 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   return FALSE;
 }
 
+void check_num_threads()
+{
+  if (num_threads < MIN_THREAD_COUNT) {
+    g_warning("invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
+    num_threads = MIN_THREAD_COUNT;
+  }
+}
