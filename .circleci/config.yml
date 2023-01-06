@@ -69,7 +69,7 @@ executors:
 
   el7_percona57:
     docker:
-    - image: almalinux:7
+    - image: centos:7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -85,7 +85,7 @@ executors:
 
   el7_percona80:
     docker:
-    - image: almalinux:7
+    - image: centos:7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -189,7 +189,7 @@ commands:
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y libperconaserverclient20 percona-server-server-5.7 libperconaserverclient20-dev
+    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
   prepare_ubuntu_percona80:
     steps:
