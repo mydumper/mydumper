@@ -171,6 +171,7 @@ commands:
 
   prepare_el:
     steps:
+    - run: yum -y install epel-release || true
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
     - run: yum -y install wget
 
@@ -230,7 +231,7 @@ commands:
     steps:
     - prepare_el_percona_package
     - run: percona-release setup -y ps57
-    - run: dnf -y module disable mysql
+    - run: dnf -y module disable mysql || true
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_percona80:
