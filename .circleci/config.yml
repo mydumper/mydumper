@@ -233,7 +233,7 @@ commands:
     - run: apt-get update || true
     - run: apt-get install -y sudo || true
     - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
+    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget
 
   prepare_el:
     steps:
