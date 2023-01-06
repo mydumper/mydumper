@@ -70,8 +70,13 @@ commands:
 
 
   prepare_ubuntu_percona80:
+    parameters:
+      arguments:
+        percona_package:
+          description: URL to the percona package
+          type: string
     steps:
-    - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
+    - run: wget << parameters.percona_package >>
     - run: sudo dpkg -i percona-release_latest.focal_all.deb
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
@@ -133,11 +138,12 @@ jobs:
     parameters:
       os:
         type: executor
-    executor: << parameters.os >>
+    executor: << parameters.os[0] >>
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu_percona80:
+        percona_package: << parameters.os[1] >>
 #    - compile_and_test_mydumper
     - persist_to_workspace:
          root: /tmp/work/mydumper
@@ -221,7 +227,7 @@ workflows:
     - compile_and_test_mydumper_percona80:
         matrix:
           parameters:
-            os: [ ubuntu2004_percona80 ]
+            os: [ [ ubuntu2004_percona80 , https://repo.percona.com/apt/percona-release_latest.focal_all.deb ] ]
 
           
         filters:
