@@ -28,7 +28,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:80
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -60,7 +60,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:80
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -92,7 +92,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:80
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -124,7 +124,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:80
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -156,7 +156,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:80
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
