@@ -123,11 +123,11 @@ jobs:
       - when:
           condition: false
           steps: 
-            - run: echo ""
+            - run: sudo echo ""
       - unless:
           condition: false
           steps:
-            - run: echo ""
+            - run: sudo echo ""
 
           
   compile_and_test_mydumper_in_ubuntu_2004_percona80:
