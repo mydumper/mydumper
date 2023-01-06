@@ -245,25 +245,25 @@ commands:
     steps:
 
     - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
-    - run: sudo dpkg -i percona-release_latest.focal_all.deb
+    - run: sudo apt install percona-release_latest.focal_all.deb
 
   prepare_ubuntu2204_percona_package:
     steps:
 
     - run: wget https://repo.percona.com/apt/percona-release_latest.jammy_all.deb
-    - run: sudo dpkg -i percona-release_latest.jammy_all.deb
+    - run: sudo apt install percona-release_latest.jammy_all.deb
 
   prepare_buster_percona_package:
     steps:
 
     - run: wget https://repo.percona.com/apt/percona-release_latest.buster_all.deb
-    - run: sudo dpkg -i percona-release_latest.buster_all.deb
+    - run: sudo apt install percona-release_latest.buster_all.deb
 
   prepare_bullseye_percona_package:
     steps:
 
     - run: wget https://repo.percona.com/apt/percona-release_latest.bullseye_all.deb
-    - run: sudo dpkg -i percona-release_latest.bullseye_all.deb
+    - run: sudo apt install percona-release_latest.bullseye_all.deb
 
   prepare_ubuntu_percona57:
     steps:
