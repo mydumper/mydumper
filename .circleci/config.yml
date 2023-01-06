@@ -37,7 +37,7 @@ executors:
 
   ubuntu2204_percona57:
     docker:
-    - image: cimg/base:stable-22.04
+    - image: cimg/base:current-22.04
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -53,7 +53,7 @@ executors:
 
   ubuntu2204_percona80:
     docker:
-    - image: cimg/base:stable-22.04
+    - image: cimg/base:current-22.04
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
