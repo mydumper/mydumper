@@ -369,7 +369,7 @@ commands:
     - compile
     - run: bash ./test_mydumper.sh SSL GZIP
     - when:
-        condition: zstd_on
+        condition: << parameters.zstd_on >>
         steps:
          - compile_zstd
          - run: bash ./test_mydumper.sh SSL ZSTD
