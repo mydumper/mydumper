@@ -59,7 +59,7 @@ By using [Homebrew](https://brew.sh/)
 brew install mydumper
 ```
 
-## Dependencies for building mydumper
+## Dependencies for building MyDumper
 
 ### Install development tools:
 * Ubuntu or Debian:
@@ -139,7 +139,7 @@ docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper github.com/mydu
 ```
 Keep in mind that the main purpose the Dockerfile addresses is development and build from source locally. It might not be optimal for distribution purposes, but can also work as a quick build and run solution with the above one-liner, though.
 
-# How to use mydumper
+# How to use MyDumper
 
 See [Usage](docs/mydumper_usage.rst)
 
