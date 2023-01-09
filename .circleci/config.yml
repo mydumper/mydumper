@@ -362,6 +362,10 @@ commands:
         CMAKED: "-DWITH_ZSTD=ON <<parameters.CMAKED>>"
 
   compile_and_test_mydumper:
+    parameters:
+      zstd_on:
+        type: boolean
+        default: true
     steps:
     - compile
     - run: bash ./test_mydumper.sh SSL GZIP
