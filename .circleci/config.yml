@@ -365,7 +365,6 @@ commands:
     parameters:
       zstd_on:
         type: boolean
-        default: true
     steps:
     - compile
     - run: bash ./test_mydumper.sh SSL GZIP
@@ -496,7 +495,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona57
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -509,7 +509,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -522,7 +523,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona57
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -535,7 +537,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -548,7 +551,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona57
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -561,7 +565,8 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
-    - compile_and_test_mydumper
+    - compile_and_test_mydumper:
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
