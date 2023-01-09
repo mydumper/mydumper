@@ -365,15 +365,15 @@ commands:
     parameters:
       zstd_on:
         type: boolean
-	default: true
+        default: true
     steps:
     - compile
     - run: bash ./test_mydumper.sh SSL GZIP
-    when:
-      condition: zstd_on
-      steps:
-       - compile_zstd
-       - run: bash ./test_mydumper.sh SSL ZSTD
+    - when:
+        condition: zstd_on
+        steps:
+         - compile_zstd
+         - run: bash ./test_mydumper.sh SSL ZSTD
 
 jobs:
 
@@ -385,7 +385,7 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2004_percona57
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -399,7 +399,7 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2004_percona80
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -413,7 +413,7 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2204_percona57
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -427,7 +427,7 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2204_percona80
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -441,7 +441,7 @@ jobs:
     - prepare_ubuntu
     - prepare_buster_percona57
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -455,7 +455,7 @@ jobs:
     - prepare_ubuntu
     - prepare_buster_percona80
     - compile_and_test_mydumper:
-      zstd_on: false
+        zstd_on: false
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -469,7 +469,7 @@ jobs:
     - prepare_ubuntu
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
-      zstd_on: true
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
@@ -483,7 +483,7 @@ jobs:
     - prepare_ubuntu
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
-      zstd_on: true
+        zstd_on: true
     - persist_to_workspace:
          root: /tmp/work/mydumper
          paths:
