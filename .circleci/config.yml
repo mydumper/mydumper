@@ -3,6 +3,38 @@ version: 2.1
 
 executors:
 
+  ubuntu1804_percona57:
+    docker:
+    - image: cimg/base:current-18.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:5.7
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
+  ubuntu1804_percona80:
+    docker:
+    - image: cimg/base:current-18.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/work/mydumper
+
   ubuntu2004_percona57:
     docker:
     - image: cimg/base:stable-20.04
@@ -1154,6 +1186,8 @@ workflows:
   version: 2
   mydumper:
     jobs:
+    - compile_and_test_mydumper_in_ubuntu1804_percona57
+    - compile_and_test_mydumper_in_ubuntu1804_percona80
     - compile_and_test_mydumper_in_ubuntu2004_percona57
     - compile_and_test_mydumper_in_ubuntu2004_percona80
     - compile_and_test_mydumper_in_ubuntu2204_percona80
