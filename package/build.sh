@@ -94,12 +94,12 @@ build_deb() {
 #    rm -rf $WORK_DIR
 }
 
-if [ "$KIND" == "rpm" ]
+if [ "$KIND" = "rpm" ]
 then
         build_rpm $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f3 | awk '{print "-"$1}')
 fi
 
-if [ "$KIND" == "deb" ]
+if [ "$KIND" = "deb" ]
 then
         build_deb $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f3 | awk '{print "-"$1}')
 fi
