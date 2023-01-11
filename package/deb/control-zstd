@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: David Ducos <david.ducos@gmail.com>
 Homepage: https://github.com/mydumper/mydumper
 Package: mydumper
-Version: %{version}~%{distro}
-Depends: libatomic1
+Version: %{version}-zstd~%{distro}
+Depends: libatomic1,libzstd1
 Architecture: amd64
 Description: mydumper and myloader MySQL backup tools
  This package provides mydumper and myloader MySQL backup tools.

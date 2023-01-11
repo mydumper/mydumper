@@ -4,12 +4,13 @@ Version:        %{version}
 Release:        %{release}
 Group:          Applications/Databases
 License:        GPL
-Vendor:         David Ducos
+Vendor:         Max Bubenick
 URL:            https://github.com/mydumper/mydumper
-Source:         mydumper-%{version}.tar.gz
+Source:         mydumper-%{version}%{extra_suffix}.tar.gz
 BuildArch:      x86_64
 AutoReq:        no
-%define _rpmfilename %{name}-%{version}-%{release}.%{distro}.%{arch}.rpm
+Requires:       libzstd
+%define _rpmfilename %{name}-%{version}-%{release}%{extra_suffix}.%{distro}.%{arch}.rpm
 
 %description
 This package provides mydumper and myloader MySQL backup tools.

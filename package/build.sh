@@ -1,45 +1,58 @@
 #!/bin/sh
 #
 # This script builds RPM and DEB package for mydumper.
-# To compile binaries look at https://github.com/maxbube/mydumper_builder
+# To compile binaries look at https://github.com/mydumper/mydumper_builder
 # Requirements: yum install rpm-build dpkg dpkg-devel fakeroot
 
-SOURCE=/opt/src/mydumper
-TARGET=/opt/PKGS
+SOURCE=/tmp/src/mydumper
+TARGET=/tmp/package/
 WORK_DIR=/tmp/pkgbuild-`date +%s`
-YUM_REPO=/usr/share/nginx/html/rpm-contrib
-APT_REPO=/usr/share/nginx/html/deb-contrib
-
+EXTRA_SUFFIX=""
 set -e
 
 PROJECT=mydumper
 WORKSPACE=$(dirname "$(readlink -f "$0")")
 
-if [ "$#" = 2 ]; then
+if [ "$#" = 4 ]; then
     VERSION=$1
     RELEASE=$2
+    KIND=$3
+    DIR=$4
 else
-    echo "USAGE: sh build.sh <version> <revision>"
+    echo "USAGE: sh build.sh <version> <revision> [rpm|deb] <directory>"
     exit 1
 fi
+
+REALVERSION=${VERSION}
 
 build_rpm() {
     ARCH=x86_64
     SUBDIR=$1
     DISTRO=$2
+    EXTRA_SUFFIX=$3
 
     mkdir -p $WORK_DIR/{BUILD,BUILDROOT,RPMS,SOURCES,SRPMS} $WORK_DIR/SOURCES/$PROJECT-$VERSION $TARGET
+    ls $SOURCE/$SUBDIR/*
     cp -r $SOURCE/$SUBDIR/* $WORK_DIR/SOURCES/$PROJECT-$VERSION
     cd $WORK_DIR/SOURCES
-    tar czf $PROJECT-$VERSION.tar.gz $PROJECT-$VERSION/
+    tar czf $PROJECT-$VERSION${EXTRA_SUFFIX}.tar.gz $PROJECT-$VERSION/
     cd ..
-
-    rpmbuild -ba $WORKSPACE/rpm/$PROJECT.spec \
+    if [ -z "$EXTRA_SUFFIX"  ]
+    then
+    rpmbuild -ba $WORKSPACE/rpm/${PROJECT}$EXTRA_SUFFIX.spec \
              --define "_topdir $WORK_DIR" \
              --define "version $VERSION" \
              --define "release $RELEASE" \
              --define "distro $DISTRO"
-    PKG=$PROJECT-$VERSION-$RELEASE.$DISTRO.$ARCH.rpm
+         else
+    rpmbuild -ba $WORKSPACE/rpm/${PROJECT}$EXTRA_SUFFIX.spec \
+             --define "_topdir $WORK_DIR" \
+             --define "version $VERSION" \
+             --define "extra_suffix ${EXTRA_SUFFIX}" \
+             --define "release $RELEASE" \
+             --define "distro $DISTRO"
+    fi
+    PKG=$PROJECT-$VERSION-${RELEASE}${EXTRA_SUFFIX}.$DISTRO.$ARCH.rpm
     mv RPMS/$PKG $TARGET
 
     rpm -qpil --requires $TARGET/$PKG
@@ -53,15 +66,23 @@ build_deb() {
     ARCH=amd64
     SUBDIR=$1
     DISTRO=$2
-
-    mkdir -p $WORK_DIR/${PROJECT}_$VERSION/DEBIAN $TARGET
+    EXTRA_SUFFIX=$3
+    mkdir -p $WORK_DIR/${PROJECT}_${VERSION}/DEBIAN $TARGET
     cd $WORK_DIR
-    cp $WORKSPACE/deb/* $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/
+    cp $WORKSPACE/deb/copyright $WORKSPACE/deb/files $WORKSPACE/deb/rules $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/
+    if [ -z "$EXTRA_SUFFIX"  ]
+    then
+            cp $WORKSPACE/deb/control $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/
+    else
+            cp $WORKSPACE/deb/control${EXTRA_SUFFIX} $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
+    fi
+
     sed -i "s/%{version}/$VERSION-$RELEASE/" $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
+    sed -i "s/%{distro}/$DISTRO/" $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
     $WORKSPACE/deb/files $SOURCE/$SUBDIR $WORK_DIR/${PROJECT}_$VERSION
 
-    fakeroot dpkg --build ${PROJECT}_$VERSION
-    PKG=${PROJECT}_$VERSION-${RELEASE}.${DISTRO}_${ARCH}.deb
+    fakeroot dpkg-deb -Zxz --build ${PROJECT}_$VERSION
+    PKG=${PROJECT}_$REALVERSION-${RELEASE}${EXTRA_SUFFIX}~${DISTRO}_${ARCH}.deb
     mv ${PROJECT}_$VERSION.deb $TARGET/$PKG
 
     echo
@@ -70,37 +91,15 @@ build_deb() {
     echo
     echo "DEB done: $TARGET/$PKG"
     echo
-    rm -rf $WORK_DIR
+#    rm -rf $WORK_DIR
 }
 
-# function "source dir" "distro"
-build_rpm "el6" "el6"
-build_rpm "el7" "el7"
-build_deb "trusty" "trusty"
-build_deb "xenial" "xenial"
-build_deb "wheezy" "wheezy"
-build_deb "jessie" "jessie"
-build_deb "stretch" "stretch"
-build_deb "bionic" "bionic"
-
-# Building from Jenkins
-if [ -n "${JOB_NAME}" ]; then
-    cd $TARGET
-    mv *.el6.x86_64.rpm $YUM_REPO/6
-    mv *.el7.x86_64.rpm $YUM_REPO/7
-    createrepo --update $YUM_REPO/6
-    createrepo --update $YUM_REPO/7
-    createrepo --update $YUM_REPO
-    echo "YUM repo updated."
-    echo
-    for DISTRO in {trusty,xenial,wheezy,jessie,stretch,bionic}; do
-        cd $TARGET
-        mv *.${DISTRO}_amd64.deb $APT_REPO/$DISTRO/
-        cd $APT_REPO/$DISTRO
-        dpkg-scanpackages -m . | gzip -9c > Packages.gz; gunzip -c Packages.gz > Packages
-    done
-    echo "APT repo updated."
-    echo
+if [ "$KIND" == "rpm" ]
+then
+        build_rpm $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
 fi
 
-exit 0
+if [ "$KIND" == "deb" ]
+then
+        build_deb $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
+fi

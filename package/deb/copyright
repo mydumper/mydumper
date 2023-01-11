@@ -2,5 +2,5 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: mydumper
 
 Files: *
-Copyright: 2013-2020 Max Bubenick <maxbube@gmail.com>
+Copyright: 2013-2022 Max Bubenick <maxbube@gmail.com>
 License: GPL
