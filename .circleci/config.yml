@@ -20,7 +20,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   ubuntu1804_percona80:
     docker:
@@ -36,7 +36,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   ubuntu2004_percona57:
     docker:
@@ -52,7 +52,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   ubuntu2004_percona80:
     docker:
@@ -68,7 +68,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   ubuntu2204_percona57:
     docker:
@@ -84,7 +84,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   ubuntu2204_percona80:
     docker:
@@ -100,7 +100,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el7_percona57:
     docker:
@@ -116,7 +116,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el7_percona80:
     docker:
@@ -132,7 +132,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el8_percona57:
     docker:
@@ -148,7 +148,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el8_percona80:
     docker:
@@ -164,7 +164,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el9_percona57:
     docker:
@@ -180,7 +180,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   el9_percona80:
     docker:
@@ -196,7 +196,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   buster_percona57:
     docker:
@@ -212,7 +212,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   buster_percona80:
     docker:
@@ -228,7 +228,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   bullseye_percona57:
     docker:
@@ -244,7 +244,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
   bullseye_percona80:
     docker:
@@ -260,7 +260,7 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/work/mydumper
+    working_directory: /tmp/src/mydumper
 
 commands:
   prepare_ubuntu:
@@ -454,7 +454,7 @@ jobs:
         zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -473,7 +473,7 @@ jobs:
         zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -492,7 +492,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -511,7 +511,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -530,7 +530,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -549,7 +549,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -568,7 +568,7 @@ jobs:
         zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -587,7 +587,7 @@ jobs:
         zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -606,7 +606,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -625,7 +625,7 @@ jobs:
         zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -639,7 +639,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -653,7 +653,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -667,7 +667,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -681,7 +681,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -695,7 +695,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -709,7 +709,7 @@ jobs:
     - compile_and_test_mydumper:
         zstd_on: true
     - persist_to_workspace:
-         root: /tmp/work/mydumper
+         root: /tmp/src/mydumper
          paths:
            - .
 
@@ -1215,7 +1215,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^\d+\.\d+\.\d+-\d+$/
-    - build_ubuntu2204_percona57:
+    - build_ubuntu2204_percona80:
         filters:
           branches:
             ignore: /.*/
@@ -1255,7 +1255,7 @@ workflows:
         requires:
           - build_ubuntu1804_percona57
           - build_ubuntu2004_percona57
-          - build_ubuntu2204_percona57
+          - build_ubuntu2204_percona80
           - build_el7_percona57
           - build_el8_percona57
           - build_el9_percona80
