@@ -1228,11 +1228,12 @@ workflows:
         filters:
           branches:
             ignore: /.*/
-    - build_buster_percona57
-        branches:
-          ignore: /.*/
-        tags:
-          only: /.*/
+    - build_buster_percona57:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /.*/
 
     - publish-github-release:
         requires:
