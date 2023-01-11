@@ -734,8 +734,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el7_percona_57_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el7_percona_57_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el7_percona57_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el7_percona57_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_zstd
 
     - persist_to_workspace:
@@ -763,8 +763,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el7_percona_80_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el7_percona_80_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el7_percona80_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el7_percona80_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_zstd
 
     - persist_to_workspace:
@@ -792,8 +792,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el8_percona_57_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_57_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el8_percona57_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el8_percona57_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_zstd
 
     - persist_to_workspace:
@@ -821,8 +821,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el8_percona_80_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el8_percona_80_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el8_percona80_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el8_percona80_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_zstd
 
     - persist_to_workspace:
@@ -850,8 +850,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el9_percona_57_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el9_percona_57_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el9_percona57_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el9_percona57_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_zstd
 
     - persist_to_workspace:
@@ -879,8 +879,8 @@ jobs:
         steps:
         - compile_zstd:
             CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el9_percona_80_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/el9_percona_80_zstd/
+        - run: mkdir -p /tmp/src/mydumper/el9_percona80_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el9_percona80_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_zstd
 
     - persist_to_workspace:
