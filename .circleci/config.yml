@@ -1,6 +1,9 @@
 ---
 version: 2.1
 
+orbs:
+  capture-tag: rvla/capture-tag@0.0.2
+
 executors:
 
   ubuntu1804_percona57:
