@@ -892,7 +892,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona57
+    - prepare_ubuntu1804_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -921,7 +921,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu1804_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -950,7 +950,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona57
+    - prepare_ubuntu2004_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -979,7 +979,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu2004_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1008,7 +1008,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona57
+    - prepare_ubuntu2204_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1037,7 +1037,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_ubuntu2204_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1066,7 +1066,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona57
+    - prepare_buster_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1095,7 +1095,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_buster_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1124,7 +1124,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona57
+    - prepare_bullseye_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -1153,7 +1153,7 @@ jobs:
     steps:
     - checkout
     - prepare_ubuntu
-    - prepare_ubuntu_percona80
+    - prepare_bullseye_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
