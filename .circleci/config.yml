@@ -896,6 +896,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu1804_percona57
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -924,6 +925,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu1804_percona80
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -952,6 +954,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2004_percona57
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -980,6 +983,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2004_percona80
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1008,6 +1012,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2204_percona57
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1036,6 +1041,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2204_percona80
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1064,6 +1070,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_buster_percona57
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1092,6 +1099,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_buster_percona80
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1120,6 +1128,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_bullseye_percona57
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1148,6 +1157,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_bullseye_percona80
+    - run: apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
