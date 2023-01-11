@@ -896,7 +896,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu1804_percona57
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -925,7 +925,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu1804_percona80
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -954,7 +954,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2004_percona57
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -983,7 +983,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2004_percona80
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1012,7 +1012,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2204_percona57
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1041,7 +1041,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_ubuntu2204_percona80
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1070,7 +1070,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_buster_percona57
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1099,7 +1099,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_buster_percona80
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1128,7 +1128,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_bullseye_percona57
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1157,7 +1157,7 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_bullseye_percona80
-    - run: apt install -y fakeroot
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
@@ -1183,7 +1183,7 @@ jobs:
     steps:
     - attach_workspace:
         at: /tmp/package
-    - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete TEST /tmp/package
+    - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
 
 workflows:
   version: 2
