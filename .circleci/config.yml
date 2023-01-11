@@ -1229,9 +1229,6 @@ workflows:
           branches:
             ignore: /.*/
     - build_buster_percona57:
-        filters:
-          branches:
-            ignore: /.*/
     - publish-github-release:
         requires:
           - build_ubuntu1804_percona57
@@ -1246,5 +1243,5 @@ workflows:
 #          branches:
 #            ignore: /.*/
           tags:
-#            only: /.*/
-            only: /^\d+\.\d+\.\d+$/
+            only: /.*/
+#            only: /^\d+\.\d+\.\d+$/
