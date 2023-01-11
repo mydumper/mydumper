@@ -1202,13 +1202,11 @@ workflows:
     - compile_and_test_mydumper_in_bullseye_percona80
     - build_ubuntu1804_percona57:
         filters:
-        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^\d+\.\d+\.\d+$/
     - build_ubuntu2004_percona57:
-        filters:
         filters:
           branches:
             ignore: /.*/
@@ -1216,13 +1214,11 @@ workflows:
             only: /^\d+\.\d+\.\d+$/
     - build_ubuntu2204_percona57:
         filters:
-        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^\d+\.\d+\.\d+$/
     - build_el7_percona57:
-        filters:
         filters:
           branches:
             ignore: /.*/
@@ -1230,13 +1226,11 @@ workflows:
             only: /^\d+\.\d+\.\d+$/
     - build_el8_percona57:
         filters:
-        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^\d+\.\d+\.\d+$/
     - build_el9_percona80:
-        filters:
         filters:
           branches:
             ignore: /.*/
@@ -1244,13 +1238,11 @@ workflows:
             only: /^\d+\.\d+\.\d+$/
     - build_bullseye_percona80:
         filters:
-        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^\d+\.\d+\.\d+$/
     - build_buster_percona57:
-        filters:
         filters:
           branches:
             ignore: /.*/
