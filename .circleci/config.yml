@@ -436,11 +436,13 @@ commands:
              condition: << parameters.test >>
              steps:
              - run: bash ./test_mydumper.sh SSL ZSTD
-
-          command: |
-            echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
-            echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
-            source "$BASH_ENV"
+  set_env_vars:
+    steps:
+    - run:
+        command: |
+          echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
+          echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
+          source "$BASH_ENV"
 jobs:
 
 
@@ -719,11 +721,9 @@ jobs:
 
   build_el7_percona57:
     executor: el7_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
@@ -748,11 +748,9 @@ jobs:
            - .
   build_el7_percona80:
     executor: el7_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
@@ -777,11 +775,9 @@ jobs:
            - .
   build_el8_percona57:
     executor: el8_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
@@ -806,11 +802,9 @@ jobs:
            - .
   build_el8_percona80:
     executor: el8_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
@@ -835,11 +829,9 @@ jobs:
            - .
   build_el9_percona57:
     executor: el9_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
@@ -864,11 +856,9 @@ jobs:
            - .
   build_el9_percona80:
     executor: el9_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
@@ -893,11 +883,9 @@ jobs:
            - .
   build_ubuntu1804_percona57:
     executor: ubuntu1804_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu1804_percona57
     - run: sudo apt install -y fakeroot
@@ -922,11 +910,9 @@ jobs:
            - .
   build_ubuntu1804_percona80:
     executor: ubuntu1804_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu1804_percona80
     - run: sudo apt install -y fakeroot
@@ -951,11 +937,9 @@ jobs:
            - .
   build_ubuntu2004_percona57:
     executor: ubuntu2004_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu2004_percona57
     - run: sudo apt install -y fakeroot
@@ -980,11 +964,9 @@ jobs:
            - .
   build_ubuntu2004_percona80:
     executor: ubuntu2004_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu2004_percona80
     - run: sudo apt install -y fakeroot
@@ -1009,11 +991,9 @@ jobs:
            - .
   build_ubuntu2204_percona57:
     executor: ubuntu2204_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu2204_percona57
     - run: sudo apt install -y fakeroot
@@ -1038,11 +1018,9 @@ jobs:
            - .
   build_ubuntu2204_percona80:
     executor: ubuntu2204_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_ubuntu2204_percona80
     - run: sudo apt install -y fakeroot
@@ -1067,11 +1045,9 @@ jobs:
            - .
   build_buster_percona57:
     executor: buster_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
@@ -1096,11 +1072,9 @@ jobs:
            - .
   build_buster_percona80:
     executor: buster_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
@@ -1125,11 +1099,9 @@ jobs:
            - .
   build_bullseye_percona57:
     executor: bullseye_percona57
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
@@ -1154,11 +1126,9 @@ jobs:
            - .
   build_bullseye_percona80:
     executor: bullseye_percona80
-    environment:
-      MYDUMPER_VERSION: 0.13.3
-      MYDUMPER_REVISION: 1
     steps:
     - checkout
+    - set_env_vars
     - prepare_ubuntu
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
