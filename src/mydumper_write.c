@@ -354,8 +354,9 @@ void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIEL
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
-      unsigned long new_length = mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
-      g_string_set_size(escaped, new_length);
+//      unsigned long new_length = 
+      mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+//      g_string_set_size(escaped, new_length);
       m_replace_char_with_char('\\',*fields_escaped_by,escaped->str,escaped->len);
       m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str,escaped->len);
       g_string_append(statement_row,escaped->str);
