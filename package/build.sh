@@ -96,10 +96,10 @@ build_deb() {
 
 if [ "$KIND" == "rpm" ]
 then
-        build_rpm $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
+        build_rpm $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f3 | awk '{print "-"$1}')
 fi
 
 if [ "$KIND" == "deb" ]
 then
-        build_deb $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f4 | awk '{print "-"$1}')
+        build_deb $DIR $(echo $DIR | cut -d'_' -f1) $(echo $DIR | grep zstd | cut -d'_' -f3 | awk '{print "-"$1}')
 fi
