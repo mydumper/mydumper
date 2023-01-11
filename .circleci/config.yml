@@ -1228,7 +1228,7 @@ workflows:
         filters:
           branches:
             ignore: /.*/
-    - build_buster_percona57:
+    - build_buster_percona57
     - publish-github-release:
         requires:
           - build_ubuntu1804_percona57
