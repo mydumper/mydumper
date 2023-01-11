@@ -437,6 +437,10 @@ commands:
              steps:
              - run: bash ./test_mydumper.sh SSL ZSTD
 
+          command: |
+            echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
+            echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
+            source "$BASH_ENV"
 jobs:
 
 
@@ -1208,49 +1212,49 @@ workflows:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_ubuntu2004_percona57:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_ubuntu2204_percona80:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_percona57:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_percona80:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bullseye_percona80:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_buster_percona57:
         filters:
           branches:
             ignore: /.*/
           tags:
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - publish-github-release:
         requires:
           - build_ubuntu1804_percona57
@@ -1266,4 +1270,4 @@ workflows:
             ignore: /.*/
           tags:
 #            only: /.*/
-            only: /^\d+\.\d+\.\d+-\d+$/
+            only: /^v\d+\.\d+\.\d+-\d+$/
