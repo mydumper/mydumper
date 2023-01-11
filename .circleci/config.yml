@@ -1243,8 +1243,8 @@ workflows:
           - build_bullseye_percona80
           - build_buster_percona57
         filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
 #            only: /.*/
             only: /^\d+\.\d+\.\d+$/
