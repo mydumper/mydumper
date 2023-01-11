@@ -897,7 +897,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu1804_percona57
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu1804_percona57_gzip
@@ -926,7 +925,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu1804_percona80
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu1804_percona80_gzip
@@ -955,7 +953,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2004_percona57
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu2004_percona57_gzip
@@ -984,7 +981,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2004_percona80
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu2004_percona80_gzip
@@ -1013,7 +1009,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2204_percona57
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu2204_percona57_gzip
@@ -1042,7 +1037,6 @@ jobs:
     - prepare_ubuntu
     - prepare_ubuntu2204_percona80
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/ubuntu2204_percona80_gzip
@@ -1071,7 +1065,6 @@ jobs:
     - prepare_ubuntu
     - prepare_buster_percona57
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_gzip
@@ -1100,7 +1093,6 @@ jobs:
     - prepare_ubuntu
     - prepare_buster_percona80
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_gzip
@@ -1129,7 +1121,6 @@ jobs:
     - prepare_ubuntu
     - prepare_bullseye_percona57
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_gzip
@@ -1158,7 +1149,6 @@ jobs:
     - prepare_ubuntu
     - prepare_bullseye_percona80
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_gzip
