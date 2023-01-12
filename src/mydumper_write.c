@@ -424,8 +424,12 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   GString *statement = g_string_sized_new(2*statement_size);
 //  guint sections = tj->where==NULL?1:2;
 
-  update_files_on_table_job(tj);
-  write_load_data_statement(tj, fields, num_fields);
+//  if (tj->sql_filename == NULL){
+  if (update_files_on_table_job(tj)){
+    write_load_data_statement(tj, fields, num_fields);
+  }
+//    write_load_data_statement(tj, fields, num_fields);
+//  }
 
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
@@ -459,7 +463,9 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
         tj->sub_part++;
 //      }
 
-      update_files_on_table_job(tj);
+      if (update_files_on_table_job(tj)){
+        write_load_data_statement(tj, fields, num_fields);
+      }
       tj->st_in_file = 0;
       tj->filesize = 0;
       
