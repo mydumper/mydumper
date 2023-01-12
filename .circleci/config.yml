@@ -414,6 +414,7 @@ commands:
     - compile:
         CMAKED: "-DWITH_ZSTD=ON <<parameters.CMAKED>>"
 
+
   compile_and_test_mydumper:
     parameters:
       zstd_on:
@@ -436,6 +437,7 @@ commands:
              condition: << parameters.test >>
              steps:
              - run: bash ./test_mydumper.sh SSL ZSTD
+
   set_env_vars:
     steps:
     - run:
@@ -450,7 +452,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: bionic_percona57
     steps:
     - checkout
@@ -469,7 +471,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: bionic_percona80
     steps:
     - checkout
@@ -488,7 +490,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: focal_percona57
     steps:
     - checkout
@@ -507,7 +509,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: focal_percona80
     steps:
     - checkout
@@ -526,7 +528,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: jammy_percona57
     steps:
     - checkout
@@ -545,7 +547,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: jammy_percona80
     steps:
     - checkout
@@ -564,7 +566,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: buster_percona57
     steps:
     - checkout
@@ -583,7 +585,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: buster_percona80
     steps:
     - checkout
@@ -602,7 +604,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: bullseye_percona57
     steps:
     - checkout
@@ -621,7 +623,7 @@ jobs:
     parameters:
       test:
         type: boolean
-        default: true
+        default: false
     executor: bullseye_percona80
     steps:
     - checkout
@@ -1177,6 +1179,12 @@ workflows:
     - compile_and_test_mydumper_in_buster_percona80
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
+    - compile_and_test_mydumper_in_focal_percona57:
+      test: true
+
+    - compile_and_test_mydumper_in_focal_percona80:
+      test: true
+
     - build_bionic_percona57:
         filters:
           branches:
