@@ -549,7 +549,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     return;
   }
 
-  mysql_query(conn, set_names_str);
+  if (set_names_str)
+    mysql_query(conn, set_names_str);
 
   if (rows_per_file>0){
 //  mysql_query(td->thrconn, set_names_str);
