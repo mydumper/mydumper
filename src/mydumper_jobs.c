@@ -999,13 +999,13 @@ gboolean update_files_on_table_job(struct table_job *tj){
        initialize_load_data_fn(tj);
        tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
        tj->sql_file = m_open(tj->sql_filename,"w");
-       return true;
+       return TRUE;
      }else{
        initialize_sql_fn(tj);
      }
 //     write_load_data_statement(tj, fields, num_fields);
   }
-  return false;
+  return FALSE;
 }
 
 
