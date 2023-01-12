@@ -38,6 +38,17 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  bionic:
+    docker:
+    - image: cimg/base:current-18.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
   focal_percona57:
     docker:
     - image: cimg/base:stable-20.04
@@ -68,6 +79,17 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  focal:
+    docker:
+    - image: cimg/base:stable-20.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
   jammy_percona57:
@@ -102,6 +124,17 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  jammy:
+    docker:
+    - image: cimg/base:current-22.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
   el7_percona57:
     docker:
     - image: centos:7
@@ -132,6 +165,17 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el7:
+    docker:
+    - image: centos:7
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
   el8_percona57:
@@ -166,6 +210,17 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  el8:
+    docker:
+    - image: almalinux:8
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
   el9_percona57:
     docker:
     - image: almalinux:9
@@ -196,6 +251,17 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el9:
+    docker:
+    - image: almalinux:9
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
   buster_percona57:
@@ -230,6 +296,17 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  buster:
+    docker:
+    - image: debian:buster
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
   bullseye_percona57:
     docker:
     - image: debian:bullseye
@@ -260,6 +337,17 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  bullseye:
+    docker:
+    - image: debian:bullseye
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
 commands:
@@ -453,7 +541,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_percona57
+      e:
+        type: string
+        default: bionic_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -472,7 +563,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bionic_percona80
+      e:
+        type: string
+        default: bionic_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -491,7 +585,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_percona57
+      e:
+        type: string
+        default: focal_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -510,7 +607,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: focal_percona80
+      e:
+        type: string
+        default: focal_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -529,7 +629,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_percona57
+      e:
+        type: string
+        default: jammy_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -548,7 +651,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: jammy_percona80
+      e:
+        type: string
+        default: jammy_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -567,7 +673,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: buster_percona57
+      e:
+        type: string
+        default: buster_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -586,7 +695,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: buster_percona80
+      e:
+        type: string
+        default: buster_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -605,7 +717,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_percona57
+      e:
+        type: string
+        default: bullseye_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -624,7 +739,10 @@ jobs:
       test:
         type: boolean
         default: false
-    executor: bullseye_percona80
+      e:
+        type: string
+        default: bullseye_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -639,13 +757,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el7_percona57:
-    executor: el7_percona57
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el7_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -653,13 +779,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el7_percona80:
-    executor: el7_percona80
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el7_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -667,13 +801,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el8_percona57:
-    executor: el8_percona57
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el8_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -681,13 +823,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el8_percona80:
-    executor: el8_percona80
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el8_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -695,13 +845,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el9_percona57:
-    executor: el9_percona57
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el9_percona57
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -709,13 +867,21 @@ jobs:
 
 
   compile_and_test_mydumper_in_el9_percona80:
-    executor: el9_percona80
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el9_percona80
+    executor: << parameter.e >>
     steps:
     - checkout
     - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
+        test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
          paths:
@@ -1181,9 +1347,11 @@ workflows:
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_focal_percona57:
         test: true
+        e: focal
 
     - compile_and_test_mydumper_in_focal_percona80:
         test: true
+        e: focal
 
     - build_bionic_percona57:
         filters:
