@@ -544,7 +544,7 @@ jobs:
       e:
         type: string
         default: bionic_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -566,7 +566,7 @@ jobs:
       e:
         type: string
         default: bionic_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -588,7 +588,7 @@ jobs:
       e:
         type: string
         default: focal_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -610,7 +610,7 @@ jobs:
       e:
         type: string
         default: focal_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -632,7 +632,7 @@ jobs:
       e:
         type: string
         default: jammy_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -654,7 +654,7 @@ jobs:
       e:
         type: string
         default: jammy_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -676,7 +676,7 @@ jobs:
       e:
         type: string
         default: buster_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -698,7 +698,7 @@ jobs:
       e:
         type: string
         default: buster_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -720,7 +720,7 @@ jobs:
       e:
         type: string
         default: bullseye_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -742,7 +742,7 @@ jobs:
       e:
         type: string
         default: bullseye_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_ubuntu
@@ -764,7 +764,7 @@ jobs:
       e:
         type: string
         default: el7_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
@@ -786,7 +786,7 @@ jobs:
       e:
         type: string
         default: el7_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
@@ -808,7 +808,7 @@ jobs:
       e:
         type: string
         default: el8_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
@@ -830,7 +830,7 @@ jobs:
       e:
         type: string
         default: el8_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
@@ -852,7 +852,7 @@ jobs:
       e:
         type: string
         default: el9_percona57
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
@@ -874,7 +874,7 @@ jobs:
       e:
         type: string
         default: el9_percona80
-    executor: << parameter.e >>
+    executor: << parameters.e >>
     steps:
     - checkout
     - prepare_el
