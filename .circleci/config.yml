@@ -1180,10 +1180,10 @@ workflows:
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_focal_percona57:
-      test: true
+        test: true
 
     - compile_and_test_mydumper_in_focal_percona80:
-      test: true
+        test: true
 
     - build_bionic_percona57:
         filters:
