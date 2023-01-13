@@ -953,10 +953,10 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
-                g_strdup_printf("%s( `%s` = %"G_GUINT64_FORMAT")",
+                g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor):
-                g_strdup_printf("%s( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT")",
+                g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.nmin, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
@@ -964,13 +964,13 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   case CHAR:
     if (td != NULL){
       if (tj->chunk_step->char_step.cmax == NULL){
-        tj->where=g_strdup_printf("%s(`%s` >= '%s')",
+        tj->where=g_strdup_printf("(%s(`%s` >= '%s'))",
                           tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
                           tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped
                           );
       }else{
         update_cursor(td->thrconn,tj);
-        tj->where=g_strdup_printf("%s('%s' < `%s` AND `%s` <= '%s')",
+        tj->where=g_strdup_printf("(%s('%s' < `%s` AND `%s` <= '%s'))",
                           tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
                           tj->chunk_step->char_step.cmin_escaped, tj->chunk_step->char_step.field,
                           tj->chunk_step->char_step.field, tj->chunk_step->char_step.cursor_escaped
