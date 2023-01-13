@@ -127,7 +127,6 @@ gint schema_counter = 0;
 gint non_innodb_done = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
-gchar *set_names_str=NULL;
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
@@ -235,20 +234,12 @@ void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_grou
 
 void initialize_start_dump(){
   initialize_common();
+  initialize_set_names();
   initialize_working_thread();
   conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-
-  if (set_names_str){
-    if (strlen(set_names_str)!=0){
-      gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
-      set_names_str=tmp_str;
-    }else
-      set_names_str=NULL;
-  } else
-    set_names_str=g_strdup("/*!40101 SET NAMES binary*/");  
 
   // until we have an unique option on lock types we need to ensure this
   if (no_locks || trx_consistency_only)
@@ -993,10 +984,6 @@ void start_dump() {
 
   if (detected_server == SERVER_TYPE_MYSQL) {
     create_job_to_dump_metadata(&conf, mdfile);
-  /*  if (set_names_str)
-                mysql_query(conn, set_names_str);
-    write_snapshot_info(conn, mdfile);
-*/
   }
 
   // Begin Job Creation

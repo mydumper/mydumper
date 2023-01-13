@@ -44,6 +44,10 @@ gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
 char **tables = NULL;
 
+
+gchar *set_names_str=NULL;
+gchar *set_names_statement=NULL;
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, default 4", NULL},

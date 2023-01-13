@@ -298,7 +298,7 @@ gboolean write_data(FILE *file, GString *data) {
 
 void initialize_load_data_statement(GString *statement, gchar * table, const gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
   g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ", basename, table);
-  if (character_set)
+  if (character_set && strlen(character_set)!=0)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
     g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
@@ -327,7 +327,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->dat_filename);
   initialize_sql_statement(statement);
-  initialize_load_data_statement(statement, tj->dbt->table, tj->dbt->character_set /* "BINARY"*/, basename, fields, num_fields);
+  initialize_load_data_statement(statement, tj->dbt->table, set_names_str != NULL ? set_names_str : tj->dbt->character_set /* "BINARY"*/, basename, fields, num_fields);
   if (!write_data(tj->sql_file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
     return FALSE;
