@@ -232,13 +232,45 @@ void initialize_write(){
     insert_statement=REPLACE;
 }
 
+
+GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
+  guint i = 0;
+  GString *str=g_string_new("SET ");
+  for (i = 0; i < num_fields; ++i) {
+    if (i > 0) {
+      g_string_append_c(statement, ',');
+    }
+//    g_string_append_printf(statement, "`%s`", fields[i].name);
+    if (fields[i].type == MYSQL_TYPE_JSON){
+      g_string_append_c(statement,'@');
+      g_string_append(statement, fields[i].name);
+      if (str->len > 4)
+        g_string_append_c(str, ',');
+      g_string_append_c(str,'`');
+      g_string_append(str,fields[i].name);
+      g_string_append(str,"`=CONVERT(@");
+      g_string_append(str, fields[i].name);
+      g_string_append(str, " USING UTF8MB4)");
+    }else{
+      g_string_append_c(statement,'`');
+      g_string_append(statement, fields[i].name);
+      g_string_append_c(statement,'`');
+    }
+  }
+  if (str->len > 4)
+    return str;
+  else{
+    g_string_free(str,TRUE);
+    return NULL;
+  }
+}
+
 void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
   for (i = 0; i < num_fields; ++i) {
     if (i > 0) {
       g_string_append_c(statement, ',');
     }
-//    g_string_append_printf(statement, "`%s`", fields[i].name);
     g_string_append_c(statement,'`');
     g_string_append(statement, fields[i].name);    
     g_string_append_c(statement,'`');
@@ -310,8 +342,13 @@ void initialize_load_data_statement(GString *statement, gchar * table, const gch
   if (lines_starting_by_ld)
     g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
   g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
-  append_columns(statement,fields,num_fields);
-  g_string_append(statement,");\n");
+  GString * set_statement=append_load_data_columns(statement,fields,num_fields);
+  g_string_append(statement,")");
+  if (set_statement != NULL){
+    g_string_append(statement,set_statement->str);
+    g_string_free(set_statement,TRUE);
+  }
+  g_string_append(statement,";\n");
 }
 
 gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt){
