@@ -114,7 +114,7 @@ void *loader_thread(struct thread_data *td) {
 
   m_connect(td->thrconn, "myloader", NULL);
 
-  mysql_query(td->thrconn, set_names_str);
+//  mysql_query(td->thrconn, set_names_statement);
   mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
   mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");

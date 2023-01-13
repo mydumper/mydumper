@@ -28,7 +28,8 @@ extern gboolean stream;
 extern gchar *defaults_file;
 extern GKeyFile * key_file;
 extern gboolean no_stream;
-
+extern gchar*set_names_str;
+extern gchar*set_names_statement;
 extern guint num_threads;
 
 FILE * (*m_open)(const char *filename, const char *);
@@ -42,6 +43,18 @@ GHashTable * initialize_hash_of_session_variables(){
     g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
   }
   return set_session_hash;
+}
+
+void initialize_set_names(){
+  if (set_names_str){
+    if (strlen(set_names_str)!=0){
+      set_names_statement=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+    }else
+      set_names_str=NULL;
+  } else {
+    set_names_str=g_strdup("binary");
+    set_names_statement=g_strdup("/*!40101 SET NAMES binary*/");
+  }
 }
 
 char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){

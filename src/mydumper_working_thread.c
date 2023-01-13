@@ -139,7 +139,7 @@ extern GList *schema_post;
 extern gint non_innodb_done;
 guint less_locking_threads = 0;
 extern guint trx_consistency_only;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 
 extern struct configuration_per_table conf_per_table;
 
@@ -1163,9 +1163,9 @@ void *working_thread(struct thread_data *td) {
     initialize_consistent_snapshot(td);
     check_connection_status(td);
   }
-  if (set_names_str){
-    mysql_query(td->thrconn, set_names_str);
-  }
+/*  if (set_names_statement){
+    mysql_query(td->thrconn, set_names_statement);
+  }*/
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   // Thread Ready to process jobs

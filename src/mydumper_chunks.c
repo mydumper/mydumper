@@ -37,7 +37,7 @@ extern int detected_server;
 extern guint rows_per_file;
 gboolean split_partitions = FALSE;
 extern guint num_threads;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
@@ -549,10 +549,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     return;
   }
 
-  mysql_query(conn, set_names_str);
-
   if (rows_per_file>0){
-//  mysql_query(td->thrconn, set_names_str);
   gchar *query = NULL;
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;

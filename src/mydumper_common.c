@@ -33,7 +33,7 @@ extern gchar *dump_directory;
 extern guint errors;
 extern gchar *fields_escaped_by;
 extern int detected_server;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 extern int skip_tz;
 
 GMutex *ref_table_mutex = NULL;
@@ -323,8 +323,8 @@ void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *col
 
 void initialize_sql_statement(GString *statement){
   if (detected_server == SERVER_TYPE_MYSQL) {
-    if (set_names_str)
-      g_string_printf(statement,"%s;\n",set_names_str);
+    if (set_names_statement)
+      g_string_printf(statement,"%s;\n",set_names_statement);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");

@@ -77,7 +77,6 @@ gboolean resume = FALSE;
 guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
-gchar *set_names_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
 guint max_threads_for_index_creation=4;
@@ -333,11 +332,7 @@ int main(int argc, char *argv[]) {
 #else
   compress_extension = g_strdup(".gz");
 #endif
-  if (set_names_str){
-    gchar *tmp_str=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
-    set_names_str=tmp_str;
-  } else 
-    set_names_str=g_strdup("/*!40101 SET NAMES binary*/");
+  initialize_set_names();
 
   if (pmm_path){
     pmm=TRUE;

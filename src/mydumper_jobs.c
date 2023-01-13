@@ -47,7 +47,7 @@ extern int (*m_close)(void *file);
 extern guint errors;
 extern guint statement_size;
 extern int skip_tz;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 extern GAsyncQueue *stream_queue;
 extern gboolean stream;
 extern gboolean dump_routines;
@@ -429,8 +429,8 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
     return;
   }
 
-  if (detected_server == SERVER_TYPE_MYSQL && set_names_str) {
-    g_string_printf(statement,"%s;\n",set_names_str);
+  if (detected_server == SERVER_TYPE_MYSQL && set_names_statement) {
+    g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
