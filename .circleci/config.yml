@@ -38,6 +38,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  bionic_mariadb1011:
+    docker:
+    - image: cimg/base:current-18.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   bionic:
     docker:
     - image: cimg/base:current-18.04
@@ -75,6 +91,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  focal_mariadb1011:
+    docker:
+    - image: cimg/base:stable-20.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -124,6 +156,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  jammy_mariadb1011:
+    docker:
+    - image: cimg/base:current-22.04
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   jammy:
     docker:
     - image: cimg/base:current-22.04
@@ -161,6 +209,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el7_mariadb1011:
+    docker:
+    - image: centos:7
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -210,6 +274,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  el8_mariadb1011:
+    docker:
+    - image: almalinux:8
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   el8:
     docker:
     - image: almalinux:8
@@ -247,6 +327,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el9_mariadb1011:
+    docker:
+    - image: almalinux:9
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -296,6 +392,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  buster_mariadb1011:
+    docker:
+    - image: debian:buster
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   buster:
     docker:
     - image: debian:buster
@@ -333,6 +445,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  bullseye_mariadb1011:
+    docker:
+    - image: debian:bullseye
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -394,6 +522,12 @@ commands:
     - run: wget https://repo.percona.com/apt/percona-release_latest.bullseye_all.deb
     - run: sudo apt install -y ./percona-release_latest.bullseye_all.deb
 
+  prepare_mariadb1011:
+    steps:
+    - run: sudo wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+
+
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
@@ -404,9 +538,18 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_ubuntu_mariadb1011:
+    steps:
+    - run: sudo apt-get install -y libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
   prepare_el_percona_package:
     steps:
     - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+  prepare_el_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - run: sudo yum install -y MariaDB-devel MariaDB-compat
 
 
   prepare_bionic_percona57:
@@ -421,6 +564,12 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_bionic_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
+
+
   prepare_focal_percona57:
     steps:
     - prepare_focal_percona_package
@@ -431,6 +580,12 @@ commands:
     steps:
     - prepare_focal_percona_package
     - prepare_ubuntu_percona80
+
+
+  prepare_focal_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
 
 
   prepare_jammy_percona57:
@@ -445,6 +600,12 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_jammy_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
+
+
   prepare_buster_percona57:
     steps:
     - prepare_buster_percona_package
@@ -457,6 +618,12 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_buster_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
+
+
   prepare_bullseye_percona57:
     steps:
     - prepare_bullseye_percona_package
@@ -467,6 +634,12 @@ commands:
     steps:
     - prepare_bullseye_percona_package
     - prepare_ubuntu_percona80
+
+
+  prepare_bullseye_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
 
 
 
@@ -580,6 +753,28 @@ jobs:
            - .
 
 
+  compile_and_test_mydumper_in_bionic_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bionic_mariadb1011
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_bionic_mariadb1011
+    - compile_and_test_mydumper:
+        zstd_on: false
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
   compile_and_test_mydumper_in_focal_percona57:
     parameters:
       test:
@@ -615,6 +810,28 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_focal_percona80
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
+  compile_and_test_mydumper_in_focal_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: focal_mariadb1011
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_focal_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
         test: << parameters.test >>
@@ -668,6 +885,28 @@ jobs:
            - .
 
 
+  compile_and_test_mydumper_in_jammy_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: jammy_mariadb1011
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_jammy_mariadb1011
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
   compile_and_test_mydumper_in_buster_percona57:
     parameters:
       test:
@@ -703,6 +942,28 @@ jobs:
     - checkout
     - prepare_ubuntu
     - prepare_buster_percona80
+    - compile_and_test_mydumper:
+        zstd_on: false
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
+  compile_and_test_mydumper_in_buster_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: buster_mariadb1011
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_buster_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: false
         test: << parameters.test >>
@@ -756,6 +1017,28 @@ jobs:
            - .
 
 
+  compile_and_test_mydumper_in_bullseye_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bullseye_mariadb1011
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_ubuntu
+    - prepare_bullseye_mariadb1011
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
   compile_and_test_mydumper_in_el7_percona57:
     parameters:
       test:
@@ -791,6 +1074,28 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
+  compile_and_test_mydumper_in_el7_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el7
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_el
+    - prepare_el_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
         test: << parameters.test >>
@@ -844,6 +1149,28 @@ jobs:
            - .
 
 
+  compile_and_test_mydumper_in_el8_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el8
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_el
+    - prepare_el_mariadb1011
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
   compile_and_test_mydumper_in_el9_percona57:
     parameters:
       test:
@@ -879,6 +1206,28 @@ jobs:
     - checkout
     - prepare_el
     - prepare_el_percona80
+    - compile_and_test_mydumper:
+        zstd_on: true
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
+  compile_and_test_mydumper_in_el9_mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el9
+    executor: << parameters.e >>
+    steps:
+    - checkout
+    - prepare_el
+    - prepare_el_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
         test: << parameters.test >>
@@ -941,6 +1290,33 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_el7_mariadb1011:
+    executor: el7_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_el
+    - prepare_el_mariadb1011
+    - run: mkdir -p /tmp/package
+    - run: yum -y install rpmdevtools
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+    - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/el7_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+        - compile_zstd:
+            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el7_mariadb1011_zstd/
+        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_percona57:
     executor: el8_percona57
     steps:
@@ -990,6 +1366,33 @@ jobs:
         - run: mkdir -p /tmp/src/mydumper/el8_percona80_zstd
         - run: cp mydumper myloader /tmp/src/mydumper/el8_percona80_zstd/
         - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_el8_mariadb1011:
+    executor: el8_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_el
+    - prepare_el_mariadb1011
+    - run: mkdir -p /tmp/package
+    - run: yum -y install rpmdevtools
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+    - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/el8_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+        - compile_zstd:
+            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el8_mariadb1011_zstd/
+        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1049,6 +1452,33 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_el9_mariadb1011:
+    executor: el9_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_el
+    - prepare_el_mariadb1011
+    - run: mkdir -p /tmp/package
+    - run: yum -y install rpmdevtools
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+    - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/el9_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+        - compile_zstd:
+            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_zstd
+        - run: cp mydumper myloader /tmp/src/mydumper/el9_mariadb1011_zstd/
+        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona57:
     executor: bionic_percona57
     steps:
@@ -1098,6 +1528,33 @@ jobs:
           - run: mkdir -p /tmp/src/mydumper/bionic_percona80_zstd
           - run: cp mydumper myloader /tmp/src/mydumper/bionic_percona80_zstd/
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_bionic_mariadb1011:
+    executor: bionic_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_ubuntu
+    - prepare_bionic_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_gzip
+    - when:
+        condition: false
+        steps:
+          - compile_zstd:
+             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+          - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_zstd
+          - run: cp mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_zstd/
+          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1157,6 +1614,33 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_focal_mariadb1011:
+    executor: focal_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_ubuntu
+    - prepare_focal_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/focal_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+          - compile_zstd:
+             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+          - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_zstd
+          - run: cp mydumper myloader /tmp/src/mydumper/focal_mariadb1011_zstd/
+          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_percona57:
     executor: jammy_percona57
     steps:
@@ -1206,6 +1690,33 @@ jobs:
           - run: mkdir -p /tmp/src/mydumper/jammy_percona80_zstd
           - run: cp mydumper myloader /tmp/src/mydumper/jammy_percona80_zstd/
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_jammy_mariadb1011:
+    executor: jammy_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_ubuntu
+    - prepare_jammy_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+          - compile_zstd:
+             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+          - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_zstd
+          - run: cp mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_zstd/
+          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1265,6 +1776,33 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_buster_mariadb1011:
+    executor: buster_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_ubuntu
+    - prepare_buster_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/buster_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_gzip
+    - when:
+        condition: false
+        steps:
+          - compile_zstd:
+             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+          - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_zstd
+          - run: cp mydumper myloader /tmp/src/mydumper/buster_mariadb1011_zstd/
+          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_percona57:
     executor: bullseye_percona57
     steps:
@@ -1319,6 +1857,33 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_bullseye_mariadb1011:
+    executor: bullseye_mariadb1011
+    steps:
+    - checkout
+    - set_env_vars
+    - prepare_ubuntu
+    - prepare_bullseye_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_gzip
+    - run: cp mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_gzip/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_gzip
+    - when:
+        condition: true
+        steps:
+          - compile_zstd:
+             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+          - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_zstd
+          - run: cp mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_zstd/
+          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_zstd
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   publish-github-release:
     docker:
       - image: cibuilds/github:0.10
@@ -1333,18 +1898,26 @@ workflows:
     jobs:
     - compile_and_test_mydumper_in_bionic_percona57
     - compile_and_test_mydumper_in_bionic_percona80
+    - compile_and_test_mydumper_in_bionic_mariadb1011
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
+    - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_jammy_percona80
+    - compile_and_test_mydumper_in_jammy_mariadb1011
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
+    - compile_and_test_mydumper_in_el7_mariadb1011
     - compile_and_test_mydumper_in_el8_percona57
     - compile_and_test_mydumper_in_el8_percona80
+    - compile_and_test_mydumper_in_el8_mariadb1011
     - compile_and_test_mydumper_in_el9_percona80
+    - compile_and_test_mydumper_in_el9_mariadb1011
     - compile_and_test_mydumper_in_buster_percona57
     - compile_and_test_mydumper_in_buster_percona80
+    - compile_and_test_mydumper_in_buster_mariadb1011
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
+    - compile_and_test_mydumper_in_bullseye_mariadb1011
     - compile_and_test_mydumper_in_focal_percona57:
         test: true
         e: focal_percona57
@@ -1352,6 +1925,10 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona80:
         test: true
         e: focal_percona80
+
+    - compile_and_test_mydumper_in_focal_mariadb1011:
+        test: true
+        e: focal_mariadb1011
 
     - build_bionic_percona57:
         filters:
