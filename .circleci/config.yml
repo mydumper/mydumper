@@ -484,13 +484,14 @@ commands:
     - run: apt-get update || true
     - run: apt-get install -y sudo || true
     - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg
+    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl
 
   prepare_el:
     steps:
     - run: yum -y install epel-release || true
+    - run: yum -y install sudo || true
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-    - run: yum -y install wget
+    - run: yum -y install wget curl
 
   prepare_bionic_percona_package:
     steps:
