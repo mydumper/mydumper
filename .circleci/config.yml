@@ -491,7 +491,7 @@ commands:
     - run: yum -y install epel-release || true
     - run: yum -y install sudo || true
     - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-    - run: yum -y install wget curl
+    - run: yum --allowerasing -y install wget curl
 
   prepare_bionic_percona_package:
     steps:
@@ -539,9 +539,10 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+
   prepare_ubuntu_mariadb1011:
     steps:
-    - run: sudo apt-get install -y libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev
 
   prepare_el_percona_package:
     steps:
