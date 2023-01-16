@@ -494,36 +494,6 @@ commands:
 #    - run: yum -y install wget curl || true
 #    - run: yum -y install --allowerasing wget curl || true
 
-  prepare_bionic_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/percona-release_latest.bionic_all.deb
-    - run: sudo apt install -y ./percona-release_latest.bionic_all.deb
-
-  prepare_focal_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/percona-release_latest.focal_all.deb
-    - run: sudo apt install -y ./percona-release_latest.focal_all.deb
-
-  prepare_jammy_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/percona-release_latest.jammy_all.deb
-    - run: sudo apt install -y ./percona-release_latest.jammy_all.deb
-
-  prepare_buster_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/percona-release_latest.buster_all.deb
-    - run: sudo apt install -y ./percona-release_latest.buster_all.deb
-
-  prepare_bullseye_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/percona-release_latest.bullseye_all.deb
-    - run: sudo apt install -y ./percona-release_latest.bullseye_all.deb
-
   prepare_mariadb1011:
     steps:
 #    - run: sudo wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
@@ -563,13 +533,13 @@ commands:
 
   prepare_bionic_percona57:
     steps:
-    - prepare_bionic_percona_package
+#    - prepare_bionic_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_bionic_percona80:
     steps:
-    - prepare_bionic_percona_package
+#    - prepare_bionic_percona_package
     - prepare_ubuntu_percona80
 
 
@@ -581,13 +551,13 @@ commands:
 
   prepare_focal_percona57:
     steps:
-    - prepare_focal_percona_package
+#    - prepare_focal_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_focal_percona80:
     steps:
-    - prepare_focal_percona_package
+#    - prepare_focal_percona_package
     - prepare_ubuntu_percona80
 
 
@@ -599,13 +569,13 @@ commands:
 
   prepare_jammy_percona57:
     steps:
-    - prepare_jammy_percona_package
+#    - prepare_jammy_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_jammy_percona80:
     steps:
-    - prepare_jammy_percona_package
+#    - prepare_jammy_percona_package
     - prepare_ubuntu_percona80
 
 
@@ -617,13 +587,13 @@ commands:
 
   prepare_buster_percona57:
     steps:
-    - prepare_buster_percona_package
+#    - prepare_buster_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_buster_percona80:
     steps:
-    - prepare_buster_percona_package
+#    - prepare_buster_percona_package
     - prepare_ubuntu_percona80
 
 
@@ -635,13 +605,13 @@ commands:
 
   prepare_bullseye_percona57:
     steps:
-    - prepare_bullseye_percona_package
+#    - prepare_bullseye_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_bullseye_percona80:
     steps:
-    - prepare_bullseye_percona_package
+#    - prepare_bullseye_percona_package
     - prepare_ubuntu_percona80
 
 
