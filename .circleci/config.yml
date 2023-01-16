@@ -546,8 +546,8 @@ commands:
 
   prepare_ubuntu_mariadb1011:
     steps:
-    - run: sudo apt-get remove -y libmariadb-dev libmariadb-dev-compat libmariadb3 || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev
+#    - run: sudo apt-get remove -y libmariadb-dev libmariadb-dev-compat libmariadb3 || true
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_percona_package:
     steps:
