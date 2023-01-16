@@ -8,7 +8,7 @@ executors:
 
   bionic_percona57:
     docker:
-    - image: cimg/base:current-18.04
+    - image: mydumper/mydumper-builder-bionic:v0.13.1-2
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
