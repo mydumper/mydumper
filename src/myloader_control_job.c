@@ -408,7 +408,8 @@ void *control_job_thread(struct configuration *conf){
 //          g_message("No job available");
           if (intermediate_queue_ended_local){
             if (giveup){
-              for(;0<threads_waiting+1;threads_waiting--){
+              g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+              for(;0<threads_waiting;threads_waiting--){
 //                g_message("Enqueuing shutdown");
                 g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
               }
