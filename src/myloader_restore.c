@@ -198,7 +198,9 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
               gchar *fifo_name=g_strndup(fff,g_strrstr(fff,".")-fff);
               mkfifo(fifo_name,0666);
               g_thread_create((GThreadFunc)send_file_to_fifo, fff, TRUE, NULL);
-              for(from=g_strstr_len(to-4,-1,"."); from<to ; from++){
+              from=g_strstr_len(to-4,-1,".");
+              *from='\''; from++;
+              for(; from<=to ; from++){
                 *from=' ';
               }
             }
