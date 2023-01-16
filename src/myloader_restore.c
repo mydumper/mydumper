@@ -41,11 +41,11 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
     if (is_schema)
-      g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
+      g_warning("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
     else{
-      g_critical("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
+      g_warning("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
     }
-    g_critical("Thread %d: Retrying", td->thread_id);
+    g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
     if (mysql_real_query(td->thrconn, data->str, data->len)) {
       if (is_schema)
         g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
