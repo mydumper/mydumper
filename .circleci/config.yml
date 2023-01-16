@@ -8,7 +8,7 @@ executors:
 
   bionic_percona57:
     docker:
-    - image: mydumper/mydumper-builder-bionic:latest
+    - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -24,7 +24,7 @@ executors:
 
   bionic_percona80:
     docker:
-    - image: cimg/base:current-18.04
+    - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -40,7 +40,7 @@ executors:
 
   bionic_mariadb1011:
     docker:
-    - image: cimg/base:current-18.04
+    - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -56,7 +56,7 @@ executors:
 
   bionic:
     docker:
-    - image: cimg/base:current-18.04
+    - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -67,7 +67,7 @@ executors:
 
   focal_percona57:
     docker:
-    - image: cimg/base:stable-20.04
+    - image: mydumper/mydumper-builder-focal
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -83,7 +83,7 @@ executors:
 
   focal_percona80:
     docker:
-    - image: cimg/base:stable-20.04
+    - image: mydumper/mydumper-builder-focal
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -99,7 +99,7 @@ executors:
 
   focal_mariadb1011:
     docker:
-    - image: cimg/base:stable-20.04
+    - image: mydumper/mydumper-builder-focal
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -115,7 +115,7 @@ executors:
 
   focal:
     docker:
-    - image: cimg/base:stable-20.04
+    - image: mydumper/mydumper-builder-focal
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -126,7 +126,7 @@ executors:
 
   jammy_percona57:
     docker:
-    - image: cimg/base:current-22.04
+    - image: mydumper/mydumper-builder-jammy
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -142,7 +142,7 @@ executors:
 
   jammy_percona80:
     docker:
-    - image: cimg/base:current-22.04
+    - image: mydumper/mydumper-builder-jammy
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -158,7 +158,7 @@ executors:
 
   jammy_mariadb1011:
     docker:
-    - image: cimg/base:current-22.04
+    - image: mydumper/mydumper-builder-jammy
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -174,7 +174,7 @@ executors:
 
   jammy:
     docker:
-    - image: cimg/base:current-22.04
+    - image: mydumper/mydumper-builder-jammy
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -185,7 +185,7 @@ executors:
 
   el7_percona57:
     docker:
-    - image: centos:7
+    - image: mydumper/mydumper-builder-el7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -201,7 +201,7 @@ executors:
 
   el7_percona80:
     docker:
-    - image: centos:7
+    - image: mydumper/mydumper-builder-el7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -217,7 +217,7 @@ executors:
 
   el7_mariadb1011:
     docker:
-    - image: centos:7
+    - image: mydumper/mydumper-builder-el7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -233,7 +233,7 @@ executors:
 
   el7:
     docker:
-    - image: centos:7
+    - image: mydumper/mydumper-builder-el7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -244,7 +244,7 @@ executors:
 
   el8_percona57:
     docker:
-    - image: almalinux:8
+    - image: mydumper/mydumper-builder-el8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -260,7 +260,7 @@ executors:
 
   el8_percona80:
     docker:
-    - image: almalinux:8
+    - image: mydumper/mydumper-builder-el8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -276,7 +276,7 @@ executors:
 
   el8_mariadb1011:
     docker:
-    - image: almalinux:8
+    - image: mydumper/mydumper-builder-el8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -292,7 +292,7 @@ executors:
 
   el8:
     docker:
-    - image: almalinux:8
+    - image: mydumper/mydumper-builder-el8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -303,7 +303,7 @@ executors:
 
   el9_percona57:
     docker:
-    - image: almalinux:9
+    - image: mydumper/mydumper-builder-el9
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -319,7 +319,7 @@ executors:
 
   el9_percona80:
     docker:
-    - image: almalinux:9
+    - image: mydumper/mydumper-builder-el9
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -335,7 +335,7 @@ executors:
 
   el9_mariadb1011:
     docker:
-    - image: almalinux:9
+    - image: mydumper/mydumper-builder-el9
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -351,7 +351,7 @@ executors:
 
   el9:
     docker:
-    - image: almalinux:9
+    - image: mydumper/mydumper-builder-el9
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -362,7 +362,7 @@ executors:
 
   buster_percona57:
     docker:
-    - image: debian:buster
+    - image: mydumper/mydumper-builder-buster
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -378,7 +378,7 @@ executors:
 
   buster_percona80:
     docker:
-    - image: debian:buster
+    - image: mydumper/mydumper-builder-buster
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -394,7 +394,7 @@ executors:
 
   buster_mariadb1011:
     docker:
-    - image: debian:buster
+    - image: mydumper/mydumper-builder-buster
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -410,7 +410,7 @@ executors:
 
   buster:
     docker:
-    - image: debian:buster
+    - image: mydumper/mydumper-builder-buster
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -421,7 +421,7 @@ executors:
 
   bullseye_percona57:
     docker:
-    - image: debian:bullseye
+    - image: mydumper/mydumper-builder-bullseye
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -437,7 +437,7 @@ executors:
 
   bullseye_percona80:
     docker:
-    - image: debian:bullseye
+    - image: mydumper/mydumper-builder-bullseye
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -453,7 +453,7 @@ executors:
 
   bullseye_mariadb1011:
     docker:
-    - image: debian:bullseye
+    - image: mydumper/mydumper-builder-bullseye
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -469,7 +469,7 @@ executors:
 
   bullseye:
     docker:
-    - image: debian:bullseye
+    - image: mydumper/mydumper-builder-bullseye
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -479,20 +479,20 @@ executors:
     working_directory: /tmp/src/mydumper
 
 commands:
-  prepare_ubuntu:
-    steps:
-    - run: apt-get update || true
-    - run: apt-get install -y sudo || true
-    - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl
+#  prepare_ubuntu:
+#    steps:
+#    - run: apt-get update || true
+#    - run: apt-get install -y sudo || true
+#    - run: sudo apt-get update
+#    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl
 
-  prepare_el:
-    steps:
-    - run: yum -y install epel-release || true
-    - run: yum -y install sudo || true
-    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-    - run: yum -y install wget curl || true
-    - run: yum -y install --allowerasing wget curl || true
+#  prepare_el:
+#    steps:
+#    - run: yum -y install epel-release || true
+#    - run: yum -y install sudo || true
+#    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
+#    - run: yum -y install wget curl || true
+#    - run: yum -y install --allowerasing wget curl || true
 
   prepare_bionic_percona_package:
     steps:
@@ -526,7 +526,7 @@ commands:
 
   prepare_mariadb1011:
     steps:
-    - run: sudo wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
+#    - run: sudo wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
 
 
@@ -550,9 +550,9 @@ commands:
     - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
-  prepare_el_percona_package:
-    steps:
-    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+#  prepare_el_percona_package:
+#    steps:
+#    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
   prepare_el_mariadb1011:
     steps:
@@ -654,14 +654,14 @@ commands:
 
   prepare_el_percona57:
     steps:
-    - prepare_el_percona_package
+#    - prepare_el_percona_package
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_percona80:
     steps:
-    - prepare_el_percona_package
+#    - prepare_el_percona_package
     - run: percona-release setup -y ps80
     - run: yum -y install percona-server-devel percona-server-client
 
@@ -729,7 +729,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
         zstd_on: false
@@ -751,7 +751,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
         zstd_on: false
@@ -773,7 +773,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: false
@@ -795,7 +795,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -817,7 +817,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -839,7 +839,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -861,7 +861,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -883,7 +883,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -905,7 +905,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -927,7 +927,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_percona57
     - compile_and_test_mydumper:
         zstd_on: false
@@ -949,7 +949,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_percona80
     - compile_and_test_mydumper:
         zstd_on: false
@@ -971,7 +971,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: false
@@ -993,7 +993,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1015,7 +1015,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1037,7 +1037,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1059,7 +1059,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1081,7 +1081,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1103,7 +1103,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1125,7 +1125,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1147,7 +1147,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1169,7 +1169,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1191,7 +1191,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1213,7 +1213,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1235,7 +1235,7 @@ jobs:
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
         zstd_on: true
@@ -1250,7 +1250,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1277,7 +1277,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1304,7 +1304,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1331,7 +1331,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1358,7 +1358,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1385,7 +1385,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1412,7 +1412,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1439,7 +1439,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1466,7 +1466,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -1493,7 +1493,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1520,7 +1520,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1547,7 +1547,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bionic_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1574,7 +1574,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1601,7 +1601,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1628,7 +1628,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_focal_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1655,7 +1655,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1682,7 +1682,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1709,7 +1709,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_jammy_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1736,7 +1736,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1763,7 +1763,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1790,7 +1790,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_buster_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1817,7 +1817,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1844,7 +1844,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
@@ -1871,7 +1871,7 @@ jobs:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
