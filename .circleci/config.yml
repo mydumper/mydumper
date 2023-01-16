@@ -678,6 +678,8 @@ commands:
     - store_artifacts:
         path: /tmp/stream.sql
         destination: artifact-file
+    - store_artifacts:
+        path: /tmp/data/
 
   set_env_vars:
     steps:
