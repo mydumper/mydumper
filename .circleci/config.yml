@@ -624,14 +624,12 @@ commands:
 
   prepare_el_percona57:
     steps:
-#    - prepare_el_percona_package
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_percona80:
     steps:
-#    - prepare_el_percona_package
     - run: percona-release setup -y ps80
     - run: yum -y install percona-server-devel percona-server-client
 
@@ -677,6 +675,9 @@ commands:
              condition: << parameters.test >>
              steps:
              - run: bash ./test_mydumper.sh SSL ZSTD
+    - store_artifacts:
+        path: /tmp/stream.sql
+        destination: artifact-file
 
   set_env_vars:
     steps:
