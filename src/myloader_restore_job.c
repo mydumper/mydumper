@@ -19,6 +19,7 @@
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <string.h>
+#include "common.h"
 #include "myloader_restore_job.h"
 #include "myloader.h"
 #include "myloader_restore.h"
@@ -54,7 +55,7 @@ void initialize_restore_job(gchar * purge_mode_str){
     } else if (!strcmp(purge_mode_str,"NONE")){
       purge_mode=NONE;
     } else {
-      g_error("Purge mode unknown");
+      m_error("Purge mode unknown");
     }
   } else if (overwrite_tables)
     purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified

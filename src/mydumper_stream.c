@@ -64,13 +64,13 @@ void *process_stream(void *data){
 //      g_message("Opening: %s",filename);
       f=g_fopen(filename,"r");
       if (!f){
-        g_error("File failed to open: %s",filename);
+        m_error("File failed to open: %s",filename);
       }else{
         if (!f){
           g_critical("File failed to open: %s. Reetrying",filename);
           f=g_fopen(filename,"r");
           if (!f){
-            g_error("File failed to open: %s. Cancelling",filename);
+            m_error("File failed to open: %s. Cancelling",filename);
             exit(EXIT_FAILURE);
           }
         }
@@ -81,7 +81,7 @@ void *process_stream(void *data){
           len=write(fileno(stdout), buf, buflen);
           total_len=total_len + buflen;
           if (len != buflen)
-            g_error("Stream failed during transmition of file: %s",filename);
+            m_error("Stream failed during transmition of file: %s",filename);
           buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
         }
         datetime = g_date_time_new_now_local();

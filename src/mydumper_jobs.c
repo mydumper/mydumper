@@ -106,7 +106,7 @@ void initialize_jobs(){
 
   if (exec_per_thread_extension != NULL){
     if(exec_per_thread == NULL)
-      g_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
   }
 
   if (exec_per_thread!=NULL){

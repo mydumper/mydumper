@@ -418,13 +418,20 @@ int main(int argc, char *argv[]) {
   m_connect(conn,"myloader",NULL);
 
   set_session = g_string_new(NULL);
+  set_global = g_string_new(NULL);
+  set_global_back = g_string_new(NULL);
   detected_server = detect_server(conn);
   detect_server_version(conn);
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
-  if (defaults_file)
-    load_session_hash_from_key_file(key_file,set_session_hash,"myloader_variables");
+  GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  if (defaults_file){
+    load_session_hash_from_key_file(key_file,set_global_hash,"myloader_global_variables");
+    load_session_hash_from_key_file(key_file,set_session_hash,"myloader_session_variables");
+  }
   refresh_set_session_from_hash(set_session,set_session_hash);
+  refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
   execute_gstring(conn, set_session);
+  execute_gstring(conn, set_global);
 
   // TODO: we need to set the variables in the initilize session varibles, not from:
 //  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
@@ -438,7 +445,7 @@ int main(int argc, char *argv[]) {
       g_message("Disabling redologs");
       mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
     }else{
-      g_error("Disabling redologs is not supported for version %d.%d", get_major(), get_secondary());
+      m_error("Disabling redologs is not supported for version %d.%d", get_major(), get_secondary());
     }
   }
   mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
@@ -536,6 +543,7 @@ int main(int argc, char *argv[]) {
   free_hash(set_session_hash);
   g_hash_table_remove_all(set_session_hash);
   g_hash_table_unref(set_session_hash);
+  execute_gstring(conn, set_global_back);
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
@@ -567,7 +575,6 @@ int main(int argc, char *argv[]) {
     tl=tl->next;
   }
 */
-
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

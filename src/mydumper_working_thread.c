@@ -552,7 +552,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       write_table_job_into_file(td->thrconn, tj);
       break;
     default: 
-      g_error("dbt on UNDEFINED shouldn't happen. This must be a bug");
+      m_error("dbt on UNDEFINED shouldn't happen. This must be a bug");
       break;
   }
   if (tj->sql_file){
@@ -693,7 +693,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
       if (no_locks){ 
         g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
       }else{
-        g_error("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
+        m_error("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
         exit(EXIT_FAILURE);
       }
     }
@@ -856,7 +856,7 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
       return FALSE;
       break;
     default:
-      g_error("Something very bad happened!");
+      m_error("Something very bad happened!");
   }
   return TRUE;
 }
@@ -902,7 +902,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
       return FALSE;
       break;
     default:
-      g_error("Something very bad happened!");
+      m_error("Something very bad happened!");
     }
   return TRUE;
 }
@@ -1188,13 +1188,13 @@ void *working_thread(struct thread_data *td) {
     if (less_locking){
       // Sending LOCK TABLE over all non-innodb tables
       if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
-        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+        m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
       process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
-        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+        m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
     }else{
       process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);

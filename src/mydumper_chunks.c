@@ -27,6 +27,7 @@
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <math.h>
+#include "common.h"
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
 #include "mydumper_chunks.h"
@@ -843,7 +844,7 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
       create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
       break;
     default:
-      g_error("This should not happen");
+      m_error("This should not happen");
       break;
     } 
   }
