@@ -238,3 +238,10 @@ innodb_flush_log_at_trx_commit = 0
 [`db`.`table`]
 where = column > 20
 ```
+
+IMPORTANT: when using options that doesn't required an argument like: --no-data or --events, you need to set any value to those variables which will always indicate: TRUE/ON/ENABLE. It is a MISCONCEPTION if you think that adding `--no-data=0` will export data:
+```
+[mydumper]
+no-data=0
+```
+Will NOT export the data as no-data is being specified.
