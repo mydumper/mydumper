@@ -52,17 +52,17 @@ or from ports
 cd /usr/ports/databases/mydumper && make install
 ```
 
-### OSX
+### MacOS
 By using [Homebrew](https://brew.sh/)
 
 ```bash
 brew install mydumper
 ```
 
-## Dependencies for building mydumper
+## Dependencies for building MyDumper
 
-### One needs to install development tools:
-* Ubuntu or Debian: 
+### Install development tools:
+* Ubuntu or Debian:
 ```shell
 apt-get install cmake g++ git
 ```
@@ -70,40 +70,36 @@ apt-get install cmake g++ git
 ```shell
 yum install -y cmake gcc gcc-c++ git make
 ```
-* MacOSX:
+* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager:
 
 ```shell
-brew install cmake pkg-config sphinx-doc glib mysql-client openssl@1.1 pcre
+sudo port install cmake pkgconfig
 ```
-
-```shell
-port install pkgconfig cmake
-```
-### One needs to install development versions of GLib, ZLib, PCRE and ZSTD:
-* Ubuntu or Debian: 
+### Install development versions of GLib, ZLib, PCRE and ZSTD:
+* Ubuntu or Debian:
 ```shell
 apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
 ```
-* Fedora, RedHat and CentOS: 
+* Fedora, RedHat and CentOS:
 ```shell
 yum install -y glib2-devel openssl-devel pcre-devel zlib-devel libzstd-devel
 ```
-* openSUSE: 
+* openSUSE:
 ```shell
 zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
 ```
-* MacOSX: 
+* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager:
 ```shell
-port install glib2 pcre 
+sudo port install glib2 pcre
 ```
-### One needs to install MySQL/Percona/MariaDB development versions:
-* Ubuntu or Debian: 
+### Install MySQL/Percona/MariaDB development versions:
+* Ubuntu or Debian:
 ```shell
 apt-get install libmysqlclient-dev
 apt-get install libperconaserverclient20-dev
-apt-get install libmariadbclient-dev 
+apt-get install libmariadbclient-dev
 ```
-* Fedora, RedHat and CentOS: 
+* Fedora, RedHat and CentOS:
 ```shell
 yum install -y mysql-devel
 yum install -y Percona-Server-devel-57
@@ -111,14 +107,17 @@ yum install -y mariadb-devel
 ```
 CentOS 7 comes by default with MariaDB 5.5 libraries which are very old.
   It might be better to download a newer version of these libraries (MariaDB, MySQL, Percona etc).
-* openSUSE: 
+* openSUSE:
 ```shell
 zypper install libmysqlclient-devel
 ```
-* MacOSX: port install mysql5
- (You may want to run 'port select mysql mysql5' afterwards)
 
-## How to build it?
+* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager
+``` shell
+sudo port install mariadb-10.11
+sudo port select mysql
+```
+## How to Build
 
 Run:
 
@@ -140,7 +139,7 @@ docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper github.com/mydu
 ```
 Keep in mind that the main purpose the Dockerfile addresses is development and build from source locally. It might not be optimal for distribution purposes, but can also work as a quick build and run solution with the above one-liner, though.
 
-# How to use mydumper
+# How to use MyDumper
 
 See [Usage](docs/mydumper_usage.rst)
 
@@ -205,7 +204,7 @@ You can execute external commands with --exec like this:
 ## Defaults file
 
 The default file (aka: --defaults-file parameter) is starting to be more important in MyDumper
-- mydumper and myloader sections: 
+- mydumper and myloader sections:
 
 ```bash
 [mydumper]

@@ -65,7 +65,10 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
 struct database * new_database(gchar *database){
   struct database * d = g_new(struct database, 1);
   d->name=database;
-  d->schema_created=FALSE;
+  d->real_database = g_strdup(db ? db : database);
+  d->mutex=g_mutex_new();
+  d->queue=g_async_queue_new();;
+  d->schema_state=NOT_FOUND;
   return d;
 }
 
@@ -89,15 +92,19 @@ struct database * db_hash_lookup(gchar *database){
   return r;
 }
 */
-gboolean eval_table( char *db_name, char * table_name){
+gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
+  g_mutex_lock(mutex);
   if ( tables ){
     if ( ! is_table_in_list(table_name, tables) ){
+      g_mutex_unlock(mutex);
       return FALSE;
     }
   }
   if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+    g_mutex_unlock(mutex);
     return FALSE;
   }
+  g_mutex_unlock(mutex);
   return eval_regex(db_name, table_name);
 }
 
@@ -240,8 +247,8 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
-  append_alter_table(alter_table_statement, dbt->real_database,dbt->real_table);
-  append_alter_table(alter_table_constraint_statement, dbt->real_database,dbt->real_table);
+  append_alter_table(alter_table_statement, dbt->database->real_database,dbt->real_table);
+  append_alter_table(alter_table_constraint_statement, dbt->database->real_database,dbt->real_table);
   int fulltext_counter=0;
   int i=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
@@ -261,7 +268,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
         if (fulltext_counter>1){
           fulltext_counter=1;
           finish_alter_table(alter_table_statement);
-          append_alter_table(alter_table_statement,dbt->real_database,dbt->real_table);
+          append_alter_table(alter_table_statement,dbt->database->real_database,dbt->real_table);
         }
         g_string_append(alter_table_statement,"\n ADD");
         g_string_append(alter_table_statement, split_file[i]);
@@ -290,8 +297,8 @@ gchar *build_dbt_key(gchar *a, gchar *b){
 }
 
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
-  gchar *a_key=build_dbt_key(((struct db_table *)a)->database,((struct db_table *)a)->table);
-  gchar *b_key=build_dbt_key(((struct db_table *)b)->database,((struct db_table *)b)->table);
+  gchar *a_key=build_dbt_key(((struct db_table *)a)->database->real_database,((struct db_table *)a)->table);
+  gchar *b_key=build_dbt_key(((struct db_table *)b)->database->real_database,((struct db_table *)b)->table);
   struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
   struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
   g_free(a_key);

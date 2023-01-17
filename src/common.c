@@ -27,6 +27,10 @@ extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
 extern GKeyFile * key_file;
+extern gboolean no_stream;
+extern gchar*set_names_str;
+extern gchar*set_names_statement;
+extern guint num_threads;
 
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
@@ -39,6 +43,18 @@ GHashTable * initialize_hash_of_session_variables(){
     g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
   }
   return set_session_hash;
+}
+
+void initialize_set_names(){
+  if (set_names_str){
+    if (strlen(set_names_str)!=0){
+      set_names_statement=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
+    }else
+      set_names_str=NULL;
+  } else {
+    set_names_str=g_strdup("binary");
+    set_names_statement=g_strdup("/*!40101 SET NAMES binary*/");
+  }
 }
 
 char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){
@@ -394,7 +410,7 @@ void remove_definer(GString * data){
 
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
-    g_string_append_printf(str, "%s, built against MySQL %s", VERSION, MYSQL_VERSION_STR);
+    g_string_append_printf(str, "%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
 #endif
@@ -407,3 +423,32 @@ void print_version(const gchar *program){
 }
 
 
+
+gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,8,"--stream")){
+    stream = TRUE;
+    if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
+      return TRUE;
+    }
+    if (g_strstr_len(value,9,"NO_DELETE")){
+      no_delete=TRUE;
+      return TRUE;
+    }
+    if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
+      no_delete=TRUE;
+      no_stream=TRUE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+void check_num_threads()
+{
+  if (num_threads < MIN_THREAD_COUNT) {
+    g_warning("invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
+    num_threads = MIN_THREAD_COUNT;
+  }
+}

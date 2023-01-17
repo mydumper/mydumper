@@ -44,6 +44,7 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_queue = g_async_queue_new();
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
+  initialize_control_job(c);
 }
 
 void intermediate_queue_new(gchar *filename){
@@ -71,9 +72,11 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 }
 
 enum file_type process_filename(char *filename){
+//  g_message("Filename: %s", filename);
   enum file_type ft= get_file_type(filename);
   if (!source_db ||
     g_str_has_prefix(filename, g_strdup_printf("%s.", source_db)) ||
+    g_str_has_prefix(filename, g_strdup_printf("%s-schema-post.sql", source_db)) ||
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-create.sql", source_db) )
     ) {
     switch (ft){
@@ -90,7 +93,7 @@ enum file_type process_filename(char *filename){
       case SCHEMA_TABLE:
         // filename is free
         if (!process_table_filename(filename)){
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         }else{
           g_free(filename);
           refresh_table_list(intermediate_conf);
@@ -98,20 +101,22 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_VIEW:
         if (!process_schema_view_filename(filename))
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
           if (!process_schema_filename(filename,"trigger"))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         break;
       case SCHEMA_POST:
         // can be enqueued in any order
         if (!skip_post)
           if (!process_schema_filename(filename,"post"))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         break;
       case CHECKSUM:
+        if (!process_checksum_filename(filename))
+          return DO_NOT_ENQUEUE;
         intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
         break;
       case METADATA_GLOBAL:
@@ -119,13 +124,13 @@ enum file_type process_filename(char *filename){
       case METADATA_TABLE:
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
         if (!process_metadata_filename(filename))
-          return INCOMPLETE;
+          return DO_NOT_ENQUEUE;
         refresh_table_list(intermediate_conf);
         break;
       case DATA:
         if (!no_data){
           if (!process_data_filename(filename))
-            return INCOMPLETE;
+            return DO_NOT_ENQUEUE;
         }else
           m_remove(directory,filename);
         total_data_sql_files++;
@@ -148,6 +153,8 @@ enum file_type process_filename(char *filename){
       default:
         break;
     }
+  }else{
+    ft=DO_NOT_ENQUEUE;
   }
   return ft;
 }
@@ -170,7 +177,8 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
       current_ft != CHECKSUM &&
       current_ft != METADATA_TABLE &&
       current_ft != DO_NOT_ENQUEUE )
-    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
+    refresh_db_and_jobs(current_ft);
+//    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
 
 void enqueue_all_index_jobs(struct configuration *conf){
@@ -181,8 +189,8 @@ void enqueue_all_index_jobs(struct configuration *conf){
     dbt = iter->data;
     g_mutex_lock(dbt->mutex);
     if (!dbt->index_enqueued){
-      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->real_database,dbt->indexes,"indexes");
-      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->real_database));
+      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes,"indexes");
+      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->name));
       dbt->index_enqueued=TRUE;
     }
     g_mutex_unlock(dbt->mutex);
@@ -214,8 +222,7 @@ void *intermediate_thread(){
   if (innodb_optimize_keys_all_tables)
     enqueue_all_index_jobs(intermediate_conf);
   g_message("Intermediate thread ended");
-
-  g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(INTERMEDIATE_ENDED));
+  refresh_db_and_jobs(INTERMEDIATE_ENDED);
   return NULL;
 }
 

@@ -39,14 +39,16 @@ extern GString *set_session;
 extern guint num_threads;
 extern gboolean stream;
 extern guint max_threads_for_index_creation;
-
+extern gboolean innodb_optimize_keys_all_tables;
 static GMutex *init_mutex=NULL;
 static GMutex *index_mutex=NULL;
 guint index_threads_counter = 0;
 guint sync_threads_remaining;
-static GMutex *sync_mutex;
-
+guint sync_threads_remaining1;
 guint sync_threads_remaining2;
+
+static GMutex *sync_mutex;
+static GMutex *sync_mutex1;
 static GMutex *sync_mutex2;
 GMutex *view_mutex;
 
@@ -55,13 +57,16 @@ void initialize_job(gchar * purge_mode_str){
   init_mutex = g_mutex_new();
   index_mutex = g_mutex_new();
   sync_threads_remaining=num_threads;
-  sync_mutex = g_mutex_new();
-  g_mutex_lock(sync_mutex);
-  view_mutex=g_mutex_new();
-
+  sync_threads_remaining1=num_threads;
   sync_threads_remaining2=num_threads;
+  sync_mutex = g_mutex_new();
+  sync_mutex1 = g_mutex_new();
   sync_mutex2 = g_mutex_new();
+  g_mutex_lock(sync_mutex);
+  g_mutex_lock(sync_mutex1);
   g_mutex_lock(sync_mutex2);
+
+  view_mutex=g_mutex_new();
 
   index_threads_counter = 0;
 }
@@ -109,7 +114,7 @@ void *loader_thread(struct thread_data *td) {
 
   m_connect(td->thrconn, "myloader", NULL);
 
-  mysql_query(td->thrconn, set_names_str);
+//  mysql_query(td->thrconn, set_names_statement);
   mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
   mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
   mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
@@ -131,10 +136,17 @@ void *loader_thread(struct thread_data *td) {
   gboolean cont=TRUE;
 
   cont=TRUE;
+  if (innodb_optimize_keys_all_tables)
+    sync_threads(&sync_threads_remaining,sync_mutex);
+  
+  last_wait_control_job_to_shutdown();
   while (cont){
     cont=process_index(td);
   }
-  sync_threads(&sync_threads_remaining,sync_mutex);
+
+  sync_threads(&sync_threads_remaining1,sync_mutex1);
+
+
   g_message("Thread %d: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
@@ -167,7 +179,7 @@ void *loader_thread(struct thread_data *td) {
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("Thread %d ending", td->thread_id);
+  g_debug("Thread %d: ending", td->thread_id);
   return NULL;
 }
 

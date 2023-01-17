@@ -61,40 +61,15 @@ gboolean shutdown_triggered = FALSE;
 
 guint errors;
 
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
-  *error=NULL;
-  (void) data;
-  if (g_strstr_len(option_name,8,"--stream")){
-    stream = TRUE;
-    if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
-      return TRUE;
-    }
-    if (g_strstr_len(value,9,"NO_DELETE")){
-      no_delete=TRUE;
-      return TRUE;
-    }
-    if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
-      no_delete=TRUE;
-      no_stream=TRUE;
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
-
+gboolean help =FALSE;
 static GOptionEntry entries[] = {
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
-    {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
-     NULL},
-    {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
-     NULL},
-    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
-    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
+//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
+//      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
@@ -103,6 +78,17 @@ static GOptionEntry entries[] = {
       "For instance: 100:500 will pause when there is only 100MB free and will"
       "resume if 500MB are available", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+static GOptionEntry filter_entries[] ={
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry daemon_entries[] = {
+    {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
+     NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
 
 struct tm tval;
 
@@ -132,16 +118,33 @@ int main(int argc, char *argv[]) {
       g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
-  load_connection_entries(main_group);
-  load_regex_entries(main_group);
-  load_start_dump_entries(main_group);
-  load_daemon_entries(main_group);
+
+  GOptionGroup *
+    connection_group = load_connection_entries(context);
+  g_option_group_add_entries(connection_group, common_connection_entries);
+
+  GOptionGroup *filter_group = load_regex_entries(context);
+  g_option_group_add_entries(filter_group, filter_entries);
+  g_option_group_add_entries(filter_group, common_filter_entries);
+
+  load_start_dump_entries(context, filter_group);
+  GOptionGroup *
+    daemon_group = load_daemon_entries(context);
+  g_option_group_add_entries(daemon_group, daemon_entries);
+
+  g_option_context_set_help_enabled(context, FALSE);
+
   g_option_context_set_main_group(context, main_group);
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     g_print("option parsing failed: %s, try --help\n", error->message);
     exit(EXIT_FAILURE);
+  }
+
+  if (help){
+    printf("%s", g_option_context_get_help (context, FALSE, NULL));
+    exit(0);
   }
 
   if (tmpargc > 1 ){
@@ -217,6 +220,9 @@ int main(int argc, char *argv[]) {
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
+
+  /* Validate that thread count passed on CLI is a valid count */
+  check_num_threads();
 
   if (daemon_mode) {
     run_daemon();

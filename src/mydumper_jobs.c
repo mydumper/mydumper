@@ -47,7 +47,7 @@ extern int (*m_close)(void *file);
 extern guint errors;
 extern guint statement_size;
 extern int skip_tz;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 extern GAsyncQueue *stream_queue;
 extern gboolean stream;
 extern gboolean dump_routines;
@@ -76,23 +76,26 @@ extern gboolean use_fifo;
 gboolean skip_definer = FALSE;
 
 static GOptionEntry dump_into_file_entries[] = {
-    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
-     NULL},
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+
+static GOptionEntry exec_per_thread_entries[] = {
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
      "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
      "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-void load_dump_into_file_entries(GOptionGroup *main_group){
+void load_dump_into_file_entries(GOptionGroup *main_group, GOptionGroup *exec_group){
+
+  g_option_group_add_entries(exec_group, exec_per_thread_entries);
+
   g_option_group_add_entries(main_group, dump_into_file_entries);
 }
 
@@ -284,20 +287,7 @@ void write_table_definition_into_file(MYSQL *conn, char *database, char *table,
 
   GString *statement = g_string_sized_new(statement_size);
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
-    if (set_names_str)
-      g_string_printf(statement,"%s;\n",set_names_str);
-    g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n\n");
-    if (!skip_tz) {
-      g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
-    if (!skip_tz) {
-      g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
-    }
-  } else {
-    g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
-  }
+  initialize_sql_statement(statement);
 
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", database, table);
@@ -391,6 +381,9 @@ void write_triggers_definition_into_file(MYSQL *conn, char *database, char *tabl
     mysql_query(conn, query);
     result2 = mysql_store_result(conn);
     row2 = mysql_fetch_row(result2);
+    if ( skip_definer && g_str_has_prefix(row2[2],"CREATE")){
+      remove_definer_from_gchar(row2[2]);
+    }
     g_string_append_printf(statement, "%s", row2[2]);
     splited_st = g_strsplit(statement->str, ";\n", 0);
     g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
@@ -436,8 +429,8 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
     return;
   }
 
-  if (detected_server == SERVER_TYPE_MYSQL && set_names_str) {
-    g_string_printf(statement,"%s;\n",set_names_str);
+  if (detected_server == SERVER_TYPE_MYSQL && set_names_statement) {
+    g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
@@ -766,7 +759,7 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
   struct create_database_job * cdj = (struct create_database_job *)job->job_data;
-  g_message("Thread %d dumping schema create for `%s`", td->thread_id,
+  g_message("Thread %d: dumping schema create for `%s`", td->thread_id,
             cdj->database);
   write_schema_definition_into_file(td->thrconn, cdj->database, cdj->filename, cdj->checksum_filename);
   free_create_database_job(cdj);
@@ -775,7 +768,7 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
 
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
   struct create_tablespace_job * ctj = (struct create_tablespace_job *)job->job_data;
-  g_message("Thread %d dumping create tablespace if any", td->thread_id);
+  g_message("Thread %d: dumping create tablespace if any", td->thread_id);
   write_tablespace_definition_into_file(td->thrconn, ctj->filename);
   free_create_tablespace_job(ctj);
   g_free(job);
@@ -783,7 +776,7 @@ void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
   struct schema_post_job * sp = (struct schema_post_job *)job->job_data;
-  g_message("Thread %d dumping SP and VIEWs for `%s`", td->thread_id,
+  g_message("Thread %d: dumping SP and VIEWs for `%s`", td->thread_id,
             sp->database->name);
   write_routines_definition_into_file(td->thrconn, sp->database, sp->filename, sp->checksum_filename);
   free_schema_post_job(sp);
@@ -792,7 +785,7 @@ void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
 
 void do_JOB_VIEW(struct thread_data *td, struct job *job){
   struct view_job * vj = (struct view_job *)job->job_data;
-  g_message("Thread %d dumping view for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping view for `%s`.`%s`", td->thread_id,
             vj->database, vj->table);
   write_view_definition_into_file(td->thrconn, vj->database, vj->table, vj->filename,
                  vj->filename2, vj->checksum_filename);
@@ -802,7 +795,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d dumping schema for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping schema for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
   write_table_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
 //  free_schema_job(sj);
@@ -815,7 +808,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   struct schema_job * sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d dumping triggers for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping triggers for `%s`.`%s`", td->thread_id,
             sj->database, sj->table);
   write_triggers_definition_into_file(td->thrconn, sj->database, sj->table, sj->filename, sj->checksum_filename);
   free_schema_job(sj);
@@ -825,7 +818,7 @@ void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
 
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   struct table_checksum_job *tcj = (struct table_checksum_job *)job->job_data;
-  g_message("Thread %d dumping checksum for `%s`.`%s`", td->thread_id,
+  g_message("Thread %d: dumping checksum for `%s`.`%s`", td->thread_id,
             tcj->database, tcj->table);
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
@@ -874,37 +867,33 @@ void create_job_to_dump_schema(char *database, struct configuration *conf) {
 }
 
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf) {
-  if (dump_triggers) {
-    char *query = NULL;
-    MYSQL_RES *result = NULL;
+  char *query = NULL;
+  MYSQL_RES *result = NULL;
 
-    query =
-        g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
-    if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-      g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
-                 mysql_error(conn),query);
-      errors++;
-    } else {
-      if (mysql_num_rows(result)) {
-        struct job *t = g_new0(struct job, 1);
-        struct schema_job *st = g_new0(struct schema_job, 1);
-        t->job_data = (void *)st;
-        st->database = dbt->database->name;
-        st->table = g_strdup(dbt->table);
-//        t->conf = conf;
-        t->type = JOB_TRIGGERS;
-        st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
-        if ( routine_checksums )
-          st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
-        g_async_queue_push(conf->post_data_queue, t);
-      }
-    }
-    g_free(query);
-    if (result) {
-      mysql_free_result(result);
+  query =
+      g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
+  if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
+    g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
+               mysql_error(conn),query);
+    errors++;
+  } else {
+    if (mysql_num_rows(result)) {
+      struct job *t = g_new0(struct job, 1);
+      struct schema_job *st = g_new0(struct schema_job, 1);
+      t->job_data = (void *)st;
+      st->database = dbt->database->name;
+      st->table = g_strdup(dbt->table);
+      t->type = JOB_TRIGGERS;
+      st->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-triggers");
+      if ( routine_checksums )
+        st->checksum_filename=build_meta_filename(dbt->database->filename,dbt->table_filename,"schema-triggers-checksum");
+      g_async_queue_push(conf->post_data_queue, t);
     }
   }
-
+  g_free(query);
+  if (result) {
+    mysql_free_result(result);
+  }
 }
 
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
@@ -1004,19 +993,19 @@ void initialize_sql_fn(struct table_job * tj){
 void initialize_load_data_fn(struct table_job * tj){
   initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part,"dat", &build_load_data_filename);
 }
-
-void update_files_on_table_job(struct table_job *tj){
+gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
      if (load_data){
        initialize_load_data_fn(tj);
        tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
        tj->sql_file = m_open(tj->sql_filename,"w");
+       return TRUE;
      }else{
        initialize_sql_fn(tj);
      }
 //     write_load_data_statement(tj, fields, num_fields);
   }
-
+  return FALSE;
 }
 
 
@@ -1043,7 +1032,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   tj->char_chunk_part=char_chunk;
   if (update_where)
     update_where_on_table_job(NULL, tj);
-  update_files_on_table_job(tj);
+//  update_files_on_table_job(tj);
   return tj;
 }
 

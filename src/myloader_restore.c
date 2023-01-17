@@ -37,24 +37,24 @@ extern guint rows;
 
 gboolean skip_definer = FALSE;
 
-static GOptionEntry restore_entries[] = {
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void load_restore_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, restore_entries);
-}
-
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
     if (is_schema)
-      g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
-    else
-      g_critical("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
-    errors++;
-    return 1;
+      g_warning("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
+    else{
+      g_warning("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
+    }
+    g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
+    if (mysql_real_query(td->thrconn, data->str, data->len)) {
+      if (is_schema)
+        g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
+      else{
+        g_critical("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
+      }
+      errors++;
+      return 1;
+    }
   }
   *query_counter=*query_counter+1;
   if (is_schema==FALSE) {
@@ -207,7 +207,9 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
               gchar *fifo_name=g_strndup(fff,g_strrstr(fff,".")-fff);
               mkfifo(fifo_name,0666);
               g_thread_create((GThreadFunc)send_file_to_fifo, fff, TRUE, NULL);
-              for(from=g_strstr_len(to-4,-1,"."); from<to ; from++){
+              from=g_strstr_len(to-4,-1,".");
+              *from='\''; from++;
+              for(; from<=to ; from++){
                 *from=' ';
               }
             }

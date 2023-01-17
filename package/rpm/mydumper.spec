@@ -4,8 +4,8 @@ Version:        %{version}
 Release:        %{release}
 Group:          Applications/Databases
 License:        GPL
-Vendor:         Max Bubenick
-URL:            https://github.com/maxbube/mydumper
+Vendor:         David Ducos
+URL:            https://github.com/mydumper/mydumper
 Source:         mydumper-%{version}.tar.gz
 BuildArch:      x86_64
 AutoReq:        no
@@ -30,8 +30,8 @@ myloader is a tool used for multi-threaded restoration of mydumper backups.
 
 %install
 install -m 0755 -d ${RPM_BUILD_ROOT}%{_bindir}
-install -m 0555 mydumper ${RPM_BUILD_ROOT}%{_bindir}
-install -m 0555 myloader ${RPM_BUILD_ROOT}%{_bindir}
+install -m 0755 mydumper ${RPM_BUILD_ROOT}%{_bindir}
+install -m 0755 myloader ${RPM_BUILD_ROOT}%{_bindir}
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
@@ -41,4 +41,3 @@ rm -rf ${RPM_BUILD_ROOT}
 %{_bindir}/*
 
 %changelog
-

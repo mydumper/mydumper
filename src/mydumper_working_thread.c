@@ -79,9 +79,10 @@
 
 GMutex *init_mutex = NULL;
 /* Program options */
+extern guint updated_since;
 extern gboolean no_locks;
-guint complete_insert = 0;
-
+extern guint complete_insert;
+extern gboolean dump_tablespaces;
 guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
 extern gboolean load_data;
@@ -138,14 +139,13 @@ extern GList *schema_post;
 extern gint non_innodb_done;
 guint less_locking_threads = 0;
 extern guint trx_consistency_only;
-extern gchar *set_names_str;
+extern gchar *set_names_statement;
 
 extern struct configuration_per_table conf_per_table;
 
 GHashTable *character_set_hash=NULL;
 GMutex *character_set_hash_mutex = NULL;
 
-gboolean hex_blob = FALSE;
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
@@ -158,23 +158,14 @@ extern GAsyncQueue *start_scheduled_dump;
 GCond *ll_cond = NULL;
 
 extern guint errors;
-guint statement_size = 1000000;
 int build_empty_files = 0;
 gchar *where_option=NULL;
 GMutex *consistent_snapshot = NULL;
 GMutex *consistent_snapshot_token_I = NULL;
 GMutex *consistent_snapshot_token_II = NULL;
 gchar *rows_per_chunk=NULL;
-gboolean split_partitions = FALSE;
 
-static GOptionEntry working_thread_entries[] = {
-    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
-    {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
-     "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
-    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
-     NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
+static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
      "Dump checksums for all elements", NULL},
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
@@ -183,43 +174,44 @@ static GOptionEntry working_thread_entries[] = {
      "Dump schema table and view creation checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
      "Dump triggers, functions and routines checksums", NULL},
-    {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
-     "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
-     "when a server has data in different time zones or data is being moved "
-     "between servers with different time zones, defaults to on use "
-     "--skip-tz-utc to disable.",
-     NULL},
-    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
-     "Use complete INSERT statements that include column names", NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
-    {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
-     "Snapshot to use for TiDB", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry working_thread_entries[] = {
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
     {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
-    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
-     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
-     NULL},
-    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
-     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
      "Build dump files even if no data available from table", NULL},
-    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
-      "Dump only selected records.", NULL },
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry filter_worker_entries[] = {
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
-    {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
-      "Dump binary columns using hexadecimal notation", NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
-     "Try to split tables into chunks of this many rows.",
-//    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows_per_file,
-//     "Try to split tables into chunks of this many rows. This option turns off "
-//     "--chunk-filesize",
+    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
+      "Dump only selected records.", NULL },
+    {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
+     "Use Update_time to dump only tables updated in the last U days", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry objects_entries[] = {
+    {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
+      "Do not dump table schemas with the data and triggers", NULL},
+    {"all-tablespaces", 'Y', 0 , G_OPTION_ARG_NONE, &dump_tablespaces,
+    "Dump all the tablespaces.", NULL},
+    {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
+     NULL},
+    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
+     NULL},
+    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
+    {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
+     "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
+    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
@@ -228,8 +220,23 @@ guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
 guint64 write_table_data_into_file(MYSQL *conn, struct table_job *tj);
 void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
-void load_working_thread_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, working_thread_entries);
+void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group){
+
+  g_option_group_add_entries(extra_group, working_thread_entries);
+
+
+  GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
+  g_option_group_add_entries(checksum_group, checksum_entries);
+  g_option_context_add_group(context, checksum_group);
+
+  GOptionGroup *objects_group=g_option_group_new("objects", "Objects Options", "Objects Options", NULL, NULL);
+  g_option_group_add_entries(objects_group, objects_entries);
+  g_option_context_add_group(context, objects_group);
+
+  g_option_group_add_entries(filter_group, filter_worker_entries);
+
+//  g_option_context_add_group(context, main_group);
+
 }
 
 
@@ -407,7 +414,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
 
 void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
-  g_message("Thread %d dumping db information for `%s`", td->thread_id,
+  g_message("Thread %d: dumping db information for `%s`", td->thread_id,
             ddj->database->name);
   dump_database_thread(td->thrconn, td->conf, ddj->database);
   g_free(ddj);
@@ -584,7 +591,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 
 void initialize_thread(struct thread_data *td){
   m_connect(td->thrconn, "mydumper", NULL);
-  g_message("Thread %d connected using MySQL connection ID %lu",
+  g_message("Thread %d: connected using MySQL connection ID %lu",
             td->thread_id, mysql_thread_id(td->thrconn));
 }
 
@@ -701,7 +708,7 @@ void check_connection_status(struct thread_data *td){
       exit(EXIT_FAILURE);
     }
     g_free(query);
-    g_message("Thread %d set to tidb_snapshot '%s'", td->thread_id,
+    g_message("Thread %d: set to tidb_snapshot '%s'", td->thread_id,
               tidb_snapshot);
   }
 
@@ -946,10 +953,10 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
-                g_strdup_printf("%s( `%s` = %"G_GUINT64_FORMAT")",
+                g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor):
-                g_strdup_printf("%s( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT")",
+                g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.nmin, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
@@ -957,13 +964,13 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   case CHAR:
     if (td != NULL){
       if (tj->chunk_step->char_step.cmax == NULL){
-        tj->where=g_strdup_printf("%s(`%s` >= '%s')",
+        tj->where=g_strdup_printf("(%s(`%s` >= '%s'))",
                           tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
                           tj->chunk_step->char_step.field, tj->chunk_step->char_step.cmin_escaped
                           );
       }else{
         update_cursor(td->thrconn,tj);
-        tj->where=g_strdup_printf("%s('%s' < `%s` AND `%s` <= '%s')",
+        tj->where=g_strdup_printf("(%s('%s' < `%s` AND `%s` <= '%s'))",
                           tj->chunk_step->char_step.prefix?tj->chunk_step->char_step.prefix:"",
                           tj->chunk_step->char_step.cmin_escaped, tj->chunk_step->char_step.field,
                           tj->chunk_step->char_step.field, tj->chunk_step->char_step.cursor_escaped
@@ -1156,9 +1163,9 @@ void *working_thread(struct thread_data *td) {
     initialize_consistent_snapshot(td);
     check_connection_status(td);
   }
-  if (set_names_str){
-    mysql_query(td->thrconn, set_names_str);
-  }
+/*  if (set_names_statement){
+    mysql_query(td->thrconn, set_names_statement);
+  }*/
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   // Thread Ready to process jobs
@@ -1170,33 +1177,37 @@ void *working_thread(struct thread_data *td) {
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   process_queue(td->conf->schema_queue,td, resume_mutex, process_job, NULL);
 
-  g_message("Thread %d Schema Done, Starting Non-Innodb", td->thread_id);
+  if (!no_data){
+    g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
 
-  g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
-  g_async_queue_pop(td->conf->ready_non_innodb_queue);
-  if (less_locking){
-    // Sending LOCK TABLE over all non-innodb tables
-    if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
-      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+    g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
+    g_async_queue_pop(td->conf->ready_non_innodb_queue);
+    if (less_locking){
+      // Sending LOCK TABLE over all non-innodb tables
+      if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
+        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+      }
+      // This push will unlock the FTWRL on the Main Connection
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
+        g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+      }
+    }else{
+      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
-    // This push will unlock the FTWRL on the Main Connection
-    g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-    process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
-    if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
-      g_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
-    }
+
+    g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
+    process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
+  //  start_processing(td, resume_mutex);
   }else{
-    process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
 
-  g_message("Thread %d Non-Innodb Done, Starting Innodb", td->thread_id);
-  process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
-//  start_processing(td, resume_mutex);
-
   process_queue(td->conf->post_data_queue, td, resume_mutex, process_job, NULL);
 
-  g_message("Thread %d shutting down", td->thread_id);
+  g_message("Thread %d: shutting down", td->thread_id);
 
   if (td->binlog_snapshot_gtid_executed!=NULL)
     g_free(td->binlog_snapshot_gtid_executed);

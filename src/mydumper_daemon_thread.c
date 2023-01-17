@@ -48,8 +48,12 @@ static GOptionEntry daemon_entries[] = {
     {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},    
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-void load_daemon_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, daemon_entries);
+GOptionGroup * load_daemon_entries(GOptionContext *context){
+  GOptionGroup *daemon_group =
+      g_option_group_new("daemongroup", "Daemon Options", "daemon", NULL, NULL);
+  g_option_group_add_entries(daemon_group, daemon_entries);
+  g_option_context_add_group(context, daemon_group);
+  return daemon_group;
 }
 
 void initialize_daemon_thread(){

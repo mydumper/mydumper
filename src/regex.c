@@ -35,8 +35,12 @@ GOptionEntry regex_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
-void load_regex_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, regex_entries);
+GOptionGroup * load_regex_entries(GOptionContext *context){
+  GOptionGroup *filter_group =
+      g_option_group_new("filter", "Filter Options", "Filter Options", NULL, NULL);
+  g_option_group_add_entries(filter_group, regex_entries);
+  g_option_context_add_group(context, filter_group);
+  return filter_group;
 }
 
 gboolean check_filename_regex(char *word) {

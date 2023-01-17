@@ -52,20 +52,25 @@ struct configuration {
   int done;
 };
 
+
+enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, ALL_DONE};
+
 struct database {
   gchar *name;
-  gboolean schema_created;
+  char *real_database;
+  enum schema_status schema_state;
+  GAsyncQueue *queue;
+  GMutex * mutex;
 };
 
-enum schema_status { NOT_CREATED, CREATING, CREATED };
-
 struct db_table {
-  char *database;
-  char *real_database;
+//  char *database;
+//  char *real_database;
+  struct database * database;
   char *table;
   char *real_table;
   guint64 rows;
-  GAsyncQueue * queue;
+//  GAsyncQueue * queue;
   GList * restore_job_list;
   guint current_threads;
   guint max_threads;
@@ -79,7 +84,7 @@ struct db_table {
   GDateTime * finish_data_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
-  gboolean completed;
+//  gboolean completed;
   gint remaining_jobs;
 };
 
@@ -101,6 +106,8 @@ enum file_type {
   SHUTDOWN, 
   INCOMPLETE,
   DO_NOT_ENQUEUE,
+  THREAD,
+  INDEX,
   INTERMEDIATE_ENDED };
 
 #endif
