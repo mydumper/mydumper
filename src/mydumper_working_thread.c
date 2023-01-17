@@ -122,6 +122,7 @@ extern gboolean no_schemas;
 gboolean dump_events = FALSE;
 gboolean dump_routines = FALSE;
 gboolean no_dump_views = FALSE;
+gboolean views_as_tables=FALSE;
 extern gboolean less_locking;
 gboolean success_on_1146 = FALSE;
 
@@ -208,6 +209,8 @@ static GOptionEntry objects_entries[] = {
     {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
     {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
      "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
+    {"views-as-tables", 0, 0, G_OPTION_ARG_NONE, &views_as_tables, "Export VIEWs as they were tables",
+     NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -1401,7 +1404,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   struct db_table *dbt = new_db_table( conn, conf, database, table, collation, datalength);
 
  // if is a view we care only about schema
-  if (!is_view) {
+  if (!is_view || views_as_tables) {
   // with trx_consistency_only we dump all as innodb_table
     if (!no_schemas) {
 //      write_table_metadata_into_file(dbt);
@@ -1426,6 +1429,13 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           g_mutex_unlock(innodb_table_mutex);
 
         } else {
+          dbt->is_innodb=FALSE;
+          g_mutex_lock(non_innodb_table_mutex);
+          non_innodb_table = g_list_prepend(non_innodb_table, dbt);
+          g_mutex_unlock(non_innodb_table_mutex);
+        }
+      }else{
+        if (is_view){
           dbt->is_innodb=FALSE;
           g_mutex_lock(non_innodb_table_mutex);
           non_innodb_table = g_list_prepend(non_innodb_table, dbt);
