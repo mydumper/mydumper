@@ -50,6 +50,11 @@ static void free_log_handlers() {
   }
 }
 
+void set_debug() {
+#if GLIB_CHECK_VERSION(2,72,0)
+  g_log_set_debug_enabled(TRUE);
+#endif
+}
 
 void set_verbose(guint verbosity) {
   if (logfile) {
@@ -86,7 +91,6 @@ void set_verbose(guint verbosity) {
       log_handlers[use_write_log_file] = g_log_set_handler(
           NULL,
           (GLogLevelFlags)(G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
-                           G_LOG_LEVEL_WARNING | G_LOG_LEVEL_ERROR |
                            G_LOG_LEVEL_CRITICAL),
           write_log_file, NULL);
     break;

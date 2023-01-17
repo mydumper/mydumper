@@ -313,7 +313,13 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  set_verbose(verbose);
+  if (debug) {
+    set_debug();
+    set_verbose(3);
+  } else {
+    set_verbose(verbose);
+  }
+
   initialize_common_options(context, "myloader");
   g_option_context_free(context);
 
@@ -324,8 +330,6 @@ int main(int argc, char *argv[]) {
     print_version("myloader");
     exit(EXIT_SUCCESS);
   }
-
-  set_verbose(verbose);
 
 #ifdef ZWRAP_USE_ZSTD
   compress_extension = g_strdup(".zst");

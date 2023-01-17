@@ -161,7 +161,12 @@ int main(int argc, char *argv[]) {
     }
   }
   g_strfreev(tmpargv);
-  set_verbose(verbose);
+  if (debug) {
+    set_debug();
+    set_verbose(3);
+  } else {
+    set_verbose(verbose);
+  }
   gchar *mydumper = g_strdup("mydumper");
   initialize_common_options(context, mydumper);
   g_free(mydumper);
@@ -181,8 +186,6 @@ int main(int argc, char *argv[]) {
     print_version("mydumper");
     exit(EXIT_SUCCESS);
   }
-
-  set_verbose(verbose);
 
   GDateTime * datetime = g_date_time_new_now_local();
 
