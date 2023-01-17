@@ -92,7 +92,8 @@ test_case_stream (){
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
     echo "Exporting database: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
-    eval $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | tee /tmp/stream.sql | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    eval $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    cat /tmp/stream.sql | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
@@ -115,6 +116,7 @@ full_test(){
     wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
   fi
   tar xzf sakila-db.tar.gz
+  sed -i 's/last_update TIMESTAMP/last_update TIMESTAMP NOT NULL/g;s/NOT NULL NOT NULL/NOT NULL/g' sakila-db/sakila-schema.sql
   mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-schema.sql
   mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-data.sql
 
