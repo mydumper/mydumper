@@ -167,7 +167,7 @@ void initialize_write(){
       fields_enclosed_by=g_strdup("");
       fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
-      g_error("--fields-enclosed-by must be a single character");
+      m_error("--fields-enclosed-by must be a single character");
       exit(EXIT_FAILURE);
     }else{
       fields_enclosed_by=fields_enclosed_by_ld;
@@ -175,7 +175,7 @@ void initialize_write(){
 
     if (fields_escaped_by){
       if(strlen(fields_escaped_by)>1){
-        g_error("--fields-escaped-by must be a single character");
+        m_error("--fields-escaped-by must be a single character");
         exit(EXIT_FAILURE);
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
@@ -222,7 +222,7 @@ void initialize_write(){
     statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
   if ( insert_ignore && replace ){
-    g_error("You can't use --insert-ignore and --replace at the same time");
+    m_error("You can't use --insert-ignore and --replace at the same time");
   }
 
   if (insert_ignore)

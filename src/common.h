@@ -53,6 +53,7 @@ void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash
 //void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
+void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **tl);
 GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
@@ -70,3 +71,5 @@ void initialize_set_names();
 /* using fewer than 2 threads can cause mydumper to hang */
 #define MIN_THREAD_COUNT 2
 void check_num_threads();
+
+void m_error(const char *fmt, ...);

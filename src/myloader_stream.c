@@ -109,7 +109,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             buffer[last_pos-(line_from)]='\0';
 //g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
 //            if (line_from==last_pos)
-//g_error("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
+//m_error("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
             filename=g_strndup(&(buffer[line_from+4]),last_pos-(line_from+4));
             buffer[last_pos-(line_from+4)]=a;
             real_filename = g_build_filename(directory,filename,NULL);

@@ -81,6 +81,7 @@
 extern GKeyFile * key_file;
 extern gint database_counter;
 //extern gint table_counter;
+extern MYSQL *main_connection;
 extern GAsyncQueue *stream_queue;
 extern gchar *output_directory;
 extern gchar *output_directory_param;
@@ -98,6 +99,8 @@ extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
 extern gchar *db;
 extern GString *set_session;
+extern GString *set_global;
+extern GString *set_global_back;
 extern guint num_threads;
 extern char **tables;
 extern gchar *tables_skiplist_file;
@@ -400,16 +403,22 @@ MYSQL *create_main_connection() {
   g_free(mydumper);
 
   set_session = g_string_new(NULL);
+  set_global = g_string_new(NULL);
+  set_global_back = g_string_new(NULL);
   detected_server = detect_server(conn);
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
+  GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
-    load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_variables");
+    load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_session_variables");
+    load_session_hash_from_key_file(key_file,set_global_hash,"mydumper_global_variables");
     load_per_table_info_from_key_file(key_file, &conf_per_table, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
+  refresh_set_global_from_hash(set_global, set_global_back, set_global_hash);
   free_hash_table(set_session_hash);
   g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_session);
+  execute_gstring(conn, set_global);
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
@@ -778,6 +787,7 @@ void send_lock_all_tables(MYSQL *conn){
 
 void start_dump() {
   MYSQL *conn = create_main_connection();
+  main_connection = conn;
   MYSQL *second_conn = conn;
   struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
@@ -1121,6 +1131,7 @@ void start_dump() {
   // close main connection
   if (conn != second_conn)
     mysql_close(second_conn);
+  execute_gstring(main_connection, set_global_back);
   mysql_close(conn);
   g_message("Main connection closed");  
 
@@ -1191,7 +1202,10 @@ void start_dump() {
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
+
   g_string_free(set_session, TRUE);
+  g_string_free(set_global, TRUE);
+  g_string_free(set_global_back, TRUE);
   free_common();
 }
 

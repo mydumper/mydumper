@@ -29,7 +29,10 @@ char *tls_version = NULL;
 gchar *ssl_mode = NULL;
 #endif
 int detected_server = 0;
-GString *set_session=NULL;
+GString *set_session = NULL;
+GString *set_global = NULL;
+GString *set_global_back = NULL;
+MYSQL *main_connection = NULL;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
 gchar *compress_extension = NULL;

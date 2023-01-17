@@ -23,6 +23,8 @@
 #include "server_detect.h"
 #include "common.h"
 #include "config.h"
+#include <stdarg.h>
+
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -31,7 +33,8 @@ extern gboolean no_stream;
 extern gchar*set_names_str;
 extern gchar*set_names_statement;
 extern guint num_threads;
-
+extern GString *set_global_back;
+extern MYSQL *main_connection;
 FILE * (*m_open)(const char *filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
@@ -225,10 +228,10 @@ void free_hash_table(GHashTable * hash){
   }
 }
 
-void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_hash){
   GHashTableIter iter;
   gchar * lkey;
-  g_hash_table_iter_init ( &iter, set_session_hash );
+  g_hash_table_iter_init ( &iter, set_hash );
   gchar *e=NULL;
   gchar *c=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
@@ -236,10 +239,41 @@ void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
     if (c!=NULL){
       c[0]='\0';
       c++;
-      g_string_append_printf(ss,"/%s SET SESSION %s = %s */;\n",c,lkey,e);
+      g_string_append_printf(ss,"/%s SET %s %s = %s */;\n", c, kind, lkey, e);
     }else
-      g_string_append_printf(ss,"SET SESSION %s = %s ;\n",lkey,e);
+      g_string_append_printf(ss,"SET %s %s = %s ;\n", kind, lkey, e);
   }
+}
+
+void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  refresh_set_from_hash(ss, "SESSION", set_session_hash);
+}
+
+void set_global_rollback_from_hash(GString *ss, GString * sr, GHashTable * set_hash){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, set_hash );
+  gchar *e=NULL;
+//  gchar *c=NULL;
+  if (g_hash_table_size(set_hash) > 0){
+    GString *stmp=g_string_new(" INTO");
+    g_string_append(ss, "SELECT ");
+    g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e );
+    g_string_append_printf(stmp," @%s", lkey);
+    g_string_append_printf(sr,"SET GLOBAL %s = @%s ;\n", lkey, lkey);
+    g_string_append_printf(ss," @@%s", lkey);
+    while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &e ) ) {
+      g_string_append_printf(stmp,", @%s", lkey);
+      g_string_append_printf(sr,"SET GLOBAL %s = @%s ;\n", lkey, lkey);
+      g_string_append_printf(ss,", @@%s", lkey);
+    }
+    g_string_append_printf(ss,"%s ;\n",stmp->str);
+  }
+}
+
+void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash){
+  set_global_rollback_from_hash(ss, sr, set_global_hash);
+  refresh_set_from_hash(ss, "GLOBAL", set_global_hash);
 }
 
 void free_hash(GHashTable * set_session_hash){
@@ -385,7 +419,7 @@ gchar **get_table_list(gchar *tables_list){
   guint i=0;
   for(i=0; i < g_strv_length(tl); i++){
     if (g_strstr_len(tl[i],strlen(tl[i]),".") == NULL )
-      g_error("Table name %s is not in DATABASE.TABLE format", tl[i]);
+      m_error("Table name %s is not in DATABASE.TABLE format", tl[i]);
   }
   return tl;
 }
@@ -451,4 +485,11 @@ void check_num_threads()
     g_warning("invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
   }
+}
+
+void m_error(const char *fmt, ...){
+  va_list    args;
+
+  execute_gstring(main_connection, set_global_back); 
+  m_error(fmt, args);
 }

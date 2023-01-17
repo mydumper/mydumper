@@ -57,7 +57,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   }
   struct database *real_db_name=get_db_hash(database,database);
   if (real_db_name == NULL){
-    g_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
+    m_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
     exit(EXIT_FAILURE);
   }
   gchar *lkey=build_dbt_key(database, table);
