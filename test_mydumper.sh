@@ -116,6 +116,7 @@ full_test(){
     wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
   fi
   tar xzf sakila-db.tar.gz
+  sed -i 's/last_update TIMESTAMP/last_update TIMESTAMP NOT NULL/g;s/NOT NULL NOT NULL/NOT NULL/g' sakila-db/sakila-schema.sql
   mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-schema.sql
   mysql --no-defaults -f -h 127.0.0.1 -u root < sakila-db/sakila-data.sql
 
