@@ -154,9 +154,8 @@ void run_daemon(){
     GThread *ethread =
         g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
     if (ethread == NULL) {
-      g_critical("Could not create exec thread: %s", terror->message);
+      m_critical("Could not create exec thread: %s", terror->message);
       g_error_free(terror);
-      exit(EXIT_FAILURE);
     }
     // Run initial snapshot
     run_snapshot(NULL);

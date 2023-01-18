@@ -152,8 +152,7 @@ void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * grou
     g_slist_free(list);
     // Second parse over the options
     if (!g_option_context_parse(context, &slen, &gclist, &error)) {
-      g_print("option parsing failed: %s, try --help\n", error->message);
-      exit(EXIT_FAILURE);
+      m_critical("option parsing failed: %s, try --help\n", error->message);
     }else{
       g_message("Config file loaded");
     }
@@ -362,8 +361,7 @@ void escape_tab_with(gchar *to){
 void create_backup_dir(char *new_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
-      g_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
-      exit(EXIT_FAILURE);
+      m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
 }
@@ -401,8 +399,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   if (defaults_file != NULL){
     if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
-      g_critical("Default file not found");
-      exit(EXIT_FAILURE);
+      m_critical("Default file not found");
     }
     if (!g_path_is_absolute(defaults_file)){
       gchar *new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
@@ -489,7 +486,18 @@ void check_num_threads()
 
 void m_error(const char *fmt, ...){
   va_list    args;
-
   execute_gstring(main_connection, set_global_back); 
-  m_error(fmt, args);
+  g_error(fmt, args);
 }
+
+void m_critical(const char *fmt, ...){
+  va_list    args;
+  execute_gstring(main_connection, set_global_back);
+  g_critical(fmt, args);
+  exit(EXIT_FAILURE);
+}
+
+
+
+
+

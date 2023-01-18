@@ -23,6 +23,7 @@
 #include <string.h>
 #include "config.h"
 #include "connection.h"
+#include "common.h"
 
 char *hostname = NULL;
 char *username = NULL;
@@ -90,8 +91,7 @@ void configure_connection(MYSQL *conn, const char *name) {
         mysql_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &enable);
       }
       else {
-        g_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
-        exit(EXIT_FAILURE);
+        m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
       }
   }
 #else
@@ -117,8 +117,7 @@ void configure_connection(MYSQL *conn, const char *name) {
         i = SSL_MODE_VERIFY_IDENTITY;
       }
       else {
-        g_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
-        exit(EXIT_FAILURE);
+        m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
       }
       mysql_options(conn, MYSQL_OPT_SSL_MODE, &i);
     }
@@ -149,8 +148,7 @@ void m_connect(MYSQL *conn, const gchar *app, gchar *schema){
   configure_connection(conn, app);
   if (!mysql_real_connect(conn, hostname, username, password, schema, port,
                           socket_path, 0)) {
-    g_critical("Error connection to database: %s", mysql_error(conn));
-    exit(EXIT_FAILURE);
+    m_critical("Error connection to database: %s", mysql_error(conn));
   }
   if (set_names_statement)
     mysql_query(conn, set_names_statement);

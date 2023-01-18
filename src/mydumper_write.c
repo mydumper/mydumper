@@ -167,16 +167,14 @@ void initialize_write(){
       fields_enclosed_by=g_strdup("");
       fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
-      m_error("--fields-enclosed-by must be a single character");
-      exit(EXIT_FAILURE);
+      m_critical("--fields-enclosed-by must be a single character");
     }else{
       fields_enclosed_by=fields_enclosed_by_ld;
     }
 
     if (fields_escaped_by){
       if(strlen(fields_escaped_by)>1){
-        m_error("--fields-escaped-by must be a single character");
-        exit(EXIT_FAILURE);
+        m_critical("--fields-escaped-by must be a single character");
       }else if (strcmp(fields_escaped_by,"\\")==0){
         fields_escaped_by=g_strdup("\\\\");
       }

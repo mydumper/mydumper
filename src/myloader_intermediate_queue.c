@@ -137,8 +137,7 @@ enum file_type process_filename(char *filename){
         break;
       case RESUME:
         if (stream){
-          g_critical("We don't expect to find resume files in a stream scenario");
-          exit(EXIT_FAILURE);
+          m_critical("We don't expect to find resume files in a stream scenario");
         }
         break;
       case IGNORED:

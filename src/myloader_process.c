@@ -52,13 +52,11 @@ void initialize_process(struct configuration *c){
 
 struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
   if ( database == NULL || table == NULL){
-    g_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
-    exit(EXIT_FAILURE);
+    m_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
   }
   struct database *real_db_name=get_db_hash(database,database);
   if (real_db_name == NULL){
     m_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
-    exit(EXIT_FAILURE);
   }
   gchar *lkey=build_dbt_key(database, table);
   struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
@@ -353,8 +351,7 @@ void process_database_filename(char * filename, const char *object) {
       if (g_str_has_prefix(db_kname,"mydumper_"))
         db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }else{
-    g_critical("It was not possible to process db file: %s",filename);
-    exit(EXIT_FAILURE);
+    m_critical("It was not possible to process db file: %s",filename);
   }
 
   g_debug("Adding database: %s -> %s", db_kname, db_vname);
@@ -371,8 +368,7 @@ gboolean process_table_filename(char * filename){
   struct db_table *dbt=NULL;
   get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s (1)",filename);
-      exit(EXIT_FAILURE);
+      m_critical("It was not possible to process file: %s (1)",filename);
   }
 
   struct database *real_db_name=get_db_hash(db_name,db_name);
@@ -400,8 +396,7 @@ gboolean process_metadata_filename(char * filename){
   gchar *db_name, *table_name;
   get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
-      g_critical("It was not possible to process file: %s (2)",filename);
-      exit(EXIT_FAILURE);
+      m_critical("It was not possible to process file: %s (2)",filename);
   }
   struct database *real_db_name=get_db_hash(db_name,db_name);
   if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
@@ -490,8 +485,7 @@ gboolean process_data_filename(char * filename){
   guint part=0,sub_part=0;
   get_database_table_part_name_from_filename(filename,&db_name,&table_name,&part,&sub_part);
   if (db_name == NULL || table_name == NULL){
-    g_critical("It was not possible to process file: %s (3)",filename);
-    exit(EXIT_FAILURE);
+    m_critical("It was not possible to process file: %s (3)",filename);
   }
 
   struct database *real_db_name=get_db_hash(db_name,db_name);
@@ -517,8 +511,7 @@ gboolean process_checksum_filename(char * filename){
   // TODO: we need to count sections of the data file to determine if it is ok.
   get_database_table_from_file(filename,"-",&db_name,&table_name);
   if (db_name == NULL){
-    g_critical("It was not possible to process file: %s (4)",filename);
-    exit(EXIT_FAILURE);
+    m_critical("It was not possible to process file: %s (4)",filename);
   }
   if (table_name != NULL) {
     struct database *real_db_name=get_db_hash(db_name,db_name);

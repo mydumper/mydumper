@@ -122,10 +122,10 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 }
 
 */
-guint execute_use(struct thread_data *td, const gchar * msg){
+guint execute_use(struct thread_data *td){
   gchar *query = g_strdup_printf("USE `%s`", td->current_database);
   if (mysql_query(td->thrconn, query)) {
-    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
+//    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
     g_free(query);
     return 1;
   }
@@ -137,7 +137,8 @@ void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gcha
   if ( database != NULL && db == NULL ){
     if (td->current_database==NULL || g_strcmp0(database, td->current_database) != 0){
       td->current_database=database;
-      if (execute_use(td, msg)){
+      if (execute_use(td)){
+        g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
         exit(EXIT_FAILURE);
       }
     }
@@ -155,13 +156,11 @@ enum file_type get_file_type (const char * filename){
     return SCHEMA_TABLESPACE;
   } else if ( strcmp(filename, "resume") == 0 ){
     if (!resume){
-      g_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
-      exit(EXIT_FAILURE);
+      m_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
     }
     return RESUME;
   } else if ( strcmp(filename, "resume.partial") == 0 ){
-    g_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
-    exit(EXIT_FAILURE);
+    m_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
   } else if (m_filename_has_suffix(filename, "-checksum")) {
     return CHECKSUM;
   } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
