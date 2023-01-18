@@ -122,15 +122,15 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 }
 
 */
-guint execute_use(struct thread_data *td){
+gboolean execute_use(struct thread_data *td){
   gchar *query = g_strdup_printf("USE `%s`", td->current_database);
   if (mysql_query(td->thrconn, query)) {
 //    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
     g_free(query);
-    return 1;
+    return TRUE;
   }
   g_free(query);
-  return 0;
+  return FALSE;
 }
 
 void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg){
@@ -138,8 +138,7 @@ void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gcha
     if (td->current_database==NULL || g_strcmp0(database, td->current_database) != 0){
       td->current_database=database;
       if (execute_use(td)){
-        g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
-        exit(EXIT_FAILURE);
+        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
       }
     }
   }

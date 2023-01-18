@@ -124,7 +124,9 @@ void *loader_thread(struct thread_data *td) {
 
   if (db){
     td->current_database=db;
-    execute_use_if_needs_to(td, g_strdup("``"), "Initializing thread");
+    if (execute_use(td)){
+      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
+    }
   }
 
   g_debug("Thread %d: Starting import", td->thread_id);
