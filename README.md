@@ -223,6 +223,8 @@ innodb-optimize-keys = AFTER_IMPORT_PER_TABLE
 ```
 
 - Variables for mydumper and myloader executions:
+
+Prior to v0.14.0-1:
 ```bash
 [mydumper_variables]
 wait_timeout = 300
@@ -230,6 +232,23 @@ sql_mode = ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_
 
 [myloader_variables]
 long_query_time = 300
+innodb_flush_log_at_trx_commit = 0
+```
+From to v0.14.0-1:
+```bash
+[mydumper_session_variables]
+wait_timeout = 300
+sql_mode = ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+
+[mydumper_global_variables]
+sync_binlog = 0
+slow_query_log = OFF
+
+[myloader_session_variables]
+long_query_time = 300
+
+[myloader_global_variables]
+sync_binlog = 0
 innodb_flush_log_at_trx_commit = 0
 ```
 
