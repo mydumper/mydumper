@@ -492,8 +492,10 @@ void m_error(const char *fmt, ...){
 
 void m_critical(const char *fmt, ...){
   va_list    args;
+  va_start(args, fmt);
+  gchar *c=g_strdup_vprintf(fmt,args);
   execute_gstring(main_connection, set_global_back);
-  g_critical(fmt, args);
+  g_critical("%s",c);
   exit(EXIT_FAILURE);
 }
 
