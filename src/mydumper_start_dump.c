@@ -268,8 +268,7 @@ void initialize_start_dump(){
   }
 
   if (stream && exec_command != NULL){
-    g_critical("Stream and execute a command is not supported");
-    exit(EXIT_FAILURE);
+    m_critical("Stream and execute a command is not supported");
   }
 }
 
@@ -432,8 +431,7 @@ MYSQL *create_main_connection() {
     g_message("Connected to a TiDB server");
     break;
   default:
-    g_critical("Cannot detect server type");
-    exit(EXIT_FAILURE);
+    m_critical("Cannot detect server type");
     break;
   }
 
@@ -488,8 +486,7 @@ void long_query_wait(MYSQL *conn){
             ucol = i;
         }
         if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-          g_critical("Error obtaining information from processlist");
-          exit(EXIT_FAILURE);
+          m_critical("Error obtaining information from processlist");
         }
         while ((row = mysql_fetch_row(res))) {
           if (row[ccol] && strcmp(row[ccol], "Query"))
@@ -516,13 +513,12 @@ void long_query_wait(MYSQL *conn){
           break;
         else {
           if (longquery_retries == 0) {
-            g_critical("There are queries in PROCESSLIST running longer than "
+            m_critical("There are queries in PROCESSLIST running longer than "
                        "%us, aborting dump,\n\t"
                        "use --long-query-guard to change the guard value, kill "
                        "queries (--kill-long-queries) or use \n\tdifferent "
                        "server for dump",
                        longquery);
-            exit(EXIT_FAILURE);
           }
           longquery_retries--;
           g_warning("There are queries in PROCESSLIST running longer than "
@@ -536,57 +532,50 @@ void long_query_wait(MYSQL *conn){
 
 void send_mariadb_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "BACKUP STAGE START")) {
-    g_critical("Couldn't acquire BACKUP STAGE START: %s",
+    m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 
   if (mysql_query(conn, "BACKUP STAGE FLUSH")) {
-    g_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
+    m_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
   if (mysql_query(conn, "BACKUP STAGE BLOCK_DDL")) {
-    g_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
+    m_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 
   if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
-    g_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
+    m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 }
 
 void send_percona57_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
-    g_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
+    m_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
                "not be consistent: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 
   if (mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
-    g_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
+    m_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
                "not be consistent: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 }
 
 void send_lock_instance_backup(MYSQL *conn){
   if (mysql_query(conn, "LOCK INSTANCE FOR BACKUP")) {
-    g_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
+    m_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
                mysql_error(conn));
     errors++;
-    exit(EXIT_FAILURE);
   }
 } 
 
@@ -774,8 +763,7 @@ void send_lock_all_tables(MYSQL *conn){
       retry += 1;
     }
     if (!success) {
-      g_critical("Lock all tables fail: %s", mysql_error(conn));
-      exit(EXIT_FAILURE);
+      m_critical("Lock all tables fail: %s", mysql_error(conn));
     }
   }else{
     g_warning("No table found to lock");
@@ -812,9 +800,8 @@ void start_dump() {
     GThread *sthread =
         g_thread_create(signal_thread, &conf, FALSE, &serror);
     if (sthread == NULL) {
-      g_critical("Could not create signal thread: %s", serror->message);
+      m_critical("Could not create signal thread: %s", serror->message);
       g_error_free(serror);
-      exit(EXIT_FAILURE);
     }
   }
 
@@ -827,9 +814,8 @@ void start_dump() {
     pmmthread =
         g_thread_create(pmm_thread, &conf, FALSE, &serror);
     if (pmmthread == NULL) {
-      g_critical("Could not create pmm thread: %s", serror->message);
+      m_critical("Could not create pmm thread: %s", serror->message);
       g_error_free(serror);
-      exit(EXIT_FAILURE);
     }
   }
 
@@ -838,16 +824,14 @@ void start_dump() {
 
   FILE *mdfile = g_fopen(metadata_partial_filename, "w");
   if (!mdfile) {
-    g_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
-    exit(EXIT_FAILURE);
+    m_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
   }
 
   if (updated_since > 0) {
     u = g_strdup_printf("%s/not_updated_tables", dump_directory);
     nufile = g_fopen(u, "w");
     if (!nufile) {
-      g_critical("Couldn't write not_updated_tables file (%d)", errno);
-      exit(EXIT_FAILURE);
+      m_critical("Couldn't write not_updated_tables file (%d)", errno);
     }
     get_not_updated(conn, nufile);
   }
@@ -867,8 +851,7 @@ void start_dump() {
       // the tidb-snapshot argument was not specified when starting mydumper
 
       if (mysql_query(conn, "SHOW MASTER STATUS")) {
-        g_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
-        exit(EXIT_FAILURE);
+        m_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
       } else {
 
         MYSQL_RES *result = mysql_store_result(conn);
@@ -886,8 +869,7 @@ void start_dump() {
     g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
 
     if (mysql_query(conn, query)) {
-      g_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
-      exit(EXIT_FAILURE);
+      m_critical("Failed to set tidb_snapshot: %s", mysql_error(conn));
     }
     g_free(query);
 

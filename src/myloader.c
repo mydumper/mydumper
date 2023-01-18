@@ -303,8 +303,7 @@ int main(int argc, char *argv[]) {
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
-    g_print("option parsing failed: %s, try --help\n", error->message);
-    exit(EXIT_FAILURE);
+    m_critical("option parsing failed: %s, try --help\n", error->message);
   }
   g_strfreev(tmpargv);
 
@@ -356,9 +355,8 @@ int main(int argc, char *argv[]) {
     pmmthread =
         g_thread_create(pmm_thread, &conf, FALSE, &serror);
     if (pmmthread == NULL) {
-      g_critical("Could not create pmm thread: %s", serror->message);
+      m_critical("Could not create pmm thread: %s", serror->message);
       g_error_free(serror);
-      exit(EXIT_FAILURE);
     }
   }
   initialize_job(purge_mode_str);
@@ -374,8 +372,7 @@ int main(int argc, char *argv[]) {
       g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
-      g_critical("a directory needs to be specified, see --help\n");
-      exit(EXIT_FAILURE);
+      m_critical("a directory needs to be specified, see --help\n");
     }
   } else {
     directory=g_strdup_printf("%s/%s", g_str_has_prefix(input_directory,"/")?"":current_dir, input_directory);
@@ -383,15 +380,13 @@ int main(int argc, char *argv[]) {
       if (stream){
         create_backup_dir(directory);
       }else{
-        g_critical("the specified directory doesn't exists\n");
-        exit(EXIT_FAILURE);
+        m_critical("the specified directory doesn't exists\n");
       }
     }
     if (!stream){
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
-        g_critical("the specified directory %s is not a mydumper backup",directory);
-        exit(EXIT_FAILURE);
+        m_critical("the specified directory %s is not a mydumper backup",directory);
       }
 //      initialize_directory();
     }
@@ -408,9 +403,8 @@ int main(int argc, char *argv[]) {
   GThread *sthread =
       g_thread_create(signal_thread, &conf, FALSE, &serror);
   if (sthread == NULL) {
-    g_critical("Could not create signal thread: %s", serror->message);
+    m_critical("Could not create signal thread: %s", serror->message);
     g_error_free(serror);
-    exit(EXIT_FAILURE);
   }
 
   MYSQL *conn;
@@ -467,13 +461,11 @@ int main(int argc, char *argv[]) {
 
   if (g_file_test("resume",G_FILE_TEST_EXISTS)){
     if (!resume){
-      g_critical("Resume file found but --resume has not been provided");
-      exit(EXIT_FAILURE);
+      m_critical("Resume file found but --resume has not been provided");
     }
   }else{
     if (resume){
-      g_critical("Resume file not found");
-      exit(EXIT_FAILURE);
+      m_critical("Resume file not found");
     }
   }
 
@@ -497,8 +489,7 @@ int main(int argc, char *argv[]) {
 
   if (stream){
     if (resume){
-      g_critical("We don't expect to find resume files in a stream scenario");
-      exit(EXIT_FAILURE);
+      m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
   }

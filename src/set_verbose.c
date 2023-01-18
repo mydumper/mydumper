@@ -30,8 +30,8 @@
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
-
 #include "logging.h"
+#include "common.h"
 
 /* two handlers currently defined: no_log, write_log_file */
 #define total_handlers 2
@@ -60,9 +60,8 @@ void set_verbose(guint verbosity) {
   if (logfile) {
     logoutfile = g_fopen(logfile, "w");
     if (!logoutfile) {
-      g_critical("Could not open log file '%s' for writing: %d", logfile,
+      m_critical("Could not open log file '%s' for writing: %d", logfile,
                  errno);
-      exit(EXIT_FAILURE);
     }
   }
 

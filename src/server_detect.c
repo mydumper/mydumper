@@ -19,7 +19,7 @@
 #include <glib.h>
 #include <string.h>
 #include "server_detect.h"
-
+#include "common.h"
 int detect_server(MYSQL *conn) {
   pcre *re = NULL;
   const char *error;
@@ -33,8 +33,7 @@ int detect_server(MYSQL *conn) {
 
   re = pcre_compile(DETECT_TIDB_REGEX, 0, &error, &erroroffset, NULL);
   if (!re) {
-    g_critical("Regular expression fail: %s", error);
-    exit(EXIT_FAILURE);
+    m_critical("Regular expression fail: %s", error);
   }
 
   rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
@@ -46,8 +45,7 @@ int detect_server(MYSQL *conn) {
 
   re = pcre_compile(DETECT_MYSQL_REGEX, 0, &error, &erroroffset, NULL);
   if (!re) {
-    g_critical("Regular expression fail: %s", error);
-    exit(EXIT_FAILURE);
+    m_critical("Regular expression fail: %s", error);
   }
 
   rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
@@ -59,8 +57,7 @@ int detect_server(MYSQL *conn) {
 
   re = pcre_compile(DETECT_DRIZZLE_REGEX, 0, &error, &erroroffset, NULL);
   if (!re) {
-    g_critical("Regular expression fail: %s", error);
-    exit(EXIT_FAILURE);
+    m_critical("Regular expression fail: %s", error);
   }
 
   rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
@@ -72,8 +69,7 @@ int detect_server(MYSQL *conn) {
 
   re = pcre_compile(DETECT_MARIADB_REGEX, 0, &error, &erroroffset, NULL);
   if (!re) {
-    g_critical("Regular expression fail: %s", error);
-    exit(EXIT_FAILURE);
+    m_critical("Regular expression fail: %s", error);
   }
 
   rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);

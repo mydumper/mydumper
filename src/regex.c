@@ -20,7 +20,7 @@
 #include <pcre.h>
 #include <glib.h>
 #include "regex.h"
-
+#include "common.h"
 const char * filename_regex="^[\\w\\-_ ]+$";
 
 static pcre *re = NULL;
@@ -57,8 +57,7 @@ void init_regex(pcre **r, const char *str){
     *r = pcre_compile(str, PCRE_CASELESS | PCRE_MULTILINE, &error,
                       &erroroffset, NULL);
     if (!*r) {
-      g_critical("Regular expression fail: %s", error);
-      exit(EXIT_FAILURE);
+      m_critical("Regular expression fail: %s", error);
     }
   }
 }

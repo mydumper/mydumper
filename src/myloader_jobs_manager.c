@@ -124,9 +124,8 @@ void *loader_thread(struct thread_data *td) {
 
   if (db){
     td->current_database=db;
-    if (execute_use(td, "Initializing thread")){
-      g_critical("Changing to database: %s %s", td->current_database,db);
-      exit(EXIT_FAILURE);
+    if (execute_use(td)){
+      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }
   }
 

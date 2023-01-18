@@ -23,7 +23,8 @@
 
 #include "myloader.h"
 #include <stdio.h> 
-guint execute_use(struct thread_data *td, const gchar * msg);
+//guint execute_use(struct thread_data *td, const gchar * msg);
+gboolean execute_use(struct thread_data *td);
 void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg);
 enum file_type get_file_type (const char * filename);
 gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof, guint *line);

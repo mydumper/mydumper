@@ -95,8 +95,7 @@ struct tm tval;
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
   if (g_strv_length(strsplit)!=2){
-    g_critical("Parse limit failed");
-    exit(EXIT_FAILURE);
+    m_critical("Parse limit failed");
   }
   set_disk_limits(atoi(strsplit[0]),atoi(strsplit[1]));
 }
@@ -138,8 +137,7 @@ int main(int argc, char *argv[]) {
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
-    g_print("option parsing failed: %s, try --help\n", error->message);
-    exit(EXIT_FAILURE);
+    m_critical("option parsing failed: %s, try --help\n", error->message);
   }
 
   if (help){

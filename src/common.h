@@ -15,6 +15,9 @@
     Authors:        David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#include <mysql.h>
+#include <stdio.h>
+
 #ifndef _src_common_h
 #define _src_common_h
 
@@ -73,3 +76,4 @@ void initialize_set_names();
 void check_num_threads();
 
 void m_error(const char *fmt, ...);
+void m_critical(const char *fmt, ...);
