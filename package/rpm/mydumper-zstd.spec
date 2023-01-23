@@ -41,6 +41,7 @@ rm -rf ${RPM_BUILD_ROOT}
 
 %files
 %defattr(-,root,root,-)
+%config(noreplace) %{_sysconfdir}/*
 %{_bindir}/*
 
 %changelog
