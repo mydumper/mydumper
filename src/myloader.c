@@ -85,6 +85,8 @@ gboolean stream = FALSE;
 gboolean no_stream = FALSE;
 gboolean no_delete = FALSE;
 
+GMutex *load_data_list_mutex=NULL;
+GHashTable * load_data_list = NULL;
 //unsigned long long int total_data_sql_files = 0;
 //unsigned long long int progress = 0;
 //GHashTable *db_hash=NULL;
@@ -336,6 +338,10 @@ int main(int argc, char *argv[]) {
   compress_extension = g_strdup(".gz");
 #endif
   initialize_set_names();
+
+
+  load_data_list_mutex=g_mutex_new();
+  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
 
   if (pmm_path){
     pmm=TRUE;
