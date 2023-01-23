@@ -166,6 +166,7 @@ gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   gchar * orig_key=NULL;
   if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
     *mutex=g_mutex_new();
+    g_mutex_lock(*mutex);
     g_hash_table_insert(load_data_list,g_strdup(filename), *mutex);
     g_mutex_unlock(load_data_list_mutex);
     return TRUE;
