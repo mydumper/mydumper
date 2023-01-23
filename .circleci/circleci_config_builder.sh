@@ -12,12 +12,41 @@ declare -A all_vendors
 vendor=percona57
 all_vendors[${vendor}_0]="percona57"
 all_vendors[${vendor}_1]="percona:5.7"
-all_vendors[${vendor}_2]="percona_57"
 vendor=percona80
 all_vendors[${vendor}_0]="percona80"
 all_vendors[${vendor}_1]="percona:8"
-all_vendors[${vendor}_2]="percona_80"
-list_all_vendors=( "percona57" "percona80")
+
+vendor=mariadb1004
+all_vendors[${vendor}_0]="mariadb1004"
+all_vendors[${vendor}_1]="mariadb:10.04-rc"
+all_vendors[${vendor}_2]="mariadb-10.04"
+
+vendor=mariadb1005
+all_vendors[${vendor}_0]="mariadb1005"
+all_vendors[${vendor}_1]="mariadb:10.05-rc"
+all_vendors[${vendor}_2]="mariadb-10.05"
+
+vendor=mariadb1006
+all_vendors[${vendor}_0]="mariadb1006"
+all_vendors[${vendor}_1]="mariadb:10.06-rc"
+all_vendors[${vendor}_2]="mariadb-10.06"
+
+vendor=mariadb1011
+all_vendors[${vendor}_0]="mariadb1011"
+all_vendors[${vendor}_1]="mariadb:10.11-rc"
+all_vendors[${vendor}_2]="mariadb-10.11"
+
+vendor=tidb
+all_vendors[${vendor}_0]="tidb"
+all_vendors[${vendor}_1]="pingcap/tidb"
+
+
+
+#list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
+list_all_vendors=( "percona57" "percona80" "mariadb1011")
+list_percona_version=( "percona57" "percona80" )
+list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
+list_mariadb_version=( "mariadb1011" )
 declare -A all_os
 os=bionic
 all_os[${os}_0]="bionic"
@@ -26,7 +55,7 @@ all_os[${os}_2]="percona-release_latest.bionic_all.deb"
 all_os[${os}_3]="false"
 
 os=focal
-all_os[${os}_0]="focal" 
+all_os[${os}_0]="focal"
 all_os[${os}_1]="cimg/base:stable-20.04"
 all_os[${os}_2]="percona-release_latest.focal_all.deb"
 all_os[${os}_3]="true"
@@ -83,12 +112,12 @@ filter_out="jammy_percona57|el9_percona57"
 
 for os in ${list_all_os[@]}
 do
-	for vendor in ${list_all_vendors[@]}
+	for vendor in ${list_all_vendors[@]} tidb
 	do
 		echo "
   ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     docker:
-    - image: ${all_os[${os}_1]}
+    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -105,7 +134,7 @@ done
                 echo "
   ${all_os[${os}_0]}:
     docker:
-    - image: ${all_os[${os}_1]}
+    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -119,74 +148,116 @@ done
 
 echo '
 commands:
-  prepare_ubuntu:
-    steps:
-    - run: apt-get update || true
-    - run: apt-get install -y sudo || true
-    - run: sudo apt-get update
-    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg
+#  prepare_ubuntu:
+#    steps:
+#    - run: apt-get update || true
+#    - run: apt-get install -y sudo || true
+#    - run: sudo apt-get update
+#    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl
 
-  prepare_el:
-    steps:
-    - run: yum -y install epel-release || true
-    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-    - run: yum -y install wget'
+#  prepare_el:
+#    steps:
+#    - run: yum -y install epel-release || true
+#    - run: yum -y install sudo || true
+#    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
+#    - run: yum -y install wget curl || true
+#    - run: yum -y install --allowerasing wget curl || true'
 
-for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
-do
-	echo "
-  prepare_${all_os[${os}_0]}_percona_package:
-    steps:
-
-    - run: wget https://repo.percona.com/apt/${all_os[${os}_2]}
-    - run: sudo apt install -y ./${all_os[${os}_2]}"
-done
-
-
+#for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
+#do
+#	echo "
+#  prepare_${all_os[${os}_0]}_percona_package:
+#    steps:
+#
+#    - run: wget https://repo.percona.com/apt/${all_os[${os}_2]}
+#    - run: sudo apt install -y ./${all_os[${os}_2]}"
+#done
 
 
 
 echo "
+  prepare_mariadb1011:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+
+
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev 
+    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
   prepare_ubuntu_percona80:
     steps:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+"
+# libmariadb-dev-compat
+echo "
 
-  prepare_el_percona_package:
+
+
+  prepare_ubuntu_mariadb1011:
     steps:
-    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm    
+#    - run: sudo apt-get remove -y libmariadb-dev libmariadb-dev-compat libmariadb3 || true
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
+#  prepare_el_percona_package:
+#    steps:
+#    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
+
+  prepare_el_mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - run: sudo yum install -y MariaDB-devel
+    - run: sudo yum install -y MariaDB-compat || true
     "
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
+        vendor=tidb
+	echo "
+  prepare_${all_os[${os}_0]}_${vendor}:
+    steps:
+    - prepare_ubuntu_percona57
+"
+
+
+	for vendor in ${list_percona_version[@]}
         do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
-    - prepare_${all_os[${os}_0]}_percona_package
+#    - prepare_${all_os[${os}_0]}_percona_package
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
 done
+        for vendor in ${list_mariadb_version[@]}
+        do
+echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_${all_vendors[${vendor}_0]}
+    - prepare_ubuntu_${all_vendors[${vendor}_0]}
+"
+done
+
 done
 
     echo "
 
   prepare_el_percona57:
     steps:
-    - prepare_el_percona_package
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
     - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
 
+  prepare_el_tidb:
+    steps:
+    - run: prepare_el_percona57
+
   prepare_el_percona80:
     steps:
-    - prepare_el_percona_package
     - run: percona-release setup -y ps80
     - run: yum -y install percona-server-devel percona-server-client
 
@@ -232,6 +303,11 @@ done
              condition: << parameters.test >>
              steps:
              - run: bash ./test_mydumper.sh SSL ZSTD
+    - store_artifacts:
+        path: /tmp/stream.sql
+        destination: artifact-file
+    - store_artifacts:
+        path: /tmp/data/
 
   set_env_vars:
     steps:
@@ -246,7 +322,7 @@ jobs:
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
+        for vendor in ${list_all_vendors[@]} tidb
         do
 echo "
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -260,7 +336,7 @@ echo "
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         zstd_on: ${all_os[${os}_3]}
@@ -275,7 +351,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
+        for vendor in ${list_all_vendors[@]} tidb
         do
 echo "
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -289,7 +365,7 @@ echo "
     executor: << parameters.e >>
     steps:
     - checkout
-    - prepare_el
+#    - prepare_el
     - prepare_el_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         zstd_on: ${all_os[${os}_3]}
@@ -311,14 +387,14 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - checkout
     - set_env_vars
-    - prepare_el
+#    - prepare_el
     - prepare_el_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
-    - run: cp mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
     - when:
         condition: ${all_os[${os}_3]}
@@ -326,7 +402,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         - compile_zstd:
             CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
         - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
-        - run: cp mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
+        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
         - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
 
     - persist_to_workspace:
@@ -347,22 +423,22 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - checkout
     - set_env_vars
-    - prepare_ubuntu
+#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
-    - run: cp mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
     - when:
-        condition: ${all_os[${os}_3]} 
+        condition: ${all_os[${os}_3]}
         steps:
           - compile_zstd:
              CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
           - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
-          - run: cp mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
+          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
           - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
 
     - persist_to_workspace:
@@ -396,7 +472,7 @@ done
 
 for os in focal
 do
-        for vendor in ${list_all_vendors[@]}
+        for vendor in ${list_all_vendors[@]} tidb
         do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         test: true
@@ -406,7 +482,7 @@ echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vend
 done
 done
 
-for os in ${list_build[@]} 
+for os in ${list_build[@]}
 do
 echo "    - build_${os}:"
 echo '        filters:
