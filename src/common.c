@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
+#include <glib.h>
 #include <glib/gstdio.h>
 #include "server_detect.h"
 #include "common.h"
@@ -161,7 +162,7 @@ void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * grou
   g_strfreev(keys);
 }
 
-void load_session_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables){
+void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables){
   guint i=0;
   GError *error = NULL;
   gchar *value=NULL;
@@ -213,6 +214,21 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
     }
   }
   g_strfreev(groups);
+}
+
+
+void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str){
+  GString *s=g_string_new(str);
+  load_hash_from_key_file(kf,set_session_hash,s->str);
+  g_string_append_c(s,'_');
+  g_string_append(s,get_product_name());
+  load_hash_from_key_file(kf,set_session_hash,s->str);
+  g_string_append_printf(s,"_%d",get_major());
+  load_hash_from_key_file(kf,set_session_hash,s->str);
+  g_string_append_printf(s,"_%d",get_secondary());
+  load_hash_from_key_file(kf,set_session_hash,s->str);
+  g_string_append_printf(s,"_%d",get_revision());
+  load_hash_from_key_file(kf,set_session_hash,s->str);
 }
 
 
@@ -396,19 +412,26 @@ gboolean is_table_in_list(gchar *table_name, gchar **tl){
 
 
 void initialize_common_options(GOptionContext *context, const gchar *group){
-
-  if (defaults_file != NULL){
-    if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
-      m_critical("Default file not found");
+  if (defaults_file == NULL ) 
+    if ( g_file_test(DEFAULTS_FILE, G_FILE_TEST_EXISTS) ){
+      defaults_file=g_strdup(DEFAULTS_FILE);
+    }else{
+      g_message("Using no configuration file");
+      return;
     }
-    if (!g_path_is_absolute(defaults_file)){
-      gchar *new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
-      g_free(defaults_file);
-      defaults_file=new_defaults_file;
+  else{
+    if (defaults_file != NULL && !g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
+      m_critical("Default file %s not found", defaults_file);
     }
-    key_file=load_config_file(defaults_file);
-    load_config_group(key_file, context, group);
   }
+  g_message("Using default file: %s", defaults_file);
+  if (!g_path_is_absolute(defaults_file)){
+    gchar *new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
+    g_free(defaults_file);
+    defaults_file=new_defaults_file;
+  }
+  key_file=load_config_file(defaults_file);
+  load_config_group(key_file, context, group);
 }
 
 gchar **get_table_list(gchar *tables_list){

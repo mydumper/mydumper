@@ -122,3 +122,18 @@ int get_secondary(){
 int get_revision(){
       return revision;
 }
+
+const gchar * get_product_name(){
+  switch (get_product()){
+  case SERVER_TYPE_PERCONA: return "percona"; break;
+  case SERVER_TYPE_MYSQL: return "mysql"; break;
+  case SERVER_TYPE_MARIADB: return "mariadb"; break;
+  default: return "";
+}
+
+
+}
+
+
+
+
