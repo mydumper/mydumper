@@ -163,14 +163,15 @@ void *send_file_to_fifo(gchar *compressed_filename){
 
 gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   g_mutex_lock(load_data_list_mutex);
-  gpointer* orig_key=NULL;
-  if (g_hash_table_lookup_extended(load_data_list,filename, orig_key, (gpointer*) *mutex)){
+  gchar * orig_key=NULL;
+  if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
     *mutex=g_mutex_new();
     g_hash_table_insert(load_data_list,g_strdup(filename), *mutex);
     g_mutex_unlock(load_data_list_mutex);
     return TRUE;
   }
-  g_hash_table_remove(load_data_list, orig_key);
+  if (orig_key!=NULL)
+    g_hash_table_remove(load_data_list, orig_key);
   g_mutex_unlock(load_data_list_mutex);
   return FALSE;
 }
