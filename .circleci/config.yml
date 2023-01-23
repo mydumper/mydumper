@@ -1815,7 +1815,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bionic_percona57_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bionic_percona57_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bionic_percona57_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bionic_percona57_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_zstd
 
     - persist_to_workspace:
@@ -1844,7 +1844,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bionic_percona80_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bionic_percona80_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bionic_percona80_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bionic_percona80_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_zstd
 
     - persist_to_workspace:
@@ -1873,7 +1873,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bionic_mariadb1011_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bionic_mariadb1011_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_zstd
 
     - persist_to_workspace:
@@ -1902,7 +1902,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/focal_percona57_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/focal_percona57_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/focal_percona57_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/focal_percona57_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_zstd
 
     - persist_to_workspace:
@@ -1931,7 +1931,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/focal_percona80_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/focal_percona80_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/focal_percona80_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/focal_percona80_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_zstd
 
     - persist_to_workspace:
@@ -1960,7 +1960,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/focal_mariadb1011_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/focal_mariadb1011_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/focal_mariadb1011_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_zstd
 
     - persist_to_workspace:
@@ -1989,7 +1989,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/jammy_percona57_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/jammy_percona57_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/jammy_percona57_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/jammy_percona57_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_zstd
 
     - persist_to_workspace:
@@ -2018,7 +2018,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/jammy_percona80_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/jammy_percona80_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/jammy_percona80_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/jammy_percona80_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_zstd
 
     - persist_to_workspace:
@@ -2047,7 +2047,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/jammy_mariadb1011_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/jammy_mariadb1011_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_zstd
 
     - persist_to_workspace:
@@ -2076,7 +2076,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/buster_percona57_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/buster_percona57_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/buster_percona57_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/buster_percona57_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_zstd
 
     - persist_to_workspace:
@@ -2105,7 +2105,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/buster_percona80_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/buster_percona80_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/buster_percona80_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/buster_percona80_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_zstd
 
     - persist_to_workspace:
@@ -2134,7 +2134,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/buster_mariadb1011_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/buster_mariadb1011_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/buster_mariadb1011_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_zstd
 
     - persist_to_workspace:
@@ -2163,7 +2163,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bullseye_percona57_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_percona57_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_percona57_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_zstd
 
     - persist_to_workspace:
@@ -2192,7 +2192,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bullseye_percona80_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_percona80_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_percona80_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_zstd
 
     - persist_to_workspace:
@@ -2221,7 +2221,7 @@ jobs:
              CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
           - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_zstd/etc/
           - run: cp mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_zstd/
-	  - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_mariadb1011_zstd/etc
+          - run: cp mydumper.cnf /tmp/src/mydumper/bullseye_mariadb1011_zstd/etc
           - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_zstd
 
     - persist_to_workspace:
