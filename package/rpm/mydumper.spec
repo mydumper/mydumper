@@ -32,6 +32,7 @@ myloader is a tool used for multi-threaded restoration of mydumper backups.
 install -m 0755 -d ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0755 mydumper ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0755 myloader ${RPM_BUILD_ROOT}%{_bindir}
+install -m 0554 mydumper.cnf ${RPM_BUILD_ROOT}%{_sysconfdir}
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}

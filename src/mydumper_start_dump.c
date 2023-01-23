@@ -93,7 +93,6 @@ extern gboolean load_data;
 extern gboolean stream;
 extern int detected_server;
 extern gboolean no_delete;
-extern char *defaults_file;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern int (*m_close)(void *file);
 extern int (*m_write)(FILE * file, const char * buff, int len);
@@ -408,8 +407,8 @@ MYSQL *create_main_connection() {
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
-    load_session_hash_from_key_file(key_file,set_session_hash,"mydumper_session_variables");
-    load_session_hash_from_key_file(key_file,set_global_hash,"mydumper_global_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"mydumper_global_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"mydumper_session_variables");
     load_per_table_info_from_key_file(key_file, &conf_per_table, &get_function_pointer_for);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
