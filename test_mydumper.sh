@@ -1,5 +1,4 @@
 #!/bin/bash
-empty="/tmp/empty"
 mydumper_log="/tmp/test_mydumper.log"
 tmp_mydumper_log="/tmp/test_mydumper.log.tmp"
 myloader_log="/tmp/test_myloader.log"
@@ -10,6 +9,7 @@ stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
 mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
+configfile="${mydumper_base}/mydumper.cnf"
 > $mydumper_log
 > $myloader_log
 for i in $*
@@ -24,8 +24,9 @@ do
   fi
 done
 
-echo "[mydumper]" > $empty
-echo "[myloader]" >> $empty
+#echo "[mydumper]" > $configfile
+#echo "[myloader]" >> $configfile
+
 test_case_dir (){
   # Test case
   # We should consider each test case, with different mydumper/myloader parameters
@@ -41,12 +42,12 @@ test_case_dir (){
     mkdir -p ${mydumper_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters}"
-    eval $mydumper --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+    eval $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_mydumper_log
       exit $error
     fi
@@ -63,13 +64,13 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     # Import
     echo "Importing database: ${myloader_parameters}"
 
-    eval $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+    eval $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters}"
-      echo "Error running myloader with mydumper: $mydumper --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters}"
+      echo "Error running myloader with mydumper: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_myloader_log
       exit $error
     fi
@@ -91,16 +92,16 @@ test_case_stream (){
     rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
-    echo "Exporting database: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
-    eval $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
-    cat /tmp/stream.sql | $myloader --defaults-file="$empty" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    echo "Exporting database: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+    eval $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    cat /tmp/stream.sql | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --stream --defaults-file="$empty" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader --defaults-file="$empty" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+      echo "Error running: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
       cat $tmp_myloader_log
       exit $error

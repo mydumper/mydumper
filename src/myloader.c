@@ -85,6 +85,8 @@ gboolean stream = FALSE;
 gboolean no_stream = FALSE;
 gboolean no_delete = FALSE;
 
+GMutex *load_data_list_mutex=NULL;
+GHashTable * load_data_list = NULL;
 //unsigned long long int total_data_sql_files = 0;
 //unsigned long long int progress = 0;
 //GHashTable *db_hash=NULL;
@@ -337,6 +339,10 @@ int main(int argc, char *argv[]) {
 #endif
   initialize_set_names();
 
+
+  load_data_list_mutex=g_mutex_new();
+  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+
   if (pmm_path){
     pmm=TRUE;
     if (!pmm_resolution){
@@ -419,8 +425,8 @@ int main(int argc, char *argv[]) {
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (defaults_file){
-    load_session_hash_from_key_file(key_file,set_global_hash,"myloader_global_variables");
-    load_session_hash_from_key_file(key_file,set_session_hash,"myloader_session_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
+    load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
   refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);

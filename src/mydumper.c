@@ -165,9 +165,7 @@ int main(int argc, char *argv[]) {
   } else {
     set_verbose(verbose);
   }
-  gchar *mydumper = g_strdup("mydumper");
-  initialize_common_options(context, mydumper);
-  g_free(mydumper);
+  initialize_common_options(context, "mydumper");
   g_option_context_free(context);
 
   initialize_main();

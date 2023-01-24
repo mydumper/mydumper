@@ -19,3 +19,4 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema);
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
 int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
+void release_load_data_as_it_is_close( gchar * filename );

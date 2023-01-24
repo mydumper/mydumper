@@ -34,9 +34,9 @@ extern guint commit_count;
 extern gchar *directory;
 extern gchar *compress_extension;
 extern guint rows;
-
 gboolean skip_definer = FALSE;
-
+extern GMutex *load_data_list_mutex;
+extern GHashTable * load_data_list;
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {
@@ -160,6 +160,43 @@ void *send_file_to_fifo(gchar *compressed_filename){
   return NULL;
 }
 
+
+gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
+  g_mutex_lock(load_data_list_mutex);
+  gchar * orig_key=NULL;
+  if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
+    *mutex=g_mutex_new();
+    g_mutex_lock(*mutex);
+    g_hash_table_insert(load_data_list,g_strdup(filename), *mutex);
+    g_mutex_unlock(load_data_list_mutex);
+    return TRUE;
+  }
+  if (orig_key!=NULL)
+    g_hash_table_remove(load_data_list, orig_key);
+  g_mutex_unlock(load_data_list_mutex);
+  return FALSE;
+}
+
+void wait_til_data_file_is_close( gchar * filename ){
+  GMutex * mutex=NULL;
+  if (load_data_mutex_locate(filename, &mutex)){
+    g_mutex_lock(mutex);
+    // TODO we need to free filename and mutex from the hash.
+  }
+}
+
+void release_load_data_as_it_is_close( gchar * filename ){
+  g_mutex_lock(load_data_list_mutex);
+  GMutex *mutex = g_hash_table_lookup(load_data_list,filename);
+  if (mutex == NULL){
+    g_hash_table_insert(load_data_list,g_strdup(filename), NULL);
+  }else{
+    g_mutex_unlock(mutex);
+  }
+  g_mutex_unlock(load_data_list_mutex);
+}
+
+
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema){
   FILE *infile=NULL;
@@ -203,6 +240,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             from++;
             gchar *to = g_strstr_len(from, -1, "'");
             gchar *fff=g_strndup(from, to-from);
+            wait_til_data_file_is_close(fff);
             if (has_compession_extension(fff)){
               gchar *fifo_name=g_strndup(fff,g_strrstr(fff,".")-fff);
               mkfifo(fifo_name,0666);

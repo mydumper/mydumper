@@ -22,6 +22,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
+#include "myloader_restore.h"
 extern gchar *db;
 extern gchar *directory;
 extern gchar *source_db;
@@ -144,6 +145,7 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
+        release_load_data_as_it_is_close(filename);
         break;
       case SHUTDOWN:
         break;
