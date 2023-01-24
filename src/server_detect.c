@@ -55,18 +55,6 @@ int detect_server(MYSQL *conn) {
     return SERVER_TYPE_MYSQL;
   }
 
-  re = pcre_compile(DETECT_DRIZZLE_REGEX, 0, &error, &erroroffset, NULL);
-  if (!re) {
-    m_critical("Regular expression fail: %s", error);
-  }
-
-  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-  pcre_free(re);
-
-  if (rc > 0) {
-    return SERVER_TYPE_DRIZZLE;
-  }
-
   re = pcre_compile(DETECT_MARIADB_REGEX, 0, &error, &erroroffset, NULL);
   if (!re) {
     m_critical("Regular expression fail: %s", error);
