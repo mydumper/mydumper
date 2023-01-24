@@ -435,8 +435,15 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
   for (x = 0; table_list[x] != NULL; x++) {
     dt = g_strsplit(table_list[x], ".", 0);
 
-    query =
-        g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
+    // Need 7 columns with DATA_LENGTH as the last one for this to work
+    if (detected_server == SERVER_TYPE_MARIADB)
+      query =
+          g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
+                          "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
+                          dt[0], dt[1]);
+    else
+      query =
+          g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
 
     if (mysql_query(conn, (query))) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
@@ -473,7 +480,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
       int is_view = 0;
 
-      if ((detected_server == SERVER_TYPE_MYSQL) &&
+      if ((detected_server == SERVER_TYPE_MYSQL ||
+           detected_server == SERVER_TYPE_MARIADB) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
 
@@ -1538,6 +1546,11 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   if (detected_server == SERVER_TYPE_MYSQL ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
+  else if (detected_server == SERVER_TYPE_MARIADB)
+    query =
+        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
+                        "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s'",
+                        database->escaped);
   else
     query =
         g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
@@ -1574,7 +1587,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL) &&
+    if ((detected_server == SERVER_TYPE_MYSQL ||
+         detected_server == SERVER_TYPE_MARIADB) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 

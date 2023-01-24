@@ -22,6 +22,7 @@
 #include <string.h>
 #include "myloader_stream.h"
 #include "common.h"
+#include "server_detect.h"
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
@@ -40,6 +41,7 @@ extern guint num_threads;
 extern gboolean stream;
 extern guint max_threads_for_index_creation;
 extern gboolean innodb_optimize_keys_all_tables;
+extern int detected_server;
 static GMutex *init_mutex=NULL;
 static GMutex *index_mutex=NULL;
 guint index_threads_counter = 0;
@@ -115,9 +117,6 @@ void *loader_thread(struct thread_data *td) {
   m_connect(td->thrconn, "myloader", NULL);
 
 //  mysql_query(td->thrconn, set_names_statement);
-//  mysql_query(td->thrconn, "/*!40101 SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */");
-//  mysql_query(td->thrconn, "/*!40014 SET UNIQUE_CHECKS=0 */");
-//  mysql_query(td->thrconn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
 
   execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));

@@ -167,7 +167,7 @@ void write_table_metadata_into_file(struct db_table * dbt){
 }
 
 gchar * get_tablespace_query(){
-  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL){
+  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL ){
     if ( get_major() == 5 && get_secondary() == 7)
       return g_strdup("select NAME, PATH, FS_BLOCK_SIZE from information_schema.INNODB_SYS_TABLESPACES join information_schema.INNODB_SYS_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
     if ( get_major() == 8 )
@@ -429,7 +429,7 @@ void write_view_definition_into_file(MYSQL *conn, char *database, char *table, c
     return;
   }
 
-  if (detected_server == SERVER_TYPE_MYSQL && set_names_statement) {
+  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 

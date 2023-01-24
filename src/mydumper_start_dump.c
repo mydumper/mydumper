@@ -423,6 +423,10 @@ MYSQL *create_main_connection() {
     g_message("Connected to a MySQL server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
+  case SERVER_TYPE_MARIADB:
+    g_message("Connected to a MariaDB server");
+    set_transaction_isolation_level_repeatable_read(conn);
+    break;
   case SERVER_TYPE_DRIZZLE:
     g_message("Connected to a Drizzle server");
     break;
@@ -973,7 +977,7 @@ void start_dump() {
   g_mutex_lock(ready_table_dump_mutex);
 
 
-  if (detected_server == SERVER_TYPE_MYSQL) {
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) {
     create_job_to_dump_metadata(&conf, mdfile);
   }
 
