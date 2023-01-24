@@ -186,10 +186,9 @@ void free_integer_step(union chunk_step * cs){
   g_free(cs);
 }
 
-
 union chunk_step *get_next_integer_chunk(struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
-  GList *l=dbt->chunks;
+//  GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   if (dbt->chunks!=NULL){
 //    g_message("IN WHILE");
@@ -227,7 +226,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
       g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
     }
     g_mutex_unlock(cs->integer_step.mutex);
-    l=l->next;
+//    l=l->next;
   }
   g_mutex_unlock(dbt->chunks_mutex);
   return NULL;

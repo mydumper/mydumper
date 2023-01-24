@@ -66,7 +66,7 @@ extern guint rows_per_file;
 extern int compress_output;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern gboolean skip_definer;
-
+extern GList *innodb_table, *non_innodb_table;
 guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
@@ -370,16 +370,42 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   return TRUE;
 }
 
+guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
+  GList *l=dbt->chunks;
+  guint64 total=0;
+  while (l!=NULL){
+    total+=((union chunk_step *)(l->data))->integer_step.estimated_remaining_steps;
+    l=l->next;
+  }
+  return total;
+}
+
+guint64 get_estimated_remaining_of(GList *list){
+  GList *tl=list;
+  guint64 total=0;
+  while (tl!=NULL){
+    total+=get_estimated_remaining_chunks_on_dbt(tl->data);
+    tl=tl->next;
+  }
+  return total;
+}
+
+guint64 get_estimated_remaining_of_all_chunks(){
+  return get_estimated_remaining_of(non_innodb_table) + get_estimated_remaining_of(innodb_table);
+}
+
+
+
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
-  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs: %d",
+  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT,
                     td->thread_id,
                     tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
                      (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",
                      (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
                     ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
                     tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
-                    tj->sql_filename,
-                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
+                    tj->sql_filename, get_estimated_remaining_chunks_on_dbt(tj->dbt)); //, get_estimated_remaining_of_all_chunks());
+//                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
 }
 
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
@@ -463,6 +489,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   if (update_files_on_table_job(tj)){
     write_load_data_statement(tj, fields, num_fields);
   }
+  message_dumping_data(tj->td,tj);
 //    write_load_data_statement(tj, fields, num_fields);
 //  }
 
@@ -552,7 +579,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
 //    initialize_sql_fn(tj);
 
   update_files_on_table_job(tj);
-
+  message_dumping_data(tj->td,tj);
   if (dbt->insert_statement==NULL){
     g_mutex_lock(dbt->chunks_mutex);
     if (dbt->insert_statement==NULL)

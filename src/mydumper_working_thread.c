@@ -220,7 +220,6 @@ void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
                        char *from, char *to);
-guint64 write_table_data_into_file(MYSQL *conn, struct table_job *tj);
 void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group){
@@ -544,6 +543,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
   }
+  tj->td=td;
   switch (tj->dbt->chunk_type) {
     case INTEGER:
       process_integer_chunk(td, tj);
@@ -555,7 +555,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       process_partition_chunk(td, tj);
       break;
     case NONE:
-      message_dumping_data(td,tj);
+//      message_dumping_data(td,tj);
       write_table_job_into_file(td->thrconn, tj);
       break;
     default: 
@@ -595,6 +595,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
+  tj->td=NULL;
 //  free_table_job(tj);
   g_free(job);
 }
@@ -1002,13 +1003,14 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
     tj->chunk_step->integer_step.check_min=FALSE;
   }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
+  tj->chunk_step->integer_step.estimated_remaining_steps=1+(tj->chunk_step->integer_step.nmax - tj->chunk_step->integer_step.cursor) / tj->chunk_step->integer_step.step;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
 /*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
     return;
   }*/
 //  g_message("CONTINUE");
   update_where_on_table_job(td, tj);
-  message_dumping_data(td,tj);
+//  message_dumping_data(td,tj);
 
   GDateTime *from = g_date_time_new_now_local();
   write_table_job_into_file(td->thrconn, tj);
@@ -1035,15 +1037,18 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step;
   process_integer_chunk_job(td,tj);
+  g_atomic_int_inc(dbt->chunks_completed);
   if (cs->integer_step.prefix)
     g_free(cs->integer_step.prefix);
   cs->integer_step.prefix=NULL;
   while ( cs->integer_step.nmin < cs->integer_step.nmax ){
     process_integer_chunk_job(td,tj);
+    g_atomic_int_inc(dbt->chunks_completed);
   }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
+  tj->chunk_step->integer_step.estimated_remaining_steps=0;
   if (g_list_length(dbt->chunks) == 0){
     g_message("Thread %d: Table %s completed ",td->thread_id,dbt->table);
     dbt->chunks=NULL;
@@ -1059,7 +1064,7 @@ void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   update_where_on_table_job(td, tj);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
 
-  message_dumping_data(td,tj);
+//  message_dumping_data(td,tj);
 
   GDateTime *from = g_date_time_new_now_local();
   write_table_job_into_file(td->thrconn, tj);
@@ -1141,7 +1146,7 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj){
     g_mutex_unlock(cs->partition_step.mutex);
     tj->partition = partition;
 // = new_table_job(dbt, partition ,  cs->partition_step.number, dbt->primary_key, cs);
-    message_dumping_data(td,tj);
+//    message_dumping_data(td,tj);
     write_table_job_into_file(td->thrconn, tj);
     g_free(partition);
   }
@@ -1361,6 +1366,8 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
   dbt->chunks_queue=g_async_queue_new();
+  dbt->chunks_completed=g_new(int,1);
+  *(dbt->chunks_completed)=0;
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
 //  set_chunk_strategy_for_dbt(conn, dbt);
