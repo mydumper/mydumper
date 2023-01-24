@@ -85,6 +85,7 @@ struct integer_step {
   guint64 cursor;
   guint64 step;
   guint64 nmax;
+  guint64 estimated_remaining_steps;
   guint number;
   guint deep;
   GMutex *mutex;
@@ -159,6 +160,7 @@ struct table_job {
   float filesize;
   guint st_in_file;
   int char_chunk_part;
+  struct thread_data *td;
 };
 
 struct tables_job {
@@ -210,6 +212,7 @@ struct db_table {
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
   gchar *primary_key;
+  gint * chunks_completed;
 };
 
 struct schema_post {
