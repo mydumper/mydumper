@@ -427,9 +427,6 @@ MYSQL *create_main_connection() {
     g_message("Connected to a MariaDB server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
-  case SERVER_TYPE_DRIZZLE:
-    g_message("Connected to a Drizzle server");
-    break;
   case SERVER_TYPE_TIDB:
     g_message("Connected to a TiDB server");
     break;

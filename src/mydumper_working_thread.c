@@ -1552,10 +1552,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
                         "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s'",
                         database->escaped);
   else
-    query =
-        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT FROM "
-                        "DATA_DICTIONARY.TABLES WHERE TABLE_SCHEMA='%s'",
-                        database->escaped);
+      return;
 
   if (mysql_query(conn, (query))) {
       g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
