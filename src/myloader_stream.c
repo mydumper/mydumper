@@ -78,6 +78,8 @@ void *process_stream(struct configuration *stream_conf){
   gboolean eof=FALSE;
   int pos=0,buffer_len=0;
   int diff=0, i=0, line_from=0, line_end=0, last_pos=0, next_line_from=0;
+  guint total_size=0;
+  guint b=0;
   for(i=0;i<STREAM_BUFFER_SIZE;i++){
     buffer[i]='\0';
   }
@@ -103,6 +105,20 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         // Is a header?
         if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
           if (buffer[last_pos] == '\n'){
+            if (file != NULL ){
+              if (total_size < b){
+                g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+                flush(buffer,line_from,line_end,file);
+                total_size+=line_end-line_from+1;
+                next_line_from=last_pos;
+                continue;
+//                total_size=0;
+              }else if (total_size > b) {
+                m_critical("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+              }else{
+                total_size=0;
+              }
+            }
             previous_filename=g_strdup(filename);
             g_free(filename);
             gchar a=buffer[last_pos-(line_from+4)];
@@ -110,7 +126,10 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 //g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
 //            if (line_from==last_pos)
 //m_error("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
-            filename=g_strndup(&(buffer[line_from+4]),last_pos-(line_from+4));
+            gchar * d=g_strstr_len(&(buffer[line_from+4]),last_pos-(line_from+4)," ");
+            filename=g_strndup(&(buffer[line_from+4]),(d-&(buffer[line_from+4])));
+            b = g_ascii_strtoull(d, NULL, 10);
+    //        g_message("Raaded Size from file is %d", b); 
             buffer[last_pos-(line_from+4)]=a;
             real_filename = g_build_filename(directory,filename,NULL);
             if (has_mydumper_suffix(filename)){
@@ -120,7 +139,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
               if (previous_filename)
                 intermediate_queue_new(previous_filename); 
               if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
-                g_debug("Stream Thread: File exists in datadir: %s", real_filename);
+                g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
                 last_pos++;
                 file = NULL;
               }else{
@@ -143,6 +162,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
           }
         }
         flush(buffer,line_from,line_end,file);
+        total_size+=line_end-line_from+1;
         next_line_from=last_pos;
       }
     }
