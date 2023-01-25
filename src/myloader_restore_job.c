@@ -198,8 +198,8 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Using %d of %d threads.", td->thread_id,
-                dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, dbt->current_threads, dbt->max_threads);
+      g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu.", td->thread_id,
+                dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files);
       g_mutex_unlock(progress_mutex);
       if (stream && dbt->schema_state<CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.

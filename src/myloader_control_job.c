@@ -226,6 +226,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
         dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
         giveup=FALSE;
+  //g_message("DB: %s Table: %s BREAKING", dbt->database->real_database,dbt->real_table);
         break;
       }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
@@ -373,7 +374,7 @@ void *control_job_thread(struct configuration *conf){
 //        g_message("job available in give_me_next_data_job_conf");
         g_async_queue_push(data_queue,rj);
         g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
-      }else{
+      } /* else{
         giveup=give_any_data_job_conf(conf,&rj);
         if (rj != NULL){
 //          g_message("job available in give_any_data_job");
@@ -386,7 +387,7 @@ void *control_job_thread(struct configuration *conf){
             g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
           }
         }
-      }
+      } */
       // NO DATA JOB available, no worries, there will be another one shortly...
       break;
     case THREAD:

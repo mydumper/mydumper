@@ -956,9 +956,6 @@ void start_dump() {
   
   }
 
-  GThread **threads = g_new(GThread *, num_threads );
-  struct thread_data *td =
-      g_new(struct thread_data, num_threads * (less_locking + 1));
 
   conf.initial_queue = g_async_queue_new();
   conf.schema_queue = g_async_queue_new();
@@ -1005,11 +1002,15 @@ void start_dump() {
     chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
   }
 
+  GThread **threads = g_new(GThread *, num_threads );
+  struct thread_data *td =
+      g_new(struct thread_data, num_threads * (less_locking + 1));
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
     td[n].thread_id = n + 1;
     td[n].less_locking_stage = FALSE;
     td[n].binlog_snapshot_gtid_executed = NULL;
+    td[n].pause_resume_mutex=NULL;
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);

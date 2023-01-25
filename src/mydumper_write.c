@@ -532,7 +532,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       tj->filesize = 0;
       
       write_load_data_statement(tj, fields, num_fields);
-
+      check_pause_resume(tj->td);
     }
     g_string_set_size(statement_row, 0);
 
@@ -647,6 +647,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
+        check_pause_resume(tj->td);
       }
       g_string_set_size(statement, 0);
     } else {

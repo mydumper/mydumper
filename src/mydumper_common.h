@@ -18,6 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 void initialize_common();
 gchar *get_ref_table(gchar *k);
 char * determine_filename (char * table);

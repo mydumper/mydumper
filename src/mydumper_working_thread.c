@@ -911,20 +911,21 @@ gboolean process_job(struct thread_data *td, struct job *job){
   return TRUE;
 }
 
+void check_pause_resume( struct thread_data *td ){
+  if (td->conf->pause_resume){
+    td->pause_resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
+    if (td->pause_resume_mutex != NULL){
+      g_mutex_lock(td->pause_resume_mutex);
+      g_mutex_unlock(td->pause_resume_mutex);
+      td->pause_resume_mutex=NULL;
+    }
+  }
+}
 
-
-void process_queue(GAsyncQueue * queue, struct thread_data *td, GMutex *resume_mutex, gboolean (*p)(), void (*f)()){
+void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean (*p)(), void (*f)()){
   struct job *job = NULL;
   for (;;) {
-    if (td->conf->pause_resume){
-      resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
-      if (resume_mutex != NULL){
-        g_mutex_lock(resume_mutex);
-        g_mutex_unlock(resume_mutex);
-        resume_mutex=NULL;
-        continue;
-      }
-    }
+    check_pause_resume(td);
     if (f!=NULL)
       f();
     job = (struct job *)g_async_queue_pop(queue);
@@ -1180,12 +1181,11 @@ void *working_thread(struct thread_data *td) {
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   // Thread Ready to process jobs
   
-  GMutex *resume_mutex=NULL;
   g_message("Thread %d: Creating Jobs", td->thread_id);
-  process_queue(td->conf->initial_queue,td, resume_mutex, process_job_builder_job, NULL);
+  process_queue(td->conf->initial_queue,td, process_job_builder_job, NULL);
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
-  process_queue(td->conf->schema_queue,td, resume_mutex, process_job, NULL);
+  process_queue(td->conf->schema_queue,td, process_job, NULL);
 
   if (!no_data){
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
@@ -1199,23 +1199,23 @@ void *working_thread(struct thread_data *td) {
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
     }else{
-      process_queue(td->conf->non_innodb_queue, td, resume_mutex, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
-    process_queue(td->conf->innodb_queue, td, resume_mutex, process_job, give_me_another_innodb_chunk_step);
+    process_queue(td->conf->innodb_queue, td, process_job, give_me_another_innodb_chunk_step);
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
 
-  process_queue(td->conf->post_data_queue, td, resume_mutex, process_job, NULL);
+  process_queue(td->conf->post_data_queue, td, process_job, NULL);
 
   g_message("Thread %d: shutting down", td->thread_id);
 
