@@ -1,6 +1,4 @@
 [![CircleCI](https://circleci.com/gh/mydumper/mydumper/tree/master.svg?style=svg)](https://circleci.com/gh/mydumper/mydumper/tree/master)
- <span class="badge-geekswag">
-<a href="https://geekswag.co/collections/mydumper" title="Get Our Merch"><img src="https://img.shields.io/badge/Geekswag-Get%20Our%20Merch-brightgreen" alt="Get a Merch donate button" /></a>
 
  # What is MyDumper?
 MyDumper is a MySQL Logical Backup Tool. It has 2 tools:
