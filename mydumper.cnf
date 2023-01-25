@@ -24,6 +24,6 @@ FOREIGN_KEY_CHECKS=0 /*!40114
 # sync_binlog = 0
 # innodb_flush_log_at_trx_commit = 0
 
-[myloader_session_variables_mariadb_10_6]
+[myloader_session_variables_mariadb]
 # This setting replaces the default in the section [myloader_session_variables]. More details in #987
 UNIQUE_CHECKS=1 /*!40114
