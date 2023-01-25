@@ -106,9 +106,18 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
           if (buffer[last_pos] == '\n'){
             if (file != NULL ){
-              if (total_size != b)
+              if (total_size < b){
+                g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+                flush(buffer,line_from,line_end,file);
+                total_size+=line_end-line_from+1;
+                next_line_from=last_pos;
+                continue;
+//                total_size=0;
+              }else if (total_size > b) {
                 m_critical("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
-              total_size=0;
+              }else{
+                total_size=0;
+              }
             }
             previous_filename=g_strdup(filename);
             g_free(filename);
