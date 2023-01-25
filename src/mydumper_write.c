@@ -532,7 +532,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       tj->filesize = 0;
       
       write_load_data_statement(tj, fields, num_fields);
-
+      check_pause_resume(tj->td);
     }
     g_string_set_size(statement_row, 0);
 

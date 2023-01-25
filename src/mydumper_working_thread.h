@@ -35,3 +35,4 @@ void free_db_table(struct db_table * dbt);
 void build_lock_tables_statement(struct configuration *conf);
 gboolean write_data(FILE *file, GString *data) ;
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj);
+void check_pause_resume( struct thread_data *td );

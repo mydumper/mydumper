@@ -68,6 +68,7 @@ struct thread_data {
   MYSQL *thrconn;
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
+  GMutex *pause_resume_mutex;
 };
 
 struct job {
