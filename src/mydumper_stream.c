@@ -55,7 +55,7 @@ void *process_stream(void *data){
     char *used_filemame=g_path_get_basename(filename);
     len=write(fileno(stdout), "\n-- ", 4);
     len=write(fileno(stdout), used_filemame, strlen(used_filemame));
-    len=write(fileno(stdout), "\n", 1);
+    len=write(fileno(stdout), " ", 1);
     total_size+=5;
     total_size+=strlen(used_filemame);
     free(used_filemame);
@@ -74,6 +74,18 @@ void *process_stream(void *data){
             exit(EXIT_FAILURE);
           }
         }
+        struct stat st;
+        int fd = fileno(f);
+        fstat(fd, &st);
+        off_t size = st.st_size;
+        
+        g_message("File size of %s is %"G_GINT64_FORMAT, filename, size);
+        gchar *c = g_strdup_printf("%"G_GINT64_FORMAT,size);
+        len=write(fileno(stdout), c, strlen(c));
+        len=write(fileno(stdout), "\n", 1);
+        total_size+=strlen(c) + 1;
+        g_free(c);
+
         guint total_len=0;
         GDateTime *start_time=g_date_time_new_now_local();
         buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
@@ -84,6 +96,7 @@ void *process_stream(void *data){
             m_error("Stream failed during transmition of file: %s",filename);
           buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
         }
+        g_message("Bytes readed of %s is %d", filename, total_len);
         datetime = g_date_time_new_now_local();
         diff=g_date_time_difference(datetime,start_time)/G_TIME_SPAN_SECOND;
         g_date_time_unref(start_time);
