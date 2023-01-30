@@ -56,6 +56,7 @@ gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
 char **tables = NULL;
 
+int (*m_write)(FILE * file, const char * buff, int len);
 
 gboolean no_stream = FALSE;
 
