@@ -12,10 +12,12 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-        Authors:    David Ducos, Percona (david dot ducos at percona dot com)
+        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
+                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+                    Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
+                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
 */
-gboolean check_filename_regex(char *word);
-gboolean eval_regex(char * a,char * b);
-GOptionGroup * load_regex_entries(GOptionContext *context);
-void initialize_regex();
-void free_regex();
+
+GOptionContext * load_contex_entries();
+

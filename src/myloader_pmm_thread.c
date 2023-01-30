@@ -24,9 +24,8 @@
 #include <gio/gio.h>
 #include <mysql.h>
 #include "myloader.h"
-extern gchar *pmm_resolution ;
-extern gchar *pmm_path;
-extern gboolean stream;
+#include "myloader_global.h"
+
 gint kill_pmm = 0;
 
 void kill_pmm_thread(){

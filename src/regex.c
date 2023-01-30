@@ -88,3 +88,11 @@ gboolean eval_regex(char * a,char * b){
   }
   return TRUE;
 }
+
+void free_regex(){
+  if (regex)
+    g_free(re);
+  g_free(filename_re);
+}
+
+

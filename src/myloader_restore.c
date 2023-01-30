@@ -29,14 +29,8 @@
 #include "myloader.h"
 #include "myloader_jobs_manager.h"
 #include "myloader_common.h"
-extern guint errors;
-extern guint commit_count;
-extern gchar *directory;
-extern gchar *compress_extension;
-extern guint rows;
+#include "myloader_global.h"
 gboolean skip_definer = FALSE;
-extern GMutex *load_data_list_mutex;
-extern GHashTable * load_data_list;
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
   if (mysql_real_query(td->thrconn, data->str, data->len)) {

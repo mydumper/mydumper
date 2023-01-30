@@ -20,14 +20,9 @@
 #include "myloader_common.h"
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
-
-extern gchar *directory;
-extern guint num_threads;
-extern int (*m_close)(void *file);
-extern int (*m_write)(FILE * file, const char * buff, int len);
+#include "myloader_global.h"
 
 GThread *stream_thread = NULL;
-
 void *process_stream();
 
 void initialize_stream (struct configuration *c){

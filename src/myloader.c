@@ -60,14 +60,18 @@
 #include "myloader_pmm_thread.h"
 #include "myloader_restore_job.h"
 #include "myloader_intermediate_queue.h"
+#include "myloader_arguments.h"
+#include "myloader_global.h"
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
 gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
+
 gboolean innodb_optimize_keys = FALSE;
 gboolean innodb_optimize_keys_per_table = FALSE;
 gboolean innodb_optimize_keys_all_tables = FALSE;
+
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 gboolean skip_triggers = FALSE;
@@ -80,9 +84,7 @@ gchar *purge_mode_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
 guint max_threads_for_index_creation=4;
-gboolean append_if_not_exist=FALSE;
 gboolean stream = FALSE;
-gboolean no_stream = FALSE;
 gboolean no_delete = FALSE;
 
 GMutex *load_data_list_mutex=NULL;
@@ -98,105 +100,6 @@ const char DIRECTORY[] = "import";
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
-gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
-  *error=NULL;
-  (void) data;
-  if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
-    innodb_optimize_keys = TRUE;
-    if (value==NULL){
-      innodb_optimize_keys_per_table = TRUE;
-      innodb_optimize_keys_all_tables = FALSE;
-      return TRUE;
-    }
-    if (g_strstr_len(value,22,AFTER_IMPORT_PER_TABLE)){
-      innodb_optimize_keys_per_table = TRUE;
-      innodb_optimize_keys_all_tables = FALSE;
-      return TRUE;
-    }
-    if (g_strstr_len(value,23,AFTER_IMPORT_ALL_TABLES)){
-      innodb_optimize_keys_all_tables = TRUE;
-      innodb_optimize_keys_per_table = FALSE;
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
-gboolean help =FALSE;
-static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
-    {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
-     "Directory of the dump to import", NULL},
-    {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stdout is used", NULL},
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
-     "An alternative database to restore into", NULL},
-
-
-    {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
-      "Expect to find resume file in backup dir and will only process those files",NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry threads_entries[] = {
-    {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-     "Maximum number of threads per table to use, default 4", NULL},
-    {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
-     "Maximum number of threads for index creation, default 4", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry execution_entries[] = {
-    {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
-     "Enable binary logging of the restore data", NULL},
-    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Creates the table without the indexes and it adds them at the end. Options: AFTER_IMPORT_PER_TABLE and AFTER_IMPORT_ALL_TABLES. Default: AFTER_IMPORT_PER_TABLE", NULL},
-    { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str,
-      "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
-    { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
-      "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
-
-    {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
-     "Drop tables if they already exist", NULL},
-
-    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
-      "Table recreation will be executed in series, one thread at a time",NULL},
-    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
-     "It will receive the stream from STDIN and creates the file in the disk before start processing. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
-//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-//      "It will not delete the files after stream has been completed", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry pmm_entries[] = {
-    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-static GOptionEntry filter_entries[] ={
-    {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
-     "Database to restore", NULL},
-    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
-     NULL},
-    {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
-     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures nor functions", NULL},
-    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
-     NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry statement_entries[] ={
-    {"rows", 'r', 0, G_OPTION_ARG_INT, &rows,
-     "Split the INSERT statement into this many rows.", NULL},
-    {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
-     "Number of queries per transaction, default 1000", NULL},
-    {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
-      "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
-      "Sets the names, use it at your own risk, default binary", NULL },
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
@@ -266,41 +169,7 @@ int main(int argc, char *argv[]) {
     db = g_strdup(source_db);
   }
 
-  context = g_option_context_new("multi-threaded MySQL loader");
-  GOptionGroup *main_group =
-      g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
-  g_option_group_add_entries(main_group, entries);
-  g_option_group_add_entries(main_group, common_entries);
-//  load_common_entries(main_group);
-  GOptionGroup *
-    connection_group = load_connection_entries(context);
-  g_option_group_add_entries(connection_group, common_connection_entries);
-  GOptionGroup *filter_group = load_regex_entries(context);
-  g_option_group_add_entries(filter_group, filter_entries);
-  g_option_group_add_entries(filter_group, common_filter_entries);
-
-
-
-  GOptionGroup *pmm_group=g_option_group_new("pmm", "PMM Options", "PMM Options", NULL, NULL);
-  g_option_group_add_entries(pmm_group, pmm_entries);
-  g_option_context_add_group(context, pmm_group);
-
-  GOptionGroup *execution_group=g_option_group_new("execution", "Execution Options", "Execution Options", NULL, NULL);
-  g_option_group_add_entries(execution_group, execution_entries);
-  g_option_context_add_group(context, execution_group);
-
-  GOptionGroup *threads_group=g_option_group_new("threads", "Threads Options", "Threads Options", NULL, NULL);
-  g_option_group_add_entries(threads_group, threads_entries);
-  g_option_context_add_group(context, threads_group);
-
-  GOptionGroup *statement_group=g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
-  g_option_group_add_entries(statement_group, statement_entries);
-  g_option_context_add_group(context, statement_group);
-
-
-  g_option_context_set_help_enabled(context, FALSE);
-
-  g_option_context_set_main_group(context, main_group);
+  context = load_contex_entries();
 
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
@@ -438,8 +307,6 @@ int main(int argc, char *argv[]) {
 //    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
 //  }
 
-//  if (!enable_binlog)
-//    mysql_query(conn, "SET SQL_LOG_BIN=0");
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() > 21)){
       g_message("Disabling redologs");

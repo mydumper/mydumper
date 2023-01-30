@@ -23,13 +23,8 @@
 #include "myloader_common.h"
 #include "myloader_restore.h"
 #include "myloader_jobs_manager.h"
+#include "myloader_global.h"
 gboolean intermediate_queue_ended_local=FALSE;
-extern gboolean innodb_optimize_keys_per_table;
-extern guint num_threads;
-extern gboolean resume;
-extern GHashTable *tbl_hash;
-extern GHashTable *db_hash;
-
 gboolean dont_wait_for_schema_create=FALSE;
 GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
 //GAsyncQueue *give_me_another_job_queue = NULL;

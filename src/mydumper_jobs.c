@@ -36,45 +36,17 @@
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
 #include "mydumper_chunks.h"
+#include "mydumper_global.h"
 
-extern guint char_chunk;
-extern gboolean load_data;
-extern gchar *where_option;
-extern gboolean success_on_1146;
-extern int detected_server;
-extern FILE * (*m_open)(const char *filename, const char *);
-extern int (*m_close)(void *file);
-extern guint errors;
-extern guint statement_size;
-extern int skip_tz;
-extern gchar *set_names_statement;
-extern GAsyncQueue *stream_queue;
-extern gboolean stream;
-extern gboolean dump_routines;
-extern gboolean dump_events;
-extern gboolean use_savepoints;
-extern gint database_counter;
-extern GMutex *ready_database_dump_mutex;
-//extern gint table_counter;
-extern guint rows_per_file;
-//extern gint non_innodb_table_counter;
-extern GMutex *ready_table_dump_mutex;
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
 gboolean ignore_generated_fields = FALSE;
-
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gboolean use_fifo = FALSE;
 gchar **exec_per_thread_cmd=NULL;
-
-extern gboolean schema_checksums;
-extern gboolean routine_checksums;
-extern gboolean use_fifo;
-
-
 gboolean skip_definer = FALSE;
-
+/*
 static GOptionEntry dump_into_file_entries[] = {
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
@@ -98,7 +70,7 @@ void load_dump_into_file_entries(GOptionGroup *main_group, GOptionGroup *exec_gr
 
   g_option_group_add_entries(main_group, dump_into_file_entries);
 }
-
+*/
 void initialize_jobs(){
   initialize_database();
   if (ignore_generated_fields)
@@ -1083,6 +1055,7 @@ void create_job_to_dump_table_list(gchar **table_list, struct configuration *con
 }
 
 void create_job_to_dump_database(struct database *database, struct configuration *conf) {
+  g_message("IN create_job_to_dump_database");
   g_atomic_int_inc(&database_counter);
   struct job *j = g_new0(struct job, 1);
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);

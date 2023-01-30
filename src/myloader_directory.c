@@ -22,10 +22,8 @@
 #include <glib/gstdio.h>
 #include "myloader_common.h"
 #include <string.h>
+#include "myloader_global.h"
 
-extern gchar *directory;
-extern guint num_threads;
-extern gboolean resume;
 void *process_directory(struct configuration *conf){
   GError *error = NULL;
   const gchar *filename = NULL;

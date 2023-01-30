@@ -29,15 +29,9 @@
 #include "common.h"
 #include <sys/wait.h>
 #include <errno.h>
+#include "mydumper_global.h"
 
-extern int errno;
-
-extern FILE * (*m_open)(const char *filename, const char *);
-extern gchar *compress_extension;
-extern GAsyncQueue *stream_queue;
-extern gboolean no_delete;
 GThread **exec_command_thread = NULL;
-extern gchar *exec_command;
 guint num_exec_threads = 4;
 
 GHashTable* pid_file_table=NULL;
@@ -97,7 +91,7 @@ void *process_exec_command(void *data){
   return NULL;
 }
 
-
+/*
 static GOptionEntry exec_entries[] = {
     {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
      "Amount of threads to use with --exec", NULL},
@@ -106,7 +100,7 @@ static GOptionEntry exec_entries[] = {
 void load_exec_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, exec_entries);
 }
-
+*/
 void initialize_exec_command(){
   stream_queue = g_async_queue_new();
   exec_command_thread=g_new(GThread * , num_exec_threads) ;

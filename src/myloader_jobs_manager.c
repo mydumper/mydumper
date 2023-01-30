@@ -33,15 +33,8 @@
 #include "myloader_control_job.h"
 #include "connection.h"
 #include <errno.h>
+#include "myloader_global.h"
 
-extern gchar *db;
-extern gchar *set_names_str;
-extern GString *set_session;
-extern guint num_threads;
-extern gboolean stream;
-extern guint max_threads_for_index_creation;
-extern gboolean innodb_optimize_keys_all_tables;
-extern int detected_server;
 static GMutex *init_mutex=NULL;
 static GMutex *index_mutex=NULL;
 guint index_threads_counter = 0;
@@ -54,8 +47,8 @@ static GMutex *sync_mutex1;
 static GMutex *sync_mutex2;
 GMutex *view_mutex;
 
-void initialize_job(gchar * purge_mode_str){
-  initialize_restore_job(purge_mode_str);
+void initialize_job(gchar * pm_str){
+  initialize_restore_job(pm_str);
   init_mutex = g_mutex_new();
   index_mutex = g_mutex_new();
   sync_threads_remaining=num_threads;

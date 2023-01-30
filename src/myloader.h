@@ -20,9 +20,6 @@
 #ifndef _src_myloader_h
 #define _src_myloader_h
 
-#define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
-#define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
-
 struct thread_data {
   struct configuration *conf;
   MYSQL *thrconn;

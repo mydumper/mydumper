@@ -36,16 +36,8 @@
 #include "tables_skiplist.h"
 #include "regex.h"
 #include <errno.h>
+#include "myloader_global.h"
 
-extern gchar *compress_extension;
-extern gchar *db;
-extern gboolean no_delete;
-extern gboolean stream;
-extern gboolean resume;
-extern char **tables;
-extern gchar *tables_skiplist_file;
-extern guint errors;
-extern gchar *directory;
 
 static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;

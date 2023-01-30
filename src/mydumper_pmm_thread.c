@@ -24,9 +24,7 @@
 #include <gio/gio.h>
 #include <mysql.h>
 #include "mydumper_start_dump.h"
-extern gchar *pmm_resolution ;
-extern gchar *pmm_path;
-extern GAsyncQueue *stream_queue;
+#include "mydumper_global.h"
 
 gint kill_pmm = 0;
 
