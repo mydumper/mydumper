@@ -29,32 +29,13 @@
 #include <glib-unix.h>
 #include "mydumper_start_dump.h"
 #include "mydumper_common.h"
+#include "mydumper_global.h"
 
 guint snapshot_interval = 60;
 guint snapshot_count= 2;
 GMainLoop *m1;
 GAsyncQueue *start_scheduled_dump;
 guint dump_number=0;
-
-extern gchar *dump_directory;
-extern gchar *output_directory;
-extern gboolean shutdown_triggered;
-
-static GOptionEntry daemon_entries[] = {
-    {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
-     "Interval between each dump snapshot (in minutes), requires --daemon, "
-     "default 60",
-     NULL},
-    {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},    
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-GOptionGroup * load_daemon_entries(GOptionContext *context){
-  GOptionGroup *daemon_group =
-      g_option_group_new("daemongroup", "Daemon Options", "daemon", NULL, NULL);
-  g_option_group_add_entries(daemon_group, daemon_entries);
-  g_option_context_add_group(context, daemon_group);
-  return daemon_group;
-}
 
 void initialize_daemon_thread(){
     pid_t pid, sid;
@@ -121,8 +102,6 @@ void *exec_thread(void *data) {
     clear_dump_directory(dump_directory);
     start_dump();
     // start_dump already closes mysql
-    // mysql_close(conn);
-    // mysql_thread_end();
 
     // Don't switch the symlink on shutdown because the dump is probably
     // incomplete.

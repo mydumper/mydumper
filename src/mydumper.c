@@ -40,6 +40,8 @@
 #include "regex.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_daemon_thread.h"
+#include "mydumper_global.h"
+#include "mydumper_arguments.h"
 const char DIRECTORY[] = "export";
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
@@ -55,42 +57,11 @@ gboolean daemon_mode = FALSE;
 gchar *disk_limits=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
-gboolean no_stream = FALSE;
+//gboolean no_stream = FALSE;
 // For daemon mode
 gboolean shutdown_triggered = FALSE;
 
 guint errors;
-
-gboolean help =FALSE;
-static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
-    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
-     "Directory to output files to", NULL},
-    {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
-     "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
-//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-//      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
-    {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stdout is used", NULL},
-    { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
-      "Set the limit to pause and resume if determines there is no enough disk space."
-      "Accepts values like: '<resume>:<pause>' in MB."
-      "For instance: 100:500 will pause when there is only 100MB free and will"
-      "resume if 500MB are available", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-static GOptionEntry filter_entries[] ={
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry daemon_entries[] = {
-    {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
-     NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-struct tm tval;
 
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
@@ -100,40 +71,14 @@ void parse_disk_limits(){
   set_disk_limits(atoi(strsplit[0]),atoi(strsplit[1]));
 }
 
-void initialize_main(){
-
-}
-
-
 int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
   g_thread_init(NULL);
   setlocale(LC_ALL, "");
+  context = load_contex_entries();
 
-  context = g_option_context_new("multi-threaded MySQL dumping");
-  GOptionGroup *main_group =
-      g_option_group_new("main", "Main Options", "Main Options", NULL, NULL);
-  g_option_group_add_entries(main_group, entries);
-  g_option_group_add_entries(main_group, common_entries);
-
-  GOptionGroup *
-    connection_group = load_connection_entries(context);
-  g_option_group_add_entries(connection_group, common_connection_entries);
-
-  GOptionGroup *filter_group = load_regex_entries(context);
-  g_option_group_add_entries(filter_group, filter_entries);
-  g_option_group_add_entries(filter_group, common_filter_entries);
-
-  load_start_dump_entries(context, filter_group);
-  GOptionGroup *
-    daemon_group = load_daemon_entries(context);
-  g_option_group_add_entries(daemon_group, daemon_entries);
-
-  g_option_context_set_help_enabled(context, FALSE);
-
-  g_option_context_set_main_group(context, main_group);
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
@@ -142,7 +87,12 @@ int main(int argc, char *argv[]) {
 
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
-    exit(0);
+    exit(EXIT_SUCCESS);
+  }
+
+  if (program_version) {
+    print_version("mydumper");
+    exit(EXIT_SUCCESS);
   }
 
   if (tmpargc > 1 ){
@@ -159,73 +109,48 @@ int main(int argc, char *argv[]) {
     }
   }
   g_strfreev(tmpargv);
+
   if (debug) {
     set_debug();
     set_verbose(3);
   } else {
     set_verbose(verbose);
   }
-  initialize_common_options(context, "mydumper");
-  g_option_context_free(context);
 
-  initialize_main();
-  initialize_start_dump();
+  g_message("MyDumper backup version: %s", VERSION);
+
+  // Loading the defaults file:
+  initialize_common_options(context, "mydumper");
+//  initialize_start_dump();
 
   hide_password(argc, argv);
   ask_password();
   
+  if (!output_directory_param){
+    GDateTime * datetime = g_date_time_new_now_local();
+    char *datetimestr;
+    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+    g_free(datetimestr);
+    g_date_time_unref(datetime);
+  }else{
+    output_directory=output_directory_param;
+  }
+
+  create_backup_dir(output_directory);
+
   if (disk_limits!=NULL){
     parse_disk_limits();
   }
 
-  if (program_version) {
-    print_version("mydumper");
-    exit(EXIT_SUCCESS);
-  }
-
-  GDateTime * datetime = g_date_time_new_now_local();
-
-  g_message("MyDumper backup version: %s", VERSION);
-
-  initialize_regex();
-  time_t t;
-  time(&t);
-  localtime_r(&t, &tval);
-
-  char *datetimestr;
-
-  if (!output_directory_param){
-    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
-    g_free(datetimestr);
-  }else{
-    output_directory=output_directory_param;
-  }
-  g_date_time_unref(datetime);
-  create_backup_dir(output_directory);
   if (daemon_mode) {
     initialize_daemon_thread();
+    run_daemon();
   }else{
     dump_directory = output_directory;
-  }
-
-  /* Give ourselves an array of tables to dump */
-  if (tables_list)
-    tables = get_table_list(tables_list);
-    
-  /* Process list of tables to omit if specified */
-  if (tables_skiplist_file)
-    read_tables_skiplist(tables_skiplist_file, &errors);
-
-  /* Validate that thread count passed on CLI is a valid count */
-  check_num_threads();
-
-  if (daemon_mode) {
-    run_daemon();
-  } else {
     start_dump();
   }
-
+  g_option_context_free(context);
   g_free(output_directory);
   g_strfreev(tables);
 

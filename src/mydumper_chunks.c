@@ -33,21 +33,15 @@
 #include "mydumper_chunks.h"
 #include "mydumper_database.h"
 #include "mydumper_jobs.h"
-extern gchar *where_option;
-extern int detected_server;
-extern guint rows_per_file;
+#include "mydumper_global.h"
+
 gboolean split_partitions = FALSE;
-extern guint num_threads;
-extern gchar *set_names_statement;
 guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
-extern gchar *rows_per_chunk;
-extern GList *innodb_table, *non_innodb_table;
-
 guint char_chunk=0;
 guint char_deep=0;
-
+/*
 static GOptionEntry chunks_entries[] = {
     {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
      "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
@@ -63,21 +57,22 @@ static GOptionEntry chunks_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
 };
 
-void initialize_chunk(){
-  give_me_another_innodb_chunk_step_queue=g_async_queue_new();
-  give_me_another_non_innodb_chunk_step_queue=g_async_queue_new();
-  
-  if (rows_per_file>0){
-    char_chunk=char_chunk==0?num_threads:char_chunk;
-    char_deep=char_deep==0?num_threads:char_deep;
-  }
-}
-
 void load_chunks_entries(GOptionContext *context){
   GOptionGroup *chunks_group=g_option_group_new("job", "Job Options", "Job Options", NULL, NULL);
   g_option_group_add_entries(chunks_group, chunks_entries);
   g_option_context_add_group(context, chunks_group);
 
+}
+*/
+
+void initialize_chunk(){
+  give_me_another_innodb_chunk_step_queue=g_async_queue_new();
+  give_me_another_non_innodb_chunk_step_queue=g_async_queue_new();
+
+  if (rows_per_file>0){
+    char_chunk=char_chunk==0?num_threads:char_chunk;
+    char_deep=char_deep==0?num_threads:char_deep;
+  }
 }
 
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){

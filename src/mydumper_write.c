@@ -48,25 +48,10 @@
 #include <zlib.h>
 #endif
 
+#include "mydumper_global.h"
+
 const gchar *insert_statement=INSERT;
-extern struct function_pointer pp;
-extern gboolean stream;
-extern GAsyncQueue *stream_queue;
-extern int (*m_write)(FILE * file, const char * buff, int len);
-extern int (*m_close)(void *file);
-extern int detected_server;
-extern int skip_tz;
-extern gchar *set_names_str;
-extern guint errors;
 guint statement_size = 1000000;
-extern gboolean success_on_1146;
-extern gchar *where_option;
-extern gboolean load_data;
-extern guint rows_per_file;
-extern int compress_output;
-extern FILE * (*m_open)(const char *filename, const char *);
-extern gboolean skip_definer;
-extern GList *innodb_table, *non_innodb_table;
 guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
@@ -85,7 +70,7 @@ gchar *fields_terminated_by_ld=NULL;
 gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
-
+/*
 static GOptionEntry write_entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
      "Split tables into chunks of this output file size. This value is in MB",
@@ -135,7 +120,6 @@ static GOptionEntry statement_entries[] = {
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-
 void load_write_entries(GOptionGroup *main_group, GOptionContext *context){
   g_option_group_add_entries(main_group, write_entries);
 
@@ -143,6 +127,7 @@ void load_write_entries(GOptionGroup *main_group, GOptionContext *context){
   g_option_group_add_entries(statement_group, statement_entries);
   g_option_context_add_group(context, statement_group);
 }
+*/
 
 void initialize_write(){
 

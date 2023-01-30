@@ -77,33 +77,9 @@
 #define MYSQL_TYPE_JSON 245
 #endif
 
+#include "mydumper_global.h"
+
 /* Program options */
-extern GKeyFile * key_file;
-extern gint database_counter;
-//extern gint table_counter;
-extern MYSQL *main_connection;
-extern GAsyncQueue *stream_queue;
-extern gchar *output_directory;
-extern gchar *output_directory_param;
-extern gchar *dump_directory;
-extern guint snapshot_count;
-extern gboolean daemon_mode;
-extern gchar *disk_limits;
-extern gboolean load_data;
-extern gboolean stream;
-extern int detected_server;
-extern gboolean no_delete;
-extern FILE * (*m_open)(const char *filename, const char *);
-extern int (*m_close)(void *file);
-extern int (*m_write)(FILE * file, const char * buff, int len);
-extern gchar *db;
-extern GString *set_session;
-extern GString *set_global;
-extern GString *set_global_back;
-extern guint num_threads;
-extern char **tables;
-extern gchar *tables_skiplist_file;
-extern gboolean no_data;
 gchar *tidb_snapshot = NULL;
 GList *no_updated_tables = NULL;
 int longquery = 60;
@@ -125,7 +101,7 @@ GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
 GList *schema_post = NULL;
 //gint non_innodb_table_counter = 0;
-gint schema_counter = 0;
+//gint schema_counter = 0;
 gint non_innodb_done = 0;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
@@ -140,102 +116,9 @@ GMutex *ready_database_dump_mutex = NULL;
 GMutex *ready_table_dump_mutex = NULL;
 
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL};
-
-// For daemon mode
-extern guint dump_number;
-extern gboolean shutdown_triggered;
-extern GAsyncQueue *start_scheduled_dump;
-
-extern guint errors;
-
 gchar *exec_command=NULL;
-extern gboolean use_savepoints;
-
-static GOptionEntry start_dump_entries[] = {
-    {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
-     "Compress output files", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry lock_entries[] = {
-    {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
-     "Snapshot to use for TiDB", NULL},
-
-    {"no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks,
-     "Do not execute the temporary shared read lock.  WARNING: This will cause "
-     "inconsistent backups",
-     NULL},
-    {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
-     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
-     NULL},
-    {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
-     "Do not use Percona backup locks", NULL},
-    {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
-     "Use LOCK TABLE for all, instead of FTWRL", NULL},
-    {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
-     "Minimize locking time on InnoDB tables.", NULL},
-    {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
-     "Transactional consistency only", NULL},
-
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-static GOptionEntry query_running_entries[] = {
-    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
-     "Retry checking for long queries, default 0 (do not retry)", NULL},
-    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
-     "Time to wait before retrying the long query check in seconds, default 60", NULL},
-    {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
-     "Set long query timer in seconds, default 60", NULL},
-    {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
-     "Kill long running queries (instead of aborting)", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry exec_entries[] = {
-    {"exec", 0, 0, G_OPTION_ARG_STRING, &exec_command,
-      "Command to execute using the file as parameter", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry pmm_entries[] = {
-    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group){
-  GOptionGroup *extra_group=g_option_group_new("extra", "Extra Options", "Extra Options", NULL, NULL);
-
-  GOptionGroup *lock_group=g_option_group_new("lock", "Lock Options", "Lock Options", NULL, NULL);
-  g_option_group_add_entries(lock_group, lock_entries);
-  g_option_context_add_group(context, lock_group);
-
-
-  GOptionGroup *pmm_group=g_option_group_new("pmm", "PMM Options", "PMM Options", NULL, NULL);
-  g_option_group_add_entries(pmm_group, pmm_entries);
-  g_option_context_add_group(context, pmm_group);
-
-  GOptionGroup *exec_group=g_option_group_new("exec", "Exec Options", "Exec Options", NULL, NULL);
-  g_option_group_add_entries(exec_group, exec_entries);
-  g_option_context_add_group(context, exec_group);
-  load_exec_entries(exec_group);
-  load_dump_into_file_entries(extra_group, exec_group);
-
-  GOptionGroup *query_running_group=g_option_group_new("query_running", "If long query running found:", "If long query running found:", NULL, NULL);
-  g_option_group_add_entries(query_running_group, query_running_entries);
-  g_option_context_add_group(context, query_running_group);
-
-  load_chunks_entries(context);
-  load_working_thread_entries(context, extra_group, filter_group);
-  load_write_entries(extra_group, context);
-  g_option_group_add_entries(extra_group, start_dump_entries);
-
-  g_option_context_add_group(context, extra_group);
-}
-
 
 void initialize_start_dump(){
-  initialize_common();
   initialize_set_names();
   initialize_working_thread();
   conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -774,6 +657,23 @@ void send_lock_all_tables(MYSQL *conn){
 }
 
 void start_dump() {
+  initialize_start_dump();
+  initialize_common();
+
+
+  /* Give ourselves an array of tables to dump */
+  if (tables_list)
+    tables = get_table_list(tables_list);
+
+  /* Process list of tables to omit if specified */
+  if (tables_skiplist_file)
+    read_tables_skiplist(tables_skiplist_file, &errors);
+
+  /* Validate that thread count passed on CLI is a valid count */
+  check_num_threads();
+
+  initialize_regex();
+
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
@@ -970,6 +870,7 @@ void start_dump() {
   ready_table_dump_mutex = g_mutex_new();
   g_mutex_lock(ready_table_dump_mutex);
 
+  g_message("conf created");
 
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) {
     create_job_to_dump_metadata(&conf, mdfile);
@@ -980,22 +881,28 @@ void start_dump() {
   if (dump_tablespaces){
     create_job_to_dump_tablespaces(&conf);
   }
-
+  g_message("create_job_to_dump_schema starting");
   if (db) {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
+      g_message("create_job_to_dump_database %s", db_items[i]);
       create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf);
-      if (!no_schemas)
+      if (!no_schemas){
+      g_message("create_job_to_dump_schema %s", db_items[i]);
         create_job_to_dump_schema(db_items[i], &conf);
+      g_message("create_job_to_dump_schema %s finish", db_items[i]);
+      }
+      g_message("create_job_to_dump_database %s finish", db_items[i]);
     }
   }
+  g_message("create_job_to_dump_schema finisshed");
   if (tables) {
     create_job_to_dump_table_list(tables, &conf);
   }
   if (( db == NULL ) && ( tables == NULL )) {
     create_job_to_dump_all_databases(&conf);
   }
-
+  g_message("End job creation");
   // End Job Creation
   GThread *chunk_builder=NULL;
   if (!no_data){
@@ -1005,6 +912,7 @@ void start_dump() {
   GThread **threads = g_new(GThread *, num_threads );
   struct thread_data *td =
       g_new(struct thread_data, num_threads * (less_locking + 1));
+  g_message("Creating workers");
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
     td[n].thread_id = n + 1;
@@ -1182,6 +1090,7 @@ void start_dump() {
   g_free(td);
   g_free(threads);
   free_databases();
+
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
@@ -1189,6 +1098,8 @@ void start_dump() {
   g_string_free(set_session, TRUE);
   g_string_free(set_global, TRUE);
   g_string_free(set_global_back, TRUE);
+
+  free_regex();
   free_common();
 }
 

@@ -23,16 +23,7 @@
 #include "myloader_control_job.h"
 #include "myloader_intermediate_queue.h"
 #include "myloader_restore.h"
-extern gchar *db;
-extern gchar *directory;
-extern gchar *source_db;
-extern gboolean no_data;
-extern gboolean skip_triggers;
-extern gboolean skip_post;
-extern guint num_threads;
-extern guint total_data_sql_files;
-extern gboolean innodb_optimize_keys_all_tables;
-extern gboolean stream;
+#include "myloader_global.h"
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;

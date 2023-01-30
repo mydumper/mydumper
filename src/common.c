@@ -499,10 +499,9 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   return FALSE;
 }
 
-void check_num_threads()
-{
+void check_num_threads(){
   if (num_threads < MIN_THREAD_COUNT) {
-    g_warning("invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
+    g_warning("Invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
   }
 }

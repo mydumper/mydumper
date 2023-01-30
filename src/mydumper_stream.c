@@ -26,12 +26,7 @@
 #include <glib.h>
 #include <stdio.h>
 #include "common.h"
-
-extern FILE * (*m_open)(const char *filename, const char *);
-extern gchar *compress_extension;
-extern GAsyncQueue *stream_queue;
-extern gboolean no_delete;
-extern gboolean no_stream;
+#include "mydumper_global.h"
 GThread *stream_thread = NULL;
 
 void *process_stream(void *data){

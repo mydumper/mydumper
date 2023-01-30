@@ -27,14 +27,7 @@
 #include "regex.h"
 #include <errno.h>
 #include "server_detect.h"
-
-extern gchar *compress_extension;
-extern gchar *dump_directory;
-extern guint errors;
-extern gchar *fields_escaped_by;
-extern int detected_server;
-extern gchar *set_names_statement;
-extern int skip_tz;
+#include "mydumper_global.h"
 
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
@@ -47,7 +40,9 @@ void initialize_common(){
 
 void free_common(){
   g_mutex_free(ref_table_mutex);
+  ref_table_mutex=NULL;
   g_hash_table_destroy(ref_table);
+  ref_table=NULL;
 }
 
 
@@ -282,14 +277,14 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
-void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length){
+void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long length){
   gchar *from=g_new(char, length);
   memcpy(from, to, length);
   gchar *ffrom=from;
   const char *end = from + length;
   for (end = from + length; from < end; from++) {
     if ( *from == neddle ){
-      *to = replace;
+      *to = repl;
       to++;
     }
     *to=*from;
@@ -298,11 +293,11 @@ void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned lo
   g_free(ffrom);
 }
 
-void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length){
+void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned long length){
   const char *end = from + length;
   for (end = from + length; from < end; from++) {
     if ( *from == neddle ){
-      *from = replace;
+      *from = repl;
       from++;
     }
   }

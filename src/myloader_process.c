@@ -33,18 +33,11 @@
 #include "myloader_jobs_manager.h"
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
+#include "myloader_global.h"
 
-extern gchar *compress_extension;
-extern gchar *db;
-extern gboolean stream;
-extern guint max_threads_per_table; 
-extern gchar *directory;
-extern guint errors;
-extern gboolean no_delete;
-extern GHashTable *tbl_hash;
-extern gboolean innodb_optimize_keys;
-extern gboolean append_if_not_exist;
-extern gboolean resume;
+
+gboolean append_if_not_exist=FALSE;
+
 struct configuration *conf;
 void initialize_process(struct configuration *c){
   conf=c;
