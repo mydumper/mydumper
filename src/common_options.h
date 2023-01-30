@@ -19,7 +19,5 @@
 #ifndef _common_options_h
 #define _common_options_h
 
-int (*m_write)(FILE * file, const char * buff, int len);
-
 #endif
 
