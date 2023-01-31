@@ -1024,19 +1024,16 @@ void start_dump() {
   GList *iter = NULL;
   // TODO: We need to create jobs for metadata.
   all_dbts = g_list_reverse(all_dbts);
-  GString *s=g_string_new("");
   for (iter = all_dbts; iter != NULL; iter = iter->next) {
-    g_string_set_size(s,0);
     dbt = (struct db_table *)iter->data;
     write_table_metadata_into_file(dbt);
-    g_string_append_printf(s,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table, dbt->rows);
+    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table, dbt->rows);
     if (dbt->schema_checksum)
-      g_string_append_printf(s,"schema_checksum = %s\n", dbt->schema_checksum);
+      fprintf(mdfile,"schema_checksum = %s\n", dbt->schema_checksum);
     if (dbt->indexes_checksum)
-      g_string_append_printf(s,"indexes_checksum = %s\n", dbt->indexes_checksum);
+      fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
-      g_string_append_printf(s,"indexes_checksum = %s\n", dbt->triggers_checksum);
-    fprintf(mdfile, s->str);
+      fprintf(mdfile,"indexes_checksum = %s\n", dbt->triggers_checksum);
 //    free_db_table(dbt);
   }
 
