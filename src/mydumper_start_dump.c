@@ -96,6 +96,7 @@ gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
+GList *all_dbts = NULL;
 GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
@@ -842,7 +843,7 @@ void start_dump() {
 
   GDateTime *datetime = g_date_time_new_now_local();
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
-  fprintf(mdfile, "Started dump at: %s\n", datetimestr);
+  fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
 
@@ -881,21 +882,15 @@ void start_dump() {
   if (dump_tablespaces){
     create_job_to_dump_tablespaces(&conf);
   }
-  g_message("create_job_to_dump_schema starting");
   if (db) {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
-      g_message("create_job_to_dump_database %s", db_items[i]);
-      create_job_to_dump_database(new_database(conn,db_items[i],TRUE), &conf);
-      if (!no_schemas){
-      g_message("create_job_to_dump_schema %s", db_items[i]);
-        create_job_to_dump_schema(db_items[i], &conf);
-      g_message("create_job_to_dump_schema %s finish", db_items[i]);
-      }
-      g_message("create_job_to_dump_database %s finish", db_items[i]);
+      struct database *this_db=new_database(conn,db_items[i],TRUE);
+      create_job_to_dump_database(this_db, &conf);
+      if (!no_schemas)
+        create_job_to_dump_schema(this_db, &conf);
     }
   }
-  g_message("create_job_to_dump_schema finisshed");
   if (tables) {
     create_job_to_dump_table_list(tables, &conf);
   }
@@ -1028,12 +1023,24 @@ void start_dump() {
 
   GList *iter = NULL;
   // TODO: We need to create jobs for metadata.
-  table_schemas = g_list_reverse(table_schemas);
-  for (iter = table_schemas; iter != NULL; iter = iter->next) {
+  all_dbts = g_list_reverse(all_dbts);
+  GString *s=g_string_new("");
+  for (iter = all_dbts; iter != NULL; iter = iter->next) {
+    g_string_set_size(s,0);
     dbt = (struct db_table *)iter->data;
     write_table_metadata_into_file(dbt);
-    free_db_table(dbt);
+    g_string_append_printf(s,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table, dbt->rows);
+    if (dbt->schema_checksum)
+      g_string_append_printf(s,"schema_checksum = %s\n", dbt->schema_checksum);
+    if (dbt->indexes_checksum)
+      g_string_append_printf(s,"indexes_checksum = %s\n", dbt->indexes_checksum);
+    if (dbt->triggers_checksum)
+      g_string_append_printf(s,"indexes_checksum = %s\n", dbt->triggers_checksum);
+    fprintf(mdfile, s->str);
+//    free_db_table(dbt);
   }
+
+  write_database_on_disk(mdfile);
 //  g_list_free(table_schemas);
 //  table_schemas=NULL;
   if (pmm){
@@ -1062,7 +1069,7 @@ void start_dump() {
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   g_date_time_unref(datetime);
-  fprintf(mdfile, "Finished dump at: %s\n", datetimestr);
+  fprintf(mdfile, "# Finished dump at: %s\n", datetimestr);
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);

@@ -3,6 +3,7 @@
 #include <gio/gio.h>
 #include <mysql.h>
 
+extern GList *all_dbts;
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
 extern GOptionEntry common_entries[];

@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include <stdio.h>
 
 struct database {
   char *name;
@@ -21,9 +22,12 @@ struct database {
   char *escaped;
   GMutex *ad_mutex;
   gboolean already_dumped;
+  gchar *schema_checksum;
+  gchar *post_checksum;
 };
 
 void initialize_database();
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
 gboolean get_database(MYSQL *conn, char *database_name, struct database ** database);
 void free_databases();
+void write_database_on_disk(FILE *mdfile);

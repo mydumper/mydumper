@@ -22,8 +22,9 @@
 #ifndef _src_mydumper_jobs_h
 #define _src_mydumper_jobs_h
 struct schema_job {
-  char *database;
-  char *table;
+  struct db_table *dbt;
+//  char *database;
+//  char *table;
   char *filename;
   char *checksum_filename;
   char *checksum_index_filename;
@@ -34,14 +35,13 @@ struct create_tablespace_job{
 };
 
 struct create_database_job {
-  char *database;
+  struct database *database;
   char *filename;
   char *checksum_filename;
 };
 
 struct view_job {
-  char *database;
-  char *table;
+  struct db_table *dbt;
   char *filename;
   char *filename2;
   char *checksum_filename;
@@ -54,10 +54,8 @@ struct schema_post_job {
 };
 
 struct table_checksum_job {
-  char *database;
-  char *table;
+  struct db_table *dbt;
   char *filename;
-//  char *schema_filename;
 };
 
 void initialize_jobs();
@@ -70,7 +68,7 @@ void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
 void create_job_to_dump_all_databases(struct configuration *conf);
 void create_job_to_dump_database(struct database *database, struct configuration *conf);
-void create_job_to_dump_schema(char *database, struct configuration *conf);
+void create_job_to_dump_schema(struct database* database, struct configuration *conf);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
