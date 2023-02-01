@@ -61,6 +61,8 @@ struct database * new_database(gchar *database){
   d->mutex=g_mutex_new();
   d->queue=g_async_queue_new();;
   d->schema_state=NOT_FOUND;
+  d->schema_checksum=NULL;
+  d->post_checksum=NULL;
   return d;
 }
 
