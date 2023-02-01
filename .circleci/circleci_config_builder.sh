@@ -112,9 +112,9 @@ filter_out="jammy_percona57|el9_percona57"
 
 for os in ${list_all_os[@]}
 do
-	for vendor in ${list_all_vendors[@]} tidb
-	do
-		echo "
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        echo "
   ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     docker:
     - image: mydumper/mydumper-builder-${all_os[${os}_0]}
@@ -165,7 +165,7 @@ commands:
 
 #for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 #do
-#	echo "
+#    echo "
 #  prepare_${all_os[${os}_0]}_percona_package:
 #    steps:
 #
@@ -216,14 +216,14 @@ echo "
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
         vendor=tidb
-	echo "
+    echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - prepare_ubuntu_percona57
 "
 
 
-	for vendor in ${list_percona_version[@]}
+    for vendor in ${list_percona_version[@]}
         do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -429,7 +429,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
-    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
+    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
     - when:
@@ -437,7 +437,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         steps:
           - compile_zstd:
              CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
-          - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
+          - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/etc/
           - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
           - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
 
@@ -472,7 +472,7 @@ done
 
 for os in focal
 do
-        for vendor in ${list_all_vendors[@]} tidb
+        for vendor in ${list_all_vendors[@]} # tidb
         do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         test: true

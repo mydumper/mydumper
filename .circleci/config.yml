@@ -656,7 +656,7 @@ commands:
     - prepare_mariadb1011
     - run: sudo yum install -y MariaDB-devel
     - run: sudo yum install -y MariaDB-compat || true
-
+    
 
   prepare_bionic_tidb:
     steps:
