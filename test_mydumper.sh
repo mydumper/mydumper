@@ -65,13 +65,12 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
   then
     # Import
     echo "Importing database: ${myloader_parameters}"
-
+    mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
     eval $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
       echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_myloader_log
@@ -97,13 +96,13 @@ test_case_stream (){
     # Export
     echo "Exporting database: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
     eval $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
     cat /tmp/stream.sql | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
       echo "Error running: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
