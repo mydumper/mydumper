@@ -337,6 +337,27 @@ void refresh_table_list(struct configuration *conf){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
+void checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
+  int errn=0;
+  gchar *checksum=fun(conn, dbt->database->name, dbt->real_table, &errn);
+  if (g_strcmp0(dbt_checksum,checksum)){
+    g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", message,dbt->database->name, dbt->table, dbt_checksum, checksum);
+  }else{
+    g_message("%s confirmed for `%s`.`%s`", message, dbt->database->name, dbt->table);
+  }
+}
+
+void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
+  int errn=0;
+  gchar *checksum=fun(conn, database, NULL, &errn);
+  if (g_strcmp0(dbt_checksum,checksum)){
+    g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s'", message, database, dbt_checksum, checksum);
+  }else{
+    g_message("%s confirmed for `%s`", message, database);
+  }
+}
+
+
 void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
   gchar *database = NULL, *table = NULL;
   get_database_table_from_file(filename,suffix,&database,&table);
@@ -430,6 +451,24 @@ void checksum_databases(struct thread_data *td) {
     }}}}}}
     e=e->next;
   }
+}
+
+void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
+  if (dbt->schema_checksum!=NULL){
+    if (dbt->is_view)
+      checksum_dbt_template(dbt, dbt->schema_checksum, conn, "View checksum", checksum_view_structure);
+    else
+      checksum_dbt_template(dbt, dbt->schema_checksum, conn, "Structure checksum", checksum_table_structure);
+  }
+  if (dbt->triggers_checksum!=NULL)
+    checksum_dbt_template(dbt, dbt->triggers_checksum, conn, "Trigger checksum", checksum_trigger_structure);
+
+  if (dbt->indexes_checksum!=NULL)
+    checksum_dbt_template(dbt, dbt->indexes_checksum, conn, "Schema index checksum", checksum_table_indexes);
+
+  if (dbt->data_checksum!=NULL)
+    checksum_dbt_template(dbt, dbt->data_checksum, conn, "Checksum", checksum_table);
+
 }
 
 gboolean has_compession_extension(const gchar *filename){

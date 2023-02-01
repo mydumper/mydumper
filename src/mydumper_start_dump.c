@@ -1033,7 +1033,7 @@ void start_dump() {
     if (dbt->indexes_checksum)
       fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
-      fprintf(mdfile,"indexes_checksum = %s\n", dbt->triggers_checksum);
+      fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
 //    free_db_table(dbt);
   }
 

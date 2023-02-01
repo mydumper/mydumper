@@ -389,6 +389,25 @@ int main(int argc, char *argv[]) {
   conf.data_queue=NULL;
   checksum_databases(&t);
 
+  GList * tl=conf.table_list;
+  while (tl != NULL){
+    checksum_dbt(tl->data, conn);
+    tl=tl->next;
+  }
+
+
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, db_hash);
+  struct database *d=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
+    if (d->schema_checksum != NULL)
+      checksum_database_template(d->name, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
+    if (d->post_checksum != NULL)
+      checksum_database_template(d->name, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
+  }
+
+
   if (stream && no_delete == FALSE && input_directory == NULL){
     // remove metadata files
     GList *e=conf.metadata_list;

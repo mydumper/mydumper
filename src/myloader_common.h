@@ -46,4 +46,6 @@ void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
 gboolean has_compession_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+void checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;
+void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) ;
 #endif
