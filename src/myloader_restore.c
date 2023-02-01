@@ -55,7 +55,7 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     if (commit_count > 1) {
       if (*query_counter == commit_count) {
         *query_counter= 0;
-        if (m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
+        if (!m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
           errors++;
           return 2;
         }
@@ -261,7 +261,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
       return r;
     }
   }
-  if (!is_schema && (commit_count > 1) && m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
+  if (!is_schema && (commit_count > 1) && !m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
                database, table, filename, mysql_error(td->thrconn));
     errors++;
