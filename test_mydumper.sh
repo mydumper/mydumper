@@ -4,7 +4,7 @@ tmp_mydumper_log="/tmp/test_mydumper.log.tmp"
 myloader_log="/tmp/test_myloader.log"
 tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
-mysqldumplog=${mydumper_stor_dir}/mysqldump.sql
+mysqldumplog=/tmp/mysqldump.sql
 myloader_stor_dir=$mydumper_stor_dir
 stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
@@ -71,6 +71,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
+      mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_myloader_log
@@ -103,6 +104,7 @@ test_case_stream (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
+      mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
