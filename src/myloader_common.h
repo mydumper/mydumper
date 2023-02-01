@@ -45,4 +45,5 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn);
 void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
 gboolean has_compession_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);
+gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 #endif

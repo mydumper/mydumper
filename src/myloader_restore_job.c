@@ -116,21 +116,23 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
               database, table);
     query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
                             database, table);
-    mysql_query(conn, query);
+    m_query(conn, query, m_critical, "Drop table failed");
+//    mysql_query(conn, query);
     g_free(query);
     query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", database,
                             table);
-    mysql_query(conn, query);
+    m_query(conn, query, m_critical, "Drop view failed");
+//    mysql_query(conn, query);
   } else if (purge_mode == TRUNCATE) {
     g_message("Truncating table `%s`.`%s`", database, table);
     query= g_strdup_printf("TRUNCATE TABLE `%s`.`%s`", database, table);
-    truncate_or_delete_failed= mysql_query(conn, query);
+    truncate_or_delete_failed= m_query(conn, query, m_warning, "TRUNCATE TABLE failed");
     if (truncate_or_delete_failed)
       g_warning("Truncate failed, we are going to try to create table or view");
   } else if (purge_mode == DELETE) {
     g_message("Deleting content of table `%s`.`%s`", database, table);
     query= g_strdup_printf("DELETE FROM `%s`.`%s`", database, table);
-    truncate_or_delete_failed= mysql_query(conn, query);
+    truncate_or_delete_failed= m_query(conn, query, m_warning, "DELETE failed");
     if (truncate_or_delete_failed)
       g_warning("Delete failed, we are going to try to create table or view");
   }
