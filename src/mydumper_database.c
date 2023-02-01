@@ -80,11 +80,12 @@ void write_database_on_disk(FILE *mdfile){
   g_hash_table_iter_init ( &iter, database_hash);
   struct database *d=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    if (d->schema_checksum != NULL || d->post_checksum != NULL){
-      fprintf(mdfile, "\n[`%s`]\n%s = %s\n%s = %s\n", d->name, 
-        d->schema_checksum!=NULL?"schema_checksum":"", d->schema_checksum!=NULL?d->schema_checksum:"", 
-        d->post_checksum  !=NULL?"post_checksum":"",   d->post_checksum  !=NULL?d->post_checksum:"");
-    }
+    if (d->schema_checksum != NULL || d->post_checksum != NULL)
+      fprintf(mdfile, "\n[`%s`]\n", d->name);
+    if (d->schema_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "schema_checksum", d->schema_checksum);
+    if (d->post_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "post_checksum", d->post_checksum);
   }
 }
 
