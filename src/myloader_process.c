@@ -446,6 +446,8 @@ gboolean process_metadata_global(){
 //  void *infile;
   gchar *path = g_build_filename(directory, "metadata", NULL);
   GKeyFile * kf = load_config_file(path);
+  if (kf==NULL)
+    g_error("Global metadata file processing was not possible");
   guint j=0;
   GError *error = NULL;
   gchar *value=NULL;
