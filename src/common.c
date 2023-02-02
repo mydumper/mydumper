@@ -522,6 +522,10 @@ void m_critical(const char *fmt, ...){
 }
 
 
-
+void m_warning(const char *fmt, ...){
+  va_list    args;
+  va_start(args, fmt);
+  g_warning(fmt,args);
+}
 
 

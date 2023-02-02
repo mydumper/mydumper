@@ -54,7 +54,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   gchar *lkey=build_dbt_key(database, table);
   struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
   if (dbt == NULL){
-    g_message("Adding new table: `%s`.`%s`", real_db_name->name, table);
+//    g_message("Adding new table: `%s`.`%s`", real_db_name->name, table);
     g_mutex_lock(conf->table_hash_mutex);
 //struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
     dbt=g_hash_table_lookup(conf->table_hash,lkey);
@@ -87,6 +87,11 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       g_hash_table_insert(conf->table_hash, lkey, dbt);
       refresh_table_list_without_table_hash_lock(conf);
 //      g_message("New db_table: %s", lkey);
+      dbt->schema_checksum=NULL;
+      dbt->triggers_checksum=NULL;
+      dbt->indexes_checksum=NULL;
+      dbt->data_checksum=NULL;
+      dbt->is_view=FALSE;
     }else{
 //      g_message("Found db_table: %s", lkey);
       g_free(table);
@@ -425,6 +430,62 @@ gboolean process_metadata_filename(char * filename){
   return TRUE;
 }
 
+
+gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
+  GError *error=NULL;
+  gchar * checksum=g_key_file_get_value(kf,group,key,&error);
+  if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
+    g_error_free(error);
+    return NULL;
+  }
+  return g_strdup(checksum);
+}
+
+
+gboolean process_metadata_global(){
+//  void *infile;
+  gchar *path = g_build_filename(directory, "metadata", NULL);
+  GKeyFile * kf = load_config_file(path);
+  if (kf==NULL)
+    g_error("Global metadata file processing was not possible");
+  guint j=0;
+  GError *error = NULL;
+  gchar *value=NULL;
+  gsize len=0;
+  gsize length=0;
+  gchar **groups=g_key_file_get_groups(kf, &length);
+  gchar** database_table=NULL;
+  struct db_table *dbt=NULL;
+  for (j=0; j<length; j++){
+    if (g_str_has_prefix(groups[j],"`")){
+      database_table= g_strsplit(groups[j]+1, "`.`", 2);
+      if (database_table[1] != NULL){
+        database_table[1][strlen(database_table[1])-1]='\0';
+        dbt=append_new_db_table(NULL, database_table[0], database_table[1],0,NULL);
+        error = NULL;
+        gchar **keys=g_key_file_get_keys(kf,groups[j], &len, &error);
+        dbt->data_checksum=get_value(kf,groups[j],"data_checksum");
+        dbt->schema_checksum=get_value(kf,groups[j],"schema_checksum");
+        dbt->indexes_checksum= get_value(kf,groups[j],"indexes_checksum");
+        dbt->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
+        value=get_value(kf,groups[j],"is_view");
+        if (value != NULL && g_strcmp0(value,"1")==0){
+          dbt->is_view=TRUE;
+        }
+        dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"Rows"),NULL, 10);
+        g_strfreev(keys);
+      }else{
+        database_table[0][strlen(database_table[0])-1]='\0';
+        struct database *database=get_db_hash(database_table[0],database_table[0]);
+        database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
+        database->post_checksum=get_value(kf,groups[j],"post_checksum");
+      }
+    }
+  }
+  return TRUE;
+}
+
+
 gboolean process_schema_view_filename(gchar *filename) {
   gchar *database=NULL, *table_name=NULL;
   struct database *real_db_name=NULL;
@@ -437,6 +498,8 @@ gboolean process_schema_view_filename(gchar *filename) {
     g_warning("File %s has been filter out(1)",filename);
     return FALSE;
   }
+  struct db_table *dbt=append_new_db_table(NULL, database, table_name,0, NULL);
+  dbt->is_view=TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, "view");
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;

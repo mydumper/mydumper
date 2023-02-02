@@ -33,16 +33,15 @@ void initialize_database(){
 }
 
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped){
-  g_message("IN new_database");
   struct database * d=g_new(struct database,1);
   d->name = g_strdup(database_name);
   d->filename = get_ref_table(d->name);
   d->escaped = escape_string(conn,d->name);
   d->already_dumped = already_dumped;
   d->ad_mutex=g_mutex_new();
-  g_message("inserting new_database");
+  d->schema_checksum=NULL;
+  d->post_checksum=NULL;
   g_hash_table_insert(database_hash, d->name,d);
-  g_message("ENDING new_database");
   return d;
 }
 
@@ -75,4 +74,18 @@ gboolean get_database(MYSQL *conn, char *database_name, struct database ** datab
   return FALSE;
 }
 
+void write_database_on_disk(FILE *mdfile){
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, database_hash);
+  struct database *d=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
+    if (d->schema_checksum != NULL || d->post_checksum != NULL)
+      fprintf(mdfile, "\n[`%s`]\n", d->name);
+    if (d->schema_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "schema_checksum", d->schema_checksum);
+    if (d->post_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "post_checksum", d->post_checksum);
+  }
+}
 

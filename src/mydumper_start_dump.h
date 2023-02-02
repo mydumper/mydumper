@@ -214,6 +214,10 @@ struct db_table {
   GAsyncQueue *chunks_queue;
   gchar *primary_key;
   gint * chunks_completed;
+  gchar *data_checksum;
+  gchar *schema_checksum;
+  gchar *indexes_checksum;
+  gchar *triggers_checksum;
 };
 
 struct schema_post {

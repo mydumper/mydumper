@@ -147,9 +147,10 @@ void create_database(struct thread_data *td, gchar *database) {
     restore_data_from_file(td, database, NULL, filenamegz, TRUE);
   } else {
     query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
-    if (mysql_query(td->thrconn, query)){
-      g_warning("Fail to create database: %s", database);
-    }
+    m_query(td->thrconn, query, m_warning, "Fail to create database: %s", database);
+//    if (mysql_query(td->thrconn, query)){
+//      g_warning("Fail to create database: %s", database);
+//    }
   }
 
   g_free(query);
@@ -310,12 +311,13 @@ int main(int argc, char *argv[]) {
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() > 21)){
       g_message("Disabling redologs");
-      mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
+      m_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", m_critical, "DISABLE INNODB REDO LOG failed");
+//      mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
     }else{
       m_error("Disabling redologs is not supported for version %d.%d", get_major(), get_secondary());
     }
   }
-  mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
+//  mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
@@ -381,11 +383,30 @@ int main(int argc, char *argv[]) {
   conf.ready=NULL;
 
   if (disable_redo_log)
-    mysql_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG");
+    m_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
 
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
   checksum_databases(&t);
+
+  GList * tl=conf.table_list;
+  while (tl != NULL){
+    checksum_dbt(tl->data, conn);
+    tl=tl->next;
+  }
+
+
+  GHashTableIter iter;
+  gchar * lkey;
+  g_hash_table_iter_init ( &iter, db_hash);
+  struct database *d=NULL;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
+    if (d->schema_checksum != NULL)
+      checksum_database_template(d->name, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
+    if (d->post_checksum != NULL)
+      checksum_database_template(d->name, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
+  }
+
 
   if (stream && no_delete == FALSE && input_directory == NULL){
     // remove metadata files

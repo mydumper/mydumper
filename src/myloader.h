@@ -58,6 +58,8 @@ struct database {
   enum schema_status schema_state;
   GAsyncQueue *queue;
   GMutex * mutex;
+  gchar *schema_checksum;
+  gchar *post_checksum;
 };
 
 struct db_table {
@@ -83,6 +85,11 @@ struct db_table {
   GDateTime * finish_time;
 //  gboolean completed;
   gint remaining_jobs;
+  gchar *data_checksum;
+  gchar *schema_checksum;
+  gchar *indexes_checksum;
+  gchar *triggers_checksum;
+  gboolean is_view;
 };
 
 enum file_type { 

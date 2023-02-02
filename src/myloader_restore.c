@@ -55,11 +55,11 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     if (commit_count > 1) {
       if (*query_counter == commit_count) {
         *query_counter= 0;
-        if (mysql_query(td->thrconn, "COMMIT")) {
+        if (!m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
           errors++;
           return 2;
         }
-        mysql_query(td->thrconn, "START TRANSACTION");
+        m_query(td->thrconn, "START TRANSACTION", m_warning, "START TRANSACTION failed");
       }
     }
   }
@@ -217,7 +217,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     return 1;
   }
   if (!is_schema && (commit_count > 1) )
-    mysql_query(td->thrconn, "START TRANSACTION");
+    m_query(td->thrconn, "START TRANSACTION", m_warning, "START TRANSACTION failed");
   guint tr=0;
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof, &line)) {
@@ -261,7 +261,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
       return r;
     }
   }
-  if (!is_schema && (commit_count > 1) && mysql_query(td->thrconn, "COMMIT")) {
+  if (!is_schema && (commit_count > 1) && !m_query(td->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
     g_critical("Error committing data for %s.%s from file %s: %s",
                database, table, filename, mysql_error(td->thrconn));
     errors++;

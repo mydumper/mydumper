@@ -112,6 +112,7 @@ enum file_type process_filename(char *filename){
         intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
         break;
       case METADATA_GLOBAL:
+        process_metadata_global();
         break;
       case METADATA_TABLE:
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
