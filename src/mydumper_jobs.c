@@ -120,7 +120,7 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
     checksum = g_strdup("0");
 // TODO: This will be removed on future releases
   (void) filename;
-  write_char_checksum_into_file(database->name, table, filename, checksum);
+//  write_char_checksum_into_file(database->name, table, filename, checksum);
   return checksum;
 }
 
