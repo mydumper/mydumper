@@ -472,6 +472,7 @@ gboolean process_metadata_global(){
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
+        dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"Rows"),NULL, 10);
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';
