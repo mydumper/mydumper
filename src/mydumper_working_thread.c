@@ -725,7 +725,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
       if (isms)
         fprintf(file, "\n\tConnection name: %s", connname);
-      fprintf(file, "\n\aster_host = %s\nrelay_master_log_file = %s\nexec_master_log_pos = %s\n%s = %s\n\n",
+      fprintf(file, "\nmaster_host = %s\nrelay_master_log_file = %s\nexec_master_log_pos = %s\n%s = %s\n\n",
               slavehost, slavelog, slavepos, gtid_title, slavegtid);
       g_message("Written slave status");
     }
