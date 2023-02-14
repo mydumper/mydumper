@@ -165,7 +165,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
     if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strstr_len(data->str,13,"CREATE TABLE ")){
-          gchar** create_table= g_strsplit(data->str, "`", 3);
+          gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
           dbt->real_table=g_strdup(create_table[1]);
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
             g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
@@ -315,7 +315,7 @@ gchar * get_database_name_from_content(const gchar *filename){
     if (read_data(infile, is_compressed, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_str_has_prefix(data->str,"CREATE ")){
-          gchar** create= g_strsplit(data->str, "`", 3);
+          gchar** create= g_strsplit(data->str, identifier_quote_character_str, 3);
           real_database=g_strdup(create[1]);
           g_strfreev(create);
           break;
@@ -456,9 +456,10 @@ gboolean process_metadata_global(){
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
+  gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
   for (j=0; j<length; j++){
     if (g_str_has_prefix(groups[j],"`")){
-      database_table= g_strsplit(groups[j]+1, "`.`", 2);
+      database_table= g_strsplit(groups[j]+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         dbt=append_new_db_table(NULL, database_table[0], database_table[1],0,NULL);
@@ -482,6 +483,7 @@ gboolean process_metadata_global(){
       }
     }
   }
+  g_free(delimiter);
   return TRUE;
 }
 

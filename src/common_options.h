@@ -16,8 +16,9 @@
 */
 
 
-#ifndef _common_options_h
-#define _common_options_h
 
-#endif
+
+#define BACKTICK '`'
+#define DOUBLE_QUOTE '"'
+
 

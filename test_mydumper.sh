@@ -128,7 +128,7 @@ full_test(){
 
   echo "Import testing database"
   DATABASE=myd_test
-  mysql --no-defaults -f -h 127.0.0.1 -u root < mydumper_testing_db.sql
+  mysql --no-defaults -f -h 127.0.0.1 -u root < test/mydumper_testing_db.sql
 
 
   # export -- import
@@ -165,6 +165,11 @@ full_test(){
     $test -c -r 10000 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
     $test -c -F 10 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+
+    prevconfigfile=$configfile
+    configfile="test/mydumper.cnf"
+    $test -r 1000 -G ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    configfile=$prevconfigfile
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
