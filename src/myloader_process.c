@@ -70,7 +70,7 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
       dbt->restore_job_list = NULL;
 //      dbt->queue=g_async_queue_new();
       dbt->current_threads=0;
-      dbt->max_threads=max_threads_per_table;
+      dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
       dbt->mutex=g_mutex_new();
       dbt->indexes=alter_table_statement;
       dbt->start_data_time=NULL;
