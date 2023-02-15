@@ -1,0 +1,11 @@
+[mydumper]
+identifier-quote-character=DOUBLE_QUOTE
+fields-enclosed-by='
+[mydumper_session_variables]
+sql_mode='ANSI_QUOTES';
+
+[myloader]
+identifier-quote-character=DOUBLE_QUOTE
+
+[myloader_session_variables]
+sql_mode='ANSI_QUOTES';

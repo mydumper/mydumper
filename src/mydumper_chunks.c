@@ -103,7 +103,7 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
   cs->char_step.previous=NULL;
 //  cs->char_step.list = list; 
 
-  cs->char_step.prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR",field, field, cs->char_step.cmin_escaped);
+  cs->char_step.prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, cs->char_step.cmin_escaped);
 
 //  g_message("new_char_step: min: %s | max: %s ", cs->char_step.cmin_escaped, cs->char_step.cmax_escaped);
 

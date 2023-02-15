@@ -63,11 +63,37 @@ gboolean no_stream = FALSE;
 gchar *set_names_str=NULL;
 gchar *set_names_statement=NULL;
 
+gchar identifier_quote_character=BACKTICK;
+gchar * identifier_quote_character_str=NULL;
+
+gboolean identifier_quote_character_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (strlen(option_name) == 28 && g_strstr_len(option_name,28,"--identifier-quote-character")){
+    if (strlen(value) == 8 && g_strstr_len(value,8,"BACKTICK")){
+      identifier_quote_character=BACKTICK;
+      return TRUE;
+    }
+    if (strlen(value) == 12 && g_strstr_len(value,12,"DOUBLE_QUOTE")){
+      identifier_quote_character=DOUBLE_QUOTE;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, default 4", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
      "Show the program version and exit", NULL},
+    {"identifier-quote-character", 0, 0, G_OPTION_ARG_CALLBACK, &identifier_quote_character_arguments_callback, 
+     "This set the identifier quote character that is used to INSERT statements only"
+     "on mydumper and to split statement on myloader. Use SQL_MODE to change the"
+     "CREATE TABLE statements"
+     "Posible values are: BACKTICK and DOUBLE_QUOTE. Default: BACKTICK", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
      "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, "
      "default 2",

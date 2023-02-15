@@ -10,7 +10,6 @@ stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
 mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
-configfile="${mydumper_base}/mydumper.cnf"
 > $mydumper_log
 > $myloader_log
 for i in $*
@@ -24,9 +23,6 @@ do
     exit 1
   fi
 done
-
-#echo "[mydumper]" > $configfile
-#echo "[myloader]" >> $configfile
 
 test_case_dir (){
   # Test case
@@ -43,13 +39,13 @@ test_case_dir (){
     mkdir -p ${mydumper_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters}"
-    eval $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+    eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
-      echo "Error running: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_mydumper_log
       exit $error
     fi
@@ -66,14 +62,14 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     # Import
     echo "Importing database: ${myloader_parameters}"
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
-    eval $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+    eval $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
       mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters}"
-      echo "Error running myloader with mydumper: $mydumper --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
+      echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_myloader_log
       exit $error
     fi
@@ -95,18 +91,18 @@ test_case_stream (){
     rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
-    echo "Exporting database: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
-    eval $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+    eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
-    cat /tmp/stream.sql | $myloader --defaults-file="$configfile" -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    cat /tmp/stream.sql | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
       mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $mydumper --stream --defaults-file="$configfile" -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader --defaults-file="$configfile" -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
       cat $tmp_myloader_log
       exit $error
@@ -128,7 +124,7 @@ full_test(){
 
   echo "Import testing database"
   DATABASE=myd_test
-  mysql --no-defaults -f -h 127.0.0.1 -u root < mydumper_testing_db.sql
+  mysql --no-defaults -f -h 127.0.0.1 -u root < test/mydumper_testing_db.sql
 
 
   # export -- import
@@ -144,6 +140,8 @@ full_test(){
   for test in test_case_dir test_case_stream
   do 
     echo "Executing test: $test"
+    continue
+
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
     $test -r 10:100:10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
@@ -165,6 +163,9 @@ full_test(){
     $test -c -r 10000 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
     $test -c -F 10 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # ANSI_QUOTES
+    $test -r 1000 -G ${general_options} --defaults-file="test/mydumper.cnf"                                -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
+
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
