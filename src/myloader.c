@@ -274,6 +274,7 @@ int main(int argc, char *argv[]) {
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
   initialize_common();
+  initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"myloader")?defaults_file:NULL);
   initialize_regex();
   GError *serror;
   GThread *sthread =
@@ -303,6 +304,7 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
+  identifier_quote_character_str=g_strdup_printf("%c",identifier_quote_character);
   // TODO: we need to set the variables in the initilize session varibles, not from:
 //  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
 //    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));

@@ -146,10 +146,12 @@ void initialize_write(){
     if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
     if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
   }
-  if (load_data){
+//  if (load_data){
     if (!fields_enclosed_by_ld){
-      g_free(fields_enclosed_by);
-      fields_enclosed_by=g_strdup("");
+      if (load_data){
+        g_free(fields_enclosed_by);
+        fields_enclosed_by=g_strdup("");
+      }
       fields_enclosed_by_ld=fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
       m_critical("--fields-enclosed-by must be a single character");
@@ -157,6 +159,7 @@ void initialize_write(){
       fields_enclosed_by=fields_enclosed_by_ld;
     }
 
+  if (load_data){
     if (fields_escaped_by){
       if(strlen(fields_escaped_by)>1){
         m_critical("--fields-escaped-by must be a single character");
@@ -167,6 +170,7 @@ void initialize_write(){
       fields_escaped_by=g_strdup("\\\\");
     }
   }
+
 
   if (fields_terminated_by_ld==NULL){
     if (load_data){
@@ -262,19 +266,17 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
 void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
   dbt->insert_statement=g_string_new(insert_statement);
-  g_string_append(dbt->insert_statement, " INTO `");
+  g_string_append(dbt->insert_statement, " INTO ");
+  g_string_append_c(dbt->insert_statement, identifier_quote_character);
   g_string_append(dbt->insert_statement, dbt->table);
+  g_string_append_c(dbt->insert_statement, identifier_quote_character);
 
   if (dbt->complete_insert) {
-//    g_string_printf(statement, "%s INTO `%s` (", insert_statement, table);
-    g_string_append(dbt->insert_statement, "` (");
+    g_string_append(dbt->insert_statement, " (");
     append_columns(dbt->insert_statement,fields,num_fields);
-
-    g_string_append(dbt->insert_statement, ") VALUES");
-  } else {
-//    g_string_printf(statement, "%s INTO `%s` VALUES", insert_statement, table);
-    g_string_append(dbt->insert_statement, "` VALUES");
-  }
+    g_string_append(dbt->insert_statement, ")");
+  } 
+  g_string_append(dbt->insert_statement, " VALUES");
 }
 
 gboolean real_write_data(FILE *file, float *filesize, GString *data) {

@@ -21,6 +21,7 @@
 
 
 //void configure_connection(MYSQL *conn, const char *name);
+void initialize_connection(char *cdf);
 void m_connect(MYSQL *conn, const gchar *app, gchar *schema);
 void hide_password(int argc, char *argv[]);
 void ask_password();

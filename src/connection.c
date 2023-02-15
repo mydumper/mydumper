@@ -48,7 +48,7 @@ GOptionEntry connection_entries[] = {
 
 
 
-extern char *defaults_file;
+//extern char *connection_defaults_file;
 #ifdef WITH_SSL
 extern char *key;
 extern char *cert;
@@ -62,6 +62,13 @@ extern gchar *ssl_mode;
 extern guint compress_protocol;
 extern gchar *set_names_statement;
 
+char *connection_defaults_file=NULL;
+
+void initialize_connection(char *cdf){
+  connection_defaults_file=cdf;
+}
+
+
 GOptionGroup * load_connection_entries(GOptionContext *context){
 //  g_option_group_add_entries(main_group, connection_entries);
   GOptionGroup *connection_group =
@@ -72,8 +79,8 @@ GOptionGroup * load_connection_entries(GOptionContext *context){
 }
 
 void configure_connection(MYSQL *conn, const char *name) {
-  if (defaults_file != NULL) {
-    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, defaults_file);
+  if (connection_defaults_file != NULL) {
+    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
   }
   mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
   mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);

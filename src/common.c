@@ -126,13 +126,17 @@ GKeyFile * load_config_file(gchar * config_file){
 }
 
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group){
+  if (!g_key_file_has_group(key_file,group)){
+    g_warning("Section %s not found", group);
+    return;
+  }
   gsize len=0;
   GError *error = NULL;
   gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
   gsize i=0;
   GSList *list = NULL;
   if (error != NULL){
-    g_warning("loading %s: %s",group,error->message);
+    g_error("Loading configuration on section %s: %s",group,error->message);
   }else{
     // Transform the key-value pair to parameters option that the parsing will understand
     for (i=0; i < len; i++){

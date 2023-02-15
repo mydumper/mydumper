@@ -3,6 +3,7 @@
 #include <gio/gio.h>
 #include <mysql.h>
 
+extern gchar *defaults_file;
 extern GList *all_dbts;
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
@@ -121,3 +122,5 @@ extern int skip_tz;
 extern MYSQL *main_connection;
 extern struct configuration_per_table conf_per_table;
 extern struct function_pointer pp;
+extern gchar identifier_quote_character;
+
