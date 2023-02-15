@@ -430,18 +430,6 @@ gboolean process_metadata_filename(char * filename){
   return TRUE;
 }
 
-
-gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
-  GError *error=NULL;
-  gchar * checksum=g_key_file_get_value(kf,group,key,&error);
-  if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
-    g_error_free(error);
-    return NULL;
-  }
-  return g_strdup(checksum);
-}
-
-
 gboolean process_metadata_global(){
 //  void *infile;
   gchar *path = g_build_filename(directory, "metadata", NULL);
@@ -456,6 +444,7 @@ gboolean process_metadata_global(){
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
+  GString *change_master_statement=g_string_new("");
   for (j=0; j<length; j++){
     if (g_str_has_prefix(groups[j],"`")){
       database_table= g_strsplit(groups[j]+1, "`.`", 2);
@@ -480,8 +469,30 @@ gboolean process_metadata_global(){
         database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
         database->post_checksum=get_value(kf,groups[j],"post_checksum");
       }
+    }else if (g_str_has_prefix(groups[j],"replication")){
+      g_string_append(change_master_statement,"CHANGE MASTER TO ");
+      gchar** group_name= g_strsplit(groups[j], ".", 2);
+      gchar* channel_name=group_name[1];
+      change_master(kf, groups[j], change_master_statement);
+      if (channel_name!=NULL){
+        g_string_append(change_master_statement,"FOR CHANNEL ");
+        g_string_append(change_master_statement,channel_name);
+      }
+      g_string_append(change_master_statement,";\n");
+    }else if (g_strstr_len(groups[j],6,"master")){
+      g_string_append(change_master_statement,"CHANGE MASTER TO ");
+      gchar** group_name= g_strsplit(groups[j], ".", 2);
+      gchar* channel_name=group_name[1];
+      change_master(kf, groups[j], change_master_statement);
+      if (channel_name!=NULL){
+        g_string_append(change_master_statement,"FOR CHANNEL ");
+        g_string_append(change_master_statement,channel_name);
+      }
+      g_string_append(change_master_statement,";\n");
     }
+
   }
+  g_message("Statement: %s", change_master_statement->str);
   return TRUE;
 }
 

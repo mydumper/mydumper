@@ -42,10 +42,48 @@
 static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
+GList *change_master_parameter_str_list = NULL;
+GList *change_master_parameter_int_list = NULL;
+
 
 void initialize_common(){
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  change_master_parameter_str_list=g_list_prepend(change_master_parameter_str_list, g_strdup("MASTER_HOST"));
+}
+
+
+gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
+  GError *error=NULL;
+  gchar * val=g_key_file_get_value(kf,group,key,&error);
+  if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
+    g_error_free(error);
+    return NULL;
+  }
+  return g_strdup(val);
+}
+
+//g_list_free_full(change_master_parameter_list, g_free);
+
+void change_master(GKeyFile * kf,gchar *group, GString *s){
+  (void)s;
+  gchar *val=NULL;
+  GList *l=NULL;
+  for (l = change_master_parameter_str_list; l != NULL; l = l->next) {
+    val=get_value(kf,group,l->data);
+    if (val != NULL) {
+      g_string_append_printf(s, "%s = '%s', ", (gchar *) l->data, val );
+    }
+  }
+
+  for (l = change_master_parameter_int_list; l != NULL; l = l->next) {
+    val=get_value(kf,group,l->data);
+    if (val != NULL) {
+      g_string_append_printf(s, "%s = %s, ", (gchar *) l->data, val);
+    }
+  }
+  g_string_set_size(s, s->len-2);
+  g_string_append_c(s,' ');
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){

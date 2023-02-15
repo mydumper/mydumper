@@ -52,6 +52,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
+  if (g_strstr_len(option_name,6,"--role")){
+
+  }
   return FALSE;
 }
 
