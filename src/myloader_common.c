@@ -43,9 +43,80 @@ static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
 
+
 void initialize_common(){
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+}
+
+
+gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
+  GError *error=NULL;
+  gchar * val=g_key_file_get_value(kf,group,key,&error);
+  if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
+    g_error_free(error);
+    return NULL;
+  }
+  return g_strdup(val);
+}
+
+//g_list_free_full(change_master_parameter_list, g_free);
+
+void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
+  gchar *val=NULL;
+  guint i=0;
+  gsize len=0;
+  GError *error = NULL;
+  GString *s=g_string_new("");
+  gchar** group_name= g_strsplit(group, ".", 2);
+  gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
+  gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
+  guint exec_change_master=0, exec_reset_slave=0, exec_start_slave=0;
+  g_string_append(s,"CHANGE MASTER TO ");
+  for (i=0; i < len; i++){
+    if (!g_strcmp0(keys[i], "myloader_exec_reset_slave")){
+      exec_reset_slave=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
+    } else if (!g_strcmp0(keys[i], "myloader_exec_change_master")){
+      if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
+        exec_change_master=1;
+    } else if (!g_strcmp0(keys[i], "myloader_exec_start_slave")){
+      if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
+        exec_start_slave=1;
+    } else if(!g_ascii_strcasecmp(keys[i], "channel_name")){
+      channel_name=g_key_file_get_value(kf,group,keys[i],&error);
+    } else {
+      val=g_key_file_get_value(kf,group,keys[i],&error);
+      if (val != NULL)
+        g_string_append_printf(s, "%s = %s, ", (gchar *) keys[i], val);
+    }
+  }
+  g_strfreev(keys);
+  g_string_set_size(s, s->len-2);
+  g_string_append_c(s,' ');
+  g_string_append(s,"FOR CHANNEL ");
+  if (channel_name==NULL){
+    g_string_append(s,"''");
+  }else{
+    g_string_append(s,channel_name);
+  }
+  g_string_append(s,";\n");
+
+  if (exec_change_master){
+    if (exec_reset_slave){
+      g_string_append(output_statement,"STOP SLAVE ;\nRESET SLAVE ");
+      if (exec_reset_slave>1)
+        g_string_append(output_statement,"ALL ");
+      if (channel_name!=NULL)
+        g_string_append_printf(output_statement,"FOR CHANNEL %s ;\n", channel_name);
+      g_string_append(output_statement,";\n");
+    }
+
+    g_string_append(output_statement,s->str);
+
+    if (exec_start_slave)
+      g_string_append(output_statement,"START SLAVE;\n");
+    g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
+  }
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){

@@ -512,8 +512,10 @@ void check_num_threads(){
 
 void m_error(const char *fmt, ...){
   va_list    args;
+  va_start(args, fmt);
+  gchar *c=g_strdup_vprintf(fmt,args);
   execute_gstring(main_connection, set_global_back); 
-  g_error(fmt, args);
+  g_error("%s", c);
 }
 
 void m_critical(const char *fmt, ...){
@@ -529,7 +531,9 @@ void m_critical(const char *fmt, ...){
 void m_warning(const char *fmt, ...){
   va_list    args;
   va_start(args, fmt);
-  g_warning(fmt,args);
+  gchar *c=g_strdup_vprintf(fmt,args);
+  g_warning("%s",c);
+  g_free(c);
 }
 
 

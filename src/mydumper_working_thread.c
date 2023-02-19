@@ -671,7 +671,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   if (masterlog) {
-    fprintf(file, "[master]\nFile = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n\n",
+    fprintf(file, "[master]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\nFile = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n\n",
             masterlog, masterpos, mastergtid);
     g_message("Written master status");
   }
@@ -692,7 +692,10 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 
   guint slave_count=0;
   slave = mysql_store_result(conn);
+  GString *replication_section_str = g_string_sized_new(100);
+
   while (slave && (row = mysql_fetch_row(slave))) {
+    g_string_set_size(replication_section_str,0);
     fields = mysql_fetch_fields(slave);
     connname=NULL;
     slavepos=NULL;
@@ -719,14 +722,20 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       } else if (!strcasecmp("Channel_Name", fields[i].name) && strlen(row[i]) > 1) {
         channel_name = row[i];
       }
+      g_string_append_printf(replication_section_str,"# %s = ", fields[i].name);
+      (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT )  ?
+      g_string_append_printf(replication_section_str,"'%s'\n", row[i]):
+      g_string_append_printf(replication_section_str,"%s\n", row[i]);
     }
     if (slavehost) {
       slave_count++;
       fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
       if (isms)
         fprintf(file, "\n\tConnection name: %s", connname);
-      fprintf(file, "\nmaster_host = %s\nrelay_master_log_file = %s\nexec_master_log_pos = %s\n%s = %s\n\n",
-              slavehost, slavelog, slavepos, gtid_title, slavegtid);
+      fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
+              slavelog, slavepos, gtid_title, slavegtid);
+      fprintf(file,"%s",replication_section_str->str);
+      fprintf(file,"# myloader_exec_reset_slave = 0 # 1 means execute the command\n# myloader_exec_change_master = 0 # 1 means execute the command\n# myloader_exec_start_slave = 0 # 1 means execute the command\n");
       g_message("Written slave status");
     }
   }

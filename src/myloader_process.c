@@ -35,7 +35,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
 
-
+GString *change_master_statement=NULL;
 gboolean append_if_not_exist=FALSE;
 
 struct configuration *conf;
@@ -430,18 +430,6 @@ gboolean process_metadata_filename(char * filename){
   return TRUE;
 }
 
-
-gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
-  GError *error=NULL;
-  gchar * checksum=g_key_file_get_value(kf,group,key,&error);
-  if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
-    g_error_free(error);
-    return NULL;
-  }
-  return g_strdup(checksum);
-}
-
-
 gboolean process_metadata_global(){
 //  void *infile;
   gchar *path = g_build_filename(directory, "metadata", NULL);
@@ -456,6 +444,7 @@ gboolean process_metadata_global(){
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
+  change_master_statement=g_string_new("");
   gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
   for (j=0; j<length; j++){
     if (g_str_has_prefix(groups[j],"`")){
@@ -481,6 +470,10 @@ gboolean process_metadata_global(){
         database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
         database->post_checksum=get_value(kf,groups[j],"post_checksum");
       }
+    }else if (g_str_has_prefix(groups[j],"replication")){
+      change_master(kf, groups[j], change_master_statement);
+    }else if (g_strstr_len(groups[j],6,"master")){
+      change_master(kf, groups[j], change_master_statement);
     }
   }
   g_free(delimiter);

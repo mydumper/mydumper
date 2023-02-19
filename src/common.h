@@ -17,6 +17,7 @@
 
 #include <mysql.h>
 #include <stdio.h>
+#define MYLOADER_MODE "myloader_mode"
 
 #ifndef _src_common_h
 #define _src_common_h
