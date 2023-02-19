@@ -35,7 +35,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
 
-
+GString *change_master_statement=NULL;
 gboolean append_if_not_exist=FALSE;
 
 struct configuration *conf;
@@ -444,7 +444,7 @@ gboolean process_metadata_global(){
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
-  GString *change_master_statement=g_string_new("");
+  change_master_statement=g_string_new("");
   gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
   for (j=0; j<length; j++){
     if (g_str_has_prefix(groups[j],"`")){
@@ -471,29 +471,11 @@ gboolean process_metadata_global(){
         database->post_checksum=get_value(kf,groups[j],"post_checksum");
       }
     }else if (g_str_has_prefix(groups[j],"replication")){
-      g_string_append(change_master_statement,"CHANGE MASTER TO ");
-      gchar** group_name= g_strsplit(groups[j], ".", 2);
-      gchar* channel_name=group_name[1];
       change_master(kf, groups[j], change_master_statement);
-      if (channel_name!=NULL){
-        g_string_append(change_master_statement,"FOR CHANNEL ");
-        g_string_append(change_master_statement,channel_name);
-      }
-      g_string_append(change_master_statement,";\n");
     }else if (g_strstr_len(groups[j],6,"master")){
-      g_string_append(change_master_statement,"CHANGE MASTER TO ");
-      gchar** group_name= g_strsplit(groups[j], ".", 2);
-      gchar* channel_name=group_name[1];
       change_master(kf, groups[j], change_master_statement);
-      if (channel_name!=NULL){
-        g_string_append(change_master_statement,"FOR CHANNEL ");
-        g_string_append(change_master_statement,channel_name);
-      }
-      g_string_append(change_master_statement,";\n");
     }
-
   }
-  g_message("Statement: %s", change_master_statement->str);
   g_free(delimiter);
   return TRUE;
 }
