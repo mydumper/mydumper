@@ -15,12 +15,39 @@
 if(UNIX) 
     set(MYSQL_CONFIG_PREFER_PATH "$ENV{MYSQL_HOME}/bin" CACHE FILEPATH
         "preferred path to MySQL (mysql_config)")
-    find_program(MYSQL_CONFIG mysql_config
+    find_program(MARIADB_CONFIG mariadb_config
         ${MYSQL_CONFIG_PREFER_PATH}
+        /usr/local/mariadb/bin/
         /usr/local/mysql/bin/
         /usr/local/bin/
         /usr/bin/
         )
+
+    if(MARIADB_CONFIG)
+        message(STATUS "Found mariadb_config: ${MARIADB_CONFIG}")
+        set(MYSQL_CONFIG ${MARIADB_CONFIG})
+        exec_program(${MARIADB_CONFIG}
+            ARGS --tlsinfo
+            OUTPUT_VARIABLE MY_TMP)
+        string(STRIP ${MY_TMP} MY_TMP)
+        if (NOT ${MY_TMP} STREQUAL "")
+            set(MARIADB_SSL TRUE CACHE INTERNAL "libmariadb ssl")
+        else()
+            set(MARIADB_SSL FALSE CACHE INTERNAL "libmariadb ssl")
+        endif()
+        set(MARIADB_FOUND TRUE CACHE INTERNAL "libmariadb found")
+    else()
+        set(MARIADB_FOUND FALSE CACHE INTERNAL "libmariadb found")
+    endif()
+
+    if(NOT MYSQL_CONFIG)
+        find_program(MYSQL_CONFIG mysql_config
+            ${MYSQL_CONFIG_PREFER_PATH}
+            /usr/local/mysql/bin/
+            /usr/local/bin/
+            /usr/bin/
+            )
+    endif()
     
     if(MYSQL_CONFIG) 
         message(STATUS "Using mysql-config: ${MYSQL_CONFIG}")
