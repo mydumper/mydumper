@@ -326,6 +326,22 @@ void last_wait_control_job_to_shutdown(){
    }
 }
 
+void wake_threads_waiting(struct configuration *conf, guint *threads_waiting){
+  struct restore_job *rj=NULL;
+  if (*threads_waiting>0){
+    gboolean giveup=FALSE;
+    while ( 0<*threads_waiting && !giveup){
+      giveup = give_me_next_data_job_conf(conf, TRUE, &rj);
+      if (rj != NULL){
+//          g_message("DATA pushing");
+        *threads_waiting=*threads_waiting - 1;
+        g_async_queue_push(data_queue,rj);
+        g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
+      }
+    }
+  }
+}
+
 void *control_job_thread(struct configuration *conf){
   enum file_type ft;
   struct restore_job *rj=NULL;
@@ -350,16 +366,7 @@ void *control_job_thread(struct configuration *conf){
       g_async_queue_push(here_is_your_job, GINT_TO_POINTER(ft));
       break;
     case DATA:
-
-      for (; 0<threads_waiting; threads_waiting--){
-        giveup = give_me_next_data_job_conf(conf, TRUE, &rj);
-        if (rj != NULL){
-//          g_message("DATA pushing");
-          g_async_queue_push(data_queue,rj);
-          g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
-        }
-      }
-
+      wake_threads_waiting(conf, &threads_waiting);
       break;
     case THREAD:
 //      g_message("Thread is asking for job");
@@ -414,20 +421,7 @@ void *control_job_thread(struct configuration *conf){
 //      g_message("INTERMEDIATE_ENDED ACA");
       enqueue_indexes_if_possible(conf);
 //      g_message("INTERMEDIATE_ENDED FINISH Waiting threads begin");
-      for (; 0<threads_waiting; threads_waiting--){
-//        g_message("INTERMEDIATE_ENDED FINISH in threads_wainintg %d", threads_waiting);
-        giveup=give_any_data_job_conf(conf, &rj);
-        if (rj != NULL){
-          g_async_queue_push(data_queue,rj);
-          g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
-        }else{
-          if (giveup)
-            g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
-          else
-            g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
-        }
-        
-      }
+      wake_threads_waiting(conf, &threads_waiting);        
 //      g_message("INTERMEDIATE_ENDED FINISH Waiting threads ");
       intermediate_queue_ended_local = TRUE;
       break;
