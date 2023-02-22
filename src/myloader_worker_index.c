@@ -67,13 +67,13 @@ void create_index_shutdown_job(struct configuration *conf){
   }
 }
 
-static GMutex *init_mutex=NULL;
+static GMutex *init_connection_mutex=NULL;
 
 void *worker_index_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_mutex);
+  g_mutex_lock(init_connection_mutex);
   td->thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_mutex);
+  g_mutex_unlock(init_connection_mutex);
   td->current_database=NULL;
 
   m_connect(td->thrconn, "myloader", NULL);
@@ -106,7 +106,7 @@ struct thread_data *index_td = NULL;
 
 void initialize_worker_index(struct configuration *conf){
   guint n=0;
-  init_mutex = g_mutex_new();
+  init_connection_mutex = g_mutex_new();
   index_threads = g_new(GThread *, max_threads_for_index_creation);
   index_td = g_new(struct thread_data, max_threads_for_index_creation);
   innodb_optimize_keys_all_tables_mutex=g_mutex_new();

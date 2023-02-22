@@ -363,6 +363,7 @@ int main(int argc, char *argv[]) {
     d->schema_state=CREATED;
   }
 
+  initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
 
   if (stream){
@@ -373,7 +374,6 @@ int main(int argc, char *argv[]) {
   }
 
   initialize_loader_threads(&conf);
-  initialize_worker_index(&conf);
 
   if (stream){
     wait_stream_to_finish();
