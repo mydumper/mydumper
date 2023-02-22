@@ -50,7 +50,7 @@ struct configuration {
 };
 
 
-enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, ALL_DONE};
+enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, INDEX_ENQUEUED, ALL_DONE};
 
 struct database {
   gchar *name;

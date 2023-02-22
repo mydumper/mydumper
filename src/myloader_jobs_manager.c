@@ -36,8 +36,8 @@
 #include "myloader_global.h"
 
 static GMutex *init_mutex=NULL;
-static GMutex *index_mutex=NULL;
-guint index_threads_counter = 0;
+//static GMutex *index_mutex=NULL;
+//guint index_threads_counter = 0;
 guint sync_threads_remaining;
 guint sync_threads_remaining1;
 guint sync_threads_remaining2;
@@ -63,19 +63,19 @@ void initialize_job(gchar * pm_str){
 
   view_mutex=g_mutex_new();
 
-  index_threads_counter = 0;
+//  index_threads_counter = 0;
 }
-
-
+/*
 gboolean process_index(struct thread_data * td){
   gboolean b=FALSE;
-  g_mutex_lock(index_mutex);
-  if ( max_threads_for_index_creation > index_threads_counter){
-    struct control_job *job=g_async_queue_try_pop(td->conf->index_queue);
-    if (job != NULL){
-      struct db_table *dbt=job->data.restore_job->dbt;
-      index_threads_counter++;
-      g_mutex_unlock(index_mutex);
+//  g_mutex_lock(index_mutex);
+//  if ( max_threads_for_index_creation > index_threads_counter){
+    struct control_job *job=g_async_queue_pop(td->conf->index_queue);
+//    if (job != NULL){
+    struct db_table *dbt=job->data.restore_job->dbt;
+    if (dbt!=NULL){
+//      index_threads_counter++;
+//      g_mutex_unlock(index_mutex);
       execute_use_if_needs_to(td, job->use_database, "Restoring index");
       dbt->start_index_time=g_date_time_new_now_local();
 //      g_message("restoring index: %s.%s", dbt->database, dbt->table);
@@ -84,13 +84,19 @@ gboolean process_index(struct thread_data * td){
 //      job->data.restore_job->dbt->index_completed=TRUE;
       g_mutex_lock(index_mutex);
       index_threads_counter--;
+      g_mutex_unlock(index_mutex);
       b=TRUE;
     }
-  }
-  g_mutex_unlock(index_mutex);
+//    }else{
+//      g_message("Thread %d: No index job... continueing", td->thread_id);
+//    }
+//  }else{
+//    g_message("Too many threads for indexing: %d > %d", max_threads_for_index_creation, index_threads_counter);
+//  }
+//  g_mutex_unlock(index_mutex);
   return b;
 }
-
+*/
 void sync_threads(guint *counter, GMutex *mutex){
   if (g_atomic_int_dec_and_test(counter)){
     g_mutex_unlock(mutex);
@@ -127,13 +133,13 @@ void *loader_thread(struct thread_data *td) {
   gboolean cont=TRUE;
 
   cont=TRUE;
-  if (innodb_optimize_keys_all_tables)
-    sync_threads(&sync_threads_remaining,sync_mutex);
+//  if (innodb_optimize_keys_all_tables)
+//    sync_threads(&sync_threads_remaining,sync_mutex);
   
-  last_wait_control_job_to_shutdown();
-  while (cont){
-    cont=process_index(td);
-  }
+//  last_wait_control_job_to_shutdown();
+//  while (cont){
+//    cont=process_index(td);
+//  }
 
   sync_threads(&sync_threads_remaining1,sync_mutex1);
 
