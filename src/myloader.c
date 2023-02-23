@@ -62,6 +62,7 @@
 #include "myloader_intermediate_queue.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
+#include "myloader_worker_index.h"
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
@@ -362,6 +363,7 @@ int main(int argc, char *argv[]) {
     d->schema_state=CREATED;
   }
 
+  initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
 
   if (stream){
@@ -372,7 +374,7 @@ int main(int argc, char *argv[]) {
   }
 
   initialize_loader_threads(&conf);
- 
+
   if (stream){
     wait_stream_to_finish();
   }else{
@@ -380,6 +382,8 @@ int main(int argc, char *argv[]) {
   }
 
   wait_loader_threads_to_finish();
+  create_index_shutdown_job(&conf);
+  wait_index_worker_to_finish();
 
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;

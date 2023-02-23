@@ -401,6 +401,13 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf){
   }
   g_list_free(conf->table_list);
   conf->table_list=table_list;
+//  g_message("Table Order:");
+//  guint i=0;
+//  while(table_list!=NULL){
+//    i++;
+//    g_message("%d: %s",i,((struct db_table *)table_list->data)->table);
+//    table_list=table_list->next;
+//  }
   g_mutex_unlock(conf->table_list_mutex);
 }
 

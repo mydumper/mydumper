@@ -75,3 +75,6 @@ extern int (*m_write)(FILE * file, const char * buff, int len);
 extern gchar identifier_quote_character;
 extern gchar * identifier_quote_character_str;
 extern GString *change_master_statement;
+
+extern guint index_threads_counter;
+extern GMutex *index_mutex;

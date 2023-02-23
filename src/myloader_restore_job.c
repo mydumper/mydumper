@@ -185,11 +185,11 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }
       dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
-      g_mutex_lock(dbt->mutex);
-      for(i=0; i<g_list_length(dbt->restore_job_list); i++){
-        refresh_db_and_jobs(DATA); 
-      }
-      g_mutex_unlock(dbt->mutex);
+//      g_mutex_lock(dbt->mutex);
+//      for(i=0; i<g_list_length(dbt->restore_job_list); i++){
+//        refresh_db_and_jobs(DATA); 
+//      }
+//      g_mutex_unlock(dbt->mutex);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
