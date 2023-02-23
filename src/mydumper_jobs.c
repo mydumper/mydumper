@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <pcre.h>
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
 #include "common.h"
@@ -292,7 +293,18 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_append(statement, row[1]);
+
+  char *create_table;
+  if (schema_sequence_fix) {
+    create_table = filter_sequence_schemas(row[1]);
+  } else {
+    create_table = row[1];
+  }
+
+  g_string_append(statement, create_table);
+  if (schema_sequence_fix) {
+    g_free(create_table);
+  }
   g_string_append(statement, ";\n");
   if (!write_data((FILE *)outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
@@ -509,6 +521,114 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   return;
 }
 
+void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, char *checksum_filename) {
+  void *outfile;
+  char *query = NULL;
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row;
+  GString *statement = g_string_sized_new(statement_size);
+
+  mysql_select_db(conn, dbt->database->name);
+
+  outfile = m_open(filename,"w");
+
+  if (!outfile) {
+    g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
+               errno);
+    errors++;
+    return;
+  }
+
+  if (set_names_str) {
+    g_string_printf(statement,"%s;\n",set_names_str);
+  }
+
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
+    errors++;
+    return;
+  }
+
+  // DROP TABLE works for sequences
+  g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
+  g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
+
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
+    errors++;
+    return;
+  }
+
+  query = g_strdup_printf("SHOW CREATE SEQUENCE `%s`.`%s`", dbt->database->name, dbt->table);
+  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+    if (success_on_1146 && mysql_errno(conn) == 1146) {
+      g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
+                mysql_error(conn));
+    } else {
+      g_critical("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
+                 mysql_error(conn));
+      errors++;
+    }
+    g_free(query);
+    return;
+  }
+  g_string_set_size(statement, 0);
+
+  /* There should never be more than one row */
+  row = mysql_fetch_row(result);
+  if ( skip_definer && g_str_has_prefix(row[1],"CREATE")){
+    remove_definer_from_gchar(row[1]);
+  }
+  g_string_append(statement, row[1]);
+  g_string_append(statement, ";\n");
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
+    errors++;
+  }
+  g_free(query);
+  if (result) {
+    mysql_free_result(result);
+    result = NULL;
+  }
+
+  // Get current sequence position
+  query = g_strdup_printf("SELECT next_not_cached_value FROM `%s`.`%s`", dbt->database->name, dbt->table);
+  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+    if (success_on_1146 && mysql_errno(conn) == 1146) {
+      g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
+                mysql_error(conn));
+    } else {
+      g_critical("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
+                 mysql_error(conn));
+      errors++;
+    }
+    g_free(query);
+    return;
+  }
+  g_string_set_size(statement, 0);
+  /* There should never be more than one row */
+  row = mysql_fetch_row(result);
+  g_string_printf(statement, "SELECT SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
+  if (!write_data((FILE *)outfile, statement)) {
+    g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
+    errors++;
+  }
+
+  g_free(query);
+  m_close(outfile);
+
+  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  g_string_free(statement, TRUE);
+  if (result)
+    mysql_free_result(result);
+
+  // Table checksum should cover the basics, but doesn't checksum the current sequence position
+  if (checksum_filename)
+    // build_meta_filename(database,table,"schema-sequence-checksum"),
+    write_checksum_into_file(conn, dbt->database, dbt->table, checksum_filename, checksum_table_structure);
+  return;
+}
+
 // Routines, Functions and Events
 // TODO: We need to split it in 3 functions 
 void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename, char *checksum_filename) {
@@ -706,6 +826,10 @@ void free_view_job(struct view_job *vj){
 //  g_free(vj);
 }
 
+//void free_sequence_job(struct sequence_job *sj){
+//  g_free(sj);
+//}
+
 void free_schema_post_job(struct schema_post_job *sp){
   if (sp->filename)
     g_free(sp->filename);
@@ -762,6 +886,16 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
   write_view_definition_into_file(td->thrconn, vj->dbt, vj->filename,
                  vj->filename2, vj->checksum_filename);
 //  free_view_job(vj);
+  g_free(job);
+}
+
+void do_JOB_SEQUENCE(struct thread_data *td, struct job *job){
+  struct sequence_job * sj = (struct sequence_job *)job->job_data;
+  g_message("Thread %d dumping sequence for `%s`.`%s`", td->thread_id,
+            sj->dbt->database->name, sj->dbt->table);
+  write_sequence_definition_into_file(td->thrconn, sj->dbt, sj->filename,
+                 sj->checksum_filename);
+//  free_sequence_job(sj);
   g_free(job);
 }
 
@@ -892,6 +1026,19 @@ void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
   vj->filename2 = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-view");
   if ( schema_checksums )
     vj->checksum_filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "schema-view-checksum");
+  g_async_queue_push(conf->post_data_queue, j);
+  return;
+}
+
+void create_job_to_dump_sequence(struct db_table *dbt, struct configuration *conf) {
+  struct job *j = g_new0(struct job, 1);
+  struct sequence_job *sj = g_new0(struct sequence_job, 1);
+  j->job_data = (void *)sj;
+  sj->dbt = dbt;
+  j->type = JOB_SEQUENCE;
+  sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema-sequence");
+  if ( schema_checksums )
+    sj->checksum_filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "schema-sequence-checksum");
   g_async_queue_push(conf->post_data_queue, j);
   return;
 }

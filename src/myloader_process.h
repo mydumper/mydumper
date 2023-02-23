@@ -32,3 +32,4 @@ void initialize_process(struct configuration *c);
 void free_table_hash(GHashTable *table_hash);
 gboolean process_schema_view_filename(gchar *filename);
 gboolean process_metadata_global();
+gboolean process_schema_sequence_filename(gchar *filename);

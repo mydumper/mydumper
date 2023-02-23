@@ -244,6 +244,8 @@ enum file_type get_file_type (const char * filename){
     return CHECKSUM;
   } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
     return SCHEMA_VIEW;
+  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql") ){
+    return SCHEMA_SEQUENCE;
   } else if (m_filename_has_suffix(filename, "-schema-triggers.sql") ){
     return SCHEMA_TRIGGER;
   } else if (m_filename_has_suffix(filename, "-schema-post.sql") ){
@@ -511,24 +513,21 @@ void checksum_databases(struct thread_data *td) {
     filename=e->data;
     if (g_str_has_suffix(filename,"-schema-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-checksum", "Structure checksum", checksum_table_structure);
-    }else{
-    if (g_str_has_suffix(filename,"-schema-post-checksum")){
+    }else if (g_str_has_suffix(filename,"-schema-post-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-post-checksum", "Post checksum", checksum_process_structure);
-    }else{
-    if (g_str_has_suffix(filename,"-schema-triggers-checksum")){
+    }else if (g_str_has_suffix(filename,"-schema-triggers-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-triggers-checksum", "Trigger checksum", checksum_trigger_structure);
-    }else{
-    if (g_str_has_suffix(filename,"-schema-view-checksum")){
+    }else if (g_str_has_suffix(filename,"-schema-view-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-view-checksum", "View checksum", checksum_view_structure);
-    }else{
-    if (g_str_has_suffix(filename,"-schema-create-checksum")){
+    }else if (g_str_has_suffix(filename,"-schema-sequence-checksum")){
+      checksum_filename(filename, td->thrconn, "-schema-sequence-checksum", "Sequence checksum", checksum_table_structure);
+    }else if (g_str_has_suffix(filename,"-schema-create-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-create-checksum", "Schema create checksum", checksum_database_defaults);
-    }else{
-    if (g_str_has_suffix(filename,"-schema-indexes-checksum")){
+    }else if (g_str_has_suffix(filename,"-schema-indexes-checksum")){
       checksum_filename(filename, td->thrconn, "-schema-indexes-checksum", "Schema index checksum", checksum_table_indexes);
     }else{
       checksum_filename(filename, td->thrconn, "-checksum", "Checksum", checksum_table);
-    }}}}}}
+    }
     e=e->next;
   }
 }

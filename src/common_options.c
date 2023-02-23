@@ -66,6 +66,8 @@ gchar *set_names_statement=NULL;
 gchar identifier_quote_character=BACKTICK;
 gchar * identifier_quote_character_str=NULL;
 
+gboolean schema_sequence_fix = FALSE;
+
 gboolean identifier_quote_character_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;

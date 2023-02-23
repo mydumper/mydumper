@@ -308,7 +308,7 @@ void set_table_schema_state_to_created (struct configuration *conf){
   GList * iter=conf->table_list;
   struct db_table * dbt = NULL;
   while (iter != NULL){
-    dbt = iter->data;
+    dbt=iter->data;
     g_mutex_lock(dbt->mutex);
     if (dbt->schema_state == NOT_FOUND )
       dbt->schema_state = CREATED;
@@ -442,8 +442,6 @@ void *control_job_thread(struct configuration *conf){
   return NULL;
 }
 
-
-
 void *process_stream_queue(struct thread_data * td) {
   struct control_job *job = NULL;
   gboolean cont=TRUE;
@@ -456,7 +454,6 @@ void *process_stream_queue(struct thread_data * td) {
   while (cont){
 //    if (ft == SHUTDOWN)
 //      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
- 
     g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
 //    g_message("Thread %d: Sending THREAD", td->thread_id);
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(here_is_your_job));
@@ -512,8 +509,6 @@ void *process_stream_queue(struct thread_data * td) {
 //        g_message("What do we do with: %d", ft);
 
     }
-//    if (innodb_optimize_keys_per_table)
-//      try_process_index(td);
   }
   enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);

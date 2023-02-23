@@ -20,5 +20,3 @@
 
 #define BACKTICK '`'
 #define DOUBLE_QUOTE '"'
-
-

@@ -95,6 +95,10 @@ enum file_type process_filename(char *filename){
         if (!process_schema_view_filename(filename))
           return DO_NOT_ENQUEUE;
         break;
+      case SCHEMA_SEQUENCE:
+        if (!process_schema_sequence_filename(filename))
+          return INCOMPLETE;
+        break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
           if (!process_schema_filename(filename,"trigger"))
@@ -166,6 +170,7 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     return;
   }
   if (current_ft != SCHEMA_VIEW &&
+      current_ft != SCHEMA_SEQUENCE &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&

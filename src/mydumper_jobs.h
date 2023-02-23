@@ -47,6 +47,14 @@ struct view_job {
   char *checksum_filename;
 };
 
+struct sequence_job {
+  struct db_table *dbt;
+//  char *database;
+//  char *table;
+  char *filename;
+  char *checksum_filename;
+};
+
 struct schema_post_job {
   struct database *database;
   char *filename;
@@ -65,6 +73,7 @@ void create_job_to_dump_tablespaces(struct configuration *conf);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_sequence(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
 void create_job_to_dump_all_databases(struct configuration *conf);
 void create_job_to_dump_database(struct database *database, struct configuration *conf);
@@ -79,6 +88,7 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job);
 void do_JOB_VIEW(struct thread_data *td, struct job *job);
+void do_JOB_SEQUENCE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
