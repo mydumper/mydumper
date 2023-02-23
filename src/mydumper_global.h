@@ -123,4 +123,4 @@ extern MYSQL *main_connection;
 extern struct configuration_per_table conf_per_table;
 extern struct function_pointer pp;
 extern gchar identifier_quote_character;
-
+extern gboolean schema_sequence_fix;

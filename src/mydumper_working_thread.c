@@ -95,6 +95,7 @@ gboolean dump_events = FALSE;
 gboolean dump_routines = FALSE;
 gboolean no_dump_views = FALSE;
 gboolean views_as_tables=FALSE;
+gboolean no_dump_sequences = FALSE;
 gboolean success_on_1146 = FALSE;
 
 GList  *innodb_table = NULL;
@@ -369,11 +370,16 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     while ((row = mysql_fetch_row(result))) {
 
       int is_view = 0;
+      int is_sequence = 0;
 
       if ((detected_server == SERVER_TYPE_MYSQL ||
            detected_server == SERVER_TYPE_MARIADB) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
+
+      if ((detected_server == SERVER_TYPE_MARIADB) &&
+          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE")))
+        is_sequence = 1;
 
       /* Checks skip list on 'database.table' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[0]))
@@ -383,7 +389,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
+      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -804,6 +810,9 @@ gboolean process_job(struct thread_data *td, struct job *job){
       break;
     case JOB_VIEW:
       do_JOB_VIEW(td,job);
+      break;
+    case JOB_SEQUENCE:
+      do_JOB_SEQUENCE(td,job);
       break;
     case JOB_TRIGGERS:
       do_JOB_TRIGGERS(td,job);
@@ -1319,7 +1328,7 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, struct database * database, char *table, char *collation, char *datalength, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol){
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -1333,8 +1342,8 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   all_dbts=g_list_prepend( all_dbts, dbt) ;
   g_mutex_unlock(all_dbts_mutex);
 
- // if is a view we care only about schema
-  if (!is_view || views_as_tables) {
+  // if a view or sequence we care only about schema
+  if ((!is_view || views_as_tables ) && !is_sequence) {
   // with trx_consistency_only we dump all as innodb_table
     if (!no_schemas) {
 //      write_table_metadata_into_file(dbt);
@@ -1373,9 +1382,13 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         }
       }
     }
-  } else {
+  } else if (is_view) {
     if (!no_schemas) {
       create_job_to_dump_view(dbt, conf);
+    }
+  } else { // is_sequence
+    if (!no_schemas) {
+      create_job_to_dump_sequence(dbt, conf);
     }
   }
 }
@@ -1506,6 +1519,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     int dump = 1;
     int is_view = 0;
+    int is_sequence = 0;
 
     /* We now do care about views!
             num_fields>1 kicks in only in case of 5.0 SHOW FULL TABLES or SHOW
@@ -1516,6 +1530,10 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
          detected_server == SERVER_TYPE_MARIADB) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
+
+    if ((detected_server == SERVER_TYPE_MARIADB) &&
+        !strcmp(row[ccol], "SEQUENCE"))
+      is_sequence = 1;
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
     if (!is_view && row[ecol] == NULL) {
@@ -1528,7 +1546,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
-    if (dump && ignore && !is_view) {
+    if (dump && ignore && !is_view && !is_sequence) {
       for (i = 0; ignore[i] != NULL; i++) {
         if (g_ascii_strcasecmp(ignore[i], row[ecol]) == 0) {
           dump = 0;
@@ -1539,6 +1557,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* Skip views */
     if (is_view && no_dump_views)
+      dump = 0;
+
+    if (is_sequence && no_dump_sequences)
       dump = 0;
 
     if (!dump)
@@ -1577,7 +1598,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
 
     /* Check if the table was recently updated */
-    if (no_updated_tables && !is_view) {
+    if (no_updated_tables && !is_view && !is_sequence) {
       GList *iter;
       for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
         if (g_ascii_strcasecmp(
@@ -1591,7 +1612,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
 
-    new_table_to_dump(conn, conf, is_view, database, row[0], row[collcol], row[6], row[ecol]);
+    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
 
   }
 

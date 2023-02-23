@@ -62,8 +62,6 @@ void initialize_job(gchar * pm_str){
   g_mutex_lock(sync_mutex2);
 
   view_mutex=g_mutex_new();
-
-//  index_threads_counter = 0;
 }
 /*
 gboolean process_index(struct thread_data * td){
@@ -133,13 +131,6 @@ void *loader_thread(struct thread_data *td) {
   gboolean cont=TRUE;
 
   cont=TRUE;
-//  if (innodb_optimize_keys_all_tables)
-//    sync_threads(&sync_threads_remaining,sync_mutex);
-  
-//  last_wait_control_job_to_shutdown();
-//  while (cont){
-//    cont=process_index(td);
-//  }
 
   sync_threads(&sync_threads_remaining1,sync_mutex1);
 

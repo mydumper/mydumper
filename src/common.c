@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <pcre.h>
 #include "server_detect.h"
 #include "common.h"
 #include "config.h"
@@ -480,8 +481,6 @@ void print_version(const gchar *program){
     g_print("%s\n", str->str);
 }
 
-
-
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
@@ -536,4 +535,47 @@ void m_warning(const char *fmt, ...){
   g_free(c);
 }
 
+/* Function to work around a bug in MariaDB which outputs the explicit
+ * scehma for a sequence in a SHOW CREATE TABLE even if it is local to the
+ * current table
+ */
+gchar *filter_sequence_schemas(const gchar *create_table)
+{
+  pcre *re = NULL;
+  const char *error;
+  int erroroffset;
+  int ovector[12] = {0};
+  gchar *out = g_strdup(create_table);
 
+  re = pcre_compile("(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)",
+                    PCRE_CASELESS | PCRE_MULTILINE, &error, &erroroffset,
+                    NULL);
+  if (!re) {
+    g_critical("Regular expression fail: %s", error);
+    // We can safely continue here
+  } else {
+    int offset = 0;
+    while ((pcre_exec(re, NULL, out, strlen(out), offset, 0, ovector, 12)) > 0) {
+      gchar* tmp = g_new(gchar, strlen(out));
+      size_t tmp_pos = 0;
+      /* Positions generated:
+       * ovector 0 - 1: nextval(`test`.`s`)
+       * ovector 2 - 3: `test`.`s`
+       * ovector 4 - 5: `s`
+       */
+      size_t write_len = ovector[2];
+
+      memcpy(tmp, out, write_len);
+      tmp_pos += write_len;
+      write_len = ovector[5] - ovector[4];
+      memcpy(tmp + tmp_pos, out + ovector[4], write_len);
+      tmp_pos += write_len;
+      write_len = strlen(out) - ovector[1] + 1;
+      memcpy(tmp + tmp_pos, out + ovector[1] - 1, write_len);
+      tmp[tmp_pos + write_len] = '\0';
+      g_free(out);
+      out = tmp;
+    }
+  }
+  return out;
+}
