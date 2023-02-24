@@ -144,6 +144,8 @@ full_test(){
 
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
+    $test -r 1000 --less-locking -G ${general_options}                                 -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
+    # 10000 rows -- overriting database
     $test -r 10:100:10000 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # chunking the file to 10MB -- overriting database
     $test -F 10 ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
@@ -153,6 +155,8 @@ full_test(){
     $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
     $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    # compress and rows
+    $test --less-locking -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --load-data
     $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
