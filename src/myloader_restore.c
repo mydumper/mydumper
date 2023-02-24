@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <mysql.h>
+#include <errmsg.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <stdio.h>
@@ -30,15 +31,25 @@
 #include "myloader_jobs_manager.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
+#include "connection.h"
 gboolean skip_definer = FALSE;
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
-  if (mysql_real_query(td->thrconn, data->str, data->len)) {
+  guint en=mysql_real_query(td->thrconn, data->str, data->len);
+  if (en) {
     if (is_schema)
-      g_warning("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));
+      g_warning("Thread %d: Error restoring %d: %s %s", td->thread_id, en, data->str, mysql_error(td->thrconn));
     else{
-      g_warning("Thread %d: Error restoring: %s", td->thread_id, mysql_error(td->thrconn));
+      g_warning("Thread %d: Error restoring %d: %s", td->thread_id, en, mysql_error(td->thrconn));
     }
+
+//    if (en == CR_SERVER_GONE_ERROR || en == CR_SERVER_LOST){
+//      m_connect(td->thrconn, "myloader", NULL);
+    mysql_ping(td->thrconn);
+    execute_gstring(td->thrconn, set_session);
+    execute_use(td);
+//    }
+
     g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
     if (mysql_real_query(td->thrconn, data->str, data->len)) {
       if (is_schema)
