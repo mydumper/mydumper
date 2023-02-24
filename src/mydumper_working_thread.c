@@ -592,6 +592,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
   }else{
     if (cont){
         g_message("All threads in the same position. This will be a consistent backup.");
+        it_is_a_consistent_backup=TRUE;
     }else{
       if (no_locks){ 
         g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
