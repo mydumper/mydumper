@@ -44,9 +44,10 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     }
 
 //    if (en == CR_SERVER_GONE_ERROR || en == CR_SERVER_LOST){
-      m_connect(td->thrconn, "myloader", NULL);
-      execute_gstring(td->thrconn, set_session);
-      execute_use(td);
+//      m_connect(td->thrconn, "myloader", NULL);
+    mysql_ping(td->thrconn);
+    execute_gstring(td->thrconn, set_session);
+    execute_use(td);
 //    }
 
     g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
