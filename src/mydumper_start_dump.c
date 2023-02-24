@@ -92,6 +92,7 @@ int killqueries = 0;
 int lock_all_tables = 0;
 gboolean no_schemas = FALSE;
 gboolean no_locks = FALSE;
+gboolean it_is_a_consistent_backup = FALSE;
 gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
@@ -1107,5 +1108,12 @@ void start_dump() {
 
   free_regex();
   free_common();
+
+  if (no_locks){
+    if (it_is_a_consistent_backup)
+      g_message("This is a consistent backup.");
+    else
+      g_message("This is NOT a consistent backup.");
+  }
 }
 
