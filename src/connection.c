@@ -83,8 +83,8 @@ gboolean reconnect = 1;
 void configure_connection(MYSQL *conn, const char *name) {
   if (connection_defaults_file != NULL) {
     mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
+    mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
   }
-  mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
   mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
   mysql_options(conn, MYSQL_OPT_RECONNECT, &reconnect);
 
