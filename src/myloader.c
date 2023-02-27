@@ -426,8 +426,8 @@ int main(int argc, char *argv[]) {
         g_critical("Restore directory not removed: %s", directory);
   }
 
-
-int i=0;
+  if (change_master_statement != NULL ){
+    int i=0;
     gchar** line=g_strsplit(change_master_statement->str, ";\n", -1);
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i])>2){
@@ -437,7 +437,7 @@ int i=0;
          g_string_free(str,TRUE);
        }
     }
-
+  }
 
 
   g_async_queue_unref(conf.database_queue);
