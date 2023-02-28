@@ -1119,7 +1119,7 @@ void *working_thread(struct thread_data *td) {
     g_async_queue_pop(td->conf->ready_non_innodb_queue);
     if (less_locking){
       // Sending LOCK TABLE over all non-innodb tables
-      if (mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
+      if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
         m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
       // This push will unlock the FTWRL on the Main Connection
