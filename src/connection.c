@@ -88,6 +88,9 @@ void configure_connection(MYSQL *conn, const char *name) {
   mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
   mysql_options(conn, MYSQL_OPT_RECONNECT, &reconnect);
 
+  mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", name);
+  mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "app_version", g_strdup_printf("Release %s", VERSION));
+
   if (compress_protocol)
     mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
 
