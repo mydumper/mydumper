@@ -12,7 +12,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
   apt-get update && \
-  apt-get install -y lsb-release && \
+  apt-get install -y lsb-release wget && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
