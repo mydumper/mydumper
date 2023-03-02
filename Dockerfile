@@ -18,26 +18,17 @@ RUN \
 
 RUN \
   . /etc/os-release && \
-  curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
-    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb \
+  curl --fail --location --show-error --silent --output /tmp/mysql-release.deb \
+    https://repo.mysql.com/mysql-apt-config_0.8.22-1_all.deb \
   && \
-  dpkg -i /tmp/percona-release.deb && \
-  rm -v /tmp/percona-release.deb && \
-  percona-release show
-
-# Temp fix required due to 'percona-release' failing to detect package repos.
-RUN \
-  sed -i 's/curl -Is/curl -ILs/g' /usr/bin/percona-release && \
-  sed -i 's/http:/https:/g' /usr/bin/percona-release && \
-  grep http /usr/bin/percona-release
+  dpkg -i /tmp/mysql-release.deb && \
+  rm -v /tmp/mysql-release.deb
 
 RUN \
-  percona-release enable-only ps-80 ${PERCONA_COMPONENT:-release} && \
   apt-get update && \
   apt-get install -y \
     libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev cmake g++ \
-    libperconaserverclient21-dev libperconaserverclient21 libzstd-dev \
-  && \
+    libmysqlclient-dev libmysqlclient21 libzstd-dev && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
@@ -60,22 +51,15 @@ RUN \
 
 RUN \
   . /etc/os-release && \
-  curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
-    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb \
+  curl --fail --location --show-error --silent --output /tmp/mysql-release.deb \
+    https://repo.mysql.com/mysql-apt-config_0.8.22-1_all.deb \
   && \
-  dpkg -i /tmp/percona-release.deb && \
-  rm -v /tmp/percona-release.deb && \
-  percona-release show
-
-# Temp fix required due to 'percona-release' failing to detect package repos.
-RUN \
-  sed -i 's/curl -Is/curl -ILs/g' /usr/bin/percona-release && \
-  sed -i 's/http:/https:/g' /usr/bin/percona-release
+  dpkg -i /tmp/mysql-release.deb && \
+  rm -v /tmp/mysql-release.deb
 
 RUN \
-  percona-release enable-only ps-80 ${PERCONA_COMPONENT:-release} && \
   apt-get update && \
-  apt-get install -y libperconaserverclient21 && \
+  apt-get install -y libmysqlclient21 && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
