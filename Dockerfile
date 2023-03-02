@@ -45,7 +45,7 @@ FROM debian:bullseye
 ARG DEBIAN_FRONTEND=noninteractive
 RUN \
   apt-get update && \
-  apt-get install -y curl lsb-release gnupg libglib2.0 && \
+  apt-get install -y curl lsb-release gnupg libglib2.0 wget && \
   apt-get clean && \
   rm -rf /var/lib/apt/lists/
 
