@@ -1,5 +1,5 @@
 # Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
-FROM gcc:11-bullseye as builder
+FROM almalinux:9 as builder
 
 # Docker build arguments. Use to customize build.
 # Example to enable ZSTD:
@@ -11,26 +11,15 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
-  apt-get update && \
-  apt-get install -y lsb-release wget && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/
+  yum -y install epel-release && \
+  yum -y install --allowerasing wget curl && \
+  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo
 
 RUN \
-  . /etc/os-release && \
-  curl --fail --location --show-error --silent --output /tmp/mysql-release.deb \
-    https://repo.mysql.com/mysql-apt-config_0.8.22-1_all.deb \
-  && \
-  dpkg -i /tmp/mysql-release.deb && \
-  rm -v /tmp/mysql-release.deb
+  yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
 
 RUN \
-  apt-get update && \
-  apt-get install -y \
-    libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev cmake g++ \
-    libmysqlclient-dev libmysqlclient21 libzstd-dev && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/
+  yum -y install mysql-community-libs mysql-community-devel
 
 COPY . /usr/src/
 WORKDIR /usr/src/
@@ -41,27 +30,18 @@ RUN \
   make install
 
 
-FROM debian:bullseye
+FROM almalinux:9
 ARG DEBIAN_FRONTEND=noninteractive
 RUN \
-  apt-get update && \
-  apt-get install -y curl lsb-release gnupg libglib2.0 wget && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/
+  yum -y install epel-release && \
+  yum -y install --allowerasing wget curl && \
+  yum -y install cmake gcc-c++ git make sudo
 
 RUN \
-  . /etc/os-release && \
-  curl --fail --location --show-error --silent --output /tmp/mysql-release.deb \
-    https://repo.mysql.com/mysql-apt-config_0.8.22-1_all.deb \
-  && \
-  dpkg -i /tmp/mysql-release.deb && \
-  rm -v /tmp/mysql-release.deb
+  yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
 
 RUN \
-  apt-get update && \
-  apt-get install -y libmysqlclient21 && \
-  apt-get clean && \
-  rm -rf /var/lib/apt/lists/
+  yum -y install mysql-community-libs
 
 COPY --from=builder /usr/local/bin /usr/local/bin
 
