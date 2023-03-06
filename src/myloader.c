@@ -84,6 +84,7 @@ gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
+guint max_threads_per_table_hard=4;
 guint max_threads_for_index_creation=4;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;

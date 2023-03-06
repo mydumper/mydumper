@@ -50,9 +50,9 @@ gboolean process_index(struct thread_data * td){
     g_message("restoring index: %s.%s", dbt->database->name, dbt->table);
     process_job(td, job);
     dbt->finish_time=g_date_time_new_now_local();
-    g_mutex_lock(job->data.restore_job->dbt->mutex);
-    job->data.restore_job->dbt->schema_state=ALL_DONE;
-    g_mutex_unlock(job->data.restore_job->dbt->mutex);
+    g_mutex_lock(dbt->mutex);
+    dbt->schema_state=ALL_DONE;
+    g_mutex_unlock(dbt->mutex);
     g_mutex_lock(index_mutex);
     index_threads_counter--;
     g_mutex_unlock(index_mutex);

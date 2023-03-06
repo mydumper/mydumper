@@ -184,6 +184,10 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
   struct restore_job *job = NULL;
 //  g_debug("Elements in table_list: %d",g_list_length(conf->table_list));
 //  We are going to check every table and see if there is any missing job
+  gboolean second=FALSE;
+  int i=0;
+  while (i<2 && job ==NULL){
+	  i++;
   while (iter != NULL){
     struct db_table * dbt = iter->data;
 //    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->real_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
@@ -194,7 +198,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
     }
 //    g_message("DB: %s Table: %s len: %d state: %d", dbt->database->real_database,dbt->real_table,g_list_length(dbt->restore_job_list), dbt->schema_state);
     g_mutex_lock(dbt->mutex);
-    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < dbt->max_threads)){
+    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < (second?dbt->max_threads_hard:dbt->max_threads))){
       // I could do some job in here, do we have some for me?
 //      g_message("DB: %s Table: %s max_threads: %d current: %d", dbt->database->real_database,dbt->real_table, dbt->max_threads,dbt->current_threads);
 //      g_mutex_lock(dbt->mutex);
@@ -243,6 +247,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
     }
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
+  }
+  second=TRUE;
   }
   g_mutex_unlock(conf->table_list_mutex);
   *rj = job;

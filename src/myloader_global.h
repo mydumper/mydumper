@@ -65,6 +65,7 @@ extern GString *set_session;
 extern guint commit_count;
 extern guint errors;
 extern guint max_threads_for_index_creation;
+extern guint max_threads_per_table_hard;
 extern guint max_threads_per_table;
 extern guint num_threads;
 extern guint rows;
