@@ -82,3 +82,4 @@ void m_error(const char *fmt, ...);
 void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
+GRecMutex * g_rec_mutex_new();

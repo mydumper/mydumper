@@ -299,7 +299,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
     create_job_to_dump_database(db_tmp, td->conf);
   }
   if (g_atomic_int_dec_and_test(&database_counter)) {
-    g_mutex_unlock(ready_database_dump_mutex);
+    g_rec_mutex_unlock(ready_database_dump_mutex);
   }
   mysql_free_result(databases);
   g_free(job);
@@ -313,7 +313,7 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
-    g_mutex_unlock(ready_database_dump_mutex);
+    g_rec_mutex_unlock(ready_database_dump_mutex);
   }
 }
 
@@ -397,7 +397,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
   g_free(query);
   if (g_atomic_int_dec_and_test(&database_counter)) {
-    g_mutex_unlock(ready_database_dump_mutex);
+    g_rec_mutex_unlock(ready_database_dump_mutex);
   }
 
 }

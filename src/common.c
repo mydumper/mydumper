@@ -579,3 +579,11 @@ gchar *filter_sequence_schemas(const gchar *create_table)
   }
   return out;
 }
+
+GRecMutex * g_rec_mutex_new(){
+  GRecMutex *r=g_new0(GRecMutex,1);
+  g_rec_mutex_init(r);
+  return r;
+
+}
+

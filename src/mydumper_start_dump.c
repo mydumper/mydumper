@@ -114,8 +114,8 @@ guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
 
-GMutex *ready_database_dump_mutex = NULL;
-GMutex *ready_table_dump_mutex = NULL;
+GRecMutex *ready_database_dump_mutex = NULL;
+GRecMutex *ready_table_dump_mutex = NULL;
 
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL};
 gchar *exec_command=NULL;
@@ -867,10 +867,10 @@ void start_dump() {
   conf.non_innodb_queue = g_async_queue_new();
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
-  ready_database_dump_mutex = g_mutex_new();
-  g_mutex_lock(ready_database_dump_mutex);
-  ready_table_dump_mutex = g_mutex_new();
-  g_mutex_lock(ready_table_dump_mutex);
+  ready_database_dump_mutex = g_rec_mutex_new();
+  g_rec_mutex_lock(ready_database_dump_mutex);
+  ready_table_dump_mutex = g_rec_mutex_new();
+  g_rec_mutex_lock(ready_table_dump_mutex);
 
   g_message("conf created");
 
@@ -938,7 +938,7 @@ void start_dump() {
   
   g_message("Waiting database finish");
   if (database_counter > 0)
-    g_mutex_lock(ready_database_dump_mutex);
+    g_rec_mutex_lock(ready_database_dump_mutex);
   g_list_free(no_updated_tables);
 
   for (n = 0; n < num_threads; n++) {
