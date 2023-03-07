@@ -2216,8 +2216,6 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
-    - compile_and_test_mydumper_in_jammy_percona80
-    - compile_and_test_mydumper_in_jammy_mariadb1011
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
@@ -2232,17 +2230,17 @@ workflows:
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011
-    - compile_and_test_mydumper_in_focal_percona57:
+    - compile_and_test_mydumper_in_jammy_percona57:
         test: true
-        e: focal_percona57
+        e: jammy_percona57
 
-    - compile_and_test_mydumper_in_focal_percona80:
+    - compile_and_test_mydumper_in_jammy_percona80:
         test: true
-        e: focal_percona80
+        e: jammy_percona80
 
-    - compile_and_test_mydumper_in_focal_mariadb1011:
+    - compile_and_test_mydumper_in_jammy_mariadb1011:
         test: true
-        e: focal_mariadb1011
+        e: jammy_mariadb1011
 
     - build_bionic_percona57:
         filters:
