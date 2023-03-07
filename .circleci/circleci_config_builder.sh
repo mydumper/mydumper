@@ -108,7 +108,7 @@ list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
 list_build=("bionic_percona57" "focal_percona57" "jammy_percona80" "el7_percona57" "el8_percona57" "el9_percona80" "bullseye_percona80" "buster_percona57")
 
 
-filter_out="jammy_percona57|el9_percona57"
+filter_out="jammy|el9_percona57"
 
 for os in ${list_all_os[@]}
 do
@@ -470,7 +470,7 @@ echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vend
 done
 done
 
-for os in focal
+for os in jammy
 do
         for vendor in ${list_all_vendors[@]} # tidb
         do

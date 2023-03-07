@@ -42,9 +42,9 @@ guint sync_threads_remaining;
 guint sync_threads_remaining1;
 guint sync_threads_remaining2;
 
-static GMutex *sync_mutex;
-static GMutex *sync_mutex1;
-static GMutex *sync_mutex2;
+GMutex *sync_mutex;
+GMutex *sync_mutex1;
+GMutex *sync_mutex2;
 GMutex *view_mutex;
 
 void initialize_job(gchar * pm_str){
