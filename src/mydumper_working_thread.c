@@ -119,9 +119,6 @@ gboolean exit_if_broken_table_found = FALSE;
 GCond *ll_cond = NULL;
 int build_empty_files = 0;
 gchar *where_option=NULL;
-GRecMutex *consistent_snapshot = NULL;
-GRecMutex *consistent_snapshot_token_I = NULL;
-GRecMutex *consistent_snapshot_token_II = NULL;
 gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
@@ -179,11 +176,6 @@ void initialize_working_thread(){
   all_dbts_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
   ll_cond = g_cond_new();
-  consistent_snapshot = g_rec_mutex_new();
-  g_rec_mutex_lock(consistent_snapshot);
-  consistent_snapshot_token_I = g_rec_mutex_new();
-  consistent_snapshot_token_II = g_rec_mutex_new();
-  g_rec_mutex_lock(consistent_snapshot_token_II);
   binlog_snapshot_gtid_executed = NULL;
   if (less_locking)
     less_locking_threads = num_threads;
@@ -236,11 +228,6 @@ void finalize_working_thread(){
   g_mutex_free(table_schemas_mutex);
   g_mutex_free(trigger_schemas_mutex);
   g_mutex_free(init_mutex);
-  g_rec_mutex_unlock(consistent_snapshot);
-  g_rec_mutex_clear(consistent_snapshot);
-  g_rec_mutex_clear(consistent_snapshot_token_I);
-  g_rec_mutex_unlock(consistent_snapshot_token_II);
-  g_rec_mutex_clear(consistent_snapshot_token_II);
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
 }
@@ -503,56 +490,6 @@ void initialize_thread(struct thread_data *td){
             td->thread_id, mysql_thread_id(td->thrconn));
 }
 
-
-gboolean are_all_threads_in_same_pos(struct thread_data *td){
-  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0)
-    return TRUE;
-  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
-  g_rec_mutex_lock(consistent_snapshot_token_I);
-  g_message("Thread %d: All threads in same pos check",td->thread_id);
-  if (binlog_snapshot_gtid_executed == NULL){
-    binlog_snapshot_gtid_executed_count=0;
-    binlog_snapshot_gtid_executed=g_strdup(td->binlog_snapshot_gtid_executed);
-    binlog_snapshot_gtid_executed_status=TRUE;
-  }else 
-    if (!(( binlog_snapshot_gtid_executed_status) && (g_strcmp0(td->binlog_snapshot_gtid_executed,binlog_snapshot_gtid_executed) == 0))){
-      binlog_snapshot_gtid_executed_status=FALSE;
-    }
-  binlog_snapshot_gtid_executed_count++;
-  if (binlog_snapshot_gtid_executed_count < num_threads){
-    g_debug("Thread %d: Consistent_snapshot_token_I trying unlock",td->thread_id);
-    g_rec_mutex_unlock(consistent_snapshot_token_I);
-    g_debug("Thread %d: Consistent_snapshot_token_I unlocked",td->thread_id);
-    g_rec_mutex_lock(consistent_snapshot_token_II);
-    g_debug("Thread %d: Consistent_snapshot_token_II locked",td->thread_id);
-    binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status;
-    binlog_snapshot_gtid_executed_count--;
-    if (binlog_snapshot_gtid_executed_count == 1){
-      if (!binlog_snapshot_gtid_executed_status_local)
-        binlog_snapshot_gtid_executed=NULL;
-      g_debug("Thread %d: Consistent_snapshot trying unlock",td->thread_id);
-      g_rec_mutex_unlock(consistent_snapshot);
-      g_debug("Thread %d: Consistent_snapshot unlocked",td->thread_id);
-    }else{
-      g_debug("Thread %d: 1- Consistent_snapshot_token_II trying unlock",td->thread_id);
-      g_rec_mutex_unlock(consistent_snapshot_token_II);
-      g_debug("Thread %d: 1- Consistent_snapshot_token_II unlocked",td->thread_id);
-    }
-  }else{
-    binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status;
-    g_debug("Thread %d: 2- Consistent_snapshot_token_II trying unlock",td->thread_id);
-    g_rec_mutex_unlock(consistent_snapshot_token_II);
-    g_debug("Thread %d: 2- Consistent_snapshot_token_II unlocked",td->thread_id);
-    g_rec_mutex_lock(consistent_snapshot);
-    g_debug("Thread %d: Consistent_snapshot locked",td->thread_id);
-    g_debug("Thread %d: Consistent_snapshot_token_I trying unlock",td->thread_id);
-    g_rec_mutex_unlock(consistent_snapshot_token_I);
-    g_debug("Thread %d: Consistent_snapshot_token_I unlocked",td->thread_id);
-  }
-  g_message("Thread %d: binlog_snapshot_gtid_executed_status_local %s with gtid: '%s'.", td->thread_id, binlog_snapshot_gtid_executed_status_local?"succeeded":"failed", td->binlog_snapshot_gtid_executed);
-  return binlog_snapshot_gtid_executed_status_local;
-}
-
 void initialize_consistent_snapshot(struct thread_data *td){
   if ( sync_wait != -1 && mysql_query(td->thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
     m_critical("Failed to set wsrep_sync_wait for the thread: %s",
@@ -561,7 +498,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
   set_transaction_isolation_level_repeatable_read(td->thrconn);
   guint start_transaction_retry=0;
   gboolean cont = FALSE; 
-  while ( !cont && (start_transaction_retry < 5)){
+  while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
 //  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
 //    sleep(td->thread_id);
     g_debug("Thread %d: Start trasaction #%d", td->thread_id, start_transaction_retry);
@@ -582,7 +519,8 @@ void initialize_consistent_snapshot(struct thread_data *td){
       mysql_free_result(res);
     }
     start_transaction_retry++;
-    cont=are_all_threads_in_same_pos(td);
+    g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
+    cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
   } 
 
   if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){

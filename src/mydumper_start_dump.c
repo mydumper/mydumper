@@ -679,7 +679,7 @@ void start_dump() {
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   detect_server_version(conn);
@@ -867,6 +867,8 @@ void start_dump() {
   conf.non_innodb_queue = g_async_queue_new();
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
+  conf.gtid_pos_checked = g_async_queue_new();
+  conf.are_all_threads_in_same_pos = g_async_queue_new();
   ready_database_dump_mutex = g_rec_mutex_new();
   g_rec_mutex_lock(ready_database_dump_mutex);
   ready_table_dump_mutex = g_rec_mutex_new();
@@ -918,6 +920,26 @@ void start_dump() {
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);
+  }
+
+
+// are all in the same gtid pos?
+  gchar *binlog_snapshot_gtid_executed = NULL; 
+  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
+  guint start_transaction_retry=0;
+  while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
+    binlog_snapshot_gtid_executed_status_local=TRUE;
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_pop(conf.gtid_pos_checked);
+    }
+    binlog_snapshot_gtid_executed=g_strdup(td[0].binlog_snapshot_gtid_executed);
+    for (n = 1; n < num_threads; n++) {
+      binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(td[n].binlog_snapshot_gtid_executed,binlog_snapshot_gtid_executed)==0;
+    }
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_push(conf.are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
+    }
+    start_transaction_retry++;
   }
 
   for (n = 0; n < num_threads; n++) {

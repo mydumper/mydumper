@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+#define MAX_START_TRANSACTION_RETRIES 5
 
 enum job_type {
   JOB_SHUTDOWN,
@@ -58,6 +59,8 @@ struct configuration {
   GAsyncQueue *ready_non_innodb_queue;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
+  GAsyncQueue *gtid_pos_checked;
+  GAsyncQueue *are_all_threads_in_same_pos;
   GString *lock_tables_statement;
   GMutex *mutex;
   int done;
