@@ -42,9 +42,9 @@ guint sync_threads_remaining;
 guint sync_threads_remaining1;
 guint sync_threads_remaining2;
 
-static GMutex *sync_mutex;
-static GMutex *sync_mutex1;
-static GMutex *sync_mutex2;
+static GRecMutex *sync_mutex;
+static GRecMutex *sync_mutex1;
+static GRecMutex *sync_mutex2;
 GMutex *view_mutex;
 
 void initialize_job(gchar * pm_str){
@@ -54,12 +54,12 @@ void initialize_job(gchar * pm_str){
   sync_threads_remaining=num_threads;
   sync_threads_remaining1=num_threads;
   sync_threads_remaining2=num_threads;
-  sync_mutex = g_mutex_new();
-  sync_mutex1 = g_mutex_new();
-  sync_mutex2 = g_mutex_new();
-  g_mutex_lock(sync_mutex);
-  g_mutex_lock(sync_mutex1);
-  g_mutex_lock(sync_mutex2);
+  sync_mutex = g_rec_mutex_new();
+  sync_mutex1 = g_rec_mutex_new();
+  sync_mutex2 = g_rec_mutex_new();
+  g_rec_mutex_lock(sync_mutex);
+  g_rec_mutex_lock(sync_mutex1);
+  g_rec_mutex_lock(sync_mutex2);
 
   view_mutex=g_mutex_new();
 }
@@ -95,12 +95,12 @@ gboolean process_index(struct thread_data * td){
   return b;
 }
 */
-void sync_threads(guint *counter, GMutex *mutex){
+void sync_threads(guint *counter, GRecMutex *mutex){
   if (g_atomic_int_dec_and_test(counter)){
-    g_mutex_unlock(mutex);
+    g_rec_mutex_unlock(mutex);
   }else{
-    g_mutex_lock(mutex);
-    g_mutex_unlock(mutex);
+    g_rec_mutex_lock(mutex);
+    g_rec_mutex_unlock(mutex);
   }
 }
 
