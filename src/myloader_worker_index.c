@@ -84,7 +84,7 @@ void *worker_index_thread(struct thread_data *td) {
   if (db){
     td->current_database=db;
     if (execute_use(td)){
-      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
+      m_critical("I-Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }
   }
   if (innodb_optimize_keys_all_tables){
@@ -92,7 +92,7 @@ void *worker_index_thread(struct thread_data *td) {
     g_rec_mutex_unlock(innodb_optimize_keys_all_tables_mutex);
   }
     
-  g_debug("Thread %d: Starting import", td->thread_id);
+  g_debug("I-Thread %d: Starting import", td->thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
