@@ -388,16 +388,11 @@ int main(int argc, char *argv[]) {
   }else{
     process_directory(&conf);
   }
-  g_message("wait_schema_worker_to_finish");
   wait_schema_worker_to_finish();
-  g_message("wait_loader_threads_to_finish");
   wait_loader_threads_to_finish();
-  g_message("create_index_shutdown_job");
   create_index_shutdown_job(&conf);
-  g_message("wait_index_worker_to_finish");
   wait_index_worker_to_finish();
 
-  g_message("We are not waiting anything else");
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 
