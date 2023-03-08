@@ -63,6 +63,8 @@
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
+#include "myloader_worker_schema.h"
+
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
@@ -85,6 +87,7 @@ gchar *purge_mode_str=NULL;
 guint errors = 0;
 guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
+guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
@@ -364,6 +367,10 @@ int main(int argc, char *argv[]) {
     d->schema_state=CREATED;
   }
 
+  if (serial_tbl_creation)
+    max_threads_for_schema_creation=1;
+
+  initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
 
@@ -381,11 +388,16 @@ int main(int argc, char *argv[]) {
   }else{
     process_directory(&conf);
   }
-
+  g_message("wait_schema_worker_to_finish");
+  wait_schema_worker_to_finish();
+  g_message("wait_loader_threads_to_finish");
   wait_loader_threads_to_finish();
+  g_message("create_index_shutdown_job");
   create_index_shutdown_job(&conf);
+  g_message("wait_index_worker_to_finish");
   wait_index_worker_to_finish();
 
+  g_message("We are not waiting anything else");
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 

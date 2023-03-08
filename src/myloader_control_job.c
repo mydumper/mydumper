@@ -25,6 +25,8 @@
 #include "myloader_jobs_manager.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
+#include "myloader_worker_schema.h"
+
 gboolean intermediate_queue_ended_local=FALSE;
 gboolean dont_wait_for_schema_create=FALSE;
 GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
@@ -295,10 +297,24 @@ void enqueue_indexes_if_possible(struct configuration *conf){
 
 
 void refresh_db_and_jobs(enum file_type current_ft){
-  g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(current_ft));
+  switch (current_ft){
+    case SCHEMA_CREATE:
+    case SCHEMA_TABLE:
+      schema_queue_push(current_ft);
+      break;
+    case DATA:
+      g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(current_ft));
+      break;
+    case INTERMEDIATE_ENDED:
+      schema_queue_push(current_ft);
+      g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(current_ft));
+      break;
+   default:
+      break;
+  }
 }
 
-
+/*
 void set_db_schema_state_to_created( struct database * database, GAsyncQueue * object_queue, GAsyncQueue * kind_queue){
   database->schema_state=CREATED;
   struct control_job * cj = g_async_queue_try_pop(database->queue);
@@ -308,6 +324,7 @@ void set_db_schema_state_to_created( struct database * database, GAsyncQueue * o
     cj = g_async_queue_try_pop(database->queue);
   }
 }
+
 
 void set_table_schema_state_to_created (struct configuration *conf){
   g_mutex_lock(conf->table_list_mutex);
@@ -323,7 +340,7 @@ void set_table_schema_state_to_created (struct configuration *conf){
   }
   g_mutex_unlock(conf->table_list_mutex);
 }
-
+*/
 void last_wait_control_job_to_shutdown(){
    if (g_atomic_int_dec_and_test(&last_wait)){
      g_mutex_lock(last_wait_control_job_continue);
@@ -345,6 +362,8 @@ void wake_threads_waiting(struct configuration *conf, guint *threads_waiting){
         g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
       }
     }
+    if (intermediate_queue_ended_local && giveup)
+      g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
   }
 }
 
@@ -362,14 +381,10 @@ void *control_job_thread(struct configuration *conf){
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 
     switch (ft){
     case SCHEMA_CREATE:
-      //review the db that can be created
-//      g_message("SCHEMA_CREATE");
-      g_async_queue_push(here_is_your_job, GINT_TO_POINTER(ft));
+      g_error("Thread control job: This should not happen");
       break;
     case SCHEMA_TABLE: 
-      //review all the table that can be created
-//      g_message("SCHEMA_TABLE");
-      g_async_queue_push(here_is_your_job, GINT_TO_POINTER(ft));
+      g_error("Thread control job: This should not happen");
       break;
     case DATA:
       wake_threads_waiting(conf, &threads_waiting);
@@ -419,11 +434,11 @@ void *control_job_thread(struct configuration *conf){
 //      g_message("INTERMEDIATE_ENDED Starting");
       while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
         g_mutex_lock(real_db_name->mutex);
-        set_db_schema_state_to_created(real_db_name, conf->table_queue, here_is_your_job);
+//        set_db_schema_state_to_created(real_db_name, conf->table_queue, here_is_your_job);
         g_mutex_unlock(real_db_name->mutex);
       }
 //       g_message("INTERMEDIATE_ENDED ACA2");
-      set_table_schema_state_to_created(conf);
+//      set_table_schema_state_to_created(conf);
 //      g_message("INTERMEDIATE_ENDED ACA");
       enqueue_indexes_if_possible(conf);
 //      g_message("INTERMEDIATE_ENDED FINISH Waiting threads begin");
@@ -466,26 +481,10 @@ void *process_stream_queue(struct thread_data * td) {
 //    g_message("Thread %d: Sending THREAD response: %d DATA: %d", td->thread_id,  ft,  DATA);
     switch (ft){
     case SCHEMA_CREATE:
-//      g_message("SCHEMA_CREATE pop");
-      job=g_async_queue_pop(td->conf->database_queue);
-//      g_message("SCHEMA_CREATE poped");
-      if (job->type != JOB_SHUTDOWN){
-//        g_debug("Restoring database");
-        struct database * real_db_name=job->data.restore_job->data.srj->database;
-        g_mutex_lock(real_db_name->mutex);
-        cont=process_job(td, job);
-        set_db_schema_state_to_created(real_db_name, td->conf->table_queue, here_is_your_job);
-        g_mutex_unlock(real_db_name->mutex);
-      }else{
-        g_async_queue_push(td->conf->database_queue, job);
-      }
+      g_error("Thread %d: This should not happen", td->thread_id);
       break;
     case SCHEMA_TABLE:
-      job=g_async_queue_pop(td->conf->table_queue);
-      if (job->type != JOB_SHUTDOWN){
-        execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
-        cont=process_job(td, job);
-      }
+      g_error("Thread %d: This should not happen", td->thread_id);
       break;
 
     case DATA:
@@ -518,7 +517,7 @@ void *process_stream_queue(struct thread_data * td) {
   }
   enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);
-  last_wait_control_job_to_shutdown();
+//  last_wait_control_job_to_shutdown();
 //  process_index(td);
   return NULL;
 }

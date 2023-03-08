@@ -79,6 +79,8 @@ static GOptionEntry threads_entries[] = {
      "Maximum hard number of threads per table to use, we are not going to use more than this amount of threads per table, default 4", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
      "Maximum number of threads for index creation, default 4", NULL},
+    {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
+     "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
@@ -95,7 +97,7 @@ static GOptionEntry execution_entries[] = {
      "Drop tables if they already exist", NULL},
 
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
-      "Table recreation will be executed in series, one thread at a time",NULL},
+      "Table recreation will be executed in series, one thread at a time. This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will receive the stream from STDIN and creates the file in the disk before start processing. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
 //    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
