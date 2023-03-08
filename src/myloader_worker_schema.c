@@ -114,6 +114,7 @@ gboolean process_schema(struct thread_data * td){
         guint n=0;
         for (n = 0; n < max_threads_for_schema_creation; n++) {
           g_async_queue_push(td->conf->table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+
           g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
         }
       }
