@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 void load_restore_entries(GOptionGroup *main_group);
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema);

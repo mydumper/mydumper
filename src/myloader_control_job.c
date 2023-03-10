@@ -172,7 +172,7 @@ gboolean are_available_jobs(struct thread_data * td){
 
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
   g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database->real_database, dbt->table);
-  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes,"indexes");
+  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
   g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;

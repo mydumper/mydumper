@@ -140,6 +140,37 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
   return truncate_or_delete_failed;
 }
 
+void is_all_done(void* key, void* dbt, void *total){
+  (void) key;
+  (void) dbt;
+//  *((guint *)total)= 100;
+  if (((struct db_table*)dbt)->schema_state >= ALL_DONE)
+    *((guint *)total)= *((guint *)total) + 1;
+//*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
+}
+
+void increse_object_error(const gchar *object){
+        if (!g_strcmp0(object,SEQUENCE))
+          g_atomic_int_inc(&(detailed_errors.sequence_errors));
+        else if (!g_strcmp0(object,TRIGGER))
+          g_atomic_int_inc(&(detailed_errors.trigger_errors));
+        else if (!g_strcmp0(object,TABLESPACE))
+          g_atomic_int_inc(&(detailed_errors.tablespace_errors));
+        else if (!g_strcmp0(object,CREATE_DATABASE))
+          g_atomic_int_inc(&(detailed_errors.schema_errors));
+        else if (!g_strcmp0(object,VIEW))
+          g_atomic_int_inc(&(detailed_errors.view_errors));
+        else if (!g_strcmp0(object,POST))
+          g_atomic_int_inc(&(detailed_errors.post_errors));
+        else if (!g_strcmp0(object,INDEXES))
+          g_atomic_int_inc(&(detailed_errors.index_errors));
+        else if (!g_strcmp0(object,CONSTRAINTS))
+          g_atomic_int_inc(&(detailed_errors.constraints_errors));
+        else g_message("Failed object %s no place to save", object);
+
+}
+
+
 void process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
@@ -158,12 +189,15 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   }
   struct db_table *dbt=rj->dbt;
   guint query_counter=0;
-  guint i=0;
+//  guint i=0;
+  guint total=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
-      g_message("Thread %d: restoring %s `%s`.`%s` from %s", td->thread_id, rj->data.srj->object,
-                dbt->database->real_database, dbt->real_table, rj->filename);
-      restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter);
+      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      g_message("Thread %d: restoring %s `%s`.`%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
+                dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
+      if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter))
+        increse_object_error(rj->data.srj->object);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
@@ -177,11 +211,14 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
         g_message("Skipping table creation `%s`.`%s` from %s", dbt->database->real_database, dbt->real_table, rj->filename);
       }else{
-        g_message("Thread %d: Creating table `%s`.`%s` from content in %s", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
+        g_message("Thread %d: Creating table `%s`.`%s` from content in %s.", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
+          g_atomic_int_inc(&(detailed_errors.schema_errors));
           g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+        }else{
+          g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+          g_message("Thread %d: Table `%s`.`%s` created. Tables %d of %d completed", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
         }
-        g_debug("Thread %d: Creating table `%s`.`%s` from content in %s COMPLETED", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
       }
       dbt->schema_state=CREATED;
       if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
@@ -190,10 +227,12 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu.", td->thread_id,
-                dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files);
+      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
+                dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
       g_mutex_unlock(progress_mutex);
-      if (stream && dbt->schema_state<CREATED){
+/* TODO: This code is obsolete now and should be removed
+        if (stream && dbt->schema_state<CREATED){
         // In a stream scenario we might need to wait until table is created to start executing inserts.
         i=0;
         while (dbt->schema_state<CREATED && i<10000){
@@ -206,16 +245,20 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           m_critical("Table has not been created in more than 10 seconds");
         }
       }
+*/
       if (restore_data_from_file(td, dbt->database->real_database, dbt->real_table, rj->filename, FALSE) > 0){
+        g_atomic_int_inc(&(detailed_errors.data_errors));
         g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
       }
       g_atomic_int_dec_and_test(&(dbt->remaining_jobs));
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
-      g_message("Thread %d: restoring %s on `%s` from %s", td->thread_id, rj->data.srj->object,
-                rj->data.srj->database->real_database, rj->filename);
-      restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE );
+      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      g_message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
+                rj->data.srj->database->real_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
+      if ( restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE ) > 0 )
+        increse_object_error(rj->data.srj->object);
       free_schema_restore_job(rj->data.srj);
       break;
     default:

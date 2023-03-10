@@ -77,7 +77,7 @@ enum file_type process_filename(char *filename){
       case SCHEMA_TABLESPACE:
         break;
       case SCHEMA_CREATE:
-        process_database_filename(filename, "create database");
+        process_database_filename(filename);
         if (db)
           ft=DO_NOT_ENQUEUE;
         //m_remove(directory,filename);
@@ -101,13 +101,13 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_TRIGGER:
         if (!skip_triggers)
-          if (!process_schema_filename(filename,"trigger"))
+          if (!process_schema_filename(filename, TRIGGER))
             return DO_NOT_ENQUEUE;
         break;
       case SCHEMA_POST:
         // can be enqueued in any order
         if (!skip_post)
-          if (!process_schema_filename(filename,"post"))
+          if (!process_schema_filename(filename, POST))
             return DO_NOT_ENQUEUE;
         break;
       case CHECKSUM:
@@ -179,25 +179,6 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     refresh_db_and_jobs(current_ft);
 //    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
 }
-
-/*void enqueue_all_index_jobs(struct configuration *conf){
-  g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  struct db_table * dbt;
-  while (iter != NULL){
-    dbt = iter->data;
-    g_mutex_lock(dbt->mutex);
-    if (!dbt->index_enqueued){
-      struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes,"indexes");
-      g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->name));
-      dbt->index_enqueued=TRUE;
-    }
-    g_mutex_unlock(dbt->mutex);
-    iter=iter->next;
-  }
-  g_mutex_unlock(conf->table_list_mutex);
-}
-*/
 
 void *intermediate_thread(){
   struct intermediate_filename  * iflnm=NULL;

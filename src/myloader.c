@@ -85,6 +85,7 @@ guint rows = 0;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
+struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
@@ -133,6 +134,16 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
 }
 
 
+void show_dbt(void* key, void* dbt, void *total){
+  (void) key;
+  (void) dbt;
+  (void) total;
+  g_message("Table %s", (char*) key);
+//  *((guint *)total)= 100;
+//  //    if (((struct db_table*)dbt)->schema_state >= CREATED)
+//  //        *((guint *)total)= *((guint *)total) + 1;
+ //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
+  }
 
 void create_database(struct thread_data *td, gchar *database) {
   gchar *query = NULL;
@@ -147,12 +158,13 @@ void create_database(struct thread_data *td, gchar *database) {
                                             directory, database, compress_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    restore_data_from_file(td, database, NULL, filename, TRUE);
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filename, TRUE));
   } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-    restore_data_from_file(td, database, NULL, filenamegz, TRUE);
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filenamegz, TRUE));
   } else {
     query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
-    m_query(td->thrconn, query, m_warning, "Fail to create database: %s", database);
+    if (!m_query(td->thrconn, query, m_warning, "Fail to create database: %s", database))
+      g_atomic_int_inc(&(detailed_errors.schema_errors));
 //    if (mysql_query(td->thrconn, query)){
 //      g_warning("Fail to create database: %s", database);
 //    }
@@ -160,6 +172,34 @@ void create_database(struct thread_data *td, gchar *database) {
 
   g_free(query);
   return;
+}
+
+
+void print_errors(){
+  g_message(
+    "Errors found:\n"
+    "- Tablespace:\t%d\n"
+    "- Schema:    \t%d\n"
+    "- Data:      \t%d\n"
+    "- View:      \t%d\n"
+    "- Sequence:  \t%d\n"
+    "- Index:     \t%d\n"
+    "- Trigger:   \t%d\n"
+    "- Constraint:\t%d\n"
+    "- Post:      \t%d\n"
+    "Retries:\t%d",
+    detailed_errors.tablespace_errors,
+    detailed_errors.schema_errors,
+    detailed_errors.data_errors,
+    detailed_errors.view_errors,
+    detailed_errors.sequence_errors,
+    detailed_errors.index_errors,
+    detailed_errors.trigger_errors,
+    detailed_errors.constraints_errors,
+    detailed_errors.post_errors,
+    detailed_errors.retries);
+
+
 }
 
 int main(int argc, char *argv[]) {
@@ -467,10 +507,15 @@ int main(int argc, char *argv[]) {
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
   }
+
+  g_hash_table_foreach(conf.table_hash,&show_dbt, NULL);
   free_table_hash(conf.table_hash);
   g_hash_table_remove_all(conf.table_hash);
   g_hash_table_unref(conf.table_hash);
   g_list_free_full(conf.checksum_list,g_free);
+
+  print_errors();
+
   if (logoutfile) {
     fclose(logoutfile);
   }
@@ -488,6 +533,8 @@ int main(int argc, char *argv[]) {
     tl=tl->next;
   }
 */
+
+
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

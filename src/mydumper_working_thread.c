@@ -601,7 +601,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     masterpos = row[1];
     /* Oracle/Percona GTID */
     if (mysql_num_fields(master) == 5) {
-      mastergtid = row[4];
+      mastergtid = remove_new_line(row[4]);
     } else {
       /* Let's try with MariaDB 10.x */
       /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera

@@ -397,6 +397,21 @@ guint strcount(gchar *text){
   return i;
 }
 
+
+gchar * remove_new_line(gchar *to){
+  gchar *from=to;
+  guint i=0,j=0;
+  while (from[i]!='\0'){
+    if (from[i]!='\n'){
+      from[i]=to[j];
+      j++;
+    }
+    i++;
+  }
+  from[i]=to[j];
+  return to;
+}
+
 gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
