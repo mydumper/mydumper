@@ -207,7 +207,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
               g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
               dbt->indexes=alter_table_statement;
               if (flag & INCLUDE_CONSTRAINT){
-                struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->database, alter_table_constraint_statement, "constraint");
+                struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->database, alter_table_constraint_statement, CONSTRAINTS);
                 g_async_queue_push(conf->post_table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
@@ -341,12 +341,12 @@ gchar * get_database_name_from_content(const gchar *filename){
 }
 
 void process_tablespace_filename(char * filename) {
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, "tablespace");
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, TABLESPACE);
   g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
 }
 
 
-void process_database_filename(char * filename, const char *object) {
+void process_database_filename(char * filename) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
 
@@ -364,7 +364,7 @@ void process_database_filename(char * filename, const char *object) {
   struct database *real_db_name = get_db_hash(db_kname, db_vname);
   real_db_name->schema_state=NOT_CREATED;
   if (!db){
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, CREATE_DATABASE);
     g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
   }
 }
@@ -503,23 +503,23 @@ gboolean process_schema_view_filename(gchar *filename) {
   }
   struct db_table *dbt=append_new_db_table(NULL, database, table_name,0, NULL);
   dbt->is_view=TRUE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, "view");
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, VIEW);
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
 }
 
 gboolean process_schema_sequence_filename(gchar *filename) {
-    gchar *database=NULL, *table_name=NULL;
-    struct database *real_db_name=NULL;
-    get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
-    if (database == NULL){
-      g_critical("Database is null on: %s",filename);
-    }
-    real_db_name=get_db_hash(database,database);
-    if (real_db_name==NULL){
-      g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
-      return FALSE;
-    }
+  gchar *database=NULL, *table_name=NULL;
+  struct database *real_db_name=NULL;
+  get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
+  if (database == NULL){
+    g_critical("Database is null on: %s",filename);
+  }
+  real_db_name=get_db_hash(database,database);
+  if (real_db_name==NULL){
+    g_warning("It was not possible to process file: %s (3) because real_db_name isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+    return FALSE;
+  }
   if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
     g_warning("File %s has been filter out",filename);
     return TRUE;
@@ -529,7 +529,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
 //  g_free(lkey);
 //  if (dbt==NULL)
 //    return FALSE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, "sequence");
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, SEQUENCE );
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
   return TRUE;
 }

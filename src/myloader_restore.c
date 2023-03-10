@@ -51,6 +51,7 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
 //    }
 
     g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
+    g_atomic_int_inc(&(detailed_errors.retries));
     if (mysql_real_query(td->thrconn, data->str, data->len)) {
       if (is_schema)
         g_critical("Thread %d: Error restoring: %s %s", td->thread_id, data->str, mysql_error(td->thrconn));

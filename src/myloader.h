@@ -20,6 +20,19 @@
 #ifndef _src_myloader_h
 #define _src_myloader_h
 
+struct restore_errors {
+  guint data_errors;
+  guint index_errors;
+  guint schema_errors;
+  guint trigger_errors;
+  guint view_errors;
+  guint sequence_errors;
+  guint tablespace_errors;
+  guint post_errors;
+  guint constraints_errors;
+  guint retries;
+};
+
 struct thread_data {
   struct configuration *conf;
   MYSQL *thrconn;

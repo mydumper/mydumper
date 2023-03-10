@@ -38,6 +38,7 @@ struct function_pointer{
   GHashTable *memory;
 };
 
+gchar * remove_new_line(gchar *to);
 char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn);

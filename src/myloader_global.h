@@ -17,6 +17,17 @@
 
 */
 
+
+#define SEQUENCE "sequence"
+#define TRIGGER "trigger"
+#define POST "post"
+#define TABLESPACE "tablespace"
+#define CREATE_DATABASE "create database"
+#define VIEW "view"
+#define INDEXES "indexes"
+#define CONSTRAINTS "constraints"
+
+extern struct restore_errors detailed_errors;
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
 extern GOptionEntry common_entries[];
