@@ -133,6 +133,16 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
 }
 
 
+void show_dbt(void* key, void* dbt, void *total){
+  (void) key;
+  (void) dbt;
+  (void) total;
+  g_message("Table %s", (char*) key);
+//  *((guint *)total)= 100;
+//  //    if (((struct db_table*)dbt)->schema_state >= CREATED)
+//  //        *((guint *)total)= *((guint *)total) + 1;
+ //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
+  }
 
 void create_database(struct thread_data *td, gchar *database) {
   gchar *query = NULL;
@@ -467,6 +477,8 @@ int main(int argc, char *argv[]) {
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
   }
+
+  g_hash_table_foreach(conf.table_hash,&show_dbt, NULL);
   free_table_hash(conf.table_hash);
   g_hash_table_remove_all(conf.table_hash);
   g_hash_table_unref(conf.table_hash);

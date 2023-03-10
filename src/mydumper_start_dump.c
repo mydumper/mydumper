@@ -1050,7 +1050,7 @@ void start_dump() {
   for (iter = all_dbts; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
 //    write_table_metadata_into_file(dbt);
-    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table, dbt->rows);
+    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
     if (dbt->data_checksum)
       fprintf(mdfile,"data_checksum = %s\n", dbt->data_checksum);
     if (dbt->schema_checksum)
