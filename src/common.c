@@ -401,14 +401,14 @@ guint strcount(gchar *text){
 gchar * remove_new_line(gchar *to){
   gchar *from=to;
   guint i=0,j=0;
-  while (from[i]!='\0'){
-    if (from[i]!='\n'){
-      from[i]=to[j];
-      j++;
+  while (from[j]!='\0'){
+    if (from[j]!='\n'){
+      to[i]=from[j];
+      i++;
     }
-    i++;
+    j++;
   }
-  from[i]=to[j];
+  to[i]=from[j];
   return to;
 }
 
