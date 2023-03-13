@@ -917,6 +917,7 @@ void start_dump() {
     td[n].less_locking_stage = FALSE;
     td[n].binlog_snapshot_gtid_executed = NULL;
     td[n].pause_resume_mutex=NULL;
+    td[n].table_name=NULL;
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);
