@@ -185,11 +185,15 @@ void initialize_working_thread(){
 
 
   /* savepoints workaround to avoid metadata locking issues
-     doesnt work for chuncks */
-  if (rows_per_file && use_savepoints) {
+     doesnt work for chuncks 
+
+     UPDATE: this is not true anymore
+   */
+/*  if (rows_per_file && use_savepoints) {
     use_savepoints = FALSE;
     g_warning("--use-savepoints disabled by --rows");
   }
+*/
 
   /* Give ourselves an array of engines to ignore */
   if (ignore_engines)
@@ -424,8 +428,24 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj);
 
 void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   struct table_job *tj = (struct table_job *)job->job_data;
-  if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
-    g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
+
+  if (use_savepoints){
+    if (td->table_name!=NULL){
+      if (tj->dbt->table != td->table_name){
+        if ( mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
+          g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
+        }
+        if (mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
+          g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
+        }
+        td->table_name = tj->dbt->table;
+      }
+    }else{
+      if (mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
+        g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
+      }
+      td->table_name = tj->dbt->table;
+    }
   }
   tj->td=td;
   switch (tj->dbt->chunk_type) {
@@ -475,10 +495,10 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       }
   }
 
-  if (use_savepoints &&
+/*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
-  }
+  }*/
   tj->td=NULL;
 //  free_table_job(tj);
   g_free(job);
@@ -1076,6 +1096,11 @@ void *working_thread(struct thread_data *td) {
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+  }
+
+  if (use_savepoints && td->table_name != NULL &&
+      mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
+    g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
 
   process_queue(td->conf->post_data_queue, td, process_job, NULL);
