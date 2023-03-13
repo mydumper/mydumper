@@ -543,7 +543,7 @@ gboolean process_schema_filename(gchar *filename, const char * object) {
     g_critical("Database is null on: %s",filename);
   }
   real_db_name=get_db_hash(database,database);
-  if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
+  if (table_name != NULL && !eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
     g_warning("File %s has been filter out(1)",filename);
     return FALSE; 
   }

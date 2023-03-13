@@ -399,6 +399,8 @@ guint strcount(gchar *text){
 
 
 gchar * remove_new_line(gchar *to){
+  if (to==NULL)
+    return to;
   gchar *from=to;
   guint i=0,j=0;
   while (from[j]!='\0'){

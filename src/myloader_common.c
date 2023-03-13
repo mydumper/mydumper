@@ -158,6 +158,8 @@ struct database * db_hash_lookup(gchar *database){
 }
 */
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
+  if (table_name == NULL)
+    g_error("Table name is null on eval_table()");
   g_mutex_lock(mutex);
   if ( tables ){
     if ( ! is_table_in_list(table_name, tables) ){

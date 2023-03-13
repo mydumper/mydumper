@@ -610,7 +610,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       mysql_query(conn, "SELECT @@gtid_binlog_pos");
       mdb = mysql_store_result(conn);
       if (mdb && (row = mysql_fetch_row(mdb))) {
-        mastergtid = row[0];
+        mastergtid = remove_new_line(row[0]);
       }
     }
   }
@@ -660,17 +660,17 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
         slavehost = row[i];
       } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name)){
         gtid_title="Executed_Gtid_Set";  
-        slavegtid = row[i];
+        slavegtid = remove_new_line(row[i]);
       } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
         gtid_title="Gtid_Slave_Pos";
-        slavegtid = row[i];
+        slavegtid = remove_new_line(row[i]);
       } else if (!strcasecmp("Channel_Name", fields[i].name) && strlen(row[i]) > 1) {
         channel_name = row[i];
       }
       g_string_append_printf(replication_section_str,"# %s = ", fields[i].name);
       (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT )  ?
-      g_string_append_printf(replication_section_str,"'%s'\n", row[i]):
-      g_string_append_printf(replication_section_str,"%s\n", row[i]);
+      g_string_append_printf(replication_section_str,"'%s'\n", remove_new_line(row[i])):
+      g_string_append_printf(replication_section_str,"%s\n", remove_new_line(row[i]));
     }
     if (slavehost) {
       slave_count++;
