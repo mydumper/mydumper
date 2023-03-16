@@ -1152,6 +1152,35 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   return field_list;
 }
 
+
+gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gchar *query =
+      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
+                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
+                      "COLUMN_TYPE ='json'",
+                      database, table);
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  if (res == NULL){
+    return FALSE;
+  }
+  row = mysql_fetch_row(res);
+  if (row != NULL){
+    mysql_free_result(res);
+    return TRUE;
+  }
+//  g_string_append(field_list, ")");
+  mysql_free_result(res);
+
+  return FALSE;
+}
+
+
 GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   // TODO #364: this is the place where we need to link the column between file loaded and dbt.
   // Currently, we are using identity_function, which return the same data.
@@ -1243,6 +1272,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
   dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
+  dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
   dbt->rows_lock= g_mutex_new();
   dbt->escaped_table = escape_string(conn,dbt->table);
   dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
@@ -1324,7 +1354,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-        if (data_checksums) {
+        if (data_checksums && !dbt->has_json_fields) {
           create_job_to_dump_checksum(dbt, conf);
         }
         if (trx_consistency_only ||
