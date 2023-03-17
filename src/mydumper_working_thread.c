@@ -1354,7 +1354,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-        if (data_checksums && !dbt->has_json_fields) {
+        if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt, conf);
         }
         if (trx_consistency_only ||
