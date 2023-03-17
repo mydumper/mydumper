@@ -206,6 +206,7 @@ struct db_table {
   gboolean complete_insert;
   GString *insert_statement;
   gboolean is_innodb;
+  gboolean has_json_fields;
   char *character_set;
   guint64 datalength;
   guint64 rows;
