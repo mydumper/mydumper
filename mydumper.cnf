@@ -1,3 +1,7 @@
+[mydumper]
+
+[myloader]
+
 [mydumper_global_variables]
 # The global variables changed in this section are rolled back after execution unless QUIT signal is sent.
 
