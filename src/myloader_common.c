@@ -261,39 +261,6 @@ enum file_type get_file_type (const char * filename){
   return IGNORED;
 }
 
-
-gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
-                   gboolean *eof, guint *line) {
-  char buffer[256];
-
-  do {
-    if (!is_compressed) {
-      if (fgets(buffer, 256, file) == NULL) {
-        if (feof(file)) {
-          *eof = TRUE;
-          buffer[0] = '\0';
-        } else {
-          return FALSE;
-        }
-      }
-    } else {
-      if (!gzgets((gzFile)file, buffer, 256)) {
-        if (gzeof((gzFile)file)) {
-          *eof = TRUE;
-          buffer[0] = '\0';
-        } else {
-          return FALSE;
-        }
-      }
-    }
-    g_string_append(data, buffer);
-    if (strlen(buffer) != 256)
-      (*line)++;
-  } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
-
-  return TRUE;
-}
-
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
   gchar **split_filename = g_strsplit(filename, sufix, 0);
   gchar **split = g_strsplit(split_filename[0],".",0);

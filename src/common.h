@@ -31,11 +31,15 @@ struct configuration_per_table{
 
 #define STREAM_BUFFER_SIZE 1000000
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
-typedef gchar * (*fun_ptr)(gchar **, GHashTable *);
+struct function_pointer;
+typedef gchar * (*fun_ptr)(gchar **,gulong*, struct function_pointer*);
 
 struct function_pointer{
   fun_ptr function;
   GHashTable *memory;
+  gchar *value;
+  GList *parse;
+  GList *delimiters;
 };
 
 gchar * remove_new_line(gchar *to);
@@ -57,7 +61,8 @@ gchar *replace_escaped_strings(gchar *c);
 void escape_tab_with(gchar *to);
 void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
 //void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
+//void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
+void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
 gboolean is_table_in_list(gchar *table_name, gchar **tl);
@@ -84,3 +89,4 @@ void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
+gboolean read_data(FILE *file, gboolean is_compressed, GString *data, gboolean *eof, guint *line);
