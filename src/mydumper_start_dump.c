@@ -277,6 +277,19 @@ GHashTable * mydumper_initialize_hash_of_session_variables(){
   return set_session_hash;
 }
 
+MYSQL *create_connection() {
+  MYSQL *conn;
+  conn = mysql_init(NULL);
+
+  char *mydumper=g_strdup("mydumper");
+  m_connect(conn, mydumper ,db_items!=NULL?db_items[0]:db);
+  g_free(mydumper);
+
+  execute_gstring(conn, set_session);
+  return conn;
+}
+
+
 MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
@@ -294,7 +307,7 @@ MYSQL *create_main_connection() {
   if (key_file != NULL ){
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"mydumper_global_variables");
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"mydumper_session_variables");
-    load_per_table_info_from_key_file(key_file, &conf_per_table, &get_function_pointer_for);
+    load_per_table_info_from_key_file(key_file, &conf_per_table, &init_function_pointer);
   }
   refresh_set_session_from_hash(set_session,set_session_hash);
   refresh_set_global_from_hash(set_global, set_global_back, set_global_hash);
@@ -509,7 +522,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
         *acquire_lock_function = &send_percona57_backup_locks;
         *release_binlog_function = &send_unlock_binlogs;
         *release_lock_function = &send_unlock_tables;
-        *conn = create_main_connection();
+        *conn = create_connection();
         break;
       }
     }
@@ -662,6 +675,7 @@ void start_dump() {
   initialize_start_dump();
   initialize_common();
   initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"mydumper")?defaults_file:NULL);
+  initialize_masquerade();
 
   /* Give ourselves an array of tables to dump */
   if (tables_list)

@@ -397,41 +397,46 @@ void message_dumping_data(struct thread_data *td, struct table_job *tj){
 
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
 //  if (load_data){
+    if (*column)
+      fun_ptr_i->function(column,&length,fun_ptr_i);
     if (!*column) {
       g_string_append(statement_row, "\\N");
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
 //      unsigned long new_length = 
-      mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      mysql_real_escape_string(conn, escaped->str, *column, length);
 //      g_string_set_size(escaped, new_length);
       m_replace_char_with_char('\\',*fields_escaped_by,escaped->str,escaped->len);
       m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str,escaped->len);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else
-      g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
+      g_string_append(statement_row, *column);
 }
 
 void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
     /* Don't escape safe formats, saves some time */
+    if (*column)
+      fun_ptr_i->function(column,&length, fun_ptr_i);
+
     if (!*column) {
       g_string_append(statement_row, "NULL");
     } else if (field.flags & NUM_FLAG) {
-      g_string_append(statement_row, fun_ptr_i->function(column,fun_ptr_i->memory));
+      g_string_append(statement_row, *column);
     } else if ( length == 0){
       g_string_append_c(statement_row,*fields_enclosed_by);
       g_string_append_c(statement_row,*fields_enclosed_by);
     } else if ( field.type == MYSQL_TYPE_BLOB ) {
       g_string_set_size(escaped, length * 2 + 1);
       g_string_append(statement_row,"0x");
-      mysql_hex_string(escaped->str,fun_ptr_i->function(column,fun_ptr_i->memory),length);
+      mysql_hex_string(escaped->str,*column,length);
       g_string_append(statement_row,escaped->str);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
  *        * the beginning */
       g_string_set_size(escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, escaped->str, fun_ptr_i->function(column,fun_ptr_i->memory), length);
+      mysql_real_escape_string(conn, escaped->str, *column, length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(statement_row, "CONVERT(");
       g_string_append_c(statement_row, *fields_enclosed_by);

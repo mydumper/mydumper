@@ -13,8 +13,33 @@
 */
 #include "common.h"
 
-gchar * random_uuid_function(gchar ** r, GHashTable * mem);
-gchar *    identity_function(gchar ** r, GHashTable * mem);
-gchar *  random_int_function(gchar ** r, GHashTable * mem);
-fun_ptr get_function_pointer_for (gchar *function_char);
 
+enum format_item_type {
+  FORMAT_ITEM_FILE,
+  FORMAT_ITEM_CONFIG_FILE,
+  FORMAT_ITEM_STRING,
+  FORMAT_ITEM_DELIMITER
+};
+
+struct format_item_delimiter{
+  
+
+};
+
+struct format_item_file{
+  GHashTable * data;
+  guint min;
+  guint max;
+
+};
+
+struct format_item{
+  enum format_item_type type;
+  guint len;
+  void * data; // if type is FORMAT_ITEM_FILE then it is format_item_file, if type is FORMAT_ITEM_STRING then it is gchar*, FORMAT_ITEM_DELIMITER the string to match
+};
+
+void initialize_masquerade();
+gchar * identity_function(gchar ** r, gulong* lenght, struct function_pointer *fp);
+//fun_ptr get_function_pointer_for (gchar *function_char);
+struct function_pointer * init_function_pointer(gchar *value);

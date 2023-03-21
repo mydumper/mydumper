@@ -26,7 +26,11 @@
 #include "common.h"
 #include "config.h"
 #include <stdarg.h>
-
+#ifdef ZWRAP_USE_ZSTD
+#include "../zstd/zstd_zlibwrapper.h"
+#else
+#include <zlib.h>
+#endif
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -181,7 +185,7 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   g_strfreev(keys);
 }
 
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for()){
+void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer(gchar*)){
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
   GHashTable *ht=NULL;
@@ -194,11 +198,10 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       ht=g_hash_table_new ( g_str_hash, g_str_equal );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
-        if (g_str_has_prefix(keys[j],"`") && g_str_has_suffix(keys[j],"`")){
+        if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
+
           value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-          struct function_pointer *fp = g_new0(struct function_pointer, 1);
-          fp->function=get_function_pointer_for(value);
-          fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
+          struct function_pointer *fp = init_function_pointer(value);
           g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
@@ -604,3 +607,34 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
+gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
+                   gboolean *eof, guint *line) {
+  char buffer[256];
+
+  do {
+    if (!is_compressed) {
+      if (fgets(buffer, 256, file) == NULL) {
+        if (feof(file)) {
+          *eof = TRUE;
+          buffer[0] = '\0';
+        } else {
+          return FALSE;
+        }
+      }
+    } else {
+      if (!gzgets((gzFile)file, buffer, 256)) {
+        if (gzeof((gzFile)file)) {
+          *eof = TRUE;
+          buffer[0] = '\0';
+        } else {
+          return FALSE;
+        }
+      }
+    }
+    g_string_append(data, buffer);
+    if (strlen(buffer) != 256)
+      (*line)++;
+  } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
+
+  return TRUE;
+}

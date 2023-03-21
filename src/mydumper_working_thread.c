@@ -1202,9 +1202,11 @@ GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
   struct function_pointer *fp;
   if (ht){
+    g_message("Using masquerade functions");
     while ((row = mysql_fetch_row(res))) {
       fp=(struct function_pointer*)g_hash_table_lookup(ht,row[0]);
       if (fp  != NULL){
+        g_message("Masquerade function found");
         anonymized_function_list=g_list_append(anonymized_function_list,fp);
       }else{
         anonymized_function_list=g_list_append(anonymized_function_list,&pp);

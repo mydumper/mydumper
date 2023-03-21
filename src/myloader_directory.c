@@ -20,6 +20,7 @@
 #include "myloader_intermediate_queue.h"
 #include <stdio.h>
 #include <glib/gstdio.h>
+#include "common.h"
 #include "myloader_common.h"
 #include <string.h>
 #include "myloader_global.h"

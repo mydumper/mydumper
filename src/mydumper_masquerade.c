@@ -22,25 +22,70 @@
 #include <gio/gio.h>
 #include <mysql.h>
 #include "mydumper_masquerade.h"
+#include "mydumper_common.h"
+struct function_pointer pp = {&identity_function, NULL, NULL, NULL, NULL};
 
-struct function_pointer pp = {&identity_function,NULL};
+GHashTable *file_hash = NULL;
 
-gchar * identity_function(gchar ** r, GHashTable * mem){
-  (void) mem;
+void initialize_masquerade(){
+  file_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+}
+
+GHashTable * load_file_content(gchar *filename){
+  GHashTable * file_content=g_hash_table_new ( g_direct_hash, g_direct_equal );
+  FILE *file = g_fopen(filename, "r");
+  if (file == NULL){
+    g_error("File not open: %s", filename);
+  }
+  GString *data=g_string_sized_new(256);
+  gboolean eof = FALSE;
+  guint line=0;
+  GList *l=NULL;
+  while (!eof){
+    read_data(file, FALSE, data, &eof, &line);
+    if (data->str[data->len-1] == '\n')
+      g_string_set_size(data, data->len - 1);
+    if (data->len>0){
+      l = (GList *) g_hash_table_lookup(file_content,(gpointer)GINT_TO_POINTER(data->len));
+      l=g_list_append(l,g_strdup(data->str));
+      g_hash_table_replace(file_content, (gpointer)GINT_TO_POINTER(data->len), l);
+    }
+    g_string_set_size(data, 0);
+  }
+  fclose(file);
+  return file_content;
+}
+
+GHashTable * load_file_into_file_hash(gchar *filename){
+  GHashTable * file_content=g_hash_table_lookup(file_hash,filename);
+  if (file_content==NULL){
+    file_content=load_file_content(filename);
+    g_hash_table_insert(file_hash,g_strdup(filename),file_content);
+    file_content=g_hash_table_lookup(file_hash,filename);
+  }
+  return file_content;
+}
+
+
+gchar * identity_function(gchar ** r, gulong* lenght,  struct function_pointer *fp){
+  (void) fp;
+  (void) lenght;
   return *r;
 }
 
-gchar * random_int_function(gchar ** r,GHashTable * mem){
-  (void) mem;
+gchar * random_int_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
+  (void) fp;
+  (void) lenght;
   g_snprintf(*r, strlen(*r)+1, "%u", g_random_int());
   return *r;
 }
 
-gchar * random_int_function_with_mem(gchar ** r, GHashTable * mem){
-  gchar *value=g_hash_table_lookup(mem,*r);
+gchar * random_int_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
+  (void) lenght;
+  gchar *value=g_hash_table_lookup(fp->memory,*r);
   if (value==NULL){
     value=g_strdup_printf("%u", g_random_int());
-    g_hash_table_insert(mem,g_strdup(*r),value);
+    g_hash_table_insert(fp->memory,g_strdup(*r),value);
   }
   g_strlcpy(*r, value, strlen(*r)+1);
   return *r;
@@ -63,8 +108,9 @@ char *rand_string(char *str, size_t size)
 }
 #endif
 
-gchar * random_uuid_function(gchar ** r, GHashTable * mem){
-  (void) mem;
+gchar * random_uuid_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
+ (void) lenght;
+ (void) fp;
 #ifdef WITH_GLIB_uuid_string_random
   g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
 #else
@@ -73,21 +119,115 @@ gchar * random_uuid_function(gchar ** r, GHashTable * mem){
   return *r;
 }
 
-gchar * random_uuid_function_with_mem(gchar ** r, GHashTable * mem){
-  gchar *value=g_hash_table_lookup(mem,*r);
+gchar * random_uuid_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
+  (void) lenght;
+  gchar *value=g_hash_table_lookup(fp->memory,*r);
   if (value==NULL){
+    gchar *k=g_strdup(*r);
 #ifdef WITH_GLIB_uuid_string_random
     value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
 #else
     rand_string(*r,strlen(*r));
 #endif
-    g_hash_table_insert(mem,g_strdup(*r),value);
+    g_hash_table_insert(fp->memory,k,g_strdup(value));
   }
   g_strlcpy(*r, value, strlen(*r)+1);
   return *r;
 }
 
+
+gchar * random_string_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
+  (void) lenght; 
+  (void) fp;
+  rand_string(*r, strlen(*r)+1);
+  return *r;
+}
+
+gchar * random_string_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
+  (void) lenght;
+  gchar *value=g_hash_table_lookup(fp->memory,*r);
+  if (value==NULL){
+    gchar *k=g_strdup(*r);
+    value=rand_string(*r,strlen(*r)+1);
+    g_hash_table_insert(fp->memory,k,g_strdup(value));
+  }
+  g_strlcpy(*r, value, strlen(*r)+1);
+
+  return *r;
+}
+
+
+
+gchar *random_format_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
+  guint i=0;
+  GList *l=fp->parse;
+  GList *d=fp->delimiters;
+  GList *fl=NULL;
+  struct format_item *fi=NULL;
+  gchar *p=*r;
+  guint local_max_len=0;
+  (void) local_max_len;
+  gboolean cont=TRUE;
+  struct format_item_file *fid = NULL;
+  guint val;
+  while (l !=NULL && i < *max_len){
+    if (d != NULL){
+      //find delimiter position to determine size
+      local_max_len=g_strstr_len(p, *max_len-i, (gchar*) (d->data)) - p;
+    }else{
+      local_max_len=*max_len-i;
+    }
+    cont=TRUE;
+    while (l !=NULL && cont && i < *max_len){
+      fi=l->data;
+      switch (fi->type){
+        case FORMAT_ITEM_FILE:
+          fid = fi->data;
+          val=g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max );
+          fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
+          g_strlcpy(p, fl->data, (i+val > *max_len ? *max_len - i : val)+1);
+          i+=val ;
+          p+=val ;
+          break;
+        case FORMAT_ITEM_CONFIG_FILE:
+          break;
+        case FORMAT_ITEM_STRING:
+          g_strlcpy(p, fi->data, (i+fi->len > *max_len? *max_len-i:fi->len )+1);
+          i+=fi->len;
+          p+=fi->len;
+          break;
+        case FORMAT_ITEM_DELIMITER:
+          g_strlcpy(p, fi->data, strlen(fi->data)+1);
+          i+=strlen(fi->data) ; 
+          p+=strlen(fi->data) ;
+          cont=FALSE;
+          break;
+      }
+      l=l->next; 
+    }
+    if (d != NULL){
+      d=d->next;
+    }
+
+  } 
+  if( i < *max_len){
+    *max_len=i;
+  }
+  return *r;
+}
+
+
 fun_ptr get_function_pointer_for (gchar *function_char){
+  if (g_str_has_prefix(function_char,"random_format")){
+    return &random_format_function;
+  }
+
+  if (!g_strcmp0(function_char,"random_string"))
+    return &random_string_function;
+  if (!g_strcmp0(function_char,"random_string_with_mem"))
+    return &random_string_function_with_mem;
+
+
   if (!g_strcmp0(function_char,"random_int"))
     return &random_int_function;
   if (!g_strcmp0(function_char,"random_int_with_mem"))
@@ -103,5 +243,106 @@ fun_ptr get_function_pointer_for (gchar *function_char){
     return &identity_function;
   if (!g_strcmp0(function_char,""))
     return &identity_function;
+  g_message("Function not found: Using default");
   return &identity_function;
 }
+
+gint comp(gconstpointer a, gconstpointer b){
+  return GPOINTER_TO_INT(a) >= GPOINTER_TO_INT(b);
+}
+
+
+void parse_value(struct function_pointer * fp, gchar *val){
+  char buffer[256];
+  guint i=0;
+  struct format_item *fi;
+  GList *keys=NULL, *sorted=NULL;
+  guint sum;
+  while (*val != '\0'){
+    if (*val == '\''){
+      val++;
+      i=0;
+      while (*val != '\0' && *val!='\''){
+        buffer[i]=*val;
+        i++;
+        val++;
+      }
+      if (*val!='\''){
+        g_error("Parsing format failed missing quote (')");
+      }
+      buffer[i]='\0';
+      fi=g_new0(struct format_item, 1);
+      fi->type=FORMAT_ITEM_STRING;
+      fi->data = g_strdup(buffer);
+      fi->len = i;
+      fp->parse=g_list_append(fp->parse,fi);
+      val++;
+    }else if (*val == '<'){
+      val++;
+      i=0;
+      while (*val != '\0' && *val!='>'){
+        buffer[i]=*val;
+        i++;
+        val++;
+      }
+      if (*val!='>'){
+        g_error("Parsing format failed missing close character (>)");
+      }
+      if (i>0){
+        buffer[i]='\0';
+        fi=g_new0(struct format_item, 1);
+        fi->type=FORMAT_ITEM_FILE;
+        struct format_item_file *fid=g_new0(struct format_item_file, 1);
+        fid->data = load_file_into_file_hash(buffer);
+        keys=g_hash_table_get_keys(fid->data);
+        sorted=g_list_sort(keys,comp);
+        fid->max = GPOINTER_TO_INT(g_list_last(sorted)->data);
+        fid->min = GPOINTER_TO_INT(g_list_first(sorted)->data);
+        sum=(fid->min+fid->max) * (fid->max-fid->min + 1)/2;
+        while (sorted !=NULL){
+          sum-=GPOINTER_TO_INT(sorted->data);
+          sorted=sorted->next;
+        }
+        if (sum != 0 )
+          g_error("The file %s shouldn't have gaps: %d | %d | %d", buffer, sum , fid->min , fid->max);
+        fi->data = fid;
+        fp->parse=g_list_append(fp->parse,fi);
+        g_list_free(keys);
+      }
+      val++;
+    }else{
+      i=0;
+      while (*val != '\0' && *val!='<' && *val!='\''){
+        buffer[i]=*val;
+        i++;
+        val++;
+      }
+      buffer[i]='\0';
+      fi=g_new0(struct format_item, 1);
+      fi->type=FORMAT_ITEM_DELIMITER;
+      fi->data = g_strdup(buffer);
+      fp->parse=g_list_append(fp->parse,fi);
+      fp->delimiters=g_list_append(fp->delimiters,fi);
+
+    }
+  }
+}
+
+
+struct function_pointer * init_function_pointer(gchar *value){
+  struct function_pointer * fp= g_new0(struct function_pointer, 1);
+  fp->function=get_function_pointer_for(value);
+  fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
+  fp->value=value;
+  fp->parse=NULL;
+  fp->delimiters=NULL;
+  if (g_str_has_prefix(value,"random_format")){
+    parse_value(fp, g_strdup(&(fp->value[14])));
+  }
+  return fp;
+}
+
+
+
+
+
