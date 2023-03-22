@@ -1181,39 +1181,42 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
 }
 
 
-GList *get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
+struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   // TODO #364: this is the place where we need to link the column between file loaded and dbt.
   // Currently, we are using identity_function, which return the same data.
   // Key: `database`.`table`.`column`
+  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
+  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
+  struct function_pointer ** anonymized_function_list=NULL;
+  if (ht){
 
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
+    MYSQL_RES *res = NULL;
+    MYSQL_ROW row;
 
-  gchar *query =
+    gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
                       database, table);
-  mysql_query(conn, query);
-  g_free(query);
+    mysql_query(conn, query);
+    g_free(query);
 
-  GList *anonymized_function_list=NULL;
-  res = mysql_store_result(conn);
-  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
-  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
-  struct function_pointer *fp;
-  if (ht){
-    g_message("Using masquerade functions");
+    struct function_pointer *fp;
+    res = mysql_store_result(conn);
+    guint i=0;
+    anonymized_function_list = g_new0(struct function_pointer *, mysql_num_rows(res));
+    g_message("Using masquerade function on `%s`.`%s`", database, table);
     while ((row = mysql_fetch_row(res))) {
       fp=(struct function_pointer*)g_hash_table_lookup(ht,row[0]);
-      if (fp  != NULL){
-        g_message("Masquerade function found");
-        anonymized_function_list=g_list_append(anonymized_function_list,fp);
+      if (fp != NULL){
+        g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, row[0]);
+        anonymized_function_list[i]=fp;
       }else{
-        anonymized_function_list=g_list_append(anonymized_function_list,&pp);
+        anonymized_function_list[i]=&pp;
       }
+      i++;
     }
+    mysql_free_result(res);
   }
-  mysql_free_result(res);
   g_free(k);
   return anonymized_function_list;
 }
