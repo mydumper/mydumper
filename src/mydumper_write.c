@@ -451,17 +451,12 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   guint i = 0;
   g_string_append(statement_row, lines_starting_by);
   (void) dbt;
-  GList *f = dbt->anonymized_function;
-  struct function_pointer *fun_ptr_i=&pp;
+  struct function_pointer ** f = dbt->anonymized_function;
   for (i = 0; i < num_fields-1; i++) {
-    if (f){
-      fun_ptr_i=f->data;
-      f=f->next;
-    }
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, fun_ptr_i);
+    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f==NULL? &pp : f[i]);
     g_string_append(statement_row, fields_terminated_by);
   }
-  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, fun_ptr_i);
+  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f==NULL? &pp : f[i]);
   g_string_append(statement_row, lines_terminated_by);
 }
 

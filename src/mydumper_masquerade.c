@@ -43,7 +43,7 @@ GHashTable * load_file_content(gchar *filename){
   GList *l=NULL;
   while (!eof){
     read_data(file, FALSE, data, &eof, &line);
-    if (data->str[data->len-1] == '\n')
+    while (data->str[data->len-1] == '\n' || data->str[data->len-1] == '\r')
       g_string_set_size(data, data->len - 1);
     if (data->len>0){
       l = (GList *) g_hash_table_lookup(file_content,(gpointer)GINT_TO_POINTER(data->len));
@@ -57,6 +57,7 @@ GHashTable * load_file_content(gchar *filename){
 }
 
 GHashTable * load_file_into_file_hash(gchar *filename){
+  g_message("Loading content of %s",filename);
   GHashTable * file_content=g_hash_table_lookup(file_hash,filename);
   if (file_content==NULL){
     file_content=load_file_content(filename);
@@ -336,7 +337,9 @@ struct function_pointer * init_function_pointer(gchar *value){
   fp->value=value;
   fp->parse=NULL;
   fp->delimiters=NULL;
+  g_message("init_function_pointer: %s", value);
   if (g_str_has_prefix(value,"random_format")){
+    g_message("random_format_function");
     parse_value(fp, g_strdup(&(fp->value[14])));
   }
   return fp;

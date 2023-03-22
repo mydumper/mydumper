@@ -211,7 +211,7 @@ struct db_table {
   guint64 datalength;
   guint64 rows;
   GMutex *rows_lock;
-  GList *anonymized_function;
+  struct function_pointer ** anonymized_function;
   gchar *where;
   gchar *limit;
   guint num_threads;
