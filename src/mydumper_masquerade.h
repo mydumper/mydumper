@@ -18,7 +18,9 @@ enum format_item_type {
   FORMAT_ITEM_FILE,
   FORMAT_ITEM_CONFIG_FILE,
   FORMAT_ITEM_STRING,
-  FORMAT_ITEM_DELIMITER
+  FORMAT_ITEM_NUMBER,
+  FORMAT_ITEM_DELIMITER,
+  FORMAT_ITEM_CONSTANT
 };
 
 struct format_item_delimiter{
@@ -40,6 +42,6 @@ struct format_item{
 };
 
 void initialize_masquerade();
-gchar * identity_function(gchar ** r, gulong* lenght, struct function_pointer *fp);
+gchar * identity_function(gchar ** r, gulong* length, struct function_pointer *fp);
 //fun_ptr get_function_pointer_for (gchar *function_char);
 struct function_pointer * init_function_pointer(gchar *value);
