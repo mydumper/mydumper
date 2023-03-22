@@ -47,7 +47,7 @@ GHashTable * load_file_content(gchar *filename){
       g_string_set_size(data, data->len - 1);
     if (data->len>0){
       l = (GList *) g_hash_table_lookup(file_content,(gpointer)GINT_TO_POINTER(data->len));
-      l=g_list_append(l,g_strdup(data->str));
+      l=g_list_prepend(l,g_strdup(data->str));
       g_hash_table_replace(file_content, (gpointer)GINT_TO_POINTER(data->len), l);
     }
     g_string_set_size(data, 0);
@@ -184,11 +184,13 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
       switch (fi->type){
         case FORMAT_ITEM_FILE:
           fid = fi->data;
-          val=g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max );
-          fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
-          g_strlcpy(p, fl->data, (i+val > *max_len ? *max_len - i : val)+1);
-          i+=val ;
-          p+=val ;
+          if (fid->min < *max_len - i){
+            val=g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max );
+            fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
+            g_strlcpy(p, fl->data, (i+val > *max_len ? *max_len - i : val)+1);
+            i+=val ;
+            p+=val ;
+          }
           break;
         case FORMAT_ITEM_CONFIG_FILE:
           break;
