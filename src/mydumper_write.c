@@ -452,12 +452,29 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   g_string_append(statement_row, lines_starting_by);
   (void) dbt;
   struct function_pointer ** f = dbt->anonymized_function;
+/*  if (f==NULL){
+    for (i = 0; i < num_fields-1; i++) {
+      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp);
+      g_string_append(statement_row, fields_terminated_by);
+    }
+    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp );
+  }else{
+    for (i = 0; i < num_fields-1; i++) {
+      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
+      g_string_append(statement_row, fields_terminated_by);
+    }
+    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
+  }
+*/
+
   for (i = 0; i < num_fields-1; i++) {
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f==NULL? &pp : f[i]);
+    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
     g_string_append(statement_row, fields_terminated_by);
   }
-  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f==NULL? &pp : f[i]);
+  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
+
   g_string_append(statement_row, lines_terminated_by);
+
 }
 
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){

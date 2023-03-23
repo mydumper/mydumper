@@ -68,21 +68,30 @@ GHashTable * load_file_into_file_hash(gchar *filename){
 }
 
 
-gchar * identity_function(gchar ** r, gulong* lenght,  struct function_pointer *fp){
+gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *fp){
   (void) fp;
-  (void) lenght;
+  (void) length;
   return *r;
 }
 
-gchar * random_int_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
+gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) fp;
-  (void) lenght;
-  g_snprintf(*r, strlen(*r)+1, "%u", g_random_int());
+  gulong l;
+  if (*length > 10)
+    l=g_snprintf(*r, *length + 1, "%u%u", g_random_int(), g_random_int());
+  else
+    l=g_snprintf(*r, *length + 1, "%u", g_random_int());
+  if (l<*length)
+    *length=l;
   return *r;
 }
 
-gchar * random_int_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
-  (void) lenght;
+gchar * random_int(gchar * r, gulong *length){
+  return random_int_function(&r, length, NULL);
+}
+
+gchar * random_int_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) length;
   gchar *value=g_hash_table_lookup(fp->memory,*r);
   if (value==NULL){
     value=g_strdup_printf("%u", g_random_int());
@@ -92,8 +101,25 @@ gchar * random_int_function_with_mem(gchar ** r, gulong* lenght, struct function
   return *r;
 }
 
-#ifndef WITH_GLIB_uuid_string_random
+
 char *rand_string(char *str, size_t size)
+{
+    const char charset[] = "abcdefghijklmnopqrstuvwxyz";
+    if (size) {
+        --size;
+        size_t n;
+        for (n = 0; n < size; n++) {
+            int key = rand() % (int) (sizeof charset - 1);
+            str[n] = charset[key];
+        }
+        str[size] = '\0';
+    }
+    return str;
+}
+
+
+#ifndef WITH_GLIB_uuid_string_random
+char *rand_uuid(char *str, size_t size)
 {
     const char charset[] = "0123456789abcdef";
     if (size) {
@@ -109,26 +135,26 @@ char *rand_string(char *str, size_t size)
 }
 #endif
 
-gchar * random_uuid_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
- (void) lenght;
+gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer *fp){
+ (void) length;
  (void) fp;
 #ifdef WITH_GLIB_uuid_string_random
   g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
 #else
-  rand_string(*r,strlen(*r));
+  rand_uuid(*r,strlen(*r));
 #endif
   return *r;
 }
 
-gchar * random_uuid_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
-  (void) lenght;
+gchar * random_uuid_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) length;
   gchar *value=g_hash_table_lookup(fp->memory,*r);
   if (value==NULL){
     gchar *k=g_strdup(*r);
 #ifdef WITH_GLIB_uuid_string_random
     value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
 #else
-    rand_string(*r,strlen(*r));
+    rand_uuid(*r,strlen(*r));
 #endif
     g_hash_table_insert(fp->memory,k,g_strdup(value));
   }
@@ -137,15 +163,15 @@ gchar * random_uuid_function_with_mem(gchar ** r, gulong* lenght, struct functio
 }
 
 
-gchar * random_string_function(gchar ** r, gulong* lenght, struct function_pointer *fp){
-  (void) lenght; 
+gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) length; 
   (void) fp;
   rand_string(*r, strlen(*r)+1);
   return *r;
 }
 
-gchar * random_string_function_with_mem(gchar ** r, gulong* lenght, struct function_pointer *fp){
-  (void) lenght;
+gchar * random_string_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) length;
   gchar *value=g_hash_table_lookup(fp->memory,*r);
   if (value==NULL){
     gchar *k=g_strdup(*r);
@@ -171,6 +197,7 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
   gboolean cont=TRUE;
   struct format_item_file *fid = NULL;
   guint val;
+  gulong local_len;
   while (l !=NULL && i < *max_len){
     if (d != NULL){
       //find delimiter position to determine size
@@ -187,14 +214,14 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
           if (fid->min < *max_len - i){
             val=g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max );
             fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
-            g_strlcpy(p, fl->data, (i+val > *max_len ? *max_len - i : val)+1);
+            g_strlcpy(p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (i+val > *max_len ? *max_len - i : val)+1);
             i+=val ;
             p+=val ;
           }
           break;
         case FORMAT_ITEM_CONFIG_FILE:
           break;
-        case FORMAT_ITEM_STRING:
+        case FORMAT_ITEM_CONSTANT:
           g_strlcpy(p, fi->data, (i+fi->len > *max_len? *max_len-i:fi->len )+1);
           i+=fi->len;
           p+=fi->len;
@@ -204,6 +231,17 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
           i+=strlen(fi->data) ; 
           p+=strlen(fi->data) ;
           cont=FALSE;
+          break;
+        case FORMAT_ITEM_NUMBER:
+          local_len=(i+fi->len > *max_len? *max_len-i : fi->len );
+          random_int(p, &local_len );
+          i+=local_len;
+          p+=local_len;
+          break;
+        case FORMAT_ITEM_STRING:
+          rand_string(p, (i+fi->len > *max_len? *max_len-i:fi->len )+1);
+          i+=fi->len;
+          p+=fi->len;
           break;
       }
       l=l->next; 
@@ -275,7 +313,7 @@ void parse_value(struct function_pointer * fp, gchar *val){
       }
       buffer[i]='\0';
       fi=g_new0(struct format_item, 1);
-      fi->type=FORMAT_ITEM_STRING;
+      fi->type=FORMAT_ITEM_CONSTANT;
       fi->data = g_strdup(buffer);
       fi->len = i;
       fp->parse=g_list_append(fp->parse,fi);
@@ -294,23 +332,35 @@ void parse_value(struct function_pointer * fp, gchar *val){
       if (i>0){
         buffer[i]='\0';
         fi=g_new0(struct format_item, 1);
-        fi->type=FORMAT_ITEM_FILE;
-        struct format_item_file *fid=g_new0(struct format_item_file, 1);
-        fid->data = load_file_into_file_hash(buffer);
-        keys=g_hash_table_get_keys(fid->data);
-        sorted=g_list_sort(keys,comp);
-        fid->max = GPOINTER_TO_INT(g_list_last(sorted)->data);
-        fid->min = GPOINTER_TO_INT(g_list_first(sorted)->data);
-        sum=(fid->min+fid->max) * (fid->max-fid->min + 1)/2;
-        while (sorted !=NULL){
-          sum-=GPOINTER_TO_INT(sorted->data);
-          sorted=sorted->next;
-        }
-        if (sum != 0 )
-          g_error("The file %s shouldn't have gaps: %d | %d | %d", buffer, sum , fid->min , fid->max);
-        fi->data = fid;
-        fp->parse=g_list_append(fp->parse,fi);
-        g_list_free(keys);
+
+        if (g_str_has_prefix(buffer,"file ")){
+          fi->type=FORMAT_ITEM_FILE;
+          struct format_item_file *fid=g_new0(struct format_item_file, 1);
+          fid->data = load_file_into_file_hash(&(buffer[5]));
+          keys=g_hash_table_get_keys(fid->data);
+          sorted=g_list_sort(keys,comp);
+          fid->max = GPOINTER_TO_INT(g_list_last(sorted)->data);
+          fid->min = GPOINTER_TO_INT(g_list_first(sorted)->data);
+          sum=(fid->min+fid->max) * (fid->max-fid->min + 1)/2;
+          while (sorted !=NULL){
+            sum-=GPOINTER_TO_INT(sorted->data);
+            sorted=sorted->next;
+          }
+          if (sum != 0 )
+            g_error("The file %s shouldn't have gaps: %d | %d | %d", buffer, sum , fid->min , fid->max);
+          fi->data = fid;
+          fp->parse=g_list_append(fp->parse,fi);
+          g_list_free(keys);
+        }else if (g_str_has_prefix(buffer,"string ")){
+          fi->type=FORMAT_ITEM_STRING;
+          fi->len=g_ascii_strtoull(&(buffer[7]), NULL, 10);
+          fp->parse=g_list_append(fp->parse,fi);
+        }else if (g_str_has_prefix(buffer,"number ")){
+          fi->type=FORMAT_ITEM_NUMBER;
+          fi->len=g_ascii_strtoull(&(buffer[7]), NULL, 10);
+          fp->parse=g_list_append(fp->parse,fi);
+        }else
+          g_error("Parsing format failed key inside <tag> not valid");
       }
       val++;
     }else{
