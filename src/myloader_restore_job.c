@@ -170,6 +170,12 @@ void increse_object_error(const gchar *object){
 
 }
 
+void get_total_done(struct configuration * conf, void *total){
+  g_mutex_lock(conf->table_hash_mutex);
+  g_hash_table_foreach(conf->table_hash,&is_all_done, &total);
+  g_mutex_unlock(conf->table_hash_mutex);
+}
+
 
 void process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
@@ -193,7 +199,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   guint total=0;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
-      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      get_total_done(td->conf, &total);
       g_message("Thread %d: restoring %s `%s`.`%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
                 dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
       if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter))
@@ -216,7 +222,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           g_atomic_int_inc(&(detailed_errors.schema_errors));
           g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }else{
-          g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+          get_total_done(td->conf, &total);
           g_message("Thread %d: Table `%s`.`%s` created. Tables %d of %d completed", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
         }
       }
@@ -227,7 +233,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_FILENAME:
       g_mutex_lock(progress_mutex);
       progress++;
-      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      get_total_done(td->conf, &total);
       g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
       g_mutex_unlock(progress_mutex);
@@ -254,7 +260,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
-      g_hash_table_foreach(td->conf->table_hash,&is_all_done, &total);
+      get_total_done(td->conf, &total); 
       g_message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
                 rj->data.srj->database->real_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
       if ( restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE ) > 0 )
