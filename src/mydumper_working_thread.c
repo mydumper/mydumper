@@ -1447,8 +1447,8 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
         post_dump = TRUE;
       }
+      mysql_free_result(result);
     }
-    mysql_free_result(result);
   }
 
   if (dump_events && !post_dump) {
