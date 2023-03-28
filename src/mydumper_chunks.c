@@ -145,7 +145,7 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
 union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint number, gboolean check_min, gboolean check_max){
 //  g_message("New Integer Step");
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  cs->integer_step.prefix = g_strdup(prefix);
+  cs->integer_step.prefix = prefix;
   cs->integer_step.nmin = nmin;
   cs->integer_step.step = cs->integer_step.nmin;
   cs->integer_step.deep = deep;
@@ -184,9 +184,9 @@ void free_integer_step(union chunk_step * cs){
     g_free(cs->integer_step.field);
     cs->integer_step.field=NULL;
   }
-  if (cs->integer_step.prefix)
+  if (cs->integer_step.prefix!=NULL)
     g_free(cs->integer_step.prefix);
-//  g_mutex_free(cs->integer_step.mutex); 
+  g_mutex_free(cs->integer_step.mutex); 
   g_free(cs);
 }
 
@@ -228,6 +228,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
       return new_cs;
     }else{
       g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
+      g_mutex_unlock(cs->integer_step.mutex);
       free_integer_step(cs);
     }
 //    g_mutex_unlock(cs->integer_step.mutex);

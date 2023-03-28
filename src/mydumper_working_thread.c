@@ -830,6 +830,8 @@ void build_lock_tables_statement(struct configuration *conf){
 }
 
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
+//  if (tj->where != NULL)
+//    g_free(tj->where);
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
@@ -890,7 +892,8 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   GDateTime *to = g_date_time_new_now_local();
 
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-
+  g_date_time_unref(from);
+  g_date_time_unref(to);
   if (diff > 2){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  / 2;
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
