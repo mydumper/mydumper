@@ -1048,7 +1048,7 @@ void start_dump() {
     g_thread_join(threads[n]);
   }
   finalize_working_thread();
-
+  finalize_write();
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
@@ -1076,12 +1076,12 @@ void start_dump() {
       fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
       fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
-//    free_db_table(dbt);
+    free_db_table(dbt);
   }
-
+  g_list_free(all_dbts);
   write_database_on_disk(mdfile);
-//  g_list_free(table_schemas);
-//  table_schemas=NULL;
+  g_list_free(table_schemas);
+  table_schemas=NULL;
   if (pmm){
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
@@ -1144,10 +1144,11 @@ void start_dump() {
   g_string_free(set_session, TRUE);
   g_string_free(set_global, TRUE);
   g_string_free(set_global_back, TRUE);
+  g_strfreev(db_items);
 
   free_regex();
   free_common();
-
+  free_set_names();
   if (no_locks){
     if (it_is_a_consistent_backup)
       g_message("This is a consistent backup.");

@@ -66,6 +66,11 @@ void initialize_set_names(){
   }
 }
 
+void free_set_names(){
+  g_free(set_names_str);
+  g_free(set_names_statement);
+}
+
 char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;

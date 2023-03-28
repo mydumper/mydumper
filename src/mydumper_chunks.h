@@ -33,7 +33,7 @@ gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min)
 GList * get_partitions_for_table(MYSQL *conn, char *database, char *table);
 void *chunk_builder_thread(struct configuration *conf);
 void initialize_chunk();
-
+void finalize_chunk();
 void give_me_another_non_innodb_chunk_step();
 void give_me_another_innodb_chunk_step();
 gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);

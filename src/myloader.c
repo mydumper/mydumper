@@ -514,6 +514,7 @@ int main(int argc, char *argv[]) {
   g_hash_table_unref(conf.table_hash);
   g_list_free_full(conf.checksum_list,g_free);
 
+  free_set_names();
   print_errors();
 
   if (logoutfile) {

@@ -116,7 +116,6 @@ gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
-GCond *ll_cond = NULL;
 int build_empty_files = 0;
 gchar *where_option=NULL;
 gchar *rows_per_chunk=NULL;
@@ -172,10 +171,8 @@ void initialize_working_thread(){
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
   trigger_schemas_mutex = g_mutex_new();
-  innodb_table_mutex = g_mutex_new();
   all_dbts_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
-  ll_cond = g_cond_new();
   binlog_snapshot_gtid_executed = NULL;
   if (less_locking)
     less_locking_threads = num_threads;
@@ -203,7 +200,7 @@ void initialize_working_thread(){
     m_open=&g_fopen;
     m_close=(void *) &fclose;
     m_write=(void *)&write_file;
-    compress_extension=g_strdup("");
+    compress_extension=EMPTY_STRING;
   } else {
     m_open=(void *) &gzopen;
     m_close=(void *) &gzclose;
@@ -231,36 +228,25 @@ void finalize_working_thread(){
   g_mutex_free(view_schemas_mutex);
   g_mutex_free(table_schemas_mutex);
   g_mutex_free(trigger_schemas_mutex);
+  g_mutex_free(all_dbts_mutex);
   g_mutex_free(init_mutex);
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
+
+  finalize_chunk();
 }
 
 
 // Free structures
 void free_table_job(struct table_job *tj){
-  g_message("free_table_job");
+//  g_message("free_table_job");
   if (tj->where)
     g_free(tj->where);
   if (tj->order_by)
     g_free(tj->order_by);
-  if (tj->chunk_step){
-    switch (tj->dbt->chunk_type){
-     case INTEGER:
-       free_integer_step(tj->chunk_step);
-       break;
-     case CHAR:
-       free_char_step(tj->chunk_step);
-       break;
-     default:
-       break;
-    };
+  if (tj->sql_filename){
+    g_free(tj->sql_filename);
   }
-  if (tj->sql_file){
-    m_close(tj->sql_file);
-    tj->sql_file=NULL;
-  }
-//    g_free(tj->filename);
   g_free(tj);
 }
 
@@ -503,7 +489,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }*/
   tj->td=NULL;
-//  free_table_job(tj);
+  free_table_job(tj);
   g_free(job);
 }
 
@@ -707,6 +693,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       g_message("Written slave status");
     }
   }
+  g_string_free(replication_section_str,TRUE); 
   if (slave_count > 1)
     g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
@@ -1320,13 +1307,18 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 void free_db_table(struct db_table * dbt){
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
+  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
+  g_string_free(dbt->insert_statement,TRUE);
   g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);
 /*  g_free();
   g_free();
   g_free();*/
+  g_free(dbt->chunks_completed);
+  g_async_queue_unref(dbt->chunks_queue);
+  g_free(dbt->field);
   g_free(dbt);
 }
 
@@ -1418,6 +1410,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       g_free(query);
       return FALSE;
     }
+    g_free(query);
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
@@ -1430,6 +1423,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
       post_dump = TRUE;
     }
+    mysql_free_result(result);
 
     if (!post_dump) {
       // FUNCTIONS
@@ -1441,6 +1435,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
         g_free(query);
         return FALSE;
       }
+      g_free(query);
       result = mysql_store_result(conn);
       while ((row = mysql_fetch_row(result)) && !post_dump) {
         /* Checks skip list on 'database.sp' string */
@@ -1466,6 +1461,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       g_free(query);
       return FALSE;
     }
+    g_free(query);
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */

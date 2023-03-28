@@ -75,6 +75,13 @@ void initialize_chunk(){
   }
 }
 
+void finalize_chunk(){
+  g_async_queue_unref(give_me_another_innodb_chunk_step_queue); 
+  g_async_queue_unref(give_me_another_non_innodb_chunk_step_queue);
+
+}
+
+
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
   union chunk_step * cs = g_new0(union chunk_step, 1);
 
@@ -168,6 +175,7 @@ void free_char_step(union chunk_step * cs){
   g_free(cs->char_step.field);
   g_free(cs->char_step.prefix);
   g_mutex_unlock(cs->char_step.mutex);
+  g_mutex_free(cs->char_step.mutex);
   g_free(cs);
 }
 
@@ -178,6 +186,7 @@ void free_integer_step(union chunk_step * cs){
   }
   if (cs->integer_step.prefix)
     g_free(cs->integer_step.prefix);
+//  g_mutex_free(cs->integer_step.mutex); 
   g_free(cs);
 }
 
@@ -219,8 +228,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
       return new_cs;
     }else{
       g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
+      free_integer_step(cs);
     }
-    g_mutex_unlock(cs->integer_step.mutex);
+//    g_mutex_unlock(cs->integer_step.mutex);
 //    l=l->next;
   }
   g_mutex_unlock(dbt->chunks_mutex);
