@@ -159,6 +159,8 @@ int main(int argc, char *argv[]) {
   g_free(output_directory);
 //  g_strfreev(tables);
 
+  free_log_handlers();
+
   if (key_file)  g_key_file_free(key_file);
 //  g_strfreev(argv);
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);

@@ -1315,7 +1315,8 @@ void free_db_table(struct db_table * dbt){
   g_mutex_free(dbt->rows_lock);
   g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
-  g_string_free(dbt->insert_statement,TRUE);
+  if (dbt->insert_statement)
+    g_string_free(dbt->insert_statement,TRUE);
   g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);

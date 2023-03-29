@@ -1134,7 +1134,8 @@ void start_dump() {
 
   g_free(td);
   g_free(threads);
-  g_free(sthread);
+  if (sthread!=NULL)
+    g_thread_unref(sthread);
   free_databases();
 
   if (disk_check_thread!=NULL){
@@ -1157,8 +1158,8 @@ void start_dump() {
   g_async_queue_unref(conf.are_all_threads_in_same_pos);
   g_async_queue_unref(conf.db_ready);
   g_rec_mutex_clear(ready_table_dump_mutex);
-  g_source_remove(SIGINT);
-  g_source_remove(SIGTERM);
+//  g_source_remove(SIGINT);
+//  g_source_remove(SIGTERM);
 //  g_main_loop_quit(conf.loop);
   g_main_loop_unref(conf.loop);
 
