@@ -150,13 +150,15 @@ int main(int argc, char *argv[]) {
     dump_directory = output_directory;
     start_dump();
   }
-  g_option_context_free(context);
-  g_free(output_directory);
-  g_strfreev(tables);
 
   if (logoutfile) {
     fclose(logoutfile);
   }
+
+  g_option_context_free(context);
+  g_free(output_directory);
+//  g_strfreev(tables);
+
   if (key_file)  g_key_file_free(key_file);
 //  g_strfreev(argv);
   exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);

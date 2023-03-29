@@ -24,10 +24,10 @@ GMutex * database_hash_mutex = NULL;
 
 void free_database(struct database * d){
 //  g_free(d->name);
-/*  if (d->escaped!=NULL){
+  if (d->escaped!=NULL){
     g_free(d->escaped);
     d->escaped=NULL;
-  }*/
+  }
   if (d->ad_mutex){
     g_mutex_free(d->ad_mutex);
     d->ad_mutex=NULL;
@@ -40,7 +40,7 @@ void free_database(struct database * d){
     g_free(d->filename);
     d->filename=NULL;
   }*/
-//  g_free(d);
+  g_free(d);
 }
 
 void initialize_database(){

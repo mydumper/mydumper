@@ -387,6 +387,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 void thd_JOB_DUMP_TABLE_LIST(struct thread_data *td, struct job *job){
   struct dump_table_list_job * dtlj = (struct dump_table_list_job *)job->job_data;
   get_table_info_to_process_from_list(td->thrconn, td->conf, dtlj->table_list);
+  g_free(dtlj);
 }
 
 

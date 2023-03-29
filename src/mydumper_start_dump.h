@@ -68,6 +68,7 @@ struct configuration {
   GAsyncQueue *pause_resume;
   GAsyncQueue *gtid_pos_checked;
   GAsyncQueue *are_all_threads_in_same_pos;
+  GMainLoop * loop;
   GString *lock_tables_statement;
   GMutex *mutex;
   int done;
