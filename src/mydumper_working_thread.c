@@ -240,7 +240,7 @@ void finalize_working_thread(){
 // Free structures
 void free_table_job(struct table_job *tj){
 //  g_message("free_table_job");
-  if (tj->where)
+  if (tj->where!=NULL)
     g_free(tj->where);
   if (tj->order_by)
     g_free(tj->order_by);
@@ -440,6 +440,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   switch (tj->dbt->chunk_type) {
     case INTEGER:
       process_integer_chunk(td, tj);
+      tj->chunk_step->integer_step.status=COMPLETED;
       break;
     case CHAR:
       process_char_chunk(td, tj);
@@ -738,6 +739,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
     switch (job->type) {
     case JOB_DETERMINE_CHUNK_TYPE:
       set_chunk_strategy_for_dbt(td->thrconn, (struct db_table *)(job->job_data));
+      g_free(job);
       break;
     case JOB_DUMP:
       thd_JOB_DUMP(td, job);
@@ -830,8 +832,8 @@ void build_lock_tables_statement(struct configuration *conf){
 }
 
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
-//  if (tj->where != NULL)
-//    g_free(tj->where);
+  if (tj->where != NULL)
+    g_free(tj->where);
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
@@ -1320,8 +1322,22 @@ void free_db_table(struct db_table * dbt){
   g_free();
   g_free();*/
   g_free(dbt->chunks_completed);
-  g_async_queue_unref(dbt->chunks_queue);
   g_free(dbt->field);
+  union chunk_step * cs = NULL;
+  switch (dbt->chunk_type) {
+    case INTEGER:  
+      cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
+      while (cs != NULL ){
+        if (cs->integer_step.status==COMPLETED)
+          free_integer_step(cs);
+        else
+          g_error("Trying to free uncompleted integer step");
+        cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
+      }
+      g_async_queue_unref(dbt->chunks_queue);
+    default:
+      break;
+  }
   g_free(dbt);
 }
 

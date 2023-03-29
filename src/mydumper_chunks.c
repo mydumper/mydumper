@@ -154,7 +154,7 @@ union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, gu
   cs->integer_step.step = rows_per_file;
   cs->integer_step.field = g_strdup(field);
   cs->integer_step.mutex = g_mutex_new(); 
-  cs->integer_step.assigned = FALSE;
+  cs->integer_step.status = UNASSIGNED;
   cs->integer_step.check_max=check_max;
   cs->integer_step.check_min=check_min;
   return cs;
@@ -199,9 +199,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 //    cs=l->data;
     cs = (union chunk_step *)g_async_queue_pop(dbt->chunks_queue);      
     g_mutex_lock(cs->integer_step.mutex);
-    if (cs->integer_step.assigned==FALSE){
+    if (cs->integer_step.status==UNASSIGNED){
 //      g_message("Not assigned");
-      cs->integer_step.assigned=TRUE;
+      cs->integer_step.status=ASSIGNED;
       g_async_queue_push(dbt->chunks_queue, cs);
       g_mutex_unlock(cs->integer_step.mutex);
       g_mutex_unlock(dbt->chunks_mutex);
@@ -218,7 +218,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
       cs->integer_step.check_max=TRUE;
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
       cs->integer_step.nmax = new_minmax;
-      new_cs->integer_step.assigned=TRUE;
+      new_cs->integer_step.status=ASSIGNED;
  
       g_async_queue_push(dbt->chunks_queue, cs);
       g_async_queue_push(dbt->chunks_queue, new_cs);
@@ -229,7 +229,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
     }else{
       g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
       g_mutex_unlock(cs->integer_step.mutex);
-      free_integer_step(cs);
+      if (cs->integer_step.status==COMPLETED){
+        free_integer_step(cs);
+      }
     }
 //    g_mutex_unlock(cs->integer_step.mutex);
 //    l=l->next;
@@ -412,6 +414,7 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
 //  g_free(query);
   minmax = mysql_store_result(conn);
+  g_free(query);
 
   if (!minmax){
 //    g_message("No middle point");
@@ -423,13 +426,13 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
 //    g_message("No middle point");
 cleanup:
     cs->integer_step.nmax = cs->integer_step.nmin;
+    mysql_free_result(minmax);
     return;
   }
-
   guint64 nmax = strtoul(row[0], NULL, 10); 
   
   cs->integer_step.nmax = nmax;
-  g_free(query);
+  mysql_free_result(minmax);
 }
 
 gchar* update_cursor (MYSQL *conn, struct table_job *tj){
