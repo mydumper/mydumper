@@ -197,42 +197,47 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
   if (dbt->chunks!=NULL){
 //    g_message("IN WHILE");
 //    cs=l->data;
-    cs = (union chunk_step *)g_async_queue_pop(dbt->chunks_queue);      
-    g_mutex_lock(cs->integer_step.mutex);
-    if (cs->integer_step.status==UNASSIGNED){
+    cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);      
+    while (cs!=NULL){
+      g_mutex_lock(cs->integer_step.mutex);
+      if (cs->integer_step.status==UNASSIGNED){
 //      g_message("Not assigned");
-      cs->integer_step.status=ASSIGNED;
-      g_async_queue_push(dbt->chunks_queue, cs);
-      g_mutex_unlock(cs->integer_step.mutex);
-      g_mutex_unlock(dbt->chunks_mutex);
-      return cs;
-    }
+        cs->integer_step.status=ASSIGNED;
+        g_async_queue_push(dbt->chunks_queue, cs);
+        g_mutex_unlock(cs->integer_step.mutex);
+        g_mutex_unlock(dbt->chunks_mutex);
+        return cs;
+      }
 
-    if (cs->integer_step.cursor < cs->integer_step.nmax){
+      if (cs->integer_step.cursor < cs->integer_step.nmax){
       
-      guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
+        guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
                            cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2 :
                            cs->integer_step.cursor;
-      union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
-      cs->integer_step.deep++;
-      cs->integer_step.check_max=TRUE;
-      dbt->chunks=g_list_append(dbt->chunks,new_cs);
-      cs->integer_step.nmax = new_minmax;
-      new_cs->integer_step.status=ASSIGNED;
+        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        cs->integer_step.deep++;
+        cs->integer_step.check_max=TRUE;
+        dbt->chunks=g_list_append(dbt->chunks,new_cs);
+        cs->integer_step.nmax = new_minmax;
+//        new_cs->integer_step.check_min=TRUE;
+        new_cs->integer_step.status=ASSIGNED;
  
-      g_async_queue_push(dbt->chunks_queue, cs);
-      g_async_queue_push(dbt->chunks_queue, new_cs);
+        g_async_queue_push(dbt->chunks_queue, cs);
+        g_async_queue_push(dbt->chunks_queue, new_cs);
 
-      g_mutex_unlock(cs->integer_step.mutex);
-      g_mutex_unlock(dbt->chunks_mutex);
-      return new_cs;
-    }else{
-      g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-      g_mutex_unlock(cs->integer_step.mutex);
-      if (cs->integer_step.status==COMPLETED){
-        free_integer_step(cs);
+        g_mutex_unlock(cs->integer_step.mutex);
+        g_mutex_unlock(dbt->chunks_mutex);
+        return new_cs;
+      }else{
+//        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
+        g_mutex_unlock(cs->integer_step.mutex);
+        if (cs->integer_step.status==COMPLETED){
+          free_integer_step(cs);
+        }
       }
+      cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
     }
+
 //    g_mutex_unlock(cs->integer_step.mutex);
 //    l=l->next;
   }

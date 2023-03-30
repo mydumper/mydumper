@@ -878,6 +878,7 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   if (tj->chunk_step->integer_step.check_min){
 //    g_message("thread: %d Updating MIN", td->thread_id);
     update_integer_min(td->thrconn, tj);
+//    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
     tj->chunk_step->integer_step.check_min=FALSE;
   }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
