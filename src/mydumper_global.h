@@ -71,7 +71,7 @@ extern gboolean stream;
 extern gboolean success_on_1146;
 extern gboolean use_fifo;
 extern gboolean use_savepoints;
-extern gchar *compress_extension;
+extern const gchar *compress_extension;
 extern gchar *db;
 extern gchar *disk_limits;
 extern gchar *dump_directory;

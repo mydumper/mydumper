@@ -40,7 +40,7 @@
 
 static guint log_handlers[total_handlers] = {};
 
-static void free_log_handlers() {
+void free_log_handlers() {
   int x = 0;
   for (x = 0; x < total_handlers; x++) {
     if (log_handlers[x] != 0) {

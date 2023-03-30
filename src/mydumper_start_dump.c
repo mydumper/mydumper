@@ -261,11 +261,10 @@ gboolean sig_triggered_term(void * user_data) {
 }
 
 void *signal_thread(void *data) {
-  GMainLoop * loop=NULL;
   g_unix_signal_add(SIGINT, sig_triggered_int, data);
   g_unix_signal_add(SIGTERM, sig_triggered_term, data);
-  loop = g_main_loop_new (NULL, TRUE);
-  g_main_loop_run (loop);
+  ((struct configuration *)data)->loop  = g_main_loop_new (NULL, TRUE);
+  g_main_loop_run (((struct configuration *)data)->loop);
   g_message("Ending signal thread");
   return NULL;
 }
@@ -693,7 +692,7 @@ void start_dump() {
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   detect_server_version(conn);
@@ -710,10 +709,10 @@ void start_dump() {
     conf.pause_resume = g_async_queue_new();
     disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
   }
-
+  GThread *sthread = NULL;
   if (!daemon_mode){
     GError *serror;
-    GThread *sthread =
+    sthread =
         g_thread_create(signal_thread, &conf, FALSE, &serror);
     if (sthread == NULL) {
       m_critical("Could not create signal thread: %s", serror->message);
@@ -1048,7 +1047,7 @@ void start_dump() {
     g_thread_join(threads[n]);
   }
   finalize_working_thread();
-
+  finalize_write();
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
@@ -1076,12 +1075,12 @@ void start_dump() {
       fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
       fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
-//    free_db_table(dbt);
+    free_db_table(dbt);
   }
-
+  g_list_free(all_dbts);
   write_database_on_disk(mdfile);
-//  g_list_free(table_schemas);
-//  table_schemas=NULL;
+  g_list_free(table_schemas);
+  table_schemas=NULL;
   if (pmm){
     kill_pmm_thread();
 //    g_thread_join(pmmthread);
@@ -1135,6 +1134,8 @@ void start_dump() {
 
   g_free(td);
   g_free(threads);
+  if (sthread!=NULL)
+    g_thread_unref(sthread);
   free_databases();
 
   if (disk_check_thread!=NULL){
@@ -1144,10 +1145,30 @@ void start_dump() {
   g_string_free(set_session, TRUE);
   g_string_free(set_global, TRUE);
   g_string_free(set_global_back, TRUE);
+  g_strfreev(db_items);
+
+  g_hash_table_unref(conf_per_table.all_anonymized_function);
+  g_hash_table_unref(conf_per_table.all_where_per_table);
+  g_hash_table_unref(conf_per_table.all_limit_per_table);
+  g_hash_table_unref(conf_per_table.all_num_threads_per_table);
+
+  finalize_masquerade();
+
+  g_async_queue_unref(conf.gtid_pos_checked);
+  g_async_queue_unref(conf.are_all_threads_in_same_pos);
+  g_async_queue_unref(conf.db_ready);
+  g_rec_mutex_clear(ready_table_dump_mutex);
+//  g_source_remove(SIGINT);
+//  g_source_remove(SIGTERM);
+//  g_main_loop_quit(conf.loop);
+  g_main_loop_unref(conf.loop);
+
+  if (tables_list)
+    g_strfreev(tables);
 
   free_regex();
   free_common();
-
+  free_set_names();
   if (no_locks){
     if (it_is_a_consistent_backup)
       g_message("This is a consistent backup.");

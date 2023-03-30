@@ -23,5 +23,6 @@
 
 void set_verbose(guint verbosity);
 void set_debug();
+void free_log_handlers();
 
 #endif

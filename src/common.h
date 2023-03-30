@@ -77,6 +77,7 @@ void remove_definer_from_gchar(char * str);
 void print_version(const gchar *program);
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 void initialize_set_names();
+void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
 #endif
 

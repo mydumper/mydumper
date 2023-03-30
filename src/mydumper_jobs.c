@@ -904,7 +904,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   g_message("Thread %d: dumping schema for `%s`.`%s`", td->thread_id,
             sj->dbt->database->name, sj->dbt->table);
   write_table_definition_into_file(td->thrconn, sj->dbt, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
-//  free_schema_job(sj);
+  free_schema_job(sj);
   g_free(job);
 //  if (g_atomic_int_dec_and_test(&table_counter)) {
 //    g_message("Unlocing ready_table_dump_mutex");
@@ -1094,6 +1094,8 @@ void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_fil
     stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
     execute_file_per_thread(*sql_filename,stdout_fn);
   }else{
+    if (*sql_filename)
+      g_free(*sql_filename);
     *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
   }
   *sql_file = m_open(*sql_filename,"w");

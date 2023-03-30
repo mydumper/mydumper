@@ -219,6 +219,14 @@ void initialize_write(){
     insert_statement=REPLACE;
 }
 
+void finalize_write(){
+  g_free(fields_enclosed_by);
+  g_free(fields_terminated_by);
+  g_free(lines_starting_by);
+  g_free(lines_terminated_by);
+  g_free(statement_terminated_by);
+}
+
 
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;

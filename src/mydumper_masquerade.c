@@ -28,8 +28,13 @@ struct function_pointer pp = {&identity_function, NULL, NULL, NULL, NULL};
 GHashTable *file_hash = NULL;
 
 void initialize_masquerade(){
-  file_hash = g_hash_table_new ( g_str_hash, g_str_equal );
+  file_hash = g_hash_table_new_full( g_str_hash, g_str_equal,  &g_free, &g_free );
 }
+
+void finalize_masquerade(){
+  g_hash_table_destroy(file_hash); 
+}
+
 
 GHashTable * load_file_content(gchar *filename){
   GHashTable * file_content=g_hash_table_new ( g_direct_hash, g_direct_equal );

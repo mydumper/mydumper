@@ -24,7 +24,23 @@ GMutex * database_hash_mutex = NULL;
 
 void free_database(struct database * d){
 //  g_free(d->name);
-  g_mutex_free(d->ad_mutex);
+  if (d->escaped!=NULL){
+    g_free(d->escaped);
+    d->escaped=NULL;
+  }
+  if (d->ad_mutex){
+    g_mutex_free(d->ad_mutex);
+    d->ad_mutex=NULL;
+  }
+/*  if (d->name!=NULL){
+    g_free(d->name);
+    d->name=NULL;
+  }
+  if (d->filename){
+    g_free(d->filename);
+    d->filename=NULL;
+  }*/
+  g_free(d);
 }
 
 void initialize_database(){
@@ -48,17 +64,8 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
 void free_databases(){
   g_mutex_lock(database_hash_mutex);
   g_hash_table_destroy(database_hash);
-/*  GHashTableIter iter;
-  gchar * lkey;
-  g_hash_table_iter_init ( &iter, database_hash);
-  struct database *d=NULL;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    free_database(d);
-  }
-*/
   g_mutex_unlock(database_hash_mutex);
   g_mutex_free(database_hash_mutex);
-
 }
 
 

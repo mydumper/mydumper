@@ -116,7 +116,6 @@ gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
-GCond *ll_cond = NULL;
 int build_empty_files = 0;
 gchar *where_option=NULL;
 gchar *rows_per_chunk=NULL;
@@ -172,10 +171,8 @@ void initialize_working_thread(){
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
   trigger_schemas_mutex = g_mutex_new();
-  innodb_table_mutex = g_mutex_new();
   all_dbts_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
-  ll_cond = g_cond_new();
   binlog_snapshot_gtid_executed = NULL;
   if (less_locking)
     less_locking_threads = num_threads;
@@ -203,7 +200,7 @@ void initialize_working_thread(){
     m_open=&g_fopen;
     m_close=(void *) &fclose;
     m_write=(void *)&write_file;
-    compress_extension=g_strdup("");
+    compress_extension=EMPTY_STRING;
   } else {
     m_open=(void *) &gzopen;
     m_close=(void *) &gzclose;
@@ -231,36 +228,25 @@ void finalize_working_thread(){
   g_mutex_free(view_schemas_mutex);
   g_mutex_free(table_schemas_mutex);
   g_mutex_free(trigger_schemas_mutex);
+  g_mutex_free(all_dbts_mutex);
   g_mutex_free(init_mutex);
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
+
+  finalize_chunk();
 }
 
 
 // Free structures
 void free_table_job(struct table_job *tj){
-  g_message("free_table_job");
-  if (tj->where)
+//  g_message("free_table_job");
+  if (tj->where!=NULL)
     g_free(tj->where);
   if (tj->order_by)
     g_free(tj->order_by);
-  if (tj->chunk_step){
-    switch (tj->dbt->chunk_type){
-     case INTEGER:
-       free_integer_step(tj->chunk_step);
-       break;
-     case CHAR:
-       free_char_step(tj->chunk_step);
-       break;
-     default:
-       break;
-    };
+  if (tj->sql_filename){
+    g_free(tj->sql_filename);
   }
-  if (tj->sql_file){
-    m_close(tj->sql_file);
-    tj->sql_file=NULL;
-  }
-//    g_free(tj->filename);
   g_free(tj);
 }
 
@@ -401,6 +387,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 void thd_JOB_DUMP_TABLE_LIST(struct thread_data *td, struct job *job){
   struct dump_table_list_job * dtlj = (struct dump_table_list_job *)job->job_data;
   get_table_info_to_process_from_list(td->thrconn, td->conf, dtlj->table_list);
+  g_free(dtlj);
 }
 
 
@@ -454,6 +441,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   switch (tj->dbt->chunk_type) {
     case INTEGER:
       process_integer_chunk(td, tj);
+      tj->chunk_step->integer_step.status=COMPLETED;
       break;
     case CHAR:
       process_char_chunk(td, tj);
@@ -503,7 +491,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }*/
   tj->td=NULL;
-//  free_table_job(tj);
+  free_table_job(tj);
   g_free(job);
 }
 
@@ -707,6 +695,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       g_message("Written slave status");
     }
   }
+  g_string_free(replication_section_str,TRUE); 
   if (slave_count > 1)
     g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
@@ -751,6 +740,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
     switch (job->type) {
     case JOB_DETERMINE_CHUNK_TYPE:
       set_chunk_strategy_for_dbt(td->thrconn, (struct db_table *)(job->job_data));
+      g_free(job);
       break;
     case JOB_DUMP:
       thd_JOB_DUMP(td, job);
@@ -843,6 +833,8 @@ void build_lock_tables_statement(struct configuration *conf){
 }
 
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
+  if (tj->where != NULL)
+    g_free(tj->where);
   switch (tj->dbt->chunk_type){
     case INTEGER:
       tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
@@ -886,6 +878,7 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   if (tj->chunk_step->integer_step.check_min){
 //    g_message("thread: %d Updating MIN", td->thread_id);
     update_integer_min(td->thrconn, tj);
+//    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
     tj->chunk_step->integer_step.check_min=FALSE;
   }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
@@ -903,7 +896,8 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   GDateTime *to = g_date_time_new_now_local();
 
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-
+  g_date_time_unref(from);
+  g_date_time_unref(to);
   if (diff > 2){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  / 2;
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
@@ -1320,13 +1314,33 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 void free_db_table(struct db_table * dbt){
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
+  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
+  if (dbt->insert_statement)
+    g_string_free(dbt->insert_statement,TRUE);
   g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);
 /*  g_free();
   g_free();
   g_free();*/
+  g_free(dbt->chunks_completed);
+  g_free(dbt->field);
+  union chunk_step * cs = NULL;
+  switch (dbt->chunk_type) {
+    case INTEGER:  
+      cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
+      while (cs != NULL ){
+        if (cs->integer_step.status==COMPLETED)
+          free_integer_step(cs);
+        else
+          g_error("Trying to free uncompleted integer step");
+        cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
+      }
+      g_async_queue_unref(dbt->chunks_queue);
+    default:
+      break;
+  }
   g_free(dbt);
 }
 
@@ -1418,6 +1432,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       g_free(query);
       return FALSE;
     }
+    g_free(query);
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
@@ -1430,6 +1445,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
       post_dump = TRUE;
     }
+    mysql_free_result(result);
 
     if (!post_dump) {
       // FUNCTIONS
@@ -1441,6 +1457,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
         g_free(query);
         return FALSE;
       }
+      g_free(query);
       result = mysql_store_result(conn);
       while ((row = mysql_fetch_row(result)) && !post_dump) {
         /* Checks skip list on 'database.sp' string */
@@ -1452,8 +1469,8 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
         post_dump = TRUE;
       }
+      mysql_free_result(result);
     }
-    mysql_free_result(result);
   }
 
   if (dump_events && !post_dump) {
@@ -1466,6 +1483,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       g_free(query);
       return FALSE;
     }
+    g_free(query);
     result = mysql_store_result(conn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */

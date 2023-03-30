@@ -48,6 +48,12 @@ enum chunk_type{
   PARTITION
 };
 
+enum chunk_states{
+  UNASSIGNED,
+  ASSIGNED,
+  COMPLETED
+};
+
 struct configuration {
   char use_any_index;
   GAsyncQueue *initial_queue;
@@ -62,6 +68,7 @@ struct configuration {
   GAsyncQueue *pause_resume;
   GAsyncQueue *gtid_pos_checked;
   GAsyncQueue *are_all_threads_in_same_pos;
+  GMainLoop * loop;
   GString *lock_tables_statement;
   GMutex *mutex;
   int done;
@@ -96,7 +103,7 @@ struct integer_step {
   guint number;
   guint deep;
   GMutex *mutex;
-  gboolean assigned;
+  enum chunk_states status;
   gboolean check_max;
   gboolean check_min;
 };

@@ -23,6 +23,7 @@
 #define INSERT "INSERT"
 #define REPLACE "REPLACE"
 #define UNLOCK_TABLES "UNLOCK TABLES"
+#define EMPTY_STRING ""
 typedef gchar * (*fun_ptr2)(gchar **);
 
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
