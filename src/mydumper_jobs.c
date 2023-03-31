@@ -1081,7 +1081,7 @@ void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
   }
 }
 
-void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint fn, guint sub_part, const gchar *extension, gchar * f()){
+void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint64 fn, guint sub_part, const gchar *extension, gchar * f()){
   gchar *stdout_fn=NULL;
 /*  if (*sql_filename != NULL){
     remove(*sql_filename);
@@ -1124,7 +1124,7 @@ gboolean update_files_on_table_job(struct table_job *tj){
 }
 
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
@@ -1151,7 +1151,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint nc
   return tj;
 }
 
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
   struct job *j = g_new0(struct job,1);
   struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
   j->job_data=(void*) tj;
@@ -1161,7 +1161,7 @@ struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, ch
   return j;
 }
 
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where){
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where){
   struct job *j = g_new0(struct job,1);
   struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
   j->job_data=(void*) tj;
