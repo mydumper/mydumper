@@ -612,6 +612,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
           g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
           return num_rows;
         }
+        g_string_set_size(statement, 0);
       }
       g_string_append(statement, dbt->insert_statement->str);
       num_rows_st = 0;
