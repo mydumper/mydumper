@@ -100,7 +100,7 @@ struct integer_step {
   guint64 step;
   guint64 nmax;
   guint64 estimated_remaining_steps;
-  guint number;
+  guint64 number;
   guint deep;
   GMutex *mutex;
   enum chunk_states status;
@@ -160,7 +160,7 @@ struct table_job {
 //  char *database;
 //  char *table;
   char *partition;
-  guint nchunk;
+  guint64 nchunk;
   guint sub_part;
 //  char *filename;
   char *where;

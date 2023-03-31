@@ -465,10 +465,11 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     m_close(tj->dat_file);
     tj->dat_file=NULL;
   }
+  if (tj->sql_filename != NULL ){
   if (tj->filesize == 0 && !build_empty_files) {
     // dropping the useless file
     if (remove(tj->sql_filename)) {
-      g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->sql_filename);
+      g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
     }else{
       g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
     }
@@ -484,6 +485,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       if (load_data){
         g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
       }
+  }
   }
 
 /*  if (use_savepoints &&

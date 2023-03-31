@@ -142,7 +142,7 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
 }
 
 
-union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint number, gboolean check_min, gboolean check_max){
+union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint64 number, gboolean check_min, gboolean check_max){
 //  g_message("New Integer Step");
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.prefix = prefix;
