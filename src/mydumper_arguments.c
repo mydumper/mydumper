@@ -163,6 +163,8 @@ static GOptionEntry filter_entries[] = {
       "Dump only selected records.", NULL },
     {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
      "Use Update_time to dump only tables updated in the last U days", NULL},
+    { "partition-regex", 0, 0, G_OPTION_ARG_STRING, &partition_regex,
+      "Regex to filter by partition name.", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry objects_entries[] = {

@@ -34,8 +34,9 @@
 #include "mydumper_database.h"
 #include "mydumper_jobs.h"
 #include "mydumper_global.h"
-
+#include "regex.h"
 gboolean split_partitions = FALSE;
+gchar *partition_regex = FALSE;
 guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
@@ -348,7 +349,9 @@ GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
     //partitioning is not supported
     return partition_list;
   while ((row = mysql_fetch_row(res))) {
-    partition_list = g_list_append(partition_list, strdup(row[0]));
+//ACA
+    if (eval_partition_regex(row[0]))
+      partition_list = g_list_append(partition_list, strdup(row[0]));
   }
   mysql_free_result(res);
 

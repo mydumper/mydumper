@@ -17,5 +17,6 @@
 gboolean check_filename_regex(char *word);
 gboolean eval_regex(char * a,char * b);
 GOptionGroup * load_regex_entries(GOptionContext *context);
-void initialize_regex();
+gboolean eval_partition_regex(char * word);
+void initialize_regex(gchar * partition_regex);
 void free_regex();
