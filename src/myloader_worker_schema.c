@@ -136,7 +136,7 @@ void *worker_schema_thread(struct thread_data *td) {
   g_mutex_unlock(init_connection_mutex);
   td->current_database=NULL;
 
-  m_connect(td->thrconn, "myloader", NULL);
+  m_connect(td->thrconn, NULL);
 
   execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
