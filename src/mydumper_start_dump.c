@@ -683,7 +683,7 @@ void start_dump() {
   /* Validate that thread count passed on CLI is a valid count */
   check_num_threads();
 
-  initialize_regex();
+  initialize_regex(partition_regex);
 
   MYSQL *conn = create_main_connection();
   main_connection = conn;

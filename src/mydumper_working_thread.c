@@ -1024,7 +1024,7 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj){
   while (cs->partition_step.list != NULL){
     g_mutex_lock(cs->partition_step.mutex);
     partition=g_strdup_printf(" PARTITION (%s) ",(char*)(cs->partition_step.list->data));
-    g_message("Partition text: %s", partition);
+//    g_message("Partition text: %s", partition);
     cs->partition_step.list= cs->partition_step.list->next;
     g_mutex_unlock(cs->partition_step.mutex);
     tj->partition = partition;

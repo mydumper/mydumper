@@ -25,7 +25,7 @@ const char * filename_regex="^[\\w\\-_ ]+$";
 
 static pcre *re = NULL;
 static pcre *filename_re = NULL;
-
+static pcre *partition_re = NULL;
 char *regex = NULL;
 
 
@@ -62,10 +62,12 @@ void init_regex(pcre **r, const char *str){
   }
 }
 
-void initialize_regex(){
+void initialize_regex(gchar * partition_regex){
   if (regex)
     init_regex(&re,regex);
   init_regex(&filename_re,filename_regex);
+  if (partition_regex)
+    init_regex(&partition_re, partition_regex);
 }
 
 /* Check database.table string against regular expression */
@@ -82,12 +84,21 @@ gboolean check_regex(pcre *tre, char *database, char *table) {
 }
 
 gboolean eval_regex(char * a,char * b){
-
   if (re){
     return check_regex(re, a, b);
   }
   return TRUE;
 }
+
+gboolean eval_partition_regex(char * word){
+  if (partition_re){
+    int ovector[9] = {0};
+    int rc = pcre_exec(partition_re, NULL, word, strlen(word), 0, 0, ovector, 9);
+    return (rc > 0) ? TRUE : FALSE;
+  }
+  return TRUE;
+}
+
 
 void free_regex(){
   if (regex)

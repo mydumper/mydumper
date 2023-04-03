@@ -125,3 +125,4 @@ extern struct function_pointer pp;
 extern gchar identifier_quote_character;
 extern gboolean schema_sequence_fix;
 extern gboolean it_is_a_consistent_backup;
+extern gchar *partition_regex;
