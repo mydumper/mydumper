@@ -15,10 +15,14 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+
+
 #include <mysql.h>
 
 #ifndef _src_myloader_h
 #define _src_myloader_h
+
+#define MYLOADER "myloader"
 
 struct restore_errors {
   guint data_errors;

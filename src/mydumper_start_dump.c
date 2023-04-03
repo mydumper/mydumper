@@ -280,9 +280,7 @@ MYSQL *create_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  char *mydumper=g_strdup("mydumper");
-  m_connect(conn, mydumper ,db_items!=NULL?db_items[0]:db);
-  g_free(mydumper);
+  m_connect(conn, db_items!=NULL?db_items[0]:db);
 
   execute_gstring(conn, set_session);
   return conn;
@@ -293,9 +291,7 @@ MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  char *mydumper=g_strdup("mydumper");
-  m_connect(conn, mydumper ,db_items!=NULL?db_items[0]:db);
-  g_free(mydumper);
+  m_connect(conn, db_items!=NULL?db_items[0]:db);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
@@ -673,7 +669,7 @@ void send_lock_all_tables(MYSQL *conn){
 void start_dump() {
   initialize_start_dump();
   initialize_common();
-  initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"mydumper")?defaults_file:NULL);
+  initialize_connection(defaults_file, key_file!=NULL && g_key_file_has_group(key_file, MYDUMPER )? MYDUMPER :NULL, MYDUMPER);
   initialize_masquerade();
 
   /* Give ourselves an array of tables to dump */

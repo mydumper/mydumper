@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
   initialize_common();
-  initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"myloader")?defaults_file:NULL);
+  initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"myloader")?defaults_file:NULL, key_file!=NULL && g_key_file_has_group(key_file,"myloader")?MYLOADER:NULL , MYLOADER);
   initialize_regex();
   GError *serror;
   GThread *sthread =
@@ -331,7 +331,7 @@ int main(int argc, char *argv[]) {
 
   MYSQL *conn;
   conn = mysql_init(NULL);
-  m_connect(conn,"myloader",NULL);
+  m_connect(conn,NULL);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);

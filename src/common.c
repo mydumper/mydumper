@@ -461,7 +461,8 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     defaults_file=new_defaults_file;
   }
   key_file=load_config_file(defaults_file);
-  load_config_group(key_file, context, group);
+  if (g_key_file_has_group(key_file, group ))
+    load_config_group(key_file, context, group);
 }
 
 gchar **get_table_list(gchar *tables_list){

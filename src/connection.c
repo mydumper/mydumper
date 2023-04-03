@@ -62,10 +62,14 @@ extern gchar *ssl_mode;
 extern guint compress_protocol;
 extern gchar *set_names_statement;
 
-char *connection_defaults_file=NULL;
+gchar *connection_defaults_file=NULL;
+const gchar *connection_default_file_group=NULL;
+const gchar *program_name=NULL;
 
-void initialize_connection(char *cdf){
+void initialize_connection(gchar *cdf, const gchar *group, const gchar *app){
   connection_defaults_file=cdf;
+  connection_default_file_group=group;
+  program_name=app;
 }
 
 
@@ -80,15 +84,16 @@ GOptionGroup * load_connection_entries(GOptionContext *context){
 
 gboolean reconnect = 1;
 
-void configure_connection(MYSQL *conn, const char *name) {
-  if (connection_defaults_file != NULL) {
+void configure_connection(MYSQL *conn) {
+  if (connection_defaults_file != NULL)
     mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
-    mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, name);
-  }
+  if (connection_default_file_group != NULL)
+    mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, connection_default_file_group);
+  
   mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
   mysql_options(conn, MYSQL_OPT_RECONNECT, &reconnect);
 
-  mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", name);
+  mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", program_name);
   gchar *version=g_strdup_printf("Release %s", VERSION);
   mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "app_version", version);
   g_free(version);
@@ -159,8 +164,8 @@ void configure_connection(MYSQL *conn, const char *name) {
 #endif
 }
 
-void m_connect(MYSQL *conn, const gchar *app, gchar *schema){
-  configure_connection(conn, app);
+void m_connect(MYSQL *conn, gchar *schema){
+  configure_connection(conn);
   if (!mysql_real_connect(conn, hostname, username, password, schema, port,
                           socket_path, 0)) {
     m_critical("Error connection to database: %s", mysql_error(conn));
