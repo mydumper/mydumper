@@ -597,7 +597,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   char *masterpos = NULL;
   char *mastergtid = NULL;
 
-  char *connname = NULL;
   char *slavehost = NULL;
   char *slavelog = NULL;
   char *slavepos = NULL;
@@ -655,7 +654,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   while (slave && (row = mysql_fetch_row(slave))) {
     g_string_set_size(replication_section_str,0);
     fields = mysql_fetch_fields(slave);
-    connname=NULL;
     slavepos=NULL;
     slavelog=NULL;
     slavehost=NULL;
@@ -663,8 +661,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     channel_name=NULL;
     gtid_title=NULL;
     for (i = 0; i < mysql_num_fields(slave); i++) {
-      if (isms && !strcasecmp("connection_name", fields[i].name))
-        connname = row[i];
       if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
         slavepos = row[i];
       } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
@@ -677,7 +673,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
         gtid_title="Gtid_Slave_Pos";
         slavegtid = remove_new_line(row[i]);
-      } else if (!strcasecmp("Channel_Name", fields[i].name) && strlen(row[i]) > 1) {
+      } else if ( ( !strcasecmp("connection_name", fields[i].name) || !strcasecmp("Channel_Name", fields[i].name) ) && strlen(row[i]) > 1) {
         channel_name = row[i];
       }
       g_string_append_printf(replication_section_str,"# %s = ", fields[i].name);
@@ -688,8 +684,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     if (slavehost) {
       slave_count++;
       fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
-      if (isms)
-        fprintf(file, "\n\tConnection name: %s", connname);
       fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
               slavelog, slavepos, gtid_title, slavegtid);
       fprintf(file,"%s",replication_section_str->str);
