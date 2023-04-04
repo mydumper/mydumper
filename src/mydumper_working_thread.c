@@ -896,7 +896,7 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   g_date_time_unref(to);
   if (diff > 2){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  / 2;
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }else if (diff < 1){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2;
@@ -951,11 +951,12 @@ void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
 
   if (diff > 2){
     tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  / 2;
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->char_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }else if (diff < 1){
     tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  * 2;
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+    if (max_rows_per_file!=0)
+      tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }
 
