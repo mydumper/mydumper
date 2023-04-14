@@ -362,10 +362,12 @@ void process_database_filename(char * filename) {
 
   g_debug("Adding database: %s -> %s", db_kname, db_vname);
   struct database *real_db_name = get_db_hash(db_kname, db_vname);
-  real_db_name->schema_state=NOT_CREATED;
   if (!db){
+    real_db_name->schema_state=NOT_CREATED;
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, CREATE_DATABASE);
     g_async_queue_push(conf->database_queue, new_job(JOB_RESTORE,rj,NULL));
+  }else{
+    real_db_name->schema_state=CREATED;
   }
 }
 
