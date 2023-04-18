@@ -95,6 +95,11 @@ INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
 )
 
+INSTALL(FILES mydumper.cnf
+  DESTINATION /etc
+  COMPONENT config
+)
+
 add_custom_target(dist
   COMMAND git archive --format=tar.gz --prefix=${ARCHIVE_NAME}/
   -o ${CMAKE_BINARY_DIR}/${ARCHIVE_NAME}.tar.gz HEAD
