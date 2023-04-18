@@ -44,6 +44,7 @@ RUN \
   yum -y install mysql-community-libs
 
 COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /etc/mydumper.cnf /etc/
 
 # Compilation outputs both mydumper and myloader binaries.
 CMD [ "bash", "-c", "echo 'This Docker image contains both mydumper and myloader binaries. Run the container by invoking either mydumper or myloader as first argument.'" ]
