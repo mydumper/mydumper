@@ -828,7 +828,28 @@ void build_lock_tables_statement(struct configuration *conf){
   g_mutex_unlock(non_innodb_table_mutex);
 }
 
+void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
+  GList *l=dbt->chunks;
+  guint64 total=0;
+  while (l!=NULL){
+    switch (dbt->chunk_type){
+      case INTEGER:
+        total+=((union chunk_step *)(l->data))->integer_step.estimated_remaining_steps;
+        break;
+      case CHAR:
+        total+=((union chunk_step *)(l->data))->char_step.estimated_remaining_steps;
+        break;
+      default:
+        total++;
+        break; 
+    }
+    l=l->next;
+  }
+  dbt->estimated_remaining_steps=total;
+}
+
 void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
+  update_estimated_remaining_chunks_on_dbt(tj->dbt);
   if (tj->where != NULL)
     g_free(tj->where);
   switch (tj->dbt->chunk_type){
@@ -878,7 +899,7 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
     tj->chunk_step->integer_step.check_min=FALSE;
   }
   tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.estimated_remaining_steps=1+(tj->chunk_step->integer_step.nmax - tj->chunk_step->integer_step.cursor) / tj->chunk_step->integer_step.step;
+  tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.nmax - tj->chunk_step->integer_step.cursor) / tj->chunk_step->integer_step.step;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
 /*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
     return;
@@ -1277,6 +1298,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, k);
   dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
+  dbt->estimated_remaining_steps=1;
   dbt->min=NULL;
   dbt->max=NULL;
   dbt->chunk_type = UNDEFINED;
