@@ -95,11 +95,13 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         while (pos < buffer_len && buffer[pos] !='\n' ){
           pos++;
         }
+//	g_message("DATA: %d %d  %s",line_from, pos, &(buffer[line_from]));
         last_pos=pos;
         line_end=pos-1;
         // Is a header?
         if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
-          if (buffer[last_pos] == '\n'){
+//	  g_message("FOUND --");
+          if (buffer[last_pos] == '\n' || buffer[last_pos] == '\0'){
             if (file != NULL ){
               if (total_size < b){
                 g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
@@ -116,7 +118,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             }
             previous_filename=g_strdup(filename);
             g_free(filename);
-            gchar a=buffer[last_pos-(line_from+4)];
+            gchar a=buffer[last_pos-(line_from)];
             buffer[last_pos-(line_from)]='\0';
 //g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
 //            if (line_from==last_pos)
@@ -125,8 +127,9 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             filename=g_strndup(&(buffer[line_from+4]),(d-&(buffer[line_from+4])));
             b = g_ascii_strtoull(d, NULL, 10);
     //        g_message("Raaded Size from file is %d", b); 
-            buffer[last_pos-(line_from+4)]=a;
+            buffer[last_pos-(line_from)]=a;
             real_filename = g_build_filename(directory,filename,NULL);
+//	    g_message("FILENAME: %s", filename);
             if (has_mydumper_suffix(filename)){
               if (file){
                 m_close(file);
@@ -135,7 +138,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
                 intermediate_queue_new(previous_filename); 
               if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
                 g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
-                last_pos++;
+                last_pos--;
                 file = NULL;
               }else{
                 file = g_fopen(real_filename, "w");
