@@ -111,6 +111,7 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
   cs->char_step.previous=NULL;
 //  cs->char_step.list = list; 
 
+  cs->char_step.estimated_remaining_steps=1;
   cs->char_step.prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, cs->char_step.cmin_escaped);
 
 //  g_message("new_char_step: min: %s | max: %s ", cs->char_step.cmin_escaped, cs->char_step.cmax_escaped);
@@ -143,21 +144,21 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
 }
 
 
-union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint64 number, gboolean check_min, gboolean check_max){
-//  g_message("New Integer Step");
+union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max){
+//  g_message("New Integer Step with step size: %d", step);
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.prefix = prefix;
   cs->integer_step.nmin = nmin;
-  cs->integer_step.step = cs->integer_step.nmin;
+  cs->integer_step.step = step;
   cs->integer_step.deep = deep;
   cs->integer_step.number = number;
   cs->integer_step.nmax = nmax;
-  cs->integer_step.step = rows_per_file;
   cs->integer_step.field = g_strdup(field);
   cs->integer_step.mutex = g_mutex_new(); 
   cs->integer_step.status = UNASSIGNED;
   cs->integer_step.check_max=check_max;
   cs->integer_step.check_min=check_min;
+  cs->integer_step.estimated_remaining_steps=(cs->integer_step.nmax - cs->integer_step.nmin) / cs->integer_step.step;
   return cs;
 }
 
@@ -215,7 +216,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
         guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
                            cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2 :
                            cs->integer_step.cursor;
-        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
@@ -606,10 +607,11 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     nmin = strtoul(row[0], NULL, 10);
     nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){
-      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, 0, FALSE, FALSE);
+      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, rows_per_file, 0, FALSE, FALSE);
       dbt->chunks=g_list_prepend(dbt->chunks,cs);
       g_async_queue_push(dbt->chunks_queue, cs);
       dbt->chunk_type=INTEGER;
+      dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
     }else{
       dbt->chunk_type=NONE;
     }
@@ -834,7 +836,7 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
 
     if ((cs==NULL) && (dbt==NULL)){
       if (are_there_jobs_defining){
-        g_debug("chunk_builder_thread: Are jobs defining... show we wait and try again later?");
+        g_debug("chunk_builder_thread: Are jobs defining... should we wait and try again later?");
         g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
         usleep(1);
         continue;

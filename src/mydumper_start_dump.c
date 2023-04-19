@@ -1079,7 +1079,6 @@ void start_dump() {
   table_schemas=NULL;
   if (pmm){
     kill_pmm_thread();
-//    g_thread_join(pmmthread);
   }
   g_async_queue_unref(conf.innodb_queue);
   conf.innodb_queue=NULL;

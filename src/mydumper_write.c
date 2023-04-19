@@ -379,7 +379,7 @@ guint64 get_estimated_remaining_of(GList *list){
   GList *tl=list;
   guint64 total=0;
   while (tl!=NULL){
-    total+=get_estimated_remaining_chunks_on_dbt(tl->data);
+    total+=((struct db_table *)(tl->data))->estimated_remaining_steps;
     tl=tl->next;
   }
   return total;
@@ -392,14 +392,14 @@ guint64 get_estimated_remaining_of_all_chunks(){
 
 
 void message_dumping_data(struct thread_data *td, struct table_job *tj){
-  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT,
+  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT" All remaining jobs: %"G_GINT64_FORMAT,
                     td->thread_id,
                     tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
                      (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",
                      (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
                     ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
                     tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
-                    tj->sql_filename, get_estimated_remaining_chunks_on_dbt(tj->dbt)); //, get_estimated_remaining_of_all_chunks());
+                    tj->sql_filename, tj->dbt->estimated_remaining_steps, get_estimated_remaining_of_all_chunks()); // get_estimated_remaining_chunks_on_dbt(tj->dbt)); //, get_estimated_remaining_of_all_chunks());
 //                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
 }
 

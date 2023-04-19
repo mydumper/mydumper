@@ -135,6 +135,7 @@ struct char_step {
   guint64 step;
   union chunk_step *previous;
 
+  guint64 estimated_remaining_steps;
   guint status;
 };
 
@@ -217,6 +218,7 @@ struct db_table {
   char *character_set;
   guint64 datalength;
   guint64 rows;
+  guint64 estimated_remaining_steps;
   GMutex *rows_lock;
   struct function_pointer ** anonymized_function;
   gchar *where;

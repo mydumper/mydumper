@@ -27,36 +27,68 @@
 #include "mydumper_global.h"
 
 gint kill_pmm = 0;
+GMutex *pmm_mutex=NULL;
+const gchar* filename=NULL;
 
 void kill_pmm_thread(){
+  g_mutex_lock(pmm_mutex);
   kill_pmm=1;
+  remove(filename);
+  g_mutex_unlock(pmm_mutex);
 }
 
-void append_pmm_entry(GString *content, const gchar *key, GAsyncQueue * queue){
+void append_pmm_entry(GString *content, const gchar *metric, const gchar *key, guint64 value){
+  g_string_append_printf(content,"mydumper_%s{name=\"%s\"} %"G_GUINT64_FORMAT"\n",metric, key, value);
+}
+
+void append_pmm_entry_queue(GString *content, const gchar *key, GAsyncQueue * queue){
   if (queue != NULL)
-    g_string_append_printf(content,"mydumper_queue{name=\"%s\"} %d\n",key,g_async_queue_length(queue));
+    append_pmm_entry(content, "queue", key, g_async_queue_length(queue));
 }
 
-void write_pmm_entries(const gchar* filename, GString *content, struct configuration* conf){
+void append_pmm_entry_all_tables(GString *content){
+  GList *tl=all_dbts;
+  struct db_table *dbt=NULL;
+  while (tl!=NULL){
+    dbt=((struct db_table *)(tl->data));
+    append_pmm_entry(content,"table",dbt->table, dbt->estimated_remaining_steps);
+    tl=tl->next;
+  }
+}
+
+void write_pmm_entries(GString *content, struct configuration* conf){
   g_string_set_size(content,0);
-  append_pmm_entry(content,"schema_queue",      conf->schema_queue);
-  append_pmm_entry(content,"non_innodb_queue",  conf->non_innodb_queue);
-  append_pmm_entry(content,"innodb_queue",      conf->innodb_queue);
-  append_pmm_entry(content,"post_data_queue",   conf->post_data_queue);
-  append_pmm_entry(content,"ready",             conf->ready);
-  append_pmm_entry(content,"unlock_tables",     conf->unlock_tables);
-  append_pmm_entry(content,"pause_resume",      conf->pause_resume);
-  append_pmm_entry(content,"stream_queue",      stream_queue);
+  append_pmm_entry_queue(content,"schema_queue",      conf->schema_queue);
+  append_pmm_entry_queue(content,"non_innodb_queue",  conf->non_innodb_queue);
+  append_pmm_entry_queue(content,"innodb_queue",      conf->innodb_queue);
+  append_pmm_entry_queue(content,"post_data_queue",   conf->post_data_queue);
+  append_pmm_entry_queue(content,"ready",             conf->ready);
+  append_pmm_entry_queue(content,"unlock_tables",     conf->unlock_tables);
+  append_pmm_entry_queue(content,"pause_resume",      conf->pause_resume);
+  append_pmm_entry_queue(content,"stream_queue",      stream_queue);
+  append_pmm_entry(content,"object", "all_tables",        g_list_length(all_dbts));
+  append_pmm_entry(content,"object", "innodb_tables",        g_list_length(innodb_table));
+  append_pmm_entry(content,"object", "non_innodb_tables",        g_list_length(non_innodb_table));
+  append_pmm_entry_all_tables(content);
   g_file_set_contents( filename , content->str, content->len, NULL);
 }
 
 void *pmm_thread(void *conf){
-  const gchar* filename=g_strdup_printf("%s/mydumper.prom",pmm_path);
+  pmm_mutex = g_mutex_new();
+  g_mutex_lock(pmm_mutex);
+  filename=g_strdup_printf("%s/mydumper.prom",pmm_path);
+  g_mutex_unlock(pmm_mutex);
   GString *content = g_string_sized_new(200);
+  pmm_mutex = g_mutex_new();
   while (!kill_pmm){
-    write_pmm_entries(filename, content, (struct configuration*)conf);
+    g_mutex_lock(pmm_mutex);
+    if (kill_pmm){
+      g_mutex_unlock(pmm_mutex);
+      break;
+    }
+    write_pmm_entries(content, (struct configuration*)conf);
+    g_mutex_unlock(pmm_mutex);
     sleep(1);
   }
-  write_pmm_entries(filename, content, conf);
   return NULL;
 }
