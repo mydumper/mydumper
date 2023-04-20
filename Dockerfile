@@ -1,5 +1,5 @@
 # Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
-FROM almalinux:9 as builder
+FROM mydumper/mydumper-builder-el9:latest as builder
 
 # Docker build arguments. Use to customize build.
 # Example to enable ZSTD:
@@ -8,12 +8,6 @@ ARG PERCONA_COMPONENT
 ARG CMAKE_ARGS
 
 ARG DEBIAN_FRONTEND=noninteractive
-
-# Package 'lsb-release' is required by 'percona-release' package.
-RUN \
-  yum -y install epel-release && \
-  yum -y install --allowerasing wget curl && \
-  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo
 
 RUN \
   yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
@@ -29,13 +23,8 @@ RUN \
   make && \
   make install
 
-
-FROM almalinux:9
+FROM mydumper/mydumper-builder-el9:latest
 ARG DEBIAN_FRONTEND=noninteractive
-RUN \
-  yum -y install epel-release && \
-  yum -y install --allowerasing wget curl && \
-  yum -y install cmake gcc-c++ git make sudo
 
 RUN \
   yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
