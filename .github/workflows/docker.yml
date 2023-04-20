@@ -46,7 +46,7 @@ jobs:
       - name: Build and push Docker image ZSTD
         uses: docker/build-push-action@v4
         with:
-          build-args: CMAKE_ARGS='-DWITH_ZSTD=ON'
+          build-args: CMAKE_ARGS=-DWITH_ZSTD=ON
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
