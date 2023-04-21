@@ -36,7 +36,7 @@ jobs:
 
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
-          LABLES: ${{ steps.meta.outputs.labels }}
+          LABELS: ${{ steps.meta.outputs.labels }}
 
 
       - name: Build and push Docker image GZIP
