@@ -32,8 +32,12 @@ jobs:
         shell: bash
         run: |
           echo "TAGS: $TAGS"
+          echo "LABELS: $LABELS"
+
         env:
           TAGS: ${{ steps.meta.outputs.tags }}
+          LABLES: ${{ steps.meta.outputs.labels }}
+
 
       - name: Build and push Docker image GZIP
         uses: docker/build-push-action@v4
