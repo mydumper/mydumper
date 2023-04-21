@@ -34,29 +34,6 @@ jobs:
         with:
           images: mydumper/mydumper
       
-      - name: Build and push Docker image GZIP
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: remove latest on tags 
-        uses: buildsville/add-remove-label@v2.0.0
-        with:
-          token: ${{ steps.meta.outputs.tags }}
-          labels: latest
-          type: remove
-  
-      - name: remove latest on labels
-        uses: buildsville/add-remove-label@v2.0.0
-        with:
-          token: ${{ steps.meta.outputs.labels }}
-          labels: latest
-          type: remove
-
       - name: Build and push Docker image ZSTD
         uses: docker/build-push-action@v4
         with:
@@ -64,5 +41,5 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}-zstd , latest-zstd
-          labels: ${{ steps.meta.outputs.labels }}-zstd , latest-zstd
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
