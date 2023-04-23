@@ -435,7 +435,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( length == 0){
       g_string_append_c(statement_row,*fields_enclosed_by);
       g_string_append_c(statement_row,*fields_enclosed_by);
-    } else if ( field.type == MYSQL_TYPE_BLOB ) {
+    } else if ( field.type == MYSQL_TYPE_BLOB || hex_blob ) {
       g_string_set_size(escaped, length * 2 + 1);
       g_string_append(statement_row,"0x");
       mysql_hex_string(escaped->str,*column,length);
