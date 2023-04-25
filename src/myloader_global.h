@@ -40,6 +40,7 @@ extern gchar *purge_mode_str;
 extern GString *set_global;
 extern GString *set_global_back;
 extern gchar *defaults_file;
+extern char *defaults_extra_file;
 extern GKeyFile * key_file;
 extern gchar *input_directory;
 extern gchar *tables_list;

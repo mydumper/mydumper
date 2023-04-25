@@ -4,6 +4,7 @@
 #include <mysql.h>
 
 extern gchar *defaults_file;
+extern char *defaults_extra_file;
 extern GList *all_dbts;
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];

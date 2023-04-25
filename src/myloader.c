@@ -319,7 +319,7 @@ int main(int argc, char *argv[]) {
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
   initialize_common();
-  initialize_connection(key_file!=NULL && g_key_file_has_group(key_file,"myloader")?defaults_file:NULL, key_file!=NULL && g_key_file_has_group(key_file,"myloader")?MYLOADER:NULL , MYLOADER);
+  initialize_connection(MYLOADER);
   initialize_regex(NULL);
   GError *serror;
   GThread *sthread =
