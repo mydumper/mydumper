@@ -91,6 +91,7 @@ zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
 sudo port install glib2 pcre
 ```
 ### Install MySQL/Percona/MariaDB development versions:
+You need to select one vendor development library.
 * Ubuntu or Debian:
 ```shell
 apt-get install libmysqlclient-dev
