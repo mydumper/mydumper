@@ -669,7 +669,8 @@ void send_lock_all_tables(MYSQL *conn){
 void start_dump() {
   initialize_start_dump();
   initialize_common();
-  initialize_connection(defaults_file, key_file!=NULL && g_key_file_has_group(key_file, MYDUMPER )? MYDUMPER :NULL, MYDUMPER);
+
+  initialize_connection(MYDUMPER);
   initialize_masquerade();
 
   /* Give ourselves an array of tables to dump */

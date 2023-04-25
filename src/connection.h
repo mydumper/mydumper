@@ -20,8 +20,9 @@
 
 
 
-//void configure_connection(MYSQL *conn, const char *name);
-void initialize_connection(gchar *cdf, const gchar *group, const gchar *app);
+void initialize_connection(const gchar *app);
+//void initialize_connection(gchar *cdf, const gchar *group, const gchar *app);
+void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
 void m_connect(MYSQL *conn, gchar *schema);
 void hide_password(int argc, char *argv[]);
 void ask_password();

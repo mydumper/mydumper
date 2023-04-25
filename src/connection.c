@@ -66,9 +66,13 @@ gchar *connection_defaults_file=NULL;
 const gchar *connection_default_file_group=NULL;
 const gchar *program_name=NULL;
 
-void initialize_connection(gchar *cdf, const gchar *group, const gchar *app){
+void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group){
   connection_defaults_file=cdf;
   connection_default_file_group=group;
+}
+
+
+void initialize_connection(const gchar *app){
   program_name=app;
 }
 

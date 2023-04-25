@@ -24,6 +24,7 @@
 #include "common_options.h"
 char *db = NULL;
 char *defaults_file = NULL;
+char *defaults_extra_file = NULL;
 #ifdef WITH_SSL
 char *key = NULL;
 char *cert = NULL;
@@ -106,6 +107,8 @@ GOptionEntry common_entries[] = {
 #endif
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
+    {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
+     "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 

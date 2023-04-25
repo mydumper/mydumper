@@ -25,6 +25,7 @@
 #include "server_detect.h"
 #include "common.h"
 #include "config.h"
+#include "connection.h"
 #include <stdarg.h>
 #ifdef ZWRAP_USE_ZSTD
 #include "../zstd/zstd_zlibwrapper.h"
@@ -34,6 +35,7 @@
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
+extern gchar *defaults_extra_file;
 extern GKeyFile * key_file;
 extern gboolean no_stream;
 extern gchar*set_names_str;
@@ -135,11 +137,7 @@ GKeyFile * load_config_file(gchar * config_file){
   return kf;
 }
 
-void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group){
-  if (!g_key_file_has_group(key_file,group)){
-    g_warning("Section %s not found", group);
-    return;
-  }
+void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * group){
   gsize len=0;
   GError *error = NULL;
   gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
@@ -441,28 +439,89 @@ gboolean is_table_in_list(gchar *table_name, gchar **tl){
 }
 
 
+
+void m_key_file_merge(GKeyFile *b, GKeyFile *a){
+  gsize  group_len = 0, key_len=0;
+  gchar **group = g_key_file_get_groups (a, &group_len), **key=NULL;
+  
+  guint g=0, k=0;
+  GError *error=NULL;
+  for( g=0; g<group_len; g++ ){
+    key=g_key_file_get_keys(a, group[g], &key_len, &error );
+    for(k=0; k<key_len; k++ ){
+      g_key_file_set_value(b, group[g], key[k], g_key_file_get_value(a, group[g], key[k], &error));
+    }
+  }
+
+}
+
+
 void initialize_common_options(GOptionContext *context, const gchar *group){
-  if (defaults_file == NULL ) 
+  if (defaults_file == NULL ){ 
     if ( g_file_test(DEFAULTS_FILE, G_FILE_TEST_EXISTS) ){
       defaults_file=g_strdup(DEFAULTS_FILE);
-    }else{
-      g_message("Using no configuration file");
-      return;
     }
-  else{
-    if (defaults_file != NULL && !g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
+  }else{
+    if (!g_file_test(defaults_file,G_FILE_TEST_EXISTS)){
       m_critical("Default file %s not found", defaults_file);
     }
   }
-  g_message("Using default file: %s", defaults_file);
+
+  if (defaults_extra_file != NULL ){
+    if (!g_file_test(defaults_extra_file,G_FILE_TEST_EXISTS)){
+      m_critical("Default extra file %s not found", defaults_extra_file);
+    }
+  }else{
+    if (defaults_file == NULL){
+      g_message("Using no configuration file");
+      return;
+    }
+  }
+
+  if (defaults_file == NULL){
+    defaults_file=defaults_extra_file;
+    defaults_extra_file=NULL;
+  }
+
+//  g_message("Using default file: %s %s", defaults_file, defaults_extra_file);
+
+  gchar *new_defaults_file=NULL;
   if (!g_path_is_absolute(defaults_file)){
-    gchar *new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
+    new_defaults_file=g_build_filename(g_get_current_dir(),defaults_file,NULL);
     g_free(defaults_file);
     defaults_file=new_defaults_file;
   }
+
   key_file=load_config_file(defaults_file);
-  if (g_key_file_has_group(key_file, group ))
-    load_config_group(key_file, context, group);
+
+  if (g_key_file_has_group(key_file, group )){
+    parse_key_file_group(key_file, context, group);
+    set_connection_defaults_file_and_group(defaults_file, group); 
+  }else
+    set_connection_defaults_file_and_group(defaults_file, NULL);
+
+  if (defaults_extra_file == NULL)
+    return;
+
+  if (!g_path_is_absolute(defaults_extra_file)){
+    new_defaults_file=g_build_filename(g_get_current_dir(),defaults_extra_file,NULL);
+    g_free(defaults_extra_file);
+    defaults_extra_file=new_defaults_file;
+  }
+
+  GKeyFile * extra_key_file=load_config_file(defaults_extra_file);
+
+  if (g_key_file_has_group(extra_key_file, group )){
+    g_message("Parsing extra key file");
+    parse_key_file_group(extra_key_file, context, group);
+    set_connection_defaults_file_and_group(defaults_extra_file, group);
+  }else
+    set_connection_defaults_file_and_group(defaults_extra_file, NULL);
+  g_message("Merging config files user: ");
+
+  m_key_file_merge(key_file, extra_key_file);
+
+//  g_key_file_free(extra_key_file);
 }
 
 gchar **get_table_list(gchar *tables_list){
