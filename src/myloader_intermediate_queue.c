@@ -78,9 +78,10 @@ enum file_type process_filename(char *filename){
         break;
       case SCHEMA_CREATE:
         process_database_filename(filename);
-        if (db)
+        if (db){
           ft=DO_NOT_ENQUEUE;
-        //m_remove(directory,filename);
+          m_remove(directory,filename);
+        }
         break;
       case SCHEMA_TABLE:
         // filename is free
