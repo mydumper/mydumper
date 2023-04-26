@@ -36,6 +36,7 @@ static GOptionEntry entries[] = {
 //      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
+    {"turbo", 0, 0, G_OPTION_ARG_NONE, &turbo, "Enables the usage of mysql_store_result function (instead of mysql_use_result) causing more memory usage and lower RRT", NULL},
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."

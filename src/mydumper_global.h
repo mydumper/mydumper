@@ -3,6 +3,7 @@
 #include <gio/gio.h>
 #include <mysql.h>
 
+extern gboolean turbo;
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GList *all_dbts;

@@ -70,6 +70,7 @@ gchar *fields_terminated_by_ld=NULL;
 gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
+gboolean turbo = FALSE;
 /*
 static GOptionEntry write_entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
@@ -129,8 +130,13 @@ void load_write_entries(GOptionGroup *main_group, GOptionContext *context){
 }
 */
 
-void initialize_write(){
+MYSQL_RES *(*mysql_result_function)(MYSQL *mysql)=NULL;
 
+void initialize_write(){
+  if (turbo)
+    mysql_result_function = &mysql_store_result;
+  else
+    mysql_result_function = &mysql_use_result;
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
 //    chunk_filesize = 0;
@@ -718,7 +724,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
       tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+  if (mysql_query(conn, query) || !(result = mysql_result_function(conn))) {
     // ERROR 1146
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
