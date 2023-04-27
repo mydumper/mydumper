@@ -508,7 +508,7 @@ int main(int argc, char *argv[]) {
 //    g_thread_join(pmmthread);
   }
 
-  g_hash_table_foreach(conf.table_hash,&show_dbt, NULL);
+//  g_hash_table_foreach(conf.table_hash,&show_dbt, NULL);
   free_table_hash(conf.table_hash);
   g_hash_table_remove_all(conf.table_hash);
   g_hash_table_unref(conf.table_hash);
