@@ -43,3 +43,4 @@ void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
 void free_common();
 void initialize_sql_statement(GString *statement);
+void set_tidb_snapshot(MYSQL *conn);

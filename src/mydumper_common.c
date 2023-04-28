@@ -28,7 +28,7 @@
 #include <errno.h>
 #include "server_detect.h"
 #include "mydumper_global.h"
-
+#include "common.h"
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
@@ -332,3 +332,13 @@ void initialize_sql_statement(GString *statement){
     g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
   }
 }
+
+void set_tidb_snapshot(MYSQL *conn){
+  gchar *query =
+  g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+  if (mysql_query(conn, query)) {
+    m_critical("Failed to set tidb_snapshot: %s.\nThis might be related to https://github.com/pingcap/tidb/issues/8887", mysql_error(conn));
+  }
+  g_free(query);
+}
+
