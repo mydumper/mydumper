@@ -558,12 +558,7 @@ void check_connection_status(struct thread_data *td){
   if (detected_server == SERVER_TYPE_TIDB) {
     // Worker threads must set their tidb_snapshot in order to be safe
     // Because no locking has been used.
-    gchar *query =
-        g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
-    if (mysql_query(td->thrconn, query)) {
-      m_critical("Failed to set tidb_snapshot: %s", mysql_error(td->thrconn));
-    }
-    g_free(query);
+    set_tidb_snapshot(td->thrconn);
     g_message("Thread %d: set to tidb_snapshot '%s'", td->thread_id,
               tidb_snapshot);
   }
@@ -1567,7 +1562,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
     if ((detected_server == SERVER_TYPE_MYSQL ||
-         detected_server == SERVER_TYPE_MARIADB) &&
+         detected_server == SERVER_TYPE_MARIADB ||
+         detected_server == SERVER_TYPE_TIDB ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 
