@@ -18,10 +18,10 @@
 #include <glib.h>
 #include "mydumper_common.h"
 #include "mydumper_database.h"
-
+#include "mydumper_global.h"
 GHashTable *database_hash = NULL;
 GMutex * database_hash_mutex = NULL;
-
+extern char *regex; 
 void free_database(struct database * d){
 //  g_free(d->name);
   if (d->escaped!=NULL){
@@ -57,6 +57,8 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
   d->ad_mutex=g_mutex_new();
   d->schema_checksum=NULL;
   d->post_checksum=NULL;
+  d->triggers_checksum=NULL;
+  d->dump_triggers= regex == NULL && tables_list == NULL;
   g_hash_table_insert(database_hash, d->name,d);
   return d;
 }
@@ -87,12 +89,14 @@ void write_database_on_disk(FILE *mdfile){
   g_hash_table_iter_init ( &iter, database_hash);
   struct database *d=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    if (d->schema_checksum != NULL || d->post_checksum != NULL)
+    if (d->schema_checksum != NULL || d->post_checksum != NULL || d->triggers_checksum)
       fprintf(mdfile, "\n[`%s`]\n", d->name);
     if (d->schema_checksum != NULL)
       fprintf(mdfile, "%s = %s\n", "schema_checksum", d->schema_checksum);
     if (d->post_checksum != NULL)
       fprintf(mdfile, "%s = %s\n", "post_checksum", d->post_checksum);
+    if (d->triggers_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "triggers_checksum", d->triggers_checksum);
   }
 }
 

@@ -479,6 +479,7 @@ gboolean process_metadata_global(){
         struct database *database=get_db_hash(database_table[0],database_table[0]);
         database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
         database->post_checksum=get_value(kf,groups[j],"post_checksum");
+        database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
       }
     }else if (g_str_has_prefix(groups[j],"replication")){
       change_master(kf, groups[j], change_master_statement);

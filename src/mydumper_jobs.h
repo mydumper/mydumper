@@ -23,47 +23,37 @@
 #define _src_mydumper_jobs_h
 struct schema_job {
   struct db_table *dbt;
-//  char *database;
-//  char *table;
   char *filename;
-  char *checksum_filename;
-  char *checksum_index_filename;
+  gboolean checksum_filename;
+  gboolean checksum_index_filename;
+};
+
+struct sequence_job {
+  struct db_table *dbt;
+  char *filename;
+  gboolean checksum_filename;
+};
+
+struct table_checksum_job {
+  struct db_table *dbt;
+  char *filename;
 };
 
 struct create_tablespace_job{
   char *filename;
 };
 
-struct create_database_job {
+struct database_job {
   struct database *database;
   char *filename;
-  char *checksum_filename;
+  gboolean checksum_filename;
 };
 
 struct view_job {
   struct db_table *dbt;
-  char *filename;
-  char *filename2;
-  char *checksum_filename;
-};
-
-struct sequence_job {
-  struct db_table *dbt;
-//  char *database;
-//  char *table;
-  char *filename;
-  char *checksum_filename;
-};
-
-struct schema_post_job {
-  struct database *database;
-  char *filename;
-  char *checksum_filename;
-};
-
-struct table_checksum_job {
-  struct db_table *dbt;
-  char *filename;
+  char *tmp_table_filename;
+  char *view_filename;
+  gboolean checksum_filename;
 };
 
 void initialize_jobs();
@@ -79,6 +69,7 @@ void create_job_to_dump_all_databases(struct configuration *conf);
 void create_job_to_dump_database(struct database *database, struct configuration *conf);
 void create_job_to_dump_schema(struct database* database, struct configuration *conf);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_schema_triggers(struct database *database, struct configuration *conf);
 void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
 void job_creator_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
@@ -91,6 +82,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job);
 void do_JOB_SEQUENCE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
+void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
 struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
 void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where);
