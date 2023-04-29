@@ -24,6 +24,8 @@ struct database {
   gboolean already_dumped;
   gchar *schema_checksum;
   gchar *post_checksum;
+  gchar *triggers_checksum;
+  gboolean dump_triggers;
 };
 
 void initialize_database();

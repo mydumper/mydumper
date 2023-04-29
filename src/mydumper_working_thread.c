@@ -760,6 +760,9 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_TRIGGERS:
       do_JOB_TRIGGERS(td,job);
       break;
+    case JOB_SCHEMA_TRIGGERS:
+      do_JOB_SCHEMA_TRIGGERS(td,job);
+      break;
     case JOB_SCHEMA_POST:
       do_JOB_SCHEMA_POST(td,job);
       break;
@@ -1383,7 +1386,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       g_mutex_unlock(table_schemas_mutex);
       create_job_to_dump_table_schema( dbt, conf);
     }
-    if (dump_triggers) {
+    if (dump_triggers && !database->dump_triggers) {
       create_job_to_dump_triggers(conn, dbt, conf);
     }
     if (!no_data) {

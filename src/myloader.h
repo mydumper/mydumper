@@ -77,6 +77,7 @@ struct database {
   GMutex * mutex;
   gchar *schema_checksum;
   gchar *post_checksum;
+  gchar *triggers_checksum;
 };
 
 struct db_table {

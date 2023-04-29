@@ -459,6 +459,8 @@ int main(int argc, char *argv[]) {
       checksum_database_template(d->name, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
     if (d->post_checksum != NULL)
       checksum_database_template(d->name, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
+    if (d->triggers_checksum != NULL)
+      checksum_database_template(d->name, d->triggers_checksum,  conn, "Triggers checksum", checksum_trigger_structure_from_database);
   }
 
 

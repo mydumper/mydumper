@@ -894,6 +894,8 @@ void start_dump() {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
       struct database *this_db=new_database(conn,db_items[i],TRUE);
+      if (this_db->dump_triggers)
+        create_job_to_dump_schema_triggers(this_db, &conf);
       create_job_to_dump_database(this_db, &conf);
       if (!no_schemas)
         create_job_to_dump_schema(this_db, &conf);

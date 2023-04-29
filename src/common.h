@@ -47,6 +47,7 @@ char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *e
 char * checksum_table(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn);
+char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn);
