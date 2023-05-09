@@ -496,7 +496,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   key_file=load_config_file(defaults_file);
 
-  if (g_key_file_has_group(key_file, group )){
+  if (key_file!=NULL && g_key_file_has_group(key_file, group )){
     parse_key_file_group(key_file, context, group);
     set_connection_defaults_file_and_group(defaults_file, group); 
   }else
@@ -513,7 +513,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   GKeyFile * extra_key_file=load_config_file(defaults_extra_file);
 
-  if (g_key_file_has_group(extra_key_file, group )){
+  if (extra_key_file!=NULL && g_key_file_has_group(extra_key_file, group )){
     g_message("Parsing extra key file");
     parse_key_file_group(extra_key_file, context, group);
     set_connection_defaults_file_and_group(defaults_extra_file, group);
