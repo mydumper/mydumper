@@ -88,7 +88,7 @@ void write_char_checksum_into_file(char *database, char *table, char *filename, 
 gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun()) {
   int errn=0;
   gchar *checksum=fun(conn, database->name, table, &errn);
-  g_message("Checksum value: %s", checksum);
+//  g_message("Checksum value: %s", checksum);
   if (errn != 0 && !(success_on_1146 && errn == 1146)) {
     errors++;
     return NULL;
@@ -293,7 +293,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   if (checksum_filename){
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
-    g_message("Checksum for table schema: %s", dbt->schema_checksum);
+//    g_message("Checksum for table schema: %s", dbt->schema_checksum);
   }
   if (checksum_index_filename){
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);

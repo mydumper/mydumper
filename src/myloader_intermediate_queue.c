@@ -88,7 +88,6 @@ enum file_type process_filename(char *filename){
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-post.sql", source_db)) ||
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-create.sql", source_db) )
     ) {
-    g_message("file %s | type: %d", filename, ft);
     switch (ft){
       case INIT:
         break;
