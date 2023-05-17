@@ -90,5 +90,9 @@ extern gchar identifier_quote_character;
 extern gchar * identifier_quote_character_str;
 extern GString *change_master_statement;
 
+extern gchar *exec_per_thread;
+extern gchar *exec_per_thread_extension;
+extern gchar **exec_per_thread_cmd;
+
 extern guint index_threads_counter;
 extern GMutex *index_mutex;

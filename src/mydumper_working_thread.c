@@ -122,8 +122,6 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-guint64 estimate_count(MYSQL *conn, char *database, char *table, char *field,
-                       char *from, char *to);
 void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 guint min_rows_per_file = 0;
@@ -466,26 +464,63 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     tj->dat_file=NULL;
   }
   if (tj->sql_filename != NULL ){
-  if (tj->filesize == 0 && !build_empty_files) {
-    // dropping the useless file
-    if (remove(tj->sql_filename)) {
-      g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-    }else{
-      g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
-    }
-    if (load_data){
-      if (remove(tj->dat_filename)) {
-        g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
-      }else{
-        g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
-      }
-    }
-  } else if (stream) {
-      g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
+    if (use_fifo){
       if (load_data){
-        g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
+        if (remove(tj->dat_filename)) {
+          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->dat_filename, tj->nchunk);
+        }else{
+          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->dat_filename);
+        }
+        g_free(tj->dat_filename);
+        tj->dat_filename=NULL;
+      }else{
+        if (remove(tj->sql_filename)) {
+          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
+        }else{
+          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->sql_filename);
+        }
+        g_free(tj->sql_filename);
+        tj->sql_filename=NULL;
       }
-  }
+    }
+    if (tj->filesize == 0 && !build_empty_files) {
+    // dropping the useless file
+      if (tj->sql_filename!=NULL){
+        if (remove(tj->sql_filename)) {
+          g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
+        }else{
+          g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
+        }
+      }
+      if (load_data && tj->dat_filename!=NULL){
+        if (remove(tj->dat_filename)) {
+          g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
+        }else{
+          g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
+        }
+      }
+    
+    } else if (stream) {
+        if (use_fifo){
+          int status;
+          if (load_data){
+            g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
+//            usleep(300000);
+//            int status;
+            waitpid(tj->child_process,&status, 0);
+            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
+          }else{
+            waitpid(tj->child_process,&status, 0);
+//            usleep(300000);
+            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
+          }
+        }else{
+          g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
+          if (load_data){
+            g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
+          }
+        }
+    }
   }
 
 /*  if (use_savepoints &&

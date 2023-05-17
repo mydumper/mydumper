@@ -70,64 +70,6 @@ gchar *fields_terminated_by_ld=NULL;
 gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
-/*
-static GOptionEntry write_entries[] = {
-    {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
-     "Split tables into chunks of this output file size. This value is in MB",
-     NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry statement_entries[] = {
-    {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "", NULL },
-    { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
-      "Automatically enables --load-data and set variables to export in CSV format.", NULL },
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
-    {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
-      "Single character that is going to be used to escape characters in the"
-      "LOAD DATA stament, default: '\\' ", NULL },
-    {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
-      "Adds the string at the begining of each row. When --load-data is used"
-      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
-      "also when it is used.", NULL },
-    {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
-      "Adds the string at the end of each row. When --load-data is used it is"
-       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
-       "also when it is used.", NULL },
-    {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
-      "This might never be used, unless you know what are you doing", NULL },
-    {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
-     "Dump rows with INSERT IGNORE", NULL},
-    {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
-     "Dump rows with REPLACE", NULL},
-    {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
-     "Use complete INSERT statements that include column names", NULL},
-    {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
-      "Dump binary columns using hexadecimal notation", NULL},
-    {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
-     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
-    {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
-     "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
-     "when a server has data in different time zones or data is being moved "
-     "between servers with different time zones, defaults to on use "
-     "--skip-tz-utc to disable.",
-     NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
-      "Sets the names, use it at your own risk, default binary", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void load_write_entries(GOptionGroup *main_group, GOptionContext *context){
-  g_option_group_add_entries(main_group, write_entries);
-
-  GOptionGroup *statement_group=g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
-  g_option_group_add_entries(statement_group, statement_entries);
-  g_option_context_add_group(context, statement_group);
-}
-*/
 
 void initialize_write(){
 

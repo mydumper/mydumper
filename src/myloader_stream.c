@@ -54,6 +54,7 @@ void flush(char *buffer, int from, int to, FILE *file){
 
 gboolean has_mydumper_suffix(gchar *line){
   return
+    has_exec_per_thread_extension(line) ||
     g_str_has_suffix(line,".dat") ||
     g_str_has_suffix(line,".dat.gz") ||
     g_str_has_suffix(line,".dat.zst") ||

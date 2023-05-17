@@ -237,21 +237,6 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_message("Thread %d: restoring `%s`.`%s` part %d of %d from %s. Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
       g_mutex_unlock(progress_mutex);
-/* TODO: This code is obsolete now and should be removed
-        if (stream && dbt->schema_state<CREATED){
-        // In a stream scenario we might need to wait until table is created to start executing inserts.
-        i=0;
-        while (dbt->schema_state<CREATED && i<10000){
-          usleep(1000);
-          i++;
-          if (i % 1000 == 0)
-            g_message("Waiting table to be created %s", rj->filename);
-        }
-        if (dbt->schema_state!=CREATED){
-          m_critical("Table has not been created in more than 10 seconds");
-        }
-      }
-*/
       if (restore_data_from_file(td, dbt->database->real_database, dbt->real_table, rj->filename, FALSE) > 0){
         g_atomic_int_inc(&(detailed_errors.data_errors));
         g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));

@@ -28,14 +28,31 @@ gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
 
+gchar *exec_per_thread = NULL;
+gchar *exec_per_thread_extension = NULL;
+gchar **exec_per_thread_cmd=NULL;
+
+GHashTable * exec_process_id = NULL;
+GMutex *exec_process_id_mutex = NULL;
+
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
 
 void initialize_intermediate_queue (struct configuration *c){
   intermediate_conf=c;
   intermediate_queue = g_async_queue_new();
+  exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
+  exec_process_id_mutex=g_mutex_new();
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
+  if (exec_per_thread_extension != NULL){
+    if(exec_per_thread == NULL)
+      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+  }
+
+  if (exec_per_thread!=NULL){
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+  }
   initialize_control_job(c);
 }
 
@@ -71,6 +88,7 @@ enum file_type process_filename(char *filename){
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-post.sql", source_db)) ||
     g_str_has_prefix(filename, g_strdup_printf("%s-schema-create.sql", source_db) )
     ) {
+    g_message("file %s | type: %d", filename, ft);
     switch (ft){
       case INIT:
         break;
@@ -143,19 +161,39 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
-        release_load_data_as_it_is_close(filename);
+        if (has_exec_per_thread_extension(filename)){
+          gchar *fifo_name=g_strdup_printf("%s.fifo",g_strndup(filename,g_strrstr(filename,".")-filename));
+          mkfifo(fifo_name,0666);
+          execute_file_per_thread(filename, fifo_name);
+          g_mutex_lock(exec_process_id_mutex);
+          g_hash_table_insert(exec_process_id,g_strdup(fifo_name), g_strdup(filename));
+          g_mutex_unlock(exec_process_id_mutex);
+          release_load_data_as_it_is_close(fifo_name);
+          g_free(fifo_name);
+        }else
+          release_load_data_as_it_is_close(filename);
         break;
       case SHUTDOWN:
         break;
       case INCOMPLETE:
         break;
       default:
+        g_message("Ignoring file %s", filename);
         break;
     }
   }else{
     ft=DO_NOT_ENQUEUE;
   }
   return ft;
+}
+
+void remove_fifo_file(gchar *fifo_name){
+  g_mutex_lock(exec_process_id_mutex);
+  gchar *filename=g_hash_table_lookup(exec_process_id,fifo_name);
+  g_mutex_unlock(exec_process_id_mutex);
+  if (filename!=NULL)
+    m_remove(directory,filename);
+
 }
 
 void process_stream_filename(struct intermediate_filename  * iflnm){
