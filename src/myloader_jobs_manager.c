@@ -62,6 +62,8 @@ void initialize_job(gchar * pm_str){
   g_mutex_lock(sync_mutex2);
 
   view_mutex=g_mutex_new();
+
+
 }
 /*
 gboolean process_index(struct thread_data * td){

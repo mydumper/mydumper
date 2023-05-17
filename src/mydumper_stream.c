@@ -74,7 +74,7 @@ void *process_stream(void *data){
         fstat(fd, &st);
         off_t size = st.st_size;
         
-        g_message("File size of %s is %"G_GINT64_FORMAT, filename, size);
+//        g_message("File size of %s is %"G_GINT64_FORMAT, filename, size);
         gchar *c = g_strdup_printf("%"G_GINT64_FORMAT,size);
         len=write(fileno(stdout), c, strlen(c));
         len=write(fileno(stdout), "\n", 1);
@@ -91,7 +91,7 @@ void *process_stream(void *data){
             m_error("Stream failed during transmition of file: %s",filename);
           buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
         }
-        g_message("Bytes readed of %s is %d", filename, total_len);
+//        g_message("Bytes readed of %s is %d", filename, total_len);
         datetime = g_date_time_new_now_local();
         diff=g_date_time_difference(datetime,start_time)/G_TIME_SPAN_SECOND;
         g_date_time_unref(start_time);

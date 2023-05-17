@@ -173,8 +173,10 @@ struct table_job {
   FILE *sql_file;
   gchar *dat_filename;
   FILE *dat_file;
+  gchar *exec_out_filename;
   float filesize;
   guint st_in_file;
+  int child_process;
   int char_chunk_part;
   struct thread_data *td;
 };

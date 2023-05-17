@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
+
 #ifdef ZWRAP_USE_ZSTD
 #include "../zstd/zstd_zlibwrapper.h"
 #else
@@ -120,8 +122,9 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
-  if (g_str_has_suffix(str, compress_extension)){
-    return g_strstr_len(&(str[strlen(str)-strlen(compress_extension)-strlen(suffix)]), strlen(str)-strlen(compress_extension),suffix) != NULL; 
+  if (g_str_has_suffix(str, compress_extension) || (exec_per_thread_extension!=NULL && g_str_has_suffix(str,exec_per_thread_extension))){
+    return g_strstr_len(&(str[strlen(str)-strlen(compress_extension)-strlen(suffix)]), strlen(str)-strlen(compress_extension),suffix) != NULL ||
+           (exec_per_thread_extension!=NULL && g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL);
   }
   return g_str_has_suffix(str,suffix);
 }
@@ -524,12 +527,39 @@ gboolean has_compession_extension(const gchar *filename){
   return g_str_has_suffix(filename, compress_extension);
 }
 
-void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed){
-  if (!has_compession_extension(filename)) {
-    *infile = g_fopen(filename, "r");
-    *is_compressed = FALSE;
-  } else {
+gboolean has_exec_per_thread_extension(const gchar *filename){
+  return g_str_has_suffix(filename, exec_per_thread_extension);
+}
+
+int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
+  int childpid=fork();
+  if(!childpid){
+    FILE *sql_file2 = g_fopen(sql_fn,"r");
+    FILE *sql_file3 = g_fopen(sql_fn3,"w");
+    dup2(fileno(sql_file2), STDIN_FILENO);
+    dup2(fileno(sql_file3), STDOUT_FILENO);
+    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+    m_close(sql_file2);
+    m_close(sql_file3);
+  }
+  return childpid;
+}
+
+void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp){
+g_message("Filename to open: %s", filename);
+  if (has_compession_extension(filename)) {
     *infile = (void *)gzopen(filename, "r");
-    *is_compressed = TRUE;
+    *fdp = COMPRESSED;
+  } else if (has_exec_per_thread_extension(filename)) {
+//    gchar *fifo_name=g_strdup_printf("%s.fifo",g_strndup(filename,g_strrstr(filename,".")-filename));
+    gchar *fifo_name = g_strndup(filename,g_strrstr(filename,".")-filename);    
+    mkfifo(fifo_name,0666);
+    execute_file_per_thread(filename, fifo_name);
+    *infile = g_fopen(fifo_name, "r");
+    g_free(fifo_name);
+    *fdp = FIFO;
+  } else {
+    *infile = g_fopen(filename, "r");
+    *fdp = COMMON;
   }
 }

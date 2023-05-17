@@ -23,6 +23,7 @@
 
 #include "myloader.h"
 #include <stdio.h> 
+#include "common.h"
 //guint execute_use(struct thread_data *td, const gchar * msg);
 gboolean execute_use(struct thread_data *td);
 void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg);
@@ -41,8 +42,10 @@ void refresh_table_list(struct configuration *conf);
 void refresh_table_list_without_table_hash_lock(struct configuration *conf);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-void ml_open(FILE **infile, const gchar *filename, gboolean *is_compressed);
+int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
+void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp);
 gboolean has_compession_extension(const gchar *filename);
+gboolean has_exec_per_thread_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 void checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;

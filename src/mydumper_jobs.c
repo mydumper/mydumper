@@ -47,31 +47,7 @@ gchar *exec_per_thread_extension = NULL;
 gboolean use_fifo = FALSE;
 gchar **exec_per_thread_cmd=NULL;
 gboolean skip_definer = FALSE;
-/*
-static GOptionEntry dump_into_file_entries[] = {
-    { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
-      "Queries related to generated fields are not going to be executed."
-      "It will lead to restoration issues if you have generated columns", NULL },
-    {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
-     "Sort the data by Primary Key or Unique key if no primary key exists",
-     NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-
-static GOptionEntry exec_per_thread_entries[] = {
-    {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
-     "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
-    {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
-     "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void load_dump_into_file_entries(GOptionGroup *main_group, GOptionGroup *exec_group){
-
-  g_option_group_add_entries(exec_group, exec_per_thread_entries);
-
-  g_option_group_add_entries(main_group, dump_into_file_entries);
-}
-*/
 void initialize_jobs(){
   initialize_database();
   if (ignore_generated_fields)
@@ -112,7 +88,7 @@ void write_char_checksum_into_file(char *database, char *table, char *filename, 
 gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun()) {
   int errn=0;
   gchar *checksum=fun(conn, database->name, table, &errn);
-  g_message("Checksum value: %s", checksum);
+//  g_message("Checksum value: %s", checksum);
   if (errn != 0 && !(success_on_1146 && errn == 1146)) {
     errors++;
     return NULL;
@@ -317,7 +293,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   if (checksum_filename){
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
-    g_message("Checksum for table schema: %s", dbt->schema_checksum);
+//    g_message("Checksum for table schema: %s", dbt->schema_checksum);
   }
   if (checksum_index_filename){
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
@@ -1153,7 +1129,7 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
+int execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
   int childpid=fork();
   if(!childpid){
     FILE *sql_file2 = m_open(sql_fn,"r");
@@ -1164,35 +1140,38 @@ void execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
     m_close(sql_file2);
     m_close(sql_file3);
   }
+  return childpid;
 }
 
-void initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint64 fn, guint sub_part, const gchar *extension, gchar * f()){
-  gchar *stdout_fn=NULL;
+int initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint64 fn, guint sub_part, const gchar *extension, gchar * f(), gchar **stdout_fn){
 /*  if (*sql_filename != NULL){
     remove(*sql_filename);
     g_free(*sql_filename);
   }
 */
+  int r=0;
   if (use_fifo){
     *sql_filename = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
     mkfifo(*sql_filename,0666);
-    stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
-    execute_file_per_thread(*sql_filename,stdout_fn);
+    *stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
+    r=execute_file_per_thread(*sql_filename,*stdout_fn);
   }else{
     if (*sql_filename)
       g_free(*sql_filename);
     *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
   }
   *sql_file = m_open(*sql_filename,"w");
+  return r;
 }
 
 void initialize_sql_fn(struct table_job * tj){
-  initialize_fn(&(tj->sql_filename),tj->dbt,&(tj->sql_file), tj->nchunk, tj->sub_part,"sql", &build_data_filename);
+  tj->child_process=initialize_fn(&(tj->sql_filename),tj->dbt,&(tj->sql_file), tj->nchunk, tj->sub_part,"sql", &build_data_filename, &(tj->exec_out_filename));
 }
 
 void initialize_load_data_fn(struct table_job * tj){
-  initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part,"dat", &build_load_data_filename);
+  tj->child_process=initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part,"dat", &build_load_data_filename, &(tj->exec_out_filename));
 }
+
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
      if (load_data){
@@ -1226,10 +1205,12 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->dat_filename = NULL;
   tj->sql_file = NULL;
   tj->sql_filename = NULL;
+  tj->exec_out_filename = NULL;
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
   tj->char_chunk_part=char_chunk;
+  tj->child_process=0;
   if (update_where)
     update_where_on_table_job(NULL, tj);
 //  update_files_on_table_job(tj);

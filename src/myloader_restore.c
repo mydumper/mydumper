@@ -32,6 +32,7 @@
 #include "myloader_common.h"
 #include "myloader_global.h"
 #include "connection.h"
+#include "myloader_intermediate_queue.h"
 gboolean skip_definer = FALSE;
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
@@ -145,7 +146,7 @@ void *send_file_to_fifo(gchar *compressed_filename){
   gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
   FILE * fd = g_fopen(fifo_name, "w");
   FILE *file=NULL;
-  gboolean is_compressed = FALSE;
+  enum data_file_type is_compressed = FALSE;
   gchar *path = g_build_filename(directory, compressed_filename, NULL);
   ml_open(&file,path,&is_compressed);
   char buffer[256];
@@ -165,7 +166,6 @@ void *send_file_to_fifo(gchar *compressed_filename){
   fclose(fd);
   return NULL;
 }
-
 
 gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   g_mutex_lock(load_data_list_mutex);
@@ -207,21 +207,13 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   const char *filename, gboolean is_schema){
   FILE *infile=NULL;
   int r=0;
-  gboolean is_compressed = FALSE;
+  enum data_file_type fdp;
   gboolean eof = FALSE;
   guint query_counter = 0;
   GString *data = g_string_sized_new(256);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
-  ml_open(&infile,path,&is_compressed);
-
-/*  if (!g_str_has_suffix(path, compress_extension)) {
-    infile = g_fopen(path, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(path, "r");
-    is_compressed = TRUE;
-  }*/
+  ml_open(&infile,path,&fdp);
 
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
@@ -231,8 +223,10 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   if (!is_schema && (commit_count > 1) )
     m_query(td->thrconn, "START TRANSACTION", m_warning, "START TRANSACTION failed");
   guint tr=0;
+  gchar *load_data_filename=NULL;
+  gchar *load_data_fifo_filename=NULL;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof, &line)) {
+    if (read_data(infile, fdp, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           remove_definer(data);
@@ -245,12 +239,12 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             gchar *from = g_strstr_len(data->str, -1, "'");
             from++;
             gchar *to = g_strstr_len(from, -1, "'");
-            gchar *fff=g_strndup(from, to-from);
-            wait_til_data_file_is_close(fff);
-            if (has_compession_extension(fff)){
-              gchar *fifo_name=g_strndup(fff,g_strrstr(fff,".")-fff);
-              mkfifo(fifo_name,0666);
-              g_thread_create((GThreadFunc)send_file_to_fifo, fff, TRUE, NULL);
+            load_data_filename=g_strndup(from, to-from);
+            wait_til_data_file_is_close(load_data_filename);
+            if (has_compession_extension(load_data_filename)){
+              load_data_fifo_filename=g_strndup(load_data_filename,g_strrstr(load_data_filename,".")-load_data_filename);
+              mkfifo(load_data_fifo_filename,0666);
+              g_thread_create((GThreadFunc)send_file_to_fifo, load_data_filename, TRUE, NULL);
               from=g_strstr_len(to-4,-1,".");
               *from='\''; from++;
               for(; from<=to ; from++){
@@ -279,10 +273,33 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     errors++;
   }
   g_string_free(data, TRUE);
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
+
+  if (load_data_filename != NULL){
+    if (remove(load_data_filename)) {
+      g_warning("Thread %d: Failed to remove fifo file : %s", td->thread_id, load_data_filename);
+    }else{
+      g_message("Thread %d: Fifo file removed: %s", td->thread_id, load_data_filename);
+    }
+    remove_fifo_file(load_data_filename);
+    g_free(load_data_filename);
+  }
+  if (load_data_fifo_filename != NULL){
+    if (remove(load_data_fifo_filename)) {
+      g_warning("Thread %d: Failed to remove fifo file : %s", td->thread_id, load_data_fifo_filename);
+    }else{
+      g_message("Thread %d: Fifo file removed: %s", td->thread_id, load_data_fifo_filename);
+    }
+    remove_fifo_file(load_data_fifo_filename);
+    g_free(load_data_fifo_filename);
+  }
+  switch (fdp){
+    case FIFO:
+    case COMMON:
+      fclose(infile);
+    break;
+    case COMPRESSED:
+      gzclose((gzFile)infile);
+    break;
   }
 
   m_remove(directory,filename);

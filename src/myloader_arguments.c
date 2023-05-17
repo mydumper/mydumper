@@ -81,6 +81,10 @@ static GOptionEntry threads_entries[] = {
      "Maximum number of threads for index creation, default 4", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
+    {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
+     "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
+    {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
+     "Set the input file extension when --exec-per-thread is used. Otherwise it will be ignored", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {

@@ -674,30 +674,34 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
-gboolean read_data(FILE *file, gboolean is_compressed, GString *data,
+gboolean read_data(FILE *file, enum data_file_type dft, GString *data,
                    gboolean *eof, guint *line) {
   char buffer[256];
 
   do {
-    if (!is_compressed) {
-      if (fgets(buffer, 256, file) == NULL) {
-        if (feof(file)) {
-          *eof = TRUE;
-          buffer[0] = '\0';
-        } else {
-          return FALSE;
+    switch (dft){
+      case FIFO:
+      case COMMON: 
+        if (fgets(buffer, 256, file) == NULL) {
+          if (feof(file)) {
+            *eof = TRUE;
+            buffer[0] = '\0';
+          } else {
+            return FALSE;
+          }
         }
-      }
-    } else {
-      if (!gzgets((gzFile)file, buffer, 256)) {
-        if (gzeof((gzFile)file)) {
-          *eof = TRUE;
-          buffer[0] = '\0';
-        } else {
-          return FALSE;
+      break;
+      case COMPRESSED:
+        if (!gzgets((gzFile)file, buffer, 256)) {
+          if (gzeof((gzFile)file)) {
+            *eof = TRUE;
+            buffer[0] = '\0';
+          } else {
+            return FALSE;
+          }
         }
+      break;
       }
-    }
     g_string_append(data, buffer);
     if (strlen(buffer) != 256)
       (*line)++;
