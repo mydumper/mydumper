@@ -38,6 +38,8 @@
 #include "mydumper_write.h"
 #include "mydumper_chunks.h"
 #include "mydumper_global.h"
+#include <sys/wait.h>
+
 
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
@@ -1174,14 +1176,17 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-     if (load_data){
-       initialize_load_data_fn(tj);
-       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-       tj->sql_file = m_open(tj->sql_filename,"w");
-       return TRUE;
-     }else{
-       initialize_sql_fn(tj);
-     }
+    int status=0;
+    if (tj->child_process!=0)
+      waitpid(tj->child_process,&status, 0);
+    if (load_data){
+      initialize_load_data_fn(tj);
+      tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+      tj->sql_file = m_open(tj->sql_filename,"w");
+      return TRUE;
+    }else{
+      initialize_sql_fn(tj);
+    }
 //     write_load_data_statement(tj, fields, num_fields);
   }
   return FALSE;
