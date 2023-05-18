@@ -463,6 +463,8 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     m_close(tj->dat_file);
     tj->dat_file=NULL;
   }
+  int status;
+
   if (tj->sql_filename != NULL ){
     if (use_fifo){
       if (load_data){
@@ -502,16 +504,12 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     
     } else if (stream) {
         if (use_fifo){
-          int status;
           if (load_data){
             g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-//            usleep(300000);
-//            int status;
             waitpid(tj->child_process,&status, 0);
             g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
           }else{
             waitpid(tj->child_process,&status, 0);
-//            usleep(300000);
             g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
           }
         }else{
@@ -520,7 +518,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
             g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
           }
         }
-    }
+    } 
   }
 
 /*  if (use_savepoints &&
