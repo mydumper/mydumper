@@ -10,7 +10,7 @@ stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
 mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
-G_DEBUG=fatal-criticals
+export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 for i in $*
