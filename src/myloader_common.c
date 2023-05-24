@@ -524,11 +524,11 @@ void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
 }
 
 gboolean has_compession_extension(const gchar *filename){
-  return g_str_has_suffix(filename, compress_extension);
+  return compress_extension!=NULL && g_str_has_suffix(filename, compress_extension);
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
-  return g_str_has_suffix(filename, exec_per_thread_extension);
+  return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);
 }
 
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
