@@ -142,6 +142,37 @@ void free_table_hash(GHashTable *table_hash){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
+FILE * myl_open(char *filename, const char *type){
+  FILE *file=NULL;
+  if (g_str_has_suffix(filename, compress_extension) || g_str_has_suffix(filename,exec_per_thread_extension)) {
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
+    *dotpos='\0';
+    gchar *basename=g_strdup(filename);
+    *dotpos='.';
+    mkfifo(basename,0666);
+    int child_proc = execute_file_per_thread(filename,basename);   
+    (void) child_proc;
+    file=g_fopen(basename,type);    
+  }else{
+    file=g_fopen(filename, type);
+  }
+  return file;
+}
+
+void myl_close(char *filename, FILE *file){
+  fclose(file);
+  if (g_str_has_suffix(filename, compress_extension) || g_str_has_suffix(filename,exec_per_thread_extension)) {
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
+  }
+
+}
+
+
 struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   void *infile;
   gboolean is_compressed = FALSE;
@@ -151,6 +182,8 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   g_string_set_size(data,0);
   g_string_set_size(create_table_statement,0);
   guint line=0;
+  infile=myl_open(filename,"r");
+/*
   if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
@@ -163,6 +196,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
     errors++;
     return NULL;
   }
+*/
   while (eof == FALSE) {
     if (read_data(infile, is_compressed, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -237,11 +271,14 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_job(JOB_RESTORE,rj,dbt->database->real_database);
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
-  if (!is_compressed) {
+  myl_close(filename,infile);
+
+/*  if (!is_compressed) {
     fclose(infile);
   } else {
     gzclose((gzFile)infile);
   }
+*/
   if (stream && no_delete == FALSE){
     m_remove(NULL,filename);
   }
@@ -257,12 +294,7 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
   if (exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension)) {
     l-=strlen(exec_per_thread_extension);
   }
-  if (g_str_has_suffix(filename, compress_extension)) {
-    l-=strlen(compress_extension);
-  }
-  gchar *f=g_strndup(filename, l);
-  gchar **split_db_tbl = g_strsplit(f, ".", -1);
-  g_free(f);
+  gchar **split_db_tbl = g_strsplit(filename, ".", 4);
   if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
     (*table)=g_strdup(split_db_tbl[1]);
@@ -302,12 +334,13 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
   g_strfreev(split_db_tbl);
 }
 
-gchar * get_database_name_from_content(const gchar *filename){
+gchar * get_database_name_from_content(gchar *filename){
   FILE *infile;
   enum data_file_type is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  ml_open(&infile,filename,&is_compressed);
+  infile=myl_open(filename,"r");
+//  ml_open(&infile,filename,&is_compressed);
 /*  if (!g_str_has_suffix(filename, compress_extension)) {
     infile = g_fopen(filename, "r");
     is_compressed = FALSE;
@@ -334,12 +367,13 @@ gchar * get_database_name_from_content(const gchar *filename){
       }
     }
   }
-
-  if (!is_compressed) {
+  myl_close(filename, infile);
+/*  if (!is_compressed) {
     fclose(infile);
   } else {
     gzclose((gzFile)infile);
   }
+*/
   return real_database;
 }
 
@@ -403,6 +437,7 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
+/*
 gboolean process_metadata_filename(char * filename){
   gchar *db_name, *table_name;
   get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
@@ -442,6 +477,7 @@ gboolean process_metadata_filename(char * filename){
   }
   return TRUE;
 }
+*/
 
 gboolean process_metadata_global(){
 //  void *infile;

@@ -74,7 +74,6 @@ void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
 void job_creator_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
-void write_table_metadata_into_file(struct db_table * dbt);
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job);
@@ -90,5 +89,4 @@ gboolean update_files_on_table_job(struct table_job *tj);
 struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where);
 #endif
 gchar *get_ref_table(gchar *k);
-void write_my_data_into_file(const char *filename, gchar * str);
 void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);

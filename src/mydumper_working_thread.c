@@ -36,11 +36,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
@@ -72,6 +67,7 @@
 #include "mydumper_chunks.h"
 #include "mydumper_write.h"
 #include "mydumper_global.h"
+#include "mydumper_arguments.h"
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
@@ -174,9 +170,6 @@ void initialize_working_thread(){
   binlog_snapshot_gtid_executed = NULL;
   if (less_locking)
     less_locking_threads = num_threads;
-  initialize_jobs();
-  initialize_chunk();
-  initialize_write();
 
 
   /* savepoints workaround to avoid metadata locking issues
@@ -194,21 +187,37 @@ void initialize_working_thread(){
   if (ignore_engines)
     ignore = g_strsplit(ignore_engines, ",", 0);
 
-  if (!compress_output) {
+
+// TODO: We need to cleanup this
+
+  m_close=(void *) &fclose;
+  m_write=(void *)&write_file;
+
+  if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
     m_open=&g_fopen;
     m_close=(void *) &fclose;
     m_write=(void *)&write_file;
-    compress_extension=EMPTY_STRING;
+//    compress_extension=EMPTY_STRING;
+    exec_per_thread_extension=EMPTY_STRING;
   } else {
-    m_open=(void *) &gzopen;
-    m_close=(void *) &gzclose;
-    m_write=(void *)&gzwrite;
-#ifdef ZWRAP_USE_ZSTD
-    compress_extension = g_strdup(".zst");
-#else
-    compress_extension = g_strdup(".gz");
-#endif
+    if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
+      g_critical("--compression and --exec_per_thread are not comptatible");
+    }
+    if ( g_strcmp0(compress_method,GZIP)==0){
+      exec_per_thread=g_strdup("/usr/bin/gzip -c");
+      exec_per_thread_extension=g_strdup(".gz");
+    }else if ( g_strcmp0(compress_method,ZSTD)==0){
+      exec_per_thread=g_strdup("/usr/bin/zstd -c");
+      exec_per_thread_extension=g_strdup(".zst");
+    }
+    m_open=&m_open_pipe;
+    m_close=&m_close_pipe;
   }
+
+  initialize_jobs();
+  initialize_chunk();
+  initialize_write();
+
   if (dump_checksums){
     data_checksums = TRUE;
     schema_checksums = TRUE;
@@ -448,7 +457,6 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       process_partition_chunk(td, tj);
       break;
     case NONE:
-//      message_dumping_data(td,tj);
       write_table_job_into_file(td->thrconn, tj);
       break;
     default: 
@@ -463,28 +471,8 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     m_close(tj->dat_file);
     tj->dat_file=NULL;
   }
-  int status;
 
   if (tj->sql_filename != NULL ){
-    if (use_fifo){
-      if (load_data){
-        if (remove(tj->dat_filename)) {
-          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->dat_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->dat_filename);
-        }
-        g_free(tj->dat_filename);
-        tj->dat_filename=NULL;
-      }else{
-        if (remove(tj->sql_filename)) {
-          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->sql_filename);
-        }
-        g_free(tj->sql_filename);
-        tj->sql_filename=NULL;
-      }
-    }
     if (tj->filesize == 0 && !build_empty_files) {
     // dropping the useless file
       if (tj->sql_filename!=NULL){
@@ -501,23 +489,11 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
           g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
         }
       }
-    
     } else if (stream) {
-        if (use_fifo){
-          if (load_data){
-            g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-            waitpid(tj->child_process,&status, 0);
-            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
-          }else{
-            waitpid(tj->child_process,&status, 0);
-            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
-          }
-        }else{
-          g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-          if (load_data){
-            g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
-          }
-        }
+      g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
+      if (load_data){
+        g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
+      }
     } 
   }
 

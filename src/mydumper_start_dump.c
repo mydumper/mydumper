@@ -36,11 +36,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>

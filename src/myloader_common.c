@@ -233,8 +233,8 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
 enum file_type get_file_type (const char * filename){
   if (m_filename_has_suffix(filename, "-schema.sql")) {
     return SCHEMA_TABLE;
-  } else if (m_filename_has_suffix(filename, "-metadata")) {
-    return METADATA_TABLE;
+//  } else if (m_filename_has_suffix(filename, "-metadata")) {
+//    return METADATA_TABLE;
   } else if ( strcmp(filename, "metadata") == 0 ){
     return METADATA_GLOBAL;
   } else if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 ){
@@ -412,7 +412,7 @@ void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *co
   }
 }
 
-
+/*
 void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
   gchar *database = NULL, *table = NULL;
   get_database_table_from_file(filename,suffix,&database,&table);
@@ -504,6 +504,7 @@ void checksum_databases(struct thread_data *td) {
     e=e->next;
   }
 }
+*/
 
 void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
   if (dbt->schema_checksum!=NULL){
@@ -524,11 +525,11 @@ void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
 }
 
 gboolean has_compession_extension(const gchar *filename){
-  return g_str_has_suffix(filename, compress_extension);
+  return compress_extension!=NULL && g_str_has_suffix(filename, compress_extension);
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
-  return g_str_has_suffix(filename, exec_per_thread_extension);
+  return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);
 }
 
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
@@ -538,9 +539,9 @@ int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
     FILE *sql_file3 = g_fopen(sql_fn3,"w");
     dup2(fileno(sql_file2), STDIN_FILENO);
     dup2(fileno(sql_file3), STDOUT_FILENO);
+//    close(fileno(sql_file2));
+//    close(fileno(sql_file3));
     execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
-    m_close(sql_file2);
-    m_close(sql_file3);
   }
   return childpid;
 }

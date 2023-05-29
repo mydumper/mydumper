@@ -17,11 +17,6 @@
 #include "string.h"
 #include <mysql.h>
 #include <glib/gstdio.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include <stdlib.h>
 #include <glib.h>
 #include <stdio.h>

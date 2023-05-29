@@ -30,24 +30,16 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <math.h>
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
-//#include "common.h"
 #include "regex.h"
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
-#include <math.h>
-//#include "common_options.h"
 #include "mydumper_masquerade.h"
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
-
 #include "mydumper_global.h"
 
 const gchar *insert_statement=INSERT;
@@ -264,7 +256,7 @@ gboolean write_data(FILE *file, GString *data) {
 
 
 void initialize_load_data_statement(GString *statement, gchar * table, const gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
-  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ", basename, table);
+  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' REPLACE INTO TABLE `%s` ", basename, exec_per_thread_extension, table);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
@@ -346,7 +338,6 @@ void message_dumping_data(struct thread_data *td, struct table_job *tj){
 }
 
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-//  if (load_data){
     if (*column)
       fun_ptr_i->function(column,&length,fun_ptr_i);
     if (!*column) {
@@ -402,20 +393,6 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   g_string_append(statement_row, lines_starting_by);
   (void) dbt;
   struct function_pointer ** f = dbt->anonymized_function;
-/*  if (f==NULL){
-    for (i = 0; i < num_fields-1; i++) {
-      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp);
-      g_string_append(statement_row, fields_terminated_by);
-    }
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp );
-  }else{
-    for (i = 0; i < num_fields-1; i++) {
-      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
-      g_string_append(statement_row, fields_terminated_by);
-    }
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
-  }
-*/
 
   for (i = 0; i < num_fields-1; i++) {
     write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
@@ -429,7 +406,6 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
 
 guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
   struct db_table * dbt = tj->dbt;
-//  guint fn = tj->nchunk;
   guint64 num_rows=0;
   GString *escaped = g_string_sized_new(3000);
   guint num_fields = mysql_num_fields(result);
@@ -437,15 +413,11 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   MYSQL_ROW row;
   GString *statement_row = g_string_sized_new(0);
   GString *statement = g_string_sized_new(2*statement_size);
-//  guint sections = tj->where==NULL?1:2;
 
-//  if (tj->sql_filename == NULL){
   if (update_files_on_table_job(tj)){
     write_load_data_statement(tj, fields, num_fields);
   }
   message_dumping_data(tj->td,tj);
-//    write_load_data_statement(tj, fields, num_fields);
-//  }
 
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
@@ -472,12 +444,7 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
 
       tj->sql_filename=NULL;
       tj->dat_filename=NULL;
-
-//      if (sections == 1){
-//        fn++;
-//      }else{
-        tj->sub_part++;
-//      }
+      tj->sub_part++;
 
       if (update_files_on_table_job(tj)){
         write_load_data_statement(tj, fields, num_fields);
@@ -485,7 +452,6 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       tj->st_in_file = 0;
       tj->filesize = 0;
       
-      write_load_data_statement(tj, fields, num_fields);
       check_pause_resume(tj->td);
     }
     g_string_set_size(statement_row, 0);
