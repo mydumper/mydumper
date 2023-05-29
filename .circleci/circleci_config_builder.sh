@@ -271,21 +271,8 @@ done
     - run: make
     - run: ./mydumper --version
 
-  compile_zstd:
-    parameters:
-      CMAKED:
-        default: \"\"
-        type: string
-    steps:
-    - compile:
-        CMAKED: \"-DWITH_ZSTD=ON <<parameters.CMAKED>>\"
-
-
   compile_and_test_mydumper:
     parameters:
-      zstd_on:
-        type: boolean
-        default: true
       test:
         type: boolean
         default: true
@@ -295,14 +282,6 @@ done
         condition: << parameters.test >>
         steps:
         - run: bash ./test_mydumper.sh SSL GZIP
-    - when:
-        condition: << parameters.zstd_on >>
-        steps:
-         - compile_zstd
-         - when:
-             condition: << parameters.test >>
-             steps:
-             - run: bash ./test_mydumper.sh SSL ZSTD
     - store_artifacts:
         path: /tmp/stream.sql
         destination: artifact-file
@@ -339,7 +318,6 @@ echo "
 #    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
-        zstd_on: ${all_os[${os}_3]}
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -368,7 +346,6 @@ echo "
 #    - prepare_el
     - prepare_el_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
-        zstd_on: ${all_os[${os}_3]}
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -396,14 +373,6 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
-    - when:
-        condition: ${all_os[${os}_3]}
-        steps:
-        - compile_zstd:
-            CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
-        - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
-        - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -432,14 +401,6 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
-    - when:
-        condition: ${all_os[${os}_3]}
-        steps:
-          - compile_zstd:
-             CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
-          - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd/
-          - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_zstd
 
     - persist_to_workspace:
          root: /tmp/package
