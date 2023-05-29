@@ -21,12 +21,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
+
 #include "common.h"
 #include "myloader_stream.h"
 #include "myloader_common.h"
@@ -545,7 +542,7 @@ int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
   }
   return childpid;
 }
-
+/*
 void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp){
 g_message("Filename to open: %s", filename);
   if (has_compession_extension(filename)) {
@@ -564,3 +561,4 @@ g_message("Filename to open: %s", filename);
     *fdp = COMMON;
   }
 }
+*/

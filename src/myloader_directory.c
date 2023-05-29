@@ -34,11 +34,11 @@ void *process_directory(struct configuration *conf){
     GString *data=g_string_sized_new(256);
     gboolean eof = FALSE;
     guint line=0;
-    read_data(file, FALSE, data, &eof, &line);
+    read_data(file, data, &eof, &line);
     gchar **split=NULL;
     guint i=0;
     while (!eof){
-      read_data(file, FALSE, data, &eof, &line);
+      read_data(file, data, &eof, &line);
       split=g_strsplit(data->str,"\n",0);
       for (i=0; i<g_strv_length(split);i++){
         if (strlen(split[i])>2){

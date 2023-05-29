@@ -161,14 +161,6 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
-/*        if (has_exec_per_thread_extension(filename)){
-          gchar *fifo_name=g_strndup(filename,g_strrstr(filename,".")-filename);
-          mkfifo(fifo_name,0666);
-          execute_file_per_thread(filename, fifo_name);
-          release_load_data_as_it_is_close(fifo_name);
-          g_free(fifo_name);
-        }else
-*/
           release_load_data_as_it_is_close(filename);
         break;
       case SHUTDOWN:

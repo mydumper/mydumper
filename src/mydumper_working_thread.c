@@ -201,7 +201,7 @@ void initialize_working_thread(){
     exec_per_thread_extension=EMPTY_STRING;
   } else {
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
-      g_critical("--compression and --exec_per_thread are not comptatible");
+      g_critical("--compression and --exec-per-thread are not comptatible");
     }
     if ( g_strcmp0(compress_method,GZIP)==0){
       exec_per_thread=g_strdup("/usr/bin/gzip -c");

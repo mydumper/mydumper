@@ -20,11 +20,6 @@
 #include <glib/gstdio.h>
 #include <stdio.h>
 #include <string.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "common.h"
 #include <errno.h>
 #include "myloader.h"
@@ -142,7 +137,7 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
   return r;
 
 }
-
+/*
 void *send_file_to_fifo(gchar *compressed_filename){
   gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
   FILE * fd = g_fopen(fifo_name, "w");
@@ -167,6 +162,7 @@ void *send_file_to_fifo(gchar *compressed_filename){
   fclose(fd);
   return NULL;
 }
+*/
 
 gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   g_mutex_lock(load_data_list_mutex);
@@ -208,7 +204,6 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   char *filename, gboolean is_schema){
   FILE *infile=NULL;
   int r=0;
-  enum data_file_type fdp=COMMON;
   gboolean eof = FALSE;
   guint query_counter = 0;
   GString *data = g_string_sized_new(256);
@@ -227,7 +222,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   gchar *load_data_filename=NULL;
   gchar *load_data_fifo_filename=NULL;
   while (eof == FALSE) {
-    if (read_data(infile, fdp, data, &eof, &line)) {
+    if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           remove_definer(data);
@@ -291,18 +286,6 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     g_free(load_data_fifo_filename);
   }
 
-/*  switch (fdp){
-    case FIFO:
-    case COMMON:
-      fclose(infile);
-    break;
-    case COMPRESSED:
-      gzclose((gzFile)infile);
-    break;
-  }*/
-
-//  m_remove(directory,filename);
-  
   myl_close(filename, infile);
   g_free(path);
   return r;

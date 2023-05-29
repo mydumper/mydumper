@@ -21,11 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "common.h"
 #include "myloader_stream.h"
 #include "myloader_common.h"
@@ -175,7 +170,7 @@ void myl_close(char *filename, FILE *file){
 
 struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   void *infile;
-  gboolean is_compressed = FALSE;
+//  gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
@@ -198,7 +193,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   }
 */
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof,&line)) {
+    if (read_data(infile, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strstr_len(data->str,13,"CREATE TABLE ")){
           gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
@@ -336,7 +331,7 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
 
 gchar * get_database_name_from_content(gchar *filename){
   FILE *infile;
-  enum data_file_type is_compressed = FALSE;
+//  enum data_file_type is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   infile=myl_open(filename,"r");
@@ -356,7 +351,7 @@ gchar * get_database_name_from_content(gchar *filename){
   gchar *real_database=NULL;
   guint line;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof, &line)) {
+    if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_str_has_prefix(data->str,"CREATE ")){
           gchar** create= g_strsplit(data->str, identifier_quote_character_str, 3);

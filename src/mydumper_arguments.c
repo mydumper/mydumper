@@ -32,7 +32,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
   *error=NULL;
   (void) data;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
-    compress_output=1;
     if (value==NULL || g_strstr_len(value,4,GZIP)){
       compress_method=GZIP;
       return TRUE;
@@ -81,7 +80,7 @@ static GOptionEntry extra_entries[] = {
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Compress output files", NULL},
+     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {

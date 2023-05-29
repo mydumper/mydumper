@@ -34,11 +34,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "config.h"
 #include "common.h"
 #include "myloader_stream.h"

@@ -82,7 +82,6 @@ int longquery_retries = 0;
 int longquery_retry_interval = 60;
 int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
-int compress_output = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
 gboolean no_schemas = FALSE;
