@@ -313,6 +313,7 @@ echo "
         type: string
         default: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -341,6 +342,7 @@ echo "
         type: string
         default: ${all_os[${os}_0]}
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -361,6 +363,7 @@ do
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -389,6 +392,7 @@ do
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    resource_class: large
     steps:
     - checkout
     - set_env_vars

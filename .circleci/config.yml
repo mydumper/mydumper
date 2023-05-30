@@ -835,6 +835,7 @@ jobs:
         type: string
         default: bionic_percona57
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -856,6 +857,7 @@ jobs:
         type: string
         default: bionic_percona80
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -877,6 +879,7 @@ jobs:
         type: string
         default: bionic_mariadb1011
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -898,6 +901,7 @@ jobs:
         type: string
         default: bionic_tidb
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -919,6 +923,7 @@ jobs:
         type: string
         default: focal_percona57
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -940,6 +945,7 @@ jobs:
         type: string
         default: focal_percona80
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -961,6 +967,7 @@ jobs:
         type: string
         default: focal_mariadb1011
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -982,6 +989,7 @@ jobs:
         type: string
         default: focal_tidb
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1003,6 +1011,7 @@ jobs:
         type: string
         default: jammy_percona57
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1024,6 +1033,7 @@ jobs:
         type: string
         default: jammy_percona80
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1045,6 +1055,7 @@ jobs:
         type: string
         default: jammy_mariadb1011
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1066,6 +1077,7 @@ jobs:
         type: string
         default: jammy_tidb
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1087,6 +1099,7 @@ jobs:
         type: string
         default: buster_percona57
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1108,6 +1121,7 @@ jobs:
         type: string
         default: buster_percona80
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1129,6 +1143,7 @@ jobs:
         type: string
         default: buster_mariadb1011
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1150,6 +1165,7 @@ jobs:
         type: string
         default: buster_tidb
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1171,6 +1187,7 @@ jobs:
         type: string
         default: bullseye_percona57
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1192,6 +1209,7 @@ jobs:
         type: string
         default: bullseye_percona80
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1213,6 +1231,7 @@ jobs:
         type: string
         default: bullseye_mariadb1011
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1234,6 +1253,7 @@ jobs:
         type: string
         default: bullseye_tidb
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
@@ -1255,6 +1275,7 @@ jobs:
         type: string
         default: el7
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1276,6 +1297,7 @@ jobs:
         type: string
         default: el7
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1297,6 +1319,7 @@ jobs:
         type: string
         default: el7
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1318,6 +1341,7 @@ jobs:
         type: string
         default: el7
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1339,6 +1363,7 @@ jobs:
         type: string
         default: el8
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1360,6 +1385,7 @@ jobs:
         type: string
         default: el8
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1381,6 +1407,7 @@ jobs:
         type: string
         default: el8
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1402,6 +1429,7 @@ jobs:
         type: string
         default: el8
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1423,6 +1451,7 @@ jobs:
         type: string
         default: el9
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1444,6 +1473,7 @@ jobs:
         type: string
         default: el9
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1465,6 +1495,7 @@ jobs:
         type: string
         default: el9
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1486,6 +1517,7 @@ jobs:
         type: string
         default: el9
     executor: << parameters.e >>
+    resource_class: large
     steps:
     - checkout
 #    - prepare_el
@@ -1499,6 +1531,7 @@ jobs:
 
   build_el7_percona57:
     executor: el7_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1518,6 +1551,7 @@ jobs:
            - .
   build_el7_percona80:
     executor: el7_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1537,6 +1571,7 @@ jobs:
            - .
   build_el7_mariadb1011:
     executor: el7_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1556,6 +1591,7 @@ jobs:
            - .
   build_el8_percona57:
     executor: el8_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1575,6 +1611,7 @@ jobs:
            - .
   build_el8_percona80:
     executor: el8_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1594,6 +1631,7 @@ jobs:
            - .
   build_el8_mariadb1011:
     executor: el8_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1613,6 +1651,7 @@ jobs:
            - .
   build_el9_percona57:
     executor: el9_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1632,6 +1671,7 @@ jobs:
            - .
   build_el9_percona80:
     executor: el9_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1651,6 +1691,7 @@ jobs:
            - .
   build_el9_mariadb1011:
     executor: el9_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1670,6 +1711,7 @@ jobs:
            - .
   build_bionic_percona57:
     executor: bionic_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1689,6 +1731,7 @@ jobs:
            - .
   build_bionic_percona80:
     executor: bionic_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1708,6 +1751,7 @@ jobs:
            - .
   build_bionic_mariadb1011:
     executor: bionic_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1727,6 +1771,7 @@ jobs:
            - .
   build_focal_percona57:
     executor: focal_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1746,6 +1791,7 @@ jobs:
            - .
   build_focal_percona80:
     executor: focal_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1765,6 +1811,7 @@ jobs:
            - .
   build_focal_mariadb1011:
     executor: focal_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1784,6 +1831,7 @@ jobs:
            - .
   build_jammy_percona57:
     executor: jammy_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1803,6 +1851,7 @@ jobs:
            - .
   build_jammy_percona80:
     executor: jammy_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1822,6 +1871,7 @@ jobs:
            - .
   build_jammy_mariadb1011:
     executor: jammy_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1841,6 +1891,7 @@ jobs:
            - .
   build_buster_percona57:
     executor: buster_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1860,6 +1911,7 @@ jobs:
            - .
   build_buster_percona80:
     executor: buster_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1879,6 +1931,7 @@ jobs:
            - .
   build_buster_mariadb1011:
     executor: buster_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1898,6 +1951,7 @@ jobs:
            - .
   build_bullseye_percona57:
     executor: bullseye_percona57
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1917,6 +1971,7 @@ jobs:
            - .
   build_bullseye_percona80:
     executor: bullseye_percona80
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
@@ -1936,6 +1991,7 @@ jobs:
            - .
   build_bullseye_mariadb1011:
     executor: bullseye_mariadb1011
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
