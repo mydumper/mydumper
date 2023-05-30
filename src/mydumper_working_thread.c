@@ -197,7 +197,6 @@ void initialize_working_thread(){
     m_open=&g_fopen;
     m_close=(void *) &fclose;
     m_write=(void *)&write_file;
-//    compress_extension=EMPTY_STRING;
     exec_per_thread_extension=EMPTY_STRING;
   } else {
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){

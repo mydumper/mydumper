@@ -146,11 +146,11 @@ void create_database(struct thread_data *td, gchar *database) {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql", database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql%s", database, compress_extension);
+      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
                                           directory, database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, database, compress_extension);
+                                            directory, database, exec_per_thread_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filename, TRUE));
@@ -244,11 +244,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-#ifdef ZWRAP_USE_ZSTD
-  compress_extension = g_strdup(".zst");
-#else
-  compress_extension = g_strdup(".gz");
-#endif
   initialize_set_names();
 
 
