@@ -44,7 +44,6 @@ GString *set_global_back = NULL;
 MYSQL *main_connection = NULL;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
-const gchar *compress_extension = NULL;
 
 guint num_threads = 4;
 guint verbose = 2;

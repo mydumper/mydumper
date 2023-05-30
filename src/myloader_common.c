@@ -119,9 +119,8 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
-  if (g_str_has_suffix(str, compress_extension) || (exec_per_thread_extension!=NULL && g_str_has_suffix(str,exec_per_thread_extension))){
-    return g_strstr_len(&(str[strlen(str)-strlen(compress_extension)-strlen(suffix)]), strlen(str)-strlen(compress_extension),suffix) != NULL ||
-           (exec_per_thread_extension!=NULL && g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL);
+  if (has_exec_per_thread_extension(str)){
+    return g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL;
   }
   return g_str_has_suffix(str,suffix);
 }
@@ -519,10 +518,6 @@ void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
   if (dbt->data_checksum!=NULL)
     checksum_dbt_template(dbt, dbt->data_checksum, conn, "Checksum", checksum_table);
 
-}
-
-gboolean has_compession_extension(const gchar *filename){
-  return compress_extension!=NULL && g_str_has_suffix(filename, compress_extension);
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){

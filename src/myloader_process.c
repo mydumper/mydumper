@@ -139,7 +139,7 @@ void free_table_hash(GHashTable *table_hash){
 
 FILE * myl_open(char *filename, const char *type){
   FILE *file=NULL;
-  if (g_str_has_suffix(filename, compress_extension) || g_str_has_suffix(filename,exec_per_thread_extension)) {
+  if (has_exec_per_thread_extension(filename)) {
     gchar *dotpos;
     dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
     *dotpos='\0';
@@ -157,7 +157,7 @@ FILE * myl_open(char *filename, const char *type){
 
 void myl_close(char *filename, FILE *file){
   fclose(file);
-  if (g_str_has_suffix(filename, compress_extension) || g_str_has_suffix(filename,exec_per_thread_extension)) {
+  if ( has_exec_per_thread_extension(filename)) {
     gchar *dotpos;
     dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
     *dotpos='\0';
@@ -178,20 +178,6 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   g_string_set_size(create_table_statement,0);
   guint line=0;
   infile=myl_open(filename,"r");
-/*
-  if (!g_str_has_suffix(filename, compress_extension)) {
-    infile = g_fopen(filename, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(filename, "r");
-    is_compressed = TRUE;
-  }
-  if (!infile) {
-    g_critical("cannot open schema file %s (%d)", filename, errno);
-    errors++;
-    return NULL;
-  }
-*/
   while (eof == FALSE) {
     if (read_data(infile, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -335,14 +321,6 @@ gchar * get_database_name_from_content(gchar *filename){
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   infile=myl_open(filename,"r");
-//  ml_open(&infile,filename,&is_compressed);
-/*  if (!g_str_has_suffix(filename, compress_extension)) {
-    infile = g_fopen(filename, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(filename, "r");
-    is_compressed = TRUE;
-  }*/
   if (!infile) {
     g_critical("cannot open database schema file %s (%d)", filename, errno);
     errors++;
@@ -363,12 +341,6 @@ gchar * get_database_name_from_content(gchar *filename){
     }
   }
   myl_close(filename, infile);
-/*  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-*/
   return real_database;
 }
 
@@ -431,48 +403,6 @@ gboolean process_table_filename(char * filename){
   return TRUE;
 //  g_free(filename);
 }
-
-/*
-gboolean process_metadata_filename(char * filename){
-  gchar *db_name, *table_name;
-  get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
-  if (db_name == NULL || table_name == NULL){
-      m_critical("It was not possible to process file: %s (2)",filename);
-  }
-  struct database *real_db_name=get_db_hash(db_name,db_name);
-  if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    g_warning("Skiping metadata file for table: `%s`.`%s`",real_db_name->name, table_name);
-    return FALSE;
-  }
-
-  void *infile;
-  gboolean is_compressed = FALSE;
-  gchar *path = g_build_filename(directory, filename, NULL);
-  char metadata_val[256];
-  if (!g_str_has_suffix(path, compress_extension)) {
-    infile = g_fopen(path, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(path, "r");
-    is_compressed = TRUE;
-  }
-
-  if (!infile) {
-    g_critical("cannot open metadata file %s (%d)", path, errno);
-    errors++;
-    return TRUE;
-  }
-
-  char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
-  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),NULL);
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-  return TRUE;
-}
-*/
 
 gboolean process_metadata_global(){
 //  void *infile;
