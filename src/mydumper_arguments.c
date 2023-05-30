@@ -25,6 +25,24 @@
 #include "common.h"
 #include "connection.h"
 #include "regex.h"
+#include "mydumper_arguments.h"
+const gchar *compress_method=NULL;
+
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
+    if (value==NULL || g_strstr_len(value,4,GZIP)){
+      compress_method=GZIP;
+      return TRUE;
+    }
+    if (g_strstr_len(value,4,ZSTD)){
+      compress_method=ZSTD;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 static GOptionEntry entries[] = {
     {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
@@ -61,8 +79,8 @@ static GOptionEntry extra_entries[] = {
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
-    {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
-     "Compress output files", NULL},
+    {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {

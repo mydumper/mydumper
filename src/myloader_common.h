@@ -43,7 +43,7 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
-void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp);
+void ml_open(FILE **infile, const gchar *filename);
 gboolean has_compession_extension(const gchar *filename);
 gboolean has_exec_per_thread_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);

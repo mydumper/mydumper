@@ -29,13 +29,28 @@
 #include "server_detect.h"
 #include "mydumper_global.h"
 #include "common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include "mydumper_common.h"
+#include <sys/wait.h>
+
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
+GAsyncQueue *available_pids=NULL;
+GHashTable *fifo_hash=NULL;
+GMutex *fifo_table_mutex=NULL;
 
 void initialize_common(){
+  available_pids = g_async_queue_new(); 
+  guint i=0;
+  for (i=0; i < (num_threads * 2); i++){
+    release_pid();
+  }
   ref_table_mutex = g_mutex_new();
   ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
+  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
+  fifo_table_mutex = g_mutex_new();
 }
 
 void free_common(){
@@ -45,6 +60,70 @@ void free_common(){
   ref_table=NULL;
 }
 
+
+void release_pid(){
+  g_async_queue_push(available_pids, GINT_TO_POINTER(1));
+}
+
+int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3){
+  g_async_queue_pop(available_pids);
+  int childpid=fork();
+  if(!childpid){
+    FILE *sql_file2 = g_fopen(sql_fn,"r");
+    FILE *sql_file3 = g_fopen(sql_fn3,"w");
+    dup2(fileno(sql_file2), STDIN_FILENO);
+    dup2(fileno(sql_file3), STDOUT_FILENO);
+    close(fileno(sql_file2));
+    close(fileno(sql_file3));
+    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+  }
+  return childpid;
+}
+
+// filename must never use the compression extension. .fifo files should be deprecated
+FILE * m_open_pipe(const char *filename, const char *type){
+  mkfifo(filename,0666);
+  gchar *new_filename = g_strdup_printf("%s%s", filename, exec_per_thread_extension);
+  int child_proc = execute_file_per_thread(filename,new_filename);
+  FILE *file=g_fopen(filename,type);
+  g_mutex_lock(fifo_table_mutex); 
+  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+
+  if (f!=NULL){
+    g_mutex_unlock(fifo_table_mutex);
+    g_mutex_lock(f->mutex);
+    f->pid = child_proc;
+    f->filename=g_strdup(filename);
+  }else{
+    f=g_new0(struct fifo, 1);
+    f->mutex=g_mutex_new();
+    g_mutex_lock(f->mutex);
+    f->pid = child_proc;
+    f->filename=g_strdup(filename);
+    g_hash_table_insert(fifo_hash,file,f);
+    g_mutex_unlock(fifo_table_mutex);
+  }
+  return file;
+}
+
+int m_close_pipe(void *file){
+  release_pid();
+  g_mutex_lock(fifo_table_mutex);
+  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+  g_mutex_unlock(fifo_table_mutex);
+  int r=close(fileno(file));
+  if (f != NULL){
+    int status=0;
+    waitpid(f->pid, &status, 0);
+    g_mutex_lock(fifo_table_mutex);
+    g_mutex_unlock(f->mutex);
+    g_mutex_unlock(fifo_table_mutex);
+    remove(f->filename);
+  }else{
+    g_mutex_unlock(fifo_table_mutex);
+  }
+  return r;
+}
 
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
@@ -79,7 +158,7 @@ char * escape_string(MYSQL *conn, char *str){
 
 gchar * build_schema_table_filename(char *database, char *table, const char *suffix){
   GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s-%s.sql%s", database, table, suffix, compress_extension);
+  g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
@@ -87,7 +166,7 @@ gchar * build_schema_table_filename(char *database, char *table, const char *suf
 
 gchar * build_schema_filename(const char *database, const char *suffix){
   GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s-%s.sql%s", database, suffix, compress_extension);
+  g_string_append_printf(filename, "%s-%s.sql", database, suffix);
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
@@ -170,12 +249,11 @@ void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
 
 // Global Var used:
 // - dump_directory
-// - compress_extension
 gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension){
   GString *filename = g_string_sized_new(20);
   sub_part == 0 ?
-    g_string_append_printf(filename, "%s.%s.%05lu.%s%s%s%s", database, table, part, extension, compress_extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
-    g_string_append_printf(filename, "%s.%s.%05lu.%05u.%s%s%s%s", database, table, part, sub_part, extension, compress_extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"");
+    g_string_append_printf(filename, "%s.%s.%05lu.%s%s%s", database, table, part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
+    g_string_append_printf(filename, "%s.%s.%05lu.%05u.%s%s%s", database, table, part, sub_part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"");
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;

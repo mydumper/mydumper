@@ -22,8 +22,6 @@
 #ifndef _src_common_h
 #define _src_common_h
 
-enum data_file_type { COMMON, COMPRESSED, FIFO };
-
 struct configuration_per_table{
   GHashTable *all_anonymized_function;
   GHashTable *all_where_per_table;
@@ -93,4 +91,4 @@ void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
-gboolean read_data(FILE *file, enum data_file_type dft, GString *data, gboolean *eof, guint *line);
+gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);

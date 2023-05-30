@@ -137,12 +137,13 @@ enum file_type process_filename(char *filename){
         process_metadata_global();
         refresh_table_list(intermediate_conf);
         break;
-      case METADATA_TABLE:
+/*      case METADATA_TABLE:
         intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
         if (!process_metadata_filename(filename))
           return DO_NOT_ENQUEUE;
         refresh_table_list(intermediate_conf);
         break;
+*/
       case DATA:
         if (!no_data){
           if (!process_data_filename(filename))
@@ -160,16 +161,6 @@ enum file_type process_filename(char *filename){
         g_warning("Filename %s has been ignored", filename);
         break;
       case LOAD_DATA:
-        if (has_exec_per_thread_extension(filename)){
-          gchar *fifo_name=g_strdup_printf("%s.fifo",g_strndup(filename,g_strrstr(filename,".")-filename));
-          mkfifo(fifo_name,0666);
-          execute_file_per_thread(filename, fifo_name);
-          g_mutex_lock(exec_process_id_mutex);
-          g_hash_table_insert(exec_process_id,g_strdup(fifo_name), g_strdup(filename));
-          g_mutex_unlock(exec_process_id_mutex);
-          release_load_data_as_it_is_close(fifo_name);
-          g_free(fifo_name);
-        }else
           release_load_data_as_it_is_close(filename);
         break;
       case SHUTDOWN:
@@ -212,7 +203,7 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&
-      current_ft != METADATA_TABLE &&
+//      current_ft != METADATA_TABLE &&
       current_ft != DO_NOT_ENQUEUE )
     refresh_db_and_jobs(current_ft);
 //    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));

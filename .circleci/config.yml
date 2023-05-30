@@ -799,21 +799,8 @@ commands:
     - run: make
     - run: ./mydumper --version
 
-  compile_zstd:
-    parameters:
-      CMAKED:
-        default: ""
-        type: string
-    steps:
-    - compile:
-        CMAKED: "-DWITH_ZSTD=ON <<parameters.CMAKED>>"
-
-
   compile_and_test_mydumper:
     parameters:
-      zstd_on:
-        type: boolean
-        default: true
       test:
         type: boolean
         default: true
@@ -823,14 +810,6 @@ commands:
         condition: << parameters.test >>
         steps:
         - run: bash ./test_mydumper.sh SSL GZIP
-    - when:
-        condition: << parameters.zstd_on >>
-        steps:
-         - compile_zstd
-         - when:
-             condition: << parameters.test >>
-             steps:
-             - run: bash ./test_mydumper.sh SSL ZSTD
     - store_artifacts:
         path: /tmp/stream.sql
         destination: artifact-file
@@ -861,7 +840,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bionic_percona57
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -883,7 +861,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bionic_percona80
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -905,7 +882,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -927,7 +903,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bionic_tidb
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -949,7 +924,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_focal_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -971,7 +945,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_focal_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -993,7 +966,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1015,7 +987,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_focal_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1037,7 +1008,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_jammy_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1059,7 +1029,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_jammy_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1081,7 +1050,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1103,7 +1071,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_jammy_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1125,7 +1092,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_buster_percona57
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1147,7 +1113,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_buster_percona80
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1169,7 +1134,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1191,7 +1155,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_buster_tidb
     - compile_and_test_mydumper:
-        zstd_on: false
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1213,7 +1176,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1235,7 +1197,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1257,7 +1218,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1279,7 +1239,6 @@ jobs:
 #    - prepare_ubuntu
     - prepare_bullseye_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1301,7 +1260,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1323,7 +1281,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1345,7 +1302,6 @@ jobs:
 #    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1367,7 +1323,6 @@ jobs:
 #    - prepare_el
     - prepare_el_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1389,7 +1344,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1411,7 +1365,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1433,7 +1386,6 @@ jobs:
 #    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1455,7 +1407,6 @@ jobs:
 #    - prepare_el
     - prepare_el_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1477,7 +1428,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona57
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1499,7 +1449,6 @@ jobs:
 #    - prepare_el
     - prepare_el_percona80
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1521,7 +1470,6 @@ jobs:
 #    - prepare_el
     - prepare_el_mariadb1011
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1543,7 +1491,6 @@ jobs:
 #    - prepare_el
     - prepare_el_tidb
     - compile_and_test_mydumper:
-        zstd_on: true
         test: << parameters.test >>
     - persist_to_workspace:
          root: /tmp/src/mydumper
@@ -1564,14 +1511,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el7_percona57_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1591,14 +1530,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el7_percona80_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1618,14 +1549,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1645,14 +1568,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el8_percona57_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1672,14 +1587,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el8_percona80_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1699,14 +1606,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1726,14 +1625,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el9_percona57_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1753,14 +1644,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el9_percona80_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1780,14 +1663,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_gzip
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-        - compile_zstd:
-            CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-        - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_zstd
-        - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_zstd/
-        - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1807,14 +1682,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bionic_percona57_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1834,14 +1701,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bionic_percona80_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1861,14 +1720,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1888,14 +1739,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/focal_percona57_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1915,14 +1758,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/focal_percona80_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1942,14 +1777,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1969,14 +1796,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/jammy_percona57_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -1996,14 +1815,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/jammy_percona80_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2023,14 +1834,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2050,14 +1853,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/buster_percona57_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2077,14 +1872,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/buster_percona80_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2104,14 +1891,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_gzip
-    - when:
-        condition: false
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2131,14 +1910,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2158,14 +1929,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_zstd
 
     - persist_to_workspace:
          root: /tmp/package
@@ -2185,14 +1948,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_gzip/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_gzip/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_gzip
-    - when:
-        condition: true
-        steps:
-          - compile_zstd:
-             CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-          - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_zstd/etc/
-          - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_zstd/
-          - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_zstd
 
     - persist_to_workspace:
          root: /tmp/package

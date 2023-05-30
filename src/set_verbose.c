@@ -26,7 +26,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
-#include <zlib.h>
+//#include <zlib.h>
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>

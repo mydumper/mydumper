@@ -18,6 +18,14 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include <stdio.h>
+#include <stdlib.h>
+
+struct fifo{
+  int pid;
+  gchar *filename;
+  GMutex *mutex;
+};
 
 void initialize_common();
 gchar *get_ref_table(gchar *k);
@@ -32,11 +40,12 @@ void restore_charset(GString *statement);
 void clear_dump_directory(gchar *directory);
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
 gchar * build_tablespace_filename();
-gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
-gchar * build_data_filename(char *database, char *table, guint part, guint sub_part);
-gchar * build_fifo_filename(char *database, char *table, guint part, guint sub_part, const gchar *extesion);
-gchar * build_stdout_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension, gchar *second_extension);
-gchar * build_load_data_filename(char *database, char *table, guint part, guint sub_part);
+gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
+//gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
+gchar * build_data_filename(char *database, char *table, guint64 part, guint sub_part);
+gchar * build_fifo_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extesion);
+gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension);
+gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part);
 void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
@@ -44,3 +53,8 @@ void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned lo
 void free_common();
 void initialize_sql_statement(GString *statement);
 void set_tidb_snapshot(MYSQL *conn);
+int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
+//FILE * m_open(const char *filename, const char *);
+FILE * m_open_pipe(const char *filename, const char *type);
+int m_close_pipe(void *file);
+void release_pid();

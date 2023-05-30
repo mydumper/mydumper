@@ -27,11 +27,6 @@
 #include "config.h"
 #include "connection.h"
 #include <stdarg.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -674,34 +669,19 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
-gboolean read_data(FILE *file, enum data_file_type dft, GString *data,
+gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
   char buffer[256];
 
   do {
-    switch (dft){
-      case FIFO:
-      case COMMON: 
-        if (fgets(buffer, 256, file) == NULL) {
-          if (feof(file)) {
-            *eof = TRUE;
-            buffer[0] = '\0';
-          } else {
-            return FALSE;
-          }
-        }
-      break;
-      case COMPRESSED:
-        if (!gzgets((gzFile)file, buffer, 256)) {
-          if (gzeof((gzFile)file)) {
-            *eof = TRUE;
-            buffer[0] = '\0';
-          } else {
-            return FALSE;
-          }
-        }
-      break;
+    if (fgets(buffer, 256, file) == NULL) {
+      if (feof(file)) {
+        *eof = TRUE;
+        buffer[0] = '\0';
+      } else {
+        return FALSE;
       }
+    }
     g_string_append(data, buffer);
     if (strlen(buffer) != 256)
       (*line)++;

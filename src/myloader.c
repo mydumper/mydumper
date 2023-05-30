@@ -34,11 +34,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "config.h"
 #include "common.h"
 #include "myloader_stream.h"
@@ -210,6 +205,8 @@ int main(int argc, char *argv[]) {
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
+
+  signal(SIGCHLD, SIG_IGN);
 
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
@@ -441,7 +438,6 @@ int main(int argc, char *argv[]) {
 
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
-  checksum_databases(&t);
 
   GList * tl=conf.table_list;
   while (tl != NULL){
