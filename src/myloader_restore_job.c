@@ -258,7 +258,8 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       m_critical("Something very bad happened!");
     }
 cleanup:
-  if (rj != NULL ) free_restore_job(rj);
+  (void) rj;
+//  if (rj != NULL ) free_restore_job(rj);
 }
 
 
