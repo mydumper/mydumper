@@ -98,7 +98,7 @@ test_case_stream (){
     rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
-    echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+    echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
     eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
     error=$?
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
@@ -108,7 +108,7 @@ test_case_stream (){
       cat $tmp_mydumper_log
       exit $error
     fi
-    cat /tmp/stream.sql | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
@@ -116,7 +116,7 @@ test_case_stream (){
     then
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+      echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
       cat $tmp_myloader_log
       exit $error
@@ -125,6 +125,7 @@ test_case_stream (){
 }
 
 number=0
+
 full_test(){
 
   if [ ! -f "sakila-db.tar.gz" ]; then
@@ -144,7 +145,7 @@ full_test(){
   # 1000 rows -- database must not exist
 
   mydumper_general_options="-h 127.0.0.1 -u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
-  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=2"
+  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1"
 
 
   # single file compressed -- overriting database
