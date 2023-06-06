@@ -41,7 +41,7 @@
 static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
-
+int (*m_close)(void *file) = NULL;
 
 void initialize_common(){
   db_hash_mutex=g_mutex_new();
@@ -121,7 +121,12 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
   if (has_exec_per_thread_extension(str)){
     return g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL;
+  }else if ( g_str_has_suffix(str, GZIP_EXTENSION) ){
+    return g_strstr_len(&(str[strlen(str)-strlen(GZIP_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(GZIP_EXTENSION),suffix) != NULL;
+  }else if ( g_str_has_suffix(str, ZSTD_EXTENSION) ){
+    return g_strstr_len(&(str[strlen(str)-strlen(ZSTD_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(ZSTD_EXTENSION),suffix) != NULL;
   }
+
   return g_str_has_suffix(str,suffix);
 }
 struct database * new_database(gchar *database){
@@ -408,100 +413,6 @@ void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *co
   }
 }
 
-/*
-void checksum_filename(const gchar *filename, MYSQL *conn, const gchar *suffix, const gchar *message, gchar* fun()) {
-  gchar *database = NULL, *table = NULL;
-  get_database_table_from_file(filename,suffix,&database,&table);
-  struct database *real_database=get_db_hash(database,database);
-  gchar *real_table=NULL;
-  if (table != NULL ){
-    real_table=g_hash_table_lookup(tbl_hash,table);
-    g_free(table);
-  }
-  g_free(database);
-  void *infile;
-  char checksum[256];
-  int errn=0;
-  char * row=fun(conn, db ? db : real_database->name, real_table, &errn);
-  if (row == NULL)
-    row = g_strdup("0");
-
-  gboolean is_compressed = FALSE;
-  gchar *path = g_build_filename(directory, filename, NULL);
-
-  if (!g_str_has_suffix(path, compress_extension)) {
-    infile = g_fopen(path, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(path, "r");
-    is_compressed=TRUE;
-  }
-
-  if (!infile) {
-    g_critical("cannot open checksum file %s (%d)", filename, errno);
-    errors++;
-    return;
-  }
-
-  char * cs= !is_compressed ? fgets(checksum, 256, infile) :gzgets((gzFile)infile, checksum, 256);
-  if (cs != NULL) {
-    if (checksum[strlen(checksum)-1]=='\n')
-      checksum[strlen(checksum)-1]='\0';
-    if(g_strcasecmp(checksum, row) != 0) {
-      if (real_table != NULL)
-        g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, real_table, row, checksum, filename);
-      else 
-        g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s' in file: %s", message, db ? db : real_database->name, row, checksum, filename);
-      errors++;
-    } else {
-      if (real_table != NULL)
-        g_message("%s confirmed for `%s`.`%s`", message, db ? db : real_database->name, real_table);
-      else
-        g_message("%s confirmed for `%s`", message, db ? db : real_database->name);
-    }
-    g_free(row);
-  } else {
-    g_critical("error reading file %s (%d)", filename, errno);
-    errors++;
-    return;
-  }
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-}
-
-// this can be moved to the table structure and executed before index creation.
-void checksum_databases(struct thread_data *td) {
-  g_message("Starting table checksum verification");
-
-  gchar *filename = NULL;
-  GList *e = td->conf->checksum_list;//, *p;
-  while (e){
-    filename=e->data;
-    if (g_str_has_suffix(filename,"-schema-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-checksum", "Structure checksum", checksum_table_structure);
-    }else if (g_str_has_suffix(filename,"-schema-post-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-post-checksum", "Post checksum", checksum_process_structure);
-    }else if (g_str_has_suffix(filename,"-schema-triggers-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-triggers-checksum", "Trigger checksum", checksum_trigger_structure);
-    }else if (g_str_has_suffix(filename,"-schema-view-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-view-checksum", "View checksum", checksum_view_structure);
-    }else if (g_str_has_suffix(filename,"-schema-sequence-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-sequence-checksum", "Sequence checksum", checksum_table_structure);
-    }else if (g_str_has_suffix(filename,"-schema-create-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-create-checksum", "Schema create checksum", checksum_database_defaults);
-    }else if (g_str_has_suffix(filename,"-schema-indexes-checksum")){
-      checksum_filename(filename, td->thrconn, "-schema-indexes-checksum", "Schema index checksum", checksum_table_indexes);
-    }else{
-      checksum_filename(filename, td->thrconn, "-checksum", "Checksum", checksum_table);
-    }
-    e=e->next;
-  }
-}
-*/
-
 void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
   if (dbt->schema_checksum!=NULL){
     if (dbt->is_view)
@@ -524,7 +435,8 @@ gboolean has_exec_per_thread_extension(const gchar *filename){
   return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);
 }
 
-int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
+
+int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec){
   int childpid=fork();
   if(!childpid){
     FILE *sql_file2 = g_fopen(sql_fn,"r");
@@ -533,27 +445,29 @@ int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3){
     dup2(fileno(sql_file3), STDOUT_FILENO);
 //    close(fileno(sql_file2));
 //    close(fileno(sql_file3));
-    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
+    execv(exec[0],exec);
   }
   return childpid;
 }
-/*
-void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp){
-g_message("Filename to open: %s", filename);
-  if (has_compession_extension(filename)) {
-    *infile = (void *)gzopen(filename, "r");
-    *fdp = COMPRESSED;
-  } else if (has_exec_per_thread_extension(filename)) {
-//    gchar *fifo_name=g_strdup_printf("%s.fifo",g_strndup(filename,g_strrstr(filename,".")-filename));
-    gchar *fifo_name = g_strndup(filename,g_strrstr(filename,".")-filename);    
-    mkfifo(fifo_name,0666);
-    execute_file_per_thread(filename, fifo_name);
-    *infile = g_fopen(fifo_name, "r");
-    g_free(fifo_name);
-    *fdp = FIFO;
-  } else {
-    *infile = g_fopen(filename, "r");
-    *fdp = COMMON;
+
+gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename){
+  int len=0;
+  if (has_exec_per_thread_extension(filename)) {
+    *command=exec_per_thread_cmd;
+    len=strlen(exec_per_thread_extension);
+  }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
+    *command=zstd_decompress_cmd;
+    len=strlen(ZSTD_EXTENSION);
+  }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
+    *command=gzip_decompress_cmd;
+    len=strlen(GZIP_EXTENSION);
   }
+  if (len!=0){
+    gchar *dotpos=&(filename[strlen(filename)]) - len;
+    *dotpos='\0';
+    *basename=g_strdup(filename);
+    *dotpos='.';
+    return TRUE;
+  }
+  return FALSE;
 }
-*/

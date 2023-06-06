@@ -56,15 +56,8 @@ gboolean has_mydumper_suffix(gchar *line){
   return
     has_exec_per_thread_extension(line) ||
     g_str_has_suffix(line,".dat") ||
-    g_str_has_suffix(line,".dat.gz") ||
-    g_str_has_suffix(line,".dat.zst") ||
     g_str_has_suffix(line,".sql") ||
-    g_str_has_suffix(line,".sql.gz") ||
-    g_str_has_suffix(line,".sql.zst") ||
-    g_str_has_suffix(line,"metadata") ||
-    g_str_has_suffix(line,"-checksum") ||
-    g_str_has_suffix(line,"-checksum.gz") ||
-    g_str_has_suffix(line,"-checksum.zst");
+    g_str_has_suffix(line,"metadata");
 }
 
 void *process_stream(struct configuration *stream_conf){

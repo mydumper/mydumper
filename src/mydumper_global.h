@@ -113,7 +113,7 @@ extern guint trx_consistency_only;
 extern guint updated_since;
 extern int detected_server;
 extern int errno;
-extern int (*m_close)(void *file);
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size);
 extern int (*m_write)(FILE * file, const char * buff, int len);
 extern int need_dummy_read;
 extern int need_dummy_toku_read;

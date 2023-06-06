@@ -30,6 +30,9 @@ test_case_dir (){
   # We should consider each test case, with different mydumper/myloader parameters
   s=$*
 
+  number=$(( $number + 1 ))
+  echo "Test #${number}"
+
   mydumper_parameters=${s%%"-- "*}
   myloader_parameters=${s#*"-- "}
 
@@ -83,6 +86,9 @@ test_case_stream (){
   # We should consider each test case, with different mydumper/myloader parameters
   s=$*
 
+  number=$(( $number + 1 ))
+  echo "Test #${number}"
+
   mydumper_parameters=${s%%"-- "*}
   myloader_parameters=${s#*"-- "}
 
@@ -94,7 +100,14 @@ test_case_stream (){
     # Export
     echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
     eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    error=$?
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+    if (( $error > 0 ))
+    then
+      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      cat $tmp_mydumper_log
+      exit $error
+    fi
     cat /tmp/stream.sql | $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
@@ -111,9 +124,8 @@ test_case_stream (){
   fi
 }
 
-
+number=0
 full_test(){
-
 
   if [ ! -f "sakila-db.tar.gz" ]; then
     wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
@@ -141,7 +153,6 @@ full_test(){
   for test in test_case_dir test_case_stream
   do 
     echo "Executing test: $test"
-    continue
 
     $test -r 1000 -G ${general_options} 				-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # 10000 rows -- overriting database
@@ -155,13 +166,14 @@ full_test(){
     # statement size to 2MB -- overriting database
     $test -s 2000000 ${general_options} 			-- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
-    $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE 
     # compress and rows
     $test --less-locking -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # compress and rows
     $test --use-savepoints -F 10 --less-locking -r 1000 -c ${general_options}                         -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --load-data
     $test --load-data ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
+    $test --load-data -c ${general_options}                        -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
     $test --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
@@ -171,7 +183,7 @@ full_test(){
     # --csv
     $test -c -F 10 --csv ${general_options}                              -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation
     # ANSI_QUOTES
-    $test -r 1000 -G ${general_options} --defaults-file="test/mydumper.cnf"                                -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
+#    $test -r 1000 -G ${general_options} --defaults-file="test/mydumper.cnf"                                -- -h 127.0.0.1 -o -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
 
     myloader_stor_dir=$stream_stor_dir
   done

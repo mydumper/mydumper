@@ -17,6 +17,11 @@
 #ifndef _src_myloader_common_h
 #define _src_myloader_common_h
 
+#define ZSTD_DECOMPRESS_COMMAND "/usr/bin/zstd -c -d"
+#define ZSTD_EXTENSION ".zst"
+#define GZIP_DECOMPRESS_COMMAND "/usr/bin/gzip -c -d"
+#define GZIP_EXTENSION ".gz"
+
 #define IS_INNODB_TABLE 2
 #define INCLUDE_CONSTRAINT 4
 #define IS_ALTER_TABLE_PRESENT 8
@@ -42,8 +47,8 @@ void refresh_table_list(struct configuration *conf);
 void refresh_table_list_without_table_hash_lock(struct configuration *conf);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
-void ml_open(FILE **infile, const gchar *filename);
+//int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
+int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec);
 gboolean has_compession_extension(const gchar *filename);
 gboolean has_exec_per_thread_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);
@@ -52,4 +57,5 @@ void checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;
 void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) ;
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
 void change_master(GKeyFile * kf,gchar *group, GString *s);
+gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
 #endif

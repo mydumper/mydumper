@@ -40,6 +40,7 @@ guint table_number=0;
 GAsyncQueue *available_pids=NULL;
 GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
+int (*m_close)(guint thread_id, void *file, gchar *filename, guint size) = NULL;
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
@@ -94,19 +95,21 @@ FILE * m_open_pipe(const char *filename, const char *type){
     g_mutex_lock(f->mutex);
     f->pid = child_proc;
     f->filename=g_strdup(filename);
+    f->stdout_filename=new_filename;
   }else{
     f=g_new0(struct fifo, 1);
     f->mutex=g_mutex_new();
     g_mutex_lock(f->mutex);
     f->pid = child_proc;
     f->filename=g_strdup(filename);
+    f->stdout_filename=new_filename;
     g_hash_table_insert(fifo_hash,file,f);
     g_mutex_unlock(fifo_table_mutex);
   }
   return file;
 }
 
-int m_close_pipe(void *file){
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
   release_pid();
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
@@ -120,8 +123,31 @@ int m_close_pipe(void *file){
     g_mutex_unlock(fifo_table_mutex);
     remove(f->filename);
   }else{
-    g_mutex_unlock(fifo_table_mutex);
+  //  g_mutex_unlock(fifo_table_mutex);
   }
+  if (size > 0){
+    if (stream) g_async_queue_push(stream_queue, g_strdup(f->stdout_filename));
+  }else if (!build_empty_files){
+    if (remove(f->stdout_filename)) {
+      g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
+    }else{
+      g_debug("Thread %d: File removed: %s", thread_id, filename);
+    } 
+}
+  return r;
+}
+
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size){
+  int r=fclose(file);
+  if (size > 0){
+    if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  }else if (!build_empty_files){
+    if (remove(filename)) {
+      g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
+    }else{
+      g_debug("Thread %d: File removed: %s", thread_id, filename);
+    }
+}
   return r;
 }
 

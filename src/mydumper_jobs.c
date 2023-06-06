@@ -169,8 +169,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
   g_free(query);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -243,8 +242,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   g_free(query);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -331,8 +329,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
   g_free(message);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -372,8 +369,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -459,11 +455,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  m_close(outfile);
-
+  m_close(0, outfile, filename, 1);
   g_string_set_size(statement, 0);
-
-
 
   void *outfile2;
   outfile2 = m_open(filename2,"w");
@@ -504,9 +497,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   }
   g_free(query);
 
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  m_close(outfile2);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename2));
+  m_close(0, outfile2, filename2, 1);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -611,9 +602,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   g_free(query);
-  m_close(outfile);
-
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -793,8 +782,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   }
 
   g_free(query);
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)

@@ -31,6 +31,8 @@ GThread *stream_intermediate_thread = NULL;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
+gchar **zstd_decompress_cmd=NULL;
+gchar **gzip_decompress_cmd=NULL;
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
@@ -53,6 +55,8 @@ void initialize_intermediate_queue (struct configuration *c){
   if (exec_per_thread!=NULL){
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
+  zstd_decompress_cmd=g_strsplit(ZSTD_DECOMPRESS_COMMAND, " ", 0);
+  gzip_decompress_cmd=g_strsplit(GZIP_DECOMPRESS_COMMAND, " ", 0);
   initialize_control_job(c);
 }
 

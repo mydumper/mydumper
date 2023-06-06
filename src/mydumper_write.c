@@ -78,7 +78,7 @@ void initialize_write(){
     if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
     if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
     if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
-    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
+    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\\n");
   }
 //  if (load_data){
     if (!fields_enclosed_by_ld){
@@ -429,18 +429,13 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
         return num_rows;
       }
 
-      m_close(tj->sql_file);
-      m_close(tj->dat_file);
+      m_close(tj->td->thread_id, tj->sql_file, g_strdup(tj->sql_filename), 1);
+      m_close(tj->td->thread_id, tj->dat_file, g_strdup(tj->dat_filename), 1);
       tj->sql_file=NULL;
       tj->dat_file=NULL;
 
-      if (stream) {
-        g_async_queue_push(stream_queue, tj->sql_filename);
-        g_async_queue_push(stream_queue, tj->dat_filename);
-      }else{
-        g_free(tj->sql_filename);
-        g_free(tj->dat_filename);
-      }
+      g_free(tj->sql_filename);
+      g_free(tj->dat_filename);
 
       tj->sql_filename=NULL;
       tj->dat_filename=NULL;
@@ -522,7 +517,9 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         }
         g_string_set_size(statement, 0);
       }
+      g_mutex_lock(dbt->chunks_mutex);
       g_string_append(statement, dbt->insert_statement->str);
+      g_mutex_unlock(dbt->chunks_mutex);
       num_rows_st = 0;
     }
 
@@ -559,11 +556,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
 //        }else{
           tj->sub_part++;
 //        }
-        m_close(tj->sql_file);
+        m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1);
         tj->sql_file=NULL;
-        if (stream) {
-          g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-        }
         //initialize_sql_fn(tj);
         update_files_on_table_job(tj);
         tj->st_in_file = 0;

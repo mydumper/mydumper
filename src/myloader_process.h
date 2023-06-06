@@ -15,6 +15,12 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
+struct fifo{
+  int pid;
+  gchar *filename;
+  gchar *stdout_filename;
+  GMutex *mutex;
+};
 
 void process_tablespace_filename( char * filename) ;
 void process_database_filename(char * filename);

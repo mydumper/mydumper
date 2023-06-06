@@ -24,6 +24,7 @@
 struct fifo{
   int pid;
   gchar *filename;
+  gchar *stdout_filename;
   GMutex *mutex;
 };
 
@@ -56,5 +57,6 @@ void set_tidb_snapshot(MYSQL *conn);
 int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
 //FILE * m_open(const char *filename, const char *);
 FILE * m_open_pipe(const char *filename, const char *type);
-int m_close_pipe(void *file);
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size);
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size);
 void release_pid();
