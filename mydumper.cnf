@@ -35,4 +35,6 @@ FOREIGN_KEY_CHECKS=0 /*!40114
 
 [myloader_session_variables_mariadb]
 # This setting replaces the default in the section [myloader_session_variables]. More details in #987
+SQL_MODE='NO_AUTO_VALUE_ON_ZERO' /*!40101
 UNIQUE_CHECKS=1 /*!40114
+FOREIGN_KEY_CHECKS=0 /*!40114
