@@ -210,7 +210,9 @@ void myl_close(char *filename, FILE *file){
     remove(filename);
     *dotpos='.';
   }
-
+  if (stream && no_delete == FALSE){
+    m_remove(NULL,filename);
+  }
 }
 
 
@@ -300,9 +302,6 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
   myl_close(filename,infile);
 
-  if (stream && no_delete == FALSE){
-    m_remove(NULL,filename);
-  }
   g_string_free(data,TRUE);
 
   return cj;
