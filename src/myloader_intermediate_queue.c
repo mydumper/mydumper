@@ -31,6 +31,8 @@ GThread *stream_intermediate_thread = NULL;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
+gchar **zstd_decompress_cmd=NULL;
+gchar **gzip_decompress_cmd=NULL;
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
@@ -53,6 +55,8 @@ void initialize_intermediate_queue (struct configuration *c){
   if (exec_per_thread!=NULL){
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
+  zstd_decompress_cmd=g_strsplit(ZSTD_DECOMPRESS_COMMAND, " ", 0);
+  gzip_decompress_cmd=g_strsplit(GZIP_DECOMPRESS_COMMAND, " ", 0);
   initialize_control_job(c);
 }
 
@@ -137,13 +141,6 @@ enum file_type process_filename(char *filename){
         process_metadata_global();
         refresh_table_list(intermediate_conf);
         break;
-/*      case METADATA_TABLE:
-        intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
-        if (!process_metadata_filename(filename))
-          return DO_NOT_ENQUEUE;
-        refresh_table_list(intermediate_conf);
-        break;
-*/
       case DATA:
         if (!no_data){
           if (!process_data_filename(filename))

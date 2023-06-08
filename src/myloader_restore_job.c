@@ -202,8 +202,10 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       get_total_done(td->conf, &total);
       g_message("Thread %d: restoring %s `%s`.`%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
                 dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
-      if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter))
+      if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
         increse_object_error(rj->data.srj->object);
+        g_message("Failed %s: %s",rj->data.srj->object,rj->data.srj->statement->str);
+      }
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_SCHEMA_STRING:
@@ -256,7 +258,8 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       m_critical("Something very bad happened!");
     }
 cleanup:
-  if (rj != NULL ) free_restore_job(rj);
+  (void) rj;
+//  if (rj != NULL ) free_restore_job(rj);
 }
 
 

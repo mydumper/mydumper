@@ -137,32 +137,6 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
   return r;
 
 }
-/*
-void *send_file_to_fifo(gchar *compressed_filename){
-  gchar *fifo_name=g_strndup(compressed_filename,g_strrstr(compressed_filename,".")-compressed_filename);
-  FILE * fd = g_fopen(fifo_name, "w");
-  FILE *file=NULL;
-  enum data_file_type is_compressed = FALSE;
-  gchar *path = g_build_filename(directory, compressed_filename, NULL);
-  ml_open(&file,path,&is_compressed);
-  char buffer[256];
-  gboolean eof=FALSE;
-  guint l;
-  do {
-      if (!gzgets((gzFile)file, buffer, 256)) {
-        if (gzeof((gzFile)file)) {
-          eof = TRUE;
-          buffer[0] = '\0';
-        }
-      }
-    l=write(fileno(fd), buffer, strlen(buffer));
-    if (l!=strlen(buffer))
-      g_critical("Incomplete data transferred to FIFO: %s", fifo_name);
-  } while (eof == FALSE);
-  fclose(fd);
-  return NULL;
-}
-*/
 
 gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   g_mutex_lock(load_data_list_mutex);
@@ -221,6 +195,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   guint tr=0;
   gchar *load_data_filename=NULL;
   gchar *load_data_fifo_filename=NULL;
+
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -237,22 +212,29 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             gchar *to = g_strstr_len(from, -1, "'");
             load_data_filename=g_strndup(from, to-from);
             wait_til_data_file_is_close(load_data_filename);
-            if (has_exec_per_thread_extension(load_data_filename)){
-              from=to-strlen(exec_per_thread_extension);
-              *from='\'';
-              from++;
-              for (;from<=to;from++) *from=' ';
-              load_data_fifo_filename=g_strndup(load_data_filename,g_strrstr(load_data_filename,".")-load_data_filename);
+            gchar **command=NULL;
+            if (get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename)){ 
+              guint a=0;
+              for(;a<strlen(load_data_filename)-strlen(load_data_fifo_filename);a++){
+                *to=' '; to--;
+              }
+              *to='\'';
               mkfifo(load_data_fifo_filename,0666);
-              execute_file_per_thread(load_data_filename, load_data_fifo_filename);
-//              release_load_data_as_it_is_close(fifo_name);
+              execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+              release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
             }
 
 
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
-          }else
+            if (load_data_fifo_filename!=NULL) 
+              m_remove(NULL, load_data_fifo_filename);
+            else
+              m_remove(NULL, load_data_filename);
+
+          }else{
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+          }
         }
         r+=tr;
         if (tr > 0){
@@ -276,7 +258,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 
   g_free(load_data_filename);
 
-  if (load_data_fifo_filename != NULL){
+/*  if (load_data_fifo_filename != NULL){
     if (remove(load_data_fifo_filename)) {
       g_warning("Thread %d: Failed to remove fifo file : %s", td->thread_id, load_data_fifo_filename);
     }else{
@@ -285,7 +267,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     remove_fifo_file(load_data_fifo_filename);
     g_free(load_data_fifo_filename);
   }
-
+*/
   myl_close(filename, infile);
   g_free(path);
   return r;

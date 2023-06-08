@@ -198,7 +198,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -456,12 +456,6 @@ int main(int argc, char *argv[]) {
 
 
   if (stream && no_delete == FALSE && input_directory == NULL){
-    // remove metadata files
-    GList *e=conf.metadata_list;
-    while (e) {
-      m_remove(directory, e->data);
-      e=e->next;
-    }
     m_remove(directory,"metadata");
     if (g_rmdir(directory) != 0)
         g_critical("Restore directory not removed: %s", directory);

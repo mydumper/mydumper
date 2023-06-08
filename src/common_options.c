@@ -36,7 +36,6 @@ gchar *ssl_mode = NULL;
 #endif
 
 gboolean help =FALSE;
-int (*m_close)(void *file) = NULL;
 int detected_server = 0;
 GString *set_session = NULL;
 GString *set_global = NULL;

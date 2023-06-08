@@ -29,14 +29,19 @@
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
+#include <sys/wait.h>
 
 GString *change_master_statement=NULL;
 gboolean append_if_not_exist=FALSE;
+GHashTable *fifo_hash=NULL;
+GMutex *fifo_table_mutex=NULL;
 
 struct configuration *conf;
 extern gboolean schema_sequence_fix;
 void initialize_process(struct configuration *c){
   conf=c;
+  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
+  fifo_table_mutex = g_mutex_new();
 }
 
 struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
@@ -139,16 +144,33 @@ void free_table_hash(GHashTable *table_hash){
 
 FILE * myl_open(char *filename, const char *type){
   FILE *file=NULL;
-  if (has_exec_per_thread_extension(filename)) {
-    gchar *dotpos;
-    dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
-    *dotpos='\0';
-    gchar *basename=g_strdup(filename);
-    *dotpos='.';
+  gchar *basename=NULL;
+  int child_proc;
+  (void) child_proc;
+  gchar **command=NULL;
+  if (get_command_and_basename(filename, &command,&basename)){
     mkfifo(basename,0666);
-    int child_proc = execute_file_per_thread(filename,basename);   
-    (void) child_proc;
-    file=g_fopen(basename,type);    
+    child_proc = execute_file_per_thread(filename, basename, command);
+    file=g_fopen(basename,type);
+    g_mutex_lock(fifo_table_mutex);
+    struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+    if (f!=NULL){
+      g_mutex_lock(f->mutex);
+      g_mutex_unlock(fifo_table_mutex);
+      f->pid = child_proc;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=basename;
+    }else{
+      f=g_new0(struct fifo, 1);
+      f->mutex=g_mutex_new();
+      g_mutex_lock(f->mutex);
+      f->pid = child_proc;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=basename;
+      g_hash_table_insert(fifo_hash,file,f);
+      g_mutex_unlock(fifo_table_mutex);
+    }
+
   }else{
     file=g_fopen(filename, type);
   }
@@ -156,15 +178,40 @@ FILE * myl_open(char *filename, const char *type){
 }
 
 void myl_close(char *filename, FILE *file){
+  g_mutex_lock(fifo_table_mutex);
+  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+  g_mutex_unlock(fifo_table_mutex);
   fclose(file);
+
+  if (f != NULL){
+    int status=0;
+    waitpid(f->pid, &status, 0);
+    g_mutex_lock(fifo_table_mutex);
+    g_mutex_unlock(f->mutex);
+    g_mutex_unlock(fifo_table_mutex);
+  }
+
   if ( has_exec_per_thread_extension(filename)) {
     gchar *dotpos;
     dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
     *dotpos='\0';
     remove(filename);
     *dotpos='.';
+  }else if ( g_str_has_suffix(filename, GZIP_EXTENSION) ){
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(GZIP_EXTENSION);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
+  }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(ZSTD_EXTENSION);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
   }
 
+  m_remove(NULL,filename);
 }
 
 
@@ -254,15 +301,6 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
   myl_close(filename,infile);
 
-/*  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-*/
-  if (stream && no_delete == FALSE){
-    m_remove(NULL,filename);
-  }
   g_string_free(data,TRUE);
 
   return cj;

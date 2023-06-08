@@ -34,7 +34,6 @@ GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
 GThread *control_job_t = NULL;
 
 gint last_wait=0;
-GMutex *last_wait_control_job_continue;
 guint index_threads_counter = 0;
 GMutex *index_mutex=NULL;
 void *control_job_thread(struct configuration *conf);
@@ -44,7 +43,6 @@ void initialize_control_job (struct configuration *conf){
   refresh_db_queue = g_async_queue_new();
   here_is_your_job = g_async_queue_new();
   last_wait = num_threads;
-  last_wait_control_job_continue = g_mutex_new();
   data_queue = g_async_queue_new();
 //  give_me_another_job_queue = g_async_queue_new();
   control_job_t = g_thread_create((GThreadFunc)control_job_thread, conf, TRUE, NULL);
@@ -182,7 +180,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
   gboolean giveup = TRUE;
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
-  GList * next = NULL;
+//  GList * next = NULL;
   struct restore_job *job = NULL;
 //  g_debug("Elements in table_list: %d",g_list_length(conf->table_list));
 //  We are going to check every table and see if there is any missing job
@@ -222,9 +220,10 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
       if (g_list_length(dbt->restore_job_list) > 0){
         // We found a job that we can process!
         job = dbt->restore_job_list->data;
-        next = dbt->restore_job_list->next;
-        g_list_free_1(dbt->restore_job_list);
-        dbt->restore_job_list = next;
+//        next = dbt->restore_job_list->next;
+        dbt->restore_job_list=g_list_remove_link(dbt->restore_job_list,dbt->restore_job_list);
+//        g_list_free_1(dbt->restore_job_list);
+//        dbt->restore_job_list = next;
         dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
         giveup=FALSE;
@@ -274,7 +273,7 @@ void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_tab
     if (dbt->indexes == NULL){
       dbt->schema_state=ALL_DONE;
     }else{
-      create_index_job(conf, dbt, -2);
+      create_index_job(conf, dbt, 0);
     }
   }
 }
@@ -309,43 +308,17 @@ void refresh_db_and_jobs(enum file_type current_ft){
       schema_queue_push(current_ft);
       g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(current_ft));
       break;
-   default:
+    case SHUTDOWN:
+      g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(current_ft));
+    default:
       break;
   }
 }
 
-/*
-void set_db_schema_state_to_created( struct database * database, GAsyncQueue * object_queue, GAsyncQueue * kind_queue){
-  database->schema_state=CREATED;
-  struct control_job * cj = g_async_queue_try_pop(database->queue);
-  while (cj != NULL){
-    g_async_queue_push(object_queue, cj);
-    g_async_queue_push(kind_queue, GINT_TO_POINTER(SCHEMA_TABLE));
-    cj = g_async_queue_try_pop(database->queue);
-  }
-}
-
-
-void set_table_schema_state_to_created (struct configuration *conf){
-  g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  struct db_table * dbt = NULL;
-  while (iter != NULL){
-    dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
-    if (dbt->schema_state == NOT_FOUND )
-      dbt->schema_state = CREATED;
-    g_mutex_unlock(dbt->mutex);
-    iter=iter->next;
-  }
-  g_mutex_unlock(conf->table_list_mutex);
-}
-*/
 void last_wait_control_job_to_shutdown(){
    if (g_atomic_int_dec_and_test(&last_wait)){
-     g_mutex_lock(last_wait_control_job_continue);
+     g_message("SHUTDOWN last_wait_control_job_to_shutdown");
      refresh_db_and_jobs(SHUTDOWN);
-     g_mutex_lock(last_wait_control_job_continue);
    }
 }
 
@@ -448,7 +421,6 @@ void *control_job_thread(struct configuration *conf){
       break;
     case SHUTDOWN:
       cont=FALSE;
-      g_mutex_unlock(last_wait_control_job_continue);
       break;
     default:
 //      g_debug("Thread control_job_thread: Default: %d", ft);
@@ -459,6 +431,7 @@ void *control_job_thread(struct configuration *conf){
 //    rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, NULL, NULL, NULL,"indexes");
 //    g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,NULL));
 //  }
+  g_message("Sending start_innodb_optimize_keys_all_tables");
   start_innodb_optimize_keys_all_tables();
   return NULL;
 }
@@ -517,7 +490,7 @@ void *process_stream_queue(struct thread_data * td) {
   }
   enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);
-//  last_wait_control_job_to_shutdown();
+  last_wait_control_job_to_shutdown();
 //  process_index(td);
   return NULL;
 }

@@ -190,12 +190,12 @@ void initialize_working_thread(){
 
 // TODO: We need to cleanup this
 
-  m_close=(void *) &fclose;
+  m_close=(void *) &m_close_pipe;
   m_write=(void *)&write_file;
 
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
     m_open=&g_fopen;
-    m_close=(void *) &fclose;
+    m_close=(void *) &m_close_file;
     m_write=(void *)&write_file;
     exec_per_thread_extension=EMPTY_STRING;
   } else {
@@ -463,15 +463,15 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       break;
   }
   if (tj->sql_file){
-    m_close(tj->sql_file);
+    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize);
     tj->sql_file=NULL;
   }
   if (tj->dat_file){
-    m_close(tj->dat_file);
+    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize);
     tj->dat_file=NULL;
   }
 
-  if (tj->sql_filename != NULL ){
+/*  if (tj->sql_filename != NULL ){
     if (tj->filesize == 0 && !build_empty_files) {
     // dropping the useless file
       if (tj->sql_filename!=NULL){
@@ -495,6 +495,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       }
     } 
   }
+*/
 
 /*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
