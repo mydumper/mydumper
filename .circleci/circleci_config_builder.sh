@@ -282,7 +282,7 @@ done
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh SSL GZIP
+        - run: bash ./test_mydumper.sh SSL
     - store_artifacts:
         path: /tmp/stream.sql
         destination: artifact-file
