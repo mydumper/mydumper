@@ -140,7 +140,6 @@ full_test(){
   DATABASE=myd_test
   mysql --no-defaults -f -h 127.0.0.1 -u root < test/mydumper_testing_db.sql
 
-
   # export -- import
   # 1000 rows -- database must not exist
 
@@ -155,9 +154,9 @@ full_test(){
   do 
     echo "Executing test: $test"
 
-    $test -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
+    $test -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # 10000 rows -- overriting database
-    $test -r 1000 --less-locking -G ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
+    $test -r 1000 --less-locking -G ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # 10000 rows -- overriting database
     $test -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # chunking the file to 10MB -- overriting database
@@ -182,7 +181,7 @@ full_test(){
     # --csv
     $test -c -r 10000 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # --csv
-    $test -c -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
+    $test -c -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
 
