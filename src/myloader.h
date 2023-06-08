@@ -60,7 +60,6 @@ struct configuration {
   GMutex *table_hash_mutex;
 //  GList *schema_create_list;
   GList *checksum_list;
-  GList *metadata_list;
   GMutex *mutex;
   GAsyncQueue *index_queue;
   int done;

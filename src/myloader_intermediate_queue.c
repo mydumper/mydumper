@@ -141,13 +141,6 @@ enum file_type process_filename(char *filename){
         process_metadata_global();
         refresh_table_list(intermediate_conf);
         break;
-/*      case METADATA_TABLE:
-        intermediate_conf->metadata_list=g_list_insert(intermediate_conf->metadata_list,filename,-1);
-        if (!process_metadata_filename(filename))
-          return DO_NOT_ENQUEUE;
-        refresh_table_list(intermediate_conf);
-        break;
-*/
       case DATA:
         if (!no_data){
           if (!process_data_filename(filename))
