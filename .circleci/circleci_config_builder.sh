@@ -269,6 +269,7 @@ done
     steps:
     - run: cmake . <<parameters.CMAKED>>
     - run: make
+    - run: make install
     - run: ./mydumper --version
 
   compile_and_test_mydumper:
