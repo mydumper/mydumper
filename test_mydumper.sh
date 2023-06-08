@@ -108,6 +108,13 @@ test_case_stream (){
       cat $tmp_mydumper_log
       exit $error
     fi
+  if [ "$PARTIAL" != "1" ]
+  then
+  echo "DROP DATABASE IF EXISTS sakila;
+DROP DATABASE IF EXISTS myd_test;
+DROP DATABASE IF EXISTS myd_test_no_fk;
+DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
+  fi
     cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
