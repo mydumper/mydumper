@@ -180,7 +180,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
   gboolean giveup = TRUE;
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
-  GList * next = NULL;
+//  GList * next = NULL;
   struct restore_job *job = NULL;
 //  g_debug("Elements in table_list: %d",g_list_length(conf->table_list));
 //  We are going to check every table and see if there is any missing job
@@ -220,9 +220,10 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
       if (g_list_length(dbt->restore_job_list) > 0){
         // We found a job that we can process!
         job = dbt->restore_job_list->data;
-        next = dbt->restore_job_list->next;
-        g_list_free_1(dbt->restore_job_list);
-        dbt->restore_job_list = next;
+//        next = dbt->restore_job_list->next;
+        dbt->restore_job_list=g_list_remove_link(dbt->restore_job_list,dbt->restore_job_list);
+//        g_list_free_1(dbt->restore_job_list);
+//        dbt->restore_job_list = next;
         dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
         giveup=FALSE;
