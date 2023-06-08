@@ -154,34 +154,34 @@ full_test(){
   do 
     echo "Executing test: $test"
 
-    $test -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # 10000 rows -- overriting database
-    $test -r 1000 --less-locking -G ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -r 1000 --less-locking -G ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # 10000 rows -- overriting database
-    $test -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # chunking the file to 10MB -- overriting database
     $test -F 10 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # chunking the file to 100MB -- overriting database
-    $test -F 100 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -F 100 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # statement size to 2MB -- overriting database
     $test -s 2000000 ${mydumper_general_options} 			-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
-    $test -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE 
+    $test -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES 
     # compress and rows
-    $test --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
-    $test --use-savepoints -F 10 --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test --use-savepoints -F 10 --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --load-data
     $test --load-data ${mydumper_general_options}                        -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     $test --load-data -c ${mydumper_general_options}                        -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
-    $test --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
     $test -c --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
-    $test -c -r 10000 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -c -r 10000 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # --csv
-    $test -c -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+    $test -c -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
 
