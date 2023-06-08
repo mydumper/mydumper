@@ -227,6 +227,11 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 
 
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+            if (load_data_fifo_filename!=NULL) 
+              m_remove(NULL, load_data_fifo_filename);
+            else
+              m_remove(NULL, load_data_filename);
+
           }else{
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
           }
@@ -253,7 +258,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 
   g_free(load_data_filename);
 
-  if (load_data_fifo_filename != NULL){
+/*  if (load_data_fifo_filename != NULL){
     if (remove(load_data_fifo_filename)) {
       g_warning("Thread %d: Failed to remove fifo file : %s", td->thread_id, load_data_fifo_filename);
     }else{
@@ -262,6 +267,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     remove_fifo_file(load_data_fifo_filename);
     g_free(load_data_fifo_filename);
   }
+*/
   myl_close(filename, infile);
   g_free(path);
   return r;

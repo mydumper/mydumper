@@ -210,9 +210,8 @@ void myl_close(char *filename, FILE *file){
     remove(filename);
     *dotpos='.';
   }
-  if (stream && no_delete == FALSE){
-    m_remove(NULL,filename);
-  }
+
+  m_remove(NULL,filename);
 }
 
 
