@@ -58,4 +58,5 @@ void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *co
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
 void change_master(GKeyFile * kf,gchar *group, GString *s);
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
+gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 #endif

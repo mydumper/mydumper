@@ -51,12 +51,10 @@ void flush(char *buffer, int from, int to, FILE *file){
       g_critical("error on writing");
 }
 
-
 gboolean has_mydumper_suffix(gchar *line){
   return
-    has_exec_per_thread_extension(line) ||
-    g_str_has_suffix(line,".dat") ||
-    g_str_has_suffix(line,".sql") ||
+    m_filename_has_suffix(line,".dat") ||
+    m_filename_has_suffix(line,".sql") ||
     g_str_has_suffix(line,"metadata");
 }
 
