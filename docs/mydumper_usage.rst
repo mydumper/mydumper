@@ -28,206 +28,410 @@ The :program:`mydumper` tool has several available options:
 
 .. program:: mydumper
 
-.. option:: --help, -?
+Connection Options
+------------------
+.. option:: -h, --host
 
-   Show help text
+  The host to connect to
 
-.. option:: --defaults-file
-   
-   Use the given option file. If the file does not exist or is otherwise inaccessible, no failure occurs
-   
-   Its possible to authenticate via --defaults-file.
-   A section [mydumper]/[myloader] or [client] is needed for authentication
-   
-   [mydumper]
-   user=
-   password=
+.. option:: -u, --user
 
-.. option:: --host, -h
+  Username with the necessary privileges
 
-   Hostname of MySQL server to connect to (default localhost)
+.. option:: -p, --password
 
-.. option:: --user, -u
+  User password
 
-   MySQL username with the correct privileges to execute the dump
+.. option:: -a, --ask-password
 
-.. option:: --password, -p
+  Prompt For User password
 
-   The corresponding password for the MySQL user
+.. option:: -P, --port
 
-.. option:: --port, -P
+  TCP/IP port to connect to
 
-   The port for the MySQL connection.
+.. option:: -S, --socket
 
-   .. note::
+  UNIX domain socket file to use for connection
 
-      For localhost TCP connections use 127.0.0.1 for :option:`--host`.
+.. option:: -C, --compress-protocol
 
-.. option:: --socket, -S
+  Use compression on the MySQL connection
 
-   The UNIX domain socket file to use for the connection
+.. option:: --ssl
 
-.. option:: --database, -B
+  Connect using SSL
 
-   Database to dump
+.. option:: --ssl-mode
 
-.. option:: --tables-list, -T
+  Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY
 
-   A comma separated list of tables to dump
+.. option:: --key
 
-.. option:: --threads, -t
+  The path name to the key file
 
-   The number of threads to use for dumping data, default is 4
+.. option:: --cert
 
-   .. note::
+  The path name to the certificate file
 
-      Other threads are used in mydumper, this option does not control these
+.. option:: --ca
 
-.. option:: --outputdir, -o
+  The path name to the certificate authority file
 
-   Output directory name, default is export-YYYYMMDD-HHMMSS
+.. option:: --capath
 
-.. option:: --statement-size, -s
+  The path name to a directory that contains trusted SSL CA certificates in PEM format
 
-   The maximum size for an insert statement before breaking into a new
-   statement, default 1,000,000 bytes
+.. option:: --cipher
 
-.. option:: --rows, -r
+  A list of permissible ciphers to use for SSL encryption
 
-   Split table into chunks of this many rows, default unlimited
+.. option:: --tls-version
 
-.. option:: --compress, -c
+  Which protocols the server permits for encrypted connections
 
-   Compress the output files
+Filter Options
+--------------
+.. option:: -x, --regex
 
-.. option:: --compress-input, -C
+  Regular expression for 'db.table' matching
 
-   Use client protocol compression for connections to the MySQL server
+.. option:: -B, --database
 
-.. option:: --build-empty-files, -e
+  Database to dump
 
-   Create empty dump files if there is no data to dump
+.. option:: -i, --ignore-engines
 
-.. option:: --regex, -x
+  Comma delimited list of storage engines to ignore
 
-   A regular expression to match against database and table
+.. option:: --where
 
-.. option:: --omit-from-file, -O
+  Dump only selected records.
 
-   File containing a list of database.table entries to skip, one per line; the
-   skipped entries have precedence over patterns specified by the regex option
+.. option:: -U, --updated-since
 
-.. option:: --ignore-engines, -i
+  Use Update_time to dump only tables updated in the last U days
 
-   Comma separated list of storage engines to ignore
+.. option:: --partition-regex
 
-.. option:: --insert-ignore, -N
+  Regex to filter by partition name.
 
-   Dump rows with INSERT IGNORE INTO instead of INSERT INTO
+.. option:: -O, --omit-from-file
 
-.. option:: --no-schemas, -m
+  File containing a list of database.table entries to skip, one per line (skips before applying regex option)
 
-   Do not dump schemas with the data
-   
-.. option:: --no-data, -d
+.. option:: -T, --tables-list
 
-   Do not dump table data
-   
-.. option:: --triggers, -G
+  Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2
 
-   Dump triggers
+Lock Options
+------------
+.. option:: -z, --tidb-snapshot
 
-.. option:: --events, -E
+  Snapshot to use for TiDB
 
-   Dump events
+.. option:: -k, --no-locks
 
-.. option:: --routines, -R
+  Do not execute the temporary shared read lock.
 
-   Dump stored procedures and functions
-
-.. option:: --no-views, -W
-
-   Do not dump views
-
-.. option:: --long-query-retries
-
-   Retry checking for long queries, default 0 (do not retry)
-
-.. option:: --long-query-retry-interval
-
-   Time to wait before retrying the long query check in seconds, default 60
-
-.. option:: --long-query-guard, -l
-
-   Timeout for long query execution in seconds, default 60
-
-.. option:: --kill-long-queries, -K
-
-   Kill long running queries instead of aborting the dump
-
-.. option:: --version, -V
-
-   Show the program version and exit
-
-.. option:: --verbose, -v
-
-   The verbosity of messages.  0 = silent, 1 = errors, 2 = warnings, 3 = info.
-   Default is 2.
-
-.. option:: --binlogs, -b
-
-   Get the binlogs from the server as well as the dump files (You need to compile with -DWITH_BINLOG=ON)
-
-.. option::  --daemon, -D
-
-   Enable daemon mode
-
-.. option:: --snapshot-interval, -I
-
-   Interval between each dump snapshot (in minutes), requires
-   :option:`--daemon`, default 60 (minutes)
-
-.. option:: --logfile, -L
-
-   A file to log mydumper output to instead of console output.  Useful for
-   daemon mode.
-
-.. option:: --no-locks, -k
-
-   Do not execute the temporary shared read lock.
-
-   .. warning::
-      
-      This will cause inconsistent backups.
-
-.. option:: --no-backup-locks
-
-	Do not use Percona Backup Locks
-
-.. option:: --[skip-]tz-utc
-
-   SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data 
-   when a server has data in different time zones or data is being moved 
-   between servers with different time zones, defaults to on use --skip-tz-utc 
-   to disable.
-
-.. option:: --less-locking
-
-   Minimize locking time on InnoDB tables grabbing a LOCK TABLE ... READ 
-   on all non-innodb tables.
-
-.. option:: --chunk-filesize -F
-
-   Split tables into chunks of this output file size. This value is in MB
-
-.. option:: --success-on-1146
-
-   Not increment error count and Warning instead of Critical in case of table doesn't exist
+  WARNING: This will cause inconsistent backups
 
 .. option:: --use-savepoints
 
-   Use savepoints to reduce metadata locking issues, needs SUPER privilege
-   
+  Use savepoints to reduce metadata locking issues, needs SUPER privilege
+
+.. option:: --no-backup-locks
+
+  Do not use Percona backup locks
+
+.. option:: --lock-all-tables
+
+  Use LOCK TABLE for all, instead of FTWRL
+
+.. option:: --less-locking
+
+  Minimize locking time on InnoDB tables.
+
+.. option:: --trx-consistency-only
+
+  Transactional consistency only
+
+PMM Options
+-----------
+.. option:: --pmm-path
+
+  which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution
+
+.. option:: --pmm-resolution
+
+  which default will be high
+
+Exec Options
+------------
+.. option:: --exec-threads
+
+  Amount of threads to use with --exec
+
+.. option:: --exec
+
+  Command to execute using the file as parameter
+
+.. option:: --exec-per-thread
+
+  Set the command that will receive by STDIN and write in the STDOUT into the output file
+
+.. option:: --exec-per-thread-extension
+
+  Set the extension for the STDOUT file when --exec-per-thread is used
+
+If long query running found
+---------------------------
+.. option:: --long-query-retries
+
+  Retry checking for long queries, default 0 (do not retry)
+
+.. option:: --long-query-retry-interval
+
+  Time to wait before retrying the long query check in seconds, default 60
+
+.. option:: -l, --long-query-guard
+
+  Set long query timer in seconds, default 60
+
+.. option:: -K, --kill-long-queries
+
+  Kill long running queries (instead of aborting)
+
+Job Options
+-----------
+.. option:: --max-rows
+
+  Limit the number of rows per block after the table is estimated, default 1000000. It has been deprecated, use --rows instead. Removed in future releases
+
+.. option:: --char-deep
+
+
+
+.. option:: --char-chunk
+
+
+
+.. option:: -r, --rows
+
+  Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds
+
+.. option:: --split-partitions
+
+  Dump partitions into separate files. This options overrides the --rows option for partitioned tables.
+
+Checksum Options
+----------------
+.. option:: -M, --checksum-all
+
+  Dump checksums for all elements
+
+.. option:: --data-checksums
+
+  Dump table checksums with the data
+
+.. option:: --schema-checksums
+
+  Dump schema table and view creation checksums
+
+.. option:: --routine-checksums
+
+  Dump triggers, functions and routines checksums
+
+Objects Options
+---------------
+.. option:: -m, --no-schemas
+
+  Do not dump table schemas with the data and triggers
+
+.. option:: -Y, --all-tablespaces
+
+  Dump all the tablespaces.
+
+.. option:: -d, --no-data
+
+  Do not dump table data
+
+.. option:: -G, --triggers
+
+  Dump triggers. By default, it do not dump triggers
+
+.. option:: -E, --events
+
+  Dump events. By default, it do not dump events
+
+.. option:: -R, --routines
+
+  Dump stored procedures and functions. By default, it do not dump stored procedures nor functions
+
+.. option:: --views-as-tables
+
+  Export VIEWs as they were tables
+
+.. option:: -W, --no-views
+
+  Do not dump VIEWs
+
+Statement Options
+-----------------
+.. option:: --load-data
+
+
+
+.. option:: --csv
+
+  Automatically enables --load-data and set variables to export in CSV format.
+
+.. option:: --fields-terminated-by
+
+
+
+.. option:: --fields-enclosed-by
+
+
+
+.. option:: --fields-escaped-by
+
+  Single character that is going to be used to escape characters in theLOAD DATA stament, default: '\'
+
+.. option:: --lines-starting-by
+
+  Adds the string at the begining of each row. When --load-data is usedit is added to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
+
+.. option:: --lines-terminated-by
+
+  Adds the string at the end of each row. When --load-data is used it isadded to the LOAD DATA statement. Its affects INSERT INTO statementsalso when it is used.
+
+.. option:: --statement-terminated-by
+
+  This might never be used, unless you know what are you doing
+
+.. option:: -N, --insert-ignore
+
+  Dump rows with INSERT IGNORE
+
+.. option:: --replace
+
+  Dump rows with REPLACE
+
 .. option:: --complete-insert
 
-   Use complete INSERT statements that include column names.
+  Use complete INSERT statements that include column names
+
+.. option:: --hex-blob
+
+  Dump binary columns using hexadecimal notation
+
+.. option:: --skip-definer
+
+  Removes DEFINER from the CREATE statement. By default, statements are not modified
+
+.. option:: -s, --statement-size
+
+  Attempted size of INSERT statement in bytes, default 1000000
+
+.. option:: --tz-utc
+
+  SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data when a server has data in different time zones or data is being moved between servers with different time zones, defaults to on use --skip-tz-utc to disable.
+
+.. option:: --skip-tz-utc
+
+
+
+.. option:: --set-names
+
+  Sets the names, use it at your own risk, default binary
+
+Extra Options
+-------------
+.. option:: -F, --chunk-filesize
+
+  Split tables into chunks of this output file size. This value is in MB
+
+.. option:: --exit-if-broken-table-found
+
+  Exits if a broken table has been found
+
+.. option:: --success-on-1146
+
+  Not increment error count and Warning instead of Critical in case of table doesn't exist
+
+.. option:: -e, --build-empty-files
+
+  Build dump files even if no data available from table
+
+.. option:: --no-check-generated-fields
+
+  Queries related to generated fields are not going to be executed.It will lead to restoration issues if you have generated columns
+
+.. option:: --order-by-primary
+
+  Sort the data by Primary Key or Unique key if no primary key exists
+
+.. option:: -c, --compress
+
+  Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP
+
+Daemon Options
+--------------
+.. option:: -D, --daemon
+
+  Enable daemon mode
+
+.. option:: -I, --snapshot-interval
+
+  Interval between each dump snapshot (in minutes), requires --daemon, default 60
+
+.. option:: -X, --snapshot-count
+
+  number of snapshots, default 2
+
+Application Options
+-------------------
+.. option:: -?, --help
+
+  Show help options
+
+.. option:: -o, --outputdir
+
+  Directory to output files to
+
+.. option:: --stream
+
+  It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given
+
+.. option:: -L, --logfile
+
+  Log file name to use, by default stdout is used
+
+.. option:: --disk-limits
+
+  Set the limit to pause and resume if determines there is no enough disk space.Accepts values like: '<resume>:<pause>' in MB.For instance: 100:500 will pause when there is only 100MB free and willresume if 500MB are available
+
+.. option:: -t, --threads
+
+  Number of threads to use, default 4
+
+.. option:: -V, --version
+
+  Show the program version and exit
+
+.. option:: --identifier-quote-character
+
+  This set the identifier quote character that is used to INSERT statements onlyon mydumper and to split statement on myloader. Use SQL_MODE to change theCREATE TABLE statementsPosible values are: BACKTICK and DOUBLE_QUOTE. Default: BACKTICK
+
+.. option:: -v, --verbose
+
+  Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2
+
+.. option:: --defaults-file
+
+  Use a specific defaults file. Default: /etc/mydumper.cnf
+
+.. option:: --defaults-extra-file
+
+  Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values
