@@ -9,6 +9,7 @@ executors:
   bionic_percona57:
     machine:
     - image: mydumper/mydumper-builder-bionic
+      docker_layer_caching: true
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -16,6 +17,7 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: percona:5.7
+      docker_layer_caching: true
       command: mysqld
       environment:
         MYSQL_USER: root
