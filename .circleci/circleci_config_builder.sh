@@ -47,7 +47,8 @@ list_all_vendors=( "percona57" "percona80" "mariadb1011")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
 list_mariadb_version=( "mariadb1011" )
-list_arch=( "arm" "amd" )
+# list_arch=( "arm" "amd" )
+list_arch=( "amd" )
 declare -A all_arch
 arch=arm
 all_arch[${arch}_resource_class]="arm.medium"
@@ -117,7 +118,9 @@ list_debian_os=("buster" "bullseye")
 list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
 
 
-list_build=("bionic_percona57_arm64" "bionic_percona57_amd64" "focal_percona57_arm64" "focal_percona57_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona57_arm64" "buster_percona57_amd64")
+#list_build=("bionic_percona57_arm64" "bionic_percona57_amd64" "focal_percona57_arm64" "focal_percona57_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona57_arm64" "buster_percona57_amd64")
+
+list_build=("bionic_percona57_amd64" "focal_percona57_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona57_amd64")
 
 
 filter_out="jammy|el9_percona57"

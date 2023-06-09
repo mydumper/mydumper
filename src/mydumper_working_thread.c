@@ -1673,6 +1673,10 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 //    schema_post = g_list_prepend(schema_post, sp);
   }
 
+
+  if (database->dump_triggers)
+    create_job_to_dump_schema_triggers(database, conf);
+
   g_free(query);
 
   return;
