@@ -7,7 +7,7 @@ orbs:
 executors:
 
   bionic_percona57:
-    docker:
+    machine:
     - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
@@ -2032,7 +2032,7 @@ jobs:
            - .
   build_jammy_percona80_arm64:
     executor: jammy_percona80
-    resource_class: arm.medium
+    resource_class: arm.large
     steps:
     - checkout
     - set_env_vars
