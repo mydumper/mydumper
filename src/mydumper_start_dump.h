@@ -226,6 +226,8 @@ struct db_table {
   struct function_pointer ** anonymized_function;
   gchar *where;
   gchar *limit;
+  gchar *columns_on_select;
+  gchar *columns_on_insert;
   guint num_threads;
   enum chunk_type chunk_type;
   GList *chunks;

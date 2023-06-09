@@ -216,6 +216,14 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(conf_per_table->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"columns_on_select") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(conf_per_table->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+          if (g_strcmp0(keys[j],"columns_on_insert") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
         }
       }
       g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);

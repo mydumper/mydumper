@@ -213,10 +213,16 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append(dbt->insert_statement, dbt->table);
   g_string_append_c(dbt->insert_statement, identifier_quote_character);
 
-  if (dbt->complete_insert) {
+  if (dbt->columns_on_insert){
     g_string_append(dbt->insert_statement, " (");
-    append_columns(dbt->insert_statement,fields,num_fields);
+    g_string_append(dbt->insert_statement, dbt->columns_on_insert);
     g_string_append(dbt->insert_statement, ")");
+  }else{
+    if (dbt->complete_insert) {
+      g_string_append(dbt->insert_statement, " (");
+      append_columns(dbt->insert_statement,fields,num_fields);
+      g_string_append(dbt->insert_statement, ")");
+    }
   } 
   g_string_append(dbt->insert_statement, " VALUES");
 }
@@ -612,7 +618,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */" : "",
-      tj->dbt->select_fields->str,
+      tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
       tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
        (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",
        (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
