@@ -154,6 +154,11 @@ void *worker_schema_thread(struct thread_data *td) {
     cont=process_schema(td);
   }
   g_message("S-Thread %d: Import completed", td->thread_id);
+
+  if (td->thrconn)
+    mysql_close(td->thrconn);
+  mysql_thread_end();
+  g_debug("S-Thread %d: ending", td->thread_id);
   return NULL;
 }
 
