@@ -31,7 +31,7 @@ build_rpm() {
     ls $SOURCE/$SUBDIR/*
     cp -r $SOURCE/$SUBDIR/* $WORK_DIR/SOURCES/$PROJECT-$VERSION
     cd $WORK_DIR/SOURCES
-    tar czf $PROJECT-$VERSION$.tar.gz $PROJECT-$VERSION/
+    tar czf $PROJECT-$VERSION.tar.gz $PROJECT-$VERSION/
     cd ..
     rpmbuild -ba $WORKSPACE/rpm/${PROJECT}.spec \
              --define "_topdir $WORK_DIR" \
