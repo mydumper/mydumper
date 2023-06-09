@@ -47,6 +47,18 @@ list_all_vendors=( "percona57" "percona80" "mariadb1011")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
 list_mariadb_version=( "mariadb1011" )
+list_arch=( "arm" "amd" )
+declare -A all_arch
+arch=arm
+all_arch[${arch}_resource_class]="arm.medium"
+all_arch[${arch}_rpm]="aarch64"
+all_arch[${arch}_deb]="arm64"
+
+arch=amd
+all_arch[${arch}_resource_class]="large"
+all_arch[${arch}_rpm]="x86_64"
+all_arch[${arch}_deb]="amd64"
+
 declare -A all_os
 os=bionic
 all_os[${os}_0]="bionic"
@@ -105,7 +117,7 @@ list_debian_os=("buster" "bullseye")
 list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
 
 
-list_build=("bionic_percona57" "focal_percona57" "jammy_percona80" "el7_percona57" "el8_percona57" "el9_percona80" "bullseye_percona80" "buster_percona57")
+list_build=("bionic_percona57_arm64" "bionic_percona57_amd64" "focal_percona57_arm64" "focal_percona57_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona57_arm64" "buster_percona57_amd64")
 
 
 filter_out="jammy|el9_percona57"
@@ -282,7 +294,7 @@ done
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh SSL GZIP
+        - run: bash ./test_mydumper.sh SSL
     - store_artifacts:
         path: /tmp/stream.sql
         destination: artifact-file
@@ -357,14 +369,15 @@ echo "
 "
 done
 done
-
+for arch in ${list_arch[@]}
+do
 for os in ${list_el_os[@]}
 do
         for vendor in ${list_all_vendors[@]}
         do
-echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    resource_class: large
+    resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
     - set_env_vars
@@ -374,9 +387,9 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
-    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
+    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
+    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}
 
     - persist_to_workspace:
          root: /tmp/package
@@ -384,16 +397,17 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
            - ."
 done
 done
+done
 
-
-
+for arch in ${list_arch[@]}
+do
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
         for vendor in ${list_all_vendors[@]}
         do
-echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
-    resource_class: large
+    resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
     - set_env_vars
@@ -403,9 +417,9 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
-    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_gzip
+    - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
+    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}
 
     - persist_to_workspace:
          root: /tmp/package
@@ -413,7 +427,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
            - ."
 done
 done
-
+done
 
 echo '  publish-github-release:
     docker:

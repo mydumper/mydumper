@@ -551,14 +551,9 @@ void remove_definer(GString * data){
 
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
-    g_string_append_printf(str, "%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
+    g_string_append_printf(str, " v%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
-#endif
-#ifdef ZWRAP_USE_ZSTD
-    g_string_append(str," with ZSTD");
-#else
-    g_string_append(str," with GZIP");
 #endif
     g_print("%s\n", str->str);
 }

@@ -150,9 +150,9 @@ static GOptionEntry chunks_entries[] = {
     {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
      "Limit the number of rows per block after the table is estimated, default 1000000. It has been deprecated, use --rows instead. Removed in future releases", NULL},
     {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "",NULL},
+     "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "",NULL},
+     "Defines in how many pieces should split the table. By default we use the amount of threads",NULL},
     {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
      "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
      NULL},
@@ -206,11 +206,11 @@ static GOptionEntry objects_entries[] = {
 
 static GOptionEntry statement_entries[] = {
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "", NULL },
+     "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files", NULL },
     { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
       "Automatically enables --load-data and set variables to export in CSV format.", NULL },
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"Defines the character that is written between fields", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"Defines the character to enclose fields. Default: \"", NULL },
     {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
       "Single character that is going to be used to escape characters in the"
       "LOAD DATA stament, default: '\\' ", NULL },
@@ -242,7 +242,7 @@ static GOptionEntry statement_entries[] = {
      "between servers with different time zones, defaults to on use "
      "--skip-tz-utc to disable.",
      NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
+    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "Doesn't add SET TIMEZONE on the backup files", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
