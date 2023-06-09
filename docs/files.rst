@@ -19,6 +19,27 @@ This is an example of the content of this file::
     Pos: 106
 
   Finished dump at: 2011-05-05 13:57:17
+  
+Since version 0.14.1-1 format has been changed to::
+
+  # Started dump at: 2023-06-09 11:47:18
+  [master]
+  # Channel_Name = '' # It can be use to setup replication FOR CHANNEL
+  File = mydumper1-bin.000017
+  Position = 241149225
+  Executed_Gtid_Set = 7b166a41-65a2-11ed-9de3-0800275ff74d:1-147115,7b166a41-65a2-11ed-9de3-0800275ff74e:1-61558
+
+  [`sakila`.`store`]
+  Rows = 2
+  data_checksum = 3119812626
+  schema_checksum = B7B99B4C
+  indexes_checksum = B4D31E3
+
+  [`sakila`]
+  schema_checksum = FDF2173B
+  post_checksum = 42085F07
+  # Finished dump at: 2023-06-09 11:47:18
+  
 
 Table Data
 ----------
@@ -26,13 +47,17 @@ The data from every table is written into a separate file, also if the
 :option:`--rows <mydumper --rows>` option is used then each chunk of table will
 be in a separate file.  The file names for this are in the format::
 
-  database.table.sql(.gz)
+  database.table.sql(.gz|.zst)
 
 or if chunked::
 
-  database.table.chunk.sql(.gz)
+  database.table.chunk.sql(.gz|.zst)
 
-Where 'chunk' is a number padded with up to 5 zeros.
+Where 'chunk' is a number padded with up to 5 zeros or:
+  database.table.chunk.chunk2.sql(.gz|.zst)
+
+Where 'chunk2' is a number padded with up to 5 zeros.
+
 
 Table Schemas
 -------------
@@ -40,7 +65,17 @@ As long as the :option:`--no-schemas <mydumper --no-schemas>` option is not spec
 create a file for the schema of every table it is writing data for.  The files
 for this are in the following format::
 
-  database.table-schema.sql(.gz)
+  database.table-schema.sql(.gz|.zst)
+
+Compression (since 0.15.1-1)
+----------------------------
+By default, mydumper is not compressing backup. In order to compress the file you need to use -c which 
+by default is going to use GZIP compression method. You can also use ZSTD to compress your backups.
+The internal compression mechanisim has been removed from the code and we are using /usr/bin/gzip and 
+/usr/bin/zstd. If you need to change to a different location or different compression software, you
+need to set::
+  --exec-per-thread
+  --exec-per-thread-extension
 
 Binary Logs
 -----------
