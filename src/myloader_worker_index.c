@@ -97,6 +97,10 @@ void *worker_index_thread(struct thread_data *td) {
     cont=process_index(td);
   }
 
+  if (td->thrconn)
+    mysql_close(td->thrconn);
+  mysql_thread_end();
+  g_debug("I-Thread %d: ending", td->thread_id);
   return NULL;
 }
 
