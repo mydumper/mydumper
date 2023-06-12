@@ -51,6 +51,7 @@ test_case_dir (){
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
       echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_mydumper_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
       exit $error
     fi
   fi
@@ -74,7 +75,10 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+      cat $tmp_mydumper_log
       cat $tmp_myloader_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
+      mv $tmp_myloader_log $mydumper_stor_dir
       exit $error
     fi
   fi
@@ -106,6 +110,7 @@ test_case_stream (){
     then
       echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
       cat $tmp_mydumper_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
       exit $error
     fi
   if [ "$PARTIAL" != "1" ]
@@ -126,6 +131,8 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
       echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
       cat $tmp_mydumper_log
       cat $tmp_myloader_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
+      mv $tmp_myloader_log $mydumper_stor_dir
       exit $error
     fi
   fi
