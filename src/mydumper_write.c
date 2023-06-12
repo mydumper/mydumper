@@ -213,10 +213,16 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append(dbt->insert_statement, dbt->table);
   g_string_append_c(dbt->insert_statement, identifier_quote_character);
 
-  if (dbt->complete_insert) {
+  if (dbt->columns_on_insert){
     g_string_append(dbt->insert_statement, " (");
-    append_columns(dbt->insert_statement,fields,num_fields);
+    g_string_append(dbt->insert_statement, dbt->columns_on_insert);
     g_string_append(dbt->insert_statement, ")");
+  }else{
+    if (dbt->complete_insert) {
+      g_string_append(dbt->insert_statement, " (");
+      append_columns(dbt->insert_statement,fields,num_fields);
+      g_string_append(dbt->insert_statement, ")");
+    }
   } 
   g_string_append(dbt->insert_statement, " VALUES");
 }
@@ -255,8 +261,9 @@ gboolean write_data(FILE *file, GString *data) {
 }
 
 
-void initialize_load_data_statement(GString *statement, gchar * table, const gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
-  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' REPLACE INTO TABLE `%s` ", basename, exec_per_thread_extension, table);
+void initialize_load_data_statement(GString *statement, struct db_table *dbt, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
+  gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
+  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' REPLACE INTO TABLE `%s` ", basename, exec_per_thread_extension, dbt->table);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
@@ -269,11 +276,16 @@ void initialize_load_data_statement(GString *statement, gchar * table, const gch
   if (lines_starting_by_ld)
     g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
   g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
-  GString * set_statement=append_load_data_columns(statement,fields,num_fields);
-  g_string_append(statement,")");
-  if (set_statement != NULL){
-    g_string_append(statement,set_statement->str);
-    g_string_free(set_statement,TRUE);
+  if (dbt->columns_on_insert){
+    g_string_append(statement,dbt->columns_on_insert);
+    g_string_append(statement,")");
+  }else{
+    GString * set_statement=append_load_data_columns(statement,fields,num_fields);
+    g_string_append(statement,")");
+    if (set_statement != NULL){
+      g_string_append(statement,set_statement->str);
+      g_string_free(set_statement,TRUE);
+    }
   }
   g_string_append(statement,";\n");
 }
@@ -291,7 +303,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->dat_filename);
   initialize_sql_statement(statement);
-  initialize_load_data_statement(statement, tj->dbt->table, set_names_str != NULL ? set_names_str : tj->dbt->character_set /* "BINARY"*/, basename, fields, num_fields);
+  initialize_load_data_statement(statement, tj->dbt, basename, fields, num_fields);
   if (!write_data(tj->sql_file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
     return FALSE;
@@ -612,7 +624,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
       (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */" : "",
-      tj->dbt->select_fields->str,
+      tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
       tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
        (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",
        (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
