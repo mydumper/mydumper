@@ -221,7 +221,9 @@ gboolean sig_triggered(void * user_data, int signal) {
       ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
     GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
     if (!daemon_mode){
-      fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+      char *datetimestr=m_date_time_new_now_local();
+      fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
+      g_free(datetimestr);
       for(i=0;i<num_threads;i++){
         g_mutex_lock(pause_mutex_per_thread[i]);
         g_async_queue_push(queue,pause_mutex_per_thread[i]);
@@ -232,11 +234,18 @@ gboolean sig_triggered(void * user_data, int signal) {
           c=fgetc(stdin);
         }while (c=='\n');
         if ( c == 'N' || c == 'n'){
+          datetimestr=m_date_time_new_now_local();
+          fprintf(stdout, "%s: Resuming backup\n", datetimestr);
+          g_free(datetimestr);
           for(i=0;i<num_threads;i++)
             g_mutex_unlock(pause_mutex_per_thread[i]);
+
           return TRUE;
         }
         if ( c == 'Y' || c == 'y'){
+          datetimestr=m_date_time_new_now_local();
+          fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
+          g_free(datetimestr);
           shutdown_triggered = TRUE;
           for(i=0;i<num_threads;i++)
             g_mutex_unlock(pause_mutex_per_thread[i]);

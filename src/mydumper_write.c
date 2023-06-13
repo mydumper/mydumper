@@ -459,7 +459,6 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       tj->st_in_file = 0;
       tj->filesize = 0;
       
-      check_pause_resume(tj->td);
     }
     g_string_set_size(statement_row, 0);
 
@@ -471,7 +470,10 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (!write_statement(tj->dat_file, &(tj->filesize), statement, dbt)) {
         return num_rows;
       }
-
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        return num_rows;
+      }
     }
   }
   if (statement->len > 0){
@@ -574,7 +576,10 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
-        check_pause_resume(tj->td);
+      }
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        return num_rows;
       }
       g_string_set_size(statement, 0);
     } else {
@@ -649,7 +654,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   if (load_data)
     num_rows = write_row_into_file_in_load_data_mode(conn, result, tj);
   else
-    num_rows=write_row_into_file_in_sql_mode(conn, result, tj);
+    num_rows = write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,
