@@ -545,8 +545,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
-
-    if (statement->len + statement_row->len + 1 > statement_size) {
+    if (statement->len + statement_row->len + 1 > statement_size || ((guint)ceil((float)tj->filesize / 1024 / 1024) >
+              chunk_filesize)) {
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
