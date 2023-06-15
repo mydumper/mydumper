@@ -545,7 +545,7 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
-    if (statement->len + statement_row->len + 1 > statement_size || ((guint)ceil((float)tj->filesize / 1024 / 1024) >
+    if (statement->len + statement_row->len + 1 > statement_size || (chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
               chunk_filesize)) {
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
@@ -564,15 +564,9 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
       if (chunk_filesize &&
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
               chunk_filesize) {
-        // We reached the file size limit, we need to rotate the file
-//        if (sections == 1){
-//          fn++;
-//        }else{
-          tj->sub_part++;
-//        }
+        tj->sub_part++;
         m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1);
         tj->sql_file=NULL;
-        //initialize_sql_fn(tj);
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;

@@ -26,7 +26,7 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
@@ -38,6 +38,26 @@
 
 
 GAsyncQueue * innodb_optimize_keys_all_tables_queue=NULL;
+GThread **index_threads = NULL;
+struct thread_data *index_td = NULL;
+static GMutex *init_connection_mutex=NULL;
+void *worker_index_thread(struct thread_data *td);
+
+void initialize_worker_index(struct configuration *conf){
+  guint n=0;
+//  index_mutex = g_mutex_new();
+  init_connection_mutex = g_mutex_new();
+  index_threads = g_new(GThread *, max_threads_for_index_creation);
+  index_td = g_new(struct thread_data, max_threads_for_index_creation);
+  innodb_optimize_keys_all_tables_queue=g_async_queue_new();
+  for (n = 0; n < max_threads_for_index_creation; n++) {
+    index_td[n].conf = conf;
+    index_td[n].thread_id = n + 1;
+    index_td[n].status = WAITING;
+    index_threads[n] =
+        g_thread_create((GThreadFunc)worker_index_thread, &index_td[n], TRUE, NULL);
+  }
+}
 
 gboolean process_index(struct thread_data * td){
   struct control_job *job=g_async_queue_pop(td->conf->index_queue);
@@ -45,29 +65,19 @@ gboolean process_index(struct thread_data * td){
     return FALSE;
 
   struct db_table *dbt=job->data.restore_job->dbt;
-    execute_use_if_needs_to(td, job->use_database, "Restoring index");
-    dbt->start_index_time=g_date_time_new_now_local();
-    g_message("restoring index: %s.%s", dbt->database->name, dbt->table);
-    process_job(td, job);
-    dbt->finish_time=g_date_time_new_now_local();
-    g_mutex_lock(dbt->mutex);
-    dbt->schema_state=ALL_DONE;
-    g_mutex_unlock(dbt->mutex);
-    g_mutex_lock(index_mutex);
-    index_threads_counter--;
-    g_mutex_unlock(index_mutex);
+  execute_use_if_needs_to(td, job->use_database, "Restoring index");
+  dbt->start_index_time=g_date_time_new_now_local();
+  g_message("restoring index: %s.%s", dbt->database->name, dbt->table);
+  process_job(td, job);
+  dbt->finish_time=g_date_time_new_now_local();
+  g_mutex_lock(dbt->mutex);
+  dbt->schema_state=ALL_DONE;
+  g_mutex_unlock(dbt->mutex);
+//  g_mutex_lock(index_mutex);
+//  index_threads_counter--;
+//  g_mutex_unlock(index_mutex);
   return TRUE;
 }
-
-
-void create_index_shutdown_job(struct configuration *conf){
-  guint n=0;
-  for (n = 0; n < max_threads_for_index_creation; n++) {
-    g_async_queue_push(conf->index_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-  }
-}
-
-static GMutex *init_connection_mutex=NULL;
 
 void *worker_index_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
@@ -104,20 +114,10 @@ void *worker_index_thread(struct thread_data *td) {
   return NULL;
 }
 
-GThread **index_threads = NULL;
-struct thread_data *index_td = NULL;
-
-void initialize_worker_index(struct configuration *conf){
+void create_index_shutdown_job(struct configuration *conf){
   guint n=0;
-  init_connection_mutex = g_mutex_new();
-  index_threads = g_new(GThread *, max_threads_for_index_creation);
-  index_td = g_new(struct thread_data, max_threads_for_index_creation);
-  innodb_optimize_keys_all_tables_queue=g_async_queue_new();
   for (n = 0; n < max_threads_for_index_creation; n++) {
-    index_td[n].conf = conf;
-    index_td[n].thread_id = n + 1;
-    index_threads[n] =
-        g_thread_create((GThreadFunc)worker_index_thread, &index_td[n], TRUE, NULL);
+    g_async_queue_push(conf->index_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
   }
 }
 

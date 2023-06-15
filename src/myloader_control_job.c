@@ -22,7 +22,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_common.h"
 #include "myloader_restore.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
@@ -34,8 +34,8 @@ GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
 GThread *control_job_t = NULL;
 
 gint last_wait=0;
-guint index_threads_counter = 0;
-GMutex *index_mutex=NULL;
+//guint index_threads_counter = 0;
+//GMutex *index_mutex=NULL;
 void *control_job_thread(struct configuration *conf);
 void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt);
 
@@ -47,7 +47,7 @@ void initialize_control_job (struct configuration *conf){
 //  give_me_another_job_queue = g_async_queue_new();
   control_job_t = g_thread_create((GThreadFunc)control_job_thread, conf, TRUE, NULL);
 
-  index_threads_counter = 0;
+//  index_threads_counter = 0;
 }
 
 struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {

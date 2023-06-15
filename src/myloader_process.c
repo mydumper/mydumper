@@ -25,7 +25,7 @@
 #include "myloader_stream.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
