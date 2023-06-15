@@ -86,7 +86,6 @@ GOptionGroup * load_connection_entries(GOptionContext *context){
   return connection_group;
 }
 
-gboolean reconnect = 1;
 
 void configure_connection(MYSQL *conn) {
   if (connection_defaults_file != NULL)
@@ -95,7 +94,6 @@ void configure_connection(MYSQL *conn) {
     mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, connection_default_file_group);
   
   mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
-  mysql_options(conn, MYSQL_OPT_RECONNECT, &reconnect);
 
   mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", program_name);
   gchar *version=g_strdup_printf("Release %s", VERSION);
