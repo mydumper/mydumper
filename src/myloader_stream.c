@@ -94,6 +94,13 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
 //	  g_message("FOUND --");
           if (buffer[last_pos] == '\n' || buffer[last_pos] == '\0'){
+
+            if (buffer[last_pos] == '\0'){
+              diff=buffer_len-line_from;
+              g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
+              goto read_more;
+
+            }
             if (file != NULL ){
               if (total_size < b){
                 g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
