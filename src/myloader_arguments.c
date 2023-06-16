@@ -90,7 +90,7 @@ static GOptionEntry execution_entries[] = {
     {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes and it adds them at the end. Options: AFTER_IMPORT_PER_TABLE and AFTER_IMPORT_ALL_TABLES. Default: AFTER_IMPORT_PER_TABLE", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str,
-      "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
+      "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
 
