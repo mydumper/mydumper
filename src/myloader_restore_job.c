@@ -36,7 +36,7 @@ static GMutex *progress_mutex = NULL;
 static GMutex *single_threaded_create_table = NULL;
 GMutex *shutdown_triggered_mutex=NULL;
 unsigned long long int progress = 0;
-enum purge_mode purge_mode;
+enum purge_mode purge_mode = FAIL;
 
 void initialize_restore_job(gchar * pm_str){
   file_list_to_do = g_async_queue_new();
@@ -52,12 +52,14 @@ void initialize_restore_job(gchar * pm_str){
       purge_mode=DELETE;
     } else if (!strcmp(pm_str,"NONE")){
       purge_mode=NONE;
+    } else if (!strcmp(pm_str,"FAIL")){
+      purge_mode=FAIL;
     } else {
       m_error("Purge mode unknown");
     }
   } else if (overwrite_tables)
     purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
-  else purge_mode=NONE;
+  else purge_mode=FAIL; // This means that if -o is not set and CREATE TABLE statement fails, myloader will stop. 
 }
 
 struct data_restore_job * new_data_restore_job_internal( guint index, guint part, guint sub_part){
@@ -226,7 +228,10 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         g_message("Thread %d: Creating table `%s`.`%s` from content in %s.", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_atomic_int_inc(&(detailed_errors.schema_errors));
-          g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+          if (purge_mode == FAIL)
+            g_error("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+          else 
+            g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }else{
           get_total_done(td->conf, &total);
           g_message("Thread %d: Table `%s`.`%s` created. Tables %d of %d completed", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
