@@ -26,31 +26,34 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_worker_loader.h"
 #include "connection.h"
 #include <errno.h>
 #include "myloader_global.h"
+#include "myloader_worker_index.h"
+#include <unistd.h>
 
+
+GThread **threads = NULL;
+struct thread_data *loader_td = NULL;
+void *loader_thread(struct thread_data *td);
 static GMutex *init_mutex=NULL;
-//static GMutex *index_mutex=NULL;
-//guint index_threads_counter = 0;
 guint sync_threads_remaining;
 guint sync_threads_remaining1;
 guint sync_threads_remaining2;
-
 GMutex *sync_mutex;
 GMutex *sync_mutex1;
 GMutex *sync_mutex2;
 GMutex *view_mutex;
 
-void initialize_job(gchar * pm_str){
-  initialize_restore_job(pm_str);
+void initialize_loader_threads(struct configuration *conf){
   init_mutex = g_mutex_new();
-  index_mutex = g_mutex_new();
+  view_mutex=g_mutex_new();
   sync_threads_remaining=num_threads;
   sync_threads_remaining1=num_threads;
   sync_threads_remaining2=num_threads;
@@ -60,43 +63,20 @@ void initialize_job(gchar * pm_str){
   g_mutex_lock(sync_mutex);
   g_mutex_lock(sync_mutex1);
   g_mutex_lock(sync_mutex2);
-
-  view_mutex=g_mutex_new();
-
-
+  guint n=0;
+  threads = g_new(GThread *, num_threads);
+  loader_td = g_new(struct thread_data, num_threads);
+  for (n = 0; n < num_threads; n++) {
+    loader_td[n].conf = conf;
+    loader_td[n].thread_id = n + 1;
+    threads[n] =
+        g_thread_create((GThreadFunc)loader_thread, &loader_td[n], TRUE, NULL);
+    // Here, the ready queue is being used to serialize the connection to the database.
+    // We don't want all the threads try to connect at the same time
+    g_async_queue_pop(conf->ready);
+  }
 }
-/*
-gboolean process_index(struct thread_data * td){
-  gboolean b=FALSE;
-//  g_mutex_lock(index_mutex);
-//  if ( max_threads_for_index_creation > index_threads_counter){
-    struct control_job *job=g_async_queue_pop(td->conf->index_queue);
-//    if (job != NULL){
-    struct db_table *dbt=job->data.restore_job->dbt;
-    if (dbt!=NULL){
-//      index_threads_counter++;
-//      g_mutex_unlock(index_mutex);
-      execute_use_if_needs_to(td, job->use_database, "Restoring index");
-      dbt->start_index_time=g_date_time_new_now_local();
-//      g_message("restoring index: %s.%s", dbt->database, dbt->table);
-      b=process_job(td, job);
-      dbt->finish_time=g_date_time_new_now_local();
-//      job->data.restore_job->dbt->index_completed=TRUE;
-      g_mutex_lock(index_mutex);
-      index_threads_counter--;
-      g_mutex_unlock(index_mutex);
-      b=TRUE;
-    }
-//    }else{
-//      g_message("Thread %d: No index job... continueing", td->thread_id);
-//    }
-//  }else{
-//    g_message("Too many threads for indexing: %d > %d", max_threads_for_index_creation, index_threads_counter);
-//  }
-//  g_mutex_unlock(index_mutex);
-  return b;
-}
-*/
+
 void sync_threads(guint *counter, GMutex *mutex){
   if (g_atomic_int_dec_and_test(counter)){
     g_mutex_unlock(mutex);
@@ -173,36 +153,46 @@ void *loader_thread(struct thread_data *td) {
   return NULL;
 }
 
-GThread **threads = NULL;
-struct thread_data *td = NULL;
-
-void initialize_loader_threads(struct configuration *conf){
-  guint n=0;
-  threads = g_new(GThread *, num_threads);
-  td = g_new(struct thread_data, num_threads);
-  for (n = 0; n < num_threads; n++) {
-    td[n].conf = conf;
-    td[n].thread_id = n + 1;
-    threads[n] =
-        g_thread_create((GThreadFunc)loader_thread, &td[n], TRUE, NULL);
-    // Here, the ready queue is being used to serialize the connection to the database.
-    // We don't want all the threads try to connect at the same time
-    g_async_queue_pop(conf->ready);
-  }
-}
 
 void wait_loader_threads_to_finish(){
   guint n=0;
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
-  restore_job_finish(); 
-/*  if (shutdown_triggered)
-    g_async_queue_push(file_list_to_do, g_strdup("NO_MORE_FILES"));
-    */
+  restore_job_finish();
 }
 
+void inform_restore_job_running(){
+  if (shutdown_triggered){
+    guint n=0, sum=0, prev_sum=0;
+    for (n = 0; n < num_threads; n++) {
+      sum+=loader_td[n].status == STARTED ? 1 : 0;
+    }
+    fprintf(stdout, "Printing remaining loader threads every %d seconds", RESTORE_JOB_RUNNING_INTERVAL);
+    while (sum>0){
+      if (prev_sum != sum){
+        fprintf(stdout, "\nThere are %d loader thread still working", sum);
+        fflush(stdout);
+      }else{
+        fprintf(stdout, ".");
+        fflush(stdout);
+      }
+      sleep(RESTORE_JOB_RUNNING_INTERVAL);
+      prev_sum=sum;
+      sum=0;
+      for (n = 0; n < num_threads; n++) {
+        sum+=loader_td[n].status == STARTED ? 1 : 0;
+      }
+    }
+    fprintf(stdout, "\nAll loader thread had finished\n");
+  }
+}
+
+
 void free_loader_threads(){
-  g_free(td);
+  g_free(loader_td);
   g_free(threads);
 }
+
+
+

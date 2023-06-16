@@ -459,7 +459,6 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       tj->st_in_file = 0;
       tj->filesize = 0;
       
-      check_pause_resume(tj->td);
     }
     g_string_set_size(statement_row, 0);
 
@@ -471,7 +470,10 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
       if (!write_statement(tj->dat_file, &(tj->filesize), statement, dbt)) {
         return num_rows;
       }
-
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        return num_rows;
+      }
     }
   }
   if (statement->len > 0){
@@ -543,8 +545,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
-
-    if (statement->len + statement_row->len + 1 > statement_size) {
+    if (statement->len + statement_row->len + 1 > statement_size || (chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              chunk_filesize)) {
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
@@ -562,19 +564,16 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
       if (chunk_filesize &&
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
               chunk_filesize) {
-        // We reached the file size limit, we need to rotate the file
-//        if (sections == 1){
-//          fn++;
-//        }else{
-          tj->sub_part++;
-//        }
+        tj->sub_part++;
         m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1);
         tj->sql_file=NULL;
-        //initialize_sql_fn(tj);
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
-        check_pause_resume(tj->td);
+      }
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        return num_rows;
       }
       g_string_set_size(statement, 0);
     } else {
@@ -649,7 +648,7 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   if (load_data)
     num_rows = write_row_into_file_in_load_data_mode(conn, result, tj);
   else
-    num_rows=write_row_into_file_in_sql_mode(conn, result, tj);
+    num_rows = write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,

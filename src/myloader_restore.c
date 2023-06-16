@@ -23,7 +23,7 @@
 #include "common.h"
 #include <errno.h>
 #include "myloader.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
 #include "connection.h"
@@ -32,6 +32,7 @@
 gboolean skip_definer = FALSE;
 int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
 {
+  
   guint en=mysql_real_query(td->thrconn, data->str, data->len);
   if (en) {
     if (is_schema)

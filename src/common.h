@@ -94,3 +94,4 @@ void m_warning(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
+gchar *m_date_time_new_now_local();

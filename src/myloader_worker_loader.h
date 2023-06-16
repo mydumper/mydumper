@@ -14,15 +14,9 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-
-//enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
-
-//struct job * new_job (enum job_type type, void *job_data, char *use_database);
-//gboolean process_job(struct thread_data *td, struct job *job);
-void initialize_job();
-void *loader_thread(struct thread_data *td);
+#include "myloader.h"
+#define RESTORE_JOB_RUNNING_INTERVAL 10
 void initialize_loader_threads(struct configuration *conf);
 void wait_loader_threads_to_finish();
 void free_loader_threads();
-gboolean process_index(struct thread_data * td);
-gboolean try_process_index(struct thread_data * td);
+void inform_restore_job_running();

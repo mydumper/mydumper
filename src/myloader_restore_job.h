@@ -20,7 +20,6 @@
 #include "myloader.h"
 
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
-
 enum purge_mode { NONE, DROP, TRUNCATE, DELETE };
 
 struct data_restore_job{

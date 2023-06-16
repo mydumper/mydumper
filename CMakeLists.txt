@@ -62,7 +62,7 @@ MARK_AS_ADVANCED(CMAKE)
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h )
 SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/regex.c )
 SET( MYDUMPER_SRCS src/mydumper.c ${SHARED_SRCS} src/mydumper_pmm_thread.c src/mydumper_start_dump.c src/mydumper_jobs.c src/mydumper_common.c src/mydumper_stream.c src/mydumper_database.c src/mydumper_working_thread.c src/mydumper_daemon_thread.c src/mydumper_exec_command.c src/mydumper_masquerade.c src/mydumper_chunks.c src/mydumper_write.c src/mydumper_arguments.c src/common_options.c)
-SET( MYLOADER_SRCS src/myloader.c ${SHARED_SRCS} src/myloader_pmm_thread.c src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_jobs_manager.c src/myloader_directory.c src/myloader_restore.c src/myloader_restore_job.c src/myloader_control_job.c src/myloader_intermediate_queue.c src/myloader_arguments.c src/common_options.c src/myloader_worker_index.c src/myloader_worker_schema.c )
+SET( MYLOADER_SRCS src/myloader.c ${SHARED_SRCS} src/myloader_pmm_thread.c src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_directory.c src/myloader_restore.c src/myloader_restore_job.c src/myloader_control_job.c src/myloader_intermediate_queue.c src/myloader_arguments.c src/common_options.c src/myloader_worker_index.c src/myloader_worker_schema.c src/myloader_worker_loader.c )
 
 add_executable(mydumper ${MYDUMPER_SRCS})
 target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )

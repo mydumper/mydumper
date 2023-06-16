@@ -793,6 +793,7 @@ void check_pause_resume( struct thread_data *td ){
   if (td->conf->pause_resume){
     td->pause_resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (td->pause_resume_mutex != NULL){
+      g_message("Thread %d: Pausing thread",td->thread_id);
       g_mutex_lock(td->pause_resume_mutex);
       g_mutex_unlock(td->pause_resume_mutex);
       td->pause_resume_mutex=NULL;
@@ -808,7 +809,8 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean (*p)(),
       f();
     job = (struct job *)g_async_queue_pop(queue);
     if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
-      continue;
+      g_message("Thread %d: Process has been cacelled",td->thread_id);
+      return;
     }
     if (!p(td, job)){
       break;
@@ -892,7 +894,11 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   }
 }
 
-void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
+guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
+  check_pause_resume(td);
+  if (shutdown_triggered) {
+    return 1;
+  }
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   if (tj->chunk_step->integer_step.check_max){
 //    g_message("thread: %d Updating MAX", td->thread_id);
@@ -936,18 +942,25 @@ void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   tj->chunk_step->integer_step.nmin=tj->chunk_step->integer_step.cursor;
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+  return 0;
 }
 
 void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step;
-  process_integer_chunk_job(td,tj);
+  if (process_integer_chunk_job(td,tj)){
+    g_message("Thread %d: Job has been cacelled",td->thread_id);
+    return;
+  }
   g_atomic_int_inc(dbt->chunks_completed);
   if (cs->integer_step.prefix)
     g_free(cs->integer_step.prefix);
   cs->integer_step.prefix=NULL;
   while ( cs->integer_step.nmin < cs->integer_step.nmax ){
-    process_integer_chunk_job(td,tj);
+    if (process_integer_chunk_job(td,tj)){
+      g_message("Thread %d: Job has been cacelled",td->thread_id);
+      return;
+    }
     g_atomic_int_inc(dbt->chunks_completed);
   }
   g_mutex_lock(dbt->chunks_mutex);
@@ -964,7 +977,11 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
 }
 
 
-void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
+guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
+  check_pause_resume(td);
+  if (shutdown_triggered) {
+    return 1;
+  }
   g_mutex_lock(tj->chunk_step->char_step.mutex);
   update_where_on_table_job(td, tj);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
@@ -994,6 +1011,7 @@ void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->char_step.mutex);
   next_chunk_in_char_step(tj->chunk_step);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
+  return 0;
 }
 
 
@@ -1023,7 +1041,10 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
       }
     }else{
       if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
-        process_char_chunk_job(td,tj);
+        if (process_char_chunk_job(td,tj)){
+          g_message("Thread %d: Job has been cacelled",td->thread_id);
+          return;
+        }
       }else{
         g_mutex_lock(cs->char_step.mutex);
         cs->char_step.status=2;
@@ -1033,7 +1054,10 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
     }
   }
   if (g_strcmp0(cs->char_step.cursor, cs->char_step.cmin)!=0)
-    process_char_chunk_job(td,tj);
+    if (process_char_chunk_job(td,tj)){
+      g_message("Thread %d: Job has been cacelled",td->thread_id);
+      return;
+    }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->char_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
@@ -1045,6 +1069,9 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj){
   union chunk_step *cs = tj->chunk_step;
   gchar *partition=NULL;
   while (cs->partition_step.list != NULL){
+    if (shutdown_triggered) {
+      return;
+    }
     g_mutex_lock(cs->partition_step.mutex);
     partition=g_strdup_printf(" PARTITION (%s) ",(char*)(cs->partition_step.list->data));
 //    g_message("Partition text: %s", partition);

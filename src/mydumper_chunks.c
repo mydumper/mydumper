@@ -755,6 +755,9 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
   gboolean are_there_jobs_defining=FALSE;
   for (;;) {
     g_async_queue_pop(pop_queue);
+    if (shutdown_triggered) {
+      return; 
+    }
     dbt=NULL;
     cs=NULL;
     are_there_jobs_defining=FALSE;

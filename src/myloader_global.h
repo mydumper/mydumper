@@ -94,7 +94,7 @@ extern gchar *exec_per_thread;
 extern gchar *exec_per_thread_extension;
 extern gchar **exec_per_thread_cmd;
 
-extern guint index_threads_counter;
+//extern guint index_threads_counter;
 extern GMutex *index_mutex;
 extern gchar **zstd_decompress_cmd;
 extern gchar **gzip_decompress_cmd;

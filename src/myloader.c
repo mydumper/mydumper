@@ -49,7 +49,7 @@
 #include "myloader_process.h"
 #include "myloader_common.h"
 #include "common_options.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_pmm_thread.h"
@@ -59,6 +59,7 @@
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
+#include "myloader_worker_loader.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -272,7 +273,8 @@ int main(int argc, char *argv[]) {
       g_error_free(serror);
     }
   }
-  initialize_job(purge_mode_str);
+//  initialize_job(purge_mode_str);
+  initialize_restore_job(purge_mode_str);
   char *current_dir=g_get_current_dir();
   if (!input_directory) {
     if (stream){
@@ -388,6 +390,7 @@ int main(int argc, char *argv[]) {
   t.conf = &conf;
   t.thrconn = conn;
   t.current_database=NULL;
+  t.status=WAITING;
 
   if (tables_list)
     tables = get_table_list(tables_list);
@@ -504,11 +507,12 @@ int main(int argc, char *argv[]) {
   free_set_names();
   print_errors();
 
+  stop_signal_thread();
+
   if (logoutfile) {
     fclose(logoutfile);
   }
 
-  stop_signal_thread();
 /*
   GList * tl=g_list_sort(conf.table_list, compare_by_time);
   g_message("Import timings:");
