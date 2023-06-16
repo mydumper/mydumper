@@ -507,11 +507,12 @@ int main(int argc, char *argv[]) {
   free_set_names();
   print_errors();
 
+  stop_signal_thread();
+
   if (logoutfile) {
     fclose(logoutfile);
   }
 
-  stop_signal_thread();
 /*
   GList * tl=g_list_sort(conf.table_list, compare_by_time);
   g_message("Import timings:");

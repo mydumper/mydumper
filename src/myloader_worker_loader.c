@@ -163,21 +163,26 @@ void wait_loader_threads_to_finish(){
 
 void inform_restore_job_running(){
   if (shutdown_triggered){
-    guint n=0, sum=1, prev_sum=0;
+    guint n=0, sum=0, prev_sum=0;
+    for (n = 0; n < num_threads; n++) {
+      sum+=loader_td[n].status == STARTED ? 1 : 0;
+    }
     while (sum>0){
+      if (prev_sum != sum){
+        fprintf(stdout, "\nThere are %d loader thread still working", sum);
+        fflush(stdout);
+      }else{
+        fprintf(stdout, ".");
+        fflush(stdout);
+      }
+      sleep(1);
+      prev_sum=sum;
       sum=0;
       for (n = 0; n < num_threads; n++) {
         sum+=loader_td[n].status == STARTED ? 1 : 0;
       }
-      if (prev_sum != sum){
-        fprintf(stdout, "There are %d loader thread still working\n", sum);
-      }else{
-        fprintf(stdout, ".\n");
-      }
-      sleep(1);
-      prev_sum=sum;
     }
-    fprintf(stdout, "All loader thread had finished\n");
+    fprintf(stdout, "\nAll loader thread had finished\n");
   }
 }
 
