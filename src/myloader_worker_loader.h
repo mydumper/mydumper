@@ -15,7 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include "myloader.h"
-
+#define RESTORE_JOB_RUNNING_INTERVAL 10
 void initialize_loader_threads(struct configuration *conf);
 void wait_loader_threads_to_finish();
 void free_loader_threads();

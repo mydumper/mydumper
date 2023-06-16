@@ -31,6 +31,7 @@
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_worker_loader.h"
 #include "connection.h"
 #include <errno.h>
 #include "myloader_global.h"
@@ -167,6 +168,7 @@ void inform_restore_job_running(){
     for (n = 0; n < num_threads; n++) {
       sum+=loader_td[n].status == STARTED ? 1 : 0;
     }
+    fprintf(stdout, "Printing remaining loader threads every %d seconds", RESTORE_JOB_RUNNING_INTERVAL);
     while (sum>0){
       if (prev_sum != sum){
         fprintf(stdout, "\nThere are %d loader thread still working", sum);
@@ -175,7 +177,7 @@ void inform_restore_job_running(){
         fprintf(stdout, ".");
         fflush(stdout);
       }
-      sleep(1);
+      sleep(RESTORE_JOB_RUNNING_INTERVAL);
       prev_sum=sum;
       sum=0;
       for (n = 0; n < num_threads; n++) {
