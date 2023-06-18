@@ -13,7 +13,7 @@ mydumper requires the following before it can be compiled:
 
 Additionally the following packages are optional:
 
- * `python-sphinx <http://sphinx.pocoo.org/>`_ (for documentation)
+ * `python-sphinx <https://www.sphinx-doc.org/>`_ (for documentation)
 
 Ubuntu/Debian
 ^^^^^^^^^^^^^
