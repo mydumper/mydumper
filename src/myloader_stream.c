@@ -72,7 +72,7 @@ void *process_stream(struct configuration *stream_conf){
   }
   do {
 read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff)+diff;
-    g_message("Reading more: %s", buffer);
+//    g_message("Reading more: %s", buffer);
     next_line_from=0;
     pos=0;
     diff=0;
