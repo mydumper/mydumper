@@ -149,7 +149,6 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d filename_sapce: %d DATA: %s \n buffer_len: %d", pos,line_end, line_from, last_pos, next_line_from, GPOINTER_TO_INT(filename_space->next->data), &(buffer[line_from]), buffer_len);
               g_error("Buffer is not large enough");
             }
-g_message("coping buffer");
             diff=0; // buffer_len-line_from;
             g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
             goto read_more;
