@@ -72,7 +72,7 @@ void *process_stream(struct configuration *stream_conf){
   }
   do {
 read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff)+diff;
-
+    g_message("Reading more: %s", buffer);
     next_line_from=0;
     pos=0;
     diff=0;
@@ -84,17 +84,26 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
         if (buffer[pos] =='\n')
           pos++;
         line_from=next_line_from;
-        GList *filename_space=NULL;
+//        GList *filename_space=NULL;
         while (pos < buffer_len && buffer[pos] !='\n' && buffer[pos] !='\0' ){
-          if ( buffer[pos] ==' ' ) filename_space=g_list_append(filename_space, GINT_TO_POINTER(pos));
+//          if ( buffer[pos] ==' ' ) filename_space=g_list_append(filename_space, GINT_TO_POINTER(pos));
           pos++;
         }
 //	g_message("DATA: %d %d  %s",line_from, pos, &(buffer[line_from]));
         last_pos=pos;
         line_end=pos-1;
+        // Do we have enough characters to compare?
+//        g_message("line_from: %d  line_end: %d  buffer: '%s' | g_strstr_len: %s  | cmp = %d | needle: '%s' ", line_from, line_end, &(buffer[line_from]), g_strstr_len("\n-- ", -1 ,&(buffer[line_from])), (buffer[pos] =='\0'), &(buffer[line_from]));
+        if ( ((line_end-line_from) < 5) && ((line_end-line_from) >= 1)  && ( buffer[pos] =='\0' ) && (g_strstr_len("\n-- ", -1 ,&(buffer[line_from])) != NULL )){
+//            g_message("Coping data 0 %d", buffer_len );
+            diff=buffer_len-line_from;
+            g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
+            goto read_more;
+        }
+
         // Is a header?
         if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
-//	  g_message("FOUND -- last_post: %d", last_pos);
+//        g_message("FOUND -- last_post: %d", last_pos);
           if (buffer[last_pos] == '\n'){
             if (file != NULL ){
               if (total_size < b){
@@ -112,16 +121,12 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             }
             previous_filename=g_strdup(filename);
             g_free(filename);
-            gchar a=buffer[last_pos-(line_from)];
-            buffer[last_pos-(line_from)]='\0';
 //g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d filename_sapce: %d", pos,line_end, line_from, last_pos, next_line_from, GPOINTER_TO_INT(filename_space->next->data));
-//            if (line_from==last_pos)
-//m_error("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d", pos,line_end, line_from, last_pos, next_line_from);
-            gchar * d=g_strndup(&(buffer[GPOINTER_TO_INT(filename_space->next->data)]),last_pos-GPOINTER_TO_INT(filename_space->next->data));
-            filename=g_strndup(&(buffer[line_from+4]),GPOINTER_TO_INT(filename_space->next->data)-(line_from+4) +1 );
-            b = g_ascii_strtoull(d, NULL, 10);
-    //        g_message("Raaded Size from file is %d", b);
-            buffer[last_pos-(line_from)]=a;
+            gchar ** sp=g_strsplit(&(buffer[line_from]), " ", 3);
+            filename=g_strdup(sp[1]);
+            b = g_ascii_strtoull(sp[2], NULL, 10);
+            g_strfreev(sp);
+//          g_message("Raaded Size from file is %d", b);
             real_filename = g_build_filename(directory,filename,NULL);
 //	    g_message("FILENAME: %s", filename);
             if (has_mydumper_suffix(filename)){
@@ -145,11 +150,12 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             next_line_from=last_pos+1;
             continue;
           } else if (pos == buffer_len || buffer[pos] !='\0'){
-            if (line_from < buffer_len-line_from){
-g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d filename_sapce: %d DATA: %s \n buffer_len: %d", pos,line_end, line_from, last_pos, next_line_from, GPOINTER_TO_INT(filename_space->next->data), &(buffer[line_from]), buffer_len);
-              g_error("Buffer is not large enough");
-            }
-            diff=0; // buffer_len-line_from;
+//            if (line_from < buffer_len-line_from){
+//g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d DATA: %s \n buffer_len: %d", pos,line_end, line_from, last_pos, next_line_from, &(buffer[line_from]), buffer_len);
+//              g_warning("Buffer is not large enough: Overwriting");
+//            }
+//            g_message("Coping data");
+            diff=buffer_len-line_from;
             g_strlcpy(buffer,&(buffer[line_from]),buffer_len-line_from+2);
             goto read_more;
 
