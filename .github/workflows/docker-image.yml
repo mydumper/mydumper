@@ -24,16 +24,16 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-     
-      - name: Build and push Docker image el9
+
+      - name: Build and push Docker image el7
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: docker/el9/Dockerfile
+          file: docker/el7/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: mydumper/mydumper-builder-el9:latest
-          labels: mydumper/mydumper-builder-el9:latest
+          tags: mydumper/mydumper-builder-el7:latest
+          labels: mydumper/mydumper-builder-el7:latest
 
       - name: Build and push Docker image el8
         uses: docker/build-push-action@v4
@@ -44,5 +44,65 @@ jobs:
           push: true
           tags: mydumper/mydumper-builder-el8:latest
           labels: mydumper/mydumper-builder-el8:latest
+
+      - name: Build and push Docker image el9
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/el9/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-el9:latest
+          labels: mydumper/mydumper-builder-el9:latest
+
+      - name: Build and push Docker image bionic
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/bionic/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-bionic:latest
+          labels: mydumper/mydumper-builder-bionic:latest
+
+      - name: Build and push Docker image bullseye
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/bullseye/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-bullseye:latest
+          labels: mydumper/mydumper-builder-bullseye:latest
+
+      - name: Build and push Docker image buster
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/buster/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-buster:latest
+          labels: mydumper/mydumper-builder-buster:latest
+
+      - name: Build and push Docker image focal
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/focal/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-focal:latest
+          labels: mydumper/mydumper-builder-focal:latest
+
+      - name: Build and push Docker image jammy
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/jammy/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-jammy:latest
+          labels: mydumper/mydumper-builder-jammy:latest
 
           
