@@ -685,7 +685,7 @@ gboolean read_data(FILE *file, GString *data,
       }
     }
     g_string_append(data, buffer);
-    if (strlen(buffer) != 256)
+    if (buffer[strlen(buffer)-1] == '\n')
       (*line)++;
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
