@@ -282,8 +282,9 @@ done
         default: \"\"
         type: string
     steps:
-    - command: |
-       source /etc/profile.d/sh.local || true
+    - run:
+        command: |
+          source /etc/profile.d/sh.local || true
     - run: cmake . <<parameters.CMAKED>>
     - run: make
     - run: sudo make install
