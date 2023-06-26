@@ -25,7 +25,7 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
      
-      - name: Build and push Docker image
+      - name: Build and push Docker image el9
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -34,5 +34,15 @@ jobs:
           push: true
           tags: mydumper/mydumper-builder-el9:latest
           labels: mydumper/mydumper-builder-el9:latest
-          
+
+      - name: Build and push Docker image el8
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/el8/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: mydumper/mydumper-builder-el8:latest
+          labels: mydumper/mydumper-builder-el8:latest
+
           
