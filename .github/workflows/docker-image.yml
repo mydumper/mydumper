@@ -35,7 +35,7 @@ jobs:
           file: docker/el9/Dockerfile
           platforms: linux/amd64
           push: true
-          tags: mydumper-builder-el9:latest
-          labels: mydumper-builder-el9:latest
+          tags: mydumper/mydumper-builder-el9:latest
+          labels: mydumper/mydumper-builder-el9:latest
           
           
