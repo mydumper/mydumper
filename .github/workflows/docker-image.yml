@@ -15,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build el9 image
-      run: docker build . --file docker/el9/Dockerfile --tag mydumper-builder-el9:$(date +%s) &&
+      run: docker build . --file docker/el9/Dockerfile -t mydumper-builder-el9 &&
            docker tag mydumper-builder-el9 mydumper/mydumper-builder-el9:latest &&
            docker push --all-tags mydumper/mydumper-builder-el9
       
