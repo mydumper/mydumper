@@ -826,6 +826,7 @@ commands:
         command: |
           echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
           echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
+          cat /etc/profile.d/sh.local >> "$BASH_ENV" || true
           source "$BASH_ENV"
 jobs:
 
