@@ -126,6 +126,7 @@ union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, gu
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.prefix = prefix;
   cs->integer_step.nmin = nmin;
+  cs->integer_step.cursor = cs->integer_step.nmin;
   cs->integer_step.step = step;
   cs->integer_step.deep = deep;
   cs->integer_step.number = number;
