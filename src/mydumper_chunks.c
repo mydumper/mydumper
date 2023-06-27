@@ -42,29 +42,6 @@ GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 guint char_chunk=0;
 guint char_deep=0;
-/*
-static GOptionEntry chunks_entries[] = {
-    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
-    {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "",NULL},
-    {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "",NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
-     "Try to split tables into chunks of this many rows.",
-     NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
-};
-
-void load_chunks_entries(GOptionContext *context){
-  GOptionGroup *chunks_group=g_option_group_new("job", "Job Options", "Job Options", NULL, NULL);
-  g_option_group_add_entries(chunks_group, chunks_entries);
-  g_option_context_add_group(context, chunks_group);
-
-}
-*/
 
 void initialize_chunk(){
   give_me_another_innodb_chunk_step_queue=g_async_queue_new();
@@ -149,6 +126,7 @@ union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, gu
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.prefix = prefix;
   cs->integer_step.nmin = nmin;
+  cs->integer_step.cursor = cs->integer_step.nmin;
   cs->integer_step.step = step;
   cs->integer_step.deep = deep;
   cs->integer_step.number = number;
@@ -211,12 +189,26 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
         return cs;
       }
 
-      if (cs->integer_step.cursor < cs->integer_step.nmax){
+      if (cs->integer_step.cursor < cs->integer_step.nmax && (  
+                  ( cs->integer_step.nmin != cs->integer_step.cursor && cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ) || 
+                  ( cs->integer_step.nmin == cs->integer_step.cursor && cs->integer_step.nmax - cs->integer_step.cursor > 2*cs->integer_step.step  )
+                                                             )
+         ){
       
-        guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
+        guint64 new_minmax = 0;
+        union chunk_step * new_cs = NULL;
+        if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+          new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
+                           cs->integer_step.nmin + cs->integer_step.step *( (cs->integer_step.nmax / cs->integer_step.step - cs->integer_step.nmin / cs->integer_step.step)/2) :
+                           cs->integer_step.cursor;
+          new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+        }else{
+
+          new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
                            cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2 :
                            cs->integer_step.cursor;
-        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        }
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
@@ -604,6 +596,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
+    if (min_rows_per_file==rows_per_file && max_rows_per_file==rows_per_file)
+      dbt->chunk_filesize=0;
     nmin = strtoul(row[0], NULL, 10);
     nmax = strtoul(row[1], NULL, 10) + 1;
     if ((nmax-nmin) > (4 * rows_per_file)){

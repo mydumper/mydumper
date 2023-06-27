@@ -159,12 +159,9 @@ union chunk_step {
 // first number : used when rows is used
 // second number : when load data is used
 struct table_job {
-//  char *database;
-//  char *table;
   char *partition;
   guint64 nchunk;
   guint sub_part;
-//  char *filename;
   char *where;
   union chunk_step *chunk_step;  
   char *order_by;
@@ -239,6 +236,7 @@ struct db_table {
   gchar *schema_checksum;
   gchar *indexes_checksum;
   gchar *triggers_checksum;
+  guint chunk_filesize;  
 };
 
 struct schema_post {
