@@ -189,7 +189,11 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
         return cs;
       }
 
-      if (cs->integer_step.cursor < cs->integer_step.nmax){
+      if (cs->integer_step.cursor < cs->integer_step.nmax && (  
+                  ( cs->integer_step.nmin != cs->integer_step.cursor && cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ) || 
+                  ( cs->integer_step.nmin == cs->integer_step.cursor && cs->integer_step.nmax - cs->integer_step.cursor > 2*cs->integer_step.step  )
+                                                             )
+         ){
       
         guint64 new_minmax = 0;
         union chunk_step * new_cs = NULL;
