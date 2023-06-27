@@ -1084,9 +1084,10 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-//    int status=0;
-//    if (tj->child_process!=0)
-//      waitpid(tj->child_process,&status, 0);
+    if ( tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+      tj->sub_part = tj->chunk_step->integer_step.nmin / tj->chunk_step->integer_step.step + 1; 
+    }
+
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
@@ -1095,7 +1096,6 @@ gboolean update_files_on_table_job(struct table_job *tj){
     }else{
       initialize_sql_fn(tj);
     }
-//     write_load_data_statement(tj, fields, num_fields);
   }
   return FALSE;
 }

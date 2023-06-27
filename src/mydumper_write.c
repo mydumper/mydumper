@@ -69,7 +69,7 @@ void initialize_write(){
   if (rows_per_file > 0 && chunk_filesize > 0) {
 //    chunk_filesize = 0;
 //    g_warning("--chunk-filesize disabled by --rows option");
-    g_warning("We are going to chunk by row and by filesize");
+    g_warning("We are going to chunk by row and by filesize when possible");
   }
 
   fields_enclosed_by=g_strdup("\"");
@@ -434,9 +434,9 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
     num_rows++;
-    if (chunk_filesize &&
+    if (dbt->chunk_filesize &&
         (guint)ceil((float)tj->filesize / 1024 / 1024) >
-            chunk_filesize ) {
+            dbt->chunk_filesize ) {
       if (!write_statement(tj->dat_file, &(tj->filesize), statement_row, dbt)) {
         return num_rows;
       }
@@ -545,8 +545,8 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
-    if (statement->len + statement_row->len + 1 > statement_size || (chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
-              chunk_filesize)) {
+    if (statement->len + statement_row->len + 1 > statement_size || (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              dbt->chunk_filesize)) {
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
@@ -561,9 +561,9 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         return num_rows;
       }
       tj->st_in_file++;
-      if (chunk_filesize &&
+      if (dbt->chunk_filesize &&
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
-              chunk_filesize) {
+              dbt->chunk_filesize) {
         tj->sub_part++;
         m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1);
         tj->sql_file=NULL;
