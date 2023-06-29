@@ -302,7 +302,9 @@ MYSQL *create_main_connection() {
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
-  detected_server = detect_server(conn);
+//  detected_server = detect_server(conn);
+  detect_server_version(conn);
+  detected_server = get_product(); 
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -329,6 +331,10 @@ MYSQL *create_main_connection() {
   case SERVER_TYPE_TIDB:
     g_message("Connected to a TiDB server");
     data_checksums=FALSE;
+    break;
+  case SERVER_TYPE_PERCONA:
+    g_message("Connected to a Percona server");
+    set_transaction_isolation_level_repeatable_read(conn);
     break;
   default:
     m_critical("Cannot detect server type");
@@ -692,14 +698,14 @@ void start_dump() {
   check_num_threads();
 
   initialize_regex(partition_regex);
-
+//  detect_server_version(conn);
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
   struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
-  detect_server_version(conn);
+//  detect_server_version(conn);
   void (*flush_table_function)(MYSQL *) = &send_flush_table_with_read_lock;
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;

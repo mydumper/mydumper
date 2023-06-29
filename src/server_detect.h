@@ -30,7 +30,6 @@ enum server_type {
   SERVER_TYPE_MARIADB,
   SERVER_TYPE_PERCONA
 };
-int detect_server(MYSQL *conn);
 void detect_server_version(MYSQL * conn);
 int get_product();
 int get_major();
