@@ -182,6 +182,9 @@ full_test(){
     # compress and rows
     $test -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES 
     # compress and rows
+    $test -r 1000 -c ZSTD ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES 
+
+    # compress and rows
     $test --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
     # compress and rows
     $test --use-savepoints -F 10 --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
