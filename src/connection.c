@@ -232,7 +232,7 @@ void print_connection_details_once(){
     g_string_append(print_head, print_body->str);
   }
 
-  g_message(print_head->str);
+  g_message("%s", print_head->str);
   g_string_free(print_head, TRUE);
   g_string_free(print_body,TRUE);
 }
