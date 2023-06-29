@@ -31,6 +31,25 @@ char *password = NULL;
 char *socket_path = NULL;
 guint port = 0;
 gboolean askPassword = FALSE;
+char *protocol_str = NULL;
+enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
+static gint print_connection_details=1;
+
+gboolean connection_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,10,"--protocol")){
+    if (g_strstr_len(value,3,"tcp")){
+      protocol=MYSQL_PROTOCOL_TCP;
+      return TRUE;
+    }
+    if (g_strstr_len(value,6,"socket")){
+      protocol=MYSQL_PROTOCOL_SOCKET;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 GOptionEntry connection_entries[] = {
     {"host", 'h', 0, G_OPTION_ARG_STRING, &hostname, "The host to connect to",
@@ -44,6 +63,8 @@ GOptionEntry connection_entries[] = {
      NULL},
     {"socket", 'S', 0, G_OPTION_ARG_STRING, &socket_path,
      "UNIX domain socket file to use for connection", NULL},
+    {"protocol", 0, 0, G_OPTION_ARG_CALLBACK, &connection_arguments_callback,
+     "The protocol to use for connection (tcp, socket)", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
@@ -101,6 +122,9 @@ void configure_connection(MYSQL *conn) {
   g_free(version);
   if (compress_protocol)
     mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
+
+  if (protocol!=MYSQL_PROTOCOL_DEFAULT)
+    mysql_options(conn, MYSQL_OPT_PROTOCOL, &protocol);
 
 #ifdef WITH_SSL
 #ifdef LIBMARIADB
@@ -166,12 +190,63 @@ void configure_connection(MYSQL *conn) {
 #endif
 }
 
+void print_connection_details_once(){
+  if (!g_atomic_int_dec_and_test(&print_connection_details)){
+    return;
+  }
+  GString * print_head=g_string_sized_new(20);
+  g_string_append(print_head,"Connection");
+  switch (protocol){
+    case MYSQL_PROTOCOL_DEFAULT:
+      g_string_append_printf(print_head," via default library settings");
+      break;
+    case MYSQL_PROTOCOL_TCP:
+      g_string_append_printf(print_head," via TCP/IP");
+      break;
+    case MYSQL_PROTOCOL_SOCKET:
+      g_string_append_printf(print_head," via UNIX socket");
+      break;
+    default:
+//      g_debug("Host: %s Port: %s User: %s ");
+    ;
+  }
+  if (password || askPassword)
+    g_string_append(print_head," using password");
+
+  GString * print_body=g_string_sized_new(20);
+
+  if (hostname)
+    g_string_append_printf(print_body,"\n\tHost: %s", hostname);
+
+  if (port)
+    g_string_append_printf(print_body,"\n\tPort: %d", port);
+
+  if (socket_path)
+    g_string_append_printf(print_body,"\n\tSocket: %s", socket_path);
+
+  if (username)
+    g_string_append_printf(print_body,"\n\tUser: %s", username);
+
+  if (print_body->len > 1){
+    g_string_append(print_head, ":");
+    g_string_append(print_head, print_body->str);
+  }
+
+  g_message("%s", print_head->str);
+  g_string_free(print_head, TRUE);
+  g_string_free(print_body,TRUE);
+}
+
+
 void m_connect(MYSQL *conn, gchar *schema){
   configure_connection(conn);
   if (!mysql_real_connect(conn, hostname, username, password, schema, port,
                           socket_path, 0)) {
     m_critical("Error connection to database: %s", mysql_error(conn));
   }
+
+  print_connection_details_once();
+
   if (set_names_statement)
     mysql_query(conn, set_names_statement);
 }
