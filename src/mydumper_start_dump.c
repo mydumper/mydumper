@@ -544,6 +544,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
         default:
           break;
       }
+      break;
     case SERVER_TYPE_MARIADB:
       if (get_major() == 10){
         switch (get_secondary()){
@@ -557,6 +558,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
             break;
         }
       }
+      break;
     default:
       break;
   }
