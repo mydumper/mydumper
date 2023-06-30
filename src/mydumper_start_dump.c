@@ -516,42 +516,50 @@ void send_flush_table_with_read_lock(MYSQL *conn){
         }
 }
 void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
-  mysql_query(*conn, "SELECT @@version_comment, @@version");
-  MYSQL_RES *res2 = mysql_store_result(*conn);
-  MYSQL_ROW ver;
-  while ((ver = mysql_fetch_row(res2))) {
-    if (g_str_has_prefix(ver[0], "Percona")){
-      if (g_str_has_prefix(ver[1], "8.")) {
-        *acquire_lock_function = &send_lock_instance_backup;
-        *release_lock_function = &send_unlock_instance_backup;
-        break;
+  switch(get_product()){
+    case SERVER_TYPE_PERCONA:
+      switch (get_major()) {
+        case 8:
+          *acquire_lock_function = &send_lock_instance_backup;
+          *release_lock_function = &send_unlock_instance_backup;
+          break;
+        case 5:
+          if (get_secondary() == 7) {
+            *acquire_lock_function = &send_percona57_backup_locks;
+            *release_binlog_function = &send_unlock_binlogs;
+            *release_lock_function = &send_unlock_tables;
+            *conn = create_connection();
+          }
+          break;
+        default:
+          break;
       }
-      if (g_str_has_prefix(ver[1], "5.7.")) {
-        *acquire_lock_function = &send_percona57_backup_locks;
-        *release_binlog_function = &send_unlock_binlogs;
-        *release_lock_function = &send_unlock_tables;
-        *conn = create_connection();
-        break;
+      break;
+    case SERVER_TYPE_MYSQL: 
+      switch (get_major()) {
+        case 8:
+          *acquire_lock_function = &send_lock_instance_backup;
+          *release_lock_function = &send_unlock_instance_backup;
+          break;
+        default:
+          break;
       }
-    }
-    if (g_str_has_prefix(ver[0], "MySQL")){
-      if (g_str_has_prefix(ver[1], "8.")) {
-        *acquire_lock_function = &send_lock_instance_backup;
-        *release_lock_function = &send_unlock_instance_backup;
-        break;
+    case SERVER_TYPE_MARIADB:
+      if (get_major() == 10){
+        switch (get_secondary()){
+          case 5:
+          case 6:
+            *flush_table = NULL;
+            *acquire_lock_function = &send_mariadb_backup_locks;
+            *release_lock_function = &send_backup_stage_end;
+            break;
+          default:
+            break;
+        }
       }
-    }
-    if (g_str_has_prefix(ver[0], "mariadb")){
-      if ((g_str_has_prefix(ver[1], "10.5")) || 
-          (g_str_has_prefix(ver[1], "10.6"))) {
-        *flush_table = NULL;
-        *acquire_lock_function = &send_mariadb_backup_locks;
-        *release_lock_function = &send_backup_stage_end;
-        break;
-      }
-    }
+    default:
+      break;
   }
-  mysql_free_result(res2);
 }
 
 
