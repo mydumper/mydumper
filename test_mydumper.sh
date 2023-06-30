@@ -157,7 +157,7 @@ full_test(){
   # export -- import
   # 1000 rows -- database must not exist
 
-  mydumper_general_options="-h 127.0.0.1 -u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
+  mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
   myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1"
 
 
@@ -168,37 +168,29 @@ full_test(){
   do 
     echo "Executing test: $test"
     for compress_mode in "" "-c GZIP" "-c ZSTD"
-    do
-
-    $test $compress_mode -r 1000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-
-    $test $compress_mode -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # 10000 rows -- overriting database
-    $test $compress_mode -r 1000 -G --less-locking ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # 10000 rows -- overriting database
-    $test $compress_mode -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # chunking the file to 10MB -- overriting database
-    $test $compress_mode -F 10 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # chunking the file to 100MB -- overriting database
-    $test $compress_mode -F 100 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # statement size to 2MB -- overriting database
-    $test $compress_mode -s 2000000 ${mydumper_general_options} 			-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-      # --load-data
-    $test $compress_mode --load-data ${mydumper_general_options}                        -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test $compress_mode --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test $compress_mode -r 10000 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test $compress_mode -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-
-    # compress and rows
-    $test $compress_mode -r 1000 --use-savepoints -F 10 --less-locking ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-
+      do
+      for backup_mode in "" "--load-data" "--csv"
+        do
+        for innodb_optimize_key_mode in "" "--innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES" "--innodb-optimize-keys=AFTER_IMPORT_PER_TABLE" 
+  
+          do
+          $test $backup_mode $compress_mode -r 1000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+          # 10000 rows -- overriting database
+          $test $backup_mode $compress_mode -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+          # chunking the file to 10MB -- overriting database
+          $test $backup_mode $compress_mode -F 10 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+          # chunking the file to 100MB -- overriting database
+          $test $backup_mode $compress_mode -F 100 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+          # statement size to 2MB -- overriting database
+          $test $backup_mode $compress_mode -s 2000000 ${mydumper_general_options} 			-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+          # compress and rows
+          $test $backup_mode $compress_mode -r 1000 --use-savepoints -F 10 --less-locking ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
+ 
 
 
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
+        done
       done
     myloader_stor_dir=$stream_stor_dir
   done
