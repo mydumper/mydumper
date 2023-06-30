@@ -122,9 +122,9 @@ void *loader_thread(struct thread_data *td) {
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post table");
-    g_mutex_lock(view_mutex);
+//    g_mutex_lock(view_mutex);
     cont=process_job(td, job);
-    g_mutex_unlock(view_mutex);
+//    g_mutex_unlock(view_mutex);
   }
 
 //  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
