@@ -190,6 +190,7 @@ full_test(){
 
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
+          done
         done
       done
     myloader_stor_dir=$stream_stor_dir
