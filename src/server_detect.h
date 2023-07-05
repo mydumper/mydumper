@@ -35,6 +35,7 @@ int get_product();
 int get_major();
 int get_secondary();
 int get_revision();
+gboolean is_mysql_like();
 const gchar * get_product_name();
 #endif
 
