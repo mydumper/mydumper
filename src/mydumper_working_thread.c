@@ -1561,7 +1561,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   char *query;
   mysql_select_db(conn, database->name);
-  if (detected_server == SERVER_TYPE_MYSQL ||
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
   else if (detected_server == SERVER_TYPE_MARIADB)
