@@ -436,6 +436,22 @@ void long_query_wait(MYSQL *conn){
     }
 }
 
+
+void send_backup_stage_on_block_commit(MYSQL *conn){
+  if (mysql_query(conn, "BACKUP STAGE START")) {
+    m_critical("Couldn't acquire BACKUP STAGE START: %s",
+               mysql_error(conn));
+    errors++;
+  }
+
+  if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
+    m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
+               mysql_error(conn));
+    errors++;
+  }
+}
+
+
 void send_mariadb_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
@@ -477,7 +493,7 @@ void send_percona57_backup_locks(MYSQL *conn){
   }
 }
 
-void send_lock_instance_backup(MYSQL *conn){
+void send_ddl_lock_instance_backup(MYSQL *conn){
   if (mysql_query(conn, "LOCK INSTANCE FOR BACKUP")) {
     m_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
                mysql_error(conn));
@@ -493,7 +509,7 @@ void send_unlock_binlogs(MYSQL *conn){
   mysql_query(conn, "UNLOCK BINLOG");
 }
 
-void send_unlock_instance_backup(MYSQL *conn){
+void send_ddl_unlock_instance_backup(MYSQL *conn){
   mysql_query(conn, "UNLOCK INSTANCE");
 }
 
@@ -515,33 +531,64 @@ void send_flush_table_with_read_lock(MYSQL *conn){
           errors++;
         }
 }
-void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
+
+void default_locking(void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
+  *acquire_ddl_lock_function = NULL;
+  *release_ddl_lock_function = NULL;
+
+  *acquire_global_lock_function = &send_flush_table_with_read_lock;
+  *release_global_lock_function = &send_unlock_tables;
+
+  *release_binlog_function = NULL;
+}
+
+void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
   switch(get_product()){
     case SERVER_TYPE_PERCONA:
       switch (get_major()) {
         case 8:
-          *acquire_lock_function = &send_lock_instance_backup;
-          *release_lock_function = &send_unlock_instance_backup;
+          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
           break;
         case 5:
           if (get_secondary() == 7) {
-            *acquire_lock_function = &send_percona57_backup_locks;
+            if (no_backup_locks){
+              *acquire_ddl_lock_function = NULL;
+              *release_ddl_lock_function = NULL;
+            }else{
+              *acquire_ddl_lock_function = &send_percona57_backup_locks;
+              *release_ddl_lock_function = &send_unlock_tables;
+            }
+
+            *acquire_global_lock_function = &send_flush_table_with_read_lock;
+            *release_global_lock_function = &send_unlock_tables;
+
             *release_binlog_function = &send_unlock_binlogs;
-            *release_lock_function = &send_unlock_tables;
+
             *conn = create_connection();
+          }else{
+            default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
           }
           break;
         default:
+          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
           break;
       }
       break;
     case SERVER_TYPE_MYSQL: 
       switch (get_major()) {
         case 8:
-          *acquire_lock_function = &send_lock_instance_backup;
-          *release_lock_function = &send_unlock_instance_backup;
+          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
           break;
         default:
+          default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
           break;
       }
       break;
@@ -550,16 +597,23 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
         switch (get_secondary()){
           case 5:
           case 6:
-            *flush_table = NULL;
-            *acquire_lock_function = &send_mariadb_backup_locks;
-            *release_lock_function = &send_backup_stage_end;
+            *acquire_ddl_lock_function = &send_mariadb_backup_locks;
+            *release_ddl_lock_function = &send_backup_stage_end;
+
+            *acquire_global_lock_function = &send_backup_stage_on_block_commit;
+            *release_global_lock_function = &send_backup_stage_end;
+
             break;
           default:
+            default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
             break;
         }
+      }else{
+        default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
       break;
     default:
+      default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       break;
   }
 }
@@ -716,7 +770,8 @@ void start_dump() {
   char *metadata_partial_filename, *metadata_filename;
   char *u;
 //  detect_server_version(conn);
-  void (*flush_table_function)(MYSQL *) = &send_flush_table_with_read_lock;
+  void (*acquire_global_lock_function)(MYSQL *) = NULL;
+  void (*release_global_lock_function)(MYSQL *) = NULL;
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_binlog_function)(MYSQL *) = NULL;
@@ -805,14 +860,14 @@ void start_dump() {
 
     if (!no_locks) {
       // This backup will lock the database
-      if (!no_backup_locks)
-        determine_ddl_lock_function(&second_conn,&flush_table_function, &acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
+      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
 
       if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
-        if (flush_table_function != NULL) {
-          flush_table_function(conn);
+        if (acquire_global_lock_function != NULL) {
+          g_message("Acquiring Global lock");
+          acquire_global_lock_function(conn);
         }
         if (acquire_ddl_lock_function != NULL) {
           g_message("Acquiring DDL lock");
@@ -980,17 +1035,16 @@ void start_dump() {
 
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
-    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
+    release_global_lock_function(conn);
+//    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
     if (release_binlog_function != NULL){
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
   }
 
-  
   g_message("Waiting database finish");
-//  if (database_counter > 0)
-//    g_rec_mutex_lock(ready_database_dump_mutex);
+
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
 
@@ -1011,42 +1065,28 @@ void start_dump() {
     g_async_queue_push(conf.schema_queue, j);
   }
 
- 
   if (less_locking){
     build_lock_tables_statement(&conf);
   }
+
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.ready_non_innodb_queue, GINT_TO_POINTER(1));
   }
-
-/*
-  for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.non_innodb_queue, j);
-  }
-*/
 
   if (!no_locks && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
-    g_message("Non-InnoDB dump complete, unlocking tables");
-    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-    g_message("Releasing FTWR lock");
+    g_message("Non-InnoDB dump complete, releasing global locks");
+    release_global_lock_function(conn);
+//    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
+    g_message("Global locks released");
     if (release_binlog_function != NULL){
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
   }
 
-/*
-  for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.innodb_queue, j);
-  }
-*/
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
