@@ -66,6 +66,9 @@ int get_revision(){
       return revision;
 }
 
+gboolean is_mysql_like(){
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL;
+}
 const gchar * get_product_name(){
   switch (get_product()){
   case SERVER_TYPE_PERCONA: return "percona"; break;
