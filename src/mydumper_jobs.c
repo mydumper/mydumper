@@ -396,7 +396,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
+  if (is_mysql_like() && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
@@ -467,7 +467,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
+  if (is_mysql_like() && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 

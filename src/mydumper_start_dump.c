@@ -958,7 +958,7 @@ void start_dump() {
 
   g_message("conf created");
 
-  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) {
+  if (is_mysql_like()) {
     create_job_to_dump_metadata(&conf, mdfile);
   }
 

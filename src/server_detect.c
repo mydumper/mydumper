@@ -56,6 +56,11 @@ void detect_server_version(MYSQL * conn) {
 int get_product(){
   return product;
 }
+
+gboolean is_mysql_like(){
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL;
+}
+
 int get_major(){
     return major;
 }

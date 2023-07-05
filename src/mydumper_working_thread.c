@@ -1561,7 +1561,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   char *query;
   mysql_select_db(conn, database->name);
-  if (detected_server == SERVER_TYPE_MYSQL ||
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
   else if (detected_server == SERVER_TYPE_MARIADB)
@@ -1603,8 +1603,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL ||
-         detected_server == SERVER_TYPE_MARIADB ||
+    if ((is_mysql_like() || 
          detected_server == SERVER_TYPE_TIDB ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
