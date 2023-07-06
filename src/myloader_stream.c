@@ -62,7 +62,8 @@ gboolean has_mydumper_suffix(gchar *line){
   return
     m_filename_has_suffix(line,".dat") ||
     m_filename_has_suffix(line,".sql") ||
-    g_str_has_suffix(line,"metadata");
+    g_strstr_len(line,-1,"metadata.partial") ||
+    g_str_has_prefix(line,"metadata");
 }
 
 void *process_stream(struct configuration *stream_conf){
@@ -143,21 +144,20 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 //          g_message("Raaded Size from file is %d", b);
             real_filename = g_build_filename(directory,filename,NULL);
 //            g_message("FILENAME: %s", filename);
-            if (has_mydumper_suffix(filename)){
-              if (file){
-                m_close(file);
-              }
-              if (previous_filename)
-                intermediate_queue_new(previous_filename);
-              if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
-                g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
-                file = NULL;
-              }else{
-                file = g_fopen(real_filename, "w");
-                m_write=(void *)&write_file;
-                m_close=(void *) &fclose;
-              }
+            if (file){
+              m_close(file);
+            }
+            if (previous_filename)
+              intermediate_queue_new(previous_filename);
+            if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
+              g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
+              file = NULL;
             }else{
+              file = g_fopen(real_filename, "w");
+              m_write=(void *)&write_file;
+              m_close=(void *) &fclose;
+            }
+            if (!has_mydumper_suffix(filename)){
               g_debug("Not a mydumper file: %s", filename);
             }
             pos++;

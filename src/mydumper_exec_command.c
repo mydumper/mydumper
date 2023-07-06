@@ -25,6 +25,10 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include "mydumper_global.h"
+#include "mydumper_start_dump.h"
+#include "mydumper_stream.h"
+
+extern GAsyncQueue *stream_queue;
 
 GThread **exec_command_thread = NULL;
 guint num_exec_threads = 4;

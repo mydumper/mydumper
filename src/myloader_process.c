@@ -442,9 +442,9 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-gboolean process_metadata_global(){
+gboolean process_metadata_global(gchar *file){
 //  void *infile;
-  gchar *path = g_build_filename(directory, "metadata", NULL);
+  gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
@@ -474,7 +474,8 @@ gboolean process_metadata_global(){
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
-        dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"Rows"),NULL, 10);
+        if (get_value(kf,groups[j],"rows"))
+          dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';

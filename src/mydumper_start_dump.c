@@ -565,6 +565,28 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), vo
 }
 
 
+
+void print_dbt_on_metadata_gstring(GString *data, struct db_table *dbt){
+  g_mutex_lock(dbt->chunks_mutex);
+  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->table, dbt->rows);
+  if (dbt->data_checksum)
+    g_string_append_printf(data,"data_checksum = %s\n", dbt->data_checksum);
+  if (dbt->schema_checksum)
+    g_string_append_printf(data,"schema_checksum = %s\n", dbt->schema_checksum);
+  if (dbt->indexes_checksum)
+    g_string_append_printf(data,"indexes_checksum = %s\n", dbt->indexes_checksum);
+  if (dbt->triggers_checksum)
+    g_string_append_printf(data,"triggers_checksum = %s\n", dbt->triggers_checksum);
+  g_mutex_unlock(dbt->chunks_mutex);
+}
+
+void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt){
+  GString *data = g_string_sized_new(100);
+  print_dbt_on_metadata_gstring(data, dbt);
+  fprintf(mdfile, data->str);
+}
+
+
 void send_lock_all_tables(MYSQL *conn){
   // LOCK ALL TABLES
   GString *query = g_string_sized_new(16777216);
@@ -1081,7 +1103,7 @@ void start_dump() {
   for (iter = all_dbts; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
 //    write_table_metadata_into_file(dbt);
-    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
+/*    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
     if (dbt->data_checksum)
       fprintf(mdfile,"data_checksum = %s\n", dbt->data_checksum);
     if (dbt->schema_checksum)
@@ -1090,6 +1112,8 @@ void start_dump() {
       fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
       fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
+*/
+    print_dbt_on_metadata(mdfile, dbt);
     free_db_table(dbt);
   }
   g_list_free(all_dbts);
@@ -1126,9 +1150,8 @@ void start_dump() {
   if (updated_since > 0)
     fclose(nufile);
   g_rename(metadata_partial_filename, metadata_filename);
-  if (stream) {
-    g_async_queue_push(stream_queue, g_strdup(metadata_filename));
-  }
+  if (stream) stream_queue_push(NULL, g_strdup(metadata_filename));
+
   g_free(metadata_partial_filename);
   g_free(metadata_filename);
   g_message("Finished dump at: %s",datetimestr);
@@ -1138,7 +1161,7 @@ void start_dump() {
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
     }else{
-      g_async_queue_push(stream_queue, g_strdup(""));
+      stream_queue_push(NULL, g_strdup(""));
       wait_stream_to_finish();
     }
     if (no_delete == FALSE && output_directory_param == NULL)

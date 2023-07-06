@@ -15,7 +15,8 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-
 void initialize_stream();
 void wait_stream_to_finish();
-//void *process_stream(void *data);
+void metadata_partial_push (struct db_table *dbt);
+void stream_queue_push(struct db_table *dbt,gchar *filename);
+guint get_stream_queue_length();
