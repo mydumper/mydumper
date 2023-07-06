@@ -174,7 +174,7 @@ void initialize_worker_schema(struct configuration *conf){
   g_message("Initializing initialize_worker_schema");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     schema_td[n].conf = conf;
-    schema_td[n].thread_id = n + 1;
+    schema_td[n].thread_id = n + 1 + num_threads;
     schema_td[n].status=WAITING;
     schema_threads[n] =
         g_thread_create((GThreadFunc)worker_schema_thread, &schema_td[n], TRUE, NULL);

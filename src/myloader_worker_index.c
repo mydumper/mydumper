@@ -52,7 +52,7 @@ void initialize_worker_index(struct configuration *conf){
   innodb_optimize_keys_all_tables_queue=g_async_queue_new();
   for (n = 0; n < max_threads_for_index_creation; n++) {
     index_td[n].conf = conf;
-    index_td[n].thread_id = n + 1;
+    index_td[n].thread_id = n + 1 + num_threads + max_threads_for_schema_creation;
     index_td[n].status = WAITING;
     index_threads[n] =
         g_thread_create((GThreadFunc)worker_index_thread, &index_td[n], TRUE, NULL);
