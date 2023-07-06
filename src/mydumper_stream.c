@@ -177,28 +177,27 @@ void *metadata_partial_writer(void *data){
   }
   g_string_set_size(output,0);
   g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
-  filename=g_strdup("metadata.partial.initial");
+  filename=g_strdup_printf("metadata.partial.%d",0);
   g_file_set_contents(filename, output->str,output->len,&gerror);
   stream_queue_push(NULL, filename);
   for(i=0;i<num_threads;i++){
     g_async_queue_push(initial_metadata_lock_queue, GINT_TO_POINTER(1));
   }
 
-
+  i=1;
   GDateTime *prev_datetime = g_date_time_new_now_local();
   GDateTime *current_datetime = NULL;
   GTimeSpan diff=0;
   g_string_set_size(output,0);
-  i=0;
   filename=NULL;
-  dbt=g_async_queue_timeout_pop(metadata_partial_queue, 1000000);
+  dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   while (metadata_partial_writer_alive){
     if (dbt != NULL && g_list_find(dbt_list, dbt)==NULL){
       dbt_list=g_list_append(dbt_list,dbt);
     }
     current_datetime = g_date_time_new_now_local();
     diff=g_date_time_difference(current_datetime,prev_datetime)/G_TIME_SPAN_SECOND;
-    if (diff > 1){
+    if (diff > METADATA_PARTIAL_INTERVAL){
       if (g_list_length(dbt_list) > 0){  
         filename=g_strdup_printf("metadata.partial.%d",i);
         i++;
@@ -214,7 +213,7 @@ void *metadata_partial_writer(void *data){
     }else{
       g_date_time_unref(current_datetime);
     }
-    dbt=g_async_queue_timeout_pop(metadata_partial_queue, 1000000);
+    dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   }
   return NULL;
 }
