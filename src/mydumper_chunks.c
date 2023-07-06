@@ -384,7 +384,7 @@ void update_integer_min(MYSQL *conn, struct table_job *tj){
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
   g_free(query);
   minmax = mysql_store_result(conn);
@@ -411,7 +411,7 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
 //  g_free(query);
   minmax = mysql_store_result(conn);
@@ -445,7 +445,7 @@ gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   gchar * middle = get_escaped_middle_char(conn, cs->char_step.cmax, cs->char_step.cmax_clen, cs->char_step.cmin, cs->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, tj->dbt->field, middle, tj->dbt->field, tj->dbt->field, cs->char_step.cmax_escaped, tj->dbt->field));
   g_free(query);
   minmax = mysql_store_result(conn);
@@ -501,7 +501,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 //  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
   mysql_query(td->thrconn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, middle, dbt->field, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field));
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
@@ -566,7 +566,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB)
+                        is_mysql_like()
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
                         dbt->field, dbt->field, dbt->field, dbt->field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
