@@ -583,7 +583,7 @@ void print_dbt_on_metadata_gstring(GString *data, struct db_table *dbt){
 void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt){
   GString *data = g_string_sized_new(100);
   print_dbt_on_metadata_gstring(data, dbt);
-  fprintf(mdfile, data->str);
+  fprintf(mdfile, "%s", data->str);
 }
 
 
