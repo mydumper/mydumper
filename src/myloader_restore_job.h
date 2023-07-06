@@ -19,7 +19,7 @@
 #define _src_myloader_restore_job_h
 #include "myloader.h"
 
-enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_RESTORE_SCHEMA_STRING, JOB_RESTORE_STRING };
+enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_TO_CREATE_TABLE, JOB_RESTORE_STRING };
 enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE };
 
 struct data_restore_job{

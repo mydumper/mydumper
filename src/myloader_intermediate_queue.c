@@ -24,6 +24,8 @@
 #include "myloader_intermediate_queue.h"
 #include "myloader_restore.h"
 #include "myloader_global.h"
+//GAsyncQueue * schema_counter=NULL;
+guint schema_counter = 0;
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
@@ -41,6 +43,7 @@ void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
 
 void initialize_intermediate_queue (struct configuration *c){
+//  schema_counter = g_async_queue_new();
   intermediate_conf=c;
   intermediate_queue = g_async_queue_new();
   exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -93,6 +96,8 @@ enum file_type process_filename(char *filename){
     case SCHEMA_TABLESPACE:
       break;
     case SCHEMA_CREATE:
+//      g_async_queue_push(schema_counter,GINT_TO_POINTER(1));
+      g_atomic_int_inc(&schema_counter);
       process_database_filename(filename);
       if (db){
         ft=DO_NOT_ENQUEUE;
@@ -101,6 +106,8 @@ enum file_type process_filename(char *filename){
       break;
     case SCHEMA_TABLE:
       // filename is free
+//      g_async_queue_push(schema_counter,GINT_TO_POINTER(1));
+      g_atomic_int_inc(&schema_counter);
       if (!process_table_filename(filename)){
         return DO_NOT_ENQUEUE;
       }else{

@@ -31,7 +31,8 @@ GThread *stream_thread = NULL;
 GThread *metadata_partial_writer_thread = NULL;
 gboolean metadata_partial_writer_alive = TRUE;
 GAsyncQueue *metadata_partial_queue = NULL;
-
+GAsyncQueue * initial_metadata_lock_queue = NULL;
+GAsyncQueue * initial_metadata_queue = NULL;
 void metadata_partial_queue_push (struct db_table *dbt){
   if (dbt)
     g_async_queue_push(metadata_partial_queue, dbt);
@@ -152,22 +153,47 @@ void *process_stream(void *data){
 }
 
 
+
+void send_initial_metadata(){
+  g_async_queue_push(initial_metadata_queue, GINT_TO_POINTER(1) );
+  g_async_queue_pop(initial_metadata_lock_queue);
+}
+
 void *metadata_partial_writer(void *data){
   (void) data;
   struct db_table *dbt=NULL;
+  GList *dbt_list = NULL;
+  GString *output=g_string_sized_new(256);
+  guint i=0;
+  gchar *filename = NULL;
+  GError* gerror = NULL;
+  for(i=0;i<num_threads;i++){
+    g_async_queue_pop(initial_metadata_queue);
+  }
+  dbt=g_async_queue_try_pop(metadata_partial_queue);   
+  while (dbt != NULL ){
+    dbt_list=g_list_append(dbt_list,dbt);
+    dbt=g_async_queue_try_pop(metadata_partial_queue);
+  }
+  g_string_set_size(output,0);
+  g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
+  filename=g_strdup("metadata.partial.initial");
+  g_file_set_contents(filename, output->str,output->len,&gerror);
+  stream_queue_push(NULL, filename);
+  for(i=0;i<num_threads;i++){
+    g_async_queue_push(initial_metadata_lock_queue, GINT_TO_POINTER(1));
+  }
+
+
   GDateTime *prev_datetime = g_date_time_new_now_local();
   GDateTime *current_datetime = NULL;
   GTimeSpan diff=0;
-  dbt=g_async_queue_pop(metadata_partial_queue);
-  GString *output=g_string_sized_new(256);
   g_string_set_size(output,0);
-  guint i=0;
-  gchar *filename=NULL;
-  GError* gerror = NULL;
-  GList *dbt_list = NULL;
+  i=0;
+  filename=NULL;
+  dbt=g_async_queue_timeout_pop(metadata_partial_queue, 1000000);
   while (metadata_partial_writer_alive){
     if (dbt != NULL && g_list_find(dbt_list, dbt)==NULL){
-//      print_dbt_on_metadata_gstring(output,dbt);
       dbt_list=g_list_append(dbt_list,dbt);
     }
     current_datetime = g_date_time_new_now_local();
@@ -194,6 +220,8 @@ void *metadata_partial_writer(void *data){
 }
 
 void initialize_stream(){
+  initial_metadata_queue = g_async_queue_new();
+  initial_metadata_lock_queue = g_async_queue_new();
   stream_queue = g_async_queue_new();
   metadata_partial_queue = g_async_queue_new();
   stream_thread = g_thread_create((GThreadFunc)process_stream, stream_queue, TRUE, NULL);

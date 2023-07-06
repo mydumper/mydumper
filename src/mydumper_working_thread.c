@@ -1098,6 +1098,8 @@ void *working_thread(struct thread_data *td) {
   g_message("Thread %d: Schema queue", td->thread_id);
   process_queue(td->conf->schema_queue,td, process_job, NULL);
 
+  if (stream) send_initial_metadata();
+
   if (!no_data){
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
 
