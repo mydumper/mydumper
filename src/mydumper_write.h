@@ -22,7 +22,7 @@
 void load_write_entries(GOptionGroup *main_group, GOptionContext *context);
 void initialize_write();
 void finalize_write();
-guint64 write_table_data_into_file(MYSQL *conn, struct table_job *tj);
+void write_table_job_into_file(MYSQL *conn, struct table_job *tj);
 gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt);
 gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, guint num_fields);
 gboolean real_write_data(FILE *file, float *filesize, GString *data);

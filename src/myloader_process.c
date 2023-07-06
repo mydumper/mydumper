@@ -474,8 +474,17 @@ gboolean process_metadata_global(gchar *file){
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
-        if (get_value(kf,groups[j],"rows"))
+        if (value) g_free(value);
+        if (get_value(kf,groups[j],"rows")){
           dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+        }
+        value=get_value(kf,groups[j],"real_table_name");
+        if (value){
+          if (g_strcmp0(dbt->real_table,value))
+            dbt->real_table=value;
+          else
+            g_free(value);
+        }
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';

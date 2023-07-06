@@ -122,7 +122,7 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
+//void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 guint min_rows_per_file = 0;
 guint max_rows_per_file = 0;
@@ -1693,15 +1693,3 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   return;
 }
-
-void write_table_job_into_file(MYSQL *conn, struct table_job *tj) {
-  guint64 rows_count =
-      write_table_data_into_file(conn, tj);
-
-  if (!rows_count){
-//    g_message("Empty chunk on %s.%s", tj->dbt->database->name, tj->dbt->table);
-//    tj->cs->char_step.step=cs->char_step.step
-  }
-  
-}
-

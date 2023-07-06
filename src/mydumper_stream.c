@@ -164,27 +164,31 @@ void *metadata_partial_writer(void *data){
   guint i=0;
   gchar *filename=NULL;
   GError* gerror = NULL;
+  GList *dbt_list = NULL;
   while (metadata_partial_writer_alive){
-    if (dbt != NULL){
-      print_dbt_on_metadata_gstring(output,dbt);
+    if (dbt != NULL && g_list_find(dbt_list, dbt)==NULL){
+//      print_dbt_on_metadata_gstring(output,dbt);
+      dbt_list=g_list_append(dbt_list,dbt);
     }
     current_datetime = g_date_time_new_now_local();
     diff=g_date_time_difference(current_datetime,prev_datetime)/G_TIME_SPAN_SECOND;
-    if (diff > 2){
-      if (output->len > 0){  
+    if (diff > 1){
+      if (g_list_length(dbt_list) > 0){  
         filename=g_strdup_printf("metadata.partial.%d",i);
         i++;
+        g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
         g_file_set_contents(filename,output->str,output->len,&gerror);
         stream_queue_push(NULL, filename);
         filename = NULL;
         g_string_set_size(output,0);
+        dbt_list=NULL;        
       }
       g_date_time_unref(prev_datetime);
       prev_datetime=current_datetime;
     }else{
       g_date_time_unref(current_datetime);
     }
-    dbt=g_async_queue_timeout_pop(metadata_partial_queue, 2000000);
+    dbt=g_async_queue_timeout_pop(metadata_partial_queue, 1000000);
   }
   return NULL;
 }
