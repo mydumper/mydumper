@@ -239,6 +239,12 @@ struct db_table {
   guint chunk_filesize;  
 };
 
+
+struct stream_queue_element{
+  struct db_table *dbt;
+  gchar *filename;
+};
+
 struct schema_post {
   struct database *database;
 };
@@ -250,4 +256,7 @@ void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
-
+void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
+void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);

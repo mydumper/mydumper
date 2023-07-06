@@ -414,6 +414,8 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
+
+    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);

@@ -214,7 +214,7 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       }
       free_schema_restore_job(rj->data.srj);
       break;
-    case JOB_RESTORE_SCHEMA_STRING:
+    case JOB_TO_CREATE_TABLE:
       dbt->schema_state=CREATING;
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
       g_message("Thread %d: restoring table `%s`.`%s` from %s", td->thread_id,

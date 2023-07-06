@@ -2,7 +2,6 @@
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <mysql.h>
-
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GList *all_dbts;
@@ -50,7 +49,7 @@ extern GKeyFile * key_file;
 extern char **tables;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern GAsyncQueue *start_scheduled_dump;
-extern GAsyncQueue *stream_queue;
+//extern GAsyncQueue *stream_queue;
 extern gboolean daemon_mode;
 extern gboolean dump_events;
 extern gboolean dump_routines;
@@ -113,7 +112,7 @@ extern guint trx_consistency_only;
 extern guint updated_since;
 extern int detected_server;
 extern int errno;
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size);
+//extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 extern int (*m_write)(FILE * file, const char * buff, int len);
 extern int need_dummy_read;
 extern int need_dummy_toku_read;

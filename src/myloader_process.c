@@ -296,7 +296,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
     g_free(statement);
   }
 
-  struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->database, create_table_statement, "");
+  struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_job(JOB_RESTORE,rj,dbt->database->real_database);
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
   myl_close(filename,infile);
@@ -442,12 +442,14 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-gboolean process_metadata_global(){
+gboolean process_metadata_global(gchar *file){
 //  void *infile;
-  gchar *path = g_build_filename(directory, "metadata", NULL);
+  gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
+
+  g_message("Reading metadata: %s", file);
   guint j=0;
   GError *error = NULL;
   gchar *value=NULL;
@@ -474,7 +476,17 @@ gboolean process_metadata_global(){
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
-        dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"Rows"),NULL, 10);
+        if (value) g_free(value);
+        if (get_value(kf,groups[j],"rows")){
+          dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+        }
+        value=get_value(kf,groups[j],"real_table_name");
+        if (value){
+          if (g_strcmp0(dbt->real_table,value))
+            dbt->real_table=value;
+          else
+            g_free(value);
+        }
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';

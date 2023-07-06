@@ -33,6 +33,8 @@
 #include <stdlib.h>
 #include "mydumper_common.h"
 #include <sys/wait.h>
+#include "mydumper_start_dump.h"
+#include "mydumper_stream.h"
 
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
@@ -40,7 +42,7 @@ guint table_number=0;
 GAsyncQueue *available_pids=NULL;
 GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
-int (*m_close)(guint thread_id, void *file, gchar *filename, guint size) = NULL;
+int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt) = NULL;
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
@@ -109,7 +111,7 @@ FILE * m_open_pipe(const char *filename, const char *type){
   return file;
 }
 
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
   release_pid();
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
@@ -126,7 +128,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
   //  g_mutex_unlock(fifo_table_mutex);
   }
   if (size > 0){
-    if (stream) g_async_queue_push(stream_queue, g_strdup(f->stdout_filename));
+    if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
   }else if (!build_empty_files){
     if (remove(f->stdout_filename)) {
       g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
@@ -137,10 +139,10 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
   return r;
 }
 
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size){
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
   int r=fclose(file);
   if (size > 0){
-    if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+    if (stream) stream_queue_push(dbt, g_strdup(filename));
   }else if (!build_empty_files){
     if (remove(filename)) {
       g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
@@ -445,4 +447,3 @@ void set_tidb_snapshot(MYSQL *conn){
   }
   g_free(query);
 }
-

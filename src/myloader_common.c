@@ -232,37 +232,53 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
 
 
 enum file_type get_file_type (const char * filename){
-  if (m_filename_has_suffix(filename, "-schema.sql")) {
-    return SCHEMA_TABLE;
-//  } else if (m_filename_has_suffix(filename, "-metadata")) {
-//    return METADATA_TABLE;
-  } else if ( strcmp(filename, "metadata") == 0 ){
+
+  if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
     return METADATA_GLOBAL;
-  } else if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 ){
+
+  if (source_db && ! g_str_has_prefix(filename, source_db))
+    return IGNORED;  
+
+  if (m_filename_has_suffix(filename, "-schema.sql")) 
+    return SCHEMA_TABLE;
+
+  if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 )
     return SCHEMA_TABLESPACE;
-  } else if ( strcmp(filename, "resume") == 0 ){
+
+  if ( strcmp(filename, "resume") == 0 ){
     if (!resume){
       m_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
     }
     return RESUME;
-  } else if ( strcmp(filename, "resume.partial") == 0 ){
+  }
+
+  if ( strcmp(filename, "resume.partial") == 0 )
     m_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
-  } else if (m_filename_has_suffix(filename, "-checksum")) {
+
+  if (m_filename_has_suffix(filename, "-checksum"))
     return CHECKSUM;
-  } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-view.sql") )
     return SCHEMA_VIEW;
-  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-sequence.sql") )
     return SCHEMA_SEQUENCE;
-  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-triggers.sql") )
     return SCHEMA_TRIGGER;
-  } else if (m_filename_has_suffix(filename, "-schema-post.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-post.sql") )
     return SCHEMA_POST;
-  } else if (m_filename_has_suffix(filename, "-schema-create.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-create.sql") )
     return SCHEMA_CREATE;
-  } else if (m_filename_has_suffix(filename, ".sql") ){
+
+  if (m_filename_has_suffix(filename, ".sql") )
     return DATA;
-  }else if (m_filename_has_suffix(filename, ".dat"))
+
+  if (m_filename_has_suffix(filename, ".dat"))
     return LOAD_DATA;
+
   return IGNORED;
 }
 

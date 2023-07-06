@@ -74,6 +74,10 @@
 #define MYSQL_TYPE_JSON 245
 #endif
 
+
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+
+
 GMutex *init_mutex = NULL;
 /* Program options */
 guint rows_per_file = 0;
@@ -118,7 +122,7 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
+//void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 guint min_rows_per_file = 0;
 guint max_rows_per_file = 0;
@@ -463,39 +467,13 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       break;
   }
   if (tj->sql_file){
-    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize);
+    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
     tj->sql_file=NULL;
   }
   if (tj->dat_file){
-    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize);
+    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
     tj->dat_file=NULL;
   }
-
-/*  if (tj->sql_filename != NULL ){
-    if (tj->filesize == 0 && !build_empty_files) {
-    // dropping the useless file
-      if (tj->sql_filename!=NULL){
-        if (remove(tj->sql_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
-        }
-      }
-      if (load_data && tj->dat_filename!=NULL){
-        if (remove(tj->dat_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
-        }
-      }
-    } else if (stream) {
-      g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-      if (load_data){
-        g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
-      }
-    } 
-  }
-*/
 
 /*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
@@ -1120,6 +1098,8 @@ void *working_thread(struct thread_data *td) {
   g_message("Thread %d: Schema queue", td->thread_id);
   process_queue(td->conf->schema_queue,td, process_job, NULL);
 
+  if (stream) send_initial_metadata();
+
   if (!no_data){
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
 
@@ -1369,9 +1349,9 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 }
 
 void free_db_table(struct db_table * dbt){
+  g_mutex_lock(dbt->chunks_mutex);
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
-  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
     g_string_free(dbt->insert_statement,TRUE);
@@ -1381,6 +1361,8 @@ void free_db_table(struct db_table * dbt){
 /*  g_free();
   g_free();
   g_free();*/
+  g_free(dbt->data_checksum);
+  dbt->data_checksum=NULL;
   g_free(dbt->chunks_completed);
   g_free(dbt->field);
   union chunk_step * cs = NULL;
@@ -1398,6 +1380,8 @@ void free_db_table(struct db_table * dbt){
     default:
       break;
   }
+  g_mutex_unlock(dbt->chunks_mutex);
+  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt);
 }
 
@@ -1710,15 +1694,3 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   return;
 }
-
-void write_table_job_into_file(MYSQL *conn, struct table_job *tj) {
-  guint64 rows_count =
-      write_table_data_into_file(conn, tj);
-
-  if (!rows_count){
-//    g_message("Empty chunk on %s.%s", tj->dbt->database->name, tj->dbt->table);
-//    tj->cs->char_step.step=cs->char_step.step
-  }
-  
-}
-
