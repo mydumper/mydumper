@@ -65,6 +65,7 @@ struct configuration {
   GAsyncQueue *ready;
   GAsyncQueue *ready_non_innodb_queue;
   GAsyncQueue *db_ready;
+  GAsyncQueue *binlog_ready;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
   GAsyncQueue *gtid_pos_checked;

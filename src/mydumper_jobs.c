@@ -944,7 +944,7 @@ void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;
   j->type = JOB_WRITE_MASTER_STATUS;
-  g_async_queue_push(conf->schema_queue, j);
+  g_async_queue_push(conf->initial_queue, j);
 }
 
 void create_job_to_dump_tablespaces(struct configuration *conf){
