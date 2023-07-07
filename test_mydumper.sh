@@ -48,11 +48,19 @@ test_case_dir (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
-      echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying export due error"
+      echo "Exporting database: ${mydumper_parameters}"
+      eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+      error=$?
+      cat $tmp_mydumper_log >> $mydumper_log
+      if (( $error > 0 ))
+        then
+        mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+        echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
   if [ "$PARTIAL" != "1" ]
@@ -72,14 +80,23 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
-      echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      mv $tmp_myloader_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying import due error"
+      echo "Importing database: ${myloader_parameters}"
+      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+      eval $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+      error=$?
+      cat $tmp_myloader_log >> $myloader_log
+      if (( $error > 0 ))
+      then
+        mv $mysqldumplog $mydumper_stor_dir
+        echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
+        echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        cat $tmp_myloader_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        mv $tmp_myloader_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
 }
@@ -108,10 +125,18 @@ test_case_stream (){
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying export due error"
+      echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+      eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+      error=$?
+      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+      if (( $error > 0 ))
+      then
+        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   if [ "$PARTIAL" != "1" ]
   then
@@ -126,14 +151,22 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      mv $tmp_myloader_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying import due error"
+      cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+      error=$?
+      cat $tmp_myloader_log >> $myloader_log
+      cat $tmp_mydumper_log >> $mydumper_log
+      if (( $error > 0 ))
+      then
+        mv $mysqldumplog $mydumper_stor_dir
+        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+        cat $tmp_mydumper_log
+        cat $tmp_myloader_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        mv $tmp_myloader_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
 }
