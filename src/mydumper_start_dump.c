@@ -788,7 +788,7 @@ void start_dump() {
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
 //  detect_server_version(conn);
@@ -973,6 +973,7 @@ void start_dump() {
   conf.gtid_pos_checked = g_async_queue_new();
   conf.are_all_threads_in_same_pos = g_async_queue_new();
   conf.db_ready = g_async_queue_new();
+  conf.binlog_ready = g_async_queue_new();
 //  ready_database_dump_mutex = g_rec_mutex_new();
 //  g_rec_mutex_lock(ready_database_dump_mutex);
   ready_table_dump_mutex = g_rec_mutex_new();
@@ -1060,6 +1061,7 @@ void start_dump() {
     release_global_lock_function(conn);
 //    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
     if (release_binlog_function != NULL){
+      g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
@@ -1104,10 +1106,13 @@ void start_dump() {
 //    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
     g_message("Global locks released");
     if (release_binlog_function != NULL){
+      g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
   }
+
+  g_async_queue_unref(conf.binlog_ready);
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);

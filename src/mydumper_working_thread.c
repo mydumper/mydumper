@@ -704,6 +704,11 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 //    case JOB_TABLE:
 //      thd_JOB_TABLE(td, job);
 //      break;
+    case JOB_WRITE_MASTER_STATUS:
+      write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_free(job);
+      break;
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
@@ -755,6 +760,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
       break;
     case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:

@@ -21,6 +21,11 @@
 
 #ifndef _src_mydumper_jobs_h
 #define _src_mydumper_jobs_h
+struct schema_metadata_job {
+  FILE *metadata_file;
+  GMutex *release_binlog_mutex;
+};
+
 struct schema_job {
   struct db_table *dbt;
   char *filename;
