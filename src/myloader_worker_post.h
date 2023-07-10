@@ -17,4 +17,5 @@
 #include "myloader.h"
 
 void initialize_post_loding_threads(struct configuration *conf);
+void create_post_shutdown_job(struct configuration *conf);
 void wait_post_worker_to_finish();

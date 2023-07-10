@@ -432,6 +432,7 @@ int main(int argc, char *argv[]) {
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);
+  create_post_shutdown_job(&conf);
   wait_post_worker_to_finish();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
