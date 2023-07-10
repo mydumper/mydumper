@@ -191,7 +191,7 @@ full_test(){
   # 1000 rows -- database must not exist
 
   mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
-  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1"
+  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1"
 
 
   # single file compressed -- overriting database
