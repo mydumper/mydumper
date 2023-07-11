@@ -453,7 +453,7 @@ void send_backup_stage_on_block_commit(MYSQL *conn){
 
 
 void send_mariadb_backup_locks(MYSQL *conn){
-  if (mysql_query(conn, "BACKUP STAGE START")) {
+/*  if (mysql_query(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
     errors++;
@@ -464,17 +464,19 @@ void send_mariadb_backup_locks(MYSQL *conn){
                mysql_error(conn));
     errors++;
   }
+*/
   if (mysql_query(conn, "BACKUP STAGE BLOCK_DDL")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
                mysql_error(conn));
     errors++;
   }
-
+/*
   if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
                mysql_error(conn));
     errors++;
   }
+*/
 }
 
 void send_percona57_backup_locks(MYSQL *conn){
