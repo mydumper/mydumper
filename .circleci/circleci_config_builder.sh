@@ -28,8 +28,8 @@ all_vendors[${vendor}_2]="mariadb-10.05"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="mariadb1006"
-all_vendors[${vendor}_1]="mariadb:10.06"
-all_vendors[${vendor}_2]="mariadb-10.06"
+all_vendors[${vendor}_1]="mariadb:10.6"
+all_vendors[${vendor}_2]="mariadb-10.6"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="mariadb1011"
