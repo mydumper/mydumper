@@ -46,7 +46,7 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
-list_mariadb_version=( "mariadb1011" )
+list_mariadb_version=( "mariadb1011" "mariadb1006")
 # list_arch=( "arm" "amd" )
 list_arch=( "amd" )
 declare -A all_arch
