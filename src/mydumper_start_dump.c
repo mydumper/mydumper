@@ -438,6 +438,7 @@ void long_query_wait(MYSQL *conn){
 
 
 void send_backup_stage_on_block_commit(MYSQL *conn){
+
   if (mysql_query(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
@@ -453,12 +454,12 @@ void send_backup_stage_on_block_commit(MYSQL *conn){
 
 
 void send_mariadb_backup_locks(MYSQL *conn){
-/*  if (mysql_query(conn, "BACKUP STAGE START")) {
+  if (mysql_query(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
     errors++;
   }
-
+/*
   if (mysql_query(conn, "BACKUP STAGE FLUSH")) {
     m_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
                mysql_error(conn));
@@ -605,6 +606,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
             *acquire_global_lock_function = &send_backup_stage_on_block_commit;
             *release_global_lock_function = &send_backup_stage_end;
 
+            *conn = create_connection();
             break;
           default:
             default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
@@ -889,13 +891,15 @@ void start_dump() {
       if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
-        if (acquire_global_lock_function != NULL) {
-          g_message("Acquiring Global lock");
-          acquire_global_lock_function(conn);
-        }
+
         if (acquire_ddl_lock_function != NULL) {
           g_message("Acquiring DDL lock");
           acquire_ddl_lock_function(second_conn);
+        }
+
+        if (acquire_global_lock_function != NULL) {
+          g_message("Acquiring Global lock");
+          acquire_global_lock_function(conn);
         }
       }
     } else {
