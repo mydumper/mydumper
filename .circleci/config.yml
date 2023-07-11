@@ -63,7 +63,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -154,7 +154,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -245,7 +245,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -336,7 +336,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -427,7 +427,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -518,7 +518,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -609,7 +609,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -700,7 +700,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.06-rc
+    - image: mariadb:10.06
       command: mysqld
       environment:
         MYSQL_USER: root
