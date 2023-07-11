@@ -43,26 +43,9 @@ GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
 void *loader_thread(struct thread_data *td);
 static GMutex *init_mutex=NULL;
-guint sync_threads_remaining;
-guint sync_threads_remaining1;
-guint sync_threads_remaining2;
-GMutex *sync_mutex;
-GMutex *sync_mutex1;
-GMutex *sync_mutex2;
-GMutex *view_mutex;
 
 void initialize_loader_threads(struct configuration *conf){
   init_mutex = g_mutex_new();
-  view_mutex=g_mutex_new();
-  sync_threads_remaining=num_threads;
-  sync_threads_remaining1=num_threads;
-  sync_threads_remaining2=num_threads;
-  sync_mutex = g_mutex_new();
-  sync_mutex1 = g_mutex_new();
-  sync_mutex2 = g_mutex_new();
-  g_mutex_lock(sync_mutex);
-  g_mutex_lock(sync_mutex1);
-  g_mutex_lock(sync_mutex2);
   guint n=0;
   threads = g_new(GThread *, num_threads);
   loader_td = g_new(struct thread_data, num_threads);
@@ -74,15 +57,6 @@ void initialize_loader_threads(struct configuration *conf){
     // Here, the ready queue is being used to serialize the connection to the database.
     // We don't want all the threads try to connect at the same time
     g_async_queue_pop(conf->ready);
-  }
-}
-
-void sync_threads(guint *counter, GMutex *mutex){
-  if (g_atomic_int_dec_and_test(counter)){
-    g_mutex_unlock(mutex);
-  }else{
-    g_mutex_lock(mutex);
-    g_mutex_unlock(mutex);
   }
 }
 
@@ -109,42 +83,6 @@ void *loader_thread(struct thread_data *td) {
 
   g_debug("Thread %d: Starting import", td->thread_id);
   process_stream_queue(td);
-  struct control_job *job = NULL;
-  gboolean cont=TRUE;
-
-  cont=TRUE;
-
-  sync_threads(&sync_threads_remaining1,sync_mutex1);
-
-
-  g_message("Thread %d: Starting post import task over table", td->thread_id);
-  cont=TRUE;
-  while (cont){
-    job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring post table");
-    g_mutex_lock(view_mutex);
-    cont=process_job(td, job);
-    g_mutex_unlock(view_mutex);
-  }
-
-//  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
-  cont=TRUE;
-  while (cont){
-    job = (struct control_job *)g_async_queue_pop(conf->post_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
-    g_mutex_lock(view_mutex);
-    cont=process_job(td, job);
-    g_mutex_unlock(view_mutex);
-  }
-  sync_threads(&sync_threads_remaining2,sync_mutex2);
-  cont=TRUE;
-  while (cont){
-    job = (struct control_job *)g_async_queue_pop(conf->view_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
-    g_mutex_lock(view_mutex);
-    cont=process_job(td, job);
-    g_mutex_unlock(view_mutex);
-  }
 
   if (td->thrconn)
     mysql_close(td->thrconn);

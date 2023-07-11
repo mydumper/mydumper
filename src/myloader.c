@@ -60,6 +60,7 @@
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
 #include "myloader_worker_loader.h"
+#include "myloader_worker_post.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -86,6 +87,7 @@ guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
+guint max_threads_for_post_creation=4;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
@@ -429,7 +431,9 @@ int main(int argc, char *argv[]) {
   wait_loader_threads_to_finish();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
-
+  initialize_post_loding_threads(&conf);
+  create_post_shutdown_job(&conf);
+  wait_post_worker_to_finish();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 
