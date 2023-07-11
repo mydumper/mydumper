@@ -247,7 +247,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
             }
           }
         }
-        if (innodb_optimize_keys && (dbt->rows == 0 || dbt->rows >= 1000000)){
+        if (innodb_optimize_keys){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
@@ -257,7 +257,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
           }else{
             // Processing CREATE TABLE statement
             GString *new_create_table_statement=g_string_sized_new(512);
-            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt);
+            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000));
             if (flag & IS_INNODB_TABLE){
               if (flag & IS_ALTER_TABLE_PRESENT){
                 finish_alter_table(alter_table_statement);
