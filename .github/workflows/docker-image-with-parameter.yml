@@ -35,7 +35,7 @@ jobs:
         with:
           context: .
           file: docker/${{ github.event.inputs.os }}/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-${{ github.event.inputs.os }}:latest
           labels: mydumper/mydumper-builder-${{ github.event.inputs.os }}:latest
