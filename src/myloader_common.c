@@ -313,7 +313,7 @@ void finish_alter_table(GString * alter_table_statement){
     g_string_append(alter_table_statement,";\n");
 }
 
-int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt){
+int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
   int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
@@ -322,12 +322,12 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   int fulltext_counter=0;
   int i=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
-    if ( g_strstr_len(split_file[i],5,"  KEY")
+    if (split_indexes &&( g_strstr_len(split_file[i],5,"  KEY")
       || g_strstr_len(split_file[i],8,"  UNIQUE")
       || g_strstr_len(split_file[i],9,"  SPATIAL")
       || g_strstr_len(split_file[i],10,"  FULLTEXT")
       || g_strstr_len(split_file[i],7,"  INDEX")
-      ){
+      )){
       // Ignore if the first column of the index is the AUTO_INCREMENT column
       if ((autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
         g_string_append(create_table_statement, split_file[i]);

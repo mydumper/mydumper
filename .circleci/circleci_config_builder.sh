@@ -28,8 +28,8 @@ all_vendors[${vendor}_2]="mariadb-10.05"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="mariadb1006"
-all_vendors[${vendor}_1]="mariadb:10.06-rc"
-all_vendors[${vendor}_2]="mariadb-10.06"
+all_vendors[${vendor}_1]="mariadb:10.6"
+all_vendors[${vendor}_2]="mariadb-10.6"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="mariadb1011"
@@ -43,10 +43,10 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
-list_all_vendors=( "percona57" "percona80" "mariadb1011")
+list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
-list_mariadb_version=( "mariadb1011" )
+list_mariadb_version=( "mariadb1011" "mariadb1006")
 # list_arch=( "arm" "amd" )
 list_arch=( "amd" )
 declare -A all_arch
@@ -190,10 +190,13 @@ commands:
 
 
 echo "
+  prepare_mariadb1006:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6"
+
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
-
 
   prepare_ubuntu_percona57:
     steps:
@@ -207,6 +210,16 @@ echo "
 "
 # libmariadb-dev-compat
 echo "
+  prepare_ubuntu_mariadb1006:
+    steps:
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
+  prepare_el_mariadb1006:
+    steps:
+    - prepare_mariadb1006
+    - run: sudo yum install -y MariaDB-devel
+    - run: sudo yum install -y MariaDB-compat || true
 
 
 
