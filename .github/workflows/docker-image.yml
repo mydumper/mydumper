@@ -30,7 +30,7 @@ jobs:
         with:
           context: .
           file: docker/el7/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el7:latest
           labels: mydumper/mydumper-builder-el7:latest
@@ -40,7 +40,7 @@ jobs:
         with:
           context: .
           file: docker/el8/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el8:latest
           labels: mydumper/mydumper-builder-el8:latest
@@ -50,7 +50,7 @@ jobs:
         with:
           context: .
           file: docker/el9/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el9:latest
           labels: mydumper/mydumper-builder-el9:latest
@@ -60,7 +60,7 @@ jobs:
         with:
           context: .
           file: docker/bionic/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-bionic:latest
           labels: mydumper/mydumper-builder-bionic:latest
@@ -70,7 +70,7 @@ jobs:
         with:
           context: .
           file: docker/bullseye/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-bullseye:latest
           labels: mydumper/mydumper-builder-bullseye:latest
@@ -80,7 +80,7 @@ jobs:
         with:
           context: .
           file: docker/buster/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-buster:latest
           labels: mydumper/mydumper-builder-buster:latest
@@ -90,7 +90,7 @@ jobs:
         with:
           context: .
           file: docker/focal/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-focal:latest
           labels: mydumper/mydumper-builder-focal:latest
@@ -100,7 +100,7 @@ jobs:
         with:
           context: .
           file: docker/jammy/Dockerfile
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-jammy:latest
           labels: mydumper/mydumper-builder-jammy:latest
