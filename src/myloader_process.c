@@ -155,7 +155,7 @@ FILE * myl_open(char *filename, const char *type){
 
     lstat(basename, &a);
     if ((a.st_mode & S_IFMT) == S_IFIFO){
-      g_critical("FIFO file found %s, removing and continuing", basename);
+      g_warning("FIFO file found %s, removing and continuing", basename);
       remove(basename);
     }
 
@@ -184,7 +184,7 @@ FILE * myl_open(char *filename, const char *type){
   }else{
     lstat(filename, &a);
     if ((a.st_mode & S_IFMT) == S_IFIFO){
-      g_critical("FIFO file found %s. Skipping", filename);
+      g_warning("FIFO file found %s. Skipping", filename);
       file=NULL;
     }else{
       file=g_fopen(filename, type);
