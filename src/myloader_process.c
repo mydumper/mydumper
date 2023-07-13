@@ -30,6 +30,8 @@
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
 #include <sys/wait.h>
+#include <sys/stat.h>
+
 
 GString *change_master_statement=NULL;
 gboolean append_if_not_exist=FALSE;
@@ -148,7 +150,15 @@ FILE * myl_open(char *filename, const char *type){
   int child_proc;
   (void) child_proc;
   gchar **command=NULL;
+  struct stat a;
   if (get_command_and_basename(filename, &command,&basename)){
+
+    lstat(basename, &a);
+    if ((a.st_mode & S_IFMT) == S_IFIFO){
+      g_critical("FIFO file found %s, removing and continuing", basename);
+      remove(basename);
+    }
+
     mkfifo(basename,0666);
     child_proc = execute_file_per_thread(filename, basename, command);
     file=g_fopen(basename,type);
@@ -172,7 +182,13 @@ FILE * myl_open(char *filename, const char *type){
     }
 
   }else{
-    file=g_fopen(filename, type);
+    lstat(filename, &a);
+    if ((a.st_mode & S_IFMT) == S_IFIFO){
+      g_critical("FIFO file found %s. Skipping", filename);
+      file=NULL;
+    }else{
+      file=g_fopen(filename, type);
+    }
   }
   return file;
 }
@@ -225,6 +241,13 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   g_string_set_size(create_table_statement,0);
   guint line=0;
   infile=myl_open(filename,"r");
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return NULL;
+  }
+
   while (eof == FALSE) {
     if (read_data(infile, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -435,8 +458,10 @@ gboolean process_table_filename(char * filename){
     g_async_queue_push(real_db_name->queue, cj);
     g_mutex_unlock(real_db_name->mutex);
     return FALSE;
-  }else
-    g_async_queue_push(conf->table_queue, cj);
+  }else{
+    if (cj)
+      g_async_queue_push(conf->table_queue, cj);
+  }
   g_mutex_unlock(real_db_name->mutex);
   return TRUE;
 //  g_free(filename);
