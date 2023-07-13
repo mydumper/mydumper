@@ -476,10 +476,10 @@ if (cs->integer_step.is_unsigned) {
     return;
   }
 if (cs->integer_step.is_unsigned) {
-  guint64 nmin = strtoul(row[0], NULL, 10);
+  guint64 nmin = strtoull(row[0], NULL, 10);
   cs->integer_step.type.unsign.min = nmin;
 }else{
-  guint64 nmin = strtol(row[0], NULL, 10);
+  gint64 nmin = strtoll(row[0], NULL, 10);
   cs->integer_step.type.sign.min = nmin;
 
 }
@@ -535,10 +535,10 @@ cleanup:
   }
 
 if (cs->integer_step.is_unsigned) {
-  guint64 nmax = strtoul(row[0], NULL, 10);
+  guint64 nmax = strtoull(row[0], NULL, 10);
   cs->integer_step.type.unsign.max = nmax;
 }else{
-  guint64 nmax = strtol(row[0], NULL, 10);
+  gint64 nmax = strtoll(row[0], NULL, 10);
   cs->integer_step.type.sign.max = nmax;
 
 }
@@ -700,7 +700,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     goto cleanup;
   }
   /* Support just bigger INTs for now, very dumb, no verify approach */
-  guint64 unmin, unmax, abs;
+  long unsigned int abs;
+  guint64 unmin, unmax;
   gint64 nmin, nmax;
   gchar *prefix=NULL;
   union chunk_step *cs = NULL;
