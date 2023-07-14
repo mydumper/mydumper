@@ -13,7 +13,6 @@
 */
 
 #include <mysql.h>
-#include <glib.h>
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,11 +26,6 @@
 #include "config.h"
 #include "connection.h"
 #include <stdarg.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 extern gboolean no_delete;
 extern gboolean stream;
 extern gchar *defaults_file;
@@ -220,6 +214,14 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
           if (g_strcmp0(keys[j],"num_threads") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(conf_per_table->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+          if (g_strcmp0(keys[j],"columns_on_select") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(conf_per_table->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+          if (g_strcmp0(keys[j],"columns_on_insert") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
           }
         }
       }
@@ -556,14 +558,9 @@ void remove_definer(GString * data){
 
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
-    g_string_append_printf(str, "%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
+    g_string_append_printf(str, " v%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
-#endif
-#ifdef ZWRAP_USE_ZSTD
-    g_string_append(str," with ZSTD");
-#else
-    g_string_append(str," with GZIP");
 #endif
     g_print("%s\n", str->str);
 }
@@ -674,38 +671,35 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
-gboolean read_data(FILE *file, enum data_file_type dft, GString *data,
+gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
   char buffer[256];
 
   do {
-    switch (dft){
-      case FIFO:
-      case COMMON: 
-        if (fgets(buffer, 256, file) == NULL) {
-          if (feof(file)) {
-            *eof = TRUE;
-            buffer[0] = '\0';
-          } else {
-            return FALSE;
-          }
-        }
-      break;
-      case COMPRESSED:
-        if (!gzgets((gzFile)file, buffer, 256)) {
-          if (gzeof((gzFile)file)) {
-            *eof = TRUE;
-            buffer[0] = '\0';
-          } else {
-            return FALSE;
-          }
-        }
-      break;
+    if (fgets(buffer, 256, file) == NULL) {
+      if (feof(file)) {
+        *eof = TRUE;
+        buffer[0] = '\0';
+      } else {
+        return FALSE;
       }
+    }
     g_string_append(data, buffer);
-    if (strlen(buffer) != 256)
+    if (buffer[strlen(buffer)-1] == '\n')
       (*line)++;
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
   return TRUE;
 }
+
+gchar *m_date_time_new_now_local(){
+  GString *datetimestr=g_string_sized_new(26);
+  GDateTime *datetime = g_date_time_new_now_local();
+  g_string_append(datetimestr,g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S"));
+  g_string_append_printf(datetimestr,".%d", g_date_time_get_microsecond(datetime));
+  g_date_time_unref(datetime);
+  gchar *r=datetimestr->str;
+  g_string_free(datetimestr,FALSE);
+  return r;
+}
+

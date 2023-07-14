@@ -77,6 +77,7 @@ extern GString *set_session;
 extern guint commit_count;
 extern guint errors;
 extern guint max_threads_for_index_creation;
+extern guint max_threads_for_post_creation;
 extern guint max_threads_for_schema_creation;
 extern guint max_threads_per_table_hard;
 extern guint max_threads_per_table;
@@ -94,5 +95,7 @@ extern gchar *exec_per_thread;
 extern gchar *exec_per_thread_extension;
 extern gchar **exec_per_thread_cmd;
 
-extern guint index_threads_counter;
+//extern guint index_threads_counter;
 extern GMutex *index_mutex;
+extern gchar **zstd_decompress_cmd;
+extern gchar **gzip_decompress_cmd;

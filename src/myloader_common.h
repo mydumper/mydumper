@@ -17,6 +17,11 @@
 #ifndef _src_myloader_common_h
 #define _src_myloader_common_h
 
+#define ZSTD_DECOMPRESS_COMMAND "/usr/bin/zstd -c -d"
+#define ZSTD_EXTENSION ".zst"
+#define GZIP_DECOMPRESS_COMMAND "/usr/bin/gzip -c -d"
+#define GZIP_EXTENSION ".gz"
+
 #define IS_INNODB_TABLE 2
 #define INCLUDE_CONSTRAINT 4
 #define IS_ALTER_TABLE_PRESENT 8
@@ -34,7 +39,8 @@ struct database * get_db_hash(gchar *k, gchar *v);
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex);
 //void load_schema(structconfiguration *conf, struct db_table *dbt, const gchar *filename);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
-int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt);
+//int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt);
+int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes);
 void finish_alter_table(GString * alter_table_statement);
 void initialize_common();
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
@@ -42,8 +48,8 @@ void refresh_table_list(struct configuration *conf);
 void refresh_table_list_without_table_hash_lock(struct configuration *conf);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
-int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
-void ml_open(FILE **infile, const gchar *filename, enum data_file_type *fdp);
+//int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
+int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec);
 gboolean has_compession_extension(const gchar *filename);
 gboolean has_exec_per_thread_extension(const gchar *filename);
 gchar *build_dbt_key(gchar *a, gchar *b);
@@ -52,4 +58,6 @@ void checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;
 void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) ;
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
 void change_master(GKeyFile * kf,gchar *group, GString *s);
+gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
+gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 #endif

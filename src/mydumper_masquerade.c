@@ -47,7 +47,7 @@ GHashTable * load_file_content(gchar *filename){
   guint line=0;
   GList *l=NULL;
   while (!eof){
-    read_data(file, FALSE, data, &eof, &line);
+    read_data(file, data, &eof, &line);
     while (data->str[data->len-1] == '\n' || data->str[data->len-1] == '\r')
       g_string_set_size(data, data->len - 1);
     if (data->len>0){

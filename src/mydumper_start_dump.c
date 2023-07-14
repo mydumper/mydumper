@@ -36,11 +36,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
@@ -87,7 +82,6 @@ int longquery_retries = 0;
 int longquery_retry_interval = 60;
 int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
-int compress_output = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
 gboolean no_schemas = FALSE;
@@ -117,7 +111,7 @@ gchar **db_items=NULL;
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL};
 gchar *exec_command=NULL;
 
 void initialize_start_dump(){
@@ -127,6 +121,9 @@ void initialize_start_dump(){
   conf_per_table.all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  conf_per_table.all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  conf_per_table.all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   // until we have an unique option on lock types we need to ensure this
   if (no_locks || trx_consistency_only)
@@ -224,7 +221,9 @@ gboolean sig_triggered(void * user_data, int signal) {
       ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
     GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
     if (!daemon_mode){
-      fprintf(stdout, "Ctrl+c detected! Are you sure you want to cancel(Y/N)?");
+      char *datetimestr=m_date_time_new_now_local();
+      fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
+      g_free(datetimestr);
       for(i=0;i<num_threads;i++){
         g_mutex_lock(pause_mutex_per_thread[i]);
         g_async_queue_push(queue,pause_mutex_per_thread[i]);
@@ -235,11 +234,18 @@ gboolean sig_triggered(void * user_data, int signal) {
           c=fgetc(stdin);
         }while (c=='\n');
         if ( c == 'N' || c == 'n'){
+          datetimestr=m_date_time_new_now_local();
+          fprintf(stdout, "%s: Resuming backup\n", datetimestr);
+          g_free(datetimestr);
           for(i=0;i<num_threads;i++)
             g_mutex_unlock(pause_mutex_per_thread[i]);
+
           return TRUE;
         }
         if ( c == 'Y' || c == 'y'){
+          datetimestr=m_date_time_new_now_local();
+          fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
+          g_free(datetimestr);
           shutdown_triggered = TRUE;
           for(i=0;i<num_threads;i++)
             g_mutex_unlock(pause_mutex_per_thread[i]);
@@ -296,7 +302,9 @@ MYSQL *create_main_connection() {
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
-  detected_server = detect_server(conn);
+//  detected_server = detect_server(conn);
+  detect_server_version(conn);
+  detected_server = get_product(); 
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -323,6 +331,10 @@ MYSQL *create_main_connection() {
   case SERVER_TYPE_TIDB:
     g_message("Connected to a TiDB server");
     data_checksums=FALSE;
+    break;
+  case SERVER_TYPE_PERCONA:
+    g_message("Connected to a Percona server");
+    set_transaction_isolation_level_repeatable_read(conn);
     break;
   default:
     m_critical("Cannot detect server type");
@@ -424,29 +436,48 @@ void long_query_wait(MYSQL *conn){
     }
 }
 
+
+void send_backup_stage_on_block_commit(MYSQL *conn){
+/*
+  if (mysql_query(conn, "BACKUP STAGE START")) {
+    m_critical("Couldn't acquire BACKUP STAGE START: %s",
+               mysql_error(conn));
+    errors++;
+  }
+*/
+  if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
+    m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
+               mysql_error(conn));
+    errors++;
+  }
+}
+
+
 void send_mariadb_backup_locks(MYSQL *conn){
   if (mysql_query(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
     errors++;
   }
-
+/*
   if (mysql_query(conn, "BACKUP STAGE FLUSH")) {
     m_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
                mysql_error(conn));
     errors++;
   }
+*/
   if (mysql_query(conn, "BACKUP STAGE BLOCK_DDL")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
                mysql_error(conn));
     errors++;
   }
-
+/*
   if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
                mysql_error(conn));
     errors++;
   }
+*/
 }
 
 void send_percona57_backup_locks(MYSQL *conn){
@@ -465,7 +496,7 @@ void send_percona57_backup_locks(MYSQL *conn){
   }
 }
 
-void send_lock_instance_backup(MYSQL *conn){
+void send_ddl_lock_instance_backup(MYSQL *conn){
   if (mysql_query(conn, "LOCK INSTANCE FOR BACKUP")) {
     m_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
                mysql_error(conn));
@@ -481,7 +512,7 @@ void send_unlock_binlogs(MYSQL *conn){
   mysql_query(conn, "UNLOCK BINLOG");
 }
 
-void send_unlock_instance_backup(MYSQL *conn){
+void send_ddl_unlock_instance_backup(MYSQL *conn){
   mysql_query(conn, "UNLOCK INSTANCE");
 }
 
@@ -503,43 +534,115 @@ void send_flush_table_with_read_lock(MYSQL *conn){
           errors++;
         }
 }
-void determine_ddl_lock_function(MYSQL ** conn, void(**flush_table)(MYSQL *), void (**acquire_lock_function)(MYSQL *), void (** release_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
-  mysql_query(*conn, "SELECT @@version_comment, @@version");
-  MYSQL_RES *res2 = mysql_store_result(*conn);
-  MYSQL_ROW ver;
-  while ((ver = mysql_fetch_row(res2))) {
-    if (g_str_has_prefix(ver[0], "Percona")){
-      if (g_str_has_prefix(ver[1], "8.")) {
-        *acquire_lock_function = &send_lock_instance_backup;
-        *release_lock_function = &send_unlock_instance_backup;
-        break;
+
+void default_locking(void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
+  *acquire_ddl_lock_function = NULL;
+  *release_ddl_lock_function = NULL;
+
+  *acquire_global_lock_function = &send_flush_table_with_read_lock;
+  *release_global_lock_function = &send_unlock_tables;
+
+  *release_binlog_function = NULL;
+}
+
+void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
+  switch(get_product()){
+    case SERVER_TYPE_PERCONA:
+      switch (get_major()) {
+        case 8:
+          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
+          break;
+        case 5:
+          if (get_secondary() == 7) {
+            if (no_backup_locks){
+              *acquire_ddl_lock_function = NULL;
+              *release_ddl_lock_function = NULL;
+            }else{
+              *acquire_ddl_lock_function = &send_percona57_backup_locks;
+              *release_ddl_lock_function = &send_unlock_tables;
+            }
+
+            *acquire_global_lock_function = &send_flush_table_with_read_lock;
+            *release_global_lock_function = &send_unlock_tables;
+
+            *release_binlog_function = &send_unlock_binlogs;
+
+            *conn = create_connection();
+          }else{
+            default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+          }
+          break;
+        default:
+          default_locking(acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+          break;
       }
-      if (g_str_has_prefix(ver[1], "5.7.")) {
-        *acquire_lock_function = &send_percona57_backup_locks;
-        *release_binlog_function = &send_unlock_binlogs;
-        *release_lock_function = &send_unlock_tables;
-        *conn = create_connection();
-        break;
+      break;
+    case SERVER_TYPE_MYSQL: 
+      switch (get_major()) {
+        case 8:
+          *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
+          *release_ddl_lock_function = &send_ddl_unlock_instance_backup;
+
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
+          break;
+        default:
+          default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+          break;
       }
-    }
-    if (g_str_has_prefix(ver[0], "MySQL")){
-      if (g_str_has_prefix(ver[1], "8.")) {
-        *acquire_lock_function = &send_lock_instance_backup;
-        *release_lock_function = &send_unlock_instance_backup;
-        break;
+      break;
+    case SERVER_TYPE_MARIADB:
+      if (get_major() == 10){
+        switch (get_secondary()){
+          case 5:
+          case 6:
+            *acquire_ddl_lock_function = &send_mariadb_backup_locks;
+//            *release_ddl_lock_function = &send_backup_stage_end;
+            *release_ddl_lock_function = NULL;
+
+            *acquire_global_lock_function = &send_backup_stage_on_block_commit;
+            *release_global_lock_function = &send_backup_stage_end;
+
+//            *conn = create_connection();
+            break;
+          default:
+            default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+            break;
+        }
+      }else{
+        default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
-    }
-    if (g_str_has_prefix(ver[0], "mariadb")){
-      if ((g_str_has_prefix(ver[1], "10.5")) || 
-          (g_str_has_prefix(ver[1], "10.6"))) {
-        *flush_table = NULL;
-        *acquire_lock_function = &send_mariadb_backup_locks;
-        *release_lock_function = &send_backup_stage_end;
-        break;
-      }
-    }
+      break;
+    default:
+      default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+      break;
   }
-  mysql_free_result(res2);
+}
+
+
+
+void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
+  g_mutex_lock(dbt->chunks_mutex);
+  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->table, dbt->rows);
+  if (dbt->data_checksum)
+    g_string_append_printf(data,"data_checksum = %s\n", dbt->data_checksum);
+  if (dbt->schema_checksum)
+    g_string_append_printf(data,"schema_checksum = %s\n", dbt->schema_checksum);
+  if (dbt->indexes_checksum)
+    g_string_append_printf(data,"indexes_checksum = %s\n", dbt->indexes_checksum);
+  if (dbt->triggers_checksum)
+    g_string_append_printf(data,"triggers_checksum = %s\n", dbt->triggers_checksum);
+  g_mutex_unlock(dbt->chunks_mutex);
+}
+
+void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt){
+  GString *data = g_string_sized_new(100);
+  print_dbt_on_metadata_gstring(dbt, data);
+  fprintf(mdfile, "%s", data->str);
 }
 
 
@@ -686,15 +789,16 @@ void start_dump() {
   check_num_threads();
 
   initialize_regex(partition_regex);
-
+//  detect_server_version(conn);
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
   char *metadata_partial_filename, *metadata_filename;
   char *u;
-  detect_server_version(conn);
-  void (*flush_table_function)(MYSQL *) = &send_flush_table_with_read_lock;
+//  detect_server_version(conn);
+  void (*acquire_global_lock_function)(MYSQL *) = NULL;
+  void (*release_global_lock_function)(MYSQL *) = NULL;
   void (*acquire_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_ddl_lock_function)(MYSQL *) = NULL;
   void (*release_binlog_function)(MYSQL *) = NULL;
@@ -783,18 +887,20 @@ void start_dump() {
 
     if (!no_locks) {
       // This backup will lock the database
-      if (!no_backup_locks)
-        determine_ddl_lock_function(&second_conn,&flush_table_function, &acquire_ddl_lock_function,&release_ddl_lock_function, &release_binlog_function);
+      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
 
       if (lock_all_tables) {
         send_lock_all_tables(conn);
       } else {
-        if (flush_table_function != NULL) {
-          flush_table_function(conn);
-        }
+
         if (acquire_ddl_lock_function != NULL) {
           g_message("Acquiring DDL lock");
           acquire_ddl_lock_function(second_conn);
+        }
+
+        if (acquire_global_lock_function != NULL) {
+          g_message("Acquiring Global lock");
+          acquire_global_lock_function(conn);
         }
       }
     } else {
@@ -874,6 +980,7 @@ void start_dump() {
   conf.gtid_pos_checked = g_async_queue_new();
   conf.are_all_threads_in_same_pos = g_async_queue_new();
   conf.db_ready = g_async_queue_new();
+  conf.binlog_ready = g_async_queue_new();
 //  ready_database_dump_mutex = g_rec_mutex_new();
 //  g_rec_mutex_lock(ready_database_dump_mutex);
   ready_table_dump_mutex = g_rec_mutex_new();
@@ -881,7 +988,7 @@ void start_dump() {
 
   g_message("conf created");
 
-  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) {
+  if (is_mysql_like()) {
     create_job_to_dump_metadata(&conf, mdfile);
   }
 
@@ -894,8 +1001,8 @@ void start_dump() {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
       struct database *this_db=new_database(conn,db_items[i],TRUE);
-      if (this_db->dump_triggers)
-        create_job_to_dump_schema_triggers(this_db, &conf);
+//      if (this_db->dump_triggers)
+//        create_job_to_dump_schema_triggers(this_db, &conf);
       create_job_to_dump_database(this_db, &conf);
       if (!no_schemas)
         create_job_to_dump_schema(this_db, &conf);
@@ -958,17 +1065,17 @@ void start_dump() {
 
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
-    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
+    release_global_lock_function(conn);
+//    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
     if (release_binlog_function != NULL){
+      g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
   }
 
-  
   g_message("Waiting database finish");
-//  if (database_counter > 0)
-//    g_rec_mutex_lock(ready_database_dump_mutex);
+
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
 
@@ -989,42 +1096,31 @@ void start_dump() {
     g_async_queue_push(conf.schema_queue, j);
   }
 
- 
   if (less_locking){
     build_lock_tables_statement(&conf);
   }
+
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.ready_non_innodb_queue, GINT_TO_POINTER(1));
   }
-
-/*
-  for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.non_innodb_queue, j);
-  }
-*/
 
   if (!no_locks && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
-    g_message("Non-InnoDB dump complete, unlocking tables");
-    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
-    g_message("Releasing FTWR lock");
+    g_message("Non-InnoDB dump complete, releasing global locks");
+    release_global_lock_function(conn);
+//    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
+    g_message("Global locks released");
     if (release_binlog_function != NULL){
+      g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
   }
 
-/*
-  for (n = 0; n < num_threads; n++) {
-    struct job *j = g_new0(struct job, 1);
-    j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.innodb_queue, j);
-  }
-*/
+  g_async_queue_unref(conf.binlog_ready);
+
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
@@ -1059,7 +1155,7 @@ void start_dump() {
   for (iter = all_dbts; iter != NULL; iter = iter->next) {
     dbt = (struct db_table *)iter->data;
 //    write_table_metadata_into_file(dbt);
-    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
+/*    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
     if (dbt->data_checksum)
       fprintf(mdfile,"data_checksum = %s\n", dbt->data_checksum);
     if (dbt->schema_checksum)
@@ -1068,6 +1164,8 @@ void start_dump() {
       fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
     if (dbt->triggers_checksum)
       fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
+*/
+    print_dbt_on_metadata(mdfile, dbt);
     free_db_table(dbt);
   }
   g_list_free(all_dbts);
@@ -1104,9 +1202,8 @@ void start_dump() {
   if (updated_since > 0)
     fclose(nufile);
   g_rename(metadata_partial_filename, metadata_filename);
-  if (stream) {
-    g_async_queue_push(stream_queue, g_strdup(metadata_filename));
-  }
+  if (stream) stream_queue_push(NULL, g_strdup(metadata_filename));
+
   g_free(metadata_partial_filename);
   g_free(metadata_filename);
   g_message("Finished dump at: %s",datetimestr);
@@ -1116,7 +1213,7 @@ void start_dump() {
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
     }else{
-      g_async_queue_push(stream_queue, g_strdup(""));
+      stream_queue_push(NULL, g_strdup(""));
       wait_stream_to_finish();
     }
     if (no_delete == FALSE && output_directory_param == NULL)

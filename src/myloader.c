@@ -34,11 +34,6 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <errno.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "config.h"
 #include "common.h"
 #include "myloader_stream.h"
@@ -54,7 +49,7 @@
 #include "myloader_process.h"
 #include "myloader_common.h"
 #include "common_options.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_pmm_thread.h"
@@ -64,6 +59,8 @@
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
+#include "myloader_worker_loader.h"
+#include "myloader_worker_post.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -90,6 +87,7 @@ guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
+guint max_threads_for_post_creation=4;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
@@ -151,11 +149,11 @@ void create_database(struct thread_data *td, gchar *database) {
   const gchar *filename =
       g_strdup_printf("%s-schema-create.sql", database);
   const gchar *filenamegz =
-      g_strdup_printf("%s-schema-create.sql%s", database, compress_extension);
+      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
                                           directory, database);
   const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, database, compress_extension);
+                                            directory, database, exec_per_thread_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filename, TRUE));
@@ -203,13 +201,15 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
+
+  signal(SIGCHLD, SIG_IGN);
 
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
@@ -247,11 +247,6 @@ int main(int argc, char *argv[]) {
     exit(EXIT_SUCCESS);
   }
 
-#ifdef ZWRAP_USE_ZSTD
-  compress_extension = g_strdup(".zst");
-#else
-  compress_extension = g_strdup(".gz");
-#endif
   initialize_set_names();
 
 
@@ -280,7 +275,8 @@ int main(int argc, char *argv[]) {
       g_error_free(serror);
     }
   }
-  initialize_job(purge_mode_str);
+//  initialize_job(purge_mode_str);
+  initialize_restore_job(purge_mode_str);
   char *current_dir=g_get_current_dir();
   if (!input_directory) {
     if (stream){
@@ -336,8 +332,8 @@ int main(int argc, char *argv[]) {
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
-  detected_server = detect_server(conn);
   detect_server_version(conn);
+  detected_server = get_product();
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -396,6 +392,7 @@ int main(int argc, char *argv[]) {
   t.conf = &conf;
   t.thrconn = conn;
   t.current_database=NULL;
+  t.status=WAITING;
 
   if (tables_list)
     tables = get_table_list(tables_list);
@@ -419,6 +416,8 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
+
+    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);
@@ -432,7 +431,9 @@ int main(int argc, char *argv[]) {
   wait_loader_threads_to_finish();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
-
+  initialize_post_loding_threads(&conf);
+  create_post_shutdown_job(&conf);
+  wait_post_worker_to_finish();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 
@@ -441,7 +442,6 @@ int main(int argc, char *argv[]) {
 
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
-  checksum_databases(&t);
 
   GList * tl=conf.table_list;
   while (tl != NULL){
@@ -465,12 +465,6 @@ int main(int argc, char *argv[]) {
 
 
   if (stream && no_delete == FALSE && input_directory == NULL){
-    // remove metadata files
-    GList *e=conf.metadata_list;
-    while (e) {
-      m_remove(directory, e->data);
-      e=e->next;
-    }
     m_remove(directory,"metadata");
     if (g_rmdir(directory) != 0)
         g_critical("Restore directory not removed: %s", directory);
@@ -519,11 +513,12 @@ int main(int argc, char *argv[]) {
   free_set_names();
   print_errors();
 
+  stop_signal_thread();
+
   if (logoutfile) {
     fclose(logoutfile);
   }
 
-  stop_signal_thread();
 /*
   GList * tl=g_list_sort(conf.table_list, compare_by_time);
   g_message("Import timings:");

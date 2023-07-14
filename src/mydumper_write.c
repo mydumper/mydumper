@@ -30,25 +30,19 @@
 #include <errno.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <math.h>
 #include "mydumper_start_dump.h"
 #include "server_detect.h"
-//#include "common.h"
 #include "regex.h"
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
-#include <math.h>
-//#include "common_options.h"
 #include "mydumper_masquerade.h"
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
-
 #include "mydumper_global.h"
+
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
@@ -77,7 +71,7 @@ void initialize_write(){
   if (rows_per_file > 0 && chunk_filesize > 0) {
 //    chunk_filesize = 0;
 //    g_warning("--chunk-filesize disabled by --rows option");
-    g_warning("We are going to chunk by row and by filesize");
+    g_warning("We are going to chunk by row and by filesize when possible");
   }
 
   fields_enclosed_by=g_strdup("\"");
@@ -86,7 +80,7 @@ void initialize_write(){
     if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
     if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
     if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
-    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\n");
+    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\\n");
   }
 //  if (load_data){
     if (!fields_enclosed_by_ld){
@@ -221,10 +215,16 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append(dbt->insert_statement, dbt->table);
   g_string_append_c(dbt->insert_statement, identifier_quote_character);
 
-  if (dbt->complete_insert) {
+  if (dbt->columns_on_insert){
     g_string_append(dbt->insert_statement, " (");
-    append_columns(dbt->insert_statement,fields,num_fields);
+    g_string_append(dbt->insert_statement, dbt->columns_on_insert);
     g_string_append(dbt->insert_statement, ")");
+  }else{
+    if (dbt->complete_insert) {
+      g_string_append(dbt->insert_statement, " (");
+      append_columns(dbt->insert_statement,fields,num_fields);
+      g_string_append(dbt->insert_statement, ")");
+    }
   } 
   g_string_append(dbt->insert_statement, " VALUES");
 }
@@ -263,8 +263,9 @@ gboolean write_data(FILE *file, GString *data) {
 }
 
 
-void initialize_load_data_statement(GString *statement, gchar * table, const gchar *character_set, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
-  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s' REPLACE INTO TABLE `%s` ", basename, table);
+void initialize_load_data_statement(GString *statement, struct db_table *dbt, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
+  gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
+  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' REPLACE INTO TABLE `%s` ", basename, exec_per_thread_extension, dbt->table);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
@@ -277,11 +278,16 @@ void initialize_load_data_statement(GString *statement, gchar * table, const gch
   if (lines_starting_by_ld)
     g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
   g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
-  GString * set_statement=append_load_data_columns(statement,fields,num_fields);
-  g_string_append(statement,")");
-  if (set_statement != NULL){
-    g_string_append(statement,set_statement->str);
-    g_string_free(set_statement,TRUE);
+  if (dbt->columns_on_insert){
+    g_string_append(statement,dbt->columns_on_insert);
+    g_string_append(statement,")");
+  }else{
+    GString * set_statement=append_load_data_columns(statement,fields,num_fields);
+    g_string_append(statement,")");
+    if (set_statement != NULL){
+      g_string_append(statement,set_statement->str);
+      g_string_free(set_statement,TRUE);
+    }
   }
   g_string_append(statement,";\n");
 }
@@ -299,7 +305,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->dat_filename);
   initialize_sql_statement(statement);
-  initialize_load_data_statement(statement, tj->dbt->table, set_names_str != NULL ? set_names_str : tj->dbt->character_set /* "BINARY"*/, basename, fields, num_fields);
+  initialize_load_data_statement(statement, tj->dbt, basename, fields, num_fields);
   if (!write_data(tj->sql_file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
     return FALSE;
@@ -346,7 +352,6 @@ void message_dumping_data(struct thread_data *td, struct table_job *tj){
 }
 
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-//  if (load_data){
     if (*column)
       fun_ptr_i->function(column,&length,fun_ptr_i);
     if (!*column) {
@@ -402,20 +407,6 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   g_string_append(statement_row, lines_starting_by);
   (void) dbt;
   struct function_pointer ** f = dbt->anonymized_function;
-/*  if (f==NULL){
-    for (i = 0; i < num_fields-1; i++) {
-      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp);
-      g_string_append(statement_row, fields_terminated_by);
-    }
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, &pp );
-  }else{
-    for (i = 0; i < num_fields-1; i++) {
-      write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
-      g_string_append(statement_row, fields_terminated_by);
-    }
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row, f[i]);
-  }
-*/
 
   for (i = 0; i < num_fields-1; i++) {
     write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
@@ -427,9 +418,14 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
 
 }
 
-guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
+void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
+  g_mutex_lock(dbt->rows_lock);
+  dbt->rows+=num_rows;
+  g_mutex_unlock(dbt->rows_lock);
+}
+
+void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
   struct db_table * dbt = tj->dbt;
-//  guint fn = tj->nchunk;
   guint64 num_rows=0;
   GString *escaped = g_string_sized_new(3000);
   guint num_fields = mysql_num_fields(result);
@@ -437,56 +433,41 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
   MYSQL_ROW row;
   GString *statement_row = g_string_sized_new(0);
   GString *statement = g_string_sized_new(2*statement_size);
-//  guint sections = tj->where==NULL?1:2;
 
-//  if (tj->sql_filename == NULL){
   if (update_files_on_table_job(tj)){
     write_load_data_statement(tj, fields, num_fields);
   }
   message_dumping_data(tj->td,tj);
-//    write_load_data_statement(tj, fields, num_fields);
-//  }
 
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
     num_rows++;
-    if (chunk_filesize &&
+    if (dbt->chunk_filesize &&
         (guint)ceil((float)tj->filesize / 1024 / 1024) >
-            chunk_filesize ) {
-      if (!write_statement(tj->dat_file, &(tj->filesize), statement_row, dbt)) {
-        return num_rows;
+            dbt->chunk_filesize ) {
+     update_dbt_rows(dbt, num_rows); 
+     if (!write_statement(tj->dat_file, &(tj->filesize), statement_row, dbt)) {
+        return;
       }
 
-      m_close(tj->sql_file);
-      m_close(tj->dat_file);
+      m_close(tj->td->thread_id, tj->sql_file, g_strdup(tj->sql_filename), 1, dbt);
+      m_close(tj->td->thread_id, tj->dat_file, g_strdup(tj->dat_filename), 1, dbt);
       tj->sql_file=NULL;
       tj->dat_file=NULL;
 
-      if (stream) {
-        g_async_queue_push(stream_queue, tj->sql_filename);
-        g_async_queue_push(stream_queue, tj->dat_filename);
-      }else{
-        g_free(tj->sql_filename);
-        g_free(tj->dat_filename);
-      }
+      g_free(tj->sql_filename);
+      g_free(tj->dat_filename);
 
       tj->sql_filename=NULL;
       tj->dat_filename=NULL;
-
-//      if (sections == 1){
-//        fn++;
-//      }else{
-        tj->sub_part++;
-//      }
+      tj->sub_part++;
 
       if (update_files_on_table_job(tj)){
         write_load_data_statement(tj, fields, num_fields);
       }
       tj->st_in_file = 0;
       tj->filesize = 0;
-      
-      write_load_data_statement(tj, fields, num_fields);
-      check_pause_resume(tj->td);
+      num_rows=0; 
     }
     g_string_set_size(statement_row, 0);
 
@@ -496,22 +477,29 @@ guint64 write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, st
     /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
     if (statement->len > statement_size) {
       if (!write_statement(tj->dat_file, &(tj->filesize), statement, dbt)) {
-        return num_rows;
+        update_dbt_rows(dbt, num_rows);
+        num_rows=0;
+        return;
       }
-
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        update_dbt_rows(dbt, num_rows);
+        return;
+      }
     }
   }
+  update_dbt_rows(dbt, num_rows);
   if (statement->len > 0){
     if (!real_write_data(tj->dat_file, &(tj->filesize), statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-      return num_rows;
+      return;
     }
   }
-  return num_rows;
+  return;
 }
 
 
-guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
+void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
   // There are 2 possible options to chunk the files:
   // - no chunk: this means that will be just 1 data file
   // - chunk_filesize: this function will be spliting the per filesize, this means that multiple files will be created
@@ -552,11 +540,13 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         initialize_sql_statement(statement);
         if (!real_write_data(tj->sql_file, &(tj->filesize), statement)) {
           g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-          return num_rows;
+          return;
         }
         g_string_set_size(statement, 0);
       }
+      g_mutex_lock(dbt->chunks_mutex);
       g_string_append(statement, dbt->insert_statement->str);
+      g_mutex_unlock(dbt->chunks_mutex);
       num_rows_st = 0;
     }
 
@@ -568,8 +558,10 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
     }
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
+    if (statement->len + statement_row->len + 1 > statement_size || (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              dbt->chunk_filesize)) {
 
-    if (statement->len + statement_row->len + 1 > statement_size) {
+      update_dbt_rows(dbt, num_rows);
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
@@ -581,28 +573,23 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
 
       if (!real_write_data(tj->sql_file, &(tj->filesize), statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-        return num_rows;
+        return;
       }
       tj->st_in_file++;
-      if (chunk_filesize &&
+      if (dbt->chunk_filesize &&
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
-              chunk_filesize) {
-        // We reached the file size limit, we need to rotate the file
-//        if (sections == 1){
-//          fn++;
-//        }else{
-          tj->sub_part++;
-//        }
-        m_close(tj->sql_file);
+              dbt->chunk_filesize) {
+        tj->sub_part++;
+        m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1, dbt);
         tj->sql_file=NULL;
-        if (stream) {
-          g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-        }
-        //initialize_sql_fn(tj);
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
-        check_pause_resume(tj->td);
+      }
+      num_rows=0;
+      check_pause_resume(tj->td);
+      if (shutdown_triggered) {
+        return;
       }
       g_string_set_size(statement, 0);
     } else {
@@ -619,30 +606,25 @@ guint64 write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct t
         g_string_append(statement, dbt->insert_statement->str);
     g_string_append(statement, statement_row->str);
   }
-
+  update_dbt_rows(dbt, num_rows);
   if (statement->len > 0) {
     g_string_append(statement, statement_terminated_by);
     if (!real_write_data(tj->sql_file, &(tj->filesize), statement)) {
       g_critical(
           "Could not write out closing newline for %s.%s, now this is sad!",
           dbt->database->name, dbt->table);
-      return num_rows;
+      return;
     }
     tj->st_in_file++;
   }
-  g_mutex_lock(dbt->rows_lock);
-  dbt->rows+=num_rows;
-  g_mutex_unlock(dbt->rows_lock);
   g_string_free(statement, TRUE);
   g_string_free(escaped, TRUE);
   g_string_free(statement_row, TRUE);
-  return num_rows;
+  return;
 }
 
 /* Do actual data chunk reading/writing magic */
-guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
-  guint64 num_rows = 0;
-//  guint64 num_rows_st = 0;
+void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
   MYSQL_RES *result = NULL;
   char *query = NULL;
 
@@ -651,8 +633,8 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
   /* Poor man's database code */
   query = g_strdup_printf(
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
-      (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */" : "",
-      tj->dbt->select_fields->str,
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
+      tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
       tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
        (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",
        (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
@@ -675,9 +657,9 @@ guint64 write_table_data_into_file(MYSQL *conn, struct table_job * tj){
 
   /* Poor man's data dump code */
   if (load_data)
-    num_rows = write_row_into_file_in_load_data_mode(conn, result, tj);
+    write_row_into_file_in_load_data_mode(conn, result, tj);
   else
-    num_rows=write_row_into_file_in_sql_mode(conn, result, tj);
+    write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,
@@ -691,7 +673,5 @@ cleanup:
   if (result) {
     mysql_free_result(result);
   }
-
-  return num_rows;
 }
 

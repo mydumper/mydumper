@@ -37,11 +37,13 @@ struct restore_errors {
   guint retries;
 };
 
+enum thread_states { WAITING, STARTED, COMPLETED };
 struct thread_data {
   struct configuration *conf;
   MYSQL *thrconn;
   gchar *current_database;
   guint thread_id;
+  enum thread_states status;
 };
 
 struct configuration {
@@ -60,7 +62,6 @@ struct configuration {
   GMutex *table_hash_mutex;
 //  GList *schema_create_list;
   GList *checksum_list;
-  GList *metadata_list;
   GMutex *mutex;
   GAsyncQueue *index_queue;
   int done;
@@ -122,7 +123,7 @@ enum file_type {
   SCHEMA_TRIGGER, 
   SCHEMA_POST, 
   CHECKSUM, 
-  METADATA_TABLE,
+//  METADATA_TABLE,
   METADATA_GLOBAL, 
   RESUME, 
   IGNORED, 

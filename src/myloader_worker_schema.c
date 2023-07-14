@@ -26,7 +26,7 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
 #include "myloader_restore_job.h"
@@ -154,6 +154,11 @@ void *worker_schema_thread(struct thread_data *td) {
     cont=process_schema(td);
   }
   g_message("S-Thread %d: Import completed", td->thread_id);
+
+  if (td->thrconn)
+    mysql_close(td->thrconn);
+  mysql_thread_end();
+  g_debug("S-Thread %d: ending", td->thread_id);
   return NULL;
 }
 
@@ -169,7 +174,8 @@ void initialize_worker_schema(struct configuration *conf){
   g_message("Initializing initialize_worker_schema");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     schema_td[n].conf = conf;
-    schema_td[n].thread_id = n + 1;
+    schema_td[n].thread_id = n + 1 + num_threads;
+    schema_td[n].status=WAITING;
     schema_threads[n] =
         g_thread_create((GThreadFunc)worker_schema_thread, &schema_td[n], TRUE, NULL);
   }

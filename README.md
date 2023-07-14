@@ -123,6 +123,7 @@ Run:
 ```shell
 cmake .
 make
+sudo make install
 ```
 
 One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH

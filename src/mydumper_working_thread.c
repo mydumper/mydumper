@@ -36,11 +36,6 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <time.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include <pcre.h>
 #include <signal.h>
 #include <glib/gstdio.h>
@@ -72,11 +67,16 @@
 #include "mydumper_chunks.h"
 #include "mydumper_write.h"
 #include "mydumper_global.h"
+#include "mydumper_arguments.h"
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
 #define MYSQL_TYPE_JSON 245
 #endif
+
+
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+
 
 GMutex *init_mutex = NULL;
 /* Program options */
@@ -122,7 +122,7 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
+//void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 guint min_rows_per_file = 0;
 guint max_rows_per_file = 0;
@@ -174,9 +174,6 @@ void initialize_working_thread(){
   binlog_snapshot_gtid_executed = NULL;
   if (less_locking)
     less_locking_threads = num_threads;
-  initialize_jobs();
-  initialize_chunk();
-  initialize_write();
 
 
   /* savepoints workaround to avoid metadata locking issues
@@ -194,21 +191,36 @@ void initialize_working_thread(){
   if (ignore_engines)
     ignore = g_strsplit(ignore_engines, ",", 0);
 
-  if (!compress_output) {
+
+// TODO: We need to cleanup this
+
+  m_close=(void *) &m_close_pipe;
+  m_write=(void *)&write_file;
+
+  if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
     m_open=&g_fopen;
-    m_close=(void *) &fclose;
+    m_close=(void *) &m_close_file;
     m_write=(void *)&write_file;
-    compress_extension=EMPTY_STRING;
+    exec_per_thread_extension=EMPTY_STRING;
   } else {
-    m_open=(void *) &gzopen;
-    m_close=(void *) &gzclose;
-    m_write=(void *)&gzwrite;
-#ifdef ZWRAP_USE_ZSTD
-    compress_extension = g_strdup(".zst");
-#else
-    compress_extension = g_strdup(".gz");
-#endif
+    if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
+      g_critical("--compression and --exec-per-thread are not comptatible");
+    }
+    if ( g_strcmp0(compress_method,GZIP)==0){
+      exec_per_thread=g_strdup("/usr/bin/gzip -c");
+      exec_per_thread_extension=g_strdup(".gz");
+    }else if ( g_strcmp0(compress_method,ZSTD)==0){
+      exec_per_thread=g_strdup("/usr/bin/zstd -c");
+      exec_per_thread_extension=g_strdup(".zst");
+    }
+    m_open=&m_open_pipe;
+    m_close=&m_close_pipe;
   }
+
+  initialize_jobs();
+  initialize_chunk();
+  initialize_write();
+
   if (dump_checksums){
     data_checksums = TRUE;
     schema_checksums = TRUE;
@@ -448,7 +460,6 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       process_partition_chunk(td, tj);
       break;
     case NONE:
-//      message_dumping_data(td,tj);
       write_table_job_into_file(td->thrconn, tj);
       break;
     default: 
@@ -456,69 +467,12 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       break;
   }
   if (tj->sql_file){
-    m_close(tj->sql_file);
+    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
     tj->sql_file=NULL;
   }
   if (tj->dat_file){
-    m_close(tj->dat_file);
+    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
     tj->dat_file=NULL;
-  }
-  int status;
-
-  if (tj->sql_filename != NULL ){
-    if (use_fifo){
-      if (load_data){
-        if (remove(tj->dat_filename)) {
-          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->dat_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->dat_filename);
-        }
-        g_free(tj->dat_filename);
-        tj->dat_filename=NULL;
-      }else{
-        if (remove(tj->sql_filename)) {
-          g_warning("Thread %d: Failed to remove fifo file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: Fifo file removed: %s", td->thread_id, tj->sql_filename);
-        }
-        g_free(tj->sql_filename);
-        tj->sql_filename=NULL;
-      }
-    }
-    if (tj->filesize == 0 && !build_empty_files) {
-    // dropping the useless file
-      if (tj->sql_filename!=NULL){
-        if (remove(tj->sql_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
-        }
-      }
-      if (load_data && tj->dat_filename!=NULL){
-        if (remove(tj->dat_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
-        }
-      }
-    
-    } else if (stream) {
-        if (use_fifo){
-          if (load_data){
-            g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-            waitpid(tj->child_process,&status, 0);
-            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
-          }else{
-            waitpid(tj->child_process,&status, 0);
-            g_async_queue_push(stream_queue, g_strdup(tj->exec_out_filename));
-          }
-        }else{
-          g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-          if (load_data){
-            g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
-          }
-        }
-    } 
   }
 
 /*  if (use_savepoints &&
@@ -750,6 +704,11 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 //    case JOB_TABLE:
 //      thd_JOB_TABLE(td, job);
 //      break;
+    case JOB_WRITE_MASTER_STATUS:
+      write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_free(job);
+      break;
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
@@ -801,6 +760,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
       break;
     case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:
@@ -817,6 +777,7 @@ void check_pause_resume( struct thread_data *td ){
   if (td->conf->pause_resume){
     td->pause_resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (td->pause_resume_mutex != NULL){
+      g_message("Thread %d: Pausing thread",td->thread_id);
       g_mutex_lock(td->pause_resume_mutex);
       g_mutex_unlock(td->pause_resume_mutex);
       td->pause_resume_mutex=NULL;
@@ -832,7 +793,8 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean (*p)(),
       f();
     job = (struct job *)g_async_queue_pop(queue);
     if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
-      continue;
+      g_message("Thread %d: Process has been cacelled",td->thread_id);
+      return;
     }
     if (!p(td, job)){
       break;
@@ -927,7 +889,11 @@ if (tj->chunk_step->integer_step.is_unsigned){
   }
 }
 
-void process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
+guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
+  check_pause_resume(td);
+  if (shutdown_triggered) {
+    return 1;
+  }
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   if (tj->chunk_step->integer_step.check_max){
 //    g_message("thread: %d Updating MAX", td->thread_id);
@@ -985,25 +951,34 @@ if (tj->chunk_step->integer_step.is_unsigned){
     tj->chunk_step->integer_step.type.sign.min=tj->chunk_step->integer_step.type.sign.cursor;
   }
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+  return 0;
 }
 
 void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step;
-  process_integer_chunk_job(td,tj);
+  if (process_integer_chunk_job(td,tj)){
+    g_message("Thread %d: Job has been cacelled",td->thread_id);
+    return;
+  }
   g_atomic_int_inc(dbt->chunks_completed);
   if (cs->integer_step.prefix)
     g_free(cs->integer_step.prefix);
   cs->integer_step.prefix=NULL;
-
   if (cs->integer_step.is_unsigned){
     while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
-      process_integer_chunk_job(td,tj);
+      if (process_integer_chunk_job(td,tj)){
+        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        return;
+      }
       g_atomic_int_inc(dbt->chunks_completed);
     }
   }else{
     while ( cs->integer_step.type.sign.min < cs->integer_step.type.sign.max ){
-      process_integer_chunk_job(td,tj);
+      if (process_integer_chunk_job(td,tj)){
+        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        return;
+      }
       g_atomic_int_inc(dbt->chunks_completed);
     }
   }
@@ -1022,7 +997,11 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
 }
 
 
-void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
+guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
+  check_pause_resume(td);
+  if (shutdown_triggered) {
+    return 1;
+  }
   g_mutex_lock(tj->chunk_step->char_step.mutex);
   update_where_on_table_job(td, tj);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
@@ -1052,6 +1031,7 @@ void process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   g_mutex_lock(tj->chunk_step->char_step.mutex);
   next_chunk_in_char_step(tj->chunk_step);
   g_mutex_unlock(tj->chunk_step->char_step.mutex);
+  return 0;
 }
 
 
@@ -1081,7 +1061,10 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
       }
     }else{
       if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
-        process_char_chunk_job(td,tj);
+        if (process_char_chunk_job(td,tj)){
+          g_message("Thread %d: Job has been cacelled",td->thread_id);
+          return;
+        }
       }else{
         g_mutex_lock(cs->char_step.mutex);
         cs->char_step.status=2;
@@ -1091,7 +1074,10 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
     }
   }
   if (g_strcmp0(cs->char_step.cursor, cs->char_step.cmin)!=0)
-    process_char_chunk_job(td,tj);
+    if (process_char_chunk_job(td,tj)){
+      g_message("Thread %d: Job has been cacelled",td->thread_id);
+      return;
+    }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->char_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
@@ -1103,6 +1089,9 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj){
   union chunk_step *cs = tj->chunk_step;
   gchar *partition=NULL;
   while (cs->partition_step.list != NULL){
+    if (shutdown_triggered) {
+      return;
+    }
     g_mutex_lock(cs->partition_step.mutex);
     partition=g_strdup_printf(" PARTITION (%s) ",(char*)(cs->partition_step.list->data));
 //    g_message("Partition text: %s", partition);
@@ -1150,6 +1139,8 @@ void *working_thread(struct thread_data *td) {
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
   process_queue(td->conf->schema_queue,td, process_job, NULL);
+
+  if (stream) send_initial_metadata();
 
   if (!no_data){
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
@@ -1362,6 +1353,8 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->name,dbt->table);
   dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, k);
   dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
+  dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, k);
+  dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, k);
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->estimated_remaining_steps=1;
   dbt->min=NULL;
@@ -1375,6 +1368,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   *(dbt->chunks_completed)=0;
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
+  dbt->chunk_filesize=chunk_filesize;
 //  set_chunk_strategy_for_dbt(conn, dbt);
 //  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
   g_free(k);
@@ -1397,9 +1391,9 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 }
 
 void free_db_table(struct db_table * dbt){
+  g_mutex_lock(dbt->chunks_mutex);
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
-  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
     g_string_free(dbt->insert_statement,TRUE);
@@ -1409,6 +1403,8 @@ void free_db_table(struct db_table * dbt){
 /*  g_free();
   g_free();
   g_free();*/
+  g_free(dbt->data_checksum);
+  dbt->data_checksum=NULL;
   g_free(dbt->chunks_completed);
   g_free(dbt->field);
   union chunk_step * cs = NULL;
@@ -1426,6 +1422,8 @@ void free_db_table(struct db_table * dbt){
     default:
       break;
   }
+  g_mutex_unlock(dbt->chunks_mutex);
+  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt);
 }
 
@@ -1589,7 +1587,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   char *query;
   mysql_select_db(conn, database->name);
-  if (detected_server == SERVER_TYPE_MYSQL ||
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
   else if (detected_server == SERVER_TYPE_MARIADB)
@@ -1631,8 +1629,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL ||
-         detected_server == SERVER_TYPE_MARIADB ||
+    if ((is_mysql_like() || 
          detected_server == SERVER_TYPE_TIDB ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
@@ -1731,19 +1728,11 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 //    schema_post = g_list_prepend(schema_post, sp);
   }
 
+
+  if (database->dump_triggers)
+    create_job_to_dump_schema_triggers(database, conf);
+
   g_free(query);
 
   return;
 }
-
-void write_table_job_into_file(MYSQL *conn, struct table_job *tj) {
-  guint64 rows_count =
-      write_table_data_into_file(conn, tj);
-
-  if (!rows_count){
-//    g_message("Empty chunk on %s.%s", tj->dbt->database->name, tj->dbt->table);
-//    tj->cs->char_step.step=cs->char_step.step
-  }
-  
-}
-

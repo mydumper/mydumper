@@ -2,7 +2,6 @@
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <mysql.h>
-
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GList *all_dbts;
@@ -33,7 +32,7 @@ extern gboolean dump_checksums;
 extern gboolean split_partitions;
 extern guint char_deep;
 extern guint64 max_rows;
-extern gchar *exec_per_thread_extension;
+extern const gchar *exec_per_thread_extension;
 extern gchar *exec_per_thread;
 extern gboolean order_by_primary_key;
 extern guint num_exec_threads;
@@ -50,7 +49,7 @@ extern GKeyFile * key_file;
 extern char **tables;
 extern FILE * (*m_open)(const char *filename, const char *);
 extern GAsyncQueue *start_scheduled_dump;
-extern GAsyncQueue *stream_queue;
+//extern GAsyncQueue *stream_queue;
 extern gboolean daemon_mode;
 extern gboolean dump_events;
 extern gboolean dump_routines;
@@ -72,7 +71,6 @@ extern gboolean stream;
 extern gboolean success_on_1146;
 extern gboolean use_fifo;
 extern gboolean use_savepoints;
-extern const gchar *compress_extension;
 extern gchar *db;
 extern gchar *disk_limits;
 extern gchar *dump_directory;
@@ -112,10 +110,9 @@ extern guint snapshot_count;
 extern guint statement_size;
 extern guint trx_consistency_only;
 extern guint updated_since;
-extern int compress_output;
 extern int detected_server;
 extern int errno;
-extern int (*m_close)(void *file);
+//extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 extern int (*m_write)(FILE * file, const char * buff, int len);
 extern int need_dummy_read;
 extern int need_dummy_toku_read;
@@ -127,3 +124,7 @@ extern gchar identifier_quote_character;
 extern gboolean schema_sequence_fix;
 extern gboolean it_is_a_consistent_backup;
 extern gchar *partition_regex;
+extern gchar **exec_per_thread_cmd;
+extern const gchar *compress_method;
+extern guint min_rows_per_file;
+extern guint max_rows_per_file;

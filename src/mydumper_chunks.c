@@ -42,29 +42,6 @@ GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 guint char_chunk=0;
 guint char_deep=0;
-/*
-static GOptionEntry chunks_entries[] = {
-    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
-    {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "",NULL},
-    {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "",NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
-     "Try to split tables into chunks of this many rows.",
-     NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
-};
-
-void load_chunks_entries(GOptionContext *context){
-  GOptionGroup *chunks_group=g_option_group_new("job", "Job Options", "Job Options", NULL, NULL);
-  g_option_group_add_entries(chunks_group, chunks_entries);
-  g_option_context_add_group(context, chunks_group);
-
-}
-*/
 
 void initialize_chunk(){
   give_me_another_innodb_chunk_step_queue=g_async_queue_new();
@@ -221,16 +198,32 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
         union type type;
 if (cs->integer_step.is_unsigned) {
 
-      if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.max){
+      if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.max && (  
+                  ( cs->integer_step.type.unsign.min != cs->integer_step.type.unsign.cursor && cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ) || 
+                  ( cs->integer_step.type.unsign.min == cs->integer_step.type.unsign.cursor && cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > 2*cs->integer_step.step  )
+                                                             )
+         ){
       
-        guint64 new_minmax = cs->integer_step.type.unsign.max -  cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
-                             cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
-                             cs->integer_step.type.unsign.cursor;
-        type.unsign.min = new_minmax;
+        guint64 new_minmax = 0
         type.unsign.max = cs->integer_step.type.unsign.max;
 
 
-        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        // union chunk_step * new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        union chunk_step * new_cs = NULL;
+        if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+          new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
+                           cs->integer_step.type.unsign.min + cs->integer_step.step *( (cs->integer_step.type.unsign.max / cs->integer_step.step - cs->integer_step.type.unsign.min / cs->integer_step.step)/2) :
+                           cs->integer_step.type.unsign.cursor;
+          type.unsign.min = new_minmax;
+          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+        }else{
+          new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
+                           cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
+                           cs->integer_step.type.unsign.cursor;
+          type.unsign.min = new_minmax;
+          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        }
+        
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
@@ -254,19 +247,37 @@ if (cs->integer_step.is_unsigned) {
 
 
 }else{
-//      g_message("Testing Cursor: %"G_GUINT64_FORMAT "  Max: %"G_GUINT64_FORMAT "  Min: %"G_GUINT64_FORMAT,cs->integer_step.type.sign.cursor,cs->integer_step.type.sign.max,cs->integer_step.type.sign.min );
-      if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.max){
-        gint64 new_minmax = llabs(cs->integer_step.type.sign.max -  cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
-                            cs->integer_step.type.sign.min + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/2 :
-                            cs->integer_step.type.sign.cursor;
 
-//      g_message("Testing Cursor: %"G_GUINT64_FORMAT "  Max: %"G_GUINT64_FORMAT "  Min: %"G_GUINT64_FORMAT" NewMin: %"G_GUINT64_FORMAT,cs->integer_step.type.sign.cursor,cs->integer_step.type.sign.max,cs->integer_step.type.sign.min, new_minmax );
+      if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.max && (  
+                  ( cs->integer_step.type.sign.min != cs->integer_step.type.sign.cursor && cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ) || 
+                  ( cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor && cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > 2*cs->integer_step.step  )
+                                                             )
+         ){
+      
+        gint64 new_minmax = 0;
 
-        type.sign.min = new_minmax;
+        // union chunk_step * new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
         type.sign.max = cs->integer_step.type.sign.max;
 
+        union chunk_step * new_cs = NULL;
+        if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+          new_minmax = cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ?
+                           cs->integer_step.type.sign.min + cs->integer_step.step *( (cs->integer_step.type.sign.max / cs->integer_step.step - cs->integer_step.type.sign.min / cs->integer_step.step)/2) :
+                           cs->integer_step.type.sign.cursor;
+          type.sign.min = new_minmax;
 
-        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+        }else{
+
+          new_minmax = cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ?
+                           cs->integer_step.type.sign.min + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/2 :
+                           cs->integer_step.type.sign.cursor;
+          type.sign.min = new_minmax;
+
+          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+        }
+
+        
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
@@ -452,14 +463,14 @@ if (cs->integer_step.is_unsigned) {
 
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.type.unsign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.unsign.max, tj->dbt->field));
 
 }else{
 
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.type.sign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.sign.max, tj->dbt->field));
 
 }
@@ -496,19 +507,17 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
 if (cs->integer_step.is_unsigned) {
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.type.unsign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.unsign.max, tj->dbt->field));
 
 }else{
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.type.sign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.sign.max, tj->dbt->field));
 
 
 }
-
-
 
 //  g_free(query);
   minmax = mysql_store_result(conn);
@@ -556,7 +565,7 @@ gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   gchar * middle = get_escaped_middle_char(conn, cs->char_step.cmax, cs->char_step.cmax_clen, cs->char_step.cmin, cs->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, tj->dbt->field, middle, tj->dbt->field, tj->dbt->field, cs->char_step.cmax_escaped, tj->dbt->field));
   g_free(query);
   minmax = mysql_store_result(conn);
@@ -612,7 +621,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 //  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
   mysql_query(td->thrconn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, middle, dbt->field, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field));
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
@@ -683,7 +692,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   /* Get minimum/maximum */
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB)
+                        is_mysql_like()
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
                         dbt->field, dbt->field, dbt->field, dbt->field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
@@ -716,10 +725,13 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   case MYSQL_TYPE_LONGLONG:
   case MYSQL_TYPE_INT24:
   case MYSQL_TYPE_SHORT:
-      unmin = strtoull(row[0], NULL, 10);
-      unmax = strtoull(row[1], NULL, 10) + 1;
-      nmin  = strtoll (row[0], NULL, 10);
-      nmax  = strtoll (row[1], NULL, 10) + 1;
+    if (min_rows_per_file==rows_per_file && max_rows_per_file==rows_per_file)
+      dbt->chunk_filesize=0;
+
+    unmin = strtoull(row[0], NULL, 10);
+    unmax = strtoull(row[1], NULL, 10) + 1;
+    nmin  = strtoll (row[0], NULL, 10);
+    nmax  = strtoll (row[1], NULL, 10) + 1;
 
     if (fields[0].flags & UNSIGNED_FLAG){
 //      unmin = strtoul(row[0], NULL, 10);
@@ -745,6 +757,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
         cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
       }
 //      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, fields[0].flags & UNSIGNED_FLAG, nmin, nmax, 0, rows_per_file, 0, FALSE, FALSE);      
+
       dbt->chunks=g_list_prepend(dbt->chunks,cs);
       g_async_queue_push(dbt->chunks_queue, cs);
       dbt->chunk_type=INTEGER;
@@ -892,6 +905,9 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
   gboolean are_there_jobs_defining=FALSE;
   for (;;) {
     g_async_queue_pop(pop_queue);
+    if (shutdown_triggered) {
+      return; 
+    }
     dbt=NULL;
     cs=NULL;
     are_there_jobs_defining=FALSE;

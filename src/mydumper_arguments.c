@@ -25,6 +25,24 @@
 #include "common.h"
 #include "connection.h"
 #include "regex.h"
+#include "mydumper_arguments.h"
+const gchar *compress_method=NULL;
+
+gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
+    if (value==NULL || g_strstr_len(value,4,GZIP)){
+      compress_method=GZIP;
+      return TRUE;
+    }
+    if (g_strstr_len(value,4,ZSTD)){
+      compress_method=ZSTD;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 static GOptionEntry entries[] = {
     {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
@@ -61,8 +79,8 @@ static GOptionEntry extra_entries[] = {
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
-    {"compress", 'c', 0, G_OPTION_ARG_NONE, &compress_output,
-     "Compress output files", NULL},
+    {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {
@@ -132,9 +150,9 @@ static GOptionEntry chunks_entries[] = {
     {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
      "Limit the number of rows per block after the table is estimated, default 1000000. It has been deprecated, use --rows instead. Removed in future releases", NULL},
     {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "",NULL},
+     "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "",NULL},
+     "Defines in how many pieces should split the table. By default we use the amount of threads",NULL},
     {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
      "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
      NULL},
@@ -188,11 +206,11 @@ static GOptionEntry objects_entries[] = {
 
 static GOptionEntry statement_entries[] = {
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "", NULL },
+     "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files", NULL },
     { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
       "Automatically enables --load-data and set variables to export in CSV format.", NULL },
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"", NULL },
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"Defines the character that is written between fields", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"Defines the character to enclose fields. Default: \"", NULL },
     {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
       "Single character that is going to be used to escape characters in the"
       "LOAD DATA stament, default: '\\' ", NULL },
@@ -224,7 +242,7 @@ static GOptionEntry statement_entries[] = {
      "between servers with different time zones, defaults to on use "
      "--skip-tz-utc to disable.",
      NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "", NULL},
+    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "Doesn't add SET TIMEZONE on the backup files", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

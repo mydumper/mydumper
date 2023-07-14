@@ -34,11 +34,11 @@ void *process_directory(struct configuration *conf){
     GString *data=g_string_sized_new(256);
     gboolean eof = FALSE;
     guint line=0;
-    read_data(file, FALSE, data, &eof, &line);
+    read_data(file, data, &eof, &line);
     gchar **split=NULL;
     guint i=0;
     while (!eof){
-      read_data(file, FALSE, data, &eof, &line);
+      read_data(file, data, &eof, &line);
       split=g_strsplit(data->str,"\n",0);
       for (i=0; i<g_strv_length(split);i++){
         if (strlen(split[i])>2){
@@ -61,7 +61,7 @@ void *process_directory(struct configuration *conf){
   for (n = 0; n < num_threads ; n++) {
     g_async_queue_push(conf->data_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
+//    g_async_queue_push(conf->post_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->view_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   return NULL;

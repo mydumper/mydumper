@@ -21,27 +21,27 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#ifdef ZWRAP_USE_ZSTD
-#include "../zstd/zstd_zlibwrapper.h"
-#else
-#include <zlib.h>
-#endif
 #include "common.h"
 #include "myloader_stream.h"
 #include "myloader_common.h"
 #include "myloader_process.h"
-#include "myloader_jobs_manager.h"
+//#include "myloader_jobs_manager.h"
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
+#include <sys/wait.h>
 
 GString *change_master_statement=NULL;
 gboolean append_if_not_exist=FALSE;
+GHashTable *fifo_hash=NULL;
+GMutex *fifo_table_mutex=NULL;
 
 struct configuration *conf;
 extern gboolean schema_sequence_fix;
 void initialize_process(struct configuration *c){
   conf=c;
+  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
+  fifo_table_mutex = g_mutex_new();
 }
 
 struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
@@ -142,29 +142,91 @@ void free_table_hash(GHashTable *table_hash){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
+FILE * myl_open(char *filename, const char *type){
+  FILE *file=NULL;
+  gchar *basename=NULL;
+  int child_proc;
+  (void) child_proc;
+  gchar **command=NULL;
+  if (get_command_and_basename(filename, &command,&basename)){
+    mkfifo(basename,0666);
+    child_proc = execute_file_per_thread(filename, basename, command);
+    file=g_fopen(basename,type);
+    g_mutex_lock(fifo_table_mutex);
+    struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+    if (f!=NULL){
+      g_mutex_lock(f->mutex);
+      g_mutex_unlock(fifo_table_mutex);
+      f->pid = child_proc;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=basename;
+    }else{
+      f=g_new0(struct fifo, 1);
+      f->mutex=g_mutex_new();
+      g_mutex_lock(f->mutex);
+      f->pid = child_proc;
+      f->filename=g_strdup(filename);
+      f->stdout_filename=basename;
+      g_hash_table_insert(fifo_hash,file,f);
+      g_mutex_unlock(fifo_table_mutex);
+    }
+
+  }else{
+    file=g_fopen(filename, type);
+  }
+  return file;
+}
+
+void myl_close(char *filename, FILE *file){
+  g_mutex_lock(fifo_table_mutex);
+  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+  g_mutex_unlock(fifo_table_mutex);
+  fclose(file);
+
+  if (f != NULL){
+    int status=0;
+    waitpid(f->pid, &status, 0);
+    g_mutex_lock(fifo_table_mutex);
+    g_mutex_unlock(f->mutex);
+    g_mutex_unlock(fifo_table_mutex);
+  }
+
+  if ( has_exec_per_thread_extension(filename)) {
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
+  }else if ( g_str_has_suffix(filename, GZIP_EXTENSION) ){
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(GZIP_EXTENSION);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
+  }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
+    gchar *dotpos;
+    dotpos=&(filename[strlen(filename)]) - strlen(ZSTD_EXTENSION);
+    *dotpos='\0';
+    remove(filename);
+    *dotpos='.';
+  }
+
+  m_remove(NULL,filename);
+}
+
+
 struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   void *infile;
-  gboolean is_compressed = FALSE;
+//  gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
   g_string_set_size(data,0);
   g_string_set_size(create_table_statement,0);
   guint line=0;
-  if (!g_str_has_suffix(filename, compress_extension)) {
-    infile = g_fopen(filename, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(filename, "r");
-    is_compressed = TRUE;
-  }
-  if (!infile) {
-    g_critical("cannot open schema file %s (%d)", filename, errno);
-    errors++;
-    return NULL;
-  }
+  infile=myl_open(filename,"r");
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof,&line)) {
+    if (read_data(infile, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strstr_len(data->str,13,"CREATE TABLE ")){
           gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
@@ -185,7 +247,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
             }
           }
         }
-        if (innodb_optimize_keys && (dbt->rows == 0 || dbt->rows >= 1000000)){
+        if (innodb_optimize_keys){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
@@ -195,7 +257,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
           }else{
             // Processing CREATE TABLE statement
             GString *new_create_table_statement=g_string_sized_new(512);
-            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt);
+            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000));
             if (flag & IS_INNODB_TABLE){
               if (flag & IS_ALTER_TABLE_PRESENT){
                 finish_alter_table(alter_table_statement);
@@ -234,17 +296,11 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
     g_free(statement);
   }
 
-  struct restore_job * rj = new_schema_restore_job(filename,JOB_RESTORE_SCHEMA_STRING, dbt, dbt->database, create_table_statement, "");
+  struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_job(JOB_RESTORE,rj,dbt->database->real_database);
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-  if (stream && no_delete == FALSE){
-    m_remove(NULL,filename);
-  }
+  myl_close(filename,infile);
+
   g_string_free(data,TRUE);
 
   return cj;
@@ -257,12 +313,7 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
   if (exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension)) {
     l-=strlen(exec_per_thread_extension);
   }
-  if (g_str_has_suffix(filename, compress_extension)) {
-    l-=strlen(compress_extension);
-  }
-  gchar *f=g_strndup(filename, l);
-  gchar **split_db_tbl = g_strsplit(f, ".", -1);
-  g_free(f);
+  gchar **split_db_tbl = g_strsplit(filename, ".", 4);
   if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
     (*table)=g_strdup(split_db_tbl[1]);
@@ -302,19 +353,12 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
   g_strfreev(split_db_tbl);
 }
 
-gchar * get_database_name_from_content(const gchar *filename){
+gchar * get_database_name_from_content(gchar *filename){
   FILE *infile;
-  enum data_file_type is_compressed = FALSE;
+//  enum data_file_type is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
-  ml_open(&infile,filename,&is_compressed);
-/*  if (!g_str_has_suffix(filename, compress_extension)) {
-    infile = g_fopen(filename, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(filename, "r");
-    is_compressed = TRUE;
-  }*/
+  infile=myl_open(filename,"r");
   if (!infile) {
     g_critical("cannot open database schema file %s (%d)", filename, errno);
     errors++;
@@ -323,7 +367,7 @@ gchar * get_database_name_from_content(const gchar *filename){
   gchar *real_database=NULL;
   guint line;
   while (eof == FALSE) {
-    if (read_data(infile, is_compressed, data, &eof, &line)) {
+    if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_str_has_prefix(data->str,"CREATE ")){
           gchar** create= g_strsplit(data->str, identifier_quote_character_str, 3);
@@ -334,12 +378,7 @@ gchar * get_database_name_from_content(const gchar *filename){
       }
     }
   }
-
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
+  myl_close(filename, infile);
   return real_database;
 }
 
@@ -403,52 +442,14 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-gboolean process_metadata_filename(char * filename){
-  gchar *db_name, *table_name;
-  get_database_table_name_from_filename(filename,"-metadata",&db_name,&table_name);
-  if (db_name == NULL || table_name == NULL){
-      m_critical("It was not possible to process file: %s (2)",filename);
-  }
-  struct database *real_db_name=get_db_hash(db_name,db_name);
-  if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    g_warning("Skiping metadata file for table: `%s`.`%s`",real_db_name->name, table_name);
-    return FALSE;
-  }
-
-  void *infile;
-  gboolean is_compressed = FALSE;
-  gchar *path = g_build_filename(directory, filename, NULL);
-  char metadata_val[256];
-  if (!g_str_has_suffix(path, compress_extension)) {
-    infile = g_fopen(path, "r");
-    is_compressed = FALSE;
-  } else {
-    infile = (void *)gzopen(path, "r");
-    is_compressed = TRUE;
-  }
-
-  if (!infile) {
-    g_critical("cannot open metadata file %s (%d)", path, errno);
-    errors++;
-    return TRUE;
-  }
-
-  char * cs= !is_compressed ? fgets(metadata_val, 256, infile) :gzgets((gzFile)infile, metadata_val, 256);
-  append_new_db_table(NULL, db_name, table_name,g_ascii_strtoull(cs, NULL, 10),NULL);
-  if (!is_compressed) {
-    fclose(infile);
-  } else {
-    gzclose((gzFile)infile);
-  }
-  return TRUE;
-}
-
-gboolean process_metadata_global(){
+gboolean process_metadata_global(gchar *file){
 //  void *infile;
-  gchar *path = g_build_filename(directory, "metadata", NULL);
+  gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
+
+  g_message("Reading metadata: %s", file);
   guint j=0;
   GError *error = NULL;
   gchar *value=NULL;
@@ -475,7 +476,17 @@ gboolean process_metadata_global(){
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
-        dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"Rows"),NULL, 10);
+        if (value) g_free(value);
+        if (get_value(kf,groups[j],"rows")){
+          dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+        }
+        value=get_value(kf,groups[j],"real_table_name");
+        if (value){
+          if (g_strcmp0(dbt->real_table,value))
+            dbt->real_table=value;
+          else
+            g_free(value);
+        }
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';

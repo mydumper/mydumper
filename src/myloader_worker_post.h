@@ -16,14 +16,6 @@
 */
 #include "myloader.h"
 
-struct intermediate_filename{
-  gchar * filename;
-  guint iterations;
-};
-
-void intermediate_queue_incomplete(struct intermediate_filename * iflnm);
-void intermediate_queue_end();
-void intermediate_queue_new(gchar *filename);
-void initialize_intermediate_queue (struct configuration *c);
-void remove_fifo_file(gchar *fifo_name);
-void wait_until_first_metadata();
+void initialize_post_loding_threads(struct configuration *conf);
+void create_post_shutdown_job(struct configuration *conf);
+void wait_post_worker_to_finish();

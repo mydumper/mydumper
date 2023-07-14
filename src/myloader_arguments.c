@@ -52,9 +52,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (g_strstr_len(option_name,6,"--role")){
-
-  }
   return FALSE;
 }
 
@@ -79,6 +76,8 @@ static GOptionEntry threads_entries[] = {
      "Maximum hard number of threads per table to use, we are not going to use more than this amount of threads per table, default 4", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
      "Maximum number of threads for index creation, default 4", NULL},
+    {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
+     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 4", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
@@ -93,7 +92,7 @@ static GOptionEntry execution_entries[] = {
     {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes and it adds them at the end. Options: AFTER_IMPORT_PER_TABLE and AFTER_IMPORT_ALL_TABLES. Default: AFTER_IMPORT_PER_TABLE", NULL},
     { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str,
-      "This specify the truncate mode which can be: NONE, DROP, TRUNCATE and DELETE", NULL },
+      "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
 

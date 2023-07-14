@@ -40,13 +40,13 @@
 #include "mydumper_global.h"
 #include <sys/wait.h>
 
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
 gboolean ignore_generated_fields = FALSE;
 gchar *exec_per_thread = NULL;
-gchar *exec_per_thread_extension = NULL;
-gboolean use_fifo = FALSE;
+const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
 gboolean skip_definer = FALSE;
 
@@ -55,36 +55,14 @@ void initialize_jobs(){
   if (ignore_generated_fields)
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
-  if (exec_per_thread_extension != NULL){
+  if (exec_per_thread_extension != NULL && strlen(exec_per_thread_extension)>0){
     if(exec_per_thread == NULL)
-      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
   }
 
   if (exec_per_thread!=NULL){
-    use_fifo=TRUE;
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
-}
-
-void write_char_checksum_into_file(char *database, char *table, char *filename, gchar *checksum) {
-
-  void *outfile = NULL;
-
-  outfile = g_fopen(filename, "w");
-
-  if (!outfile) {
-    g_critical("Error: DB: %s TABLE: %s Could not create output file %s (%d)",
-               database, table, filename, errno);
-    errors++;
-    return;
-  }
-
-  fprintf(outfile, "%s\n", checksum);
-  fclose(outfile);
-
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-
-  return;
 }
 
 gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun()) {
@@ -98,27 +76,6 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
   if (checksum == NULL)
     checksum = g_strdup("0");
   return checksum;
-}
-
-
-
-void write_my_data_into_file(const char *filename, gchar * str){
-  FILE *table_meta = g_fopen(filename, "w");
-  write_file(table_meta, str, strlen(str));
-  fclose(table_meta);
-}
-
-void write_table_metadata_into_file(struct db_table * dbt){
-  char *filename = build_meta_filename(dbt->database->filename, dbt->table_filename, "metadata");
-  FILE *table_meta = g_fopen(filename, "w");
-  if (!table_meta) {
-    g_critical("Couldn't write table metadata file %s (%d)", filename, errno);
-    exit(EXIT_FAILURE);
-  }
-  fprintf(table_meta, "%"G_GUINT64_FORMAT"\n", dbt->rows);
-  fclose(table_meta);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  g_free(filename);
 }
 
 gchar * get_tablespace_query(){
@@ -213,8 +170,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
   g_free(query);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -287,8 +243,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   g_free(query);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -375,8 +330,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
   g_free(message);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -416,8 +370,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, NULL);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -426,7 +379,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 }
 
 void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, char *filename2, gboolean checksum_filename) {
-  void *outfile, *outfile2;
+  void *outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
@@ -435,29 +388,20 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   mysql_select_db(conn, dbt->database->name);
 
   outfile = m_open(filename,"w");
-  outfile2 = m_open(filename2,"w");
 
-  if (!outfile || !outfile2) {
+
+  if (!outfile) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
                errno);
     errors++;
     return;
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
+  if (is_mysql_like() && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
   if (!write_data((FILE *)outfile, statement)) {
-    g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
-    errors++;
-    return;
-  }
-
-  g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
-  g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
-
-  if (!write_data((FILE *)outfile2, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -511,6 +455,32 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_free(query);
     return;
   }
+
+  m_close(0, outfile, filename, 1, dbt);
+  g_string_set_size(statement, 0);
+
+  void *outfile2;
+  outfile2 = m_open(filename2,"w");
+  if (!outfile2) {
+    g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
+               errno);
+    errors++;
+    return;
+  }
+
+  if (is_mysql_like() && set_names_statement) {
+    g_string_printf(statement,"%s;\n",set_names_statement);
+  }
+
+  g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
+  g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
+
+  if (!write_data((FILE *)outfile2, statement)) {
+    g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
+    errors++;
+    return;
+  }
+
   g_string_set_size(statement, 0);
 
   /* There should never be more than one row */
@@ -527,11 +497,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     errors++;
   }
   g_free(query);
-  m_close(outfile);
 
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
-  m_close(outfile2);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename2));
+  m_close(0, outfile2, filename2, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -636,9 +603,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   g_free(query);
-  m_close(outfile);
-
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -818,8 +783,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   }
 
   g_free(query);
-  m_close(outfile);
-  if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -960,7 +924,6 @@ void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
-
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   struct table_checksum_job *tcj = (struct table_checksum_job *)job->job_data;
   g_message("Thread %d: dumping checksum for `%s`.`%s`", td->thread_id,
@@ -977,20 +940,17 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
-
 void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;
-//  j->conf = conf;
   j->type = JOB_WRITE_MASTER_STATUS;
-  g_async_queue_push(conf->schema_queue, j);
+  g_async_queue_push(conf->initial_queue, j);
 }
 
 void create_job_to_dump_tablespaces(struct configuration *conf){
   struct job *j = g_new0(struct job, 1);
   struct create_tablespace_job *ctj = g_new0(struct create_tablespace_job, 1);
   j->job_data = (void *)ctj;
-//  j->conf = conf;
   j->type = JOB_CREATE_TABLESPACE;
   ctj->filename = build_tablespace_filename();
   g_async_queue_push(conf->schema_queue, j);
@@ -1008,38 +968,11 @@ void create_database_related_job(struct database *database, struct configuration
   return;
 }
 
-
 void create_job_to_dump_schema(struct database *database, struct configuration *conf) {
-/*  struct job *j = g_new0(struct job, 1);
-  struct create_database_job *cdj = g_new0(struct create_database_job, 1);
-  j->job_data = (void *)cdj;
-//  gchar *d=get_ref_table(database);
-  cdj->database = database;
-//  j->conf = conf;
-  j->type = JOB_CREATE_DATABASE;
-  cdj->filename = build_schema_filename(database->filename, "schema-create");
-  if (schema_checksums)
-    cdj->checksum_filename = build_meta_filename(database->filename,NULL,"schema-create-checksum"); 
-  g_async_queue_push(conf->schema_queue, j);
-  return;
-*/
   create_database_related_job(database, conf, JOB_CREATE_DATABASE, "schema-create");
-
 }
 
 void create_job_to_dump_post(struct database *database, struct configuration *conf) {
-/*  struct job *j = g_new0(struct job, 1);
-  struct schema_post_job *sp = g_new0(struct schema_post_job, 1);
-  j->job_data = (void *)sp;
-  sp->database = database;
-//  j->conf = conf;
-  j->type = JOB_SCHEMA_POST;
-  sp->filename = build_schema_filename(sp->database->filename,"schema-post");
-  if ( routine_checksums )
-    sp->checksum_filename = build_meta_filename(sp->database->filename, NULL, "schema-post-checksum");
-  g_async_queue_push(conf->post_data_queue, j);
-  return;
-*/
   create_database_related_job(database, conf, JOB_SCHEMA_POST, "schema-post");
 }
 
@@ -1131,37 +1064,13 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-int execute_file_per_thread( gchar *sql_fn, gchar *sql_fn3){
-  int childpid=fork();
-  if(!childpid){
-    FILE *sql_file2 = m_open(sql_fn,"r");
-    FILE *sql_file3 = m_open(sql_fn3,"w");
-    dup2(fileno(sql_file2), STDIN_FILENO);
-    dup2(fileno(sql_file3), STDOUT_FILENO);
-    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
-    m_close(sql_file2);
-    m_close(sql_file3);
-  }
-  return childpid;
-}
-
 int initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint64 fn, guint sub_part, const gchar *extension, gchar * f(), gchar **stdout_fn){
-/*  if (*sql_filename != NULL){
-    remove(*sql_filename);
-    g_free(*sql_filename);
-  }
-*/
+(void)stdout_fn;
+(void)extension;
   int r=0;
-  if (use_fifo){
-    *sql_filename = build_fifo_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension);
-    mkfifo(*sql_filename,0666);
-    *stdout_fn = build_stdout_filename(dbt->database->filename, dbt->table_filename, fn, sub_part, extension, exec_per_thread_extension);
-    r=execute_file_per_thread(*sql_filename,*stdout_fn);
-  }else{
-    if (*sql_filename)
-      g_free(*sql_filename);
-    *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
-  }
+  if (*sql_filename)
+    g_free(*sql_filename);
+  *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
   *sql_file = m_open(*sql_filename,"w");
   return r;
 }
@@ -1176,9 +1085,10 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-    int status=0;
-    if (tj->child_process!=0)
-      waitpid(tj->child_process,&status, 0);
+    if ( tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+      tj->sub_part = tj->chunk_step->integer_step.nmin / tj->chunk_step->integer_step.step + 1; 
+    }
+
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
@@ -1187,7 +1097,6 @@ gboolean update_files_on_table_job(struct table_job *tj){
     }else{
       initialize_sql_fn(tj);
     }
-//     write_load_data_statement(tj, fields, num_fields);
   }
   return FALSE;
 }
@@ -1218,7 +1127,6 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->child_process=0;
   if (update_where)
     update_where_on_table_job(NULL, tj);
-//  update_files_on_table_job(tj);
   return tj;
 }
 
@@ -1226,7 +1134,6 @@ struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, ch
   struct job *j = g_new0(struct job,1);
   struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
   j->job_data=(void*) tj;
-//  j->conf=conf;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
   j->job_data = (void *)tj;
   return j;
@@ -1251,7 +1158,6 @@ void create_job_to_dump_all_databases(struct configuration *conf) {
   g_atomic_int_inc(&database_counter);
   struct job *j = g_new0(struct job, 1);
   j->job_data = NULL;
-//  j->conf = conf;
   j->type = JOB_DUMP_ALL_DATABASES;
   g_async_queue_push(conf->initial_queue, j);
   return;
@@ -1274,7 +1180,6 @@ void create_job_to_dump_database(struct database *database, struct configuration
   struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
   j->job_data = (void *)ddj;
   ddj->database = database;
-//  j->conf = conf;
   j->type = JOB_DUMP_DATABASE;
   g_async_queue_push(conf->initial_queue, j);
   return;

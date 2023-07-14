@@ -29,17 +29,20 @@ unsigned long long int total_data_sql_files = 0;
 #include "myloader_global.h"
 #include "myloader_common.h"
 #include "myloader_control_job.h"
+#include "myloader_worker_loader.h"
 gboolean shutdown_triggered=FALSE;
 GAsyncQueue *file_list_to_do=NULL;
 static GMutex *progress_mutex = NULL;
 static GMutex *single_threaded_create_table = NULL;
+GMutex *shutdown_triggered_mutex=NULL;
 unsigned long long int progress = 0;
-enum purge_mode purge_mode;
+enum purge_mode purge_mode = FAIL;
 
 void initialize_restore_job(gchar * pm_str){
   file_list_to_do = g_async_queue_new();
   single_threaded_create_table = g_mutex_new();
   progress_mutex = g_mutex_new();
+  shutdown_triggered_mutex = g_mutex_new();
   if (pm_str){
     if (!strcmp(pm_str,"TRUNCATE")){
       purge_mode=TRUNCATE;
@@ -49,12 +52,14 @@ void initialize_restore_job(gchar * pm_str){
       purge_mode=DELETE;
     } else if (!strcmp(pm_str,"NONE")){
       purge_mode=NONE;
+    } else if (!strcmp(pm_str,"FAIL")){
+      purge_mode=FAIL;
     } else {
       m_error("Purge mode unknown");
     }
   } else if (overwrite_tables)
     purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
-  else purge_mode=NONE;
+  else purge_mode=FAIL; // This means that if -o is not set and CREATE TABLE statement fails, myloader will stop. 
 }
 
 struct data_restore_job * new_data_restore_job_internal( guint index, guint part, guint sub_part){
@@ -197,16 +202,19 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
   guint query_counter=0;
 //  guint i=0;
   guint total=0;
+  td->status=STARTED;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
       get_total_done(td->conf, &total);
       g_message("Thread %d: restoring %s `%s`.`%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
                 dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
-      if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter))
+      if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
         increse_object_error(rj->data.srj->object);
+        g_message("Failed %s: %s",rj->data.srj->object,rj->data.srj->statement->str);
+      }
       free_schema_restore_job(rj->data.srj);
       break;
-    case JOB_RESTORE_SCHEMA_STRING:
+    case JOB_TO_CREATE_TABLE:
       dbt->schema_state=CREATING;
       if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
       g_message("Thread %d: restoring table `%s`.`%s` from %s", td->thread_id,
@@ -220,7 +228,10 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         g_message("Thread %d: Creating table `%s`.`%s` from content in %s.", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename);
         if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
           g_atomic_int_inc(&(detailed_errors.schema_errors));
-          g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+          if (purge_mode == FAIL)
+            g_error("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
+          else 
+            g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
         }else{
           get_total_done(td->conf, &total);
           g_message("Thread %d: Table `%s`.`%s` created. Tables %d of %d completed", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
@@ -256,7 +267,9 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
       m_critical("Something very bad happened!");
     }
 cleanup:
-  if (rj != NULL ) free_restore_job(rj);
+  (void) rj;
+//  if (rj != NULL ) free_restore_job(rj);
+    td->status=COMPLETED;
 }
 
 
@@ -265,6 +278,7 @@ GMutex **pause_mutex_per_thread=NULL;
 gboolean sig_triggered(void * user_data, int signal) {
   guint i=0;
   GAsyncQueue *queue=NULL;
+  g_mutex_lock(shutdown_triggered_mutex);
   if (signal == SIGTERM){
     shutdown_triggered = TRUE;
   }else{
@@ -290,6 +304,7 @@ gboolean sig_triggered(void * user_data, int signal) {
       if ( c == 'N' || c == 'n'){
         for(i=0;i<num_threads;i++)
           g_mutex_unlock(pause_mutex_per_thread[i]);
+        g_mutex_unlock(shutdown_triggered_mutex);
         return TRUE;
       }
       if ( c == 'Y' || c == 'y'){
@@ -300,7 +315,7 @@ gboolean sig_triggered(void * user_data, int signal) {
       }
     }
   }
-
+  inform_restore_job_running();
   g_message("Writing resume.partial file");
   gchar *filename;
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
@@ -319,6 +334,7 @@ gboolean sig_triggered(void * user_data, int signal) {
   g_free(p);
   g_free(p2);
   g_message("Shutting down gracefully completed.");
+  g_mutex_unlock(shutdown_triggered_mutex);
   return FALSE;
 }
 
@@ -340,6 +356,8 @@ void *signal_thread(void *data) {
 }
 
 void stop_signal_thread(){
+  g_mutex_lock(shutdown_triggered_mutex);
+  g_mutex_unlock(shutdown_triggered_mutex);
   g_main_loop_unref(loop);
 //  g_main_loop_quit(loop);
 }
