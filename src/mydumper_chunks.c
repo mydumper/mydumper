@@ -59,6 +59,11 @@ void finalize_chunk(){
 
 }
 
+guint64 gint64_abs(gint64 a){
+  if (a >= 0)
+    return a;
+  return -a;
+}
 
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
   union chunk_step * cs = g_new0(union chunk_step, 1);
@@ -204,7 +209,7 @@ if (cs->integer_step.is_unsigned) {
                                                              )
          ){
       
-        guint64 new_minmax = 0
+        guint64 new_minmax = 0;
         type.unsign.max = cs->integer_step.type.unsign.max;
 
 
@@ -215,13 +220,13 @@ if (cs->integer_step.is_unsigned) {
                            cs->integer_step.type.unsign.min + cs->integer_step.step *( (cs->integer_step.type.unsign.max / cs->integer_step.step - cs->integer_step.type.unsign.min / cs->integer_step.step)/2) :
                            cs->integer_step.type.unsign.cursor;
           type.unsign.min = new_minmax;
-          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
         }else{
           new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
                            cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
                            cs->integer_step.type.unsign.cursor;
           type.unsign.min = new_minmax;
-          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
         }
         
         cs->integer_step.deep++;
@@ -249,8 +254,8 @@ if (cs->integer_step.is_unsigned) {
 }else{
 
       if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.max && (  
-                  ( cs->integer_step.type.sign.min != cs->integer_step.type.sign.cursor && cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ) || 
-                  ( cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor && cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > 2*cs->integer_step.step  )
+                  ( cs->integer_step.type.sign.min != cs->integer_step.type.sign.cursor && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ) || 
+                  ( cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > 2*cs->integer_step.step  )
                                                              )
          ){
       
@@ -261,20 +266,20 @@ if (cs->integer_step.is_unsigned) {
 
         union chunk_step * new_cs = NULL;
         if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
-          new_minmax = cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ?
-                           cs->integer_step.type.sign.min + cs->integer_step.step *( (cs->integer_step.type.sign.max / cs->integer_step.step - cs->integer_step.type.sign.min / cs->integer_step.step)/2) :
+          new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
+                           cs->integer_step.type.sign.min +(unsigned) cs->integer_step.step *( (cs->integer_step.type.sign.max / (unsigned) cs->integer_step.step - cs->integer_step.type.sign.min / (unsigned) cs->integer_step.step)/2) :
                            cs->integer_step.type.sign.cursor;
           type.sign.min = new_minmax;
 
-          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
         }else{
 
-          new_minmax = cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor > cs->integer_step.step ?
+          new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
                            cs->integer_step.type.sign.min + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/2 :
                            cs->integer_step.type.sign.cursor;
           type.sign.min = new_minmax;
 
-          new_cs = new_integer_step(NULL, dbt->field, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
         }
 
         
@@ -665,12 +670,6 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 
   mysql_free_result(minmax);
   return TRUE;
-}
-
-guint64 gint64_abs(gint64 a){
-  if (a >= 0)
-    return a;
-  return -a;
 }
 
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
