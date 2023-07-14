@@ -848,23 +848,29 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   switch (tj->dbt->chunk_type){
     case INTEGER:
 if (tj->chunk_step->integer_step.is_unsigned){
-      tj->where=tj->chunk_step->integer_step.type.unsign.min == tj->chunk_step->integer_step.type.unsign.max ?
-                g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
+      if (tj->chunk_step->integer_step.type.unsign.min == tj->chunk_step->integer_step.type.unsign.max) {
+                g_warning("This shouldn't happen 1");
+                tj->where=g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor):
-                g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor);
+      }else{
+                tj->where=g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.type.unsign.min, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor);
+      }
 }else{
-      tj->where=tj->chunk_step->integer_step.type.sign.min == tj->chunk_step->integer_step.type.sign.max ?
-                g_strdup_printf("(%s ( `%s` = %"G_GINT64_FORMAT"))",
+      if (tj->chunk_step->integer_step.type.sign.min == tj->chunk_step->integer_step.type.sign.max){
+                g_warning("This shouldn't happen 2");
+                tj->where=g_strdup_printf("(%s ( `%s` = %"G_GINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor):
-                g_strdup_printf("( %s ( %"G_GINT64_FORMAT" < `%s` AND `%s` <= %"G_GINT64_FORMAT"))",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor);
+      }else{
+                tj->where=g_strdup_printf("( %s ( %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.type.sign.min, tj->chunk_step->integer_step.field,
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor);
+      }
 }
     break;
   case CHAR:
@@ -909,12 +915,18 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
 
 if (tj->chunk_step->integer_step.is_unsigned){
 
-  tj->chunk_step->integer_step.type.unsign.cursor = (tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step) > tj->chunk_step->integer_step.type.unsign.max ? tj->chunk_step->integer_step.type.unsign.max : tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step;
+//  tj->chunk_step->integer_step.type.unsign.cursor = (tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step) > tj->chunk_step->integer_step.type.unsign.max ? tj->chunk_step->integer_step.type.unsign.max : tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step;
+  tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
+  if (tj->chunk_step->integer_step.type.unsign.cursor > tj->chunk_step->integer_step.type.unsign.max)
+    tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.max;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.cursor) / tj->chunk_step->integer_step.step;
 
 }else{
 
-  tj->chunk_step->integer_step.type.sign.cursor = ((gint64)(tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step)) > tj->chunk_step->integer_step.type.sign.max ? tj->chunk_step->integer_step.type.sign.max : tj->chunk_step->integer_step.type.sign.min + (gint64) tj->chunk_step->integer_step.step;
+//  tj->chunk_step->integer_step.type.sign.cursor = ((gint64)(tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step)) > tj->chunk_step->integer_step.type.sign.max ? tj->chunk_step->integer_step.type.sign.max : tj->chunk_step->integer_step.type.sign.min + (gint64) tj->chunk_step->integer_step.step;
+  tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
+  if (tj->chunk_step->integer_step.type.sign.cursor > tj->chunk_step->integer_step.type.sign.max) 
+    tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.max;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.cursor) / tj->chunk_step->integer_step.step;
 }
 
@@ -946,9 +958,9 @@ if (tj->chunk_step->integer_step.is_unsigned){
 
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
   if (tj->chunk_step->integer_step.is_unsigned){
-    tj->chunk_step->integer_step.type.unsign.min=tj->chunk_step->integer_step.type.unsign.cursor;
+    tj->chunk_step->integer_step.type.unsign.min=tj->chunk_step->integer_step.type.unsign.cursor+1;
   }else{
-    tj->chunk_step->integer_step.type.sign.min=tj->chunk_step->integer_step.type.sign.cursor;
+    tj->chunk_step->integer_step.type.sign.min=tj->chunk_step->integer_step.type.sign.cursor+1;
   }
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   return 0;

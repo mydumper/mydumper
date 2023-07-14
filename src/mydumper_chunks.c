@@ -223,8 +223,8 @@ if (cs->integer_step.is_unsigned) {
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
         }else{
           new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
-                           cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
-                           cs->integer_step.type.unsign.cursor;
+                       cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
+                       cs->integer_step.type.unsign.cursor;
           type.unsign.min = new_minmax;
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
         }
@@ -232,7 +232,7 @@ if (cs->integer_step.is_unsigned) {
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
-        cs->integer_step.type.unsign.max = new_minmax;
+        cs->integer_step.type.unsign.max = new_minmax - 1;
 //        new_cs->integer_step.check_min=TRUE;
         new_cs->integer_step.status=ASSIGNED;
  
@@ -286,7 +286,7 @@ if (cs->integer_step.is_unsigned) {
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
-        cs->integer_step.type.sign.max = new_minmax;
+        cs->integer_step.type.sign.max = new_minmax - 1;
 //        new_cs->integer_step.check_min=TRUE;
         new_cs->integer_step.status=ASSIGNED;
 
@@ -735,12 +735,12 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     if (fields[0].flags & UNSIGNED_FLAG){
 //      unmin = strtoul(row[0], NULL, 10);
 //      unmax = strtoul(row[1], NULL, 10) + 1;
-      prefix= g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, unmin) ;
+      prefix= g_strdup_printf("`%s` IS NULL OR", dbt->field) ;
       abs=gint64_abs(unmax-unmin);
     }else{
 //      nmin = strtol(row[0], NULL, 10);
 //      nmax = strtol(row[1], NULL, 10) + 1;
-      prefix= g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GINT64_FORMAT" OR", dbt->field, dbt->field, nmin) ;
+      prefix= g_strdup_printf("`%s` IS NULL OR ", dbt->field) ;
       abs=gint64_abs(nmax-nmin);
     }
 (void) unmax;
