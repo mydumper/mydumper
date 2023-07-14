@@ -658,6 +658,12 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
   return TRUE;
 }
 
+guint64 gint64_abs(gint64 a){
+  if (a >= 0)
+    return a;
+  return -a;
+}
+
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   GList *partitions=NULL;
   if (split_partitions){
@@ -700,7 +706,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     goto cleanup;
   }
   /* Support just bigger INTs for now, very dumb, no verify approach */
-  long long int abs;
+  guint64 abs;
   guint64 unmin, unmax;
   gint64 nmin, nmax;
   gchar *prefix=NULL;
@@ -719,12 +725,12 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
 //      unmin = strtoul(row[0], NULL, 10);
 //      unmax = strtoul(row[1], NULL, 10) + 1;
       prefix= g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, unmin) ;
-      abs=llabs(unmax-unmin);
+      abs=gint64_abs(unmax-unmin);
     }else{
 //      nmin = strtol(row[0], NULL, 10);
 //      nmax = strtol(row[1], NULL, 10) + 1;
       prefix= g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GINT64_FORMAT" OR", dbt->field, dbt->field, nmin) ;
-      abs=llabs(nmax-nmin);
+      abs=gint64_abs(nmax-nmin);
     }
 (void) unmax;
     if ( abs > (4 * rows_per_file)){
