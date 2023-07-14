@@ -700,7 +700,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     goto cleanup;
   }
   /* Support just bigger INTs for now, very dumb, no verify approach */
-  long unsigned int abs;
+  guint64 abs;
   guint64 unmin, unmax;
   gint64 nmin, nmax;
   gchar *prefix=NULL;
