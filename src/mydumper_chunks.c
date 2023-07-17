@@ -232,7 +232,11 @@ if (cs->integer_step.is_unsigned) {
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
-        cs->integer_step.type.unsign.max = new_minmax - 1;
+        if (cs->integer_step.type.unsign.cursor < new_minmax - 1)
+          cs->integer_step.type.unsign.max = new_minmax - 1;
+        else
+          cs->integer_step.type.unsign.max = cs->integer_step.type.unsign.cursor;
+
 //        new_cs->integer_step.check_min=TRUE;
         new_cs->integer_step.status=ASSIGNED;
  
@@ -286,7 +290,11 @@ if (cs->integer_step.is_unsigned) {
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
         dbt->chunks=g_list_append(dbt->chunks,new_cs);
-        cs->integer_step.type.sign.max = new_minmax - 1;
+        if (cs->integer_step.type.sign.cursor < new_minmax - 1)
+          cs->integer_step.type.sign.max = new_minmax - 1;
+        else
+          cs->integer_step.type.sign.max = cs->integer_step.type.sign.cursor;
+
 //        new_cs->integer_step.check_min=TRUE;
         new_cs->integer_step.status=ASSIGNED;
 
