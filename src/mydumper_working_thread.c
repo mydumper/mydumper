@@ -935,6 +935,16 @@ if (tj->chunk_step->integer_step.is_unsigned){
     return;
   }*/
 //  g_message("CONTINUE");
+
+  if (tj->chunk_step->integer_step.is_unsigned){
+    if (tj->chunk_step->integer_step.type.unsign.cursor == tj->chunk_step->integer_step.type.unsign.min)
+      return 0;
+  }else{
+    if (tj->chunk_step->integer_step.type.sign.cursor == tj->chunk_step->integer_step.type.sign.min)
+      return 0;
+  }
+
+
   update_where_on_table_job(td, tj);
 //  message_dumping_data(td,tj);
 
