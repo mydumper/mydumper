@@ -223,7 +223,7 @@ if (cs->integer_step.is_unsigned) {
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
         }else{
           new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
-                       cs->integer_step.type.unsign.min + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2 :
+                       cs->integer_step.type.unsign.cursor + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor)/2 :
                        cs->integer_step.type.unsign.cursor;
           type.unsign.min = new_minmax;
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
@@ -271,7 +271,7 @@ if (cs->integer_step.is_unsigned) {
         union chunk_step * new_cs = NULL;
         if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
           new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
-                           cs->integer_step.type.sign.min +(signed) cs->integer_step.step *( (cs->integer_step.type.sign.max / (signed) cs->integer_step.step - cs->integer_step.type.sign.min / (signed) cs->integer_step.step)/2) :
+                           cs->integer_step.type.sign.cursor +(signed) cs->integer_step.step *( (cs->integer_step.type.sign.max / (signed) cs->integer_step.step - cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step)/2) :
                            cs->integer_step.type.sign.cursor;
           type.sign.min = new_minmax;
 
@@ -279,7 +279,7 @@ if (cs->integer_step.is_unsigned) {
         }else{
 
           new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
-                           cs->integer_step.type.sign.min + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/2 :
+                           cs->integer_step.type.sign.cursor + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor)/2 :
                            cs->integer_step.type.sign.cursor;
           type.sign.min = new_minmax;
 

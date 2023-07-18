@@ -849,7 +849,7 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
     case INTEGER:
 if (tj->chunk_step->integer_step.is_unsigned){
       if (tj->chunk_step->integer_step.type.unsign.min == tj->chunk_step->integer_step.type.unsign.max) {
-                g_warning("This shouldn't happen 1");
+                g_warning("Thread %d: This shouldn't happen 1", td->thread_id);
                 tj->where=g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor);
@@ -861,7 +861,7 @@ if (tj->chunk_step->integer_step.is_unsigned){
       }
 }else{
       if (tj->chunk_step->integer_step.type.sign.min == tj->chunk_step->integer_step.type.sign.max){
-                g_warning("This shouldn't happen 2");
+                g_warning("Thread %d: This shouldn't happen 2", td->thread_id);
                 tj->where=g_strdup_printf("(%s ( `%s` = %"G_GINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
                           tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor);
