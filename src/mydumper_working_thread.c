@@ -978,21 +978,29 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
     g_free(cs->integer_step.prefix);
   cs->integer_step.prefix=NULL;
   if (cs->integer_step.is_unsigned){
+    g_mutex_lock(tj->chunk_step->integer_step.mutex);
     while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
+      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
       if (process_integer_chunk_job(td,tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
       g_atomic_int_inc(dbt->chunks_completed);
+      g_mutex_lock(tj->chunk_step->integer_step.mutex);
     }
+    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   }else{
+    g_mutex_lock(tj->chunk_step->integer_step.mutex);
     while ( cs->integer_step.type.sign.min < cs->integer_step.type.sign.max ){
+      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
       if (process_integer_chunk_job(td,tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
       g_atomic_int_inc(dbt->chunks_completed);
+      g_mutex_lock(tj->chunk_step->integer_step.mutex);
     }
+    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
