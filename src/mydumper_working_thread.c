@@ -994,7 +994,6 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
       g_atomic_int_inc(dbt->chunks_completed);
     }
   }
-
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
