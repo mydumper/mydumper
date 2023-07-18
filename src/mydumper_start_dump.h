@@ -94,13 +94,34 @@ struct job {
 
 union chunk_step;
 
+
+struct unsigned_int{
+  guint64 min;
+  guint64 cursor;
+  guint64 max;
+};
+
+struct signed_int{
+  gint64 min;
+  gint64 cursor;
+  gint64 max;
+};
+
+
+union type {
+  struct unsigned_int unsign;
+  struct signed_int   sign;
+};
+
 struct integer_step {
+  gboolean is_unsigned;
   gchar *prefix;
   gchar *field;
-  guint64 nmin;
-  guint64 cursor;
+//  guint64 nmin;
+//  guint64 cursor;
+//  guint64 nmax;
+  union type type; 
   guint64 step;
-  guint64 nmax;
   guint64 estimated_remaining_steps;
   guint64 number;
   guint deep;
