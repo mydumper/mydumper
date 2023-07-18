@@ -39,6 +39,7 @@ gchar **gzip_decompress_cmd=NULL;
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
 GMutex *metadata_mutex = NULL;
+GMutex *start_intermediate_thread=NULL;
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
 
@@ -49,6 +50,10 @@ void initialize_intermediate_queue (struct configuration *c){
   exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
   exec_process_id_mutex=g_mutex_new();
   metadata_mutex = g_mutex_new();
+  start_intermediate_thread = g_mutex_new();
+  g_mutex_lock(start_intermediate_thread);
+  if (stream)
+    g_mutex_unlock(start_intermediate_thread);
   g_mutex_lock(metadata_mutex);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
@@ -79,6 +84,7 @@ void intermediate_queue_end(){
   g_thread_join(stream_intermediate_thread);
   g_message("Intermediate thread: SHUTDOWN");
   intermediate_queue_ended=TRUE;
+  g_mutex_unlock(start_intermediate_thread);
 }
 
 void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
@@ -218,6 +224,7 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
 
 void *intermediate_thread(){
   struct intermediate_filename  * iflnm=NULL;
+  g_mutex_lock(start_intermediate_thread);
   do{
     iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);
     if ( g_strcmp0(iflnm->filename,"END") == 0 ){
