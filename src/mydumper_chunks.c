@@ -225,7 +225,7 @@ if (cs->integer_step.is_unsigned) {
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
 
           if ( new_cs->integer_step.type.unsign.min == cs->integer_step.type.unsign.cursor )
-            g_warning("This never must happend 1");
+            g_warning("This never must happend 1 | max: %"G_GUINT64_FORMAT" cursor: %"G_GUINT64_FORMAT" Step: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.cursor, cs->integer_step.step);
         }else{
           new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
                        cs->integer_step.type.unsign.cursor + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor)/2 :
@@ -233,8 +233,7 @@ if (cs->integer_step.is_unsigned) {
           type.unsign.min = new_minmax;
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
           if ( new_cs->integer_step.type.unsign.min == cs->integer_step.type.unsign.cursor )
-            g_warning("This never must happend 2");
-
+            g_warning("This never must happend 2 | max: %"G_GUINT64_FORMAT" cursor: %"G_GUINT64_FORMAT" Step: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.cursor, cs->integer_step.step);
         }
 
  
@@ -284,7 +283,7 @@ if (cs->integer_step.is_unsigned) {
 
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
           if ( new_cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor )
-            g_warning("This never must happend 3");
+            g_warning("This never must happend 3 | max: %"G_GINT64_FORMAT" cursor: %"G_GINT64_FORMAT" Step: %"G_GUINT64_FORMAT, cs->integer_step.type.sign.max, cs->integer_step.type.sign.cursor, cs->integer_step.step);
         }else{
 
           new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
@@ -294,7 +293,7 @@ if (cs->integer_step.is_unsigned) {
 
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
           if ( new_cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor )
-            g_warning("This never must happend 4");
+            g_warning("This never must happend 4 | max: %"G_GINT64_FORMAT" cursor: %"G_GINT64_FORMAT" Step: %"G_GUINT64_FORMAT, cs->integer_step.type.sign.max, cs->integer_step.type.sign.cursor, cs->integer_step.step);
         }
 
         
