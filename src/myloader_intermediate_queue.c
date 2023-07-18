@@ -78,13 +78,13 @@ void intermediate_queue_new(gchar *filename){
 }
 
 void intermediate_queue_end(){
+  g_mutex_unlock(start_intermediate_thread);
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
   g_message("Intermediate queue: Sending END job");
   g_thread_join(stream_intermediate_thread);
   g_message("Intermediate thread: SHUTDOWN");
   intermediate_queue_ended=TRUE;
-  g_mutex_unlock(start_intermediate_thread);
 }
 
 void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
