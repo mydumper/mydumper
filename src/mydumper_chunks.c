@@ -134,11 +134,13 @@ union chunk_step *new_integer_step(gchar *prefix, gchar *field, gboolean is_unsi
   if (cs->integer_step.is_unsigned){
 //    g_message("Is unsigned... ");
     cs->integer_step.type.unsign.min = type.unsign.min;
+    cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
     cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
   }else{
 //    g_message("Is signed... ");
     cs->integer_step.type.sign.min = type.sign.min;
+    cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
     cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step;
   }
@@ -221,13 +223,21 @@ if (cs->integer_step.is_unsigned) {
                            cs->integer_step.type.unsign.cursor + 1;
           type.unsign.min = new_minmax;
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+
+          if ( new_cs->integer_step.type.unsign.min == cs->integer_step.type.unsign.cursor )
+            g_warning("This never must happend 1");
         }else{
           new_minmax = cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step ?
                        cs->integer_step.type.unsign.cursor + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor)/2 :
                        cs->integer_step.type.unsign.cursor + 1;
           type.unsign.min = new_minmax;
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          if ( new_cs->integer_step.type.unsign.min == cs->integer_step.type.unsign.cursor )
+            g_warning("This never must happend 2");
+
         }
+
+ 
         
         cs->integer_step.deep++;
         cs->integer_step.check_max=TRUE;
@@ -273,6 +283,8 @@ if (cs->integer_step.is_unsigned) {
           type.sign.min = new_minmax;
 
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+          if ( new_cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor )
+            g_warning("This never must happend 3");
         }else{
 
           new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
@@ -281,6 +293,8 @@ if (cs->integer_step.is_unsigned) {
           type.sign.min = new_minmax;
 
           new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+          if ( new_cs->integer_step.type.sign.min == cs->integer_step.type.sign.cursor )
+            g_warning("This never must happend 4");
         }
 
         
