@@ -1893,7 +1893,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_x86_64 x86_64
@@ -1914,7 +1914,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_x86_64 x86_64
@@ -1935,7 +1935,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_x86_64 x86_64
@@ -1956,7 +1956,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_x86_64 x86_64
@@ -1977,7 +1977,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_x86_64 x86_64
@@ -1998,7 +1998,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_x86_64 x86_64
@@ -2019,7 +2019,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_x86_64 x86_64
@@ -2040,7 +2040,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_x86_64 x86_64
@@ -2061,7 +2061,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_x86_64 x86_64
@@ -2082,7 +2082,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_x86_64 x86_64
@@ -2103,7 +2103,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_x86_64 x86_64
@@ -2124,7 +2124,7 @@ jobs:
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_x86_64
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_x86_64 x86_64
@@ -2145,7 +2145,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_amd64 amd64
@@ -2166,7 +2166,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_amd64 amd64
@@ -2187,7 +2187,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_amd64 amd64
@@ -2208,7 +2208,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_amd64 amd64
@@ -2229,7 +2229,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_amd64 amd64
@@ -2250,7 +2250,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_amd64 amd64
@@ -2271,7 +2271,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_amd64 amd64
@@ -2292,7 +2292,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_amd64 amd64
@@ -2313,7 +2313,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_amd64 amd64
@@ -2334,7 +2334,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_amd64 amd64
@@ -2355,7 +2355,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_amd64 amd64
@@ -2376,7 +2376,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_amd64 amd64
@@ -2397,7 +2397,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
@@ -2418,7 +2418,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
@@ -2439,7 +2439,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
@@ -2460,7 +2460,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
@@ -2481,7 +2481,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_amd64 amd64
@@ -2502,7 +2502,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_amd64 amd64
@@ -2523,7 +2523,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_amd64 amd64
@@ -2544,7 +2544,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " t " | wc -l) < 50 )); then false; fi
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
