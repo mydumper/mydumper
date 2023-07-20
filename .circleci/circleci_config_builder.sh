@@ -46,7 +46,7 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
-list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006" "mysql80")
+list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
 list_mysql_version=( "mysql80" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
@@ -381,7 +381,7 @@ for arch in ${list_arch[@]}
 do
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
+        for vendor in ${list_all_vendors[@]} ${list_mysql_versions[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
@@ -459,6 +459,15 @@ do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
 done
 done
+
+for os in ${list_el_os[@]}
+do
+        for vendor in ${list_mysql_versions[@]}
+        do
+echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
+done
+done
+
 
 for os in jammy
 do
