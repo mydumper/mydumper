@@ -381,7 +381,7 @@ for arch in ${list_arch[@]}
 do
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} ${list_mysql_versions[@]}
+        for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
     executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
@@ -462,7 +462,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_mysql_versions[@]}
+        for vendor in ${list_mysql_version[@]}
         do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
 done
