@@ -351,7 +351,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb
+        for vendor in ${list_all_vendors[@]} tidb ${list_mysql_version[@]}
         do
 echo "
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
