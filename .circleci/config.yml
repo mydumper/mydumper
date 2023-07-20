@@ -92,9 +92,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -199,9 +197,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -306,9 +302,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -413,9 +407,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -520,9 +512,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -627,9 +617,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -734,9 +722,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
@@ -841,9 +827,7 @@ executors:
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
     - image: mysql:8
       command: mysqld
       environment:
