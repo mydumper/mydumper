@@ -86,6 +86,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  bionic_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-bionic
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   bionic:
     docker:
     - image: mydumper/mydumper-builder-bionic
@@ -171,6 +187,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  focal_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-focal
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -268,6 +300,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  jammy_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-jammy
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   jammy:
     docker:
     - image: mydumper/mydumper-builder-jammy
@@ -353,6 +401,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el7_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-el7
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -450,6 +514,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  el8_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-el8
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   el8:
     docker:
     - image: mydumper/mydumper-builder-el8
@@ -535,6 +615,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  el9_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-el9
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -632,6 +728,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  buster_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-buster
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   buster:
     docker:
     - image: mydumper/mydumper-builder-buster
@@ -717,6 +829,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  bullseye_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-bullseye
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mysql:8
       command: mysqld
       environment:
         MYSQL_USER: root

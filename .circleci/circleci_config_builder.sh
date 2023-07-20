@@ -132,7 +132,7 @@ filter_out="jammy|el9_percona57"
 
 for os in ${list_all_os[@]}
 do
-    for vendor in ${list_all_vendors[@]} tidb
+    for vendor in ${list_all_vendors[@]} tidb ${list_mysql_version[@]}
     do
         echo "
   ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
