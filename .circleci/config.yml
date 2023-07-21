@@ -899,34 +899,14 @@ commands:
     - run: sudo yum install -y MariaDB-compat || true
     
 
-  prepare_el7_:
+  prepare_el7_mysql80:
     steps:
-    - prepare_el_
+    - prepare_el_mysql80
 
 
-  prepare_el7_:
+  prepare_el9_mysql80:
     steps:
-    - prepare_el_
-
-
-  prepare_el8_:
-    steps:
-    - prepare_el_
-
-
-  prepare_el8_:
-    steps:
-    - prepare_el_
-
-
-  prepare_el9_:
-    steps:
-    - prepare_el_
-
-
-  prepare_el9_:
-    steps:
-    - prepare_el_
+    - prepare_el_mysql80
 
 
   prepare_bionic_tidb:

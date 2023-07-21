@@ -240,9 +240,9 @@ echo "
     - run: sudo yum install -y MariaDB-compat || true
     "
 
-for os in ${list_el_os[@]}
+for os in el7 el9
 do
-    for vendor in el7 el9
+    for vendor in ${list_mysql_version[@]}
         do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
