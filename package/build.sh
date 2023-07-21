@@ -37,7 +37,8 @@ build_rpm() {
              --define "_topdir $WORK_DIR" \
              --define "version $VERSION" \
              --define "release $RELEASE" \
-             --define "distro $DISTRO"
+             --define "distro $DISTRO" \
+             --define "architecture ${ARCH}"
     PKG=$PROJECT-$VERSION-${RELEASE}.$DISTRO.$ARCH.rpm
     mv RPMS/$PKG $TARGET
 
@@ -58,6 +59,7 @@ build_deb() {
 
     sed -i "s/%{version}/$VERSION-$RELEASE/" $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
     sed -i "s/%{distro}/$DISTRO/" $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
+    sed -i "s/%{architecture}/$ARCH/" $WORK_DIR/${PROJECT}_$VERSION/DEBIAN/control
     $WORKSPACE/deb/files $SOURCE/$SUBDIR $WORK_DIR/${PROJECT}_$VERSION
 
     fakeroot dpkg-deb -Zxz --build ${PROJECT}_$VERSION

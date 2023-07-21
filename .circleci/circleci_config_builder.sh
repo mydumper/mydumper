@@ -9,6 +9,9 @@ orbs:
 executors:"
 
 declare -A all_vendors
+vendor=mysql80
+all_vendors[${vendor}_0]="mysql80"
+all_vendors[${vendor}_1]="mysql:8"
 vendor=percona57
 all_vendors[${vendor}_0]="percona57"
 all_vendors[${vendor}_1]="percona:5.7"
@@ -44,11 +47,12 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
 list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
+list_mysql_version=( "mysql80" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
-# list_arch=( "arm" "amd" )
-list_arch=( "amd" )
+list_arch=( "arm" "amd" )
+# list_arch=( "amd" )
 declare -A all_arch
 arch=arm
 all_arch[${arch}_resource_class]="arm.medium"
@@ -118,11 +122,13 @@ list_debian_os=("buster" "bullseye")
 list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
 
 
-#list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona80_aarch64" "el7_percona80_x86_64" "el8_percona80_aarch64" "el8_percona80_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
+#list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
 
-list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
+list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_mysql80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
-filter_out="jammy|el9_percona57"
+#list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
+
+filter_out="jammy|el9_percona57|el7_mysql80_aarch64"
 
 for os in ${list_all_os[@]}
 do
@@ -145,6 +151,27 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
 done
+
+    for vendor in ${list_mysql_version[@]}
+    do
+        echo "
+  ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    docker:
+    - image: mydumper/mydumper-builder-${all_os[${os}_0]}
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: ${all_vendors[${vendor}_1]}
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper"
+done
+
+
+
                 echo "
   ${all_os[${os}_0]}:
     docker:
@@ -156,40 +183,11 @@ done
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper"
-
 done
-
 
 echo '
 commands:
-#  prepare_ubuntu:
-#    steps:
-#    - run: apt-get update || true
-#    - run: apt-get install -y sudo || true
-#    - run: sudo apt-get update
-#    - run: sudo apt-get install -y cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl
 
-#  prepare_el:
-#    steps:
-#    - run: yum -y install epel-release || true
-#    - run: yum -y install sudo || true
-#    - run: yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel
-#    - run: yum -y install wget curl || true
-#    - run: yum -y install --allowerasing wget curl || true'
-
-#for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
-#do
-#    echo "
-#  prepare_${all_os[${os}_0]}_percona_package:
-#    steps:
-#
-#    - run: wget https://repo.percona.com/apt/${all_os[${os}_2]}
-#    - run: sudo apt install -y ./${all_os[${os}_2]}"
-#done
-
-
-
-echo "
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6"
@@ -197,6 +195,16 @@ echo "
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+'
+
+echo "
+  prepare_el_mysql80:
+    steps:
+    - run: sudo yum install -y mysql-community-libs mysql-community-devel mysql-community-client
+
+  prepare_el8_mysql80:
+    steps:
+    - run: sudo yum install -y mysql-libs mysql-devel mysql
 
   prepare_ubuntu_percona57:
     steps:
@@ -207,9 +215,8 @@ echo "
     steps:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
-"
-# libmariadb-dev-compat
-echo "
+
+
   prepare_ubuntu_mariadb1006:
     steps:
     - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
@@ -221,17 +228,10 @@ echo "
     - run: sudo yum install -y MariaDB-devel
     - run: sudo yum install -y MariaDB-compat || true
 
-
-
   prepare_ubuntu_mariadb1011:
     steps:
-#    - run: sudo apt-get remove -y libmariadb-dev libmariadb-dev-compat libmariadb3 || true
     - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
-
-#  prepare_el_percona_package:
-#    steps:
-#    - run: yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
 
   prepare_el_mariadb1011:
     steps:
@@ -239,6 +239,35 @@ echo "
     - run: sudo yum install -y MariaDB-devel
     - run: sudo yum install -y MariaDB-compat || true
     "
+
+for os in el7 el9
+do
+    for vendor in ${list_mysql_version[@]}
+        do
+echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+done
+
+done
+
+
+
+for os in ${list_el_os[@]}
+do
+    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
+        do
+echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+done
+
+done
+
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
@@ -255,7 +284,6 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
-#    - prepare_${all_os[${os}_0]}_percona_package
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
 done
@@ -387,21 +415,51 @@ echo "
            - .
 "
 done
+
+        for vendor in ${list_mysql_version[@]}
+        do
+echo "
+  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: ${all_os[${os}_0]}
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_${os}_${all_vendors[${vendor}_0]}
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+"
 done
+
+
+done
+
 for arch in ${list_arch[@]}
 do
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
+        for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
-    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_${all_vendors[${vendor}_0]}
+    - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -426,7 +484,8 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
-    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
@@ -470,6 +529,15 @@ do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
 done
 done
+
+for os in ${list_el_os[@]}
+do
+        for vendor in ${list_mysql_version[@]}
+        do
+echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
+done
+done
+
 
 for os in jammy
 do

@@ -15,4 +15,5 @@ RUN \
 RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
 
-
+RUN \
+  yum -y install https://repo.mysql.com/mysql80-community-release-el8.rpm
