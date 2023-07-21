@@ -398,6 +398,7 @@ echo "
 "
 done
 done
+
 for arch in ${list_arch[@]}
 do
 for os in ${list_el_os[@]}
@@ -405,7 +406,8 @@ do
         for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
-    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
@@ -436,7 +438,8 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
-    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
+    executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
     - checkout
