@@ -375,7 +375,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb ${list_mysql_version[@]}
+        for vendor in ${list_all_vendors[@]} tidb
         do
 echo "
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -400,6 +400,34 @@ echo "
            - .
 "
 done
+
+        for vendor in ${list_mysql_version[@]}
+        do
+echo "
+  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: ${all_os[${os}_0]}
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_${os}_${all_vendors[${vendor}_0]}
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+"
+done
+
+
 done
 
 for arch in ${list_arch[@]}
