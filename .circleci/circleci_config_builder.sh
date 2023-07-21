@@ -202,6 +202,9 @@ echo "
     steps:
     - run: sudo yum install -y mysql-community-libs mysql-community-devel mysql-community-client
 
+  prepare_el8_mysql80:
+    steps:
+    - run: sudo yum install -y mysql-libs mysql-devel mysql
 
   prepare_ubuntu_percona57:
     steps:
@@ -239,7 +242,7 @@ echo "
 
 for os in ${list_el_os[@]}
 do
-    for vendor in ${list_mysql_version[@]}
+    for vendor in el7 el9
         do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
