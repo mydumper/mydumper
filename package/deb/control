@@ -6,7 +6,7 @@ Homepage: https://github.com/mydumper/mydumper
 Package: mydumper
 Version: %{version}~%{distro}
 Pre-Depends: libatomic1, libglib2.0-0
-Architecture: amd64
+Architecture: %{architecture}
 Description: mydumper and myloader MySQL backup tools
  This package provides mydumper and myloader MySQL backup tools.
  .

@@ -7,7 +7,7 @@ License:        GPL
 Vendor:         David Ducos
 URL:            https://github.com/mydumper/mydumper
 Source:         mydumper-%{version}.tar.gz
-BuildArch:      x86_64
+BuildArch:      %{architecture}
 AutoReq:        no
 %define _rpmfilename %{name}-%{version}-%{release}.%{distro}.%{arch}.rpm
 
