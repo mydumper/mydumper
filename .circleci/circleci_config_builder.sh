@@ -124,7 +124,7 @@ list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
 
 #list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
 
-list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_mysql80_aarch64" "el7_percona57_x86_64" "el8_mysql80_aarch64" "el8_percona57_x86_64" "el9_mysql80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
+list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_mysql80_aarch64" "el8_percona57_x86_64" "el9_mysql80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
 #list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
@@ -444,7 +444,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_${all_vendors[${vendor}_0]}
+    - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:

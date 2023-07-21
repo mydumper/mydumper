@@ -2055,7 +2055,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el7_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2077,7 +2077,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el7_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2099,7 +2099,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el7_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2121,7 +2121,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el7_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2143,7 +2143,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el7_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2165,7 +2165,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el8_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2187,7 +2187,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el8_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2209,7 +2209,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el8_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2231,7 +2231,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el8_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2253,7 +2253,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el8_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2275,7 +2275,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el9_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2297,7 +2297,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el9_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2319,7 +2319,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el9_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2341,7 +2341,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el9_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2363,7 +2363,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el9_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2385,7 +2385,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el7_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2407,7 +2407,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el7_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2429,7 +2429,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el7_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2451,7 +2451,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el7_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2473,7 +2473,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el7_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2495,7 +2495,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el8_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2517,7 +2517,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el8_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2539,7 +2539,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el8_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2561,7 +2561,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el8_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2583,7 +2583,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el8_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2605,7 +2605,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el9_percona57
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2627,7 +2627,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el9_percona80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2649,7 +2649,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el9_mariadb1011
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2671,7 +2671,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el9_mariadb1006
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -2693,7 +2693,7 @@ jobs:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el9_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
@@ -3663,12 +3663,6 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_el7_mysql80_aarch64:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
         filters:
           branches:
@@ -3716,7 +3710,6 @@ workflows:
           - build_bionic_percona80_amd64
           - build_focal_percona80_amd64
           - build_jammy_percona80_amd64
-          - build_el7_mysql80_aarch64
           - build_el7_percona57_x86_64
           - build_el8_mysql80_aarch64
           - build_el8_percona57_x86_64
