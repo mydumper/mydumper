@@ -263,6 +263,21 @@ done
 done
 
 
+
+for os in ${list_el_os[@]}
+do
+    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
+        do
+echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+done
+
+done
+
+
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
         vendor=tidb

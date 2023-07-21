@@ -918,6 +918,66 @@ commands:
     - prepare_el_mysql80
 
 
+  prepare_el7_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el7_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el7_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el7_percona80:
+    steps:
+    - prepare_el_percona80
+
+
+  prepare_el8_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el8_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el8_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el8_percona80:
+    steps:
+    - prepare_el_percona80
+
+
+  prepare_el9_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el9_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el9_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el9_percona80:
+    steps:
+    - prepare_el_percona80
+
+
   prepare_bionic_tidb:
     steps:
     - prepare_ubuntu_percona57
