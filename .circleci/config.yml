@@ -861,15 +861,6 @@ commands:
     steps:
     - run: sudo yum install -y mysql-community-libs mysql-community-devel mysql-community-client
 
-
-  prepare_el7_mysql80:
-    steps:
-    - prepare_el_mysql80
-
-  prepare_el9_mysql80:
-    steps:
-    - prepare_el_mysql80
-
   prepare_el8_mysql80:
     steps:
     - run: sudo yum install -y mysql-libs mysql-devel mysql
