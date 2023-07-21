@@ -3729,12 +3729,6 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_el8_mysql80_aarch64:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_percona57_x86_64:
         filters:
           branches:
@@ -3771,7 +3765,6 @@ workflows:
           - build_focal_percona80_amd64
           - build_jammy_percona80_amd64
           - build_el7_percona57_x86_64
-          - build_el8_mysql80_aarch64
           - build_el8_percona57_x86_64
           - build_el9_mysql80_aarch64
           - build_el9_percona80_x86_64
