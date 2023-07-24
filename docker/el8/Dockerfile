@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN \
   yum -y install epel-release && \
   yum -y install wget curl && \
-  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo 
+  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo gcc-toolset-12-libstdc++-devel.aarch64 gcc-toolset-12-gcc gcc-toolset-12-gcc-c++
 
 RUN \
   yum -y install  https://repo.percona.com/yum/percona-release-latest.noarch.rpm
