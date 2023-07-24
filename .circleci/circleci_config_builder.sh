@@ -204,7 +204,8 @@ echo "
 
   prepare_el8_mysql80:
     steps:
-    - run: sudo yum install -y mysql-libs mysql-devel mysql
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
 
   prepare_ubuntu_percona57:
     steps:
