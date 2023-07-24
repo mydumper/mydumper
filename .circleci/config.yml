@@ -863,7 +863,8 @@ commands:
 
   prepare_el8_mysql80:
     steps:
-    - run: sudo yum install -y mysql-libs mysql-devel mysql
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
 
   prepare_ubuntu_percona57:
     steps:
@@ -3735,6 +3736,12 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_el8_mysql80_aarch64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql80_aarch64:
         filters:
           branches:
@@ -3766,6 +3773,7 @@ workflows:
           - build_jammy_percona80_amd64
           - build_el7_percona57_x86_64
           - build_el8_percona57_x86_64
+          - build_el8_mysql80_aarch64
           - build_el9_mysql80_aarch64
           - build_el9_percona80_x86_64
           - build_bullseye_percona80_amd64
