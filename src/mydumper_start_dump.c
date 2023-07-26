@@ -56,6 +56,7 @@
 #include "tables_skiplist.h"
 #include "regex.h"
 #include "common.h"
+#include "common_options.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_jobs.h"
 #include "mydumper_common.h"
@@ -292,6 +293,22 @@ MYSQL *create_connection() {
   return conn;
 }
 
+void  detect_identifier_quote_character_mix(MYSQL *conn){
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+
+  gchar *query = g_strdup("SELECT FIND_IN_SET('ANSI',@@sql_mode)");
+  mysql_query(conn, query);
+  g_free(query);
+
+  res = mysql_store_result(conn);
+  row = mysql_fetch_row(res);
+  if ((g_strcmp0(row[0], "0") && identifier_quote_character==BACKTICK)
+  || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
+    m_error("We found a mixed usage of the identifier quote character. Check SQL_MODE and --identifier-quote-character");
+  }
+  mysql_free_result(res);
+}
 
 MYSQL *create_main_connection() {
   MYSQL *conn;
@@ -340,7 +357,8 @@ MYSQL *create_main_connection() {
     m_critical("Cannot detect server type");
     break;
   }
-
+  
+  detect_identifier_quote_character_mix(conn);
   return conn;
 }
 

@@ -202,9 +202,9 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
     if (i > 0) {
       g_string_append_c(statement, ',');
     }
-    g_string_append_c(statement,'`');
+    g_string_append_c(statement,identifier_quote_character);
     g_string_append(statement, fields[i].name);    
-    g_string_append_c(statement,'`');
+    g_string_append_c(statement,identifier_quote_character);
   }
 }
 
