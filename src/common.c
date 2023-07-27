@@ -37,7 +37,7 @@ extern gchar*set_names_statement;
 extern guint num_threads;
 extern GString *set_global_back;
 extern MYSQL *main_connection;
-FILE * (*m_open)(const char *filename, const char *);
+FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
 
@@ -389,12 +389,20 @@ void escape_tab_with(gchar *to){
 //  return to;
 }
 
-void create_backup_dir(char *new_directory) {
+void create_backup_dir(char *new_directory, char *new_fifo_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
+  if (new_fifo_directory){
+    if (g_mkdir(new_fifo_directory, 0750) == -1) {
+      if (errno != EEXIST) {
+        m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
+      }
+    }
+  }
+
 }
 
 guint strcount(gchar *text){

@@ -153,6 +153,9 @@ void parse_rows_per_chunk(){
   g_strfreev(split);
 }
 
+FILE * m_fopen(char **filename, const char *type ){
+  return g_fopen(*filename, type);
+}
 
 void initialize_working_thread(){
   database_counter = 0;
@@ -198,7 +201,7 @@ void initialize_working_thread(){
   m_write=(void *)&write_file;
 
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
-    m_open=&g_fopen;
+    m_open=&m_fopen;
     m_close=(void *) &m_close_file;
     m_write=(void *)&write_file;
     exec_per_thread_extension=EMPTY_STRING;

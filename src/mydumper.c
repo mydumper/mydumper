@@ -137,7 +137,7 @@ int main(int argc, char *argv[]) {
     output_directory=output_directory_param;
   }
 
-  create_backup_dir(output_directory);
+  create_backup_dir(output_directory, fifo_directory);
 
   if (disk_limits!=NULL){
     parse_disk_limits();

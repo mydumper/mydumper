@@ -55,6 +55,5 @@ void free_common();
 void initialize_sql_statement(GString *statement);
 void set_tidb_snapshot(MYSQL *conn);
 int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
-//FILE * m_open(const char *filename, const char *);
-FILE * m_open_pipe(const char *filename, const char *type);
+FILE * m_open_pipe(char **filename, const char *type);
 void release_pid();

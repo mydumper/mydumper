@@ -43,6 +43,7 @@ extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GKeyFile * key_file;
 extern gchar *input_directory;
+extern gchar *fifo_directory;
 extern gchar *tables_list;
 extern gboolean help;
 extern char **tables;

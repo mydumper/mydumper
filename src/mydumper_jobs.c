@@ -93,7 +93,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
   if (!outfile) {
     g_critical("Error: Could not create output file %s (%d)",
                filename, errno);
@@ -135,7 +135,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -187,7 +187,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->name,
@@ -301,7 +301,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->name,
@@ -343,7 +343,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -387,7 +387,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   mysql_select_db(conn, dbt->database->name);
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
 
   if (!outfile) {
@@ -460,7 +460,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_set_size(statement, 0);
 
   void *outfile2;
-  outfile2 = m_open(filename2,"w");
+  outfile2 = m_open(&filename2,"w");
   if (!outfile2) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
                errno);
@@ -518,7 +518,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 
   mysql_select_db(conn, dbt->database->name);
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
@@ -625,7 +625,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   MYSQL_ROW row2;
   gchar **splited_st = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -1071,7 +1071,7 @@ int initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file
   if (*sql_filename)
     g_free(*sql_filename);
   *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
-  *sql_file = m_open(*sql_filename,"w");
+  *sql_file = m_open(sql_filename,"w");
   return r;
 }
 
@@ -1096,7 +1096,7 @@ gboolean update_files_on_table_job(struct table_job *tj){
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql_file = m_open(tj->sql_filename,"w");
+      tj->sql_file = m_open(&(tj->sql_filename),"w");
       return TRUE;
     }else{
       initialize_sql_fn(tj);
