@@ -200,7 +200,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   guint tr=0;
   gchar *load_data_filename=NULL;
   gchar *load_data_fifo_filename=NULL;
-
+  gchar *new_load_data_fifo_filename=NULL;
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -212,10 +212,21 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             data, is_schema, &query_counter,preline);
         else{
           if (g_strrstr_len(data->str,10,"LOAD DATA ")){
+            GString *new_data = NULL;
             gchar *from = g_strstr_len(data->str, -1, "'");
             from++;
             gchar *to = g_strstr_len(from, -1, "'");
             load_data_filename=g_strndup(from, to-from);
+            if (fifo_directory != NULL){
+              new_data = g_string_new_len(data->str, from - data->str);
+              g_string_append(new_data, fifo_directory);
+              g_string_append_c(new_data, '/');
+              g_string_append(new_data, from);
+              g_string_free(data,TRUE);
+              from = g_strstr_len(new_data->str, -1, "'") + 1;
+              data=new_data;
+              to = g_strstr_len(from, -1, "'");
+            }
             wait_til_data_file_is_close(load_data_filename);
             gchar **command=NULL;
             if (get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename)){ 
@@ -224,6 +235,14 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                 *to=' '; to--;
               }
               *to='\'';
+
+
+              if (fifo_directory != NULL){
+                new_load_data_fifo_filename=g_strdup_printf("%s/%s", fifo_directory, load_data_fifo_filename);
+                g_free(load_data_fifo_filename);
+                load_data_fifo_filename=new_load_data_fifo_filename;
+              }
+
               mkfifo(load_data_fifo_filename,0666);
               execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
               release_load_data_as_it_is_close(load_data_fifo_filename);

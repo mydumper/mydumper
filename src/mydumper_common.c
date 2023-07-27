@@ -84,11 +84,16 @@ int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3){
 }
 
 // filename must never use the compression extension. .fifo files should be deprecated
-FILE * m_open_pipe(const char *filename, const char *type){
-  mkfifo(filename,0666);
-  gchar *new_filename = g_strdup_printf("%s%s", filename, exec_per_thread_extension);
-  int child_proc = execute_file_per_thread(filename,new_filename);
-  FILE *file=g_fopen(filename,type);
+FILE * m_open_pipe(gchar **filename, const char *type){
+  gchar *basefilename=g_path_get_basename(*filename);
+  gchar *new_filename = g_strdup_printf("%s%s", *filename, exec_per_thread_extension);
+  if (fifo_directory != NULL){
+    *filename=g_strdup_printf("%s/%s", fifo_directory, basefilename);
+    g_free(basefilename);
+  }
+  mkfifo(*filename,0666);
+  int child_proc = execute_file_per_thread(*filename,new_filename);
+  FILE *file=g_fopen(*filename,type);
   g_mutex_lock(fifo_table_mutex); 
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
 
@@ -96,14 +101,14 @@ FILE * m_open_pipe(const char *filename, const char *type){
     g_mutex_unlock(fifo_table_mutex);
     g_mutex_lock(f->mutex);
     f->pid = child_proc;
-    f->filename=g_strdup(filename);
+    f->filename=g_strdup(*filename);
     f->stdout_filename=new_filename;
   }else{
     f=g_new0(struct fifo, 1);
     f->mutex=g_mutex_new();
     g_mutex_lock(f->mutex);
     f->pid = child_proc;
-    f->filename=g_strdup(filename);
+    f->filename=g_strdup(*filename);
     f->stdout_filename=new_filename;
     g_hash_table_insert(fifo_hash,file,f);
     g_mutex_unlock(fifo_table_mutex);

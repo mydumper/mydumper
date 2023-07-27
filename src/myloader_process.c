@@ -146,22 +146,34 @@ void free_table_hash(GHashTable *table_hash){
 
 FILE * myl_open(char *filename, const char *type){
   FILE *file=NULL;
-  gchar *basename=NULL;
+  gchar *basename=NULL, *fifoname=NULL;
   int child_proc;
   (void) child_proc;
   gchar **command=NULL;
   struct stat a;
   if (get_command_and_basename(filename, &command,&basename)){
 
-    lstat(basename, &a);
-    if ((a.st_mode & S_IFMT) == S_IFIFO){
-      g_warning("FIFO file found %s, removing and continuing", basename);
-      remove(basename);
+
+    fifoname=basename;
+    if (fifo_directory != NULL){
+      gchar *basefilename=g_path_get_basename(basename);
+      fifoname=g_strdup_printf("%s/%s", fifo_directory, basefilename);
+      g_free(basename);
     }
 
-    mkfifo(basename,0666);
-    child_proc = execute_file_per_thread(filename, basename, command);
-    file=g_fopen(basename,type);
+
+    lstat(fifoname, &a);
+    if ((a.st_mode & S_IFMT) == S_IFIFO){
+      g_warning("FIFO file found %s, removing and continuing", fifoname);
+      remove(fifoname);
+    }
+
+    if (mkfifo(fifoname,0666)){
+      g_critical("cannot create named pipe %s (%d)", fifoname, errno); 
+    }
+
+    child_proc = execute_file_per_thread(filename, fifoname, command);
+    file=g_fopen(fifoname,type);
     g_mutex_lock(fifo_table_mutex);
     struct fifo *f=g_hash_table_lookup(fifo_hash,file);
     if (f!=NULL){
@@ -169,14 +181,14 @@ FILE * myl_open(char *filename, const char *type){
       g_mutex_unlock(fifo_table_mutex);
       f->pid = child_proc;
       f->filename=g_strdup(filename);
-      f->stdout_filename=basename;
+      f->stdout_filename=fifoname;
     }else{
       f=g_new0(struct fifo, 1);
       f->mutex=g_mutex_new();
       g_mutex_lock(f->mutex);
       f->pid = child_proc;
       f->filename=g_strdup(filename);
-      f->stdout_filename=basename;
+      f->stdout_filename=fifoname;
       g_hash_table_insert(fifo_hash,file,f);
       g_mutex_unlock(fifo_table_mutex);
     }

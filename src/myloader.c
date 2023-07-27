@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
 
       directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
-      create_backup_dir(directory);
+      create_backup_dir(directory,fifo_directory);
       g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
@@ -295,7 +295,7 @@ int main(int argc, char *argv[]) {
     directory=g_strdup_printf("%s/%s", g_str_has_prefix(input_directory,"/")?"":current_dir, input_directory);
     if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
       if (stream){
-        create_backup_dir(directory);
+        create_backup_dir(directory,fifo_directory);
       }else{
         m_critical("the specified directory doesn't exists\n");
       }
@@ -308,6 +308,11 @@ int main(int argc, char *argv[]) {
 //      initialize_directory();
     }
   }
+  if (fifo_directory && fifo_directory[0] != '/' ){
+    gchar *tmp_fifo_directory=fifo_directory;
+    fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
+  }
+
   g_free(current_dir);
   g_chdir(directory);
   /* Process list of tables to omit if specified */
