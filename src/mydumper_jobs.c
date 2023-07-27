@@ -1085,12 +1085,13 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-    if ( tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+    if (tj->dbt->chunk_type == INTEGER && tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
       if (tj->chunk_step->integer_step.is_unsigned)
         tj->sub_part = tj->chunk_step->integer_step.type.unsign.min / tj->chunk_step->integer_step.step + 1; 
       else
         tj->sub_part = tj->chunk_step->integer_step.type.sign.min   / tj->chunk_step->integer_step.step + 1;
     }
+    
 
     if (load_data){
       initialize_load_data_fn(tj);

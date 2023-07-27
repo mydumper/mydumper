@@ -252,6 +252,11 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
     if (read_data(infile, data, &eof,&line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
         if (g_strstr_len(data->str,13,"CREATE TABLE ")){
+          // We consider that 30 is the max length to find the identifier
+          // We considered that the CREATE TABLE could inlcude the IF NOT EXISTS clause
+          if (!g_strstr_len(data->str,30,identifier_quote_character_str)){
+            g_critical("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
+          }
           gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
           dbt->real_table=g_strdup(create_table[1]);
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
