@@ -161,10 +161,6 @@ void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
     parse_rows_per_chunk();
-  else {
-    min_rows_per_file = rows_per_file / 100;
-    max_rows_per_file = rows_per_file * 100;
-  }
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
   non_innodb_table_mutex = g_mutex_new();
@@ -318,16 +314,16 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
   for (x = 0; table_list[x] != NULL; x++) {
     dt = g_strsplit(table_list[x], ".", 0);
 
-    // Need 7 columns with DATA_LENGTH as the last one for this to work
-    if (detected_server == SERVER_TYPE_MARIADB)
+  // Need 7 columns with DATA_LENGTH as the last one for this to work
+    if (detected_server == SERVER_TYPE_MARIADB){
       query =
           g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
                           "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
                           dt[0], dt[1]);
-    else
+    }else{
       query =
           g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
-
+    }
     if (mysql_query(conn, (query))) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
                  mysql_error(conn));
@@ -336,9 +332,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     }
 
     MYSQL_RES *result = mysql_store_result(conn);
-    guint ecol = -1, ccol = -1, collcol;
-    determine_ecol_ccol(result, &ecol, &ccol, &collcol);
-
+    guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
+    determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
     struct database * database=NULL;
     if (get_database(conn, dt[0], &database)){
       if (!database->already_dumped){
@@ -381,7 +376,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
+      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -1372,11 +1367,12 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   return character_set;
 }
 
-struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength){
+struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength, guint64 rows_in_sts){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
+  dbt->rows_in_sts = rows_in_sts;
   dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
   dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
   dbt->rows_lock= g_mutex_new();
@@ -1459,7 +1455,7 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -1468,7 +1464,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   }
   g_mutex_unlock(database->ad_mutex);
 
-  struct db_table *dbt = new_db_table( conn, conf, database, table, collation, datalength);
+  struct db_table *dbt = new_db_table( conn, conf, database, table, collation, datalength, rows_in_sts);
   g_mutex_lock(all_dbts_mutex);
   all_dbts=g_list_prepend( all_dbts, dbt) ;
   g_mutex_unlock(all_dbts_mutex);
@@ -1642,7 +1638,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   guint ecol = -1;
   guint ccol = -1;
   guint collcol = -1;
-  determine_ecol_ccol(result, &ecol, &ccol, &collcol);
+  guint rowscol = 0;
+  determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
@@ -1746,8 +1743,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     if (!dump)
       continue;
-
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
+    
+    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
 
   }
 

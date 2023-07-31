@@ -414,7 +414,7 @@ void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned lo
   }
 }
 
-void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol){
+void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol){
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   guint i = 0;
   for (i = 0; i < mysql_num_fields(result); i++) {
@@ -424,6 +424,8 @@ void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *col
       *ccol = i;
     else if (!strcasecmp(fields[i].name, "Collation"))
       *collcol = i;
+    else if (!strcasecmp(fields[i].name, "Rows"))
+      *rowscol = i;
   }
 }
 
