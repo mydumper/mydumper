@@ -927,19 +927,24 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
 if (tj->chunk_step->integer_step.is_unsigned){
 
 //  tj->chunk_step->integer_step.type.unsign.cursor = (tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step) > tj->chunk_step->integer_step.type.unsign.max ? tj->chunk_step->integer_step.type.unsign.max : tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
-  if (tj->chunk_step->integer_step.type.unsign.cursor > tj->chunk_step->integer_step.type.unsign.max)
+  if (tj->chunk_step->integer_step.step -1 > tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.min)
     tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.max;
+  else
+    tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.cursor) / tj->chunk_step->integer_step.step;
 
 }else{
 
 //  tj->chunk_step->integer_step.type.sign.cursor = ((gint64)(tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step)) > tj->chunk_step->integer_step.type.sign.max ? tj->chunk_step->integer_step.type.sign.max : tj->chunk_step->integer_step.type.sign.min + (gint64) tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
-  if (tj->chunk_step->integer_step.type.sign.cursor > tj->chunk_step->integer_step.type.sign.max) 
+  if (tj->chunk_step->integer_step.step - 1 > gint64_abs(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.min)) 
     tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.max;
+  else
+    tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.cursor) / tj->chunk_step->integer_step.step;
 }
+
+if (tj->chunk_step->integer_step.step == 0)
+  m_error("This can't happen");
 
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
 /*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
@@ -971,7 +976,7 @@ if (tj->chunk_step->integer_step.is_unsigned){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }else if (diff < 1){
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2 == 0?tj->chunk_step->integer_step.step:tj->chunk_step->integer_step.step  * 2;
     if (max_rows_per_file!=0)
       tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
@@ -1001,6 +1006,7 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   if (cs->integer_step.is_unsigned){
     g_mutex_lock(tj->chunk_step->integer_step.mutex);
     while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
+      g_message("%"G_GUINT64_FORMAT" |\t %"G_GUINT64_FORMAT" | \t %d  %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max, cs->integer_step.step);
       g_mutex_unlock(tj->chunk_step->integer_step.mutex);
       if (process_integer_chunk_job(td,tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);

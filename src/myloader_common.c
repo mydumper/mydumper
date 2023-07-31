@@ -453,6 +453,7 @@ gboolean has_exec_per_thread_extension(const gchar *filename){
 
 
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec){
+  g_message("execute_file_per_thread: %s | %s", sql_fn,sql_fn3 );
   int childpid=fork();
   if(!childpid){
     FILE *sql_file2 = g_fopen(sql_fn,"r");
@@ -472,11 +473,12 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
     *command=exec_per_thread_cmd;
     len=strlen(exec_per_thread_extension);
   }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
-    *command=(gchar **)zstd_decompress_cmd;
+    *command=zstd_decompress_cmd;
     len=strlen(ZSTD_EXTENSION);
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
-    *command=(gchar**)gzip_decompress_cmd;
+    *command=gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
+
   }
   if (len!=0){
     gchar *dotpos=&(filename[strlen(filename)]) - len;
