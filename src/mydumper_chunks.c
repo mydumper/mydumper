@@ -707,106 +707,99 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     return;
   }
 
-  if (rows_per_file>0){
-  gchar *query = NULL;
-  MYSQL_ROW row;
-  MYSQL_RES *minmax = NULL;
-  /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
+  if (rows_per_file>0 && dbt->rows_in_sts > min_rows_per_file ){
+    gchar *query = NULL;
+    MYSQL_ROW row;
+    MYSQL_RES *minmax = NULL;
+    /* Get minimum/maximum */
+    mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s",
                         is_mysql_like()
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
                         dbt->field, dbt->field, dbt->field, dbt->field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
 //  g_message("Query: %s", query);
-  g_free(query);
-  minmax = mysql_store_result(conn);
+    g_free(query);
+    minmax = mysql_store_result(conn);
 
-  if (!minmax){
-    dbt->chunk_type=NONE;
-    goto cleanup;
-  }
-
-  row = mysql_fetch_row(minmax);
-
-  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-  gulong *lengths = mysql_fetch_lengths(minmax);
-  /* Check if all values are NULL */
-  if (row[0] == NULL){
-    dbt->chunk_type=NONE;
-    goto cleanup;
-  }
-  /* Support just bigger INTs for now, very dumb, no verify approach */
-  guint64 abs;
-  guint64 unmin, unmax;
-  gint64 nmin, nmax;
-  gchar *prefix=NULL;
-  union chunk_step *cs = NULL;
-  switch (fields[0].type) {
-  case MYSQL_TYPE_LONG:
-  case MYSQL_TYPE_LONGLONG:
-  case MYSQL_TYPE_INT24:
-  case MYSQL_TYPE_SHORT:
-    if (min_rows_per_file==rows_per_file && max_rows_per_file==rows_per_file)
-      dbt->chunk_filesize=0;
-
-    unmin = strtoull(row[0], NULL, 10);
-    unmax = strtoull(row[1], NULL, 10) + 1;
-    nmin  = strtoll (row[0], NULL, 10);
-    nmax  = strtoll (row[1], NULL, 10) + 1;
-
-    if (fields[0].flags & UNSIGNED_FLAG){
-//      unmin = strtoul(row[0], NULL, 10);
-//      unmax = strtoul(row[1], NULL, 10) + 1;
-      prefix= g_strdup_printf("`%s` IS NULL OR", dbt->field) ;
-      abs=gint64_abs(unmax-unmin);
-    }else{
-//      nmin = strtol(row[0], NULL, 10);
-//      nmax = strtol(row[1], NULL, 10) + 1;
-      prefix= g_strdup_printf("`%s` IS NULL OR ", dbt->field) ;
-      abs=gint64_abs(nmax-nmin);
-    }
-(void) unmax;
-    if ( abs > (4 * rows_per_file)){
-      union type type;
-      if ((fields[0].flags & UNSIGNED_FLAG)){
-        type.unsign.min=unmin;
-        type.unsign.max=unmax;
-        cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
-      }else{
-        type.sign.min=nmin;
-        type.sign.max=nmax;
-        cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
-      }
-//      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, fields[0].flags & UNSIGNED_FLAG, nmin, nmax, 0, rows_per_file, 0, FALSE, FALSE);      
-
-      dbt->chunks=g_list_prepend(dbt->chunks,cs);
-      g_async_queue_push(dbt->chunks_queue, cs);
-      dbt->chunk_type=INTEGER;
-      dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
-    }else{
+    if (!minmax){
       dbt->chunk_type=NONE;
+      goto cleanup;
     }
-    if (minmax) mysql_free_result(minmax);
-    return;
-    break;
-  case MYSQL_TYPE_STRING:
-  case MYSQL_TYPE_VAR_STRING:
-    cs=new_char_step(conn, dbt->field, 0, 0, row, lengths);
-    dbt->chunks=g_list_prepend(dbt->chunks,cs);
-    g_async_queue_push(dbt->chunks_queue, cs);
-    dbt->chunk_type=CHAR;
-    if (minmax) mysql_free_result(minmax);
-    return;
-    break;
-  default:
-    dbt->chunk_type=NONE;
-    break;
-  }
-cleanup:
-  if (minmax)
-    mysql_free_result(minmax);
 
+    row = mysql_fetch_row(minmax);
+
+    MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
+    gulong *lengths = mysql_fetch_lengths(minmax);
+    /* Check if all values are NULL */
+    if (row[0] == NULL){
+      dbt->chunk_type=NONE;
+      goto cleanup;
+    }
+  /* Support just bigger INTs for now, very dumb, no verify approach */
+    guint64 abs;
+    guint64 unmin, unmax;
+    gint64 nmin, nmax;
+    gchar *prefix=NULL;
+    union chunk_step *cs = NULL;
+    switch (fields[0].type) {
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_LONGLONG:
+      case MYSQL_TYPE_INT24:
+      case MYSQL_TYPE_SHORT:
+        if (min_rows_per_file==rows_per_file && max_rows_per_file==rows_per_file)
+          dbt->chunk_filesize=0;
+
+        unmin = strtoull(row[0], NULL, 10);
+        unmax = strtoull(row[1], NULL, 10) + 1;
+        nmin  = strtoll (row[0], NULL, 10);
+        nmax  = strtoll (row[1], NULL, 10) + 1;
+
+        if (fields[0].flags & UNSIGNED_FLAG){
+          prefix= g_strdup_printf("`%s` IS NULL OR", dbt->field) ;
+          abs=gint64_abs(unmax-unmin);
+        }else{
+          prefix= g_strdup_printf("`%s` IS NULL OR ", dbt->field) ;
+          abs=gint64_abs(nmax-nmin);
+        }
+        if ( abs > min_rows_per_file){
+          union type type;
+          if ((fields[0].flags & UNSIGNED_FLAG)){
+            type.unsign.min=unmin;
+            type.unsign.max=unmax;
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
+          }else{
+            type.sign.min=nmin;
+            type.sign.max=nmax;
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
+          }
+
+          dbt->chunks=g_list_prepend(dbt->chunks,cs);
+          g_async_queue_push(dbt->chunks_queue, cs);
+          dbt->chunk_type=INTEGER;
+          dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
+        }else{
+          dbt->chunk_type=NONE;
+        }
+        if (minmax) mysql_free_result(minmax);
+        return;
+        break;
+      case MYSQL_TYPE_STRING:
+      case MYSQL_TYPE_VAR_STRING:
+        cs=new_char_step(conn, dbt->field, 0, 0, row, lengths);
+        dbt->chunks=g_list_prepend(dbt->chunks,cs);
+        g_async_queue_push(dbt->chunks_queue, cs);
+        dbt->chunk_type=CHAR;
+        if (minmax) mysql_free_result(minmax);
+        return;
+        break;
+      default:
+        dbt->chunk_type=NONE;
+        break;
+      }
+    cleanup:
+      if (minmax)
+        mysql_free_result(minmax);
   }else
     dbt->chunk_type=NONE;
 }

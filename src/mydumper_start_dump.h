@@ -232,6 +232,7 @@ struct db_table {
   char *min;
   char *max;
   char *field;
+  guint64 rows_in_sts;
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;
