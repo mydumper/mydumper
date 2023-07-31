@@ -33,8 +33,8 @@ gboolean first_metadata = FALSE;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
-gchar **zstd_decompress_cmd=NULL;
-gchar **gzip_decompress_cmd=NULL;
+gchar zstd_decompress_cmd[3][15]={"","-c","-d"};
+gchar gzip_decompress_cmd[3][15]={"","-c","-d"};
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
@@ -65,8 +65,20 @@ void initialize_intermediate_queue (struct configuration *c){
   if (exec_per_thread!=NULL){
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
-  zstd_decompress_cmd=g_strsplit(ZSTD_DECOMPRESS_COMMAND, " ", 0);
-  gzip_decompress_cmd=g_strsplit(GZIP_DECOMPRESS_COMMAND, " ", 0);
+  gchar *cmd=NULL;
+  if ((cmd=get_zstd_cmd()) == NULL){
+    g_warning("zstd command not found on any static location, use --exec-per-thread for non default locations");
+    zstd_decompress_cmd[0][0]='\0';
+  }else {
+    g_strlcpy(zstd_decompress_cmd[0],cmd, strlen(cmd));
+  }
+  if ((cmd=get_gzip_cmd()) == NULL){
+    g_warning("gzip command not found on any static location, use --exec-per-thread for non default locations");
+    gzip_decompress_cmd[0][0]='\0';
+  }else {
+    g_strlcpy(gzip_decompress_cmd[0],cmd, strlen(cmd));
+  }
+
   initialize_control_job(c);
 }
 

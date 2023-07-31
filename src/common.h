@@ -19,6 +19,12 @@
 #include <stdio.h>
 #define MYLOADER_MODE "myloader_mode"
 
+#define ZSTD_EXTENSION ".zst"
+#define GZIP_EXTENSION ".gz"
+
+extern gchar zstd_paths[2][15];
+extern gchar gzip_paths[2][15];
+
 #ifndef _src_common_h
 #define _src_common_h
 
@@ -95,3 +101,6 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gchar *m_date_time_new_now_local();
+
+gchar *get_zstd_cmd();
+gchar *get_gzip_cmd();

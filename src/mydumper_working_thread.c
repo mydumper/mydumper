@@ -124,8 +124,8 @@ void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 //void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
-guint min_rows_per_file = 0;
-guint max_rows_per_file = 0;
+guint64 min_rows_per_file = 0;
+guint64 max_rows_per_file = 0;
 
 void parse_rows_per_chunk(){
   gchar **split=g_strsplit(rows_per_chunk, ":", 0);
@@ -164,6 +164,10 @@ void initialize_working_thread(){
   else {
     min_rows_per_file = rows_per_file / 100;
     max_rows_per_file = rows_per_file * 100;
+  }
+  if (max_rows_per_file > G_MAXUINT64 / num_threads){
+    max_rows_per_file= G_MAXUINT64 / num_threads;
+    m_error("This should not happen");
   }
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
@@ -209,12 +213,19 @@ void initialize_working_thread(){
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
       g_critical("--compression and --exec-per-thread are not comptatible");
     }
+    gchar *cmd=NULL;
     if ( g_strcmp0(compress_method,GZIP)==0){
-      exec_per_thread=g_strdup("/usr/bin/gzip -c");
-      exec_per_thread_extension=g_strdup(".gz");
+      if ((cmd=get_gzip_cmd()) == NULL){
+        g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=GZIP_EXTENSION;
     }else if ( g_strcmp0(compress_method,ZSTD)==0){
-      exec_per_thread=g_strdup("/usr/bin/zstd -c");
-      exec_per_thread_extension=g_strdup(".zst");
+      if ( (cmd=get_zstd_cmd()) == NULL ){
+        g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=ZSTD_EXTENSION;
     }
     m_open=&m_open_pipe;
     m_close=&m_close_pipe;

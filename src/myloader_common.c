@@ -472,10 +472,10 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
     *command=exec_per_thread_cmd;
     len=strlen(exec_per_thread_extension);
   }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
-    *command=zstd_decompress_cmd;
+    *command=(gchar **)zstd_decompress_cmd;
     len=strlen(ZSTD_EXTENSION);
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
-    *command=gzip_decompress_cmd;
+    *command=(gchar**)gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
   }
   if (len!=0){

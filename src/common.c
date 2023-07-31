@@ -41,6 +41,29 @@ FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
 
+gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
+gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
+
+
+gchar *get_zstd_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( zstd_paths[i] , G_FILE_TEST_EXISTS))
+      return zstd_paths[i];
+  }
+  return NULL;
+}
+
+gchar *get_gzip_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( gzip_paths[i] , G_FILE_TEST_EXISTS))
+      return gzip_paths[i];
+  }
+  return NULL;
+}
+
+
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB){
