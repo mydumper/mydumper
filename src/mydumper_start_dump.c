@@ -353,6 +353,10 @@ MYSQL *create_main_connection() {
     g_message("Connected to a Percona server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
+  case SERVER_TYPE_UNKNOWN:
+    g_message("Connected to an unknown server");
+    set_transaction_isolation_level_repeatable_read(conn);
+    break;
   default:
     m_critical("Cannot detect server type");
     break;
