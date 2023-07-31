@@ -943,9 +943,6 @@ if (tj->chunk_step->integer_step.is_unsigned){
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.cursor) / tj->chunk_step->integer_step.step;
 }
 
-if (tj->chunk_step->integer_step.step == 0)
-  m_error("This can't happen");
-
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
 /*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
     return;
