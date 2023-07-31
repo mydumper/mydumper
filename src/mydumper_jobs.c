@@ -79,7 +79,7 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
 }
 
 gchar * get_tablespace_query(){
-  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL ){
+  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN){
     if ( get_major() == 5 && get_secondary() == 7)
       return g_strdup("select NAME, PATH, FS_BLOCK_SIZE from information_schema.INNODB_SYS_TABLESPACES join information_schema.INNODB_SYS_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
     if ( get_major() == 8 )

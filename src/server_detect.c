@@ -21,7 +21,7 @@
 #include "server_detect.h"
 #include "common.h"
 
-int product=0;
+int product=SERVER_TYPE_UNKNOWN;
 int major=0;
 int secondary=0;
 int revision=0;
@@ -58,7 +58,7 @@ int get_product(){
 }
 
 gboolean is_mysql_like(){
-  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL;
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
 }
 
 int get_major(){
@@ -74,8 +74,9 @@ int get_revision(){
 const gchar * get_product_name(){
   switch (get_product()){
   case SERVER_TYPE_PERCONA: return "percona"; break;
-  case SERVER_TYPE_MYSQL: return "mysql"; break;
+  case SERVER_TYPE_MYSQL:   return "mysql";   break;
   case SERVER_TYPE_MARIADB: return "mariadb"; break;
+  case SERVER_TYPE_UNKNOWN: return "unknown"; break;
   default: return "";
 }
 
