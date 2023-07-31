@@ -47,7 +47,7 @@ gchar * build_data_filename(char *database, char *table, guint64 part, guint sub
 gchar * build_fifo_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extesion);
 gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension);
 gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part);
-void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol);
+void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
