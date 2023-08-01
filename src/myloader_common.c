@@ -453,7 +453,6 @@ gboolean has_exec_per_thread_extension(const gchar *filename){
 
 
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec){
-  g_message("execute_file_per_thread: %s | %s", sql_fn,sql_fn3 );
   int childpid=fork();
   if(!childpid){
     FILE *sql_file2 = g_fopen(sql_fn,"r");

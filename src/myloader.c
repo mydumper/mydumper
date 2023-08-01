@@ -292,7 +292,7 @@ int main(int argc, char *argv[]) {
       m_critical("a directory needs to be specified, see --help\n");
     }
   } else {
-    directory=g_strdup_printf("%s/%s", g_str_has_prefix(input_directory,"/")?"":current_dir, input_directory);
+    directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
     if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
       if (stream){
         create_backup_dir(directory,fifo_directory);

@@ -74,9 +74,9 @@ void initialize_intermediate_queue (struct configuration *c){
   }
   if ((cmd=get_gzip_cmd()) == NULL){
     g_warning("gzip command not found on any static location, use --exec-per-thread for non default locations");
+  }else{
     gzip_decompress_cmd = g_strsplit( tmp=g_strdup_printf("%s -c -d", cmd)," ",0);
     g_free(tmp);
-  }else {
   }
 
   initialize_control_job(c);
