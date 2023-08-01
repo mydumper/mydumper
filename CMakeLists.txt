@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(mydumper)
-set(VERSION 0.15.2-1)
+set(VERSION 0.15.1-2)
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages
