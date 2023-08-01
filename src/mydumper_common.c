@@ -91,7 +91,9 @@ FILE * m_open_pipe(gchar **filename, const char *type){
     *filename=g_strdup_printf("%s/%s", fifo_directory, basefilename);
     g_free(basefilename);
   }
-  mkfifo(*filename,0666);
+  if ( mkfifo(*filename,0666) ){
+    g_critical("cannot create named pipe %s (%d)", *filename, errno);
+  }
   int child_proc = execute_file_per_thread(*filename,new_filename);
   FILE *file=g_fopen(*filename,type);
   g_mutex_lock(fifo_table_mutex); 
