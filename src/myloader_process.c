@@ -217,26 +217,8 @@ void myl_close(char *filename, FILE *file){
     g_mutex_lock(fifo_table_mutex);
     g_mutex_unlock(f->mutex);
     g_mutex_unlock(fifo_table_mutex);
-  }
 
-  if ( has_exec_per_thread_extension(filename)) {
-    gchar *dotpos;
-    dotpos=&(filename[strlen(filename)]) - strlen(exec_per_thread_extension);
-    *dotpos='\0';
-    remove(filename);
-    *dotpos='.';
-  }else if ( g_str_has_suffix(filename, GZIP_EXTENSION) ){
-    gchar *dotpos;
-    dotpos=&(filename[strlen(filename)]) - strlen(GZIP_EXTENSION);
-    *dotpos='\0';
-    remove(filename);
-    *dotpos='.';
-  }else if ( g_str_has_suffix(filename, ZSTD_EXTENSION) ){
-    gchar *dotpos;
-    dotpos=&(filename[strlen(filename)]) - strlen(ZSTD_EXTENSION);
-    *dotpos='\0';
-    remove(filename);
-    *dotpos='.';
+    remove(f->stdout_filename);
   }
 
   m_remove(NULL,filename);

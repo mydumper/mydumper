@@ -41,6 +41,29 @@ FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
 
+gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
+gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
+
+
+gchar *get_zstd_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( zstd_paths[i] , G_FILE_TEST_EXISTS))
+      return zstd_paths[i];
+  }
+  return NULL;
+}
+
+gchar *get_gzip_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( gzip_paths[i] , G_FILE_TEST_EXISTS))
+      return gzip_paths[i];
+  }
+  return NULL;
+}
+
+
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB){
@@ -389,20 +412,24 @@ void escape_tab_with(gchar *to){
 //  return to;
 }
 
+
+void create_fifo_dir(char *new_fifo_directory) {
+  if (new_fifo_directory){
+    if (g_mkdir(new_fifo_directory, 0750) == -1) {
+      if (errno != EEXIST) {
+        m_critical("Unable to create `%s': %s", new_fifo_directory, g_strerror(errno));
+      }
+    }
+  }
+}
+
 void create_backup_dir(char *new_directory, char *new_fifo_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
-  if (new_fifo_directory){
-    if (g_mkdir(new_fifo_directory, 0750) == -1) {
-      if (errno != EEXIST) {
-        m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
-      }
-    }
-  }
-
+  create_fifo_dir(new_fifo_directory);
 }
 
 guint strcount(gchar *text){

@@ -17,11 +17,6 @@
 #ifndef _src_myloader_common_h
 #define _src_myloader_common_h
 
-#define ZSTD_DECOMPRESS_COMMAND "/usr/bin/zstd -c -d"
-#define ZSTD_EXTENSION ".zst"
-#define GZIP_DECOMPRESS_COMMAND "/usr/bin/gzip -c -d"
-#define GZIP_EXTENSION ".gz"
-
 #define IS_INNODB_TABLE 2
 #define INCLUDE_CONSTRAINT 4
 #define IS_ALTER_TABLE_PRESENT 8

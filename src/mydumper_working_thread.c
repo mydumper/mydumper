@@ -124,8 +124,8 @@ void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 //void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
-guint min_rows_per_file = 0;
-guint max_rows_per_file = 0;
+guint64 min_rows_per_file = 0;
+guint64 max_rows_per_file = 0;
 
 void parse_rows_per_chunk(){
   gchar **split=g_strsplit(rows_per_chunk, ":", 0);
@@ -161,6 +161,12 @@ void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
     parse_rows_per_chunk();
+
+  if (max_rows_per_file > G_MAXUINT64 / num_threads){
+    max_rows_per_file= G_MAXUINT64 / num_threads;
+    m_error("This should not happen");
+  }
+
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
   non_innodb_table_mutex = g_mutex_new();
@@ -205,12 +211,19 @@ void initialize_working_thread(){
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
       g_critical("--compression and --exec-per-thread are not comptatible");
     }
+    gchar *cmd=NULL;
     if ( g_strcmp0(compress_method,GZIP)==0){
-      exec_per_thread=g_strdup("/usr/bin/gzip -c");
-      exec_per_thread_extension=g_strdup(".gz");
+      if ((cmd=get_gzip_cmd()) == NULL){
+        g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=GZIP_EXTENSION;
     }else if ( g_strcmp0(compress_method,ZSTD)==0){
-      exec_per_thread=g_strdup("/usr/bin/zstd -c");
-      exec_per_thread_extension=g_strdup(".zst");
+      if ( (cmd=get_zstd_cmd()) == NULL ){
+        g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=ZSTD_EXTENSION;
     }
     m_open=&m_open_pipe;
     m_close=&m_close_pipe;
@@ -914,17 +927,19 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
 if (tj->chunk_step->integer_step.is_unsigned){
 
 //  tj->chunk_step->integer_step.type.unsign.cursor = (tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step) > tj->chunk_step->integer_step.type.unsign.max ? tj->chunk_step->integer_step.type.unsign.max : tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
-  if (tj->chunk_step->integer_step.type.unsign.cursor > tj->chunk_step->integer_step.type.unsign.max)
+  if (tj->chunk_step->integer_step.step -1 > tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.min)
     tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.max;
+  else
+    tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.cursor) / tj->chunk_step->integer_step.step;
 
 }else{
 
 //  tj->chunk_step->integer_step.type.sign.cursor = ((gint64)(tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step)) > tj->chunk_step->integer_step.type.sign.max ? tj->chunk_step->integer_step.type.sign.max : tj->chunk_step->integer_step.type.sign.min + (gint64) tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
-  if (tj->chunk_step->integer_step.type.sign.cursor > tj->chunk_step->integer_step.type.sign.max) 
+  if (tj->chunk_step->integer_step.step - 1 > gint64_abs(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.min)) 
     tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.max;
+  else
+    tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
   tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.cursor) / tj->chunk_step->integer_step.step;
 }
 
@@ -958,7 +973,7 @@ if (tj->chunk_step->integer_step.is_unsigned){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }else if (diff < 1){
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2 == 0?tj->chunk_step->integer_step.step:tj->chunk_step->integer_step.step  * 2;
     if (max_rows_per_file!=0)
       tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
@@ -988,6 +1003,7 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   if (cs->integer_step.is_unsigned){
     g_mutex_lock(tj->chunk_step->integer_step.mutex);
     while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
+      g_message("%"G_GUINT64_FORMAT" |\t %"G_GUINT64_FORMAT" | \t %d  %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max, cs->integer_step.step);
       g_mutex_unlock(tj->chunk_step->integer_step.mutex);
       if (process_integer_chunk_job(td,tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);

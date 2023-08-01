@@ -477,6 +477,7 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
     *command=gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
+
   }
   if (len!=0){
     gchar *dotpos=&(filename[strlen(filename)]) - len;
