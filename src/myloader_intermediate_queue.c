@@ -63,6 +63,9 @@ void initialize_intermediate_queue (struct configuration *c){
   }
 
   if (exec_per_thread!=NULL){
+    if (exec_per_thread[0]!='/'){
+      m_error("Absolute path is only allowed when --exec-per-thread is used");
+    }
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
   gchar *cmd=NULL, *tmp=NULL;
