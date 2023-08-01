@@ -412,20 +412,24 @@ void escape_tab_with(gchar *to){
 //  return to;
 }
 
+
+void create_fifo_dir(char *new_fifo_directory) {
+  if (new_fifo_directory){
+    if (g_mkdir(new_fifo_directory, 0750) == -1) {
+      if (errno != EEXIST) {
+        m_critical("Unable to create `%s': %s", new_fifo_directory, g_strerror(errno));
+      }
+    }
+  }
+}
+
 void create_backup_dir(char *new_directory, char *new_fifo_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
-  if (new_fifo_directory){
-    if (g_mkdir(new_fifo_directory, 0750) == -1) {
-      if (errno != EEXIST) {
-        m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
-      }
-    }
-  }
-
+  create_fifo_dir(new_fifo_directory);
 }
 
 guint strcount(gchar *text){

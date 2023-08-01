@@ -308,9 +308,12 @@ int main(int argc, char *argv[]) {
 //      initialize_directory();
     }
   }
-  if (fifo_directory && fifo_directory[0] != '/' ){
-    gchar *tmp_fifo_directory=fifo_directory;
-    fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
+  if (fifo_directory){
+    if (fifo_directory[0] != '/' ){
+      gchar *tmp_fifo_directory=fifo_directory;
+      fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
+    }
+    create_fifo_dir(fifo_directory);
   }
 
   g_free(current_dir);
