@@ -67,7 +67,7 @@ void *loader_thread(struct thread_data *td) {
   g_mutex_unlock(init_mutex);
   td->current_database=NULL;
 
-  m_connect(td->thrconn, NULL);
+  m_connect(td->thrconn);
 
 //  mysql_query(td->thrconn, set_names_statement);
 
