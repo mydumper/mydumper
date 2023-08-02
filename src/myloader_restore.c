@@ -42,7 +42,7 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     }
 
     if (mysql_ping(td->thrconn)) {
-      m_connect(td->thrconn, NULL);
+      m_connect(td->thrconn);
       execute_gstring(td->thrconn, set_session);
       execute_use(td);
       if (!is_schema && commit_count > 1) {

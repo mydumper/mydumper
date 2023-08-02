@@ -287,7 +287,7 @@ MYSQL *create_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  m_connect(conn, db_items!=NULL?db_items[0]:db);
+  m_connect(conn);//, db_items!=NULL?db_items[0]:db);
 
   execute_gstring(conn, set_session);
   return conn;
@@ -314,7 +314,7 @@ MYSQL *create_main_connection() {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  m_connect(conn, db_items!=NULL?db_items[0]:db);
+  m_connect(conn); //, db_items!=NULL?db_items[0]:db);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);

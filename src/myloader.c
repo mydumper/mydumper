@@ -335,7 +335,7 @@ int main(int argc, char *argv[]) {
 
   MYSQL *conn;
   conn = mysql_init(NULL);
-  m_connect(conn,NULL);
+  m_connect(conn);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);

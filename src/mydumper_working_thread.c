@@ -496,7 +496,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 }
 
 void initialize_thread(struct thread_data *td){
-  m_connect(td->thrconn, NULL);
+  m_connect(td->thrconn);
   g_message("Thread %d: connected using MySQL connection ID %lu",
             td->thread_id, mysql_thread_id(td->thrconn));
 }
