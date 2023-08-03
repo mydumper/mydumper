@@ -1003,7 +1003,7 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   if (cs->integer_step.is_unsigned){
     g_mutex_lock(tj->chunk_step->integer_step.mutex);
     while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
-      g_message("%"G_GUINT64_FORMAT" |\t %"G_GUINT64_FORMAT" | \t %d  %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max, cs->integer_step.step);
+//      g_message("%"G_GUINT64_FORMAT" |\t %"G_GUINT64_FORMAT" | \t %d  %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max, cs->integer_step.step);
       g_mutex_unlock(tj->chunk_step->integer_step.mutex);
       if (process_integer_chunk_job(td,tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);

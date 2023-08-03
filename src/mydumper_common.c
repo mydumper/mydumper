@@ -158,7 +158,9 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struc
 
 void child_process_ended(int child_pid){
 //  g_message("Child process: %d", child_pid);
+  g_mutex_lock(fifo_table_mutex);
   FILE *file=g_hash_table_lookup(fifo_hash_by_pid,&child_pid);
+  g_mutex_unlock(fifo_table_mutex);
   if (file){
     struct fifo *f=g_hash_table_lookup(fifo_hash,file);
     if (f){
