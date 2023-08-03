@@ -21,6 +21,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <pcre.h>
+#include "regex.h"
 #include "server_detect.h"
 #include "common.h"
 #include "config.h"
@@ -245,6 +246,12 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
           if (g_strcmp0(keys[j],"columns_on_insert") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+          if (g_strcmp0(keys[j],"partition_regex") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            pcre *r=NULL; 
+            init_regex( &r, value);
+            g_hash_table_insert(conf_per_table->all_partition_regex_per_table, g_strdup(groups[i]), r);
           }
         }
       }

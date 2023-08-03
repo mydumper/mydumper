@@ -430,13 +430,13 @@ union chunk_step *get_next_chunk(struct db_table *dbt){
   return NULL;
 }
 
-GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
+GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
   MYSQL_RES *res=NULL;
   MYSQL_ROW row;
 
   GList *partition_list = NULL;
 
-  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
+  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->name, dbt->table);
   mysql_query(conn,query);
   g_free(query);
 
@@ -445,8 +445,7 @@ GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
     //partitioning is not supported
     return partition_list;
   while ((row = mysql_fetch_row(res))) {
-//ACA
-    if (eval_partition_regex(row[0]))
+    if ( (!dbt->partition_regex && eval_partition_regex(row[0])) || (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, row[0]) ) )
       partition_list = g_list_append(partition_list, strdup(row[0]));
   }
   mysql_free_result(res);
@@ -697,8 +696,8 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   GList *partitions=NULL;
-  if (split_partitions){
-    partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+  if (split_partitions || dbt->partition_regex){
+    partitions = get_partitions_for_table(conn, dbt);
   }
 
   if (partitions){

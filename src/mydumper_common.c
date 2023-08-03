@@ -24,6 +24,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <pcre.h>
 #include "regex.h"
 #include <errno.h>
 #include "server_detect.h"

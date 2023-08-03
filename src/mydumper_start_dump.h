@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include <pcre.h>
 
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
@@ -248,6 +249,7 @@ struct db_table {
   gchar *limit;
   gchar *columns_on_select;
   gchar *columns_on_insert;
+  pcre *partition_regex;
   guint num_threads;
   enum chunk_type chunk_type;
   GList *chunks;

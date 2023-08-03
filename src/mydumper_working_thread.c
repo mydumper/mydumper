@@ -1399,6 +1399,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
   dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, k);
   dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, k);
+  dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, k);
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->estimated_remaining_steps=1;
   dbt->min=NULL;
