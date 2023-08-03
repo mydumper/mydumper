@@ -100,12 +100,13 @@ void load_exec_entries(GOptionGroup *main_group){
   g_option_group_add_entries(main_group, exec_entries);
 }
 */
+
 void initialize_exec_command(){
+  g_warning("initialize_exec_command: Started");
   stream_queue = g_async_queue_new();
   exec_command_thread=g_new(GThread * , num_exec_threads) ;
   guint i;
   pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
-
   for(i=0;i<num_exec_threads;i++){
     exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
   }
