@@ -90,14 +90,19 @@ gboolean eval_regex(char * a,char * b){
   return TRUE;
 }
 
+gboolean eval_pcre_regex(pcre * p, char * word){
+  int ovector[9] = {0};
+  int rc = pcre_exec(p, NULL, word, strlen(word), 0, 0, ovector, 9);
+  return (rc > 0) ? TRUE : FALSE;
+}
+
 gboolean eval_partition_regex(char * word){
   if (partition_re){
-    int ovector[9] = {0};
-    int rc = pcre_exec(partition_re, NULL, word, strlen(word), 0, 0, ovector, 9);
-    return (rc > 0) ? TRUE : FALSE;
+    return eval_pcre_regex(partition_re, word);
   }
   return TRUE;
 }
+
 
 
 void free_regex(){

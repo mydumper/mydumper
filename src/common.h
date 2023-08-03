@@ -17,6 +17,7 @@
 
 #include <mysql.h>
 #include <stdio.h>
+#include <pcre.h>
 #define MYLOADER_MODE "myloader_mode"
 
 #define ZSTD_EXTENSION ".zst"
@@ -35,6 +36,7 @@ struct configuration_per_table{
   GHashTable *all_num_threads_per_table;
   GHashTable *all_columns_on_select_per_table;
   GHashTable *all_columns_on_insert_per_table;
+  GHashTable *all_partition_regex_per_table;
 };
 
 #define STREAM_BUFFER_SIZE 1000000
