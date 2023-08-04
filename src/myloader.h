@@ -71,8 +71,9 @@ struct configuration {
 enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, INDEX_ENQUEUED, ALL_DONE};
 
 struct database {
-  gchar *name;
-  char *real_database;
+  gchar *name; // aka: the logical schema name, that could be different of the filename.
+  char *real_database; // aka: the output schema name this can change when use -B.
+  gchar *filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
   enum schema_status schema_state;
   GAsyncQueue *queue;
   GMutex * mutex;

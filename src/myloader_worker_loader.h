@@ -20,3 +20,5 @@ void initialize_loader_threads(struct configuration *conf);
 void wait_loader_threads_to_finish();
 void free_loader_threads();
 void inform_restore_job_running();
+void enqueue_indexes_if_possible(struct configuration *conf);
+void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt);

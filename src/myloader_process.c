@@ -46,15 +46,15 @@ void initialize_process(struct configuration *c){
   fifo_table_mutex = g_mutex_new();
 }
 
-struct db_table* append_new_db_table(char * filename, gchar * database, gchar *table, guint64 number_rows, GString *alter_table_statement){
-  if ( database == NULL || table == NULL){
-    m_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
-  }
-  struct database *real_db_name=get_db_hash(database,database);
-  if (real_db_name == NULL){
-    m_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
-  }
-  gchar *lkey=build_dbt_key(database, table);
+struct db_table* append_new_db_table( struct database *real_db_name, gchar *table, guint64 number_rows, GString *alter_table_statement){
+//  if ( database == NULL || table == NULL){
+//    m_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
+//  }
+//  struct database *real_db_name=get_db_hash(database,database);
+//  if (real_db_name == NULL){
+//    m_error("It was not possible to process file: %s. %s was not found and real_db_name is null. Restore without schema-create files is not supported",filename,database);
+//  }
+  gchar *lkey=build_dbt_key(real_db_name->filename, table);
   struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
   if (dbt == NULL){
 //    g_message("Adding new table: `%s`.`%s`", real_db_name->name, table);
@@ -99,7 +99,6 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
     }else{
 //      g_message("Found db_table: %s", lkey);
       g_free(table);
-      g_free(database);
       g_free(lkey);
       if (number_rows>0) dbt->rows=number_rows;
       if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
@@ -109,7 +108,6 @@ struct db_table* append_new_db_table(char * filename, gchar * database, gchar *t
   }else{
 //      g_message("Found db_table: %s", lkey);
       g_free(table);
-      g_free(database);
       g_free(lkey);
       if (number_rows>0) dbt->rows=number_rows;
       if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
@@ -415,11 +413,8 @@ void process_database_filename(char * filename) {
   db_vname=db_kname=get_database_name_from_filename(filename);
 
   if (db_kname!=NULL){
-    if (db)
-      db_vname=db;
-    else
-      if (g_str_has_prefix(db_kname,"mydumper_"))
-        db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+    if (g_str_has_prefix(db_kname,"mydumper_"))
+      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
   }else{
     m_critical("It was not possible to process db file: %s",filename);
   }
@@ -449,7 +444,7 @@ gboolean process_table_filename(char * filename){
     return FALSE;
   }
 
-  dbt=append_new_db_table(NULL, db_name, table_name,0,NULL);
+  dbt=append_new_db_table(real_db_name, table_name,0,NULL);
   dbt->schema_state=NOT_CREATED;
   struct control_job * cj = load_schema(dbt, g_build_filename(directory,filename,NULL));
   g_mutex_lock(real_db_name->mutex);
@@ -489,7 +484,8 @@ gboolean process_metadata_global(gchar *file){
       database_table= g_strsplit(groups[j]+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
-        dbt=append_new_db_table(NULL, database_table[0], database_table[1],0,NULL);
+        struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
+        dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
         error = NULL;
         gchar **keys=g_key_file_get_keys(kf,groups[j], &len, &error);
         dbt->data_checksum=get_value(kf,groups[j],"data_checksum");
@@ -542,7 +538,7 @@ gboolean process_schema_view_filename(gchar *filename) {
     g_warning("File %s has been filter out(1)",filename);
     return FALSE;
   }
-  struct db_table *dbt=append_new_db_table(NULL, database, table_name,0, NULL);
+  struct db_table *dbt=append_new_db_table(real_db_name, table_name,0, NULL);
   dbt->is_view=TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, VIEW);
   g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name->name));
@@ -621,7 +617,7 @@ gboolean process_data_filename(char * filename){
     return FALSE;
   }
 
-  struct db_table *dbt=append_new_db_table(filename, db_name, table_name,0,NULL);
+  struct db_table *dbt=append_new_db_table(real_db_name, table_name,0,NULL);
   struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
   g_mutex_lock(dbt->mutex);
   g_atomic_int_add(&(dbt->remaining_jobs), 1);
