@@ -236,7 +236,7 @@ enum file_type get_file_type (const char * filename){
   if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
     return METADATA_GLOBAL;
 
-  if (source_db && ! g_str_has_prefix(filename, source_db))
+  if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ))
     return IGNORED;  
 
   if (m_filename_has_suffix(filename, "-schema.sql")) 
