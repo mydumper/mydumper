@@ -38,6 +38,9 @@
 #include "myloader_worker_index.h"
 #include <unistd.h>
 
+extern GAsyncQueue *here_is_your_job;
+extern GAsyncQueue *refresh_db_queue;
+extern GAsyncQueue *data_queue;
 
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
@@ -59,6 +62,83 @@ void initialize_loader_threads(struct configuration *conf){
     g_async_queue_pop(conf->ready);
   }
 }
+
+gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
+  g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database->real_database, dbt->table);
+  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
+  g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
+  dbt->schema_state=INDEX_ENQUEUED;
+  return TRUE;
+}
+
+void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+  if (dbt->schema_state==DATA_DONE){
+    if (dbt->indexes == NULL){
+      dbt->schema_state=ALL_DONE;
+    }else{
+      create_index_job(conf, dbt, 0);
+    }
+  }
+}
+
+void enqueue_indexes_if_possible(struct configuration *conf){
+  (void )conf;
+  g_mutex_lock(conf->table_list_mutex);
+  GList * iter=conf->table_list;
+  struct db_table * dbt = NULL;
+  while (iter != NULL){
+    dbt=iter->data;
+    g_mutex_lock(dbt->mutex);
+    enqueue_index_for_dbt_if_possible(conf,dbt);
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(conf->table_list_mutex);
+}
+
+
+
+void *process_loader_thread(struct thread_data * td) {
+  struct control_job *job = NULL;
+  gboolean cont=TRUE;
+  enum file_type ft=-1;
+//  enum file_type ft;
+//  int remaining_shutdown_pass=2*num_threads;
+  struct restore_job *rj=NULL;
+//  guint pass=0;
+  struct db_table * dbt = NULL;
+  while (cont){
+    // control job threads needs to know that I'm ready to receive another job
+    g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
+    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(here_is_your_job));
+    switch (ft){
+    case DATA:
+      rj = (struct restore_job *)g_async_queue_pop(data_queue);
+      dbt = rj->dbt;
+      job=new_job(JOB_RESTORE,rj, dbt->database->real_database);
+      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
+      cont=process_job(td, job);
+      g_mutex_lock(dbt->mutex);
+      dbt->current_threads--;
+      g_mutex_unlock(dbt->mutex);
+      break;
+    case SHUTDOWN:
+      cont=FALSE;
+      break;
+    case IGNORED:
+      usleep(1000);
+      break;
+    default:
+      NULL;
+    }
+  }
+  enqueue_indexes_if_possible(td->conf);
+  g_message("Thread %d: Data import ended", td->thread_id);
+  last_wait_control_job_to_shutdown();
+//  process_index(td);
+  return NULL;
+}
+
 
 void *loader_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
@@ -82,7 +162,7 @@ void *loader_thread(struct thread_data *td) {
   }
 
   g_debug("Thread %d: Starting import", td->thread_id);
-  process_stream_queue(td);
+  process_loader_thread(td);
 
   if (td->thrconn)
     mysql_close(td->thrconn);

@@ -24,6 +24,7 @@
 #include "myloader_restore.h"
 //#include "myloader_jobs_manager.h"
 #include "myloader_global.h"
+#include "myloader_worker_loader.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
 
@@ -37,7 +38,6 @@ gint last_wait=0;
 //guint index_threads_counter = 0;
 //GMutex *index_mutex=NULL;
 void *control_job_thread(struct configuration *conf);
-void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt);
 
 void initialize_control_job (struct configuration *conf){
   refresh_db_queue = g_async_queue_new();
@@ -168,14 +168,6 @@ gboolean are_available_jobs(struct thread_data * td){
   return FALSE;
 }
 
-gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database->real_database, dbt->table);
-  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
-  g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
-  dbt->schema_state=INDEX_ENQUEUED;
-  return TRUE;
-}
-
 gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_condition, struct restore_job ** rj){
   gboolean giveup = TRUE;
   g_mutex_lock(conf->table_list_mutex);
@@ -268,33 +260,6 @@ gboolean give_any_data_job(struct thread_data * td, struct restore_job ** rj){
  return give_me_next_data_job_conf(td->conf, FALSE, rj);
 }
 
-void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
-  if (dbt->schema_state==DATA_DONE){
-    if (dbt->indexes == NULL){
-      dbt->schema_state=ALL_DONE;
-    }else{
-      create_index_job(conf, dbt, 0);
-    }
-  }
-}
-
-void enqueue_indexes_if_possible(struct configuration *conf){
-  (void )conf;
-  g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  struct db_table * dbt = NULL;
-  while (iter != NULL){
-    dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
-    enqueue_index_for_dbt_if_possible(conf,dbt);
-    g_mutex_unlock(dbt->mutex);
-    iter=iter->next;
-  }
-  g_mutex_unlock(conf->table_list_mutex);
-}
-
-
-
 void refresh_db_and_jobs(enum file_type current_ft){
   switch (current_ft){
     case SCHEMA_CREATE:
@@ -344,27 +309,20 @@ void *control_job_thread(struct configuration *conf){
   enum file_type ft;
   struct restore_job *rj=NULL;
   guint threads_waiting=0;
-  GHashTableIter iter;
-  gchar * lkey=NULL;
+//  GHashTableIter iter;
+//  gchar * lkey=NULL;
   gboolean giveup;
-  struct database * real_db_name = NULL;
+//  struct database * real_db_name = NULL;
 //  struct control_job *job = NULL;
   gboolean cont=TRUE;
   while(cont){
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 
     switch (ft){
-    case SCHEMA_CREATE:
-      g_error("Thread control job: This should not happen");
-      break;
-    case SCHEMA_TABLE: 
-      g_error("Thread control job: This should not happen");
-      break;
     case DATA:
       wake_threads_waiting(conf, &threads_waiting);
       break;
     case THREAD:
 //      g_message("Thread is asking for job");
-
       giveup = give_me_next_data_job_conf(conf, TRUE, &rj);
       if (rj != NULL){
 //        g_message("job available in give_me_next_data_job_conf");
@@ -385,7 +343,6 @@ void *control_job_thread(struct configuration *conf){
             if (giveup){
               g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
               for(;0<threads_waiting;threads_waiting--){
-//                g_message("Enqueuing shutdown");
                 g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
               }
             }else{
@@ -402,95 +359,19 @@ void *control_job_thread(struct configuration *conf){
       }
       break;
     case INTERMEDIATE_ENDED:
-//      intermediate_queue_ended_local = TRUE;
-      g_hash_table_iter_init ( &iter, db_hash );
-//      g_message("INTERMEDIATE_ENDED Starting");
-      while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
-        g_mutex_lock(real_db_name->mutex);
-//        set_db_schema_state_to_created(real_db_name, conf->table_queue, here_is_your_job);
-        g_mutex_unlock(real_db_name->mutex);
-      }
-//       g_message("INTERMEDIATE_ENDED ACA2");
-//      set_table_schema_state_to_created(conf);
-//      g_message("INTERMEDIATE_ENDED ACA");
       enqueue_indexes_if_possible(conf);
-//      g_message("INTERMEDIATE_ENDED FINISH Waiting threads begin");
       wake_threads_waiting(conf, &threads_waiting);        
-//      g_message("INTERMEDIATE_ENDED FINISH Waiting threads ");
       intermediate_queue_ended_local = TRUE;
       break;
     case SHUTDOWN:
       cont=FALSE;
       break;
     default:
-//      g_debug("Thread control_job_thread: Default: %d", ft);
+      g_debug("Thread control_job_thread: received Default: %d", ft);
       break;
     }
   }
-//  for (threads_waiting=0;threads_waiting<num_threads;threads_waiting++){
-//    rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, NULL, NULL, NULL,"indexes");
-//    g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,NULL));
-//  }
   g_message("Sending start_innodb_optimize_keys_all_tables");
   start_innodb_optimize_keys_all_tables();
-  return NULL;
-}
-
-void *process_stream_queue(struct thread_data * td) {
-  struct control_job *job = NULL;
-  gboolean cont=TRUE;
-  enum file_type ft=-1;
-//  enum file_type ft;
-//  int remaining_shutdown_pass=2*num_threads;
-  struct restore_job *rj=NULL;
-//  guint pass=0;
-  struct db_table * dbt = NULL; 
-  while (cont){
-//    if (ft == SHUTDOWN)
-//      g_async_queue_push(td->conf->stream_queue,GINT_TO_POINTER(ft));     
-    g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
-//    g_message("Thread %d: Sending THREAD", td->thread_id);
-    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(here_is_your_job));
-//    g_message("Thread %d: Sending THREAD response: %d DATA: %d", td->thread_id,  ft,  DATA);
-    switch (ft){
-    case SCHEMA_CREATE:
-      g_error("Thread %d: This should not happen", td->thread_id);
-      break;
-    case SCHEMA_TABLE:
-      g_error("Thread %d: This should not happen", td->thread_id);
-      break;
-
-    case DATA:
-      // NO DATA JOB available, no worries, there will be another one shortly...
-      rj = (struct restore_job *)g_async_queue_pop(data_queue);
-//      g_message("REstinging JOB");
-      dbt = rj->dbt;
-      job=new_job(JOB_RESTORE,rj, dbt->database->real_database);
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
-      cont=process_job(td, job);
-//      g_message("REstinging JOB completed before lock");
-      g_mutex_lock(dbt->mutex);
-//      g_message("REstinging JOB completed after lock");
-      dbt->current_threads--;
-      g_mutex_unlock(dbt->mutex);
-//      g_message("REstinging JOB completed");
-      break;
-    case SHUTDOWN:
-//      g_message("SHUTDOWN");
-      cont=FALSE;
-      break;
-    case IGNORED:
-      usleep(1000);
-      break;
-    default:
-        NULL;
-//        g_message("What do we do with: %d", ft);
-
-    }
-  }
-  enqueue_indexes_if_possible(td->conf);
-  g_message("Thread %d: Data import ended", td->thread_id);
-  last_wait_control_job_to_shutdown();
-//  process_index(td);
   return NULL;
 }

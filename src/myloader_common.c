@@ -129,10 +129,11 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
 
   return g_str_has_suffix(str,suffix);
 }
-struct database * new_database(gchar *database){
+struct database * new_database(gchar *database, gchar *filename){
   struct database * d = g_new(struct database, 1);
   d->name=database;
-  d->real_database = g_strdup(db ? db : database);
+  d->real_database = g_strdup(db ? db : d->name);
+  d->filename = filename;
   d->mutex=g_mutex_new();
   d->queue=g_async_queue_new();;
   d->schema_state=NOT_FOUND;
@@ -142,12 +143,17 @@ struct database * new_database(gchar *database){
   return d;
 }
 
-struct database * get_db_hash(gchar *k, gchar *v){
+struct database * get_db_hash(gchar *filename, gchar *name){
   g_mutex_lock(db_hash_mutex);
-  struct database * d=g_hash_table_lookup(db_hash, k);
+  struct database * d=g_hash_table_lookup(db_hash, filename);
   if (d==NULL){
-    d=new_database(g_strdup(v));
-    g_hash_table_insert(db_hash, k, d);
+    d=new_database(g_strdup(name), filename);
+    g_hash_table_insert(db_hash, filename, d);
+  }else{
+    if (filename != name){
+      d->name=g_strdup(name);
+      d->real_database = g_strdup(db ? db : d->name);
+    }
   }
   g_mutex_unlock(db_hash_mutex);
   return d;
@@ -236,7 +242,7 @@ enum file_type get_file_type (const char * filename){
   if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
     return METADATA_GLOBAL;
 
-  if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ))
+  if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
     return IGNORED;  
 
   if (m_filename_has_suffix(filename, "-schema.sql")) 
