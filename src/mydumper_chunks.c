@@ -215,7 +215,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
           type.unsign.max = cs->integer_step.type.unsign.max;
 
           union chunk_step * new_cs = NULL;
-          if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+          if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
             new_minmax = cs->integer_step.type.unsign.min + cs->integer_step.step*((cs->integer_step.type.unsign.max / cs->integer_step.step - cs->integer_step.type.unsign.min / cs->integer_step.step)/2);
             if ( new_minmax == cs->integer_step.type.unsign.cursor )
               new_minmax++;
@@ -264,7 +264,7 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
           type.sign.max = cs->integer_step.type.sign.max;
 
           union chunk_step * new_cs = NULL;
-          if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+          if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
             new_minmax = 
                            cs->integer_step.type.sign.cursor +(signed) cs->integer_step.step *( (cs->integer_step.type.sign.max / (signed) cs->integer_step.step - cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step)/2);
             if ( new_minmax == cs->integer_step.type.sign.cursor )
@@ -680,7 +680,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     return;
   }
 
-  if (rows_per_file>0 && dbt->rows_in_sts > min_rows_per_file ){
+  if (dbt->start_rows_per_file>0 && dbt->rows_in_sts > dbt->min_rows_per_file ){
     gchar *query = NULL;
     MYSQL_ROW row;
     MYSQL_RES *minmax = NULL;
@@ -720,7 +720,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       case MYSQL_TYPE_LONGLONG:
       case MYSQL_TYPE_INT24:
       case MYSQL_TYPE_SHORT:
-        if (min_rows_per_file==rows_per_file && max_rows_per_file==rows_per_file)
+        if (dbt->min_rows_per_file==dbt->start_rows_per_file && dbt->max_rows_per_file==dbt->start_rows_per_file)
           dbt->chunk_filesize=0;
 
         unmin = strtoull(row[0], NULL, 10);
@@ -735,16 +735,16 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
           prefix= g_strdup_printf("`%s` IS NULL OR ", dbt->field) ;
           abs=gint64_abs(nmax-nmin);
         }
-        if ( abs > min_rows_per_file){
+        if ( abs > dbt->min_rows_per_file){
           union type type;
           if ((fields[0].flags & UNSIGNED_FLAG)){
             type.unsign.min=unmin;
             type.unsign.max=unmax;
-            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
           }else{
             type.sign.min=nmin;
             type.sign.max=nmax;
-            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, rows_per_file, 0, FALSE, FALSE);
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
           }
 
           dbt->chunks=g_list_prepend(dbt->chunks,cs);

@@ -80,7 +80,6 @@ extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, 
 
 GMutex *init_mutex = NULL;
 /* Program options */
-guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
 gint database_counter = 0;
 //gint table_counter = 0;
@@ -125,29 +124,30 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
 //void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
 guint64 min_rows_per_file = 0;
+guint64 rows_per_file = 0;
 guint64 max_rows_per_file = 0;
 
-void parse_rows_per_chunk(){
-  gchar **split=g_strsplit(rows_per_chunk, ":", 0);
+void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
+  gchar **split=g_strsplit(rows_p_chunk, ":", 0);
   guint len = g_strv_length(split);
   switch (len){
    case 0:
      g_critical("This should not happend");
      break;
    case 1:
-     rows_per_file=strtol(split[0],NULL, 10);
-     min_rows_per_file=rows_per_file;
-     max_rows_per_file=rows_per_file;
+     *start= strtol(split[0],NULL, 10);
+     *min  = *start;
+     *max  = *start;
      break;
    case 2:
-     min_rows_per_file=strtol(split[0],NULL, 10);
-     rows_per_file=strtol(split[1],NULL, 10);
-     max_rows_per_file=rows_per_file;
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = *start;
      break;
    default:
-     min_rows_per_file=strtol(split[0],NULL, 10);
-     rows_per_file=strtol(split[1],NULL, 10);
-     max_rows_per_file=strtol(split[2],NULL, 10);
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = strtol(split[2],NULL, 10);
      break;
   }
   g_strfreev(split);
@@ -160,7 +160,7 @@ FILE * m_fopen(char **filename, const char *type ){
 void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
-    parse_rows_per_chunk();
+    parse_rows_per_chunk(rows_per_chunk, &min_rows_per_file, &rows_per_file, &max_rows_per_file);
 
   if (max_rows_per_file > G_MAXUINT64 / num_threads){
     max_rows_per_file= G_MAXUINT64 / num_threads;
@@ -1400,6 +1400,14 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, k);
   dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, k);
   dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, k);
+  gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, k);
+  if (rows_p_chunk )
+    parse_rows_per_chunk(rows_p_chunk, &(dbt->min_rows_per_file), &(dbt->start_rows_per_file), &(dbt->max_rows_per_file));
+  else{
+    dbt->min_rows_per_file=min_rows_per_file;
+    dbt->start_rows_per_file=rows_per_file;
+    dbt->max_rows_per_file=max_rows_per_file;
+  }
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->estimated_remaining_steps=1;
   dbt->min=NULL;

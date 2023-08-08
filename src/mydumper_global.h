@@ -106,7 +106,7 @@ extern guint complete_insert;
 extern guint dump_number;
 extern guint errors;
 extern guint num_threads;
-extern guint rows_per_file;
+extern guint64 rows_per_file;
 extern guint snapshot_count;
 extern guint statement_size;
 extern guint trx_consistency_only;
