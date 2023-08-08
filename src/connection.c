@@ -42,7 +42,7 @@ char *ca=NULL;
 char *capath=NULL;
 char *cipher=NULL;
 char *tls_version=NULL;
-gboolean ssl=NULL;
+gboolean ssl=FALSE;
 gchar *ssl_mode=NULL;
 #endif
 
