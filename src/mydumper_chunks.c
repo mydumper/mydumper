@@ -37,7 +37,6 @@
 #include "regex.h"
 gboolean split_partitions = FALSE;
 gchar *partition_regex = FALSE;
-guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 guint char_chunk=0;
