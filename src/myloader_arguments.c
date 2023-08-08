@@ -158,7 +158,7 @@ GOptionContext * load_contex_entries(){
   g_option_group_add_entries(main_group, common_entries);
 //  load_common_entries(main_group);
 //  GOptionGroup *
-//    connection_group = load_connection_entries(context);
+  load_connection_entries(context);
 //  g_option_group_add_entries(connection_group, common_connection_entries);
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);
