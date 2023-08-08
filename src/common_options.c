@@ -26,13 +26,13 @@ char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 #ifdef WITH_SSL
-char *key = NULL;
-char *cert = NULL;
-char *ca = NULL;
-char *capath = NULL;
-char *cipher = NULL;
-char *tls_version = NULL;
-gchar *ssl_mode = NULL;
+//char *key = NULL;
+//char *cert = NULL;
+//char *ca = NULL;
+//char *capath = NULL;
+//char *cipher = NULL;
+//char *tls_version = NULL;
+//gchar *ssl_mode = NULL;
 #endif
 
 gchar *fifo_directory = NULL;
@@ -48,8 +48,8 @@ GKeyFile *key_file = NULL;
 guint num_threads = 4;
 guint verbose = 2;
 gboolean debug = FALSE;
-gboolean ssl = FALSE;
-gboolean compress_protocol = FALSE;
+//gboolean ssl = FALSE;
+//gboolean compress_protocol = FALSE;
 gboolean program_version = FALSE;
 
 gchar *tables_list = NULL;
@@ -122,33 +122,3 @@ GOptionEntry common_filter_entries[] = {
      "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-GOptionEntry common_connection_entries[] = {
-    {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
-     "Use compression on the MySQL connection", NULL},
-#ifdef WITH_SSL
-    {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
-    {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
-#ifdef LIBMARIADB
-     "Desired security state of the connection to the server: REQUIRED, VERIFY_IDENTITY", NULL},
-#else
-     "Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY", NULL},
-#endif
-    {"key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file",
-     NULL},
-    {"cert", 0, 0, G_OPTION_ARG_STRING, &cert,
-     "The path name to the certificate file", NULL},
-    {"ca", 0, 0, G_OPTION_ARG_STRING, &ca,
-     "The path name to the certificate authority file", NULL},
-    {"capath", 0, 0, G_OPTION_ARG_STRING, &capath,
-     "The path name to a directory that contains trusted SSL CA certificates "
-     "in PEM format",
-     NULL},
-    {"cipher", 0, 0, G_OPTION_ARG_STRING, &cipher,
-     "A list of permissible ciphers to use for SSL encryption", NULL},
-    {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
-     "Which protocols the server permits for encrypted connections", NULL},
-#endif
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-

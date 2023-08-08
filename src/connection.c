@@ -35,6 +35,19 @@ char *protocol_str = NULL;
 enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
 static gint print_connection_details=1;
 
+#ifdef WITH_SSL
+char *key=NULL;
+char *cert=NULL;
+char *ca=NULL;
+char *capath=NULL;
+char *cipher=NULL;
+char *tls_version=NULL;
+gboolean ssl=FALSE;
+gchar *ssl_mode=NULL;
+#endif
+
+gboolean compress_protocol = FALSE;
+
 gboolean connection_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
@@ -65,22 +78,35 @@ GOptionEntry connection_entries[] = {
      "UNIX domain socket file to use for connection", NULL},
     {"protocol", 0, 0, G_OPTION_ARG_CALLBACK, &connection_arguments_callback,
      "The protocol to use for connection (tcp, socket)", NULL},
+    {"compress-protocol", 'C', 0, G_OPTION_ARG_NONE, &compress_protocol,
+     "Use compression on the MySQL connection", NULL},
+#ifdef WITH_SSL
+    {"ssl", 0, 0, G_OPTION_ARG_NONE, &ssl, "Connect using SSL", NULL},
+    {"ssl-mode", 0, 0, G_OPTION_ARG_STRING, &ssl_mode,
+#ifdef LIBMARIADB
+     "Desired security state of the connection to the server: REQUIRED, VERIFY_IDENTITY", NULL},
+#else
+     "Desired security state of the connection to the server: DISABLED, PREFERRED, REQUIRED, VERIFY_CA, VERIFY_IDENTITY", NULL},
+#endif
+    {"key", 0, 0, G_OPTION_ARG_STRING, &key, "The path name to the key file",
+     NULL},
+    {"cert", 0, 0, G_OPTION_ARG_STRING, &cert,
+     "The path name to the certificate file", NULL},
+    {"ca", 0, 0, G_OPTION_ARG_STRING, &ca,
+     "The path name to the certificate authority file", NULL},
+    {"capath", 0, 0, G_OPTION_ARG_STRING, &capath,
+     "The path name to a directory that contains trusted SSL CA certificates "
+     "in PEM format",
+     NULL},
+    {"cipher", 0, 0, G_OPTION_ARG_STRING, &cipher,
+     "A list of permissible ciphers to use for SSL encryption", NULL},
+    {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
+     "Which protocols the server permits for encrypted connections", NULL},
+#endif
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
 
-//extern char *connection_defaults_file;
-#ifdef WITH_SSL
-extern char *key;
-extern char *cert;
-extern char *ca;
-extern char *capath;
-extern char *cipher;
-extern char *tls_version;
-extern gboolean ssl;
-extern gchar *ssl_mode;
-#endif
-extern guint compress_protocol;
 extern gchar *set_names_statement;
 
 gchar *connection_defaults_file=NULL;
@@ -99,7 +125,6 @@ void initialize_connection(const gchar *app){
 
 
 GOptionGroup * load_connection_entries(GOptionContext *context){
-//  g_option_group_add_entries(main_group, connection_entries);
   GOptionGroup *connection_group =
       g_option_group_new("connectiongroup", "Connection Options", "connection", NULL, NULL);
   g_option_group_add_entries(connection_group, connection_entries);
