@@ -31,7 +31,6 @@ extern gboolean views_as_tables;
 extern gboolean dump_checksums;
 extern gboolean split_partitions;
 extern guint char_deep;
-extern guint64 max_rows;
 extern const gchar *exec_per_thread_extension;
 extern gchar *exec_per_thread;
 extern gboolean order_by_primary_key;
