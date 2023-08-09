@@ -37,6 +37,7 @@ struct configuration_per_table{
   GHashTable *all_columns_on_select_per_table;
   GHashTable *all_columns_on_insert_per_table;
   GHashTable *all_partition_regex_per_table;
+  GHashTable *all_rows_per_table;
 };
 
 #define STREAM_BUFFER_SIZE 1000000

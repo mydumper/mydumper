@@ -262,6 +262,9 @@ struct db_table {
   gchar *indexes_checksum;
   gchar *triggers_checksum;
   guint chunk_filesize;  
+  guint64 min_rows_per_file;
+  guint64 start_rows_per_file;
+  guint64 max_rows_per_file;
 };
 
 
