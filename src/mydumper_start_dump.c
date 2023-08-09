@@ -315,7 +315,7 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
   MYSQL_ROW row;
 
   gchar *query = g_strdup("SELECT FIND_IN_SET('ANSI',@@sql_mode)");
-  if (!mysql_query(conn, query)){
+  if (mysql_query(conn, query)){
     g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
     return ;
   }
@@ -398,7 +398,7 @@ void get_not_updated(MYSQL *conn, FILE *file) {
                       "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
                       "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
                       updated_since);
-  if (!mysql_query(conn, query)){
+  if (mysql_query(conn, query)){
     g_free(query);
     return;
   }
@@ -758,7 +758,7 @@ void send_lock_all_tables(MYSQL *conn){
       MYSQL_RES *res = mysql_store_result(conn);
       MYSQL_ROW row;
 
-      while ((row = mysql_fetch_row(res))) {
+      while (!(row = mysql_fetch_row(res))) {
         lock = 1;
         if (tables) {
           int table_found = 0;

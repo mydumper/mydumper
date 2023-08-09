@@ -1211,8 +1211,9 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
                           "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
                           database, table);
 
-  if (!mysql_query(conn, query))
+  if (mysql_query(conn, query)){
     return NULL;
+  }
   g_free(query);
 
   if (!(res = mysql_store_result(conn)))
