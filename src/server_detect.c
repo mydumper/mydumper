@@ -27,8 +27,19 @@ int secondary=0;
 int revision=0;
 
 void detect_server_version(MYSQL * conn) {
-  mysql_query(conn, "SELECT @@version_comment, @@version");
+  if (mysql_query(conn, "SELECT @@version_comment, @@version")){
+    g_warning("Not able to determine database version: %s",
+                 mysql_error(conn));
+    return;
+  }
+
   MYSQL_RES *res = mysql_store_result(conn);
+
+  if (!res){
+    g_warning("Not able to determine database version");
+    return;
+  }
+
   MYSQL_ROW ver;
   ver = mysql_fetch_row(res);
   gchar *ascii_version=g_ascii_strdown(ver[1],-1);

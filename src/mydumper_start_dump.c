@@ -317,10 +317,16 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
   MYSQL_ROW row;
 
   gchar *query = g_strdup("SELECT FIND_IN_SET('ANSI',@@sql_mode)");
-  mysql_query(conn, query);
+  if (mysql_query(conn, query)){
+    g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
+    return ;
+  }
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn))){
+    g_warning("We were not able to determine ANSI mode");
+    return ;
+  }
   row = mysql_fetch_row(res);
   if ((g_strcmp0(row[0], "0") && identifier_quote_character==BACKTICK)
   || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
@@ -394,10 +400,16 @@ void get_not_updated(MYSQL *conn, FILE *file) {
                       "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
                       "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
                       updated_since);
-  mysql_query(conn, query);
+  if (mysql_query(conn, query)){
+    g_free(query);
+    return;
+  }
+
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn)))
+    return;
+
   while ((row = mysql_fetch_row(res))) {
     no_updated_tables = g_list_prepend(no_updated_tables, row[0]);
     fprintf(file, "%s\n", row[0]);
@@ -415,7 +427,7 @@ void long_query_wait(MYSQL *conn){
                   mysql_error(conn));
         break;
       } else {
-       MYSQL_RES *res = mysql_store_result(conn);
+        MYSQL_RES *res = mysql_store_result(conn);
         MYSQL_ROW row;
 
         /* Just in case PROCESSLIST output column order changes */
