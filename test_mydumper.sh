@@ -173,7 +173,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
 
 number=0
 
-full_test(){
+prepare_full_test(){
 
   if [ ! -f "sakila-db.tar.gz" ]; then
     wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
@@ -192,8 +192,9 @@ full_test(){
 
   mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
   myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1"
+}
 
-
+full_test_global(){
   # single file compressed -- overriting database
 #  test_case_dir -c ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir}
   PARTIAL=0
@@ -223,6 +224,10 @@ full_test(){
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
+}
+
+full_test_per_table(){
+
   PARTIAL=1
   echo "Starting per table tests"
   for test in test_case_dir test_case_stream
@@ -239,6 +244,13 @@ full_test(){
   done
 
 
+}
+
+
+full_test(){
+  prepare_full_test
+  full_test_global
+  full_test_per_table
 }
 
 full_test
