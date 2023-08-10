@@ -216,9 +216,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 
           union chunk_step * new_cs = NULL;
           if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
-            new_minmax = cs->integer_step.type.unsign.min + cs->integer_step.step*((cs->integer_step.type.unsign.max / cs->integer_step.step - cs->integer_step.type.unsign.min / cs->integer_step.step)/2);
-            if ( new_minmax == cs->integer_step.type.unsign.cursor )
-              new_minmax++;
+            new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step*((cs->integer_step.type.unsign.max / cs->integer_step.step - cs->integer_step.type.unsign.min / cs->integer_step.step)/2);
+//            if ( new_minmax == cs->integer_step.type.unsign.cursor )
+//              new_minmax++;
             type.unsign.min = new_minmax;
             new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
           }else{
@@ -267,8 +267,8 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
           if ( min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
             new_minmax = 
                            cs->integer_step.type.sign.cursor +(signed) cs->integer_step.step *( (cs->integer_step.type.sign.max / (signed) cs->integer_step.step - cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step)/2);
-            if ( new_minmax == cs->integer_step.type.sign.cursor )
-              new_minmax++;
+//            if ( new_minmax == cs->integer_step.type.sign.cursor )
+//              new_minmax++;
             type.sign.min = new_minmax;
 
             new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
