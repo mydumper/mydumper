@@ -917,6 +917,10 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
     return 1;
   }
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
+//  if (tj->chunk_step->integer_step.status == COMPLETED)
+//    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
+  tj->chunk_step->integer_step.status = DUMPING_CHUNK; 
+
   if (tj->chunk_step->integer_step.check_max){
 //    g_message("thread: %d Updating MAX", td->thread_id);
     update_integer_max(td->thrconn, tj);
@@ -985,6 +989,8 @@ if (tj->chunk_step->integer_step.is_unsigned){
   }
 
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
+  if (tj->chunk_step->integer_step.status != COMPLETED)
+    tj->chunk_step->integer_step.status = ASSIGNED;
   if (tj->chunk_step->integer_step.is_unsigned){
     tj->chunk_step->integer_step.type.unsign.min=tj->chunk_step->integer_step.type.unsign.cursor+1;
   }else{
