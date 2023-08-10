@@ -522,12 +522,17 @@ void initialize_consistent_snapshot(struct thread_data *td){
       g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
     }else{
       MYSQL_RES *res = mysql_store_result(td->thrconn);
-      MYSQL_ROW row = mysql_fetch_row(res);
-      if (row!=NULL)
-        td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-      else
+      if (res){
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row!=NULL)
+          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+        else
+          td->binlog_snapshot_gtid_executed=g_strdup("");
+        mysql_free_result(res);
+      }else{
+        g_warning("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
         td->binlog_snapshot_gtid_executed=g_strdup("");
-      mysql_free_result(res);
+      }
     }
     start_transaction_retry++;
     g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
