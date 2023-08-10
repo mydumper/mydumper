@@ -90,6 +90,8 @@ extern GHashTable *all_where_per_table;
 extern gint database_counter;
 extern gint non_innodb_done;
 extern GList *innodb_table, *non_innodb_table;
+extern GMutex *innodb_table_mutex;
+extern GMutex *non_innodb_table_mutex;
 extern GList *no_updated_tables;
 extern GList *schema_post;
 extern GList *table_schemas;

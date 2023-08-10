@@ -323,18 +323,20 @@ guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   return total;
 }
 
-guint64 get_estimated_remaining_of(GList *list){
+guint64 get_estimated_remaining_of(GList *list, GMutex *mutex){
   GList *tl=list;
   guint64 total=0;
+  g_mutex_lock(mutex);
   while (tl!=NULL){
     total+=((struct db_table *)(tl->data))->estimated_remaining_steps;
     tl=tl->next;
   }
+  g_mutex_unlock(mutex);
   return total;
 }
 
 guint64 get_estimated_remaining_of_all_chunks(){
-  return get_estimated_remaining_of(non_innodb_table) + get_estimated_remaining_of(innodb_table);
+  return get_estimated_remaining_of(non_innodb_table, non_innodb_table_mutex) + get_estimated_remaining_of(innodb_table, innodb_table_mutex);
 }
 
 
