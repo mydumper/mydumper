@@ -209,10 +209,23 @@ union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_s
       new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step *
                 (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
                    cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2 ) + 1;
+
+      if (new_minmax == cs->integer_step.type.unsign.cursor)
+      new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step * (
+                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
+                   cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2  + 1) + 1;
+
     }else{
       new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step *
                 (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
                    cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 );
+
+      if (new_minmax == cs->integer_step.type.unsign.min)
+      new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step * (
+                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
+                   cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 + 1);
+
+
     }
     type.unsign.min = new_minmax;
     new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
@@ -229,7 +242,6 @@ union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_s
   cs->integer_step.type.unsign.max = new_minmax - 1;
 
   common_to_chunk_step(dbt, cs, new_cs);
-
   return new_cs;
 }
 
@@ -245,12 +257,19 @@ union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_ste
        new_minmax = cs->integer_step.type.sign.cursor + (signed) cs->integer_step.step *
                  (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
                     cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step ) / 2 ) + 1;
-    }else{
+      if (new_minmax == cs->integer_step.type.sign.min)
+       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
+                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1 ) + 1; 
+   }else{
        new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
                  (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
                     cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 );
+      if (new_minmax == cs->integer_step.type.sign.min)
+       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
+                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1);
     }
-
     type.sign.min = new_minmax;
 
     new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
