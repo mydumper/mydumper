@@ -114,7 +114,7 @@ GThread *wait_pid_thread=NULL;
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 gchar *exec_command=NULL;
 
 void initialize_start_dump(){
@@ -129,6 +129,8 @@ void initialize_start_dump(){
   conf_per_table.all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   conf_per_table.all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  conf_per_table.all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   // until we have an unique option on lock types we need to ensure this
   if (no_locks || trx_consistency_only)
     less_locking = 0;
@@ -315,10 +317,16 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
   MYSQL_ROW row;
 
   gchar *query = g_strdup("SELECT FIND_IN_SET('ANSI',@@sql_mode)");
-  mysql_query(conn, query);
+  if (mysql_query(conn, query)){
+    g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
+    return ;
+  }
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn))){
+    g_warning("We were not able to determine ANSI mode");
+    return ;
+  }
   row = mysql_fetch_row(res);
   if ((g_strcmp0(row[0], "0") && identifier_quote_character==BACKTICK)
   || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
@@ -392,10 +400,16 @@ void get_not_updated(MYSQL *conn, FILE *file) {
                       "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
                       "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
                       updated_since);
-  mysql_query(conn, query);
+  if (mysql_query(conn, query)){
+    g_free(query);
+    return;
+  }
+
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn)))
+    return;
+
   while ((row = mysql_fetch_row(res))) {
     no_updated_tables = g_list_prepend(no_updated_tables, row[0]);
     fprintf(file, "%s\n", row[0]);
@@ -413,7 +427,7 @@ void long_query_wait(MYSQL *conn){
                   mysql_error(conn));
         break;
       } else {
-       MYSQL_RES *res = mysql_store_result(conn);
+        MYSQL_RES *res = mysql_store_result(conn);
         MYSQL_ROW row;
 
         /* Just in case PROCESSLIST output column order changes */

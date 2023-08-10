@@ -1210,10 +1210,14 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
                           "AND t.table_name='%s' "
                           "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
                           database, table);
-  mysql_query(conn, query);
+
+  if (mysql_query(conn, query)){
+    return NULL;
+  }
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn)))
+    return NULL;
   gboolean first = TRUE;
   while ((row = mysql_fetch_row(res))) {
     if (first) {
