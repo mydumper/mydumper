@@ -758,7 +758,7 @@ void send_lock_all_tables(MYSQL *conn){
       MYSQL_RES *res = mysql_store_result(conn);
       MYSQL_ROW row;
 
-      while (!(row = mysql_fetch_row(res))) {
+      while ((row = mysql_fetch_row(res))) {
         lock = 1;
         if (tables) {
           int table_found = 0;
