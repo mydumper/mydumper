@@ -53,6 +53,7 @@ enum chunk_type{
 enum chunk_states{
   UNASSIGNED,
   ASSIGNED,
+  DUMPING_CHUNK,
   COMPLETED
 };
 
