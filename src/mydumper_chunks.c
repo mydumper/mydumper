@@ -218,7 +218,7 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
 
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   dbt->chunk_functions.process=&process_none_chunk;
-
+  dbt->chunk_functions.update_where=NULL;
 /*
   GList *partitions=NULL;
   if (split_partitions || dbt->partition_regex){
