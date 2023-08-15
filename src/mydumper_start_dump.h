@@ -47,7 +47,8 @@ enum chunk_type{
   NONE,
   INTEGER,
   CHAR,
-  PARTITION
+  PARTITION,
+  MULTICOLUMN_INTEGER
 };
 
 enum chunk_states{
@@ -115,6 +116,28 @@ union type {
   struct signed_int   sign;
 };
 
+struct table_job;
+
+struct chunk_functions{
+  void (*process)(struct thread_data *td, struct table_job *tj);
+  gchar *(*update_where)(struct thread_data *td, union chunk_step * chunk_step);
+};
+
+struct multicolumn_integer_step {
+  gboolean is_unsigned;
+  gchar *prefix;
+  gchar *field;
+  union type type;
+  guint64 estimated_remaining_steps;
+  guint64 number;
+  guint deep;
+  GMutex *mutex;
+  enum chunk_states status;
+  enum chunk_type chunk_type;
+  union chunk_step *next_chunk_step;
+  struct chunk_functions chunk_functions;
+};
+
 struct integer_step {
   gboolean is_unsigned;
   gchar *prefix;
@@ -175,6 +198,7 @@ struct partition_step{
 
 union chunk_step {
   struct integer_step integer_step;
+  struct multicolumn_integer_step multicolumn_integer_step;
   struct char_step char_step;
   struct partition_step partition_step;
 };
@@ -233,7 +257,7 @@ struct db_table {
   char *escaped_table;
   char *min;
   char *max;
-  char *field;
+//  char *field;
   guint64 rows_in_sts;
   GString *select_fields;
   gboolean complete_insert;
@@ -256,7 +280,9 @@ struct db_table {
   GList *chunks;
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
-  gchar *primary_key;
+  GList *primary_key;
+  gchar *primary_key_separated_by_comma;
+  gboolean multicolumn;
   gint * chunks_completed;
   gchar *data_checksum;
   gchar *schema_checksum;
@@ -266,6 +292,7 @@ struct db_table {
   guint64 min_rows_per_file;
   guint64 start_rows_per_file;
   guint64 max_rows_per_file;
+  struct chunk_functions chunk_functions;
 };
 
 

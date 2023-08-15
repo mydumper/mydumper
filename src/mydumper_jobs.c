@@ -1132,8 +1132,10 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->filesize=0;
   tj->char_chunk_part=char_chunk;
   tj->child_process=0;
-  if (update_where)
+  if (update_where){
+    update_estimated_remaining_chunks_on_dbt(tj->dbt);
     update_where_on_table_job(NULL, tj);
+  }
   return tj;
 }
 
@@ -1192,52 +1194,3 @@ void create_job_to_dump_database(struct database *database, struct configuration
   return;
 }
 
-gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
-  if (!order_by_primary_key) return NULL;
-
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  GString *field_list = g_string_new("");
-
-  gchar *query =
-          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
-                          "FROM information_schema.table_constraints t "
-                          "LEFT JOIN information_schema.key_column_usage k "
-                          "USING(constraint_name,table_schema,table_name) "
-                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
-                          "AND t.table_schema='%s' "
-                          "AND t.table_name='%s' "
-                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
-                          database, table);
-
-  if (mysql_query(conn, query)){
-    return NULL;
-  }
-  g_free(query);
-
-  if (!(res = mysql_store_result(conn)))
-    return NULL;
-  gboolean first = TRUE;
-  while ((row = mysql_fetch_row(res))) {
-    if (first) {
-      first = FALSE;
-    } else if (atoi(row[1]) > 1) {
-      g_string_append(field_list, ",");
-    } else {
-      break;
-    }
-
-    gchar *tb = g_strdup_printf("`%s`", row[0]);
-    g_string_append(field_list, tb);
-    g_free(tb);
-  }
-  mysql_free_result(res);
-  // Return NULL if we never found a PRIMARY or UNIQUE key
-  if (first) {
-    g_string_free(field_list, TRUE);
-    return NULL;
-  } else {
-    return g_string_free(field_list, FALSE);
-  }
-}
