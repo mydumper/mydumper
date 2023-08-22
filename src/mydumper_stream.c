@@ -38,10 +38,11 @@ void metadata_partial_queue_push (struct db_table *dbt){
     g_async_queue_push(metadata_partial_queue, dbt);
 }
 
-struct stream_queue_element * new_stream_queue_element(struct db_table *dbt,gchar *filename){
+struct stream_queue_element * new_stream_queue_element(struct db_table *dbt,gchar *filename,GAsyncQueue *done){
   struct stream_queue_element *sf=g_new0(struct stream_queue_element, 1);
   sf->dbt=dbt;
   sf->filename=filename;
+  sf->done=done;
   return sf;
 }
 
@@ -54,7 +55,10 @@ void stream_queue_push(struct db_table *dbt,gchar *filename){
     g_message("New stream file: %s for dbt: %s ", filename, dbt->table);
   else
     g_message("New stream file: %s with null dbt: ", filename);
-  g_async_queue_push(stream_queue, new_stream_queue_element(dbt,filename));
+  GAsyncQueue *done = g_async_queue_new();
+  g_async_queue_push(stream_queue, new_stream_queue_element(dbt,filename,done));
+  g_async_queue_pop(done);
+  g_async_queue_unref(done);
   metadata_partial_queue_push(dbt);
 }
 
@@ -73,6 +77,9 @@ void *process_stream(void *data){
   struct stream_queue_element *sf = NULL;
   for(;;){
     sf = g_async_queue_pop(stream_queue);
+    if (sf->done != NULL) {
+      g_async_queue_push(sf->done, GINT_TO_POINTER(1));
+    }
     if (strlen(sf->filename) == 0){
       break;
     }
