@@ -21,4 +21,5 @@
 
 union chunk_step *new_multicolumn_integer_step(gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 number);
 gchar * update_multicolumn_integer_where(struct thread_data *td, union chunk_step * cs);
-
+void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job *tj);
+union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt);

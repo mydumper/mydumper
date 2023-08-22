@@ -457,6 +457,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   }
   tj->td=td;
 
+  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
   tj->dbt->chunk_functions.process(td, tj);
 
   if (tj->sql_file){
@@ -1194,6 +1195,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->chunks=NULL;
   dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
+  g_mutex_lock(dbt->chunks_mutex);
   dbt->chunks_queue=g_async_queue_new();
   dbt->chunks_completed=g_new(int,1);
   *(dbt->chunks_completed)=0;
