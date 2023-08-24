@@ -1735,16 +1735,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* In case of table-list option is enabled, check if table is part of the
      * list */
-    if (tables) {
-/*      int table_found = 0;
-      for (i = 0; tables[i] != NULL; i++)
-        if (g_ascii_strcasecmp(tables[i], row[0]) == 0)
-          table_found = 1;
-*/
-      if (!is_table_in_list(row[0], tables))
-        dump = 0;
-    }
-    if (!dump)
+    if (tables && !is_table_in_list(database->name, row[0], tables))
       continue;
 
     /* Special tables */
