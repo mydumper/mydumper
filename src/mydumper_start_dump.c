@@ -109,7 +109,6 @@ gboolean pmm = FALSE;
 guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
-GThread *wait_pid_thread=NULL;
 
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
@@ -1021,8 +1020,9 @@ void start_dump() {
   
   }
 
+  g_thread_create((GThreadFunc)close_file_thread, NULL, FALSE, NULL);
 
-  wait_pid_thread = g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
+  g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
 
 
   conf.initial_queue = g_async_queue_new();

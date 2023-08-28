@@ -37,6 +37,7 @@
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
 
+GAsyncQueue *close_file_queue=NULL;
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
@@ -48,6 +49,8 @@ int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct 
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
+  close_file_queue=g_async_queue_new();
+
   guint i=0;
   for (i=0; i < (num_threads * 2); i++){
     release_pid();
@@ -123,6 +126,17 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   return file;
 }
 
+
+void * close_file_thread(void *data){
+  (void)data;
+  struct fifo *f=NULL;
+  for (;;){
+    f= g_async_queue_pop(close_file_queue);
+    g_async_queue_pop(f->queue);
+    remove(f->filename);
+  }
+}
+
 int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
   release_pid();
   g_mutex_lock(fifo_table_mutex);
@@ -139,8 +153,9 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struc
     g_mutex_unlock(fifo_table_mutex); */
 //    g_mutex_lock(f->mutex);
 //g_message("g_async_queue_pop(f->queue: %d", f->pid);
-    g_async_queue_pop(f->queue);
-    remove(f->filename);
+    g_async_queue_push(close_file_queue, f);
+//    g_async_queue_pop(f->queue);
+//    remove(f->filename);
   }else{
   //  g_mutex_unlock(fifo_table_mutex);
   }
