@@ -40,7 +40,7 @@
 #include "mydumper_global.h"
 #include <sys/wait.h>
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
 
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;

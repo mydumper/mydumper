@@ -21,14 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct fifo{
-  int pid;
-  gchar *filename;
-  gchar *stdout_filename;
-  GAsyncQueue * queue;
-//  GMutex *mutex;
-};
-
 void initialize_common();
 gchar *get_ref_table(gchar *k);
 char * determine_filename (char * table);

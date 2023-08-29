@@ -195,7 +195,7 @@ struct table_job {
   gchar *dat_filename;
   FILE *dat_file;
   gchar *exec_out_filename;
-  float filesize;
+  guint64 filesize;
   guint st_in_file;
   int child_process;
   int char_chunk_part;
@@ -279,6 +279,18 @@ struct schema_post {
   struct database *database;
 };
 
+
+struct fifo{
+  int pid;
+  gchar *filename;
+  gchar *stdout_filename;
+  GAsyncQueue * queue;
+  float size;
+  struct db_table *dbt;
+//  GMutex *mutex;
+  };
+
+
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();
 void start_dump();
@@ -288,5 +300,6 @@ gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
 void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
+int m_close_file(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
+void close_file_queue_push(struct fifo *f);

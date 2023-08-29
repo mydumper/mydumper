@@ -45,7 +45,7 @@ GAsyncQueue *available_pids=NULL;
 GHashTable *fifo_hash=NULL;
 GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
-int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt) = NULL;
+int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
@@ -126,18 +126,39 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   return file;
 }
 
+void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt) {
+  if (size > 0){
+    if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
+  }else if (!build_empty_files){
+    if (remove(f->stdout_filename)) {
+      g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
+    }else{
+      g_debug("Thread %d: File removed: %s", thread_id, filename);
+    }
+  }
+}
+
 
 void * close_file_thread(void *data){
   (void)data;
   struct fifo *f=NULL;
   for (;;){
-    f= g_async_queue_pop(close_file_queue);
+    f=g_async_queue_pop(close_file_queue);
+    if (f->pid == 0)
+      break;
     g_async_queue_pop(f->queue);
+    g_message("Removing: %s", f->filename);
     remove(f->filename);
+    final_step_close_file(0, f->filename, f, f->size, f->dbt);
   }
+  return NULL;
 }
 
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
+void close_file_queue_push(struct fifo *f){
+  g_async_queue_push(close_file_queue, f);
+}
+
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
   release_pid();
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
@@ -153,13 +174,21 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struc
     g_mutex_unlock(fifo_table_mutex); */
 //    g_mutex_lock(f->mutex);
 //g_message("g_async_queue_pop(f->queue: %d", f->pid);
+    f->size=size;
+    f->dbt=dbt;
+    g_message("Enquiing : %s", f->filename);
     g_async_queue_push(close_file_queue, f);
 //    g_async_queue_pop(f->queue);
 //    remove(f->filename);
   }else{
+    struct fifo new_f;
+    new_f.dbt=dbt;
+    new_f.size=size;
+    new_f.filename=filename;
+    final_step_close_file(thread_id, filename, &new_f, size, dbt);
   //  g_mutex_unlock(fifo_table_mutex);
   }
-  if (size > 0){
+/*  if (size > 0){
     if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
   }else if (!build_empty_files){
     if (remove(f->stdout_filename)) {
@@ -167,7 +196,9 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struc
     }else{
       g_debug("Thread %d: File removed: %s", thread_id, filename);
     } 
-}
+  }
+*/
+  
   return r;
 }
 
@@ -189,7 +220,7 @@ void child_process_ended(int child_pid){
   }
 }
 
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
+int m_close_file(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
   int r=fclose(file);
   if (size > 0){
     if (stream) stream_queue_push(dbt, g_strdup(filename));

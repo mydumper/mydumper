@@ -1020,7 +1020,7 @@ void start_dump() {
   
   }
 
-  g_thread_create((GThreadFunc)close_file_thread, NULL, FALSE, NULL);
+  GThread * cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
 
   g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
 
@@ -1286,6 +1286,11 @@ void start_dump() {
   if (disk_check_thread!=NULL){
     disk_limits=NULL;
   }
+
+  struct fifo f;
+  f.pid=0;
+  close_file_queue_push(&f);
+  g_thread_join(cft);
 
   g_string_free(set_session, TRUE);
   g_string_free(set_global, TRUE);

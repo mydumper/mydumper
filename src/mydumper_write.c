@@ -42,7 +42,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
 
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
@@ -229,7 +229,7 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append(dbt->insert_statement, " VALUES");
 }
 
-gboolean real_write_data(FILE *file, float *filesize, GString *data) {
+gboolean real_write_data(FILE *file, guint64 *filesize, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
   gboolean second_write_zero = FALSE;
@@ -258,7 +258,7 @@ gboolean real_write_data(FILE *file, float *filesize, GString *data) {
 
 
 gboolean write_data(FILE *file, GString *data) {
-  float f=0;
+  guint64 f=0;
   return real_write_data(file, &f, data);
 }
 
@@ -292,7 +292,7 @@ void initialize_load_data_statement(GString *statement, struct db_table *dbt, gc
   g_string_append(statement,";\n");
 }
 
-gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt){
+gboolean write_statement(FILE *load_data_file, guint64 *filessize, GString *statement, struct db_table * dbt){
   if (!real_write_data(load_data_file, filessize, statement)) {
     g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
     return FALSE;

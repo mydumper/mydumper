@@ -75,7 +75,7 @@
 #endif
 
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
 
 
 GMutex *init_mutex = NULL;
