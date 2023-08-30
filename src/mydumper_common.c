@@ -36,6 +36,7 @@
 //#include <sys/wait.h>
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
+#include <sys/wait.h>
 
 GAsyncQueue *close_file_queue=NULL;
 GMutex *ref_table_mutex = NULL;
@@ -45,14 +46,50 @@ GAsyncQueue *available_pids=NULL;
 GHashTable *fifo_hash=NULL;
 GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
+GThread * cft = NULL;
+guint open_pipe=0;
+
 int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
+
+
+void * wait_pid(void *data){
+  (void)data;
+  int status=0;
+  int child_pid;
+  g_message("Waiting pid started");
+  for (;;){
+    child_pid=wait(&status);
+    if (child_pid>0)
+      child_process_ended(child_pid);
+  }
+  return NULL;
+}
+
+void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt);
+
+void * close_file_thread(void *data){
+  (void)data;
+  struct fifo *f=NULL;
+  for (;;){
+    f=g_async_queue_pop(close_file_queue);
+    if (f->pid == 0)
+      break;
+    g_async_queue_pop(f->queue);
+    g_message("Removing: %s", f->filename);
+    remove(f->filename);
+    final_step_close_file(0, f->filename, f, f->size, f->dbt);
+    g_atomic_int_dec_and_test(&open_pipe);
+    release_pid(); 
+ }
+  return NULL;
+}
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
   close_file_queue=g_async_queue_new();
 
   guint i=0;
-  for (i=0; i < (num_threads * 2); i++){
+  for (i=0; i < (num_threads * 2 ); i++){
     release_pid();
   }
   ref_table_mutex = g_mutex_new();
@@ -60,7 +97,26 @@ void initialize_common(){
   fifo_hash_by_pid=g_hash_table_new(g_int_hash,g_int_equal);
   fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
   fifo_table_mutex = g_mutex_new();
+
+
+  cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
+
+  g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
+
+
 }
+void wait_close_files(){
+  struct fifo f;
+  f.pid=0;
+  while (g_atomic_int_get(&open_pipe) != 0){
+    g_message("Waiting files to complete");
+    sleep(1);
+  }
+
+  close_file_queue_push(&f);
+  g_thread_join(cft);
+}
+
 
 void free_common(){
   g_mutex_free(ref_table_mutex);
@@ -89,8 +145,11 @@ int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3){
   return childpid;
 }
 
+
 // filename must never use the compression extension. .fifo files should be deprecated
 FILE * m_open_pipe(gchar **filename, const char *type){
+  g_atomic_int_inc(&open_pipe);
+
   gchar *basefilename=g_path_get_basename(*filename);
   gchar *new_filename = g_strdup_printf("%s%s", *filename, exec_per_thread_extension);
   if (fifo_directory != NULL){
@@ -138,31 +197,16 @@ void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, flo
   }
 }
 
-
-void * close_file_thread(void *data){
-  (void)data;
-  struct fifo *f=NULL;
-  for (;;){
-    f=g_async_queue_pop(close_file_queue);
-    if (f->pid == 0)
-      break;
-    g_async_queue_pop(f->queue);
-    g_message("Removing: %s", f->filename);
-    remove(f->filename);
-    final_step_close_file(0, f->filename, f, f->size, f->dbt);
-  }
-  return NULL;
-}
-
 void close_file_queue_push(struct fifo *f){
   g_async_queue_push(close_file_queue, f);
 }
 
 int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
-  release_pid();
+//  release_pid();
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
+//  write(fileno(file), 0, sizeof(int));
   int r=close(fileno(file));
   if (f != NULL){
 /*    int status=0;

@@ -52,7 +52,7 @@
 #include "set_verbose.h"
 #include "locale.h"
 #include <sys/statvfs.h>
-#include <sys/wait.h>
+//#include <sys/wait.h>
 
 #include "tables_skiplist.h"
 #include "regex.h"
@@ -158,7 +158,7 @@ void initialize_start_dump(){
   }
 }
 
-
+/*
 void * wait_pid(void *data){
   (void)data;
   int status=0;
@@ -171,6 +171,7 @@ void * wait_pid(void *data){
   }
   return NULL;
 }
+*/
 
 void set_disk_limits(guint p_at, guint r_at){
   pause_at=p_at;
@@ -1020,10 +1021,11 @@ void start_dump() {
   
   }
 
+/*
   GThread * cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
 
   g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
-
+*/
 
   conf.initial_queue = g_async_queue_new();
   conf.schema_queue = g_async_queue_new();
@@ -1287,10 +1289,13 @@ void start_dump() {
     disk_limits=NULL;
   }
 
-  struct fifo f;
+  wait_close_files();
+
+/*  struct fifo f;
   f.pid=0;
   close_file_queue_push(&f);
   g_thread_join(cft);
+*/
 
   g_string_free(set_session, TRUE);
   g_string_free(set_global, TRUE);

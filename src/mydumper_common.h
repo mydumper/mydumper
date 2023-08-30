@@ -52,3 +52,4 @@ FILE * m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
 void * close_file_thread(void *data);
+void wait_close_files();
