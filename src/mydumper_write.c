@@ -182,6 +182,16 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str,"`=CONVERT(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
+    }else if (fields[i].type == MYSQL_TYPE_BLOB){
+      g_string_append_c(statement,'@');
+      g_string_append(statement, fields[i].name);
+      if (str->len > 4)
+        g_string_append_c(str, ',');
+      g_string_append_c(str,'`');
+      g_string_append(str,fields[i].name);
+      g_string_append(str,"`=UNHEX(@");
+      g_string_append(str, fields[i].name);
+      g_string_append(str, ")");
     }else{
       g_string_append_c(statement,'`');
       g_string_append(statement, fields[i].name);
@@ -358,6 +368,10 @@ void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIEL
       fun_ptr_i->function(column,&length,fun_ptr_i);
     if (!*column) {
       g_string_append(statement_row, "\\N");
+    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
+      g_string_set_size(escaped, length * 2 + 1);
+      mysql_hex_string(escaped->str,*column,length);
+      g_string_append(statement_row,escaped->str);
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
       g_string_set_size(escaped, length * 2 + 1);
@@ -384,7 +398,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( length == 0){
       g_string_append_c(statement_row,*fields_enclosed_by);
       g_string_append_c(statement_row,*fields_enclosed_by);
-    } else if ( field.type == MYSQL_TYPE_BLOB || hex_blob ) {
+    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
       g_string_set_size(escaped, length * 2 + 1);
       g_string_append(statement_row,"0x");
       mysql_hex_string(escaped->str,*column,length);
