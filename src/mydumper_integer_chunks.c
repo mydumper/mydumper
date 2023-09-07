@@ -99,7 +99,7 @@ void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chu
   g_async_queue_push(dbt->chunks_queue, cs);
   g_async_queue_push(dbt->chunks_queue, new_cs);
 
-  g_mutex_unlock(cs->integer_step.mutex);
+//  g_mutex_unlock(cs->integer_step.mutex);
 //  g_mutex_unlock(dbt->chunks_mutex);
 }
 
@@ -152,6 +152,7 @@ union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_s
   cs->integer_step.type.unsign.max = new_minmax - 1;
 
   common_to_chunk_step(dbt, cs, new_cs);
+
   return new_cs;
 }
 
@@ -216,7 +217,7 @@ union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_ste
 union chunk_step *get_next_integer_chunk(struct db_table *dbt){
 //  g_mutex_lock(dbt->chunks_mutex);
 //  GList *l=dbt->chunks;
-  union chunk_step *cs=NULL;
+  union chunk_step *cs=NULL, *new_cs=NULL;
   if (dbt->chunks!=NULL){
 //    cs=l->data;
     cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);      
@@ -240,7 +241,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
              )
            )
          ){
-          return split_unsigned_chunk_step(dbt,cs);
+          new_cs=split_unsigned_chunk_step(dbt,cs);
+          g_mutex_unlock(cs->integer_step.mutex);
+          return new_cs;
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
           g_mutex_unlock(cs->integer_step.mutex);
@@ -257,7 +260,9 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
              )
            )
          ){
-          return split_signed_chunk_step(dbt,cs);
+          new_cs=split_signed_chunk_step(dbt,cs);
+          g_mutex_unlock(cs->integer_step.mutex);
+          return new_cs;
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
           g_mutex_unlock(cs->integer_step.mutex);

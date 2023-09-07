@@ -143,7 +143,7 @@ g_message("unsign.min: %"G_GUINT64_FORMAT" | unsign.max: %"G_GUINT64_FORMAT, unm
 g_message("sign.min: %"G_GINT64_FORMAT" | sign.max: %"G_GINT64_FORMAT, nmin, nmax);
         }
 
-        if ( !local_where && dbt->multicolumn){
+        if ( !local_where && dbt->multicolumn && FALSE){
           g_message("MULTICOLUMN??");
           if (dbt->rows_in_sts / abs > dbt->min_rows_per_file){
             *chunk_type=MULTICOLUMN_INTEGER;
