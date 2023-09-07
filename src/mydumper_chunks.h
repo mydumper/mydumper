@@ -18,6 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+guint64 gint64_abs(gint64 a);
 void load_chunks_entries(GOptionContext *context);
 GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
@@ -27,7 +28,6 @@ void free_char_step(union chunk_step * cs);
 void free_integer_step(union chunk_step * cs);
 union chunk_step *get_next_chunk(struct db_table *dbt);
 gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min);
-GList * get_partitions_for_table(MYSQL *conn, char *database, char *table);
 void *chunk_builder_thread(struct configuration *conf);
 void initialize_chunk();
 void finalize_chunk();

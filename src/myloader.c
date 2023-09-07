@@ -60,6 +60,7 @@
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
 #include "myloader_worker_loader.h"
+#include "myloader_worker_post.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -86,6 +87,7 @@ guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
+guint max_threads_for_post_creation=4;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
@@ -283,17 +285,17 @@ int main(int argc, char *argv[]) {
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
 
       directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
-      create_backup_dir(directory);
+      create_backup_dir(directory,fifo_directory);
       g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
       m_critical("a directory needs to be specified, see --help\n");
     }
   } else {
-    directory=g_strdup_printf("%s/%s", g_str_has_prefix(input_directory,"/")?"":current_dir, input_directory);
+    directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
     if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
       if (stream){
-        create_backup_dir(directory);
+        create_backup_dir(directory,fifo_directory);
       }else{
         m_critical("the specified directory doesn't exists\n");
       }
@@ -306,6 +308,14 @@ int main(int argc, char *argv[]) {
 //      initialize_directory();
     }
   }
+  if (fifo_directory){
+    if (fifo_directory[0] != '/' ){
+      gchar *tmp_fifo_directory=fifo_directory;
+      fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
+    }
+    create_fifo_dir(fifo_directory);
+  }
+
   g_free(current_dir);
   g_chdir(directory);
   /* Process list of tables to omit if specified */
@@ -325,13 +335,13 @@ int main(int argc, char *argv[]) {
 
   MYSQL *conn;
   conn = mysql_init(NULL);
-  m_connect(conn,NULL);
+  m_connect(conn);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
-  detected_server = detect_server(conn);
   detect_server_version(conn);
+  detected_server = get_product();
   GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -414,6 +424,8 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
+
+    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);
@@ -427,7 +439,9 @@ int main(int argc, char *argv[]) {
   wait_loader_threads_to_finish();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
-
+  initialize_post_loding_threads(&conf);
+  create_post_shutdown_job(&conf);
+  wait_post_worker_to_finish();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 

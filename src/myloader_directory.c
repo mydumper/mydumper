@@ -61,7 +61,7 @@ void *process_directory(struct configuration *conf){
   for (n = 0; n < num_threads ; n++) {
     g_async_queue_push(conf->data_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
+//    g_async_queue_push(conf->post_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
     g_async_queue_push(conf->view_queue,       new_job(JOB_SHUTDOWN,NULL,NULL));
   }
   return NULL;

@@ -17,7 +17,14 @@
 
 #include <mysql.h>
 #include <stdio.h>
+#include <pcre.h>
 #define MYLOADER_MODE "myloader_mode"
+
+#define ZSTD_EXTENSION ".zst"
+#define GZIP_EXTENSION ".gz"
+
+extern gchar zstd_paths[2][15];
+extern gchar gzip_paths[2][15];
 
 #ifndef _src_common_h
 #define _src_common_h
@@ -29,6 +36,8 @@ struct configuration_per_table{
   GHashTable *all_num_threads_per_table;
   GHashTable *all_columns_on_select_per_table;
   GHashTable *all_columns_on_insert_per_table;
+  GHashTable *all_partition_regex_per_table;
+  GHashTable *all_rows_per_table;
 };
 
 #define STREAM_BUFFER_SIZE 1000000
@@ -54,7 +63,8 @@ char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *er
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
-void create_backup_dir(char *new_directory) ;
+void create_backup_dir(char *new_directory, char *new_fifo_directory);
+void create_fifo_dir(char *new_fifo_directory);
 guint strcount(gchar *text);
 gboolean m_remove(gchar * directory, const gchar * filename);
 GKeyFile * load_config_file(gchar * config_file);
@@ -95,3 +105,6 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gchar *m_date_time_new_now_local();
+
+gchar *get_zstd_cmd();
+gchar *get_gzip_cmd();

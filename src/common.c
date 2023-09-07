@@ -21,6 +21,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <pcre.h>
+#include "regex.h"
 #include "server_detect.h"
 #include "common.h"
 #include "config.h"
@@ -37,9 +38,32 @@ extern gchar*set_names_statement;
 extern guint num_threads;
 extern GString *set_global_back;
 extern MYSQL *main_connection;
-FILE * (*m_open)(const char *filename, const char *);
+FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
+
+gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
+gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
+
+
+gchar *get_zstd_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( zstd_paths[i] , G_FILE_TEST_EXISTS))
+      return zstd_paths[i];
+  }
+  return NULL;
+}
+
+gchar *get_gzip_cmd(){
+  guint i=0;
+  for(i=0; i<2; i++){
+    if (g_file_test( gzip_paths[i] , G_FILE_TEST_EXISTS))
+      return gzip_paths[i];
+  }
+  return NULL;
+}
+
 
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -223,6 +247,17 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"partition_regex") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            pcre *r=NULL; 
+            init_regex( &r, value);
+            g_hash_table_insert(conf_per_table->all_partition_regex_per_table, g_strdup(groups[i]), r);
+          }
+          if (g_strcmp0(keys[j],"rows") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(conf_per_table->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
+          }
+
         }
       }
       g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);
@@ -389,12 +424,24 @@ void escape_tab_with(gchar *to){
 //  return to;
 }
 
-void create_backup_dir(char *new_directory) {
+
+void create_fifo_dir(char *new_fifo_directory) {
+  if (new_fifo_directory){
+    if (g_mkdir(new_fifo_directory, 0750) == -1) {
+      if (errno != EEXIST) {
+        m_critical("Unable to create `%s': %s", new_fifo_directory, g_strerror(errno));
+      }
+    }
+  }
+}
+
+void create_backup_dir(char *new_directory, char *new_fifo_directory) {
   if (g_mkdir(new_directory, 0750) == -1) {
     if (errno != EEXIST) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
+  create_fifo_dir(new_fifo_directory);
 }
 
 guint strcount(gchar *text){
@@ -685,7 +732,7 @@ gboolean read_data(FILE *file, GString *data,
       }
     }
     g_string_append(data, buffer);
-    if (strlen(buffer) != 256)
+    if (buffer[strlen(buffer)-1] == '\n')
       (*line)++;
   } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
 
@@ -698,8 +745,6 @@ gchar *m_date_time_new_now_local(){
   g_string_append(datetimestr,g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S"));
   g_string_append_printf(datetimestr,".%d", g_date_time_get_microsecond(datetime));
   g_date_time_unref(datetime);
-  gchar *r=datetimestr->str;
-  g_string_free(datetimestr,FALSE);
-  return r;
+  return g_string_free(datetimestr,FALSE);
 }
 

@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+#include <pcre.h>
 
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
@@ -52,6 +53,7 @@ enum chunk_type{
 enum chunk_states{
   UNASSIGNED,
   ASSIGNED,
+  DUMPING_CHUNK,
   COMPLETED
 };
 
@@ -65,6 +67,7 @@ struct configuration {
   GAsyncQueue *ready;
   GAsyncQueue *ready_non_innodb_queue;
   GAsyncQueue *db_ready;
+  GAsyncQueue *binlog_ready;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
   GAsyncQueue *gtid_pos_checked;
@@ -93,13 +96,34 @@ struct job {
 
 union chunk_step;
 
+
+struct unsigned_int{
+  guint64 min;
+  guint64 cursor;
+  guint64 max;
+};
+
+struct signed_int{
+  gint64 min;
+  gint64 cursor;
+  gint64 max;
+};
+
+
+union type {
+  struct unsigned_int unsign;
+  struct signed_int   sign;
+};
+
 struct integer_step {
+  gboolean is_unsigned;
   gchar *prefix;
   gchar *field;
-  guint64 nmin;
-  guint64 cursor;
+//  guint64 nmin;
+//  guint64 cursor;
+//  guint64 nmax;
+  union type type; 
   guint64 step;
-  guint64 nmax;
   guint64 estimated_remaining_steps;
   guint64 number;
   guint deep;
@@ -159,12 +183,9 @@ union chunk_step {
 // first number : used when rows is used
 // second number : when load data is used
 struct table_job {
-//  char *database;
-//  char *table;
   char *partition;
   guint64 nchunk;
   guint sub_part;
-//  char *filename;
   char *where;
   union chunk_step *chunk_step;  
   char *order_by;
@@ -213,6 +234,7 @@ struct db_table {
   char *min;
   char *max;
   char *field;
+  guint64 rows_in_sts;
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;
@@ -228,6 +250,7 @@ struct db_table {
   gchar *limit;
   gchar *columns_on_select;
   gchar *columns_on_insert;
+  pcre *partition_regex;
   guint num_threads;
   enum chunk_type chunk_type;
   GList *chunks;
@@ -239,6 +262,17 @@ struct db_table {
   gchar *schema_checksum;
   gchar *indexes_checksum;
   gchar *triggers_checksum;
+  guint chunk_filesize;  
+  guint64 min_rows_per_file;
+  guint64 start_rows_per_file;
+  guint64 max_rows_per_file;
+};
+
+
+struct stream_queue_element{
+  struct db_table *dbt;
+  gchar *filename;
+  GAsyncQueue *done;
 };
 
 struct schema_post {
@@ -248,12 +282,11 @@ struct schema_post {
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();
 void start_dump();
-MYSQL *create_main_connection();
 void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
-//gboolean write_data(FILE *, GString *);
-
-
-
+void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
+void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);

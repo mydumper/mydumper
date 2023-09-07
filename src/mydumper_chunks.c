@@ -37,34 +37,10 @@
 #include "regex.h"
 gboolean split_partitions = FALSE;
 gchar *partition_regex = FALSE;
-guint64 max_rows=1000000;
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 guint char_chunk=0;
 guint char_deep=0;
-/*
-static GOptionEntry chunks_entries[] = {
-    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the number of rows per block after the table is estimated, default 1000000", NULL},
-    {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "",NULL},
-    {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "",NULL},
-    {"rows", 'r', 0, G_OPTION_ARG_STRING, &rows_per_chunk,
-     "Try to split tables into chunks of this many rows.",
-     NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
-};
-
-void load_chunks_entries(GOptionContext *context){
-  GOptionGroup *chunks_group=g_option_group_new("job", "Job Options", "Job Options", NULL, NULL);
-  g_option_group_add_entries(chunks_group, chunks_entries);
-  g_option_context_add_group(context, chunks_group);
-
-}
-*/
 
 void initialize_chunk(){
   give_me_another_innodb_chunk_step_queue=g_async_queue_new();
@@ -82,6 +58,11 @@ void finalize_chunk(){
 
 }
 
+guint64 gint64_abs(gint64 a){
+  if (a >= 0)
+    return a;
+  return -a;
+}
 
 union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
   union chunk_step * cs = g_new0(union chunk_step, 1);
@@ -143,22 +124,32 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
   return cs;
 }
 
-
-union chunk_step *new_integer_step(gchar *prefix, gchar *field, guint64 nmin, guint64 nmax, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max){
+union chunk_step *new_integer_step(gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max){
 //  g_message("New Integer Step with step size: %d", step);
   union chunk_step * cs = g_new0(union chunk_step, 1);
+  cs->integer_step.is_unsigned = is_unsigned;
   cs->integer_step.prefix = prefix;
-  cs->integer_step.nmin = nmin;
   cs->integer_step.step = step;
+  if (cs->integer_step.is_unsigned){
+//    g_message("Is unsigned... ");
+    cs->integer_step.type.unsign.min = type.unsign.min;
+    cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
+    cs->integer_step.type.unsign.max = type.unsign.max;
+    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
+  }else{
+//    g_message("Is signed... ");
+    cs->integer_step.type.sign.min = type.sign.min;
+    cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
+    cs->integer_step.type.sign.max = type.sign.max;
+    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step;
+  }
   cs->integer_step.deep = deep;
   cs->integer_step.number = number;
-  cs->integer_step.nmax = nmax;
   cs->integer_step.field = g_strdup(field);
   cs->integer_step.mutex = g_mutex_new(); 
   cs->integer_step.status = UNASSIGNED;
   cs->integer_step.check_max=check_max;
   cs->integer_step.check_min=check_min;
-  cs->integer_step.estimated_remaining_steps=(cs->integer_step.nmax - cs->integer_step.nmin) / cs->integer_step.step;
   return cs;
 }
 
@@ -192,6 +183,118 @@ void free_integer_step(union chunk_step * cs){
   g_free(cs);
 }
 
+
+
+void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chunk_step * new_cs){
+  cs->integer_step.deep++;
+  dbt->chunks=g_list_append(dbt->chunks,new_cs);
+
+  new_cs->integer_step.status=ASSIGNED;
+
+  g_async_queue_push(dbt->chunks_queue, cs);
+  g_async_queue_push(dbt->chunks_queue, new_cs);
+
+  g_mutex_unlock(cs->integer_step.mutex);
+  g_mutex_unlock(dbt->chunks_mutex);
+}
+
+
+union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_step * cs){
+  guint64 new_minmax = 0;
+  union type type;
+  type.unsign.max = cs->integer_step.type.unsign.max;
+  union chunk_step * new_cs = NULL;
+  if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
+    if ( cs->integer_step.status == DUMPING_CHUNK ){
+      new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step *
+                (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
+                   cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2 ) + 1;
+
+      if (new_minmax == cs->integer_step.type.unsign.cursor)
+      new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step * (
+                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
+                   cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2  + 1) + 1;
+
+    }else{
+      new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step *
+                (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
+                   cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 );
+
+      if (new_minmax == cs->integer_step.type.unsign.min)
+      new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step * (
+                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
+                   cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 + 1);
+
+
+    }
+    type.unsign.min = new_minmax;
+    new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+  }else{
+    new_minmax = cs->integer_step.type.unsign.cursor + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor)/2;
+    if ( new_minmax == cs->integer_step.type.unsign.cursor )
+      new_minmax++;
+    type.unsign.min = new_minmax;
+    new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+    cs->integer_step.check_max=TRUE;
+    
+  }
+
+  cs->integer_step.type.unsign.max = new_minmax - 1;
+
+  common_to_chunk_step(dbt, cs, new_cs);
+  return new_cs;
+}
+
+union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_step * cs){
+  gint64 new_minmax = 0;
+  union type type;
+
+  type.sign.max = cs->integer_step.type.sign.max;
+
+  union chunk_step * new_cs = NULL;
+  if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
+    if ( cs->integer_step.status == DUMPING_CHUNK ){
+       new_minmax = cs->integer_step.type.sign.cursor + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
+                    cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step ) / 2 ) + 1;
+      if (new_minmax == cs->integer_step.type.sign.min)
+       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
+                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1 ) + 1; 
+   }else{
+       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
+                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 );
+      if (new_minmax == cs->integer_step.type.sign.min)
+       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
+                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
+                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1);
+    }
+    type.sign.min = new_minmax;
+
+    new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+  }else{
+    new_minmax = gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
+                   cs->integer_step.type.sign.cursor + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor)/2 :
+                   cs->integer_step.type.sign.cursor + 1;
+    if ( new_minmax == cs->integer_step.type.sign.cursor )
+      new_minmax++;
+    type.sign.min = new_minmax;
+
+    new_cs = new_integer_step(NULL, dbt->field, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+
+    cs->integer_step.check_max=TRUE;
+  }
+
+  cs->integer_step.type.sign.max = new_minmax - 1;
+
+  common_to_chunk_step(dbt, cs, new_cs);
+
+  return new_cs;
+}
+
+
+
 union chunk_step *get_next_integer_chunk(struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
 //  GList *l=dbt->chunks;
@@ -210,31 +313,40 @@ union chunk_step *get_next_integer_chunk(struct db_table *dbt){
         g_mutex_unlock(dbt->chunks_mutex);
         return cs;
       }
+      if (cs->integer_step.is_unsigned) {
 
-      if (cs->integer_step.cursor < cs->integer_step.nmax){
-      
-        guint64 new_minmax = cs->integer_step.nmax - cs->integer_step.cursor > cs->integer_step.step ?
-                           cs->integer_step.nmin + (cs->integer_step.nmax - cs->integer_step.nmin)/2 :
-                           cs->integer_step.cursor;
-        union chunk_step * new_cs = new_integer_step(NULL, dbt->field, new_minmax, cs->integer_step.nmax, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
-        cs->integer_step.deep++;
-        cs->integer_step.check_max=TRUE;
-        dbt->chunks=g_list_append(dbt->chunks,new_cs);
-        cs->integer_step.nmax = new_minmax;
-//        new_cs->integer_step.check_min=TRUE;
-        new_cs->integer_step.status=ASSIGNED;
- 
-        g_async_queue_push(dbt->chunks_queue, cs);
-        g_async_queue_push(dbt->chunks_queue, new_cs);
-
-        g_mutex_unlock(cs->integer_step.mutex);
-        g_mutex_unlock(dbt->chunks_mutex);
-        return new_cs;
-      }else{
+        if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.max // it is not the last chunk
+        && (  
+             ( cs->integer_step.status == DUMPING_CHUNK && cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor > cs->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ) || 
+             ( cs->integer_step.status == ASSIGNED      && cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min    > cs->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             )
+           )
+         ){
+          return split_unsigned_chunk_step(dbt,cs);
+        }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-        g_mutex_unlock(cs->integer_step.mutex);
-        if (cs->integer_step.status==COMPLETED){
-          free_integer_step(cs);
+          g_mutex_unlock(cs->integer_step.mutex);
+          if (cs->integer_step.status==COMPLETED){
+            free_integer_step(cs);
+          }
+        }
+      }else{
+        if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.max // it is not the last chunk
+        && (  
+             ( cs->integer_step.status == DUMPING_CHUNK && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ) || 
+             ( cs->integer_step.status == ASSIGNED      && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)    > cs->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             )
+           )
+         ){
+          return split_signed_chunk_step(dbt,cs);
+        }else{
+//        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
+          g_mutex_unlock(cs->integer_step.mutex);
+          if (cs->integer_step.status==COMPLETED){
+            free_integer_step(cs);
+          }
         }
       }
       cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
@@ -335,13 +447,13 @@ union chunk_step *get_next_chunk(struct db_table *dbt){
   return NULL;
 }
 
-GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
+GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
   MYSQL_RES *res=NULL;
   MYSQL_ROW row;
 
   GList *partition_list = NULL;
 
-  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", database, table);
+  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->name, dbt->table);
   mysql_query(conn,query);
   g_free(query);
 
@@ -350,8 +462,7 @@ GList * get_partitions_for_table(MYSQL *conn, char *database, char *table){
     //partitioning is not supported
     return partition_list;
   while ((row = mysql_fetch_row(res))) {
-//ACA
-    if (eval_partition_regex(row[0]))
+    if ( (!dbt->partition_regex && eval_partition_regex(row[0])) || (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, row[0]) ) )
       partition_list = g_list_append(partition_list, strdup(row[0]));
   }
   mysql_free_result(res);
@@ -390,10 +501,24 @@ void update_integer_min(MYSQL *conn, struct table_job *tj){
   MYSQL_ROW row = NULL;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
+
+
+if (cs->integer_step.is_unsigned) {
+
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
-                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.type.unsign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.unsign.max, tj->dbt->field));
+
+}else{
+
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT" ORDER BY `%s` ASC LIMIT 1",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.prefix,  cs->integer_step.type.sign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.sign.max, tj->dbt->field));
+
+}
+
   g_free(query);
   minmax = mysql_store_result(conn);
 
@@ -405,10 +530,14 @@ void update_integer_min(MYSQL *conn, struct table_job *tj){
   if (row==NULL || row[0]==NULL){
     return;
   }
+if (cs->integer_step.is_unsigned) {
+  guint64 nmin = strtoull(row[0], NULL, 10);
+  cs->integer_step.type.unsign.min = nmin;
+}else{
+  gint64 nmin = strtoll(row[0], NULL, 10);
+  cs->integer_step.type.sign.min = nmin;
 
-  guint64 nmin = strtoul(row[0], NULL, 10);
-
-  cs->integer_step.nmin = nmin;
+}
 }
 
 void update_integer_max(MYSQL *conn, struct table_job *tj){
@@ -417,10 +546,23 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
   MYSQL_ROW row = NULL;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
+
+
+if (cs->integer_step.is_unsigned) {
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
-                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.nmin, tj->dbt->field, tj->dbt->field, cs->integer_step.nmax, tj->dbt->field));
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.type.unsign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.unsign.max, tj->dbt->field));
+
+}else{
+  mysql_query(conn, query = g_strdup_printf(
+                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT" ORDER BY `%s` DESC LIMIT 1",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->integer_step.type.sign.min, tj->dbt->field, tj->dbt->field, cs->integer_step.type.sign.max, tj->dbt->field));
+
+
+}
+
 //  g_free(query);
   minmax = mysql_store_result(conn);
   g_free(query);
@@ -434,13 +576,27 @@ void update_integer_max(MYSQL *conn, struct table_job *tj){
   if (row==NULL || row[0]==NULL){
 //    g_message("No middle point");
 cleanup:
-    cs->integer_step.nmax = cs->integer_step.nmin;
+
+    if (cs->integer_step.is_unsigned) {
+      cs->integer_step.type.unsign.max = cs->integer_step.type.unsign.min;
+    }else{
+      cs->integer_step.type.sign.max = cs->integer_step.type.sign.min;
+    }
+
     mysql_free_result(minmax);
     return;
   }
-  guint64 nmax = strtoul(row[0], NULL, 10); 
-  
-  cs->integer_step.nmax = nmax;
+
+if (cs->integer_step.is_unsigned) {
+  guint64 nmax = strtoull(row[0], NULL, 10);
+  cs->integer_step.type.unsign.max = nmax;
+}else{
+  gint64 nmax = strtoll(row[0], NULL, 10);
+  cs->integer_step.type.sign.max = nmax;
+
+}
+
+
   mysql_free_result(minmax);
 }
 
@@ -453,7 +609,7 @@ gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   gchar * middle = get_escaped_middle_char(conn, cs->char_step.cmax, cs->char_step.cmax_clen, cs->char_step.cmin, cs->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         tj->dbt->field, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, tj->dbt->field, middle, tj->dbt->field, tj->dbt->field, cs->char_step.cmax_escaped, tj->dbt->field));
   g_free(query);
   minmax = mysql_store_result(conn);
@@ -509,7 +665,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 //  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
   mysql_query(td->thrconn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         dbt->field, dbt->database->name, dbt->table, dbt->field, dbt->field, dbt->database->name, dbt->table, dbt->field, middle, dbt->field, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, dbt->field, dbt->field, previous->char_step.cmax_escaped, dbt->field));
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
@@ -557,8 +713,8 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
 
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   GList *partitions=NULL;
-  if (split_partitions){
-    partitions = get_partitions_for_table(conn, dbt->database->name, dbt->table);
+  if (split_partitions || dbt->partition_regex){
+    partitions = get_partitions_for_table(conn, dbt);
   }
 
   if (partitions){
@@ -567,74 +723,99 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     return;
   }
 
-  if (rows_per_file>0){
-  gchar *query = NULL;
-  MYSQL_ROW row;
-  MYSQL_RES *minmax = NULL;
-  /* Get minimum/maximum */
-  mysql_query(conn, query = g_strdup_printf(
+  if (dbt->start_rows_per_file>0 && dbt->rows_in_sts > dbt->min_rows_per_file ){
+    gchar *query = NULL;
+    MYSQL_ROW row;
+    MYSQL_RES *minmax = NULL;
+    /* Get minimum/maximum */
+    mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s",
-                        (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB)
+                        is_mysql_like()
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
                         dbt->field, dbt->field, dbt->field, dbt->field, dbt->database->name, dbt->table, where_option ? "WHERE" : "", where_option ? where_option : ""));
 //  g_message("Query: %s", query);
-  g_free(query);
-  minmax = mysql_store_result(conn);
+    g_free(query);
+    minmax = mysql_store_result(conn);
 
-  if (!minmax){
-    dbt->chunk_type=NONE;
-    goto cleanup;
-  }
-
-  row = mysql_fetch_row(minmax);
-
-  MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-  gulong *lengths = mysql_fetch_lengths(minmax);
-  /* Check if all values are NULL */
-  if (row[0] == NULL){
-    dbt->chunk_type=NONE;
-    goto cleanup;
-  }
-  /* Support just bigger INTs for now, very dumb, no verify approach */
-  guint64 nmin,nmax;
-  union chunk_step *cs = NULL;
-  switch (fields[0].type) {
-  case MYSQL_TYPE_LONG:
-  case MYSQL_TYPE_LONGLONG:
-  case MYSQL_TYPE_INT24:
-  case MYSQL_TYPE_SHORT:
-    nmin = strtoul(row[0], NULL, 10);
-    nmax = strtoul(row[1], NULL, 10) + 1;
-    if ((nmax-nmin) > (4 * rows_per_file)){
-      cs=new_integer_step(g_strdup_printf("`%s` IS NULL OR `%s` = %"G_GUINT64_FORMAT" OR", dbt->field, dbt->field, nmin), dbt->field, nmin, nmax, 0, rows_per_file, 0, FALSE, FALSE);
-      dbt->chunks=g_list_prepend(dbt->chunks,cs);
-      g_async_queue_push(dbt->chunks_queue, cs);
-      dbt->chunk_type=INTEGER;
-      dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
-    }else{
+    if (!minmax){
       dbt->chunk_type=NONE;
+      goto cleanup;
     }
-    if (minmax) mysql_free_result(minmax);
-    return;
-    break;
-  case MYSQL_TYPE_STRING:
-  case MYSQL_TYPE_VAR_STRING:
-    cs=new_char_step(conn, dbt->field, 0, 0, row, lengths);
-    dbt->chunks=g_list_prepend(dbt->chunks,cs);
-    g_async_queue_push(dbt->chunks_queue, cs);
-    dbt->chunk_type=CHAR;
-    if (minmax) mysql_free_result(minmax);
-    return;
-    break;
-  default:
-    dbt->chunk_type=NONE;
-    break;
-  }
-cleanup:
-  if (minmax)
-    mysql_free_result(minmax);
 
+    row = mysql_fetch_row(minmax);
+
+    MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
+    gulong *lengths = mysql_fetch_lengths(minmax);
+    /* Check if all values are NULL */
+    if (row[0] == NULL){
+      dbt->chunk_type=NONE;
+      goto cleanup;
+    }
+  /* Support just bigger INTs for now, very dumb, no verify approach */
+    guint64 abs;
+    guint64 unmin, unmax;
+    gint64 nmin, nmax;
+    gchar *prefix=NULL;
+    union chunk_step *cs = NULL;
+    switch (fields[0].type) {
+      case MYSQL_TYPE_LONG:
+      case MYSQL_TYPE_LONGLONG:
+      case MYSQL_TYPE_INT24:
+      case MYSQL_TYPE_SHORT:
+        if (dbt->min_rows_per_file==dbt->start_rows_per_file && dbt->max_rows_per_file==dbt->start_rows_per_file)
+          dbt->chunk_filesize=0;
+
+        unmin = strtoull(row[0], NULL, 10);
+        unmax = strtoull(row[1], NULL, 10) + 1;
+        nmin  = strtoll (row[0], NULL, 10);
+        nmax  = strtoll (row[1], NULL, 10) + 1;
+
+        if (fields[0].flags & UNSIGNED_FLAG){
+          prefix= g_strdup_printf("`%s` IS NULL OR", dbt->field) ;
+          abs=gint64_abs(unmax-unmin);
+        }else{
+          prefix= g_strdup_printf("`%s` IS NULL OR ", dbt->field) ;
+          abs=gint64_abs(nmax-nmin);
+        }
+        if ( abs > dbt->min_rows_per_file){
+          union type type;
+          if ((fields[0].flags & UNSIGNED_FLAG)){
+            type.unsign.min=unmin;
+            type.unsign.max=unmax;
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
+          }else{
+            type.sign.min=nmin;
+            type.sign.max=nmax;
+            cs=new_integer_step(prefix, dbt->field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
+          }
+
+          dbt->chunks=g_list_prepend(dbt->chunks,cs);
+          g_async_queue_push(dbt->chunks_queue, cs);
+          dbt->chunk_type=INTEGER;
+          dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
+        }else{
+          dbt->chunk_type=NONE;
+        }
+        if (minmax) mysql_free_result(minmax);
+        return;
+        break;
+      case MYSQL_TYPE_STRING:
+      case MYSQL_TYPE_VAR_STRING:
+        cs=new_char_step(conn, dbt->field, 0, 0, row, lengths);
+        dbt->chunks=g_list_prepend(dbt->chunks,cs);
+        g_async_queue_push(dbt->chunks_queue, cs);
+        dbt->chunk_type=CHAR;
+        if (minmax) mysql_free_result(minmax);
+        return;
+        break;
+      default:
+        dbt->chunk_type=NONE;
+        break;
+      }
+    cleanup:
+      if (minmax)
+        mysql_free_result(minmax);
   }else
     dbt->chunk_type=NONE;
 }

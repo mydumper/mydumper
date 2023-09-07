@@ -14,28 +14,8 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-
-#ifndef _src_myloader_control_job_h
-#define _src_myloader_control_job_h
-
 #include "myloader.h"
 
-enum control_job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN };
-
-union control_job_data {
-  struct restore_job *restore_job;
-  GAsyncQueue *queue;
-};
-
-struct control_job {
-  enum control_job_type type;
-  union control_job_data data;
-  char * use_database;
-};
-
-struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database);
-gboolean process_job(struct thread_data *td, struct control_job *job);
-void refresh_db_and_jobs(enum file_type current_ft);
-void initialize_control_job (struct configuration *conf);
-void last_wait_control_job_to_shutdown();
-#endif
+void initialize_post_loding_threads(struct configuration *conf);
+void create_post_shutdown_job(struct configuration *conf);
+void wait_post_worker_to_finish();

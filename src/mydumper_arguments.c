@@ -147,8 +147,6 @@ static GOptionEntry daemon_entries[] = {
 
 
 static GOptionEntry chunks_entries[] = {
-    {"max-rows", 0, 0, G_OPTION_ARG_INT64, &max_rows,
-     "Limit the number of rows per block after the table is estimated, default 1000000. It has been deprecated, use --rows instead. Removed in future releases", NULL},
     {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
      "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
@@ -257,8 +255,8 @@ GOptionContext * load_contex_entries(){
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
 
-  GOptionGroup *connection_group = load_connection_entries(context);
-  g_option_group_add_entries(connection_group, common_connection_entries);
+  load_connection_entries(context);
+//  g_option_group_add_entries(connection_group, common_connection_entries);
 
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);

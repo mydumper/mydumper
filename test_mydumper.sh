@@ -48,11 +48,19 @@ test_case_dir (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
-      echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying export due error"
+      echo "Exporting database: ${mydumper_parameters}"
+      eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+      error=$?
+      cat $tmp_mydumper_log >> $mydumper_log
+      if (( $error > 0 ))
+        then
+        mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+        echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
   if [ "$PARTIAL" != "1" ]
@@ -72,14 +80,23 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
-      echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      mv $tmp_myloader_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying import due error"
+      echo "Importing database: ${myloader_parameters}"
+      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+      eval $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+      error=$?
+      cat $tmp_myloader_log >> $myloader_log
+      if (( $error > 0 ))
+      then
+        mv $mysqldumplog $mydumper_stor_dir
+        echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
+        echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        cat $tmp_myloader_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        mv $tmp_myloader_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
 }
@@ -108,10 +125,18 @@ test_case_stream (){
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
     if (( $error > 0 ))
     then
-      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying export due error"
+      echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+      eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+      error=$?
+      mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+      if (( $error > 0 ))
+      then
+        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        cat $tmp_mydumper_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   if [ "$PARTIAL" != "1" ]
   then
@@ -126,21 +151,29 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      mv $mysqldumplog $mydumper_stor_dir
-      echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-      echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
-      mv $tmp_mydumper_log $mydumper_stor_dir
-      mv $tmp_myloader_log $mydumper_stor_dir
-      exit $error
+      echo "Retrying import due error"
+      cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+      error=$?
+      cat $tmp_myloader_log >> $myloader_log
+      cat $tmp_mydumper_log >> $mydumper_log
+      if (( $error > 0 ))
+      then
+        mv $mysqldumplog $mydumper_stor_dir
+        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+        cat $tmp_mydumper_log
+        cat $tmp_myloader_log
+        mv $tmp_mydumper_log $mydumper_stor_dir
+        mv $tmp_myloader_log $mydumper_stor_dir
+        exit $error
+      fi
     fi
   fi
 }
 
 number=0
 
-full_test(){
+prepare_full_test(){
 
   if [ ! -f "sakila-db.tar.gz" ]; then
     wget -O sakila-db.tar.gz  https://downloads.mysql.com/docs/sakila-db.tar.gz
@@ -157,51 +190,44 @@ full_test(){
   # export -- import
   # 1000 rows -- database must not exist
 
-  mydumper_general_options="-h 127.0.0.1 -u root -R -E -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
-  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1"
+  mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
+  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1"
+}
 
-
+full_test_global(){
   # single file compressed -- overriting database
 #  test_case_dir -c ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir}
   PARTIAL=0
   for test in test_case_dir test_case_stream
   do 
     echo "Executing test: $test"
-
-    $test -r 1000 -G ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # 10000 rows -- overriting database
-    $test -r 1000 --less-locking -G ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # 10000 rows -- overriting database
-    $test -r 10:100:10000 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # chunking the file to 10MB -- overriting database
-    $test -F 10 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # chunking the file to 100MB -- overriting database
-    $test -F 100 ${mydumper_general_options} 				-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # statement size to 2MB -- overriting database
-    $test -s 2000000 ${mydumper_general_options} 			-- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # compress and rows
-    $test -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES 
-    # compress and rows
-    $test --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # compress and rows
-    $test --use-savepoints -F 10 --less-locking -r 1000 -c ${mydumper_general_options}                         -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --load-data
-    $test --load-data ${mydumper_general_options}                        -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    $test --load-data -c ${mydumper_general_options}                        -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test -c --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test -c -r 10000 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation  --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
-    # --csv
-    $test -c -F 10 --csv ${mydumper_general_options}                              -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
+    for compress_mode in "" "-c GZIP" "-c ZSTD"
+      do
+      for backup_mode in "" "--load-data" "--csv"
+        do
+        for innodb_optimize_key_mode in "" "--innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES" "--innodb-optimize-keys=AFTER_IMPORT_PER_TABLE" 
+          do
+          for rows_and_filesize_mode in "" "-r 1000" "-r 10:100:10000" "-F 10" "-r 10:100:10000 -F 10" 
+            do
+            $test $backup_mode $compress_mode $rows_and_filesize_mode                                 ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+            # statement size to 2MB -- overriting database
+            $test $backup_mode $compress_mode $rows_and_filesize_mode -s 2000000                      ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+            # compress and rows
+            $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints --less-locking ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+ 
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
-
+            done
+          done
+        done
+      done
     myloader_stor_dir=$stream_stor_dir
   done
   myloader_stor_dir=$mydumper_stor_dir
+}
+
+full_test_per_table(){
+
   PARTIAL=1
   echo "Starting per table tests"
   for test in test_case_dir test_case_stream
@@ -218,6 +244,13 @@ full_test(){
   done
 
 
+}
+
+
+full_test(){
+  prepare_full_test
+  full_test_global
+  full_test_per_table
 }
 
 full_test

@@ -129,10 +129,11 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
 
   return g_str_has_suffix(str,suffix);
 }
-struct database * new_database(gchar *database){
+struct database * new_database(gchar *database, gchar *filename){
   struct database * d = g_new(struct database, 1);
   d->name=database;
-  d->real_database = g_strdup(db ? db : database);
+  d->real_database = g_strdup(db ? db : d->name);
+  d->filename = filename;
   d->mutex=g_mutex_new();
   d->queue=g_async_queue_new();;
   d->schema_state=NOT_FOUND;
@@ -142,12 +143,17 @@ struct database * new_database(gchar *database){
   return d;
 }
 
-struct database * get_db_hash(gchar *k, gchar *v){
+struct database * get_db_hash(gchar *filename, gchar *name){
   g_mutex_lock(db_hash_mutex);
-  struct database * d=g_hash_table_lookup(db_hash, k);
+  struct database * d=g_hash_table_lookup(db_hash, filename);
   if (d==NULL){
-    d=new_database(g_strdup(v));
-    g_hash_table_insert(db_hash, k, d);
+    d=new_database(g_strdup(name), filename);
+    g_hash_table_insert(db_hash, filename, d);
+  }else{
+    if (filename != name){
+      d->name=g_strdup(name);
+      d->real_database = g_strdup(db ? db : d->name);
+    }
   }
   g_mutex_unlock(db_hash_mutex);
   return d;
@@ -232,37 +238,53 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
 
 
 enum file_type get_file_type (const char * filename){
-  if (m_filename_has_suffix(filename, "-schema.sql")) {
-    return SCHEMA_TABLE;
-//  } else if (m_filename_has_suffix(filename, "-metadata")) {
-//    return METADATA_TABLE;
-  } else if ( strcmp(filename, "metadata") == 0 ){
+
+  if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
     return METADATA_GLOBAL;
-  } else if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 ){
+
+  if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
+    return IGNORED;  
+
+  if (m_filename_has_suffix(filename, "-schema.sql")) 
+    return SCHEMA_TABLE;
+
+  if ( strcmp(filename, "all-schema-create-tablespace.sql") == 0 )
     return SCHEMA_TABLESPACE;
-  } else if ( strcmp(filename, "resume") == 0 ){
+
+  if ( strcmp(filename, "resume") == 0 ){
     if (!resume){
       m_critical("resume file found, but no --resume option passed. Use --resume or remove it and restart process if you consider that it will be safe.");
     }
     return RESUME;
-  } else if ( strcmp(filename, "resume.partial") == 0 ){
+  }
+
+  if ( strcmp(filename, "resume.partial") == 0 )
     m_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
-  } else if (m_filename_has_suffix(filename, "-checksum")) {
+
+  if (m_filename_has_suffix(filename, "-checksum"))
     return CHECKSUM;
-  } else if (m_filename_has_suffix(filename, "-schema-view.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-view.sql") )
     return SCHEMA_VIEW;
-  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-sequence.sql") )
     return SCHEMA_SEQUENCE;
-  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-triggers.sql") )
     return SCHEMA_TRIGGER;
-  } else if (m_filename_has_suffix(filename, "-schema-post.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-post.sql") )
     return SCHEMA_POST;
-  } else if (m_filename_has_suffix(filename, "-schema-create.sql") ){
+
+  if (m_filename_has_suffix(filename, "-schema-create.sql") )
     return SCHEMA_CREATE;
-  } else if (m_filename_has_suffix(filename, ".sql") ){
+
+  if (m_filename_has_suffix(filename, ".sql") )
     return DATA;
-  }else if (m_filename_has_suffix(filename, ".dat"))
+
+  if (m_filename_has_suffix(filename, ".dat"))
     return LOAD_DATA;
+
   return IGNORED;
 }
 
@@ -297,7 +319,7 @@ void finish_alter_table(GString * alter_table_statement){
     g_string_append(alter_table_statement,";\n");
 }
 
-int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt){
+int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
   int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
@@ -306,12 +328,12 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   int fulltext_counter=0;
   int i=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
-    if ( g_strstr_len(split_file[i],5,"  KEY")
+    if (split_indexes &&( g_strstr_len(split_file[i],5,"  KEY")
       || g_strstr_len(split_file[i],8,"  UNIQUE")
       || g_strstr_len(split_file[i],9,"  SPATIAL")
       || g_strstr_len(split_file[i],10,"  FULLTEXT")
       || g_strstr_len(split_file[i],7,"  INDEX")
-      ){
+      )){
       // Ignore if the first column of the index is the AUTO_INCREMENT column
       if ((autoinc_column != NULL) && (g_strrstr(split_file[i],autoinc_column))){
         g_string_append(create_table_statement, split_file[i]);
@@ -461,6 +483,7 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
     *command=gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
+
   }
   if (len!=0){
     gchar *dotpos=&(filename[strlen(filename)]) - len;

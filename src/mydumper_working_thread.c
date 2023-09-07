@@ -74,9 +74,12 @@
 #define MYSQL_TYPE_JSON 245
 #endif
 
+
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+
+
 GMutex *init_mutex = NULL;
 /* Program options */
-guint rows_per_file = 0;
 gboolean use_savepoints = FALSE;
 gint database_counter = 0;
 //gint table_counter = 0;
@@ -118,46 +121,52 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 gchar *get_primary_key_string(MYSQL *conn, char *database, char *table);
-void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
+//void write_table_job_into_file(MYSQL *conn, struct table_job * tj);
 
-guint min_rows_per_file = 0;
-guint max_rows_per_file = 0;
+guint64 min_rows_per_file = 0;
+guint64 rows_per_file = 0;
+guint64 max_rows_per_file = 0;
 
-void parse_rows_per_chunk(){
-  gchar **split=g_strsplit(rows_per_chunk, ":", 0);
+void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
+  gchar **split=g_strsplit(rows_p_chunk, ":", 0);
   guint len = g_strv_length(split);
   switch (len){
    case 0:
      g_critical("This should not happend");
      break;
    case 1:
-     rows_per_file=strtol(split[0],NULL, 10);
-     min_rows_per_file=rows_per_file;
-     max_rows_per_file=rows_per_file;
+     *start= strtol(split[0],NULL, 10);
+     *min  = *start;
+     *max  = *start;
      break;
    case 2:
-     min_rows_per_file=strtol(split[0],NULL, 10);
-     rows_per_file=strtol(split[1],NULL, 10);
-     max_rows_per_file=rows_per_file;
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = *start;
      break;
    default:
-     min_rows_per_file=strtol(split[0],NULL, 10);
-     rows_per_file=strtol(split[1],NULL, 10);
-     max_rows_per_file=strtol(split[2],NULL, 10);
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = strtol(split[2],NULL, 10);
      break;
   }
   g_strfreev(split);
 }
 
+FILE * m_fopen(char **filename, const char *type ){
+  return g_fopen(*filename, type);
+}
 
 void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
-    parse_rows_per_chunk();
-  else {
-    min_rows_per_file = rows_per_file / 100;
-    max_rows_per_file = rows_per_file * 100;
+    parse_rows_per_chunk(rows_per_chunk, &min_rows_per_file, &rows_per_file, &max_rows_per_file);
+
+  if (max_rows_per_file > G_MAXUINT64 / num_threads){
+    max_rows_per_file= G_MAXUINT64 / num_threads;
+    m_error("This should not happen");
   }
+
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
   non_innodb_table_mutex = g_mutex_new();
@@ -194,20 +203,27 @@ void initialize_working_thread(){
   m_write=(void *)&write_file;
 
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
-    m_open=&g_fopen;
+    m_open=&m_fopen;
     m_close=(void *) &m_close_file;
     m_write=(void *)&write_file;
     exec_per_thread_extension=EMPTY_STRING;
   } else {
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
-      g_critical("--compression and --exec-per-thread are not comptatible");
+      m_critical("--compression and --exec-per-thread are not comptatible");
     }
+    gchar *cmd=NULL;
     if ( g_strcmp0(compress_method,GZIP)==0){
-      exec_per_thread=g_strdup("/usr/bin/gzip -c");
-      exec_per_thread_extension=g_strdup(".gz");
+      if ((cmd=get_gzip_cmd()) == NULL){
+        g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=GZIP_EXTENSION;
     }else if ( g_strcmp0(compress_method,ZSTD)==0){
-      exec_per_thread=g_strdup("/usr/bin/zstd -c");
-      exec_per_thread_extension=g_strdup(".zst");
+      if ( (cmd=get_zstd_cmd()) == NULL ){
+        g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
+      }
+      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread_extension=ZSTD_EXTENSION;
     }
     m_open=&m_open_pipe;
     m_close=&m_close_pipe;
@@ -311,16 +327,16 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
   for (x = 0; table_list[x] != NULL; x++) {
     dt = g_strsplit(table_list[x], ".", 0);
 
-    // Need 7 columns with DATA_LENGTH as the last one for this to work
-    if (detected_server == SERVER_TYPE_MARIADB)
+  // Need 7 columns with DATA_LENGTH as the last one for this to work
+    if (detected_server == SERVER_TYPE_MARIADB){
       query =
           g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
                           "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
                           dt[0], dt[1]);
-    else
+    }else{
       query =
           g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
-
+    }
     if (mysql_query(conn, (query))) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
                  mysql_error(conn));
@@ -329,9 +345,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     }
 
     MYSQL_RES *result = mysql_store_result(conn);
-    guint ecol = -1, ccol = -1, collcol;
-    determine_ecol_ccol(result, &ecol, &ccol, &collcol);
-
+    guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
+    determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
     struct database * database=NULL;
     if (get_database(conn, dt[0], &database)){
       if (!database->already_dumped){
@@ -374,7 +389,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
+      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -463,39 +478,13 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
       break;
   }
   if (tj->sql_file){
-    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize);
+    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
     tj->sql_file=NULL;
   }
   if (tj->dat_file){
-    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize);
+    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
     tj->dat_file=NULL;
   }
-
-/*  if (tj->sql_filename != NULL ){
-    if (tj->filesize == 0 && !build_empty_files) {
-    // dropping the useless file
-      if (tj->sql_filename!=NULL){
-        if (remove(tj->sql_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s  %lu", td->thread_id, tj->sql_filename, tj->nchunk);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->sql_filename);
-        }
-      }
-      if (load_data && tj->dat_filename!=NULL){
-        if (remove(tj->dat_filename)) {
-          g_warning("Thread %d: Failed to remove empty file : %s", td->thread_id, tj->dat_filename);
-        }else{
-          g_message("Thread %d: File removed: %s", td->thread_id, tj->dat_filename);
-        }
-      }
-    } else if (stream) {
-      g_async_queue_push(stream_queue, g_strdup(tj->sql_filename));
-      if (load_data){
-        g_async_queue_push(stream_queue, g_strdup(tj->dat_filename));
-      }
-    } 
-  }
-*/
 
 /*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
@@ -507,7 +496,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 }
 
 void initialize_thread(struct thread_data *td){
-  m_connect(td->thrconn, NULL);
+  m_connect(td->thrconn);
   g_message("Thread %d: connected using MySQL connection ID %lu",
             td->thread_id, mysql_thread_id(td->thrconn));
 }
@@ -533,12 +522,17 @@ void initialize_consistent_snapshot(struct thread_data *td){
       g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
     }else{
       MYSQL_RES *res = mysql_store_result(td->thrconn);
-      MYSQL_ROW row = mysql_fetch_row(res);
-      if (row!=NULL)
-        td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-      else
+      if (res){
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row!=NULL)
+          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+        else
+          td->binlog_snapshot_gtid_executed=g_strdup("");
+        mysql_free_result(res);
+      }else{
+        g_warning("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
         td->binlog_snapshot_gtid_executed=g_strdup("");
-      mysql_free_result(res);
+      }
     }
     start_transaction_retry++;
     g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
@@ -610,7 +604,10 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   guint isms;
   guint i;
 
-  mysql_query(conn, "SHOW MASTER STATUS");
+  
+  if (mysql_query(conn, "SHOW MASTER STATUS"))
+    m_critical("Couldn't get master position: %s", mysql_error(conn));
+    
   master = mysql_store_result(conn);
   if (master && (row = mysql_fetch_row(master))) {
     masterlog = row[0];
@@ -726,6 +723,11 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 //    case JOB_TABLE:
 //      thd_JOB_TABLE(td, job);
 //      break;
+    case JOB_WRITE_MASTER_STATUS:
+      write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_free(job);
+      break;
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
@@ -777,6 +779,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
       break;
     case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
+      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:
@@ -863,14 +866,31 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
     g_free(tj->where);
   switch (tj->dbt->chunk_type){
     case INTEGER:
-      tj->where=tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax ?
-                g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
+if (tj->chunk_step->integer_step.is_unsigned){
+      if (tj->chunk_step->integer_step.type.unsign.min == tj->chunk_step->integer_step.type.unsign.max) {
+                g_warning("Thread %d: This shouldn't happen 1", td->thread_id);
+                tj->where=g_strdup_printf("(%s ( `%s` = %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor):
-                g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" < `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor);
+      }else{
+                tj->where=g_strdup_printf("( %s ( %"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT"))",
                           tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
-                          tj->chunk_step->integer_step.nmin, tj->chunk_step->integer_step.field,
-                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.cursor);
+                          tj->chunk_step->integer_step.type.unsign.min, tj->chunk_step->integer_step.field,
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.unsign.cursor);
+      }
+}else{
+      if (tj->chunk_step->integer_step.type.sign.min == tj->chunk_step->integer_step.type.sign.max){
+                g_warning("Thread %d: This shouldn't happen 2", td->thread_id);
+                tj->where=g_strdup_printf("(%s ( `%s` = %"G_GINT64_FORMAT"))",
+                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor);
+      }else{
+                tj->where=g_strdup_printf("( %s ( %"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT"))",
+                          tj->chunk_step->integer_step.prefix?tj->chunk_step->integer_step.prefix:"",
+                          tj->chunk_step->integer_step.type.sign.min, tj->chunk_step->integer_step.field,
+                          tj->chunk_step->integer_step.field, tj->chunk_step->integer_step.type.sign.cursor);
+      }
+}
     break;
   case CHAR:
     if (td != NULL){
@@ -900,6 +920,10 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
     return 1;
   }
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
+//  if (tj->chunk_step->integer_step.status == COMPLETED)
+//    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
+  tj->chunk_step->integer_step.status = DUMPING_CHUNK; 
+
   if (tj->chunk_step->integer_step.check_max){
 //    g_message("thread: %d Updating MAX", td->thread_id);
     update_integer_max(td->thrconn, tj);
@@ -911,13 +935,41 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
 //    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
     tj->chunk_step->integer_step.check_min=FALSE;
   }
-  tj->chunk_step->integer_step.cursor = tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step > tj->chunk_step->integer_step.nmax ? tj->chunk_step->integer_step.nmax : tj->chunk_step->integer_step.nmin + tj->chunk_step->integer_step.step;
-  tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.nmax - tj->chunk_step->integer_step.cursor) / tj->chunk_step->integer_step.step;
+
+if (tj->chunk_step->integer_step.is_unsigned){
+
+//  tj->chunk_step->integer_step.type.unsign.cursor = (tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step) > tj->chunk_step->integer_step.type.unsign.max ? tj->chunk_step->integer_step.type.unsign.max : tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step;
+  if (tj->chunk_step->integer_step.step -1 > tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.min)
+    tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.max;
+  else
+    tj->chunk_step->integer_step.type.unsign.cursor = tj->chunk_step->integer_step.type.unsign.min + tj->chunk_step->integer_step.step -1;
+  tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.unsign.max - tj->chunk_step->integer_step.type.unsign.cursor) / tj->chunk_step->integer_step.step;
+
+}else{
+
+//  tj->chunk_step->integer_step.type.sign.cursor = ((gint64)(tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step)) > tj->chunk_step->integer_step.type.sign.max ? tj->chunk_step->integer_step.type.sign.max : tj->chunk_step->integer_step.type.sign.min + (gint64) tj->chunk_step->integer_step.step;
+  if (tj->chunk_step->integer_step.step - 1 > gint64_abs(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.min)) 
+    tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.max;
+  else
+    tj->chunk_step->integer_step.type.sign.cursor = tj->chunk_step->integer_step.type.sign.min + tj->chunk_step->integer_step.step - 1;
+  tj->chunk_step->integer_step.estimated_remaining_steps=(tj->chunk_step->integer_step.type.sign.max - tj->chunk_step->integer_step.type.sign.cursor) / tj->chunk_step->integer_step.step;
+}
+
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
 /*  if (tj->chunk_step->integer_step.nmin == tj->chunk_step->integer_step.nmax){
     return;
   }*/
 //  g_message("CONTINUE");
+
+  if (tj->chunk_step->integer_step.is_unsigned){
+    if (tj->chunk_step->integer_step.type.unsign.cursor == tj->chunk_step->integer_step.type.unsign.min)
+      return 0;
+  }else{
+    if (tj->chunk_step->integer_step.type.sign.cursor == tj->chunk_step->integer_step.type.sign.min)
+      return 0;
+  }
+
+
   update_where_on_table_job(td, tj);
 //  message_dumping_data(td,tj);
 
@@ -933,14 +985,20 @@ guint process_integer_chunk_job(struct thread_data *td, struct table_job *tj){
     tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }else if (diff < 1){
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2;
+    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2 == 0?tj->chunk_step->integer_step.step:tj->chunk_step->integer_step.step  * 2;
     if (max_rows_per_file!=0)
       tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
   }
 
   g_mutex_lock(tj->chunk_step->integer_step.mutex);
-  tj->chunk_step->integer_step.nmin=tj->chunk_step->integer_step.cursor;
+  if (tj->chunk_step->integer_step.status != COMPLETED)
+    tj->chunk_step->integer_step.status = ASSIGNED;
+  if (tj->chunk_step->integer_step.is_unsigned){
+    tj->chunk_step->integer_step.type.unsign.min=tj->chunk_step->integer_step.type.unsign.cursor+1;
+  }else{
+    tj->chunk_step->integer_step.type.sign.min=tj->chunk_step->integer_step.type.sign.cursor+1;
+  }
   g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   return 0;
 }
@@ -956,12 +1014,31 @@ void process_integer_chunk(struct thread_data *td, struct table_job *tj){
   if (cs->integer_step.prefix)
     g_free(cs->integer_step.prefix);
   cs->integer_step.prefix=NULL;
-  while ( cs->integer_step.nmin < cs->integer_step.nmax ){
-    if (process_integer_chunk_job(td,tj)){
-      g_message("Thread %d: Job has been cacelled",td->thread_id);
-      return;
+  if (cs->integer_step.is_unsigned){
+    g_mutex_lock(tj->chunk_step->integer_step.mutex);
+    while ( cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max ){
+//      g_message("%"G_GUINT64_FORMAT" |\t %"G_GUINT64_FORMAT" | \t %d  %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.type.unsign.min < cs->integer_step.type.unsign.max, cs->integer_step.step);
+      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+      if (process_integer_chunk_job(td,tj)){
+        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        return;
+      }
+      g_atomic_int_inc(dbt->chunks_completed);
+      g_mutex_lock(tj->chunk_step->integer_step.mutex);
     }
-    g_atomic_int_inc(dbt->chunks_completed);
+    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+  }else{
+    g_mutex_lock(tj->chunk_step->integer_step.mutex);
+    while ( cs->integer_step.type.sign.min < cs->integer_step.type.sign.max ){
+      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+      if (process_integer_chunk_job(td,tj)){
+        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        return;
+      }
+      g_atomic_int_inc(dbt->chunks_completed);
+      g_mutex_lock(tj->chunk_step->integer_step.mutex);
+    }
+    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
@@ -1119,6 +1196,8 @@ void *working_thread(struct thread_data *td) {
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
   process_queue(td->conf->schema_queue,td, process_job, NULL);
+
+  if (stream) send_initial_metadata();
 
   if (!no_data){
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
@@ -1318,11 +1397,12 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   return character_set;
 }
 
-struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength){
+struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength, guint64 rows_in_sts){
   struct db_table *dbt = g_new(struct db_table, 1);
   dbt->database = database;
   dbt->table = g_strdup(table);
   dbt->table_filename = get_ref_table(dbt->table);
+  dbt->rows_in_sts = rows_in_sts;
   dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
   dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
   dbt->rows_lock= g_mutex_new();
@@ -1333,6 +1413,15 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, k);
   dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, k);
   dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, k);
+  dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, k);
+  gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, k);
+  if (rows_p_chunk )
+    parse_rows_per_chunk(rows_p_chunk, &(dbt->min_rows_per_file), &(dbt->start_rows_per_file), &(dbt->max_rows_per_file));
+  else{
+    dbt->min_rows_per_file=min_rows_per_file;
+    dbt->start_rows_per_file=rows_per_file;
+    dbt->max_rows_per_file=max_rows_per_file;
+  }
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->estimated_remaining_steps=1;
   dbt->min=NULL;
@@ -1346,6 +1435,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   *(dbt->chunks_completed)=0;
   dbt->field=get_field_for_dbt(conn,dbt,conf);
   dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
+  dbt->chunk_filesize=chunk_filesize;
 //  set_chunk_strategy_for_dbt(conn, dbt);
 //  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
   g_free(k);
@@ -1368,9 +1458,9 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 }
 
 void free_db_table(struct db_table * dbt){
+  g_mutex_lock(dbt->chunks_mutex);
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
-  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
     g_string_free(dbt->insert_statement,TRUE);
@@ -1380,6 +1470,8 @@ void free_db_table(struct db_table * dbt){
 /*  g_free();
   g_free();
   g_free();*/
+  g_free(dbt->data_checksum);
+  dbt->data_checksum=NULL;
   g_free(dbt->chunks_completed);
   g_free(dbt->field);
   union chunk_step * cs = NULL;
@@ -1397,10 +1489,12 @@ void free_db_table(struct db_table * dbt){
     default:
       break;
   }
+  g_mutex_unlock(dbt->chunks_mutex);
+  g_mutex_free(dbt->chunks_mutex);
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -1409,7 +1503,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   }
   g_mutex_unlock(database->ad_mutex);
 
-  struct db_table *dbt = new_db_table( conn, conf, database, table, collation, datalength);
+  struct db_table *dbt = new_db_table( conn, conf, database, table, collation, datalength, rows_in_sts);
   g_mutex_lock(all_dbts_mutex);
   all_dbts=g_list_prepend( all_dbts, dbt) ;
   g_mutex_unlock(all_dbts_mutex);
@@ -1560,7 +1654,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   char *query;
   mysql_select_db(conn, database->name);
-  if (detected_server == SERVER_TYPE_MYSQL ||
+  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA || detected_server == SERVER_TYPE_UNKNOWN ||
       detected_server == SERVER_TYPE_TIDB)
     query = g_strdup("SHOW TABLE STATUS");
   else if (detected_server == SERVER_TYPE_MARIADB)
@@ -1583,7 +1677,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   guint ecol = -1;
   guint ccol = -1;
   guint collcol = -1;
-  determine_ecol_ccol(result, &ecol, &ccol, &collcol);
+  guint rowscol = 0;
+  determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
     errors++;
@@ -1602,8 +1697,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
        TABLE STATUS row[1] == NULL if it is a view in 5.0 'SHOW TABLE STATUS'
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
-    if ((detected_server == SERVER_TYPE_MYSQL ||
-         detected_server == SERVER_TYPE_MARIADB ||
+    if ((is_mysql_like() || 
          detected_server == SERVER_TYPE_TIDB ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
@@ -1688,8 +1782,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     if (!dump)
       continue;
-
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol]);
+    
+    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
 
   }
 
@@ -1710,15 +1804,3 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   return;
 }
-
-void write_table_job_into_file(MYSQL *conn, struct table_job *tj) {
-  guint64 rows_count =
-      write_table_data_into_file(conn, tj);
-
-  if (!rows_count){
-//    g_message("Empty chunk on %s.%s", tj->dbt->database->name, tj->dbt->table);
-//    tj->cs->char_step.step=cs->char_step.step
-  }
-  
-}
-

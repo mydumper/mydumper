@@ -21,4 +21,13 @@ RUN \
 RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
 
+RUN \
+  . /etc/os-release && \
+  curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb \
+    https://repo.mysql.com/mysql-apt-config_0.8.25-1_all.deb \
+  && \
+  sudo dpkg -i /tmp/mysql-apt-config.deb && \
+  rm -v /tmp/mysql-apt-config.deb && \
+  sudo apt-get update
+
 

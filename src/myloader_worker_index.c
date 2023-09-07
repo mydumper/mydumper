@@ -52,7 +52,7 @@ void initialize_worker_index(struct configuration *conf){
   innodb_optimize_keys_all_tables_queue=g_async_queue_new();
   for (n = 0; n < max_threads_for_index_creation; n++) {
     index_td[n].conf = conf;
-    index_td[n].thread_id = n + 1;
+    index_td[n].thread_id = n + 1 + num_threads + max_threads_for_schema_creation;
     index_td[n].status = WAITING;
     index_threads[n] =
         g_thread_create((GThreadFunc)worker_index_thread, &index_td[n], TRUE, NULL);
@@ -86,7 +86,7 @@ void *worker_index_thread(struct thread_data *td) {
   g_mutex_unlock(init_connection_mutex);
   td->current_database=NULL;
 
-  m_connect(td->thrconn, NULL);
+  m_connect(td->thrconn);
 
   execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));

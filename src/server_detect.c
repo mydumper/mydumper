@@ -20,75 +20,39 @@
 #include <string.h>
 #include "server_detect.h"
 #include "common.h"
-int detect_server(MYSQL *conn) {
-  pcre *re = NULL;
-  const char *error;
-  int erroroffset;
-  int ovector[9] = {0};
-  int rc;
-  const char *db_version = mysql_get_server_info(conn);
 
-  // debug the version
-  g_message("Server version reported as: %s", db_version);
-
-  re = pcre_compile(DETECT_TIDB_REGEX, 0, &error, &erroroffset, NULL);
-  if (!re) {
-    m_critical("Regular expression fail: %s", error);
-  }
-
-  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-  pcre_free(re);
-
-  if (rc > 0) {
-    return SERVER_TYPE_TIDB;
-  }
-
-  re = pcre_compile(DETECT_MYSQL_REGEX, 0, &error, &erroroffset, NULL);
-  if (!re) {
-    m_critical("Regular expression fail: %s", error);
-  }
-
-  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-  pcre_free(re);
-
-  if (rc > 0) {
-    return SERVER_TYPE_MYSQL;
-  }
-
-  re = pcre_compile(DETECT_MARIADB_REGEX, 0, &error, &erroroffset, NULL);
-  if (!re) {
-    m_critical("Regular expression fail: %s", error);
-  }
-
-  rc = pcre_exec(re, NULL, db_version, strlen(db_version), 0, 0, ovector, 9);
-  pcre_free(re);
-
-  if (rc > 0) {
-    return SERVER_TYPE_MARIADB;
-  }
-
-  return SERVER_TYPE_UNKNOWN;
-}
-
-int product=0;
+int product=SERVER_TYPE_UNKNOWN;
 int major=0;
 int secondary=0;
 int revision=0;
 
 void detect_server_version(MYSQL * conn) {
-  mysql_query(conn, "SELECT @@version_comment, @@version");
+  if (mysql_query(conn, "SELECT @@version_comment, @@version")){
+    g_warning("Not able to determine database version: %s",
+                 mysql_error(conn));
+    return;
+  }
+
   MYSQL_RES *res = mysql_store_result(conn);
+
+  if (!res){
+    g_warning("Not able to determine database version");
+    return;
+  }
+
   MYSQL_ROW ver;
   ver = mysql_fetch_row(res);
-  
-  if (g_str_has_prefix(ver[0], "Percona")){
+  gchar *ascii_version=g_ascii_strdown(ver[1],-1);
+  gchar *ascii_version_comment=g_ascii_strdown(ver[0],-1);
+
+  if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
     product = SERVER_TYPE_PERCONA;
   }else
-  if (g_str_has_prefix(ver[0], "MySQL")){
-    product = SERVER_TYPE_MYSQL;    
-  }else 
-  if (g_str_has_prefix(ver[0], "mariadb")){
+  if (g_strstr_len(ascii_version, -1, "mariadb") || g_strstr_len(ascii_version_comment, -1, "mariadb")){
     product = SERVER_TYPE_MARIADB;
+  }else
+  if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
+    product = SERVER_TYPE_MYSQL;    
   }
   gchar ** sver=g_strsplit(ver[1],".",3);
   major=strtol(sver[0], NULL, 10);
@@ -96,11 +60,18 @@ void detect_server_version(MYSQL * conn) {
   revision=strtol(sver[2], NULL, 10);
   g_strfreev(sver);
   mysql_free_result(res);
+  g_free(ascii_version);
+  g_free(ascii_version_comment);
 }
 
 int get_product(){
   return product;
 }
+
+gboolean is_mysql_like(){
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
+}
+
 int get_major(){
     return major;
 }
@@ -114,8 +85,9 @@ int get_revision(){
 const gchar * get_product_name(){
   switch (get_product()){
   case SERVER_TYPE_PERCONA: return "percona"; break;
-  case SERVER_TYPE_MYSQL: return "mysql"; break;
+  case SERVER_TYPE_MYSQL:   return "mysql";   break;
   case SERVER_TYPE_MARIADB: return "mariadb"; break;
+  case SERVER_TYPE_UNKNOWN: return "unknown"; break;
   default: return "";
 }
 

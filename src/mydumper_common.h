@@ -25,7 +25,8 @@ struct fifo{
   int pid;
   gchar *filename;
   gchar *stdout_filename;
-  GMutex *mutex;
+  GAsyncQueue * queue;
+//  GMutex *mutex;
 };
 
 void initialize_common();
@@ -47,7 +48,7 @@ gchar * build_data_filename(char *database, char *table, guint64 part, guint sub
 gchar * build_fifo_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extesion);
 gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension);
 gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part);
-void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol);
+void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
@@ -55,8 +56,6 @@ void free_common();
 void initialize_sql_statement(GString *statement);
 void set_tidb_snapshot(MYSQL *conn);
 int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
-//FILE * m_open(const char *filename, const char *);
-FILE * m_open_pipe(const char *filename, const char *type);
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size);
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size);
+FILE * m_open_pipe(char **filename, const char *type);
 void release_pid();
+void child_process_ended(int child_pid);

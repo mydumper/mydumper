@@ -40,6 +40,7 @@
 #include "mydumper_global.h"
 #include <sys/wait.h>
 
+extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
@@ -60,6 +61,9 @@ void initialize_jobs(){
   }
 
   if (exec_per_thread!=NULL){
+    if (exec_per_thread[0]!='/'){
+      m_error("Absolute path is only allowed when --exec-per-thread is used");
+    }
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
   }
 }
@@ -78,7 +82,7 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
 }
 
 gchar * get_tablespace_query(){
-  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL ){
+  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN){
     if ( get_major() == 5 && get_secondary() == 7)
       return g_strdup("select NAME, PATH, FS_BLOCK_SIZE from information_schema.INNODB_SYS_TABLESPACES join information_schema.INNODB_SYS_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
     if ( get_major() == 8 )
@@ -92,7 +96,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
   if (!outfile) {
     g_critical("Error: Could not create output file %s (%d)",
                filename, errno);
@@ -134,7 +138,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -169,7 +173,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
   g_free(query);
 
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -186,7 +190,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->name,
@@ -242,7 +246,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   g_free(query);
 
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -300,7 +304,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->name,
@@ -329,7 +333,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
   g_free(message);
 
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -342,7 +346,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -369,7 +373,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, NULL);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -386,7 +390,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   mysql_select_db(conn, dbt->database->name);
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
 
   if (!outfile) {
@@ -396,7 +400,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
+  if (is_mysql_like() && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
@@ -455,11 +459,11 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_set_size(statement, 0);
 
   void *outfile2;
-  outfile2 = m_open(filename2,"w");
+  outfile2 = m_open(&filename2,"w");
   if (!outfile2) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
                errno);
@@ -467,7 +471,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if ((detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB) && set_names_statement) {
+  if (is_mysql_like() && set_names_statement) {
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
@@ -497,7 +501,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   }
   g_free(query);
 
-  m_close(0, outfile2, filename2, 1);
+  m_close(0, outfile2, filename2, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -517,7 +521,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 
   mysql_select_db(conn, dbt->database->name);
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
@@ -602,7 +606,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   g_free(query);
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -624,7 +628,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   MYSQL_ROW row2;
   gchar **splited_st = NULL;
 
-  outfile = m_open(filename,"w");
+  outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -782,7 +786,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   }
 
   g_free(query);
-  m_close(0, outfile, filename, 1);
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -943,7 +947,7 @@ void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;
   j->type = JOB_WRITE_MASTER_STATUS;
-  g_async_queue_push(conf->schema_queue, j);
+  g_async_queue_push(conf->initial_queue, j);
 }
 
 void create_job_to_dump_tablespaces(struct configuration *conf){
@@ -1070,7 +1074,7 @@ int initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file
   if (*sql_filename)
     g_free(*sql_filename);
   *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
-  *sql_file = m_open(*sql_filename,"w");
+  *sql_file = m_open(sql_filename,"w");
   return r;
 }
 
@@ -1084,18 +1088,22 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-//    int status=0;
-//    if (tj->child_process!=0)
-//      waitpid(tj->child_process,&status, 0);
+    if (tj->dbt->chunk_type == INTEGER && tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
+      if (tj->chunk_step->integer_step.is_unsigned)
+        tj->sub_part = tj->chunk_step->integer_step.type.unsign.min / tj->chunk_step->integer_step.step + 1; 
+      else
+        tj->sub_part = tj->chunk_step->integer_step.type.sign.min   / tj->chunk_step->integer_step.step + 1;
+    }
+    
+
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql_file = m_open(tj->sql_filename,"w");
+      tj->sql_file = m_open(&(tj->sql_filename),"w");
       return TRUE;
     }else{
       initialize_sql_fn(tj);
     }
-//     write_load_data_statement(tj, fields, num_fields);
   }
   return FALSE;
 }
@@ -1202,10 +1210,14 @@ gchar *get_primary_key_string(MYSQL *conn, char *database, char *table) {
                           "AND t.table_name='%s' "
                           "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
                           database, table);
-  mysql_query(conn, query);
+
+  if (mysql_query(conn, query)){
+    return NULL;
+  }
   g_free(query);
 
-  res = mysql_store_result(conn);
+  if (!(res = mysql_store_result(conn)))
+    return NULL;
   gboolean first = TRUE;
   while ((row = mysql_fetch_row(res))) {
     if (first) {

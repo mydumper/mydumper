@@ -76,6 +76,8 @@ static GOptionEntry threads_entries[] = {
      "Maximum hard number of threads per table to use, we are not going to use more than this amount of threads per table, default 4", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
      "Maximum number of threads for index creation, default 4", NULL},
+    {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
+     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 4", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
@@ -119,7 +121,7 @@ static GOptionEntry filter_entries[] ={
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
-     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures nor functions", NULL},
+     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -155,9 +157,9 @@ GOptionContext * load_contex_entries(){
   g_option_group_add_entries(main_group, entries);
   g_option_group_add_entries(main_group, common_entries);
 //  load_common_entries(main_group);
-  GOptionGroup *
-    connection_group = load_connection_entries(context);
-  g_option_group_add_entries(connection_group, common_connection_entries);
+//  GOptionGroup *
+  load_connection_entries(context);
+//  g_option_group_add_entries(connection_group, common_connection_entries);
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);
   g_option_group_add_entries(filter_group, common_filter_entries);

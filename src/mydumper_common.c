@@ -24,6 +24,7 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+#include <pcre.h>
 #include "regex.h"
 #include <errno.h>
 #include "server_detect.h"
@@ -32,15 +33,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mydumper_common.h"
-#include <sys/wait.h>
+//#include <sys/wait.h>
+#include "mydumper_start_dump.h"
+#include "mydumper_stream.h"
 
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
 GAsyncQueue *available_pids=NULL;
 GHashTable *fifo_hash=NULL;
+GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
-int (*m_close)(guint thread_id, void *file, gchar *filename, guint size) = NULL;
+int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt) = NULL;
 
 void initialize_common(){
   available_pids = g_async_queue_new(); 
@@ -50,6 +54,7 @@ void initialize_common(){
   }
   ref_table_mutex = g_mutex_new();
   ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
+  fifo_hash_by_pid=g_hash_table_new(g_int_hash,g_int_equal);
   fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
   fifo_table_mutex = g_mutex_new();
 }
@@ -82,51 +87,65 @@ int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3){
 }
 
 // filename must never use the compression extension. .fifo files should be deprecated
-FILE * m_open_pipe(const char *filename, const char *type){
-  mkfifo(filename,0666);
-  gchar *new_filename = g_strdup_printf("%s%s", filename, exec_per_thread_extension);
-  int child_proc = execute_file_per_thread(filename,new_filename);
-  FILE *file=g_fopen(filename,type);
+FILE * m_open_pipe(gchar **filename, const char *type){
+  gchar *basefilename=g_path_get_basename(*filename);
+  gchar *new_filename = g_strdup_printf("%s%s", *filename, exec_per_thread_extension);
+  if (fifo_directory != NULL){
+    *filename=g_strdup_printf("%s/%s", fifo_directory, basefilename);
+    g_free(basefilename);
+  }
+  if ( mkfifo(*filename,0666) ){
+    g_critical("cannot create named pipe %s (%d)", *filename, errno);
+  }
+  int child_proc = execute_file_per_thread(*filename,new_filename);
+  FILE *file=g_fopen(*filename,type);
   g_mutex_lock(fifo_table_mutex); 
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
 
   if (f!=NULL){
     g_mutex_unlock(fifo_table_mutex);
-    g_mutex_lock(f->mutex);
+//    g_mutex_lock(f->mutex);
     f->pid = child_proc;
-    f->filename=g_strdup(filename);
+    f->filename=g_strdup(*filename);
     f->stdout_filename=new_filename;
   }else{
     f=g_new0(struct fifo, 1);
-    f->mutex=g_mutex_new();
-    g_mutex_lock(f->mutex);
+//    f->mutex=g_mutex_new();
+//    g_mutex_lock(f->mutex);
+    f->queue = g_async_queue_new();
     f->pid = child_proc;
-    f->filename=g_strdup(filename);
+    f->filename=g_strdup(*filename);
     f->stdout_filename=new_filename;
     g_hash_table_insert(fifo_hash,file,f);
+    g_hash_table_insert(fifo_hash_by_pid,&(f->pid), file);
     g_mutex_unlock(fifo_table_mutex);
   }
   return file;
 }
 
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
   release_pid();
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
   int r=close(fileno(file));
   if (f != NULL){
-    int status=0;
+/*    int status=0;
+    g_message("Thread %d: waitpid %d: started", thread_id, f->pid);
     waitpid(f->pid, &status, 0);
+    g_message("Thread %d: waitpid %d: eneded", thread_id, f->pid);
     g_mutex_lock(fifo_table_mutex);
     g_mutex_unlock(f->mutex);
-    g_mutex_unlock(fifo_table_mutex);
+    g_mutex_unlock(fifo_table_mutex); */
+//    g_mutex_lock(f->mutex);
+//g_message("g_async_queue_pop(f->queue: %d", f->pid);
+    g_async_queue_pop(f->queue);
     remove(f->filename);
   }else{
   //  g_mutex_unlock(fifo_table_mutex);
   }
   if (size > 0){
-    if (stream) g_async_queue_push(stream_queue, g_strdup(f->stdout_filename));
+    if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
   }else if (!build_empty_files){
     if (remove(f->stdout_filename)) {
       g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
@@ -137,10 +156,28 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size){
   return r;
 }
 
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size){
+
+void child_process_ended(int child_pid){
+//  g_message("Child process: %d", child_pid);
+  g_mutex_lock(fifo_table_mutex);
+  FILE *file=g_hash_table_lookup(fifo_hash_by_pid,&child_pid);
+  g_mutex_unlock(fifo_table_mutex);
+  if (file){
+    struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+    if (f){
+      g_async_queue_push(f->queue, GINT_TO_POINTER(1));
+    }else{
+      g_message("Child process %d: was ended but fifo was not found", child_pid);
+    }
+  }else{
+    g_message("Child process %d: was ended but pid was not found", child_pid);
+  }
+}
+
+int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt){
   int r=fclose(file);
   if (size > 0){
-    if (stream) g_async_queue_push(stream_queue, g_strdup(filename));
+    if (stream) stream_queue_push(dbt, g_strdup(filename));
   }else if (!build_empty_files){
     if (remove(filename)) {
       g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
@@ -407,7 +444,7 @@ void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned lo
   }
 }
 
-void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol){
+void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol){
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   guint i = 0;
   for (i = 0; i < mysql_num_fields(result); i++) {
@@ -417,11 +454,13 @@ void determine_ecol_ccol(MYSQL_RES *result, guint *ecol, guint *ccol, guint *col
       *ccol = i;
     else if (!strcasecmp(fields[i].name, "Collation"))
       *collcol = i;
+    else if (!strcasecmp(fields[i].name, "Rows"))
+      *rowscol = i;
   }
 }
 
 void initialize_sql_statement(GString *statement){
-  if ((detected_server == SERVER_TYPE_MYSQL) || (detected_server == SERVER_TYPE_MARIADB))  {
+  if (is_mysql_like())  {
     if (set_names_statement)
       g_string_printf(statement,"%s;\n",set_names_statement);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
@@ -445,4 +484,3 @@ void set_tidb_snapshot(MYSQL *conn){
   }
   g_free(query);
 }
-
