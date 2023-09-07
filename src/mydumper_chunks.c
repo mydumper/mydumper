@@ -250,12 +250,13 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     dbt->chunk_functions.get_next = &get_next_partition_chunk;
     cs=new_real_partition_step(partitions,0,0);
   }else{
-
+    g_mutex_lock(dbt->chunks_mutex);
     if (dbt->start_rows_per_file>0 && dbt->rows_in_sts > dbt->min_rows_per_file ){
-      g_mutex_lock(dbt->chunks_mutex);
       cs = get_initial_chunk(conn, &(dbt->chunk_type), &(dbt->chunk_functions), dbt, 0, NULL);
-      g_mutex_unlock(dbt->chunks_mutex);
+    }else{
+      dbt->chunk_type=NONE;
     }
+    g_mutex_unlock(dbt->chunks_mutex);
 
 //    g_debug("chunk_type: %d %p %p", dbt->chunk_type, dbt->chunk_functions.process, process_multicolumn_integer_chunk);
 
@@ -477,7 +478,7 @@ gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GLi
   while (iter){
     d=iter->data;
     g_mutex_lock(d->chunks_mutex);
-    g_message("Checking table: %s.%s", d->database->name, d->table);
+//    g_message("Checking table: %s.%s", d->database->name, d->table);
     if (d->chunk_type != DEFINING){
       if (d->chunk_type == NONE){
         *dbt=iter->data;
