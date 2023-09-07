@@ -339,7 +339,7 @@ void process_char_chunk(struct table_job *tj){
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
 
     if (cs->char_step.previous != NULL){
-      
+      g_mutex_lock(tj->dbt->chunks_mutex); 
       cont=get_new_minmax(td, tj->dbt, tj->chunk_step);
       if (cont == TRUE){
         

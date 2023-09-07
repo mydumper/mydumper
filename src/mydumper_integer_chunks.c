@@ -520,8 +520,8 @@ void process_integer_chunk(struct table_job *tj){
   cs->integer_step.include_null=FALSE;
 
   // Processing the remaining steps
+  g_mutex_lock(tj->chunk_step->integer_step.mutex);
   if (cs->integer_step.is_unsigned){
-    g_mutex_lock(tj->chunk_step->integer_step.mutex);
     // Remaining unsigned steps
 //g_message("cs->integer_step.type.unsign.min: %"G_GUINT64_FORMAT" | cs->integer_step.type.unsign.max: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max);
     while ( cs->integer_step.type.unsign.min <= cs->integer_step.type.unsign.max ){
@@ -534,9 +534,7 @@ void process_integer_chunk(struct table_job *tj){
       g_atomic_int_inc(dbt->chunks_completed);
       g_mutex_lock(tj->chunk_step->integer_step.mutex);
     }
-    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   }else{
-    g_mutex_lock(tj->chunk_step->integer_step.mutex);
     // Remaining signed steps
 //g_message("cs->integer_step.type.sign.min: %"G_GINT64_FORMAT" | cs->integer_step.type.sign.max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max);
     while ( cs->integer_step.type.sign.min <= cs->integer_step.type.sign.max ){
@@ -549,8 +547,10 @@ void process_integer_chunk(struct table_job *tj){
       g_atomic_int_inc(dbt->chunks_completed);
       g_mutex_lock(tj->chunk_step->integer_step.mutex);
     }
-    g_mutex_unlock(tj->chunk_step->integer_step.mutex);
   }
+  g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+
+
 
 /*
   g_mutex_lock(tj->chunk_step->integer_step.mutex);

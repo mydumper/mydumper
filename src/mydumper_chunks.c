@@ -173,9 +173,9 @@ g_message("sign.min: %"G_GINT64_FORMAT" | sign.max: %"G_GINT64_FORMAT, nmin, nma
               g_warning("Reverting integer");
               // revert multicolumn_integer and set INTEGER
             }
+            if (minmax) mysql_free_result(minmax);
+            return cs;
           }
-          if (minmax) mysql_free_result(minmax);
-          return cs;
         }
 
         if ( abs > dbt->min_rows_per_file){
