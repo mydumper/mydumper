@@ -42,7 +42,7 @@ gboolean split_partitions = FALSE;
 gchar *partition_regex = FALSE;
 
 
-void process_partition_chunk(struct thread_data *td, struct table_job *tj){
+void process_partition_chunk(struct table_job *tj){
   union chunk_step *cs = tj->chunk_step;
   gchar *partition=NULL;
   while (cs->partition_step.list != NULL){
@@ -57,7 +57,7 @@ void process_partition_chunk(struct thread_data *td, struct table_job *tj){
     tj->partition = partition;
 // = new_table_job(dbt, partition ,  cs->partition_step.number, dbt->primary_key, cs);
 //    message_dumping_data(td,tj);
-    write_table_job_into_file(td->thrconn, tj);
+    write_table_job_into_file(tj);
     g_free(partition);
   }
 }
@@ -73,7 +73,7 @@ union chunk_step *new_real_partition_step(GList *partition, guint deep, guint nu
 }
 
 union chunk_step *get_next_partition_chunk(struct db_table *dbt){
-  g_mutex_lock(dbt->chunks_mutex);
+//  g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   while (l!=NULL){
@@ -82,7 +82,7 @@ union chunk_step *get_next_partition_chunk(struct db_table *dbt){
     if (!cs->partition_step.assigned){
       cs->partition_step.assigned=TRUE;
       g_mutex_unlock(cs->partition_step.mutex);
-      g_mutex_unlock(dbt->chunks_mutex);
+//      g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
 
@@ -97,13 +97,13 @@ union chunk_step *get_next_partition_chunk(struct db_table *dbt){
       dbt->chunks=g_list_append(dbt->chunks,new_cs);
 
       g_mutex_unlock(cs->partition_step.mutex);
-      g_mutex_unlock(dbt->chunks_mutex);
+ //     g_mutex_unlock(dbt->chunks_mutex);
       return new_cs;
     }
     g_mutex_unlock(cs->partition_step.mutex);
     l=l->next;
   }
-  g_mutex_unlock(dbt->chunks_mutex);
+//  g_mutex_unlock(dbt->chunks_mutex);
   return NULL;
 }
 

@@ -20,13 +20,11 @@
 */
 
 guint64 gint64_abs(gint64 a);
-union chunk_step *new_integer_step(gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max);
+union chunk_step *new_integer_step(gboolean include_null, gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max);
 void free_integer_step(union chunk_step * cs);
 void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chunk_step * new_cs);
 union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_step * cs);
 union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_step * cs);
 union chunk_step *get_next_integer_chunk(struct db_table *dbt);
-void update_integer_min(MYSQL *conn, struct table_job *tj);
-void update_integer_max(MYSQL *conn, struct table_job *tj);
-void process_integer_chunk(struct thread_data *td, struct table_job *tj);
-gchar * update_integer_where(struct thread_data *td, union chunk_step * chunk_step);
+void process_integer_chunk(struct table_job *tj);
+gchar * update_integer_where(union chunk_step * chunk_step);

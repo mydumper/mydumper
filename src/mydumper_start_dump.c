@@ -52,7 +52,6 @@
 #include "set_verbose.h"
 #include "locale.h"
 #include <sys/statvfs.h>
-#include <sys/wait.h>
 
 #include "tables_skiplist.h"
 #include "regex.h"
@@ -109,7 +108,7 @@ gboolean pmm = FALSE;
 guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
-GThread *wait_pid_thread=NULL;
+//GThread *wait_pid_thread=NULL;
 
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
@@ -159,7 +158,7 @@ void initialize_start_dump(){
   }
 }
 
-
+/*
 void * wait_pid(void *data){
   (void)data;
   int status=0;
@@ -172,6 +171,7 @@ void * wait_pid(void *data){
   }
   return NULL;
 }
+*/
 
 void set_disk_limits(guint p_at, guint r_at){
   pause_at=p_at;
@@ -1022,7 +1022,7 @@ void start_dump() {
   }
 
 
-  wait_pid_thread = g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
+//  wait_pid_thread = g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
 
 
   conf.initial_queue = g_async_queue_new();

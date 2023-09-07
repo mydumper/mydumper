@@ -121,7 +121,7 @@ void free_char_step(union chunk_step * cs){
 }
 
 union chunk_step *get_next_char_chunk(struct db_table *dbt){
-  g_mutex_lock(dbt->chunks_mutex);
+//  g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   while (l!=NULL){
@@ -136,7 +136,7 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
     if (!cs->char_step.assigned){
       cs->char_step.assigned=TRUE;
       g_mutex_unlock(cs->char_step.mutex);
-      g_mutex_unlock(dbt->chunks_mutex);
+//      g_mutex_unlock(dbt->chunks_mutex);
       return cs;
     }
     if (cs->char_step.deep <= char_deep && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0 && cs->char_step.status == 0){
@@ -152,7 +152,7 @@ union chunk_step *get_next_char_chunk(struct db_table *dbt){
     g_mutex_unlock(cs->char_step.mutex);
     l=l->next;
   }
-  g_mutex_unlock(dbt->chunks_mutex);
+//  g_mutex_unlock(dbt->chunks_mutex);
   return NULL;
 }
 
@@ -305,7 +305,7 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
 //  message_dumping_data(td,tj);
 
   GDateTime *from = g_date_time_new_now_local();
-  write_table_job_into_file(td->thrconn, tj);
+  write_table_job_into_file(tj);
   GDateTime *to = g_date_time_new_now_local();
 
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
@@ -331,7 +331,8 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
 }
 
 
-void process_char_chunk(struct thread_data *td, struct table_job *tj){
+void process_char_chunk(struct table_job *tj){
+  struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step, *previous = cs->char_step.previous;
   gboolean cont=FALSE;
@@ -381,10 +382,9 @@ void process_char_chunk(struct thread_data *td, struct table_job *tj){
   g_mutex_unlock(dbt->chunks_mutex);
 }
 
-gchar * update_char_where(struct thread_data *td, union chunk_step * chunk_step){
-  (void)td;
+gchar * update_char_where(union chunk_step * chunk_step){
   gchar *where=NULL;
-  if (td != NULL){
+//  if (td != NULL){
     if (chunk_step->char_step.cmax == NULL){
       where=g_strdup_printf("(%s(`%s` >= '%s'))",
                         chunk_step->char_step.prefix?chunk_step->char_step.prefix:"",
@@ -397,7 +397,7 @@ gchar * update_char_where(struct thread_data *td, union chunk_step * chunk_step)
                         chunk_step->char_step.field, chunk_step->char_step.cursor_escaped
                         );
     }
-  }
+//  }
   return where;
 }
 

@@ -39,9 +39,11 @@
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
 
-union chunk_step *new_multicolumn_integer_step(gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 number){
+union chunk_step *new_multicolumn_integer_step(gboolean include_null, gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 number){
   g_message("New Multi Integer Step");
   union chunk_step * cs = g_new0(union chunk_step, 1);
+  if (include_null)
+    cs->integer_step.include_null = g_strdup_printf("`%s` IS NULL OR", field);
   cs->multicolumn_integer_step.is_unsigned = is_unsigned;
   cs->multicolumn_integer_step.prefix = prefix;
   if (cs->multicolumn_integer_step.is_unsigned){
@@ -65,7 +67,7 @@ union chunk_step *new_multicolumn_integer_step(gchar *prefix, gchar *field, gboo
 
 
 union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt){
-  g_mutex_lock(dbt->chunks_mutex);
+//  g_mutex_lock(dbt->chunks_mutex);
 //  GList *l=dbt->chunks;
   union chunk_step *cs=NULL;
   if (dbt->chunks!=NULL){
@@ -79,7 +81,7 @@ union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt){
         cs->multicolumn_integer_step.status=ASSIGNED;
         g_async_queue_push(dbt->chunks_queue, cs);
         g_mutex_unlock(cs->multicolumn_integer_step.mutex);
-        g_mutex_unlock(dbt->chunks_mutex);
+//        g_mutex_unlock(dbt->chunks_mutex);
         return cs;
       }
       if (cs->multicolumn_integer_step.is_unsigned) {
@@ -92,12 +94,10 @@ union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt){
              )
            )
          ){
-//          return split_unsigned_chunk_step(dbt,cs);
+          g_mutex_unlock(cs->multicolumn_integer_step.mutex);
         }else{
-//        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
           g_mutex_unlock(cs->multicolumn_integer_step.mutex);
           if (cs->multicolumn_integer_step.status==COMPLETED){
-//            free_multicolumn_integer_step(cs);
           }
         }
       }else{
@@ -109,10 +109,9 @@ union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt){
              )
            )
          ){
-//          return split_signed_chunk_step(dbt,cs);
+          g_mutex_unlock(cs->multicolumn_integer_step.mutex);
         }else{
-//        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-          g_mutex_unlock(cs->integer_step.mutex);
+          g_mutex_unlock(cs->multicolumn_integer_step.mutex);
           if (cs->multicolumn_integer_step.status==COMPLETED){
 //            free_multicolumn_integer_step(cs);
           }
@@ -124,21 +123,36 @@ union chunk_step *get_next_multicolumn_integer_chunk(struct db_table *dbt){
 //    g_mutex_unlock(cs->integer_step.mutex);
 //    l=l->next;
   }
-  g_mutex_unlock(dbt->chunks_mutex);
+//  g_mutex_unlock(dbt->chunks_mutex);
   return NULL;
 }
 
 
 
-gchar * update_multicolumn_integer_where(struct thread_data *td, union chunk_step * cs){
-  (void)td;
-  g_message("Updating Multicolumn Where");
-  char *where = g_strdup_printf("%s AND %s" , cs->multicolumn_integer_step.prefix, cs->multicolumn_integer_step.chunk_functions.update_where(td,cs->multicolumn_integer_step.next_chunk_step));
-  
-  return where;
+gchar * update_multicolumn_integer_where(union chunk_step * cs){
+
+//  cs->multicolumn_integer_step.next_chunk_step->prefix = 
+
+
+  if (cs->multicolumn_integer_step.is_unsigned){
+     ((struct integer_step *) cs->multicolumn_integer_step.next_chunk_step)->prefix = g_strdup_printf("%s %s = %"G_GUINT64_FORMAT,
+                                cs->multicolumn_integer_step.prefix ? cs->multicolumn_integer_step.prefix: "",
+                                cs->multicolumn_integer_step.field, cs->multicolumn_integer_step.type.unsign.cursor
+                                );
+  }else{
+     ((struct integer_step *)cs->multicolumn_integer_step.next_chunk_step)->prefix = g_strdup_printf("%s %s = %"G_GINT64_FORMAT ,
+                                cs->multicolumn_integer_step.prefix ? cs->multicolumn_integer_step.prefix: "",
+                                cs->multicolumn_integer_step.field, cs->multicolumn_integer_step.type.sign.cursor
+                                );
+  }
+
+
+  return cs->multicolumn_integer_step.chunk_functions.update_where(cs->multicolumn_integer_step.next_chunk_step) ;
+
 }
 
-guint process_multicolumn_integer_chunk_step(struct thread_data *td, struct table_job *tj){
+guint process_multicolumn_integer_chunk_step(struct table_job *tj){
+  struct thread_data *td = tj->td;
   check_pause_resume(td);
   if (shutdown_triggered) {
     return 1;
@@ -146,7 +160,7 @@ guint process_multicolumn_integer_chunk_step(struct thread_data *td, struct tabl
   g_mutex_lock(tj->chunk_step->multicolumn_integer_step.mutex);
   tj->chunk_step->multicolumn_integer_step.status = DUMPING_CHUNK;
 
-  if (tj->chunk_step->integer_step.is_unsigned){
+  if (tj->chunk_step->multicolumn_integer_step.is_unsigned){
     tj->chunk_step->multicolumn_integer_step.type.unsign.cursor = tj->chunk_step->multicolumn_integer_step.type.unsign.min;
     tj->chunk_step->multicolumn_integer_step.estimated_remaining_steps = tj->chunk_step->multicolumn_integer_step.type.unsign.max - tj->chunk_step->multicolumn_integer_step.type.unsign.cursor;
 
@@ -162,30 +176,24 @@ guint process_multicolumn_integer_chunk_step(struct thread_data *td, struct tabl
 //  g_message("CONTINUE");
 
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
-  if (tj->where)
-    g_free(tj->where);
-  tj->where=update_multicolumn_integer_where(td,tj->chunk_step);
+//  if (tj->where)
+//    g_free(tj->where);
+
+  g_string_set_size(tj->where,0);
+
+
+
+//  g_string_append(tj->where,update_multicolumn_integer_where(td,tj->chunk_step));
 
 //  update_where_on_table_job(td, tj);
 //  message_dumping_data(td,tj);
 
-  GDateTime *from = g_date_time_new_now_local();
-  write_table_job_into_file(td->thrconn, tj);
-  GDateTime *to = g_date_time_new_now_local();
+//  write_table_job_into_file(tj);
 
-  GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-  g_date_time_unref(from);
-  g_date_time_unref(to);
-  if (diff > 2){
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  / 2;
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->integer_step.step;
-//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-  }else if (diff < 1){
-    tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step  * 2 == 0?tj->chunk_step->integer_step.step:tj->chunk_step->integer_step.step  * 2;
-    if (max_rows_per_file!=0)
-      tj->chunk_step->integer_step.step=tj->chunk_step->integer_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->integer_step.step;
-//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-  }
+  update_multicolumn_integer_where(tj->chunk_step);
+
+  tj->chunk_step->multicolumn_integer_step.chunk_functions.process(tj); 
+
 
   g_mutex_lock(tj->chunk_step->multicolumn_integer_step.mutex);
   if (tj->chunk_step->multicolumn_integer_step.status != COMPLETED)
@@ -201,16 +209,17 @@ guint process_multicolumn_integer_chunk_step(struct thread_data *td, struct tabl
 
 
 
-void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job *tj){
+void process_multicolumn_integer_chunk(struct table_job *tj){
+  struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step;
-  g_warning("Processing Multi Integer Step");
 
   // First step, we need this to process the one time prefix
-  if (process_multicolumn_integer_chunk_step(td,tj)){
+  if (process_multicolumn_integer_chunk_step(tj)){
     g_message("Thread %d: Job has been cacelled",td->thread_id);
     return;
   }
+
   g_atomic_int_inc(dbt->chunks_completed);
   if (cs->multicolumn_integer_step.prefix)
     g_free(cs->multicolumn_integer_step.prefix);
@@ -222,7 +231,7 @@ void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job 
     // Remaining unsigned steps
     while ( cs->multicolumn_integer_step.type.unsign.min < cs->multicolumn_integer_step.type.unsign.max ){
       g_mutex_unlock(cs->multicolumn_integer_step.mutex);
-      if (process_multicolumn_integer_chunk_step(td,tj)){
+      if (process_multicolumn_integer_chunk_step(tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
@@ -235,7 +244,7 @@ void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job 
     // Remaining signed steps
     while ( cs->multicolumn_integer_step.type.sign.min < cs->multicolumn_integer_step.type.sign.max ){
       g_mutex_unlock(cs->multicolumn_integer_step.mutex);
-      if (process_multicolumn_integer_chunk_step(td,tj)){
+      if (process_multicolumn_integer_chunk_step(tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
@@ -244,6 +253,7 @@ void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job 
     }
     g_mutex_unlock(cs->multicolumn_integer_step.mutex);
   }
+
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->multicolumn_integer_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
@@ -253,7 +263,7 @@ void process_multicolumn_integer_chunk(struct thread_data *td, struct table_job 
     dbt->chunks=NULL;
   }
   // Chunk completed
-  cs->integer_step.status=COMPLETED;
+  cs->multicolumn_integer_step.status=COMPLETED;
   g_mutex_unlock(dbt->chunks_mutex);
   g_mutex_unlock(cs->multicolumn_integer_step.mutex);
 }

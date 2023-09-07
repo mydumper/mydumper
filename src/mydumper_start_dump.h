@@ -117,14 +117,17 @@ union type {
 };
 
 struct table_job;
+struct db_table;
 
 struct chunk_functions{
-  void (*process)(struct thread_data *td, struct table_job *tj);
-  gchar *(*update_where)(struct thread_data *td, union chunk_step * chunk_step);
+  void (*process)(struct table_job *tj);
+  gchar *(*update_where)(union chunk_step * chunk_step);
+  union chunk_step *(*get_next)(struct db_table *dbt);
 };
 
 struct multicolumn_integer_step {
   gboolean is_unsigned;
+  gchar *include_null;
   gchar *prefix;
   gchar *field;
   union type type;
@@ -140,12 +143,14 @@ struct multicolumn_integer_step {
 
 struct integer_step {
   gboolean is_unsigned;
+  gchar *include_null;
   gchar *prefix;
   gchar *field;
 //  guint64 nmin;
 //  guint64 cursor;
 //  guint64 nmax;
   union type type; 
+  GString *where;
   guint64 step;
   guint64 estimated_remaining_steps;
   guint64 number;
@@ -157,6 +162,7 @@ struct integer_step {
 };
 
 struct char_step {
+  gchar *include_null;
   gchar *prefix;
   gchar *field;
 
@@ -210,7 +216,7 @@ struct table_job {
   char *partition;
   guint64 nchunk;
   guint sub_part;
-  char *where;
+  GString *where;
   union chunk_step *chunk_step;  
   char *order_by;
   struct db_table *dbt;
@@ -305,6 +311,16 @@ struct schema_post {
   struct database *database;
 };
 
+struct fifo{
+  int pid;
+  gchar *filename;
+  gchar *stdout_filename;
+  GAsyncQueue * queue;
+  float size;
+  struct db_table *dbt;
+//  GMutex *mutex;
+};
+
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();
 void start_dump();
@@ -314,5 +330,5 @@ gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
 void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
+int m_close_file(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
