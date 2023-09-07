@@ -215,7 +215,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, str
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
-  write(fileno(file), 0, sizeof(int));
+//  write(fileno(file), 0, sizeof(int));
   int r=close(fileno(file));
   if (f != NULL){
 /*    int status=0;
