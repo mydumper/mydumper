@@ -205,6 +205,9 @@ g_message("sign.min: %"G_GINT64_FORMAT" | sign.max: %"G_GINT64_FORMAT, nmin, nma
         break;
       case MYSQL_TYPE_STRING:
       case MYSQL_TYPE_VAR_STRING:
+        *chunk_type=NONE;
+        break;
+
         cs=new_char_step(conn, dbt->primary_key->data, 0, 0, row, lengths);
 //        dbt->chunks=g_list_prepend(dbt->chunks,cs);
 //        g_async_queue_push(dbt->chunks_queue, cs);
@@ -493,7 +496,7 @@ gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GLi
         g_mutex_unlock(d->chunks_mutex);
         break;
       }
-      g_message("Getting next from: %p", d->chunk_functions.get_next);
+//      g_message("Getting next from: %p", d->chunk_functions.get_next);
       lcs=d->chunk_functions.get_next(d);
       if (lcs!=NULL){
         *cs=lcs;

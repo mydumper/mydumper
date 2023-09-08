@@ -248,6 +248,9 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, middle, (gchar*)dbt->primary_key->data, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, previous->char_step.cmax_escaped, (gchar*)dbt->primary_key->data));
+
+g_message("get_new_minmax Query: %s", query);
+
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
 
@@ -335,19 +338,21 @@ void process_char_chunk(struct table_job *tj){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step, *previous = cs->char_step.previous;
+
   gboolean cont=FALSE;
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
 
     if (cs->char_step.previous != NULL){
-      g_mutex_lock(tj->dbt->chunks_mutex); 
-      cont=get_new_minmax(td, tj->dbt, tj->chunk_step);
+      g_mutex_lock(cs->char_step.mutex);
+      cont=get_new_minmax(td, dbt, cs);
+      g_mutex_unlock(cs->char_step.mutex);
       if (cont == TRUE){
         
         cs->char_step.previous=NULL;
         g_mutex_lock(cs->char_step.mutex);
-        tj->dbt->chunks=g_list_append(tj->dbt->chunks,cs);
+        dbt->chunks=g_list_append(dbt->chunks,cs);
 
-        g_mutex_unlock(tj->dbt->chunks_mutex);
+        g_mutex_unlock(dbt->chunks_mutex);
         g_mutex_unlock(previous->char_step.mutex);
         g_mutex_unlock(cs->char_step.mutex);
       }else{

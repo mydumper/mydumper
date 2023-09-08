@@ -1235,6 +1235,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 }
 
 void free_db_table(struct db_table * dbt){
+  g_debug("Freeing dbt: `%s`.`%s`", dbt->database->name, dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
   g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
