@@ -1237,7 +1237,6 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 void free_db_table(struct db_table * dbt){
   g_debug("Freeing dbt: `%s`.`%s`", dbt->database->name, dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
-  g_free(dbt->table);
   g_mutex_free(dbt->rows_lock);
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
@@ -1260,13 +1259,14 @@ void free_db_table(struct db_table * dbt){
         if (cs->integer_step.status==COMPLETED)
           free_integer_step(cs);
         else
-          g_error("Trying to free uncompleted integer step");
+          g_error("Trying to free uncompleted integer step `%s`.`%s`", dbt->database->name, dbt->table);
         cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
       }
       g_async_queue_unref(dbt->chunks_queue);
     default:
       break;
   }
+  g_free(dbt->table);
   g_mutex_unlock(dbt->chunks_mutex);
   g_mutex_free(dbt->chunks_mutex);
   g_free(dbt);

@@ -99,6 +99,8 @@ void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chu
   g_async_queue_push(dbt->chunks_queue, cs);
   g_async_queue_push(dbt->chunks_queue, new_cs);
 
+  g_debug("Chunk splited on: `%s`.`%s`", dbt->database->name, dbt->table);
+
 //  g_mutex_unlock(cs->integer_step.mutex);
 //  g_mutex_unlock(dbt->chunks_mutex);
 }
