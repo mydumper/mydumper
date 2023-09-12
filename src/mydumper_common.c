@@ -241,7 +241,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, str
     final_step_close_file(thread_id, filename, &new_f, size, dbt);
   //  g_mutex_unlock(fifo_table_mutex);
   }
-  if (size > 0){
+/*  if (size > 0){
     if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
   }else if (!build_empty_files){
     if (remove(f->stdout_filename)) {
@@ -250,6 +250,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, str
       g_debug("Thread %d: File removed: %s", thread_id, filename);
     } 
 }
+*/
   return r;
 }
 
