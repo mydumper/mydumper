@@ -51,3 +51,4 @@ int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
 FILE * m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
+void wait_close_files();

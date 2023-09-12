@@ -1205,6 +1205,9 @@ void start_dump() {
   mysql_close(conn);
   g_message("Main connection closed");  
 
+
+  wait_close_files();
+
   GList *iter = NULL;
   // TODO: We need to create jobs for metadata.
   all_dbts = g_list_reverse(all_dbts);

@@ -73,13 +73,13 @@ void * close_file_thread(void *data){
   struct fifo *f=NULL;
   for (;;){
     f=g_async_queue_pop(close_file_queue);
-    if (f->pid == 0)
+    if (f->pid == -10)
       break;
     g_async_queue_pop(available_pids_hard);
 //    g_message("Pop so I can remove: %s", f->filename);
     g_async_queue_pop(f->queue);
     release_pid_hard();
-    g_message("Removing: %s", f->filename);
+    g_message("Removing: %s | Remains: %d", f->filename, g_atomic_int_get(&open_pipe));
     remove(f->filename);
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
@@ -116,7 +116,7 @@ void close_file_queue_push(struct fifo *f){
 
 void wait_close_files(){
   struct fifo f;
-  f.pid=0;
+  f.pid=-10;
   while (g_atomic_int_get(&open_pipe) != 0){
     g_message("Waiting files to complete");
     sleep(1);
