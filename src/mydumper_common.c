@@ -79,10 +79,10 @@ void * close_file_thread(void *data){
 //    g_message("Pop so I can remove: %s", f->filename);
     g_async_queue_pop(f->queue);
     release_pid_hard();
-    g_message("Removing: %s | Remains: %d", f->filename, g_atomic_int_get(&open_pipe));
     remove(f->filename);
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
+    g_message("Removed: %s | Pipe Files still open: %d", f->filename, g_atomic_int_get(&open_pipe));
  }
   return NULL;
 }
@@ -140,7 +140,7 @@ void release_pid(){
 
 void release_pid_hard(){
   g_async_queue_push(available_pids_hard, GINT_TO_POINTER(1));
-  g_message("available pids HARD queue size: %d", g_async_queue_length(available_pids_hard));
+//  g_message("available pids HARD queue size: %d", g_async_queue_length(available_pids_hard));
 }
 
 int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3){

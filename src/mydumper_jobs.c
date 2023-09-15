@@ -1116,7 +1116,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
 //  tj->database=dbt->database->name;
 //  tj->table=g_strdup(dbt->table);
 // end
-  g_debug("new_table_job");
+//  g_debug("new_table_job");
   tj->partition=g_strdup(partition);
   tj->chunk_step = chunk_step;
   tj->where=NULL;

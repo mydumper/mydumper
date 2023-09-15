@@ -27,4 +27,4 @@ union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_s
 union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_step * cs);
 union chunk_step *get_next_integer_chunk(struct db_table *dbt);
 void process_integer_chunk(struct table_job *tj);
-gchar * update_integer_where(union chunk_step * chunk_step);
+gchar * get_integer_chunk_where(union chunk_step * chunk_step);

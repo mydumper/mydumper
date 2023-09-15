@@ -50,10 +50,11 @@ guint get_stream_queue_length(){
 }
 
 void stream_queue_push(struct db_table *dbt,gchar *filename){
-  if (dbt)
+/*  if (dbt)
     g_message("New stream file: %s for dbt: %s ", filename, dbt->table);
   else
     g_message("New stream file: %s with null dbt: ", filename);
+*/
   g_async_queue_push(stream_queue, new_stream_queue_element(dbt,filename));
   metadata_partial_queue_push(dbt);
 }
