@@ -1088,11 +1088,11 @@ void initialize_load_data_fn(struct table_job * tj){
 
 gboolean update_files_on_table_job(struct table_job *tj){
   if (tj->sql_file == NULL){
-    if (tj->dbt->chunk_type == INTEGER && tj->chunk_step && min_rows_per_file == rows_per_file && max_rows_per_file == rows_per_file){
-      if (tj->chunk_step->integer_step.is_unsigned)
-        tj->sub_part = tj->chunk_step->integer_step.type.unsign.min / tj->chunk_step->integer_step.step + 1; 
+    if (tj->chunk_step_item->chunk_type == INTEGER && tj->chunk_step_item->chunk_step && min_chunk_step_size == rows_per_file && max_chunk_step_size == rows_per_file){
+      if (tj->chunk_step_item->chunk_step->integer_step.is_unsigned)
+        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.unsign.min / tj->chunk_step_item->chunk_step->integer_step.step + 1; 
       else
-        tj->sub_part = tj->chunk_step->integer_step.type.sign.min   / tj->chunk_step->integer_step.step + 1;
+        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.sign.min   / tj->chunk_step_item->chunk_step->integer_step.step + 1;
     }
     
 
@@ -1109,7 +1109,7 @@ gboolean update_files_on_table_job(struct table_job *tj){
 }
 
 
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item, gboolean update_where){
   struct table_job *tj = g_new0(struct table_job, 1);
 // begin Refactoring: We should review this, as dbt->database should not be free, so it might be no need to g_strdup.
   // from the ref table?? TODO
@@ -1118,7 +1118,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
 // end
 //  g_debug("new_table_job");
   tj->partition=g_strdup(partition);
-  tj->chunk_step = chunk_step;
+  tj->chunk_step_item = chunk_step_item;
   tj->where=NULL;
   tj->order_by=g_strdup(order_by);
   tj->nchunk=nchunk;
@@ -1141,18 +1141,18 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   return tj;
 }
 
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, gboolean update_where){
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item, gboolean update_where){
   struct job *j = g_new0(struct job,1);
-  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
+  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step_item, update_where);
   j->job_data=(void*) tj;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
   j->job_data = (void *)tj;
   return j;
 }
 
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, union chunk_step *chunk_step, void f(), GAsyncQueue *queue, gboolean update_where){
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue, gboolean update_where){
   struct job *j = g_new0(struct job,1);
-  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step, update_where);
+  struct table_job *tj = new_table_job(dbt, partition, nchunk, order_by, chunk_step_item, update_where);
   j->job_data=(void*) tj;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
   f(queue,j);

@@ -83,9 +83,23 @@ union chunk_step *get_next_chunk(struct db_table *dbt){
 */
 
 
-union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where) {
+void initialize_chunk_step_as_none(struct chunk_step_item * csi){
+  csi->chunk_type=NONE;
+  csi->chunk_functions.process=&process_none_chunk;
+  csi->chunk_functions.update_where=NULL;
+}
 
-//  if (dbt->start_rows_per_file>0 && dbt->rows_in_sts > dbt->min_rows_per_file ){
+struct chunk_step_item * new_none_chunk_step(){
+  struct chunk_step_item * csi = g_new0(struct chunk_step_item, 1);
+  initialize_chunk_step_as_none(csi);
+  return csi;
+}
+
+
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, gchar *local_where) {
+    struct chunk_step_item * csi=NULL;
+
+//  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
     gchar *field=g_list_nth_data(dbt->primary_key, position);
     gchar *query = NULL;
     MYSQL_ROW row;
@@ -102,8 +116,7 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
     minmax = mysql_store_result(conn);
 
     if (!minmax){
-      *chunk_type=NONE;
-      goto cleanup;
+      return new_none_chunk_step();
     }
 
     row = mysql_fetch_row(minmax);
@@ -112,15 +125,16 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
     gulong *lengths = mysql_fetch_lengths(minmax);
     /* Check if all values are NULL */
     if (row[0] == NULL){
-      *chunk_type=NONE;
-      goto cleanup;
+      if (minmax)
+        mysql_free_result(minmax);
+      return new_none_chunk_step();
     }
   /* Support just bigger INTs for now, very dumb, no verify approach */
     guint64 abs;
     guint64 unmin, unmax;
     gint64 nmin, nmax;
     gchar *prefix=NULL;
-    union chunk_step *cs = NULL;
+//    union chunk_step *cs = NULL;
     switch (fields[0].type) {
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_LONGLONG:
@@ -143,10 +157,11 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
 //g_message("sign.min: %"G_GINT64_FORMAT" | sign.max: %"G_GINT64_FORMAT, nmin, nmax);
         }
 
-        if ( !local_where && dbt->multicolumn && FALSE){
+/*
+         if ( !local_where && dbt->multicolumn && FALSE){
           g_message("MULTICOLUMN??");
-          if (dbt->rows_in_sts / abs > dbt->min_rows_per_file){
-            *chunk_type=MULTICOLUMN_INTEGER;
+          if (dbt->rows_in_sts / abs > dbt->min_chunk_step_size){
+            csi->chunk_type=MULTICOLUMN_INTEGER;
             union type type;
             gchar *this_where=NULL;
             if ((fields[0].flags & UNSIGNED_FLAG)){
@@ -162,9 +177,9 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
             }
             cs=new_multicolumn_integer_step(TRUE, prefix, field, fields[0].flags & UNSIGNED_FLAG, type, 0, 0);
             cs->multicolumn_integer_step.status = UNASSIGNED;
-            chunk_functions->update_where = &update_multicolumn_integer_where;
-            chunk_functions->process = &process_multicolumn_integer_chunk;
-            chunk_functions->get_next = &get_next_multicolumn_integer_chunk;
+            csi->chunk_functions.update_where = &update_multicolumn_integer_where;
+            csi->chunk_functions.process = &process_multicolumn_integer_chunk;
+            csi->chunk_functions.get_next = &get_next_multicolumn_integer_chunk;
             cs->multicolumn_integer_step.next_chunk_step = get_initial_chunk(conn, &(cs->multicolumn_integer_step.chunk_type), &(cs->multicolumn_integer_step.chunk_functions), dbt, position+1, this_where);
             g_free(this_where);
             if (!cs->multicolumn_integer_step.next_chunk_step)
@@ -174,106 +189,86 @@ union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  
               // revert multicolumn_integer and set INTEGER
             }
             if (minmax) mysql_free_result(minmax);
-            return cs;
+            return;
           }
         }
+*/
+        gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
+        mysql_free_result(minmax);
 
-        if ( abs > dbt->min_rows_per_file){
-
+        if ( abs > dbt->min_chunk_step_size){
           union type type;
-          if ((fields[0].flags & UNSIGNED_FLAG)){
+          gboolean is_step_fixed_length = dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->max_chunk_step_size == dbt->starting_chunk_step_size;
+          guint64 min_css = dbt->multicolumn ? 1 : dbt->min_chunk_step_size;
+          guint64 max_css = dbt->multicolumn ? 1 : dbt->max_chunk_step_size;
+
+          if (unsign){
             type.unsign.min=unmin;
             type.unsign.max=unmax;
-            cs=new_integer_step( TRUE, prefix, field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, min_css, max_css, 0, FALSE, FALSE);
           }else{
             type.sign.min=nmin;
             type.sign.max=nmax;
-            cs=new_integer_step(TRUE, prefix, field, fields[0].flags & UNSIGNED_FLAG, type, 0, dbt->start_rows_per_file, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, min_css, max_css, 0, FALSE, FALSE);
           }
 //          dbt->chunks=g_list_prepend(dbt->chunks,cs);
 //          g_async_queue_push(dbt->chunks_queue, cs);
-          *chunk_type=INTEGER;
-          chunk_functions->process = &process_integer_chunk;
-          chunk_functions->update_where = &get_integer_chunk_where;
-          chunk_functions->get_next = &get_next_integer_chunk;
+          csi->chunk_type=INTEGER;
+          csi->chunk_functions.process = &process_integer_chunk;
+          csi->chunk_functions.update_where = &get_integer_chunk_where;
+          csi->chunk_functions.get_next = &get_next_integer_chunk;
 //          dbt->estimated_remaining_steps=cs->integer_step.estimated_remaining_steps;
         }else{
-          *chunk_type=NONE;
+          return new_none_chunk_step();
         }
-        if (minmax) mysql_free_result(minmax);
-        return cs;
         break;
       case MYSQL_TYPE_STRING:
       case MYSQL_TYPE_VAR_STRING:
-        *chunk_type=NONE;
-        break;
-
-        cs=new_char_step(conn, dbt->primary_key->data, 0, 0, row, lengths);
-//        dbt->chunks=g_list_prepend(dbt->chunks,cs);
-//        g_async_queue_push(dbt->chunks_queue, cs);
-        *chunk_type=CHAR;
-        chunk_functions->process = &process_char_chunk;
-        chunk_functions->update_where = &update_char_where;
-        chunk_functions->get_next = &get_next_char_chunk;
-        if (minmax) mysql_free_result(minmax);
-        return cs;
+        csi=new_char_step_item(conn, dbt->primary_key->data, 0, 0, row, lengths);
+        if (minmax)
+          mysql_free_result(minmax);
+        return csi;
         break;
       default:
-        *chunk_type=NONE;
+        if (minmax)
+          mysql_free_result(minmax);
+        return new_none_chunk_step();
         break;
       }
-    cleanup:
-      if (minmax)
-        mysql_free_result(minmax);
-//  }else
-//    *chunk_type=NONE;
+
   return NULL;
 }
 
 
 
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
-
-  dbt->chunk_functions.process=&process_none_chunk;
-  dbt->chunk_functions.update_where=NULL;
-
-/*
-  GList *partitions=NULL;
-  if (split_partitions || dbt->partition_regex){
-    partitions = get_partitions_for_table(conn, dbt);
-  }
-
-*/
   g_mutex_lock(dbt->chunks_mutex);
 
-  union chunk_step * cs=NULL;
+  struct chunk_step_item * csi = NULL;
+
   GList *partitions=NULL;
   if (split_partitions || dbt->partition_regex){
+    csi = g_new0(struct chunk_step_item, 1);
+    csi->chunk_step=NULL;
+    csi->chunk_functions.process=&process_none_chunk;
     partitions = get_partitions_for_table(conn, dbt);
-    dbt->chunk_functions.process = &process_partition_chunk;
-    dbt->chunk_type=PARTITION;
-    dbt->chunk_functions.get_next = &get_next_partition_chunk;
-    cs=new_real_partition_step(partitions,0,0);
+    csi->chunk_type=PARTITION;
+    csi->chunk_functions.process = &process_partition_chunk;
+    csi->chunk_functions.get_next = &get_next_partition_chunk;
+    csi->chunk_step=new_real_partition_step(partitions,0,0);
   }else{
-    if (dbt->start_rows_per_file>0 && dbt->rows_in_sts > dbt->min_rows_per_file ){
-      cs = get_initial_chunk(conn, &(dbt->chunk_type), &(dbt->chunk_functions), dbt, 0, NULL);
+    if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
+      csi = initialize_chunk_step_item(conn, dbt, 0, NULL);
+      if ( csi->chunk_type==INTEGER &&  dbt->min_chunk_step_size==dbt->starting_chunk_step_size && dbt->max_chunk_step_size==dbt->starting_chunk_step_size)
+        dbt->chunk_filesize=0;
     }else{
-      dbt->chunk_type=NONE;
+      csi = new_none_chunk_step();
     }
-
-//    g_debug("chunk_type: %d %p %p", dbt->chunk_type, dbt->chunk_functions.process, process_multicolumn_integer_chunk);
-
-    dbt->chunks=g_list_prepend(dbt->chunks,cs);
-
-    if ( dbt->chunk_type==INTEGER &&  dbt->min_rows_per_file==dbt->start_rows_per_file && dbt->max_rows_per_file==dbt->start_rows_per_file)
-      dbt->chunk_filesize=0;
   }
-  if (cs)
-    g_async_queue_push(dbt->chunks_queue, cs);
-
-//  g_debug("Estrategy for `%s`.`%s` is: %d %d", dbt->database->name, dbt->table, dbt->chunk_type, INTEGER); 
-
-    g_mutex_unlock(dbt->chunks_mutex);
+  dbt->chunks=g_list_prepend(dbt->chunks,csi);
+  g_async_queue_push(dbt->chunks_queue, csi);
+  dbt->status=READY;
+  g_mutex_unlock(dbt->chunks_mutex);
 }
 
 void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
@@ -342,37 +337,46 @@ cleanup:
 }
 
 
-gboolean get_next_dbt_and_chunk(struct db_table **dbt,union chunk_step **cs, GList **dbt_list){
+gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_step_item **csi, GList **dbt_list){
   GList *iter=*dbt_list;
-  union chunk_step *lcs;
   struct db_table *d;
   gboolean are_there_jobs_defining=FALSE;
+  struct chunk_step_item *lcs;
   while (iter){
     d=iter->data;
     g_mutex_lock(d->chunks_mutex);
 //    g_message("Checking table: %s.%s", d->database->name, d->table);
-    if (d->chunk_type != DEFINING){
-      if (d->chunk_type == NONE){
+    if (d->status != DEFINING){
+
+      if (d->status == UNDEFINED){
+//        g_message("Checking table: %s.%s DEFINING NOW", d->database->name, d->table);
         *dbt=iter->data;
-        *dbt_list=g_list_remove(*dbt_list,d);
-        g_mutex_unlock(d->chunks_mutex);
-        break;
-      }
-      if (d->chunk_type == UNDEFINED){
-        *dbt=iter->data;
-        d->chunk_type = DEFINING;
+        d->status = DEFINING;
         are_there_jobs_defining=TRUE;
         g_mutex_unlock(d->chunks_mutex);
         break;
       }
-//      g_message("Getting next from: %p", d->chunk_functions.get_next);
-      lcs=d->chunk_functions.get_next(d);
+
+      lcs=(struct chunk_step_item *)(g_list_first(d->chunks)->data);
+      if (lcs->chunk_type == NONE){
+        *dbt=iter->data;
+        *csi=lcs;
+        *dbt_list=g_list_remove(*dbt_list,d);
+        g_mutex_unlock(d->chunks_mutex);
+        break;
+      }
+
+
+      lcs=lcs->chunk_functions.get_next(d);
+
       if (lcs!=NULL){
-        *cs=lcs;
+
+        *csi=lcs;
         *dbt=iter->data;
         g_mutex_unlock(d->chunks_mutex);
         break;
       }else{
+//        g_message("Checking table: %s.%s is null", d->database->name, d->table);
         iter=iter->next;
         *dbt_list=g_list_remove(*dbt_list,d);
         g_mutex_unlock(d->chunks_mutex);
@@ -407,7 +411,7 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
 
 void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList **table_list){
   struct db_table *dbt;
-  union chunk_step *cs;
+  struct chunk_step_item *csi;
   gboolean are_there_jobs_defining=FALSE;
   for (;;) {
     g_async_queue_pop(pop_queue);
@@ -415,11 +419,41 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
       return; 
     }
     dbt=NULL;
-    cs=NULL;
+    csi=NULL;
     are_there_jobs_defining=FALSE;
-    are_there_jobs_defining=get_next_dbt_and_chunk(&dbt,&cs,table_list);
+    are_there_jobs_defining=get_next_dbt_and_chunk_step_item(&dbt,&csi,table_list);
 
-    if ((cs==NULL) && (dbt==NULL)){
+
+    if (dbt!=NULL){
+
+      if (dbt->status == DEFINING){
+        create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
+        continue;
+      }
+
+      if (csi!=NULL){
+        switch (csi->chunk_type) {
+        case INTEGER:
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->integer_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
+          break;
+        case MULTICOLUMN_INTEGER:
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->multicolumn_integer_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
+          break;
+        case CHAR:
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->char_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, FALSE);
+          break;
+        case PARTITION:
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->partition_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
+          break;
+        case NONE:
+          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, FALSE);
+          break;
+        default:
+          m_error("This should not happen");
+          break;
+        }
+      }
+    }else{
       if (are_there_jobs_defining){
 //        g_debug("chunk_builder_thread: Are jobs defining... should we wait and try again later?");
         g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
@@ -429,30 +463,9 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
 //      g_debug("chunk_builder_thread: There were not job defined");
       break;
     }
-//    g_debug("chunk_builder_thread: Job will be enqueued");
-    switch (dbt->chunk_type) {
-    case INTEGER:
-      create_job_to_dump_chunk(dbt, NULL, cs->integer_step.number, dbt->primary_key_separated_by_comma, cs, g_async_queue_push, push_queue, TRUE);
-      break;
-    case MULTICOLUMN_INTEGER:
-      create_job_to_dump_chunk(dbt, NULL, cs->multicolumn_integer_step.number, dbt->primary_key_separated_by_comma, cs, g_async_queue_push, push_queue, TRUE);
-      break;
-    case CHAR:
-      create_job_to_dump_chunk(dbt, NULL, cs->char_step.number, dbt->primary_key_separated_by_comma, cs, g_async_queue_push, push_queue, FALSE);
-      break;
-    case PARTITION:
-      create_job_to_dump_chunk(dbt, NULL, cs->partition_step.number, dbt->primary_key_separated_by_comma, cs, g_async_queue_push, push_queue, TRUE);
-      break;
-    case NONE:
-      create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, cs, g_async_queue_push, push_queue, TRUE);
-      break;
-    case DEFINING:
-      create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
-      break;
-    default:
-      m_error("This should not happen");
-      break;
-    } 
+
+
+
   }
 }
 

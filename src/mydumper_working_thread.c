@@ -121,9 +121,9 @@ gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 
-guint64 min_rows_per_file = 0;
+guint64 min_chunk_step_size = 0;
 guint64 rows_per_file = 0;
-guint64 max_rows_per_file = 0;
+guint64 max_chunk_step_size = 0;
 
 void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
   gchar **split=g_strsplit(rows_p_chunk, ":", 0);
@@ -158,10 +158,10 @@ FILE * m_fopen(char **filename, const char *type ){
 void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
-    parse_rows_per_chunk(rows_per_chunk, &min_rows_per_file, &rows_per_file, &max_rows_per_file);
+    parse_rows_per_chunk(rows_per_chunk, &min_chunk_step_size, &rows_per_file, &max_chunk_step_size);
 
-  if (max_rows_per_file > G_MAXUINT64 / num_threads){
-    max_rows_per_file= G_MAXUINT64 / num_threads;
+  if (max_chunk_step_size > G_MAXUINT64 / num_threads){
+    max_chunk_step_size= G_MAXUINT64 / num_threads;
     m_error("This should not happen");
   }
 
@@ -457,7 +457,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   tj->td=td;
 
 //  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
-  tj->dbt->chunk_functions.process(tj);
+  tj->chunk_step_item->chunk_functions.process(tj);
 
   if (tj->sql_file){
     m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
@@ -823,7 +823,7 @@ void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   GList *l=dbt->chunks;
   guint64 total=0;
   while (l!=NULL){
-    switch (dbt->chunk_type){
+    switch (((struct chunk_step_item *)l)->chunk_type){
       case INTEGER:
         total+=((union chunk_step *)(l->data))->integer_step.estimated_remaining_steps;
         break;
@@ -843,11 +843,11 @@ void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
   g_string_set_size(tj->where,0);
 
-  if (tj->dbt->chunk_type == CHAR && td != NULL && tj->chunk_step->char_step.cmax)
+  if (tj->chunk_step_item->chunk_type == CHAR && td != NULL && tj->chunk_step_item->chunk_step->char_step.cmax)
     update_cursor(td->thrconn,tj);
 
-  if (tj->dbt->chunk_functions.update_where){
-    g_string_append(tj->where,tj->dbt->chunk_functions.update_where(tj->chunk_step));
+  if (tj->chunk_step_item->chunk_functions.update_where){
+    g_string_append(tj->where,tj->chunk_step_item->chunk_functions.update_where(tj->chunk_step_item->chunk_step));
   }
 
 }
@@ -1180,22 +1180,23 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, k);
   gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, k);
   if (rows_p_chunk )
-    parse_rows_per_chunk(rows_p_chunk, &(dbt->min_rows_per_file), &(dbt->start_rows_per_file), &(dbt->max_rows_per_file));
+    parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));
   else{
-    dbt->min_rows_per_file=min_rows_per_file;
-    dbt->start_rows_per_file=rows_per_file;
-    dbt->max_rows_per_file=max_rows_per_file;
+    dbt->min_chunk_step_size=min_chunk_step_size;
+    dbt->starting_chunk_step_size=rows_per_file;
+    dbt->max_chunk_step_size=max_chunk_step_size;
   }
-  if (dbt->min_rows_per_file == 1 && dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->start_rows_per_file != dbt->max_rows_per_file ){
-    dbt->min_rows_per_file = 2;
-    dbt->start_rows_per_file = 2;
+  if (dbt->min_chunk_step_size == 1 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size != dbt->max_chunk_step_size ){
+    dbt->min_chunk_step_size = 2;
+    dbt->starting_chunk_step_size = 2;
     g_warning("Setting min and start rows per file to 2 on %s", k);
   }
   dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, k), NULL, 10):num_threads;
   dbt->estimated_remaining_steps=1;
   dbt->min=NULL;
   dbt->max=NULL;
-  dbt->chunk_type = UNDEFINED;
+//  dbt->chunk_type_item.chunk_type = UNDEFINED;
+//  dbt->chunk_type_item.chunk_step = NULL;
   dbt->chunks=NULL;
   dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
@@ -1230,7 +1231,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
   else
     dbt->datalength = g_ascii_strtoull(datalength, NULL, 10);
 
-  dbt->chunk_functions.process=NULL;
+ // dbt->chunk_functions.process=NULL;
   return dbt; 
 }
 
@@ -1251,6 +1252,9 @@ void free_db_table(struct db_table * dbt){
   dbt->data_checksum=NULL;
   g_free(dbt->chunks_completed);
 //  g_free(dbt->field);
+
+/*
+
   union chunk_step * cs = NULL;
   switch (dbt->chunk_type) {
     case INTEGER:  
@@ -1266,6 +1270,8 @@ void free_db_table(struct db_table * dbt){
     default:
       break;
   }
+*/
+
   g_free(dbt->table);
   g_mutex_unlock(dbt->chunks_mutex);
   g_mutex_free(dbt->chunks_mutex);

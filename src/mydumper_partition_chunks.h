@@ -19,6 +19,6 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 union chunk_step *new_real_partition_step(GList *partition, guint deep, guint number);
-union chunk_step *get_next_partition_chunk(struct db_table *dbt);
+struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt);
 GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt);
 void process_partition_chunk(struct table_job *tj);

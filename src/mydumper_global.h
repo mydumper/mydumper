@@ -128,5 +128,5 @@ extern gboolean it_is_a_consistent_backup;
 extern gchar *partition_regex;
 extern gchar **exec_per_thread_cmd;
 extern const gchar *compress_method;
-extern guint64 min_rows_per_file;
-extern guint64 max_rows_per_file;
+extern guint64 min_chunk_step_size;
+extern guint64 max_chunk_step_size;

@@ -37,10 +37,10 @@
 #include "regex.h"
 #include "mydumper_working_thread.h"
 #include "mydumper_write.h"
+#include "mydumper_char_chunks.h"
 
 guint char_chunk=0;
 guint char_deep=0;
-
 
 
 void initialize_char_chunk(){
@@ -89,6 +89,17 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
 }
 
 
+struct chunk_step_item *new_char_step_item(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
+  struct chunk_step_item * csi = g_new0(struct chunk_step_item, 1);
+  csi->chunk_step = new_char_step(conn, field, deep, number, row, lengths);
+  csi->chunk_type=CHAR;
+  csi->chunk_functions.process = &process_char_chunk;
+  csi->chunk_functions.update_where = &update_char_where;
+  csi->chunk_functions.get_next = &get_next_char_chunk; 
+  return csi;
+}
+
+
 void next_chunk_in_char_step(union chunk_step * cs){
   cs->char_step.cmin_clen = cs->char_step.cursor_clen;
   cs->char_step.cmin_len = cs->char_step.cursor_len;
@@ -96,7 +107,8 @@ void next_chunk_in_char_step(union chunk_step * cs){
   cs->char_step.cmin_escaped = cs->char_step.cursor_escaped;
 }
 
-union chunk_step *split_char_step( guint deep, guint number, union chunk_step *previous_cs){
+struct chunk_step_item *split_char_step( guint deep, guint number, union chunk_step *previous_cs){
+  struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->char_step.prefix = NULL;
   cs->char_step.assigned=TRUE;
@@ -108,7 +120,12 @@ union chunk_step *split_char_step( guint deep, guint number, union chunk_step *p
   cs->char_step.previous=previous_cs;
   cs->char_step.status = 0;
 //  cs->char_step.list = list;
-  return cs;
+  csi->chunk_step=cs;
+  csi->chunk_type=CHAR;
+  csi->chunk_functions.process = &process_char_chunk;
+  csi->chunk_functions.update_where = &update_char_where;
+  csi->chunk_functions.get_next = &get_next_char_chunk; 
+  return csi;
 }
 
 void free_char_step(union chunk_step * cs){
@@ -120,36 +137,36 @@ void free_char_step(union chunk_step * cs){
   g_free(cs);
 }
 
-union chunk_step *get_next_char_chunk(struct db_table *dbt){
+struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
 //  g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
-  union chunk_step *cs=NULL;
+  struct chunk_step_item *csi=NULL;
   while (l!=NULL){
-    cs=l->data;
-    if (cs->char_step.mutex == NULL){
+    csi=l->data;
+    if (csi->chunk_step->char_step.mutex == NULL){
       g_message("This should not happen");
       l=l->next;
       continue;
     }
     
-    g_mutex_lock(cs->char_step.mutex);
-    if (!cs->char_step.assigned){
-      cs->char_step.assigned=TRUE;
-      g_mutex_unlock(cs->char_step.mutex);
+    g_mutex_lock(csi->chunk_step->char_step.mutex);
+    if (!csi->chunk_step->char_step.assigned){
+      csi->chunk_step->char_step.assigned=TRUE;
+      g_mutex_unlock(csi->chunk_step->char_step.mutex);
 //      g_mutex_unlock(dbt->chunks_mutex);
-      return cs;
+      return csi;
     }
-    if (cs->char_step.deep <= char_deep && g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0 && cs->char_step.status == 0){
-      union chunk_step * new_cs = split_char_step(
-          cs->char_step.deep + 1, cs->char_step.number+pow(2,cs->char_step.deep), cs);
-      cs->char_step.deep++;
-      cs->char_step.status = 1;
-      new_cs->char_step.assigned=TRUE;
+    if (csi->chunk_step->char_step.deep <= char_deep && g_strcmp0(csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cursor)!=0 && csi->chunk_step->char_step.status == 0){
+      struct chunk_step_item * new_cs = split_char_step(
+          csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi->chunk_step);
+      csi->chunk_step->char_step.deep++;
+      csi->chunk_step->char_step.status = 1;
+      new_cs->chunk_step->char_step.assigned=TRUE;
       return new_cs;
     }else{
 //      g_message("Not able to split because %d > %d | %s == %s | %d != 0", cs->char_step.deep,num_threads, cs->char_step.cmax, cs->char_step.cursor, cs->char_step.status);
     }
-    g_mutex_unlock(cs->char_step.mutex);
+    g_mutex_unlock(csi->chunk_step->char_step.mutex);
     l=l->next;
   }
 //  g_mutex_unlock(dbt->chunks_mutex);
@@ -182,16 +199,16 @@ gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, 
 }
 
 gchar* update_cursor (MYSQL *conn, struct table_job *tj){
-  union chunk_step *cs= tj->chunk_step;
+  struct chunk_step_item *csi= tj->chunk_step_item;
   gchar *query = NULL;
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
-  gchar * middle = get_escaped_middle_char(conn, cs->char_step.cmax, cs->char_step.cmax_clen, cs->char_step.cmin, cs->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
+  gchar * middle = get_escaped_middle_char(conn, csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cmax_clen, csi->chunk_step->char_step.cmin, csi->chunk_step->char_step.cmin_clen, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        (gchar*)tj->dbt->primary_key->data, tj->dbt->database->name, tj->dbt->table, cs->char_step.cmin_escaped, (gchar*)tj->dbt->primary_key->data, middle, (gchar*)tj->dbt->primary_key->data, (gchar*)tj->dbt->primary_key->data, cs->char_step.cmax_escaped, (gchar*)tj->dbt->primary_key->data));
+                        (gchar*)tj->dbt->primary_key->data, tj->dbt->database->name, tj->dbt->table, csi->chunk_step->char_step.cmin_escaped, (gchar*)tj->dbt->primary_key->data, middle, (gchar*)tj->dbt->primary_key->data, (gchar*)tj->dbt->primary_key->data, csi->chunk_step->char_step.cmax_escaped, (gchar*)tj->dbt->primary_key->data));
   g_free(query);
   minmax = mysql_store_result(conn);
 
@@ -204,10 +221,10 @@ gchar* update_cursor (MYSQL *conn, struct table_job *tj){
   if (row==NULL){
 //    g_message("No middle point");
 cleanup:
-    cs->char_step.cursor_clen = cs->char_step.cmax_clen;
-    cs->char_step.cursor_len = cs->char_step.cmax_len;
-    cs->char_step.cursor = cs->char_step.cmax;
-    cs->char_step.cursor_escaped = cs->char_step.cmax_escaped;
+    csi->chunk_step->char_step.cursor_clen = csi->chunk_step->char_step.cmax_clen;
+    csi->chunk_step->char_step.cursor_len = csi->chunk_step->char_step.cmax_len;
+    csi->chunk_step->char_step.cursor = csi->chunk_step->char_step.cmax;
+    csi->chunk_step->char_step.cursor_escaped = csi->chunk_step->char_step.cmax_escaped;
     return NULL;
   }
 //  guchar d=middle[0];
@@ -216,18 +233,18 @@ cleanup:
 
   tj->char_chunk_part--;
 
-  if (g_strcmp0(row[0], cs->char_step.cmax)!=0 && g_strcmp0(row[0], cs->char_step.cmin)!=0){
-    cs->char_step.cursor_clen = lengths[0];
-    cs->char_step.cursor_len = lengths[0]+1;
-    cs->char_step.cursor = g_new(char, cs->char_step.cursor_len);
-    g_strlcpy(cs->char_step.cursor, row[0], cs->char_step.cursor_len);
-    cs->char_step.cursor_escaped = g_new(char, lengths[0] * 2 + 1);
-    mysql_real_escape_string(conn, cs->char_step.cursor_escaped, row[0], lengths[0]);
+  if (g_strcmp0(row[0], csi->chunk_step->char_step.cmax)!=0 && g_strcmp0(row[0], csi->chunk_step->char_step.cmin)!=0){
+    csi->chunk_step->char_step.cursor_clen = lengths[0];
+    csi->chunk_step->char_step.cursor_len = lengths[0]+1;
+    csi->chunk_step->char_step.cursor = g_new(char, csi->chunk_step->char_step.cursor_len);
+    g_strlcpy(csi->chunk_step->char_step.cursor, row[0], csi->chunk_step->char_step.cursor_len);
+    csi->chunk_step->char_step.cursor_escaped = g_new(char, lengths[0] * 2 + 1);
+    mysql_real_escape_string(conn, csi->chunk_step->char_step.cursor_escaped, row[0], lengths[0]);
   }else{
-    cs->char_step.cursor_clen = cs->char_step.cmax_clen;
-    cs->char_step.cursor_len = cs->char_step.cmax_len;
-    cs->char_step.cursor = cs->char_step.cmax;
-    cs->char_step.cursor_escaped = cs->char_step.cmax_escaped;
+    csi->chunk_step->char_step.cursor_clen = csi->chunk_step->char_step.cmax_clen;
+    csi->chunk_step->char_step.cursor_len = csi->chunk_step->char_step.cmax_len;
+    csi->chunk_step->char_step.cursor = csi->chunk_step->char_step.cmax;
+    csi->chunk_step->char_step.cursor_escaped = csi->chunk_step->char_step.cmax_escaped;
   }
 
   return NULL;
@@ -300,10 +317,10 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   if (shutdown_triggered) {
     return 1;
   }
-  g_mutex_lock(tj->chunk_step->char_step.mutex);
+  g_mutex_lock(tj->chunk_step_item->chunk_step->char_step.mutex);
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
   update_where_on_table_job(td, tj);
-  g_mutex_unlock(tj->chunk_step->char_step.mutex);
+  g_mutex_unlock(tj->chunk_step_item->chunk_step->char_step.mutex);
 
 //  message_dumping_data(td,tj);
 
@@ -314,22 +331,22 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
 
   if (diff > 2){
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  / 2;
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step<min_rows_per_file?min_rows_per_file:tj->chunk_step->char_step.step;
+    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step  / 2;
+    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step<min_chunk_step_size?min_chunk_step_size:tj->chunk_step_item->chunk_step->char_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }else if (diff < 1){
-    tj->chunk_step->char_step.step=tj->chunk_step->char_step.step  * 2;
-    if (max_rows_per_file!=0)
-      tj->chunk_step->char_step.step=tj->chunk_step->char_step.step>max_rows_per_file?max_rows_per_file:tj->chunk_step->char_step.step;
+    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step  * 2;
+    if (max_chunk_step_size!=0)
+      tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:tj->chunk_step_item->chunk_step->char_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }
 
-  if (tj->chunk_step->char_step.prefix)
-    g_free(tj->chunk_step->char_step.prefix);
-  tj->chunk_step->char_step.prefix=NULL;
-  g_mutex_lock(tj->chunk_step->char_step.mutex);
-  next_chunk_in_char_step(tj->chunk_step);
-  g_mutex_unlock(tj->chunk_step->char_step.mutex);
+  if (tj->chunk_step_item->chunk_step->char_step.prefix)
+    g_free(tj->chunk_step_item->chunk_step->char_step.prefix);
+  tj->chunk_step_item->chunk_step->char_step.prefix=NULL;
+  g_mutex_lock(tj->chunk_step_item->chunk_step->char_step.mutex);
+  next_chunk_in_char_step(tj->chunk_step_item->chunk_step);
+  g_mutex_unlock(tj->chunk_step_item->chunk_step->char_step.mutex);
   return 0;
 }
 
@@ -337,7 +354,7 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
 void process_char_chunk(struct table_job *tj){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
-  union chunk_step *cs = tj->chunk_step, *previous = cs->char_step.previous;
+  union chunk_step *cs = tj->chunk_step_item->chunk_step, *previous = cs->char_step.previous;
 
   gboolean cont=FALSE;
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
@@ -349,9 +366,8 @@ void process_char_chunk(struct table_job *tj){
       if (cont == TRUE){
         
         cs->char_step.previous=NULL;
-        g_mutex_lock(cs->char_step.mutex);
+        g_mutex_lock(dbt->chunks_mutex);
         dbt->chunks=g_list_append(dbt->chunks,cs);
-
         g_mutex_unlock(dbt->chunks_mutex);
         g_mutex_unlock(previous->char_step.mutex);
         g_mutex_unlock(cs->char_step.mutex);

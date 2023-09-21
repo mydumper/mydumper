@@ -20,11 +20,11 @@
 */
 
 void initialize_char_chunk();
-union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths);
+//union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths);
+struct chunk_step_item *new_char_step_item(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths);
 void next_chunk_in_char_step(union chunk_step * cs);
-union chunk_step *split_char_step( guint deep, guint number, union chunk_step *previous_cs);
 void free_char_step(union chunk_step * cs);
-union chunk_step *get_next_char_chunk(struct db_table *dbt);
+struct chunk_step_item *get_next_char_chunk(struct db_table *dbt);
 gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, guint c2len, guint part);
 gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);
 gchar* update_cursor (MYSQL *conn, struct table_job *tj);

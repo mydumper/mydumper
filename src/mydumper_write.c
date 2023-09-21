@@ -312,7 +312,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   }
   return TRUE;
 }
-
+/*
 guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   GList *l=dbt->chunks;
   guint64 total=0;
@@ -322,6 +322,7 @@ guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   }
   return total;
 }
+*/
 
 guint64 get_estimated_remaining_of(GList *list, GMutex *mutex){
   GList *tl=list;

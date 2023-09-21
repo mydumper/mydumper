@@ -43,7 +43,8 @@ gchar *partition_regex = FALSE;
 
 
 void process_partition_chunk(struct table_job *tj){
-  union chunk_step *cs = tj->chunk_step;
+  struct chunk_step_item *csi = tj->chunk_step_item;
+  union chunk_step *cs = csi->chunk_step;
   gchar *partition=NULL;
   while (cs->partition_step.list != NULL){
     if (shutdown_triggered) {
@@ -72,35 +73,42 @@ union chunk_step *new_real_partition_step(GList *partition, guint deep, guint nu
   return cs;
 }
 
-union chunk_step *get_next_partition_chunk(struct db_table *dbt){
+struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint number){
+  struct chunk_step_item *csi = g_new0(struct chunk_step_item, 1);
+  csi->chunk_step = new_real_partition_step(partition, deep, number);
+  return csi;
+}
+
+
+struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
 //  g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
-  union chunk_step *cs=NULL;
+  struct chunk_step_item *csi=NULL;
   while (l!=NULL){
-    cs=l->data;
-    g_mutex_lock(cs->partition_step.mutex);
-    if (!cs->partition_step.assigned){
-      cs->partition_step.assigned=TRUE;
-      g_mutex_unlock(cs->partition_step.mutex);
+    csi=l->data;
+    g_mutex_lock(csi->chunk_step->partition_step.mutex);
+    if (!csi->chunk_step->partition_step.assigned){
+      csi->chunk_step->partition_step.assigned=TRUE;
+      g_mutex_unlock(csi->chunk_step->partition_step.mutex);
 //      g_mutex_unlock(dbt->chunks_mutex);
-      return cs;
+      return csi;
     }
 
-    if (g_list_length (cs->partition_step.list) > 3 ){
-      guint pos=g_list_length (cs->partition_step.list) / 2;
-      GList *new_list=g_list_nth(cs->partition_step.list,pos);
+    if (g_list_length (csi->chunk_step->partition_step.list) > 3 ){
+      guint pos=g_list_length (csi->chunk_step->partition_step.list) / 2;
+      GList *new_list=g_list_nth(csi->chunk_step->partition_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      union chunk_step * new_cs = new_real_partition_step(new_list, cs->partition_step.deep+1, cs->partition_step.number+pow(2,cs->partition_step.deep));
-      cs->partition_step.deep++;
-      new_cs->partition_step.assigned=TRUE;
-      dbt->chunks=g_list_append(dbt->chunks,new_cs);
+      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->chunk_step->partition_step.deep+1, csi->chunk_step->partition_step.number+pow(2,csi->chunk_step->partition_step.deep));
+      csi->chunk_step->partition_step.deep++;
+      new_csi->chunk_step->partition_step.assigned=TRUE;
+      dbt->chunks=g_list_append(dbt->chunks,new_csi);
 
-      g_mutex_unlock(cs->partition_step.mutex);
+      g_mutex_unlock(csi->chunk_step->partition_step.mutex);
  //     g_mutex_unlock(dbt->chunks_mutex);
-      return new_cs;
+      return new_csi;
     }
-    g_mutex_unlock(cs->partition_step.mutex);
+    g_mutex_unlock(csi->chunk_step->partition_step.mutex);
     l=l->next;
   }
 //  g_mutex_unlock(dbt->chunks_mutex);

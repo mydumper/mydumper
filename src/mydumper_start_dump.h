@@ -42,14 +42,19 @@ enum job_type {
 };
 
 enum chunk_type{
-  UNDEFINED,
-  DEFINING,
   NONE,
   INTEGER,
   CHAR,
   PARTITION,
   MULTICOLUMN_INTEGER
 };
+
+enum db_table_states{
+  UNDEFINED,
+  DEFINING,
+  READY
+};
+
 
 enum chunk_states{
   UNASSIGNED,
@@ -122,7 +127,7 @@ struct db_table;
 struct chunk_functions{
   void (*process)(struct table_job *tj);
   gchar *(*update_where)(union chunk_step * chunk_step);
-  union chunk_step *(*get_next)(struct db_table *dbt);
+  struct chunk_step_item *(*get_next)(struct db_table *dbt);
 };
 
 struct multicolumn_integer_step {
@@ -151,7 +156,10 @@ struct integer_step {
 //  guint64 nmax;
   union type type; 
   GString *where;
+  gboolean is_step_fixed_length;
   guint64 step;
+  guint64 min_chunk_step_size;
+  guint64 max_chunk_step_size;
   guint64 estimated_remaining_steps;
   guint64 number;
   guint deep;
@@ -209,6 +217,14 @@ union chunk_step {
   struct partition_step partition_step;
 };
 
+
+struct chunk_step_item{
+  union chunk_step *chunk_step;
+  enum chunk_type chunk_type;
+  struct chunk_functions chunk_functions;
+};
+
+
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
 // second number : when load data is used
@@ -217,7 +233,8 @@ struct table_job {
   guint64 nchunk;
   guint sub_part;
   GString *where;
-  union chunk_step *chunk_step;  
+//  union chunk_step *chunk_step;  
+  struct chunk_step_item *chunk_step_item;
   char *order_by;
   struct db_table *dbt;
   gchar *sql_filename;
@@ -282,7 +299,7 @@ struct db_table {
   gchar *columns_on_insert;
   pcre *partition_regex;
   guint num_threads;
-  enum chunk_type chunk_type;
+//  enum chunk_type chunk_type;
   GList *chunks;
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
@@ -295,10 +312,11 @@ struct db_table {
   gchar *indexes_checksum;
   gchar *triggers_checksum;
   guint chunk_filesize;  
-  guint64 min_rows_per_file;
-  guint64 start_rows_per_file;
-  guint64 max_rows_per_file;
-  struct chunk_functions chunk_functions;
+  guint64 min_chunk_step_size;
+  guint64 starting_chunk_step_size;
+  guint64 max_chunk_step_size;
+// struct chunk_functions chunk_functions;
+  enum db_table_states status;
 };
 
 

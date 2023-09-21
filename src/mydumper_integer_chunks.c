@@ -45,7 +45,7 @@ guint64 gint64_abs(gint64 a){
   return -a;
 }
 
-union chunk_step *new_integer_step(gboolean include_null, gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, guint64 step, guint64 number, gboolean check_min, gboolean check_max){
+union chunk_step *new_integer_step(gboolean include_null, gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max){
 //  g_message("New Integer Step with step size: %d", step);
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->integer_step.where=g_string_new("");
@@ -54,6 +54,8 @@ union chunk_step *new_integer_step(gboolean include_null, gchar *prefix, gchar *
   cs->integer_step.is_unsigned = is_unsigned;
   cs->integer_step.prefix = prefix;
   cs->integer_step.step = step;
+  cs->integer_step.min_chunk_step_size = min_css;
+  cs->integer_step.max_chunk_step_size = max_css;
   if (cs->integer_step.is_unsigned){
 //    g_message("New unsigned %"G_GUINT64_FORMAT" %"G_GUINT64_FORMAT, type.unsign.min, type.unsign.max);
     cs->integer_step.type.unsign.min = type.unsign.min;
@@ -72,10 +74,22 @@ union chunk_step *new_integer_step(gboolean include_null, gchar *prefix, gchar *
   cs->integer_step.field = g_strdup(field);
   cs->integer_step.mutex = g_mutex_new(); 
   cs->integer_step.status = UNASSIGNED;
+  cs->integer_step.is_step_fixed_length = is_step_fixed_length;
   cs->integer_step.check_max=check_max;
   cs->integer_step.check_min=check_min;
   return cs;
 }
+
+struct chunk_step_item *new_integer_step_item(gboolean include_null, gchar *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max){
+  struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
+  csi->chunk_step = new_integer_step(include_null, prefix, field, is_unsigned, type, deep, is_step_fixed_length, step, min_css, max_css, number, check_min, check_max);
+  csi->chunk_type=INTEGER;
+  csi->chunk_functions.process = &process_integer_chunk;
+  csi->chunk_functions.update_where = &get_integer_chunk_where;
+  csi->chunk_functions.get_next = &get_next_integer_chunk;
+  return csi;
+}
+
 
 void free_integer_step(union chunk_step * cs){
   if (cs->integer_step.field!=NULL){
@@ -88,16 +102,19 @@ void free_integer_step(union chunk_step * cs){
   g_free(cs);
 }
 
+void free_integer_step_item(struct chunk_step_item * csi){
+  free_integer_step(csi->chunk_step);
+  g_free(csi);
+}
 
+void common_to_chunk_step(struct db_table *dbt, struct chunk_step_item * csi, struct chunk_step_item * new_csi){
+  csi->chunk_step->integer_step.deep++;
+  dbt->chunks=g_list_append(dbt->chunks,new_csi);
 
-void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chunk_step * new_cs){
-  cs->integer_step.deep++;
-  dbt->chunks=g_list_append(dbt->chunks,new_cs);
+  new_csi->chunk_step->integer_step.status=ASSIGNED;
 
-  new_cs->integer_step.status=ASSIGNED;
-
-  g_async_queue_push(dbt->chunks_queue, cs);
-  g_async_queue_push(dbt->chunks_queue, new_cs);
+  g_async_queue_push(dbt->chunks_queue, csi);
+  g_async_queue_push(dbt->chunks_queue, new_csi);
 
 //  g_debug("Chunk splited on: `%s`.`%s`", dbt->database->name, dbt->table);
 
@@ -105,170 +122,170 @@ void common_to_chunk_step(struct db_table *dbt, union chunk_step * cs, union chu
 //  g_mutex_unlock(dbt->chunks_mutex);
 }
 
-union chunk_step * split_unsigned_chunk_step(struct db_table *dbt, union chunk_step * cs){
+struct chunk_step_item * split_unsigned_chunk_step(struct db_table *dbt, struct chunk_step_item * csi){
   guint64 new_minmax = 0;
   union type type;
-  type.unsign.max = cs->integer_step.type.unsign.max;
-  union chunk_step * new_cs = NULL;
-  if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
-    if ( cs->integer_step.status == DUMPING_CHUNK ){
-      new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step *
-                (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
-                   cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2 ) + 1;
+  type.unsign.max = csi->chunk_step->integer_step.type.unsign.max;
+  struct chunk_step_item * new_csi = NULL;
+  if ( csi->chunk_step->integer_step.is_step_fixed_length ){
+    if ( csi->chunk_step->integer_step.status == DUMPING_CHUNK ){
+      new_minmax = csi->chunk_step->integer_step.type.unsign.cursor + csi->chunk_step->integer_step.step *
+                (( csi->chunk_step->integer_step.type.unsign.max    / csi->chunk_step->integer_step.step - 
+                   csi->chunk_step->integer_step.type.unsign.cursor / csi->chunk_step->integer_step.step ) / 2 ) + 1;
 
-      if (new_minmax == cs->integer_step.type.unsign.cursor)
-      new_minmax = cs->integer_step.type.unsign.cursor + cs->integer_step.step * (
-                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
-                   cs->integer_step.type.unsign.cursor / cs->integer_step.step ) / 2  + 1) + 1;
+      if (new_minmax == csi->chunk_step->integer_step.type.unsign.cursor)
+      new_minmax = csi->chunk_step->integer_step.type.unsign.cursor + csi->chunk_step->integer_step.step * (
+                 ( csi->chunk_step->integer_step.type.unsign.max    / csi->chunk_step->integer_step.step -
+                   csi->chunk_step->integer_step.type.unsign.cursor / csi->chunk_step->integer_step.step ) / 2  + 1) + 1;
 
     }else{
-      new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step *
-                (( cs->integer_step.type.unsign.max    / cs->integer_step.step - 
-                   cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 );
+      new_minmax = csi->chunk_step->integer_step.type.unsign.min    + csi->chunk_step->integer_step.step *
+                (( csi->chunk_step->integer_step.type.unsign.max    / csi->chunk_step->integer_step.step - 
+                   csi->chunk_step->integer_step.type.unsign.min    / csi->chunk_step->integer_step.step ) / 2 );
 
-      if (new_minmax == cs->integer_step.type.unsign.min)
-      new_minmax = cs->integer_step.type.unsign.min    + cs->integer_step.step * (
-                 ( cs->integer_step.type.unsign.max    / cs->integer_step.step -
-                   cs->integer_step.type.unsign.min    / cs->integer_step.step ) / 2 + 1);
+      if (new_minmax == csi->chunk_step->integer_step.type.unsign.min)
+      new_minmax = csi->chunk_step->integer_step.type.unsign.min    + csi->chunk_step->integer_step.step * (
+                 ( csi->chunk_step->integer_step.type.unsign.max    / csi->chunk_step->integer_step.step -
+                   csi->chunk_step->integer_step.type.unsign.min    / csi->chunk_step->integer_step.step ) / 2 + 1);
 
 
     }
     type.unsign.min = new_minmax;
-    new_cs = new_integer_step(FALSE, NULL, dbt->primary_key->data, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->chunk_step->integer_step.deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->chunk_step->integer_step.number, TRUE, csi->chunk_step->integer_step.check_max);
   }else{
-    if ( cs->integer_step.status == DUMPING_CHUNK ){
-      new_minmax = cs->integer_step.type.unsign.cursor + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor)/2;
-      if ( new_minmax == cs->integer_step.type.unsign.cursor )
+    if ( csi->chunk_step->integer_step.status == DUMPING_CHUNK ){
+      new_minmax = csi->chunk_step->integer_step.type.unsign.cursor + (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor)/2;
+      if ( new_minmax == csi->chunk_step->integer_step.type.unsign.cursor )
         new_minmax++;
     }else{
-      new_minmax = cs->integer_step.type.unsign.min    + (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/2;
-      if ( new_minmax == cs->integer_step.type.unsign.min )
+      new_minmax = csi->chunk_step->integer_step.type.unsign.min    + (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min)/2;
+      if ( new_minmax == csi->chunk_step->integer_step.type.unsign.min )
         new_minmax++;
     }
     type.unsign.min = new_minmax;
-    new_cs = new_integer_step(FALSE, NULL, dbt->primary_key->data, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
-    cs->integer_step.check_max=TRUE;
+    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->chunk_step->integer_step.deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->chunk_step->integer_step.number+pow(2,csi->chunk_step->integer_step.deep), TRUE, csi->chunk_step->integer_step.check_max);
+    csi->chunk_step->integer_step.check_max=TRUE;
     
   }
 
-  cs->integer_step.type.unsign.max = new_minmax - 1;
+  csi->chunk_step->integer_step.type.unsign.max = new_minmax - 1;
 
-  common_to_chunk_step(dbt, cs, new_cs);
+  common_to_chunk_step(dbt, csi, new_csi);
 
-  return new_cs;
+  return new_csi;
 }
 
-union chunk_step * split_signed_chunk_step(struct db_table *dbt, union chunk_step * cs){
+struct chunk_step_item * split_signed_chunk_step(struct db_table *dbt, struct chunk_step_item * csi){
   gint64 new_minmax = 0;
   union type type;
 
-  type.sign.max = cs->integer_step.type.sign.max;
+  type.sign.max = csi->chunk_step->integer_step.type.sign.max;
 
-  union chunk_step * new_cs = NULL;
-  if ( dbt->min_rows_per_file == dbt->start_rows_per_file && dbt->max_rows_per_file == dbt->start_rows_per_file){
-    if ( cs->integer_step.status == DUMPING_CHUNK ){
-       new_minmax = cs->integer_step.type.sign.cursor + (signed) cs->integer_step.step *
-                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
-                    cs->integer_step.type.sign.cursor / (signed) cs->integer_step.step ) / 2 ) + 1;
-      if (new_minmax == cs->integer_step.type.sign.min)
-       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
-                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
-                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1 ) + 1; 
+  struct chunk_step_item * new_csi = NULL;
+  if ( csi->chunk_step->integer_step.is_step_fixed_length ){
+    if ( csi->chunk_step->integer_step.status == DUMPING_CHUNK ){
+       new_minmax = csi->chunk_step->integer_step.type.sign.cursor + (signed) csi->chunk_step->integer_step.step *
+                 (( csi->chunk_step->integer_step.type.sign.max    / (signed) csi->chunk_step->integer_step.step - 
+                    csi->chunk_step->integer_step.type.sign.cursor / (signed) csi->chunk_step->integer_step.step ) / 2 ) + 1;
+      if (new_minmax == csi->chunk_step->integer_step.type.sign.min)
+       new_minmax = csi->chunk_step->integer_step.type.sign.min    + (signed) csi->chunk_step->integer_step.step *
+                 (( csi->chunk_step->integer_step.type.sign.max    / (signed) csi->chunk_step->integer_step.step -
+                    csi->chunk_step->integer_step.type.sign.min    / (signed) csi->chunk_step->integer_step.step ) / 2 + 1 ) + 1; 
    }else{
-       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
-                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step - 
-                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 );
-      if (new_minmax == cs->integer_step.type.sign.min)
-       new_minmax = cs->integer_step.type.sign.min    + (signed) cs->integer_step.step *
-                 (( cs->integer_step.type.sign.max    / (signed) cs->integer_step.step -
-                    cs->integer_step.type.sign.min    / (signed) cs->integer_step.step ) / 2 + 1);
+       new_minmax = csi->chunk_step->integer_step.type.sign.min    + (signed) csi->chunk_step->integer_step.step *
+                 (( csi->chunk_step->integer_step.type.sign.max    / (signed) csi->chunk_step->integer_step.step - 
+                    csi->chunk_step->integer_step.type.sign.min    / (signed) csi->chunk_step->integer_step.step ) / 2 );
+      if (new_minmax == csi->chunk_step->integer_step.type.sign.min)
+       new_minmax = csi->chunk_step->integer_step.type.sign.min    + (signed) csi->chunk_step->integer_step.step *
+                 (( csi->chunk_step->integer_step.type.sign.max    / (signed) csi->chunk_step->integer_step.step -
+                    csi->chunk_step->integer_step.type.sign.min    / (signed) csi->chunk_step->integer_step.step ) / 2 + 1);
     }
     type.sign.min = new_minmax;
 
-    new_cs = new_integer_step(FALSE, NULL, dbt->primary_key->data, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number, TRUE, cs->integer_step.check_max);
+    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->chunk_step->integer_step.deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->chunk_step->integer_step.number, TRUE, csi->chunk_step->integer_step.check_max);
   }else{
-    if ( cs->integer_step.status == DUMPING_CHUNK ){
+    if ( csi->chunk_step->integer_step.status == DUMPING_CHUNK ){
       new_minmax = //gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
-                     cs->integer_step.type.sign.cursor + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor)/2 ;
+                     csi->chunk_step->integer_step.type.sign.cursor + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor)/2 ;
                    //  cs->integer_step.type.sign.cursor + 1;
-      if ( new_minmax == cs->integer_step.type.sign.cursor )
+      if ( new_minmax == csi->chunk_step->integer_step.type.sign.cursor )
         new_minmax++;
     }else{
       new_minmax = //gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) > cs->integer_step.step ?
-                     cs->integer_step.type.sign.min + (cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/2 ;
+                     csi->chunk_step->integer_step.type.sign.min + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)/2 ;
                    //  cs->integer_step.type.sign.min + 1;
-      if ( new_minmax == cs->integer_step.type.sign.min    )
+      if ( new_minmax == csi->chunk_step->integer_step.type.sign.min    )
         new_minmax++;
     }
     type.sign.min = new_minmax;
 
-    new_cs = new_integer_step(FALSE, NULL, dbt->primary_key->data, cs->integer_step.is_unsigned, type, cs->integer_step.deep + 1, cs->integer_step.step, cs->integer_step.number+pow(2,cs->integer_step.deep), TRUE, cs->integer_step.check_max);
+    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->chunk_step->integer_step.deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, min_chunk_step_size, max_chunk_step_size, csi->chunk_step->integer_step.number+pow(2,csi->chunk_step->integer_step.deep), TRUE, csi->chunk_step->integer_step.check_max);
 
-    cs->integer_step.check_max=TRUE;
+    csi->chunk_step->integer_step.check_max=TRUE;
   }
 
-  cs->integer_step.type.sign.max = new_minmax - 1;
+  csi->chunk_step->integer_step.type.sign.max = new_minmax - 1;
 
 //  g_message("New sign max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.max);
 
-  common_to_chunk_step(dbt, cs, new_cs);
+  common_to_chunk_step(dbt, csi, new_csi);
 
-  return new_cs;
+  return new_csi;
 }
 
-union chunk_step *get_next_integer_chunk(struct db_table *dbt){
-  union chunk_step *cs=NULL, *new_cs=NULL;
+struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
+  struct chunk_step_item *csi=NULL, *new_csi=NULL;
   if (dbt->chunks!=NULL){
-    cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);      
-    while (cs!=NULL){
-      g_mutex_lock(cs->integer_step.mutex);
-      if (cs->integer_step.status==UNASSIGNED){
-        cs->integer_step.status=ASSIGNED;
-        g_async_queue_push(dbt->chunks_queue, cs);
-        g_mutex_unlock(cs->integer_step.mutex);
-        return cs;
+    csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);      
+    while (csi!=NULL){
+      g_mutex_lock(csi->chunk_step->integer_step.mutex);
+      if (csi->chunk_step->integer_step.status==UNASSIGNED){
+        csi->chunk_step->integer_step.status=ASSIGNED;
+        g_async_queue_push(dbt->chunks_queue, csi);
+        g_mutex_unlock(csi->chunk_step->integer_step.mutex);
+        return csi;
       }
-      if (cs->integer_step.is_unsigned) {
+      if (csi->chunk_step->integer_step.is_unsigned) {
 
-        if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.max // it is not the last chunk
+        if (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max // it is not the last chunk
         && (  
-             ( cs->integer_step.status == DUMPING_CHUNK && (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor ) > cs->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ( csi->chunk_step->integer_step.status == DUMPING_CHUNK && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor ) > csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
              ) || 
-             ( cs->integer_step.status == ASSIGNED      && (cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min    ) > cs->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             ( csi->chunk_step->integer_step.status == ASSIGNED      && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min    ) > csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
              )
            )
          ){
-          new_cs=split_unsigned_chunk_step(dbt,cs);
-          g_mutex_unlock(cs->integer_step.mutex);
-          return new_cs;
+          new_csi=split_unsigned_chunk_step(dbt,csi);
+          g_mutex_unlock(csi->chunk_step->integer_step.mutex);
+          return new_csi;
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-          g_mutex_unlock(cs->integer_step.mutex);
-          if (cs->integer_step.status==COMPLETED){
-            free_integer_step(cs);
+          g_mutex_unlock(csi->chunk_step->integer_step.mutex);
+          if (csi->chunk_step->integer_step.status==COMPLETED){
+            free_integer_step_item(csi);
           }
         }
       }else{
-        if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.max // it is not the last chunk
+        if (csi->chunk_step->integer_step.type.sign.cursor < csi->chunk_step->integer_step.type.sign.max // it is not the last chunk
         && (  
-             ( cs->integer_step.status == DUMPING_CHUNK && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ( csi->chunk_step->integer_step.status == DUMPING_CHUNK && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor) > csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
              ) || 
-             ( cs->integer_step.status == ASSIGNED      && gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)    > cs->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             ( csi->chunk_step->integer_step.status == ASSIGNED      && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)    > csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
              )
            )
          ){
-          new_cs=split_signed_chunk_step(dbt,cs);
-          g_mutex_unlock(cs->integer_step.mutex);
-          return new_cs;
+          new_csi=split_signed_chunk_step(dbt,csi);
+          g_mutex_unlock(csi->chunk_step->integer_step.mutex);
+          return new_csi;
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-          g_mutex_unlock(cs->integer_step.mutex);
-          if (cs->integer_step.status==COMPLETED){
-            free_integer_step(cs);
+          g_mutex_unlock(csi->chunk_step->integer_step.mutex);
+          if (csi->chunk_step->integer_step.status==COMPLETED){
+            free_integer_step_item(csi);
           }
         }
       }
-      cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
+      csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);
     }
   }
   return NULL;
@@ -373,8 +390,9 @@ cleanup:
 
 guint process_integer_chunk_step(struct table_job *tj){
   struct thread_data *td = tj->td;
-  union chunk_step *cs = tj->chunk_step;
-  struct integer_step *ics = &(cs->integer_step);
+  struct chunk_step_item *csi = tj->chunk_step_item;
+  union chunk_step *cs = csi->chunk_step;
+  struct integer_step *ics = &(csi->chunk_step->integer_step);
 
   check_pause_resume(td);
   if (shutdown_triggered) {
@@ -455,36 +473,35 @@ g_message("cs->integer_step.type.sign.cursor == cs->integer_step.type.sign.min")
 
   g_string_append(tj->where,get_integer_chunk_where(cs));
 
+
+
+
 // Step 3: Executing query and writing data
 
+  if (cs->integer_step.is_step_fixed_length) {
+    write_table_job_into_file(tj);
+  }else{
 
-    if (cs->integer_step.is_unsigned){
-//g_message("unsign.min: %"G_GUINT64_FORMAT" | unsign.cursor: %"G_GUINT64_FORMAT"| unsign.max: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.max);
-}else{
-//g_message("sign.min: %"G_GINT64_FORMAT" | sign.cursor: %"G_GINT64_FORMAT "| sign.max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.min, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.max);
-}
+    GDateTime *from = g_date_time_new_now_local();
+    write_table_job_into_file(tj);
+    GDateTime *to = g_date_time_new_now_local();
 
+// Step 3.1: Updating Step length
 
-  GDateTime *from = g_date_time_new_now_local();
-  write_table_job_into_file(tj);
-  GDateTime *to = g_date_time_new_now_local();
-
-// Step 4: Updating Step size
-
-  GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-  g_date_time_unref(from);
-  g_date_time_unref(to);
-  if (diff > 2){
-    cs->integer_step.step=cs->integer_step.step  / 2;
-    cs->integer_step.step=cs->integer_step.step<min_rows_per_file?min_rows_per_file:cs->integer_step.step;
+    GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+    g_date_time_unref(from);
+    g_date_time_unref(to);
+    if (diff > 2){
+      cs->integer_step.step=cs->integer_step.step  / 2;
+      cs->integer_step.step=cs->integer_step.step<csi->chunk_step->integer_step.min_chunk_step_size?csi->chunk_step->integer_step.min_chunk_step_size:cs->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-  }else if (diff < 1){
-    cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
-    if (max_rows_per_file!=0)
-      cs->integer_step.step=cs->integer_step.step>max_rows_per_file?max_rows_per_file:cs->integer_step.step;
+    }else if (diff < 1){
+      cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
+      if (max_chunk_step_size!=0)
+        cs->integer_step.step=cs->integer_step.step>csi->chunk_step->integer_step.max_chunk_step_size?csi->chunk_step->integer_step.max_chunk_step_size:cs->integer_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
+    }
   }
-
 
 // Step 5: Updating min
 
@@ -503,7 +520,8 @@ g_message("cs->integer_step.type.sign.cursor == cs->integer_step.type.sign.min")
 void process_integer_chunk(struct table_job *tj){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
-  union chunk_step *cs = tj->chunk_step;
+  struct chunk_step_item *csi = tj->chunk_step_item;
+  union chunk_step *cs = csi->chunk_step;
 
 /*
   if (dbt->multicolumn){
@@ -520,9 +538,9 @@ void process_integer_chunk(struct table_job *tj){
     union chunk_step *next_cs = get_initial_chunk(td->thrconn, &chunk_type, &chunk_functions, dbt, 1, this_where);
     g_message("multicolumn found: `%s`.`%s` type: %d", dbt->database->name, dbt->table, chunk_type);
     if (chunk_type == INTEGER){
-      dbt->min_rows_per_file = 1;
-      dbt->start_rows_per_file = 1;
-      dbt->max_rows_per_file = 1;
+      dbt->min_chunk_step_size = 1;
+      dbt->starting_chunk_step_size = 1;
+      dbt->max_chunk_step_size = 1;
       g_message("multicolumn found: `%s`.`%s`.`%s`", dbt->database->name, dbt->table, next_cs->integer_step.field);
     }
     g_mutex_unlock(tj->chunk_step->integer_step.mutex);
@@ -542,35 +560,35 @@ void process_integer_chunk(struct table_job *tj){
   cs->integer_step.include_null=FALSE;
 
   // Processing the remaining steps
-  g_mutex_lock(tj->chunk_step->integer_step.mutex);
+  g_mutex_lock(cs->integer_step.mutex);
   if (cs->integer_step.is_unsigned){
     // Remaining unsigned steps
 //g_message("cs->integer_step.type.unsign.min: %"G_GUINT64_FORMAT" | cs->integer_step.type.unsign.max: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max);
     while ( cs->integer_step.type.unsign.min <= cs->integer_step.type.unsign.max ){
-      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+      g_mutex_unlock(cs->integer_step.mutex);
       g_string_set_size(tj->where,0);
       if (process_integer_chunk_step(tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
       g_atomic_int_inc(dbt->chunks_completed);
-      g_mutex_lock(tj->chunk_step->integer_step.mutex);
+      g_mutex_lock(cs->integer_step.mutex);
     }
   }else{
     // Remaining signed steps
 //g_message("cs->integer_step.type.sign.min: %"G_GINT64_FORMAT" | cs->integer_step.type.sign.max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max);
     while ( cs->integer_step.type.sign.min <= cs->integer_step.type.sign.max ){
-      g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+      g_mutex_unlock(cs->integer_step.mutex);
       g_string_set_size(tj->where,0);
       if (process_integer_chunk_step(tj)){
         g_message("Thread %d: Job has been cacelled",td->thread_id);
         return;
       }
       g_atomic_int_inc(dbt->chunks_completed);
-      g_mutex_lock(tj->chunk_step->integer_step.mutex);
+      g_mutex_lock(cs->integer_step.mutex);
     }
   }
-  g_mutex_unlock(tj->chunk_step->integer_step.mutex);
+  g_mutex_unlock(cs->integer_step.mutex);
 
 
 
@@ -592,7 +610,7 @@ void process_integer_chunk(struct table_job *tj){
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
   dbt->chunks=g_list_remove(dbt->chunks,cs);
-  tj->chunk_step->integer_step.estimated_remaining_steps=0;
+  cs->integer_step.estimated_remaining_steps=0;
   if (g_list_length(dbt->chunks) == 0){
     g_message("Thread %d: Table %s completed ",td->thread_id,dbt->table);
     dbt->chunks=NULL;
