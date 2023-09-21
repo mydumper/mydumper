@@ -1,5 +1,4 @@
 #!/bin/bash
-execute_test=""
 mydumper_log="/tmp/test_mydumper.log"
 tmp_mydumper_log="/tmp/test_mydumper.log.tmp"
 myloader_log="/tmp/test_myloader.log"
@@ -14,25 +13,17 @@ myloader="${mydumper_base}/myloader"
 export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
-
-
-#for i in $*
-#do
-#  if [ "$($mydumper --version | grep "$i" | wc -l)" != "1" ]
-#  then
-#    exit 1
-#  fi
-#  if [ "$($myloader --version | grep "$i" | wc -l)" != "1" ]
-#  then
-#    exit 1
-#  fi
-#done
-
-if [ "$1" != "" ]
-then
-  execute_test="$1"
-fi
-
+for i in $*
+do
+  if [ "$($mydumper --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+  if [ "$($myloader --version | grep "$i" | wc -l)" != "1" ]
+  then
+    exit 1
+  fi
+done
 
 test_case_dir (){
   # Test case
@@ -41,14 +32,6 @@ test_case_dir (){
 
   number=$(( $number + 1 ))
   echo "Test #${number}"
-
-  if [ "$execute_test" != ""  ]
-  then
-    if [ "$execute_test" != "$number" ]
-    then
-      return 1
-    fi
-  fi
 
   mydumper_parameters=${s%%"-- "*}
   myloader_parameters=${s#*"-- "}
@@ -65,7 +48,6 @@ test_case_dir (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      exit $error
       echo "Retrying export due error"
       echo "Exporting database: ${mydumper_parameters}"
       eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
@@ -98,7 +80,6 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
-      exit $error
       echo "Retrying import due error"
       echo "Importing database: ${myloader_parameters}"
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
@@ -129,15 +110,6 @@ test_case_stream (){
   number=$(( $number + 1 ))
   echo "Test #${number}"
 
-
-  if [ "$execute_test" != ""  ]
-  then
-    if [ "$execute_test" != "$number" ]
-    then
-      return
-    fi
-  fi
-
   mydumper_parameters=${s%%"-- "*}
   myloader_parameters=${s#*"-- "}
 
@@ -153,7 +125,6 @@ test_case_stream (){
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
     if (( $error > 0 ))
     then
-      exit $error
       echo "Retrying export due error"
       echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
       eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
@@ -180,7 +151,6 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
-      exit $error
       echo "Retrying import due error"
       cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
       error=$?
@@ -231,7 +201,6 @@ full_test_global(){
   for test in test_case_dir test_case_stream
   do 
     echo "Executing test: $test"
-#    for compress_mode in "" "-c GZIP" "-c ZSTD"
     for compress_mode in "" "-c GZIP" "-c ZSTD"
       do
       for backup_mode in "" "--load-data" "--csv"
@@ -291,4 +260,3 @@ $test --no-data -G ${mydumper_general_options} 				-- ${myloader_general_options
 
 #cat $mydumper_log
 #cat $myloader_log
-
