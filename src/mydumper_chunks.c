@@ -357,6 +357,10 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
         break;
       }
 
+      if (d->chunks == NULL){
+        goto next;
+      }
+
       lcs=(struct chunk_step_item *)(g_list_first(d->chunks)->data);
       if (lcs->chunk_type == NONE){
         *dbt=iter->data;
@@ -386,6 +390,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
       g_mutex_unlock(d->chunks_mutex);
       are_there_jobs_defining=TRUE;
     }
+next:
     iter=iter->next;
   }
   return are_there_jobs_defining;
