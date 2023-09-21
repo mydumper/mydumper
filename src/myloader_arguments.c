@@ -121,7 +121,7 @@ static GOptionEntry filter_entries[] ={
     {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
-     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures nor functions", NULL},
+     "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

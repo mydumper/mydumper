@@ -207,7 +207,7 @@ void initialize_working_thread(){
     exec_per_thread_extension=EMPTY_STRING;
   } else {
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
-      g_critical("--compression and --exec-per-thread are not comptatible");
+      m_critical("--compression and --exec-per-thread are not comptatible");
     }
     gchar *cmd=NULL;
     if ( g_strcmp0(compress_method,GZIP)==0){
@@ -586,7 +586,10 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   guint isms;
   guint i;
 
-  mysql_query(conn, "SHOW MASTER STATUS");
+  
+  if (mysql_query(conn, "SHOW MASTER STATUS"))
+    m_critical("Couldn't get master position: %s", mysql_error(conn));
+    
   master = mysql_store_result(conn);
   if (master && (row = mysql_fetch_row(master))) {
     masterlog = row[0];

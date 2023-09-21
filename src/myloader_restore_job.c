@@ -177,7 +177,7 @@ void increse_object_error(const gchar *object){
 
 void get_total_done(struct configuration * conf, void *total){
   g_mutex_lock(conf->table_hash_mutex);
-  g_hash_table_foreach(conf->table_hash,&is_all_done, &total);
+  g_hash_table_foreach(conf->table_hash,&is_all_done, total);
   g_mutex_unlock(conf->table_hash_mutex);
 }
 

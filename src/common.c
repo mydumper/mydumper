@@ -745,8 +745,6 @@ gchar *m_date_time_new_now_local(){
   g_string_append(datetimestr,g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S"));
   g_string_append_printf(datetimestr,".%d", g_date_time_get_microsecond(datetime));
   g_date_time_unref(datetime);
-  gchar *r=datetimestr->str;
-  g_string_free(datetimestr,FALSE);
-  return r;
+  return g_string_free(datetimestr,FALSE);
 }
 
