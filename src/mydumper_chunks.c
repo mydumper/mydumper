@@ -163,18 +163,19 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
         if ( abs > dbt->min_chunk_step_size){
           union type type;
-          gboolean is_step_fixed_length = (dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->max_chunk_step_size == dbt->starting_chunk_step_size);
           guint64 min_css = /*dbt->multicolumn ? 1 :*/ dbt->min_chunk_step_size;
           guint64 max_css = /*dbt->multicolumn ? 1 :*/ dbt->max_chunk_step_size;
+          guint64 starting_css = /*dbt->multicolumn ? 1 :*/ dbt->starting_chunk_step_size;
+          gboolean is_step_fixed_length = (min_css == starting_css && max_css == starting_css);
 
           if (unsign){
             type.unsign.min=unmin;
             type.unsign.max=unmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, min_css, max_css, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE);
           }else{
             type.sign.min=nmin;
             type.sign.max=nmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, min_css, max_css, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE);
           }
         }else{
           return new_none_chunk_step();

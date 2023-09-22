@@ -233,6 +233,8 @@ struct chunk_step_item * split_signed_chunk_step(struct db_table *dbt, struct ch
   return new_csi;
 }
 
+
+// dbt->chunks_mutex is LOCKED
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
   struct chunk_step_item *csi=NULL, *new_csi=NULL;
   if (dbt->chunks!=NULL){

@@ -137,8 +137,8 @@ void free_char_step(union chunk_step * cs){
   g_free(cs);
 }
 
+// dbt->chunks_mutex is LOCKED
 struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
-//  g_mutex_lock(dbt->chunks_mutex);
   GList *l=dbt->chunks;
   struct chunk_step_item *csi=NULL;
   while (l!=NULL){
@@ -153,15 +153,16 @@ struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
     if (!csi->chunk_step->char_step.assigned){
       csi->chunk_step->char_step.assigned=TRUE;
       g_mutex_unlock(csi->chunk_step->char_step.mutex);
-//      g_mutex_unlock(dbt->chunks_mutex);
       return csi;
     }
+
     if (csi->chunk_step->char_step.deep <= char_deep && g_strcmp0(csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cursor)!=0 && csi->chunk_step->char_step.status == 0){
       struct chunk_step_item * new_cs = split_char_step(
           csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi->chunk_step);
       csi->chunk_step->char_step.deep++;
       csi->chunk_step->char_step.status = 1;
       new_cs->chunk_step->char_step.assigned=TRUE;
+      g_mutex_unlock(csi->chunk_step->char_step.mutex);
       return new_cs;
     }else{
 //      g_message("Not able to split because %d > %d | %s == %s | %d != 0", cs->char_step.deep,num_threads, cs->char_step.cmax, cs->char_step.cursor, cs->char_step.status);
@@ -169,7 +170,6 @@ struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
     g_mutex_unlock(csi->chunk_step->char_step.mutex);
     l=l->next;
   }
-//  g_mutex_unlock(dbt->chunks_mutex);
   return NULL;
 }
 
@@ -266,7 +266,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, middle, (gchar*)dbt->primary_key->data, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, previous->char_step.cmax_escaped, (gchar*)dbt->primary_key->data));
 
-g_message("get_new_minmax Query: %s", query);
+//g_message("get_new_minmax Query: %s", query);
 
   g_free(query);
   minmax = mysql_store_result(td->thrconn);
@@ -312,13 +312,14 @@ g_message("get_new_minmax Query: %s", query);
   return TRUE;
 }
 
-guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
+guint process_char_chunk_step(struct thread_data *td, struct table_job *tj){
   check_pause_resume(td);
   if (shutdown_triggered) {
     return 1;
   }
   g_mutex_lock(tj->chunk_step_item->chunk_step->char_step.mutex);
-  update_estimated_remaining_chunks_on_dbt(tj->dbt);
+//  update_estimated_remaining_chunks_on_dbt(tj->dbt);
+
   update_where_on_table_job(td, tj);
   g_mutex_unlock(tj->chunk_step_item->chunk_step->char_step.mutex);
 
@@ -328,7 +329,10 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
   write_table_job_into_file(tj);
   GDateTime *to = g_date_time_new_now_local();
 
+
+
   GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+
 
   if (diff > 2){
     tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step  / 2;
@@ -340,6 +344,7 @@ guint process_char_chunk_job(struct thread_data *td, struct table_job *tj){
       tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:tj->chunk_step_item->chunk_step->char_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }
+
 
   if (tj->chunk_step_item->chunk_step->char_step.prefix)
     g_free(tj->chunk_step_item->chunk_step->char_step.prefix);
@@ -355,7 +360,6 @@ void process_char_chunk(struct table_job *tj){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = tj->chunk_step_item->chunk_step, *previous = cs->char_step.previous;
-
   gboolean cont=FALSE;
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
 
@@ -369,18 +373,18 @@ void process_char_chunk(struct table_job *tj){
         g_mutex_lock(dbt->chunks_mutex);
         dbt->chunks=g_list_append(dbt->chunks,cs);
         g_mutex_unlock(dbt->chunks_mutex);
-        g_mutex_unlock(previous->char_step.mutex);
-        g_mutex_unlock(cs->char_step.mutex);
+//        g_mutex_unlock(previous->char_step.mutex);
+//        g_mutex_unlock(cs->char_step.mutex);
       }else{
         g_mutex_lock(dbt->chunks_mutex);
         previous->char_step.status=0;
         g_mutex_unlock(dbt->chunks_mutex);
-        g_mutex_unlock(previous->char_step.mutex);
+//        g_mutex_unlock(previous->char_step.mutex);
         return;
       }
     }else{
       if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
-        if (process_char_chunk_job(td,tj)){
+        if (process_char_chunk_step(td,tj)){
           g_message("Thread %d: Job has been cacelled",td->thread_id);
           return;
         }
@@ -393,7 +397,7 @@ void process_char_chunk(struct table_job *tj){
     }
   }
   if (g_strcmp0(cs->char_step.cursor, cs->char_step.cmin)!=0)
-    if (process_char_chunk_job(td,tj)){
+    if (process_char_chunk_step(td,tj)){
       g_message("Thread %d: Job has been cacelled",td->thread_id);
       return;
     }
