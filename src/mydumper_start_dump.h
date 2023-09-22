@@ -301,6 +301,7 @@ struct db_table {
   guint num_threads;
 //  enum chunk_type chunk_type;
   GList *chunks;
+//  struct chunk_step_item * initial_chunk_step;
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
   GList *primary_key;

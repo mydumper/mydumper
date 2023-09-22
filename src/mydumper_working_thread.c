@@ -1202,6 +1202,7 @@ struct db_table *new_db_table( MYSQL *conn, struct configuration *conf, struct d
 //  dbt->chunk_type_item.chunk_type = UNDEFINED;
 //  dbt->chunk_type_item.chunk_step = NULL;
   dbt->chunks=NULL;
+//  dbt->initial_chunk_step=NULL;
   dbt->insert_statement=NULL;
   dbt->chunks_mutex=g_mutex_new();
 //  g_mutex_lock(dbt->chunks_mutex);

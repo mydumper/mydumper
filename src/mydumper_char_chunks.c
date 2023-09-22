@@ -372,6 +372,7 @@ void process_char_chunk(struct table_job *tj){
         g_mutex_unlock(previous->char_step.mutex);
         g_mutex_unlock(cs->char_step.mutex);
       }else{
+        g_mutex_lock(dbt->chunks_mutex);
         previous->char_step.status=0;
         g_mutex_unlock(dbt->chunks_mutex);
         g_mutex_unlock(previous->char_step.mutex);
@@ -398,7 +399,7 @@ void process_char_chunk(struct table_job *tj){
     }
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->char_step.mutex);
-  dbt->chunks=g_list_remove(dbt->chunks,cs);
+//  dbt->chunks=g_list_remove(dbt->chunks,cs);
   g_mutex_unlock(cs->char_step.mutex);
   g_mutex_unlock(dbt->chunks_mutex);
 }

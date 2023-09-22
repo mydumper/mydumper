@@ -104,7 +104,7 @@ void free_integer_step(union chunk_step * cs){
 
 void free_integer_step_item(struct chunk_step_item * csi){
   free_integer_step(csi->chunk_step);
-  g_free(csi);
+//  g_free(csi);
 }
 
 void common_to_chunk_step(struct db_table *dbt, struct chunk_step_item * csi, struct chunk_step_item * new_csi){
@@ -609,7 +609,7 @@ void process_integer_chunk(struct table_job *tj){
 
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_lock(cs->integer_step.mutex);
-  dbt->chunks=g_list_remove(dbt->chunks,cs);
+//  dbt->chunks=g_list_remove(dbt->chunks,cs);
   cs->integer_step.estimated_remaining_steps=0;
   if (g_list_length(dbt->chunks) == 0){
     g_message("Thread %d: Table %s completed ",td->thread_id,dbt->table);
