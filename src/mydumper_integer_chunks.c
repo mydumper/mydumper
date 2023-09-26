@@ -86,10 +86,7 @@ void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_
   csi->chunk_functions.get_next = &get_next_integer_chunk;
   csi->where=g_string_new("");
   csi->include_null = include_null;
-  if (prefix==NULL)
-    csi->prefix = g_string_new("");
-  else
-    csi->prefix = prefix;
+  csi->prefix = prefix;
   csi->field = g_strdup(field);
   csi->mutex = g_mutex_new();
 }
@@ -488,12 +485,7 @@ if (cs->integer_step.is_unsigned){
 //  g_message("CONTINUE");
 
 
-  if (csi->next != NULL){
-    // update csi->next min and max values.
-  }
-
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
-
 
 //  g_string_append(tj->where,get_integer_chunk_where(cs));
 
@@ -506,17 +498,10 @@ if (cs->integer_step.is_unsigned){
   (void)rows;
 
   if (csi->next !=NULL){
-
-        refresh_integer_min_max(td->thrconn, tj->dbt, csi->next);
-
-
-
+    refresh_integer_min_max(td->thrconn, tj->dbt, csi->next);
     csi->next->chunk_functions.process( tj , csi->next);
   }else{
-//    build_where_clause_on_table_job(tj);
-
     g_string_set_size(tj->where,0);
-
     g_string_append(tj->where, csi->where->str);
 
     if (cs->integer_step.is_step_fixed_length) {
@@ -734,7 +719,7 @@ void update_integer_where_on_gstring(GString *where, gchar * field, gboolean is_
 void update_where_on_integer_step(struct chunk_step_item * csi){
   struct integer_step *chunk_step=&(csi->chunk_step->integer_step);
   g_string_set_size(csi->where,0);
-  if (csi->prefix->len>0)
+  if (csi->prefix && csi->prefix->len>0)
     g_string_append_printf(csi->where,"(%s AND ",
                           csi->prefix->str);
   g_string_append(csi->where,"(");
@@ -742,7 +727,7 @@ void update_where_on_integer_step(struct chunk_step_item * csi){
     g_string_append_printf(csi->where,"`%s` IS NULL OR",csi->field);
   update_integer_where_on_gstring(csi->where, csi->field, chunk_step->is_unsigned, chunk_step->type, TRUE);
 
-  if (csi->prefix->len>0)
+  if (csi->prefix && csi->prefix->len>0)
     g_string_append(csi->where,")");
   g_string_append(csi->where,")");
 }

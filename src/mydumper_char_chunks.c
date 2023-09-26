@@ -99,6 +99,7 @@ struct chunk_step_item *new_char_step_item(MYSQL *conn, gboolean include_null, G
   csi->include_null = include_null;
 //  csi->prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, csi->chunk_step->char_step.cmin_escaped);
   csi->prefix = prefix;
+  csi->where=g_string_new("");
   return csi;
 }
 
@@ -110,10 +111,10 @@ void next_chunk_in_char_step(union chunk_step * cs){
   cs->char_step.cmin_escaped = cs->char_step.cursor_escaped;
 }
 
-struct chunk_step_item *split_char_step( GString *prefix, guint deep, guint number, struct chunk_step_item *previous_csi){
+struct chunk_step_item *split_char_step( guint deep, guint number, struct chunk_step_item *previous_csi){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  csi->prefix = prefix;
+  csi->prefix = csi->where;
   csi->status=ASSIGNED;
   cs->char_step.deep = deep;
   cs->char_step.number = number;
@@ -126,6 +127,7 @@ struct chunk_step_item *split_char_step( GString *prefix, guint deep, guint numb
   csi->chunk_step=cs;
   csi->chunk_type=CHAR;
   csi->chunk_functions.process = &process_char_chunk;
+  csi->where=g_string_new("");
 //  csi->chunk_functions.update_where = &update_char_where;
   csi->chunk_functions.get_next = &get_next_char_chunk; 
   return csi;
@@ -155,7 +157,7 @@ struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
     }
 
     if (csi->chunk_step->char_step.deep <= char_deep && g_strcmp0(csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cursor)!=0 && csi->chunk_step->char_step.status == 0){
-      struct chunk_step_item * new_cs = split_char_step( csi->prefix,
+      struct chunk_step_item * new_cs = split_char_step( 
           csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi);
       csi->chunk_step->char_step.deep++;
       csi->chunk_step->char_step.status = 1;
@@ -310,6 +312,8 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
   return TRUE;
 }
 
+void update_where_on_char_step(struct chunk_step_item * csi);
+
 guint process_char_chunk_step(struct thread_data *td, struct table_job *tj, struct chunk_step_item * csi){
   check_pause_resume(td);
   if (shutdown_triggered) {
@@ -323,35 +327,40 @@ guint process_char_chunk_step(struct thread_data *td, struct table_job *tj, stru
 
   g_mutex_unlock(csi->mutex);
 
+  update_where_on_char_step(csi);
+
+  if (csi->next !=NULL){
 //  message_dumping_data(td,tj);
+    csi->next->chunk_functions.process( tj , csi->next);
+  }else{
 
 
-  build_where_clause_on_table_job(tj);
+    g_string_set_size(tj->where,0);
+    g_string_append(tj->where, csi->where->str);
 
-  GDateTime *from = g_date_time_new_now_local();
-  write_table_job_into_file(tj);
-  GDateTime *to = g_date_time_new_now_local();
+    GDateTime *from = g_date_time_new_now_local();
+    write_table_job_into_file(tj);
+    GDateTime *to = g_date_time_new_now_local();
+
+    GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
 
 
-
-  GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-
-
-  if (diff > 2){
-    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  / 2;
-    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step<min_chunk_step_size?min_chunk_step_size:csi->chunk_step->char_step.step;
+    if (diff > 2){
+      csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  / 2;
+      csi->chunk_step->char_step.step=csi->chunk_step->char_step.step<min_chunk_step_size?min_chunk_step_size:csi->chunk_step->char_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
-  }else if (diff < 1){
-    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  * 2;
-    if (max_chunk_step_size!=0)
-      csi->chunk_step->char_step.step=csi->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:csi->chunk_step->char_step.step;
-//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+    }else if (diff < 1){
+      csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  * 2;
+      if (max_chunk_step_size!=0)
+        csi->chunk_step->char_step.step=csi->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:csi->chunk_step->char_step.step;
+//      g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
+    }
+
   }
+//  if (csi->prefix)
+//    g_free(csi->prefix);
+//  csi->prefix=NULL;
 
-
-  if (csi->prefix)
-    g_free(csi->prefix);
-  csi->prefix=NULL;
   g_mutex_lock(csi->mutex);
   next_chunk_in_char_step(csi->chunk_step);
   g_mutex_unlock(csi->mutex);
@@ -459,7 +468,7 @@ void update_where_on_char_step(struct chunk_step_item * csi){
 */
 void update_where_on_char_step(struct chunk_step_item * csi){
   g_string_set_size(csi->where,0);
-  if (csi->prefix->len>0)
+  if (csi->prefix && csi->prefix->len>0)
     g_string_append_printf(csi->where,"(%s AND ",
                           csi->prefix->str);
   g_string_append(csi->where,"(");
@@ -477,7 +486,7 @@ void update_where_on_char_step(struct chunk_step_item * csi){
                       );
   }
 
-  if (csi->prefix->len>0)
+  if (csi->prefix && csi->prefix->len>0)
     g_string_append(csi->where,")");
   g_string_append(csi->where,")");
 }
