@@ -40,7 +40,6 @@
 #include "mydumper_integer_chunks.h"
 #include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
-#include "mydumper_multicolumn_integer_chunks.h"
 
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
@@ -56,7 +55,8 @@ void finalize_chunk(){
   g_async_queue_unref(give_me_another_non_innodb_chunk_step_queue);
 }
 
-void process_none_chunk(struct table_job *tj){
+void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
+  (void)csi;
   write_table_job_into_file(tj);
 }
 
@@ -86,7 +86,7 @@ union chunk_step *get_next_chunk(struct db_table *dbt){
 void initialize_chunk_step_as_none(struct chunk_step_item * csi){
   csi->chunk_type=NONE;
   csi->chunk_functions.process=&process_none_chunk;
-  csi->chunk_functions.update_where=NULL;
+//  csi->chunk_functions.update_where=NULL;
   csi->chunk_step = NULL;
 }
 
@@ -97,7 +97,7 @@ struct chunk_step_item * new_none_chunk_step(){
 }
 
 
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, gchar *local_where) {
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix) {
     struct chunk_step_item * csi=NULL;
 
 //  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
@@ -111,12 +111,13 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                         is_mysql_like()
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
-                        field, field, field, field, dbt->database->name, dbt->table, where_option || local_where ? "WHERE" : "", where_option ? where_option : "", where_option && local_where ? "AND" : "", local_where ? local_where : ""));
-//  g_message("Query: %s", query);
+                        field, field, field, field, dbt->database->name, dbt->table, where_option || prefix ? "WHERE" : "", where_option ? where_option : "", where_option && prefix ? "AND" : "", prefix ? prefix->str : ""));
+  g_message("Query: %s", query);
     g_free(query);
     minmax = mysql_store_result(conn);
 
     if (!minmax){
+      g_message("It is NONE with minmax == NULL");
       return new_none_chunk_step();
     }
 
@@ -128,19 +129,20 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     if (row[0] == NULL){
       if (minmax)
         mysql_free_result(minmax);
+      g_message("It is NONE with row == NULL");
       return new_none_chunk_step();
     }
   /* Support just bigger INTs for now, very dumb, no verify approach */
     guint64 abs;
     guint64 unmin, unmax;
     gint64 nmin, nmax;
-    gchar *prefix=NULL;
 //    union chunk_step *cs = NULL;
     switch (fields[0].type) {
+      case MYSQL_TYPE_TINY:
+      case MYSQL_TYPE_SHORT:
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_LONGLONG:
       case MYSQL_TYPE_INT24:
-      case MYSQL_TYPE_SHORT:
 
         unmin = strtoull(row[0], NULL, 10);
         unmax = strtoull(row[1], NULL, 10);
@@ -161,6 +163,8 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
         mysql_free_result(minmax);
 
+
+//          g_message("Checking if %"G_GUINT64_FORMAT" > %"G_GUINT64_FORMAT, abs, dbt->min_chunk_step_size);
         if ( abs > dbt->min_chunk_step_size){
           union type type;
           guint64 min_css = /*dbt->multicolumn ? 1 :*/ dbt->min_chunk_step_size;
@@ -171,13 +175,14 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           if (unsign){
             type.unsign.min=unmin;
             type.unsign.max=unmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
           }else{
             type.sign.min=nmin;
             type.sign.max=nmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE);
+            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
           }
         }else{
+//          g_message("It is NONE because %"G_GUINT64_FORMAT" < %"G_GUINT64_FORMAT, abs, dbt->min_chunk_step_size);
           return new_none_chunk_step();
         }
         break;
@@ -190,7 +195,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         return new_none_chunk_step();
 */
 
-        csi=new_char_step_item(conn, dbt->primary_key->data, 0, 0, row, lengths);
+        csi=new_char_step_item(conn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
         if (minmax)
           mysql_free_result(minmax);
         return csi;
@@ -198,6 +203,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       default:
         if (minmax)
           mysql_free_result(minmax);
+        g_message("It is NONE: default");
         return new_none_chunk_step();
         break;
       }
@@ -409,19 +415,16 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
       if (csi!=NULL){
         switch (csi->chunk_type) {
         case INTEGER:
-          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->integer_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
-          break;
-        case MULTICOLUMN_INTEGER:
-          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->multicolumn_integer_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->integer_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
           break;
         case CHAR:
-          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->char_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, FALSE);
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->char_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
           break;
         case PARTITION:
-          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->partition_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, TRUE);
+          create_job_to_dump_chunk(dbt, NULL, csi->chunk_step->partition_step.number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
           break;
         case NONE:
-          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue, FALSE);
+          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
           break;
         default:
           m_error("This should not happen %s", csi->chunk_type);
@@ -457,5 +460,17 @@ void *chunk_builder_thread(struct configuration *conf){
   enqueue_shutdown_jobs(conf->innodb_queue);
 
   return NULL;
+}
+
+void build_where_clause_on_table_job(struct table_job *tj){
+  struct chunk_step_item *csi = tj->chunk_step_item;
+  g_string_set_size(tj->where,0);
+  g_string_append(tj->where, csi->where->str);
+  csi=csi->next;
+  while (csi != NULL && csi->chunk_type != NONE){
+    g_string_append(tj->where, " AND ");
+    g_string_append(tj->where, csi->where->str);
+    csi=csi->next;
+  }
 }
 

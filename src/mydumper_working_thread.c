@@ -456,7 +456,7 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   tj->td=td;
 
 //  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
-  tj->chunk_step_item->chunk_functions.process(tj);
+  tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
 
   if (tj->sql_file){
     m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
@@ -839,19 +839,6 @@ void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
     l=l->next;
   }
   dbt->estimated_remaining_steps=total;
-}
-
-void update_where_on_table_job(struct thread_data *td, struct table_job *tj){
-  update_estimated_remaining_chunks_on_dbt(tj->dbt);
-  g_string_set_size(tj->where,0);
-
-  if (tj->chunk_step_item->chunk_type == CHAR && td != NULL && tj->chunk_step_item->chunk_step->char_step.cmax)
-    update_cursor(td->thrconn,tj);
-
-  if (tj->chunk_step_item->chunk_functions.update_where){
-    g_string_append(tj->where,tj->chunk_step_item->chunk_functions.update_where(tj->chunk_step_item->chunk_step));
-  }
-
 }
 
 void *working_thread(struct thread_data *td) {

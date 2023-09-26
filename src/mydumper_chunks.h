@@ -36,4 +36,6 @@ void give_me_another_innodb_chunk_step();
 gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);
 gchar* update_cursor (MYSQL *conn, struct table_job *tj);
 void next_chunk_in_char_step(union chunk_step * cs);
-union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where);
+//union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where);
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *local_where) ;
+void build_where_clause_on_table_job(struct table_job *tj);

@@ -51,7 +51,7 @@ void initialize_char_chunk(){
   }
 }
 
-union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
+union chunk_step *new_char_step(MYSQL *conn, guint deep, guint number, MYSQL_ROW row, gulong *lengths){
   union chunk_step * cs = g_new0(union chunk_step, 1);
 
   cs->char_step.step=rows_per_file;
@@ -71,16 +71,12 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
   mysql_real_escape_string(conn, cs->char_step.cmax_escaped, row[1], lengths[1]);
 
 //  g_message("new_char_step: cmin: `%s` | cmax: `%s`", cs->char_step.cmin, cs->char_step.cmax);
-  cs->char_step.assigned=FALSE;
   cs->char_step.deep = deep;
   cs->char_step.number = number;
-  cs->char_step.mutex=g_mutex_new();
-  cs->char_step.field = g_strdup(field);
   cs->char_step.previous=NULL;
 //  cs->char_step.list = list; 
 
   cs->char_step.estimated_remaining_steps=1;
-  cs->char_step.prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, cs->char_step.cmin_escaped);
 
 //  g_message("new_char_step: min: %s | max: %s ", cs->char_step.cmin_escaped, cs->char_step.cmax_escaped);
 
@@ -89,13 +85,20 @@ union chunk_step *new_char_step(MYSQL *conn, gchar *field, /*GList *list,*/ guin
 }
 
 
-struct chunk_step_item *new_char_step_item(MYSQL *conn, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths){
+struct chunk_step_item *new_char_step_item(MYSQL *conn, gboolean include_null, GString *prefix, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths, struct chunk_step_item * next){
   struct chunk_step_item * csi = g_new0(struct chunk_step_item, 1);
-  csi->chunk_step = new_char_step(conn, field, deep, number, row, lengths);
+  csi->chunk_step = new_char_step(conn, deep, number, row, lengths);
   csi->chunk_type=CHAR;
   csi->chunk_functions.process = &process_char_chunk;
-  csi->chunk_functions.update_where = &update_char_where;
+//  csi->chunk_functions.update_where = &update_char_where;
   csi->chunk_functions.get_next = &get_next_char_chunk; 
+  csi->next = next;
+  csi->field = g_strdup(field);
+  csi->mutex=g_mutex_new();
+  csi->status=UNASSIGNED;
+  csi->include_null = include_null;
+//  csi->prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, csi->chunk_step->char_step.cmin_escaped);
+  csi->prefix = prefix;
   return csi;
 }
 
@@ -107,33 +110,28 @@ void next_chunk_in_char_step(union chunk_step * cs){
   cs->char_step.cmin_escaped = cs->char_step.cursor_escaped;
 }
 
-struct chunk_step_item *split_char_step( guint deep, guint number, union chunk_step *previous_cs){
+struct chunk_step_item *split_char_step( GString *prefix, guint deep, guint number, struct chunk_step_item *previous_csi){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  cs->char_step.prefix = NULL;
-  cs->char_step.assigned=TRUE;
+  csi->prefix = prefix;
+  csi->status=ASSIGNED;
   cs->char_step.deep = deep;
   cs->char_step.number = number;
-  cs->char_step.mutex=g_mutex_new();
+  csi->mutex=g_mutex_new();
   cs->char_step.step=rows_per_file;
-  cs->char_step.field = g_strdup(previous_cs->char_step.field);
-  cs->char_step.previous=previous_cs;
+  csi->field = g_strdup(previous_csi->field);
+  cs->char_step.previous=previous_csi->chunk_step;
   cs->char_step.status = 0;
 //  cs->char_step.list = list;
   csi->chunk_step=cs;
   csi->chunk_type=CHAR;
   csi->chunk_functions.process = &process_char_chunk;
-  csi->chunk_functions.update_where = &update_char_where;
+//  csi->chunk_functions.update_where = &update_char_where;
   csi->chunk_functions.get_next = &get_next_char_chunk; 
   return csi;
 }
 
 void free_char_step(union chunk_step * cs){
-  g_mutex_lock(cs->char_step.mutex);
-  g_free(cs->char_step.field);
-  g_free(cs->char_step.prefix);
-  g_mutex_unlock(cs->char_step.mutex);
-  g_mutex_free(cs->char_step.mutex);
   g_free(cs);
 }
 
@@ -143,31 +141,31 @@ struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
   struct chunk_step_item *csi=NULL;
   while (l!=NULL){
     csi=l->data;
-    if (csi->chunk_step->char_step.mutex == NULL){
+    if (csi->mutex == NULL){
       g_message("This should not happen");
       l=l->next;
       continue;
     }
     
-    g_mutex_lock(csi->chunk_step->char_step.mutex);
-    if (!csi->chunk_step->char_step.assigned){
-      csi->chunk_step->char_step.assigned=TRUE;
-      g_mutex_unlock(csi->chunk_step->char_step.mutex);
+    g_mutex_lock(csi->mutex);
+    if (csi->status == UNASSIGNED){
+      csi->status = ASSIGNED;
+      g_mutex_unlock(csi->mutex);
       return csi;
     }
 
     if (csi->chunk_step->char_step.deep <= char_deep && g_strcmp0(csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cursor)!=0 && csi->chunk_step->char_step.status == 0){
-      struct chunk_step_item * new_cs = split_char_step(
-          csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi->chunk_step);
+      struct chunk_step_item * new_cs = split_char_step( csi->prefix,
+          csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi);
       csi->chunk_step->char_step.deep++;
       csi->chunk_step->char_step.status = 1;
-      new_cs->chunk_step->char_step.assigned=TRUE;
-      g_mutex_unlock(csi->chunk_step->char_step.mutex);
+      new_cs->status = ASSIGNED;
+      g_mutex_unlock(csi->mutex);
       return new_cs;
     }else{
 //      g_message("Not able to split because %d > %d | %s == %s | %d != 0", cs->char_step.deep,num_threads, cs->char_step.cmax, cs->char_step.cursor, cs->char_step.status);
     }
-    g_mutex_unlock(csi->chunk_step->char_step.mutex);
+    g_mutex_unlock(csi->mutex);
     l=l->next;
   }
   return NULL;
@@ -312,18 +310,23 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chu
   return TRUE;
 }
 
-guint process_char_chunk_step(struct thread_data *td, struct table_job *tj){
+guint process_char_chunk_step(struct thread_data *td, struct table_job *tj, struct chunk_step_item * csi){
   check_pause_resume(td);
   if (shutdown_triggered) {
     return 1;
   }
-  g_mutex_lock(tj->chunk_step_item->chunk_step->char_step.mutex);
+  g_mutex_lock(csi->mutex);
 //  update_estimated_remaining_chunks_on_dbt(tj->dbt);
 
-  update_where_on_table_job(td, tj);
-  g_mutex_unlock(tj->chunk_step_item->chunk_step->char_step.mutex);
+  if (csi->chunk_step->char_step.cmax)
+    update_cursor(td->thrconn,tj);
+
+  g_mutex_unlock(csi->mutex);
 
 //  message_dumping_data(td,tj);
+
+
+  build_where_clause_on_table_job(tj);
 
   GDateTime *from = g_date_time_new_now_local();
   write_table_job_into_file(tj);
@@ -335,38 +338,38 @@ guint process_char_chunk_step(struct thread_data *td, struct table_job *tj){
 
 
   if (diff > 2){
-    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step  / 2;
-    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step<min_chunk_step_size?min_chunk_step_size:tj->chunk_step_item->chunk_step->char_step.step;
+    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  / 2;
+    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step<min_chunk_step_size?min_chunk_step_size:csi->chunk_step->char_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }else if (diff < 1){
-    tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step  * 2;
+    csi->chunk_step->char_step.step=csi->chunk_step->char_step.step  * 2;
     if (max_chunk_step_size!=0)
-      tj->chunk_step_item->chunk_step->char_step.step=tj->chunk_step_item->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:tj->chunk_step_item->chunk_step->char_step.step;
+      csi->chunk_step->char_step.step=csi->chunk_step->char_step.step>max_chunk_step_size?max_chunk_step_size:csi->chunk_step->char_step.step;
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->char_step.step);
   }
 
 
-  if (tj->chunk_step_item->chunk_step->char_step.prefix)
-    g_free(tj->chunk_step_item->chunk_step->char_step.prefix);
-  tj->chunk_step_item->chunk_step->char_step.prefix=NULL;
-  g_mutex_lock(tj->chunk_step_item->chunk_step->char_step.mutex);
-  next_chunk_in_char_step(tj->chunk_step_item->chunk_step);
-  g_mutex_unlock(tj->chunk_step_item->chunk_step->char_step.mutex);
+  if (csi->prefix)
+    g_free(csi->prefix);
+  csi->prefix=NULL;
+  g_mutex_lock(csi->mutex);
+  next_chunk_in_char_step(csi->chunk_step);
+  g_mutex_unlock(csi->mutex);
   return 0;
 }
 
 
-void process_char_chunk(struct table_job *tj){
+void process_char_chunk(struct table_job *tj, struct chunk_step_item *csi){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
-  union chunk_step *cs = tj->chunk_step_item->chunk_step, *previous = cs->char_step.previous;
+  union chunk_step *cs = csi->chunk_step, *previous = cs->char_step.previous;
   gboolean cont=FALSE;
   while ((cs->char_step.previous != NULL) || (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor) )){
 
     if (cs->char_step.previous != NULL){
-      g_mutex_lock(cs->char_step.mutex);
+      g_mutex_lock(csi->mutex);
       cont=get_new_minmax(td, dbt, cs);
-      g_mutex_unlock(cs->char_step.mutex);
+      g_mutex_unlock(csi->mutex);
       if (cont == TRUE){
         
         cs->char_step.previous=NULL;
@@ -374,7 +377,7 @@ void process_char_chunk(struct table_job *tj){
         dbt->chunks=g_list_append(dbt->chunks,cs);
         g_mutex_unlock(dbt->chunks_mutex);
 //        g_mutex_unlock(previous->char_step.mutex);
-//        g_mutex_unlock(cs->char_step.mutex);
+//        g_mutex_unlock(csi->mutex);
       }else{
         g_mutex_lock(dbt->chunks_mutex);
         previous->char_step.status=0;
@@ -384,31 +387,36 @@ void process_char_chunk(struct table_job *tj){
       }
     }else{
       if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
-        if (process_char_chunk_step(td,tj)){
+        if (process_char_chunk_step(td,tj, csi)){
           g_message("Thread %d: Job has been cacelled",td->thread_id);
           return;
         }
       }else{
-        g_mutex_lock(cs->char_step.mutex);
+        g_mutex_lock(csi->mutex);
         cs->char_step.status=2;
-        g_mutex_unlock(cs->char_step.mutex);
+        g_mutex_unlock(csi->mutex);
         break;
       }
     }
   }
   if (g_strcmp0(cs->char_step.cursor, cs->char_step.cmin)!=0)
-    if (process_char_chunk_step(td,tj)){
+    if (process_char_chunk_step(td, tj, csi)){
       g_message("Thread %d: Job has been cacelled",td->thread_id);
       return;
     }
   g_mutex_lock(dbt->chunks_mutex);
-  g_mutex_lock(cs->char_step.mutex);
+  g_mutex_lock(csi->mutex);
 //  dbt->chunks=g_list_remove(dbt->chunks,cs);
-  g_mutex_unlock(cs->char_step.mutex);
+  g_mutex_unlock(csi->mutex);
   g_mutex_unlock(dbt->chunks_mutex);
 }
 
+
+
+/*
 gchar * update_char_where(union chunk_step * chunk_step){
+
+
   gchar *where=NULL;
 //  if (td != NULL){
     if (chunk_step->char_step.cmax == NULL){
@@ -425,6 +433,53 @@ gchar * update_char_where(union chunk_step * chunk_step){
     }
 //  }
   return where;
+}
+*/
+/*
+void update_where_on_char_step(struct chunk_step_item * csi){
+  g_string_set_size(csi->where,0);
+  g_string_append_printf(csi->where,"(%s(%s%s",
+                          csi->include_null?csi->include_null:"",
+                          csi->prefix?csi->prefix->str:"", csi->prefix?" AND ":"");
+
+
+    if (csi->chunk_step->char_step.cmax == NULL){
+      g_string_printf(csi->where,"`%s` >= '%s'",
+                        csi->field, csi->chunk_step->char_step.cmin_escaped
+                        );
+    }else{
+      g_string_printf(csi->where,"'%s' < `%s` AND `%s` <= '%s'",
+                        csi->chunk_step->char_step.cmin_escaped, csi->field,
+                        csi->field, csi->chunk_step->char_step.cursor_escaped
+                        );
+    }
+
+  g_string_append(csi->where,"))");
+}
+*/
+void update_where_on_char_step(struct chunk_step_item * csi){
+  g_string_set_size(csi->where,0);
+  if (csi->prefix->len>0)
+    g_string_append_printf(csi->where,"(%s AND ",
+                          csi->prefix->str);
+  g_string_append(csi->where,"(");
+  if (csi->include_null)
+    g_string_append_printf(csi->where,"`%s` IS NULL OR",csi->field);
+
+  if (csi->chunk_step->char_step.cmax == NULL){
+    g_string_printf(csi->where,"`%s` >= '%s'",
+                      csi->field, csi->chunk_step->char_step.cmin_escaped
+                      );
+  }else{
+    g_string_printf(csi->where,"'%s' < `%s` AND `%s` <= '%s'",
+                      csi->chunk_step->char_step.cmin_escaped, csi->field,
+                      csi->field, csi->chunk_step->char_step.cursor_escaped
+                      );
+  }
+
+  if (csi->prefix->len>0)
+    g_string_append(csi->where,")");
+  g_string_append(csi->where,")");
 }
 
 

@@ -557,6 +557,16 @@ void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *
   }
 }
 
+void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
+  MYSQL_FIELD *fields = mysql_fetch_fields(result);
+  guint i = 0;
+  for (i = 0; i < mysql_num_fields(result); i++) {
+    if (!strcasecmp(fields[i].name, "rows"))
+      *rowscol = i;
+  }
+}
+
+
 void initialize_sql_statement(GString *statement){
   if (is_mysql_like())  {
     if (set_names_statement)
@@ -582,3 +592,4 @@ void set_tidb_snapshot(MYSQL *conn){
   }
   g_free(query);
 }
+
