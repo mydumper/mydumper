@@ -476,11 +476,11 @@ void update_where_on_char_step(struct chunk_step_item * csi){
     g_string_append_printf(csi->where,"`%s` IS NULL OR",csi->field);
 
   if (csi->chunk_step->char_step.cmax == NULL){
-    g_string_printf(csi->where,"`%s` >= '%s'",
+    g_string_append_printf(csi->where,"`%s` >= '%s'",
                       csi->field, csi->chunk_step->char_step.cmin_escaped
                       );
   }else{
-    g_string_printf(csi->where,"'%s' < `%s` AND `%s` <= '%s'",
+    g_string_append_printf(csi->where,"'%s' < `%s` AND `%s` <= '%s'",
                       csi->chunk_step->char_step.cmin_escaped, csi->field,
                       csi->field, csi->chunk_step->char_step.cursor_escaped
                       );

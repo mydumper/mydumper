@@ -309,7 +309,7 @@ void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_ste
                         "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s` WHERE %s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         csi->field, csi->field, dbt->database->name, dbt->table, csi->prefix->str));
-  g_message("refresh_integer_min_max:: %s", query);
+//  g_message("refresh_integer_min_max:: %s", query);
   g_free(query);
   minmax = mysql_store_result(conn);
 
