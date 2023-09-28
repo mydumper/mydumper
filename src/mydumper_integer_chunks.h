@@ -25,4 +25,4 @@ void free_integer_step(union chunk_step * cs);
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt);
 void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
 gchar * get_integer_chunk_where(union chunk_step * chunk_step);
-void update_integer_where_on_gstring(GString *where, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor);
+void update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor);
