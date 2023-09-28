@@ -96,7 +96,7 @@ struct chunk_step_item * new_none_chunk_step(){
   return csi;
 }
 
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix) {
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
     struct chunk_step_item * csi=NULL;
 
 //  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
@@ -173,12 +173,33 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           if (unsign){
             type.unsign.min=unmin;
             type.unsign.max=unmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
           }else{
             type.sign.min=nmin;
             type.sign.max=nmax;
-            return new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
           }
+
+          csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
+
+          if (dbt->multicolumn){
+            if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > dbt->min_chunk_step_size)
+                )||(
+               (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > dbt->min_chunk_step_size)
+              )) || TRUE){
+              csi->chunk_step->integer_step.min_chunk_step_size=1;
+              csi->chunk_step->integer_step.is_step_fixed_length=TRUE;
+              csi->chunk_step->integer_step.max_chunk_step_size=1;
+              csi->chunk_step->integer_step.step=1;
+            }else
+              dbt->multicolumn=FALSE;
+          }
+
+
+          if (dbt->min_chunk_step_size==dbt->starting_chunk_step_size && dbt->max_chunk_step_size==dbt->starting_chunk_step_size)
+            dbt->chunk_filesize=0;
+          return csi;
+
+
+
         }else{
 //          g_message("It is NONE because %"G_GUINT64_FORMAT" < %"G_GUINT64_FORMAT, abs, dbt->min_chunk_step_size);
           return new_none_chunk_step();
@@ -245,7 +266,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   struct chunk_step_item * csi = NULL;
 
-  guint rows = get_rows_from_explain(conn, dbt, NULL ,NULL);
+  guint64 rows = get_rows_from_explain(conn, dbt, NULL ,NULL);
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
@@ -259,25 +280,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       csi->chunk_step=new_real_partition_step(partitions,0,0);
     }else{
       if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
-        csi = initialize_chunk_step_item(conn, dbt, 0, NULL);
-        if ( csi->chunk_type==INTEGER){
-          if (dbt->multicolumn){
-            if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > dbt->min_chunk_step_size)
-                )||(
-               (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > dbt->min_chunk_step_size)
-              )) || TRUE){
-              csi->chunk_step->integer_step.min_chunk_step_size=1;
-              csi->chunk_step->integer_step.is_step_fixed_length=TRUE;
-              csi->chunk_step->integer_step.max_chunk_step_size=1;
-              csi->chunk_step->integer_step.step=1;
-            }else
-              dbt->multicolumn=FALSE;
-          }
-
-
-          if (dbt->min_chunk_step_size==dbt->starting_chunk_step_size && dbt->max_chunk_step_size==dbt->starting_chunk_step_size)
-            dbt->chunk_filesize=0;
-        }
+        csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();
       }

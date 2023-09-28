@@ -98,7 +98,6 @@ struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *pr
 }
 
 
-void update_integer_where_on_gstring(GString *where, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor);
 
 void free_integer_step(union chunk_step * cs){
   g_free(cs);
@@ -263,7 +262,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
           if (dbt->multicolumn && csi->next && csi->next->chunk_type!=NONE){
-            g_message("Not able to split previous level but can I split next level?");
+            g_message("Not able to split previous level but can I split next level?\nStatus: %d / %d\nMax/Cursor/min: %"G_GUINT64_FORMAT"/%"G_GUINT64_FORMAT"/%"G_GUINT64_FORMAT" | Step: %"G_GUINT64_FORMAT,csi->status,DUMPING_CHUNK,csi->chunk_step->integer_step.type.unsign.max,csi->chunk_step->integer_step.type.unsign.cursor,csi->chunk_step->integer_step.type.unsign.min,csi->chunk_step->integer_step.step);
             
           }
 
@@ -356,7 +355,7 @@ void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_ite
   /* Get minimum/maximum */
 
   GString *where = g_string_new("");
-  update_integer_where_on_gstring(where, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
+  update_integer_where_on_gstring(where, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` ASC LIMIT 1",
@@ -392,7 +391,7 @@ void update_integer_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item
   /* Get minimum/maximum */
 
   GString *where = g_string_new("");
-  update_integer_where_on_gstring(where, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
+  update_integer_where_on_gstring(where, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` DESC LIMIT 1",
@@ -434,7 +433,6 @@ cleanup:
 
 
 void update_where_on_integer_step(struct chunk_step_item * csi);
-//guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, struct chunk_step_item *csi);
 
 guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *csi){
   struct thread_data *td = tj->td;
@@ -560,10 +558,10 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
   gboolean multicolumn_process=FALSE;
 
   if (dbt->multicolumn && g_list_length(dbt->primary_key) - 1 > csi->position){
-    update_integer_where_on_gstring(csi->where, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
+    update_integer_where_on_gstring(csi->where, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
     guint64 rows=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
     if (rows > csi->chunk_step->integer_step.min_chunk_step_size){
-      struct chunk_step_item *next_csi = initialize_chunk_step_item(td->thrconn, dbt, csi->position + 1, csi->where);
+      struct chunk_step_item *next_csi = initialize_chunk_step_item(td->thrconn, dbt, csi->position + 1, csi->where, rows);
       if (next_csi && next_csi->chunk_type!=NONE){
         csi->next=next_csi;
         multicolumn_process=TRUE;
@@ -642,8 +640,12 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
   }
 }
 
-void update_integer_where_on_gstring(GString *where, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor){
+void update_integer_where_on_gstring(GString *where, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor){
   union type t;  
+  if (prefix && prefix->len>0)
+    g_string_append_printf(where,"(%s AND ",
+                          prefix->str);
+
   g_string_append(where,"(");
   if (is_unsigned){
       t.unsign.min = type.unsign.min;
@@ -675,22 +677,18 @@ void update_integer_where_on_gstring(GString *where, gchar * field, gboolean is_
       }
   }
   g_string_append(where,")");
+  if (prefix && prefix->len>0)
+    g_string_append(where,")");
 }
 
 void update_where_on_integer_step(struct chunk_step_item * csi){
   struct integer_step *chunk_step=&(csi->chunk_step->integer_step);
   g_string_set_size(csi->where,0);
-  if (csi->prefix && csi->prefix->len>0)
-    g_string_append_printf(csi->where,"(%s AND ",
-                          csi->prefix->str);
-  g_string_append(csi->where,"(");
   if (csi->include_null)
-    g_string_append_printf(csi->where,"`%s` IS NULL OR",csi->field);
-  update_integer_where_on_gstring(csi->where, csi->field, chunk_step->is_unsigned, chunk_step->type, TRUE);
-
-  if (csi->prefix && csi->prefix->len>0)
+    g_string_append_printf(csi->where,"(`%s` IS NULL OR",csi->field);
+  update_integer_where_on_gstring(csi->where, csi->prefix, csi->field, chunk_step->is_unsigned, chunk_step->type, TRUE);
+  if (csi->include_null)
     g_string_append(csi->where,")");
-  g_string_append(csi->where,")");
 }
 
 /*
