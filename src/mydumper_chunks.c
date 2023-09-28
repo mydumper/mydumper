@@ -264,7 +264,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
           if (dbt->multicolumn){
             if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > dbt->min_chunk_step_size)
                 )||(
-               (!csi->chunk_step->integer_step.is_unsigned && (rows / abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > dbt->min_chunk_step_size)
+               (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > dbt->min_chunk_step_size)
               )) || TRUE){
               csi->chunk_step->integer_step.min_chunk_step_size=1;
               csi->chunk_step->integer_step.is_step_fixed_length=TRUE;

@@ -111,17 +111,11 @@ void free_integer_step_item(struct chunk_step_item * csi){
 
 void common_to_chunk_step(struct db_table *dbt, struct chunk_step_item * csi, struct chunk_step_item * new_csi){
   csi->deep=csi->deep+1;
-  dbt->chunks=g_list_append(dbt->chunks,new_csi);
-
   new_csi->status=ASSIGNED;
 
+  dbt->chunks=g_list_append(dbt->chunks,new_csi);
   g_async_queue_push(dbt->chunks_queue, csi);
   g_async_queue_push(dbt->chunks_queue, new_csi);
-
-//  g_debug("Chunk splited on: `%s`.`%s`", dbt->database->name, dbt->table);
-
-//  g_mutex_unlock(csi->mutex);
-//  g_mutex_unlock(dbt->chunks_mutex);
 }
 
 guint64 my_pow_two(guint max){
@@ -217,29 +211,22 @@ struct chunk_step_item * split_signed_chunk_step(struct db_table *dbt, struct ch
     new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->number, TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position);
   }else{
     if ( csi->status == DUMPING_CHUNK ){
-      new_minmax = //gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) > cs->integer_step.step ?
-                     csi->chunk_step->integer_step.type.sign.cursor + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor)/2 ;
-                   //  cs->integer_step.type.sign.cursor + 1;
+      new_minmax = csi->chunk_step->integer_step.type.sign.cursor + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor)/2 ;
       if ( new_minmax == csi->chunk_step->integer_step.type.sign.cursor )
         new_minmax++;
     }else{
-      new_minmax = //gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) > cs->integer_step.step ?
-                     csi->chunk_step->integer_step.type.sign.min + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)/2 ;
-                   //  cs->integer_step.type.sign.min + 1;
+      new_minmax = csi->chunk_step->integer_step.type.sign.min + (csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)/2 ;
       if ( new_minmax == csi->chunk_step->integer_step.type.sign.min    )
         new_minmax++;
     }
     type.sign.min = new_minmax;
 
-    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, min_chunk_step_size, max_chunk_step_size, csi->number+pow(2,csi->deep), TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position);
+    new_csi = new_integer_step_item(FALSE, NULL, dbt->primary_key->data, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->number+pow(2,csi->deep), TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position);
 
     csi->chunk_step->integer_step.check_max=TRUE;
   }
 
   csi->chunk_step->integer_step.type.sign.max = new_minmax - 1;
-
-
-//  g_message("New sign max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.max);
 
   common_to_chunk_step(dbt, csi, new_csi);
 
@@ -275,8 +262,9 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
           return new_csi;
         }else{
 //        g_message("Not able to split min %"G_GUINT64_FORMAT" step: %"G_GUINT64_FORMAT" max: %"G_GUINT64_FORMAT, cs->integer_step.nmin, cs->integer_step.step, cs->integer_step.nmax);
-          if (dbt->multicolumn){
+          if (dbt->multicolumn && csi->next && csi->next->chunk_type!=NONE){
             g_message("Not able to split previous level but can I split next level?");
+            
           }
 
 
