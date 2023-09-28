@@ -132,22 +132,6 @@ struct chunk_functions{
   struct chunk_step_item *(*get_next)(struct db_table *dbt);
 };
 
-struct multicolumn_integer_step {
-  gboolean is_unsigned;
-  gchar *include_null;
-  gchar *prefix;
-  gchar *field;
-  union type type;
-  guint64 estimated_remaining_steps;
-  guint64 number;
-  guint deep;
-  GMutex *mutex;
-  enum chunk_states status;
-  enum chunk_type chunk_type;
-  union chunk_step *next_chunk_step;
-  struct chunk_functions chunk_functions;
-};
-
 struct integer_step {
   gboolean is_unsigned;
   union type type; 
@@ -156,8 +140,8 @@ struct integer_step {
   guint64 min_chunk_step_size;
   guint64 max_chunk_step_size;
   guint64 estimated_remaining_steps;
-  guint64 number;
-  guint deep;
+//  guint64 number;
+//  guint deep;
   gboolean check_max;
   gboolean check_min;
 };
@@ -178,7 +162,7 @@ struct char_step {
   guint cmax_clen;
   gchar *cmax_escaped;
 
-  guint number;
+//  guint number;
   guint deep;
   GList *list;
   guint64 step;
@@ -191,8 +175,8 @@ struct char_step {
 struct partition_step{
   GList *list;
   gchar *current_partition;
-  guint number;
-  guint deep;
+//  guint number;
+//  guint deep;
 };
 
 union chunk_step {
@@ -211,6 +195,8 @@ struct chunk_step_item{
   gboolean include_null;
   GString *prefix;
   gchar *field;
+  guint64 number;
+  guint deep;
   guint position;
   GMutex *mutex;
 //  gboolean assigned;

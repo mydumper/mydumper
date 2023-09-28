@@ -256,20 +256,6 @@ void finalize_working_thread(){
   finalize_chunk();
 }
 
-
-// Free structures
-void free_table_job(struct table_job *tj){
-//  g_message("free_table_job");
-  if (tj->where!=NULL)
-    g_string_free(tj->where,TRUE);
-  if (tj->order_by)
-    g_free(tj->order_by);
-  if (tj->sql_filename){
-    g_free(tj->sql_filename);
-  }
-  g_free(tj);
-}
-
 void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   // TODO: This should be in a job as needs to be done by a thread.
   MYSQL_RES *databases;
@@ -458,21 +444,12 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 //  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
   tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
 
-  if (tj->sql_file){
-    m_close(td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
-    tj->sql_file=NULL;
-  }
-  if (tj->dat_file){
-    m_close(td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
-    tj->dat_file=NULL;
-  }
-
 /*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }*/
-  tj->td=NULL;
   free_table_job(tj);
+  tj->td=NULL;
   g_free(job);
 }
 

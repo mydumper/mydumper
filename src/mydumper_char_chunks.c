@@ -51,7 +51,7 @@ void initialize_char_chunk(){
   }
 }
 
-union chunk_step *new_char_step(MYSQL *conn, guint deep, guint number, MYSQL_ROW row, gulong *lengths){
+union chunk_step *new_char_step(MYSQL *conn, MYSQL_ROW row, gulong *lengths){
   union chunk_step * cs = g_new0(union chunk_step, 1);
 
   cs->char_step.step=rows_per_file;
@@ -71,8 +71,7 @@ union chunk_step *new_char_step(MYSQL *conn, guint deep, guint number, MYSQL_ROW
   mysql_real_escape_string(conn, cs->char_step.cmax_escaped, row[1], lengths[1]);
 
 //  g_message("new_char_step: cmin: `%s` | cmax: `%s`", cs->char_step.cmin, cs->char_step.cmax);
-  cs->char_step.deep = deep;
-  cs->char_step.number = number;
+//  cs->char_step.number = number;
   cs->char_step.previous=NULL;
 //  cs->char_step.list = list; 
 
@@ -87,7 +86,9 @@ union chunk_step *new_char_step(MYSQL *conn, guint deep, guint number, MYSQL_ROW
 
 struct chunk_step_item *new_char_step_item(MYSQL *conn, gboolean include_null, GString *prefix, gchar *field, /*GList *list,*/ guint deep, guint number, MYSQL_ROW row, gulong *lengths, struct chunk_step_item * next){
   struct chunk_step_item * csi = g_new0(struct chunk_step_item, 1);
-  csi->chunk_step = new_char_step(conn, deep, number, row, lengths);
+  csi->number = number;
+  csi->deep = deep;
+  csi->chunk_step = new_char_step(conn, row, lengths);
   csi->chunk_type=CHAR;
   csi->chunk_functions.process = &process_char_chunk;
 //  csi->chunk_functions.update_where = &update_char_where;
@@ -117,8 +118,8 @@ struct chunk_step_item *split_char_step( guint deep, guint number, struct chunk_
   csi->prefix = csi->where;
   csi->status=ASSIGNED;
   cs->char_step.deep = deep;
-  cs->char_step.number = number;
   csi->mutex=g_mutex_new();
+  csi->number=number;
   cs->char_step.step=rows_per_file;
   csi->field = g_strdup(previous_csi->field);
   cs->char_step.previous=previous_csi->chunk_step;
@@ -158,7 +159,7 @@ struct chunk_step_item *get_next_char_chunk(struct db_table *dbt){
 
     if (csi->chunk_step->char_step.deep <= char_deep && g_strcmp0(csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cursor)!=0 && csi->chunk_step->char_step.status == 0){
       struct chunk_step_item * new_cs = split_char_step( 
-          csi->chunk_step->char_step.deep + 1, csi->chunk_step->char_step.number+pow(2,csi->chunk_step->char_step.deep), csi);
+          csi->chunk_step->char_step.deep + 1, csi->number+pow(2,csi->deep), csi);
       csi->chunk_step->char_step.deep++;
       csi->chunk_step->char_step.status = 1;
       new_cs->status = ASSIGNED;

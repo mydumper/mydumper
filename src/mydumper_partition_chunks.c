@@ -62,19 +62,19 @@ void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi){
   }
 }
 
-union chunk_step *new_real_partition_step(GList *partition, guint deep, guint number){
+union chunk_step *new_real_partition_step(GList *partition){
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->partition_step.list = partition;
-  cs->partition_step.deep = deep;
-  cs->partition_step.number = number;
   return cs;
 }
 
 struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint number){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item, 1);
-  csi->chunk_step = new_real_partition_step(partition, deep, number);
+  csi->chunk_step = new_real_partition_step(partition);
   csi->status= UNASSIGNED;
   csi->mutex = g_mutex_new();
+  csi->deep = deep;
+  csi->number = number;
   return csi;
 }
 
@@ -98,8 +98,8 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
       GList *new_list=g_list_nth(csi->chunk_step->partition_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->chunk_step->partition_step.deep+1, csi->chunk_step->partition_step.number+pow(2,csi->chunk_step->partition_step.deep));
-      csi->chunk_step->partition_step.deep++;
+      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->deep+1, csi->number+pow(2,csi->deep));
+      csi->deep++;
       new_csi->status=ASSIGNED;
       dbt->chunks=g_list_append(dbt->chunks,new_csi);
 

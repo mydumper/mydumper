@@ -94,5 +94,5 @@ gboolean update_files_on_table_job(struct table_job *tj);
 #endif
 gchar *get_ref_table(gchar *k);
 void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);
-
+void free_table_job(struct table_job *tj);
 struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item);

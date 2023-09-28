@@ -53,3 +53,4 @@ FILE * m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
 void wait_close_files();
+guint64 my_pow_two_plus_prev(guint64 prev, guint max);

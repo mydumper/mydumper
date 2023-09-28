@@ -593,3 +593,12 @@ void set_tidb_snapshot(MYSQL *conn){
   g_free(query);
 }
 
+guint64 my_pow_two_plus_prev(guint64 prev, guint max){
+  guint64 r=1;
+  guint i=0;
+  for (i=1;i<max;i++){
+    r*=2;
+  }
+  return r+prev;
+}
+

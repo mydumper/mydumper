@@ -536,8 +536,8 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
 //  guint fn = tj->nchunk;
 //  if (tj->sql_file == NULL)
 //    initialize_sql_fn(tj);
-
-  update_files_on_table_job(tj);
+  if (tj->sql_file == NULL)
+    update_files_on_table_job(tj);
   message_dumping_data(tj);
   if (dbt->insert_statement==NULL){
     g_mutex_lock(dbt->chunks_mutex);
