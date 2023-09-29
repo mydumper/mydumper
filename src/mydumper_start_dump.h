@@ -199,6 +199,7 @@ struct chunk_step_item{
   guint deep;
   guint position;
   GMutex *mutex;
+  gboolean needs_refresh;
 //  gboolean assigned;
   enum chunk_states status;
 };
