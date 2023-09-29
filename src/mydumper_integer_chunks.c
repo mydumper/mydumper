@@ -187,16 +187,16 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
 gboolean is_splitable(struct chunk_step_item *csi){
 return ( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max
         && (
-             ( csi->status == DUMPING_CHUNK && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor ) > csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ( csi->status == DUMPING_CHUNK && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor ) >= csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
              ) ||
-             ( csi->status == ASSIGNED      && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min    ) > csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             ( csi->status == ASSIGNED      && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min    ) >= csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
              )
            )
-)) || ( ! csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.sign.cursor < csi->chunk_step->integer_step.type.sign.max // it is not the last chunk
+       )) || ( ! csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.sign.cursor < csi->chunk_step->integer_step.type.sign.max // it is not the last chunk
         && (
-             ( csi->status == DUMPING_CHUNK && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor) > csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
+             ( csi->status == DUMPING_CHUNK && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor) >= csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
              ) ||
-             ( csi->status == ASSIGNED      && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)    > csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
+             ( csi->status == ASSIGNED      && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.min)    >= csi->chunk_step->integer_step.step // As this chunk is going to process another step, another thread can continue with the remaining rows
              )
            )
          )
@@ -245,13 +245,12 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
                 new_csi->number+=pow(2,csi->deep);
               }
 
-
               new_csi->next=split_chunk_step(csi->next);
               new_csi->next->prefix = new_csi->where;
-              new_csi->next->chunk_step->integer_step.min_chunk_step_size = dbt->min_chunk_step_size;
-              new_csi->next->chunk_step->integer_step.max_chunk_step_size = dbt->max_chunk_step_size;
-              new_csi->next->chunk_step->integer_step.step = dbt->starting_chunk_step_size;
-              new_csi->next->chunk_step->integer_step.is_step_fixed_length=FALSE;
+//              new_csi->next->chunk_step->integer_step.min_chunk_step_size = dbt->min_chunk_step_size;
+//              new_csi->next->chunk_step->integer_step.max_chunk_step_size = dbt->max_chunk_step_size;
+//              new_csi->next->chunk_step->integer_step.step = dbt->starting_chunk_step_size;
+//              new_csi->next->chunk_step->integer_step.is_step_fixed_length=FALSE;
               dbt->chunks=g_list_append(dbt->chunks,new_csi);
 
 
@@ -532,9 +531,6 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
 
 
   if (csi->next==NULL && dbt->multicolumn && g_list_length(dbt->primary_key) - 1 > csi->position){
-
-
-
 //    GString *where = g_string_new("");
     update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
     guint64 rows=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
