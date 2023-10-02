@@ -10,7 +10,7 @@ stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
 mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
-LD_PRELOAD=/usr/lib64/libjemalloc.so
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so
 export LD_PRELOAD
 export G_DEBUG=fatal-criticals
 > $mydumper_log
