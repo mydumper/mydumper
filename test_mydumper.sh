@@ -10,6 +10,8 @@ stream_stor_dir="/tmp/stream_data"
 mydumper_base="."
 mydumper="${mydumper_base}/mydumper"
 myloader="${mydumper_base}/myloader"
+LD_PRELOAD=/usr/lib64/libjemalloc.a
+export LD_PRELOAD
 export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
@@ -186,7 +188,7 @@ prepare_full_test(){
   echo "Import testing database"
   DATABASE=myd_test
   mysql --no-defaults -f -h 127.0.0.1 -u root < test/mydumper_testing_db.sql
-exit
+
   # export -- import
   # 1000 rows -- database must not exist
 

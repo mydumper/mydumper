@@ -11,8 +11,6 @@ find_package(GLIB2)
 find_package(PCRE)
 find_package(JeMalloc)
 
-#target_link_libraries(your_target_name ${JEMALLOC_LIBRARIES})
-
 if (NOT JEMALLOC_FOUND)
     MESSAGE(FATAL_ERROR "Could not find JeMalloc library")
 endif ()
