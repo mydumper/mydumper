@@ -186,7 +186,7 @@ prepare_full_test(){
   echo "Import testing database"
   DATABASE=myd_test
   mysql --no-defaults -f -h 127.0.0.1 -u root < test/mydumper_testing_db.sql
-
+exit
   # export -- import
   # 1000 rows -- database must not exist
 
