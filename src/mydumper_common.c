@@ -117,10 +117,28 @@ void close_file_queue_push(struct fifo *f){
 void wait_close_files(){
   struct fifo f;
   f.pid=-10;
-  while (g_atomic_int_get(&open_pipe) != 0){
+  guint i=0;
+  while (g_atomic_int_get(&open_pipe) != 0 && i < 5){
     g_message("Waiting files to complete");
     sleep(1);
+    i++;
   }
+
+
+  GHashTableIter iter;
+  g_mutex_lock(fifo_table_mutex);
+
+  struct fifo *ff=NULL;
+  FILE * lkey=NULL;
+  if (fifo_hash){
+    g_hash_table_iter_init ( &iter, fifo_hash );
+    while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
+      if (ff->queue)
+        g_async_queue_push(ff->queue, GINT_TO_POINTER(1));      
+    }
+  }
+
+  g_mutex_unlock(fifo_table_mutex);
 
   close_file_queue_push(&f);
   g_thread_join(cft);
@@ -169,7 +187,7 @@ FILE * m_open_pipe(gchar **filename, const char *type){
     g_free(basefilename);
   }
   if ( mkfifo(*filename,0666) ){
-    g_critical("cannot create named pipe %s (%d)", *filename, errno);
+    g_warning("cannot create named pipe %s (%d)", *filename, errno);
   }
   int child_proc = execute_file_per_thread(*filename,new_filename);
   FILE *file=g_fopen(*filename,type);

@@ -207,6 +207,7 @@ return ( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_
 
 }
 
+void update_where_on_integer_step(struct chunk_step_item * csi);
 
 struct chunk_step_item *clone_chunk_step_item(struct chunk_step_item *csi){
   return new_integer_step_item(csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, csi->deep, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->number, csi->chunk_step->integer_step.check_min, csi->chunk_step->integer_step.check_max, NULL, csi->position);
@@ -244,7 +245,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
               if ( csi->chunk_step->integer_step.is_step_fixed_length ){
                 new_csi->number+=pow(2,csi->deep);
               }
-
+              update_where_on_integer_step(new_csi);
               new_csi->next=split_chunk_step(csi->next);
               new_csi->next->prefix = new_csi->where;
 //              new_csi->next->chunk_step->integer_step.min_chunk_step_size = dbt->min_chunk_step_size;
@@ -398,9 +399,6 @@ cleanup:
   mysql_free_result(minmax);
 }
 
-
-void update_where_on_integer_step(struct chunk_step_item * csi);
-
 guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *csi){
   struct thread_data *td = tj->td;
   union chunk_step *cs = csi->chunk_step;
@@ -470,7 +468,7 @@ if (cs->integer_step.is_unsigned){
 //  g_message("Rows in chunk on %s.%s : %"G_GUINT64_FORMAT, tj->dbt->database->name, tj->dbt->table, rows);
 
 //  (void)rows;
-//g_message("Thread %d: Next-> with where: %s", td->thread_id, csi->where->str);
+//g_message("Thread %d: where: |%s|", td->thread_id, csi->where->str);
   if (csi->next !=NULL){
 //g_message("Thread %d: Next->prefix: %s, field: %s", td->thread_id, csi->next->prefix?csi->next->prefix->str:"", csi->next->field);
     if (csi->next->needs_refresh)
@@ -532,6 +530,7 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
 
   if (csi->next==NULL && dbt->multicolumn && g_list_length(dbt->primary_key) - 1 > csi->position){
 //    GString *where = g_string_new("");
+    g_string_set_size(csi->where,0);
     update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
     guint64 rows=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
     if (rows > csi->chunk_step->integer_step.min_chunk_step_size ){
@@ -606,11 +605,15 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
 
 void update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor){
   union type t;  
-  if (prefix && prefix->len>0)
+  if (prefix && prefix->len>0){
+//    g_message("update_integer_where_on_gstring:: Prefix: %s", prefix->str);
     g_string_append_printf(where,"(%s AND ",
                           prefix->str);
-  if (include_null)
+  }
+  if (include_null){
+//    g_message("update_integer_where_on_gstring:: with_null");
     g_string_append_printf(where,"(`%s` IS NULL OR",field);
+  }
   g_string_append(where,"(");
   if (is_unsigned){
       t.unsign.min = type.unsign.min;
@@ -646,6 +649,7 @@ void update_integer_where_on_gstring(GString *where, gboolean include_null, GStr
   g_string_append(where,")");
   if (prefix && prefix->len>0)
     g_string_append(where,")");
+//  g_message("update_integer_where_on_gstring:: where = |%s|", where->str);
 }
 
 void update_where_on_integer_step(struct chunk_step_item * csi){
