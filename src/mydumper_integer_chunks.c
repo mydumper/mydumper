@@ -136,16 +136,16 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
 
   if ( ics->is_step_fixed_length ){
     if (ics->is_unsigned){
-      new_minmax_unsigned = type.unsign.min + ics->step *
-                         ((( ics->type.unsign.max    / ics->step ) -
-                            (type.unsign.min / ics->step )) / 2 ) + 1;
+      new_minmax_unsigned = type.unsign.min +          ics->step    *
+                  (((( ics->type.unsign.max /          ics->step )  -
+                      (     type.unsign.min /          ics->step )) / 2 ) + 1);
       if (new_minmax_unsigned == type.unsign.min)
         new_minmax_unsigned++;
       type.unsign.min = new_minmax_unsigned;
     }else{
-      new_minmax_signed = type.sign.min + (signed) ics->step *
-                       (( ics->type.sign.max    / (signed) ics->step -
-                          type.sign.min / (signed) ics->step ) / 2 ) + 1;
+      new_minmax_signed   =   type.sign.min + (signed) ics->step    *
+                  ((((   ics->type.sign.max / (signed) ics->step )  -
+                     (        type.sign.min / (signed) ics->step )) / 2 ) + 1);
       if (new_minmax_signed == type.sign.min)
         new_minmax_signed++;
       type.sign.min = new_minmax_signed;
