@@ -191,7 +191,7 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
 
 
 gboolean is_splitable(struct chunk_step_item *csi){
-return ( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max
+return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max
         && (
              ( csi->status == DUMPING_CHUNK && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor ) >= csi->chunk_step->integer_step.step // As this chunk is dumping data, another thread can continue with the remaining rows
              ) ||
@@ -206,7 +206,21 @@ return ( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_
              )
            )
          )
-);
+)) ) || ( csi->chunk_step->integer_step.is_step_fixed_length && (   
+(
+ csi->chunk_step->integer_step.is_unsigned &&
+((csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.cursor / csi->chunk_step->integer_step.step + 1 )
+||
+(csi->status == ASSIGNED && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.min / csi->chunk_step->integer_step.step + 1 )
+))||
+(
+ !csi->chunk_step->integer_step.is_unsigned &&
+((csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.sign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.cursor / csi->chunk_step->integer_step.step + 1)
+||
+(csi->status == ASSIGNED && csi->chunk_step->integer_step.type.sign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.min / csi->chunk_step->integer_step.step + 1)
+))
+
+) );
 
 
 
