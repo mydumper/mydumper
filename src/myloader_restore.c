@@ -246,7 +246,8 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
               if (mkfifo(load_data_fifo_filename,0666)){
                 g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
               }
-              execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+              g_message("load_data_fifo_filename:: %s", load_data_fifo_filename);
+	      execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
               release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
             }

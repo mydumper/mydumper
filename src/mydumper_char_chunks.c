@@ -54,7 +54,8 @@ void initialize_char_chunk(){
 gchar* print_hex(const char * buffer, guint size)
 {
 GString *str = g_string_new("");
-    for (guint i = 0; i < size; i++)
+guint i = 0;
+    for (i = 0; i < size; i++)
         g_string_append_printf(str,"%02x", buffer[i]);
   return g_string_free(str, FALSE);
 }
