@@ -492,5 +492,6 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
     *dotpos='.';
     return TRUE;
   }
+  *basename=g_strdup(filename);
   return FALSE;
 }
