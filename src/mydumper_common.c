@@ -37,6 +37,7 @@
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
 #include <sys/wait.h>
+#include <sys/ioctl.h>
 
 GAsyncQueue *close_file_queue=NULL;
 GMutex *ref_table_mutex = NULL;
@@ -132,9 +133,17 @@ void wait_close_files(){
   FILE * lkey=NULL;
   if (fifo_hash){
     g_hash_table_iter_init ( &iter, fifo_hash );
+    int bytesAv = 0;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
-      if (ff->queue)
+      if (ff->queue){
+        ioctl (fileno(lkey),FIONREAD,&bytesAv );
+	while (bytesAv > 0){
+	  g_message("Fifo %s waiting: %d", ff->filename,bytesAv);
+	  usleep(100);
+	  ioctl (fileno(lkey),FIONREAD,&bytesAv );
+	}
         g_async_queue_push(ff->queue, GINT_TO_POINTER(1));      
+      }
     }
   }
 

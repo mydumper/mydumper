@@ -45,6 +45,7 @@ test_case_dir (){
     mkdir -p ${mydumper_stor_dir}
     # Export
     echo "Exporting database: ${mydumper_parameters}"
+    rm -rf /tmp/fifodir
     eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
@@ -52,6 +53,8 @@ test_case_dir (){
     then
       echo "Retrying export due error"
       echo "Exporting database: ${mydumper_parameters}"
+      rm -rf /tmp/fifodir
+      rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
       eval $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
       error=$?
       cat $tmp_mydumper_log >> $mydumper_log
@@ -77,6 +80,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     # Import
     echo "Importing database: ${myloader_parameters}"
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+    rm -rf /tmp/fifodir
     eval $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
@@ -85,6 +89,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
       echo "Retrying import due error"
       echo "Importing database: ${myloader_parameters}"
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
+      rm -rf /tmp/fifodir
       eval $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
       error=$?
       cat $tmp_myloader_log >> $myloader_log
@@ -122,6 +127,7 @@ test_case_stream (){
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
     echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+    rm -rf /tmp/fifodir
     eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
     error=$?
     mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
@@ -129,6 +135,8 @@ test_case_stream (){
     then
       echo "Retrying export due error"
       echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+      rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
+      rm -rf /tmp/fifodir
       eval $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
       error=$?
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
@@ -147,6 +155,7 @@ DROP DATABASE IF EXISTS myd_test;
 DROP DATABASE IF EXISTS myd_test_no_fk;
 DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
   fi
+    rm -rf /tmp/fifodir
     cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
@@ -154,6 +163,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     if (( $error > 0 ))
     then
       echo "Retrying import due error"
+      rm -rf /tmp/fifodir
       cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
       error=$?
       cat $tmp_myloader_log >> $myloader_log
@@ -192,8 +202,8 @@ prepare_full_test(){
   # export -- import
   # 1000 rows -- database must not exist
 
-  mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))'"
-  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1"
+  mydumper_general_options="-h 127.0.0.1 -u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))' --fifodir=/tmp/fifodir"
+  myloader_general_options="-h 127.0.0.1 -o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir"
 }
 
 full_test_global(){
