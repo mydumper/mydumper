@@ -137,6 +137,7 @@ void wait_close_files(){
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
       if (ff->queue){
         ioctl (fileno(lkey),FIONREAD,&bytesAv );
+	g_message("Fifo %s waiting: %d", ff->filename,bytesAv);
 	while (bytesAv > 0){
 	  g_message("Fifo %s waiting: %d", ff->filename,bytesAv);
 	  usleep(100);

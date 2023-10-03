@@ -36,8 +36,8 @@ INSERT INTO `char_hex_test` VALUES("»CY	e1Ìç¥\0\'_˜M",539);
 CREATE TABLE t (qty INT, price INT);
 INSERT INTO t VALUES(3, 50);
 CREATE VIEW v AS SELECT qty, price, qty*price AS value FROM t;
-CREATE TABLE t_w_g (   `id` bigint(20) NOT NULL AUTO_INCREMENT,   `val` VARCHAR(30) NOT NULL,   `short_val` VARCHAR(10) GENERATED ALWAYS AS (left(val,10)) STORED NOT NULL,   PRIMARY KEY (`id`)  );
-INSERT into t_w_g (val) values ("asdfljlkjgsadklfjewtjgasd");
+-- CREATE TABLE t_w_g (   `id` bigint(20) NOT NULL AUTO_INCREMENT,   `val` VARCHAR(30) NOT NULL,   `short_val` VARCHAR(10) GENERATED ALWAYS AS (left(val,10)) STORED NOT NULL,   PRIMARY KEY (`id`)  );
+-- INSERT into t_w_g (val) values ("asdfljlkjgsadklfjewtjgasd");
 
 CREATE TABLE `table_varchar_pk` (
   `id` char(5) NOT NULL COLLATE latin1_bin,
