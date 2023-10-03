@@ -432,6 +432,8 @@ void create_fifo_dir(char *new_fifo_directory) {
         m_critical("Unable to create `%s': %s", new_fifo_directory, g_strerror(errno));
       }
     }
+  }else{
+    g_warning("Fifo directoy provided was invalid");
   }
 }
 

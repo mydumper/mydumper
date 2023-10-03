@@ -27,8 +27,8 @@ void next_chunk_in_char_step(union chunk_step * cs);
 void free_char_step(union chunk_step * cs);
 struct chunk_step_item *get_next_char_chunk(struct db_table *dbt);
 gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, guint c2len, guint part);
-gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);
-gchar* update_cursor (MYSQL *conn, struct table_job *tj);
+//gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, union chunk_step *cs);
+//gchar* update_cursor (MYSQL *conn, struct table_job *tj);
 void process_char_chunk(struct table_job *tj, struct chunk_step_item *csi);
 gchar * update_char_where(union chunk_step * chunk_step);
 
