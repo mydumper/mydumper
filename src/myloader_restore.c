@@ -250,7 +250,17 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 	      execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
               release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
-            }
+            }else{
+	      if (fifo_directory != NULL){
+                new_load_data_fifo_filename=g_strdup_printf("%s/%s", fifo_directory, load_data_fifo_filename);
+                g_free(load_data_fifo_filename);
+                load_data_fifo_filename=new_load_data_fifo_filename;
+              }
+              if (mkfifo(load_data_fifo_filename,0666)){
+                g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
+              }
+
+	    }
 
 
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
