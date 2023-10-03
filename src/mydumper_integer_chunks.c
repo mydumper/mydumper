@@ -141,6 +141,9 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
                       (     type.unsign.min /          ics->step )) / 2 ) + 1);
       if (new_minmax_unsigned == type.unsign.min)
         new_minmax_unsigned++;
+      if (type.unsign.min / ics->step == new_minmax_unsigned / ics->step){
+        return NULL;
+      }
       type.unsign.min = new_minmax_unsigned;
     }else{
       new_minmax_signed   =   type.sign.min + (signed) ics->step    *
@@ -231,11 +234,13 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         if (is_splitable(csi)){
 
           new_csi = split_chunk_step(csi);
-          dbt->chunks=g_list_append(dbt->chunks,new_csi);
-          g_async_queue_push(dbt->chunks_queue, csi);
-          g_async_queue_push(dbt->chunks_queue, new_csi);
-          g_mutex_unlock(csi->mutex);
-          return new_csi;
+	  if (new_csi){
+            dbt->chunks=g_list_append(dbt->chunks,new_csi);
+            g_async_queue_push(dbt->chunks_queue, csi);
+            g_async_queue_push(dbt->chunks_queue, new_csi);
+            g_mutex_unlock(csi->mutex);
+            return new_csi;
+	  }
         }else{
           if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
             g_mutex_lock(csi->next->mutex);
@@ -247,19 +252,23 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
               }
               update_where_on_integer_step(new_csi);
               new_csi->next=split_chunk_step(csi->next);
-              new_csi->next->prefix = new_csi->where;
+	      if (new_csi->next){
+                new_csi->next->prefix = new_csi->where;
 //              new_csi->next->chunk_step->integer_step.min_chunk_step_size = dbt->min_chunk_step_size;
 //              new_csi->next->chunk_step->integer_step.max_chunk_step_size = dbt->max_chunk_step_size;
 //              new_csi->next->chunk_step->integer_step.step = dbt->starting_chunk_step_size;
 //              new_csi->next->chunk_step->integer_step.is_step_fixed_length=FALSE;
-              dbt->chunks=g_list_append(dbt->chunks,new_csi);
+                dbt->chunks=g_list_append(dbt->chunks,new_csi);
 
 
-              g_async_queue_push(dbt->chunks_queue, csi);
-              g_async_queue_push(dbt->chunks_queue, new_csi);
-              g_mutex_unlock(csi->next->mutex);
-              g_mutex_unlock(csi->mutex);
-              return new_csi;
+                g_async_queue_push(dbt->chunks_queue, csi);
+                g_async_queue_push(dbt->chunks_queue, new_csi);
+                g_mutex_unlock(csi->next->mutex);
+                g_mutex_unlock(csi->mutex);
+                return new_csi;
+	      }else{
+		free_integer_step_item(new_csi);
+	      }
             }
             g_mutex_unlock(csi->next->mutex);
             //split_unsigned_chunk_step
