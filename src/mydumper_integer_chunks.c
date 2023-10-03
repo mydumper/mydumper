@@ -151,6 +151,9 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
                      (        type.sign.min / (signed) ics->step )) / 2 ) + 1);
       if (new_minmax_signed == type.sign.min)
         new_minmax_signed++;
+      if (type.sign.min / ics->step == new_minmax_signed / ics->step){
+        return NULL;
+      }
       type.sign.min = new_minmax_signed;
     }
 
