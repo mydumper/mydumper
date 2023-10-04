@@ -134,7 +134,8 @@ struct chunk_step_item *split_char_step( guint deep, guint number, struct chunk_
   csi->number=number;
   cs->char_step.step=rows_per_file;
   csi->field = g_strdup(previous_csi->field);
-  cs->char_step.previous=previous_csi->chunk_step;
+//  cs->char_step.previous=previous_csi->chunk_step;
+  cs->char_step.previous = NULL;  
   cs->char_step.status = 0;
 //  cs->char_step.list = list;
   csi->chunk_step=cs;
@@ -428,7 +429,7 @@ void process_char_chunk(struct table_job *tj, struct chunk_step_item *csi){
       }
     }else{
       if (g_strcmp0(cs->char_step.cmax, cs->char_step.cursor)!=0){
-        if (process_char_chunk_step(td,tj, csi)){
+        if (process_char_chunk_step(td, tj, csi)){
           g_message("Thread %d: Job has been cacelled",td->thread_id);
           return;
         }
