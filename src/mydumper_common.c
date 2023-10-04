@@ -53,13 +53,13 @@ guint open_pipe=0;
 int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
 
-void wait_fifo(FILE *file){
+void wait_fifo(FILE *file, gchar *filename){
   int bytesAv = 0;
   if (file){
   ioctl (fileno(file), FIONREAD, &bytesAv);
-//  g_message("Fifo %s waiting: %d", ff->filename,bytesAv);
+  g_message("Fifo %s waiting: %d", filename,bytesAv);
   while (bytesAv > 0){
-//    g_message("Fifo %s waiting: %d", ff->filename,bytesAv);
+    g_message("Fifo %s waiting: %d", filename,bytesAv);
     usleep(100);
     ioctl (fileno(file), FIONREAD, &bytesAv);
   }
@@ -150,6 +150,7 @@ void wait_close_files(){
   if (fifo_hash){
     g_hash_table_iter_init ( &iter, fifo_hash );
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
+      wait_fifo(lkey, ff->filename);
       if (ff->queue){
         g_async_queue_push(ff->queue, GINT_TO_POINTER(1));      
       }
@@ -157,7 +158,7 @@ void wait_close_files(){
   }
 
   g_mutex_unlock(fifo_table_mutex);
-  wait_fifo(lkey);
+//  wait_fifo(lkey);
   close_file_queue_push(&f);
   g_thread_join(cft);
 }
@@ -252,7 +253,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, str
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
 //  write(fileno(file), 0, sizeof(int));
-  wait_fifo(file);
+  wait_fifo(file, filename);
   int r=close(fileno(file));
   if (f != NULL){
 /*    int status=0;
