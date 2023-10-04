@@ -196,6 +196,14 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           }
 
 
+	  if (csi->chunk_step->integer_step.is_step_fixed_length){
+            if (csi->chunk_step->integer_step.is_unsigned){
+              csi->chunk_step->integer_step.type.unsign.min=(csi->chunk_step->integer_step.type.unsign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
+	    }else{
+              csi->chunk_step->integer_step.type.sign.min=(csi->chunk_step->integer_step.type.sign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
+	    }
+          }
+
           if (dbt->min_chunk_step_size==dbt->starting_chunk_step_size && dbt->max_chunk_step_size==dbt->starting_chunk_step_size)
             dbt->chunk_filesize=0;
           return csi;

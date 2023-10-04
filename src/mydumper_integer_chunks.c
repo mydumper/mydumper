@@ -136,24 +136,26 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
 
   if ( ics->is_step_fixed_length ){
     if (ics->is_unsigned){
-      new_minmax_unsigned = type.unsign.min +          ics->step    *
+      new_minmax_unsigned = (type.unsign.min/ics->step)*ics->step +          ics->step    *
                   (((( ics->type.unsign.max /          ics->step )  -
                       (     type.unsign.min /          ics->step )) / 2 ) + 1);
+
+      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step)){
+        return NULL;
+
       if (new_minmax_unsigned == type.unsign.min)
-        new_minmax_unsigned++;
-      if (type.unsign.min / ics->step == new_minmax_unsigned / ics->step){
         return NULL;
       }
       type.unsign.min = new_minmax_unsigned;
     }else{
-      new_minmax_signed   =   type.sign.min + (signed) ics->step    *
+      new_minmax_signed   =   (type.sign.min/ics->step)*ics->step + (signed) ics->step    *
                   ((((   ics->type.sign.max / (signed) ics->step )  -
                      (        type.sign.min / (signed) ics->step )) / 2 ) + 1);
-      if (new_minmax_signed == type.sign.min)
-        new_minmax_signed++;
-      if (type.sign.min / ics->step == new_minmax_signed / ics->step){
+      if ((type.sign.min / ics->step) == (new_minmax_signed / ics->step))
         return NULL;
-      }
+      if (new_minmax_signed == type.sign.min)
+        return NULL;
+      
       type.sign.min = new_minmax_signed;
     }
 
@@ -208,17 +210,11 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_s
          )
 )) ) || ( csi->chunk_step->integer_step.is_step_fixed_length && (   
 (
- csi->chunk_step->integer_step.is_unsigned &&
-((csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.cursor / csi->chunk_step->integer_step.step + 1 )
-||
-(csi->status == ASSIGNED && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.min / csi->chunk_step->integer_step.step + 1 )
-))||
+  csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.min / csi->chunk_step->integer_step.step + 1 
+)||
 (
- !csi->chunk_step->integer_step.is_unsigned &&
-((csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.sign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.cursor / csi->chunk_step->integer_step.step + 1)
-||
-(csi->status == ASSIGNED && csi->chunk_step->integer_step.type.sign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.min / csi->chunk_step->integer_step.step + 1)
-))
+ !csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.sign.max   / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.min   / csi->chunk_step->integer_step.step + 1
+)
 
 ) );
 
