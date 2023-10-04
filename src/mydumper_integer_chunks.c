@@ -189,7 +189,16 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
 }
 
 
-
+gboolean has_only_one_level(struct chunk_step_item *csi){
+return ( csi->chunk_step->integer_step.is_step_fixed_length && (
+(
+  csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.unsign.max == csi->chunk_step->integer_step.type.unsign.min
+)||
+(
+ !csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.sign.max   == csi->chunk_step->integer_step.type.sign.min
+)
+) );
+}
 
 
 gboolean is_splitable(struct chunk_step_item *csi){
@@ -257,7 +266,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         }else{
           if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
             g_mutex_lock(csi->next->mutex);
-            if (csi->next->status!=COMPLETED && is_splitable(csi->next)){
+            if (csi->next->status!=COMPLETED && has_only_one_level(csi)  && is_splitable(csi->next)){
               csi->deep=csi->deep+1;
               new_csi=clone_chunk_step_item(csi);
               if ( csi->chunk_step->integer_step.is_step_fixed_length ){
