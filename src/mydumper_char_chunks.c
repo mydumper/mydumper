@@ -61,12 +61,12 @@ guint i = 0;
 }
 
 
-union chunk_step *new_char_step(MYSQL *conn, MYSQL_ROW row, gulong *lengths){
+union chunk_step *new_char_step(MYSQL *conn, MYSQL_ROW row, gulong *lengths, GMutex *mutex){
   union chunk_step * cs = g_new0(union chunk_step, 1);
 
   cs->char_step.step=rows_per_file;
 
-
+  cs->char_step.mutex=mutex;
 
   cs->char_step.cmin_len = lengths[0]+1;
   cs->char_step.cmax_len = lengths[1]+1;
@@ -100,14 +100,14 @@ struct chunk_step_item *new_char_step_item(MYSQL *conn, gboolean include_null, G
   struct chunk_step_item * csi = g_new0(struct chunk_step_item, 1);
   csi->number = number;
   csi->deep = deep;
-  csi->chunk_step = new_char_step(conn, row, lengths);
+  csi->mutex=g_mutex_new();
+  csi->chunk_step = new_char_step(conn, row, lengths,csi->mutex);
   csi->chunk_type=CHAR;
   csi->chunk_functions.process = &process_char_chunk;
 //  csi->chunk_functions.update_where = &update_char_where;
   csi->chunk_functions.get_next = &get_next_char_chunk; 
   csi->next = next;
   csi->field = g_strdup(field);
-  csi->mutex=g_mutex_new();
   csi->status=UNASSIGNED;
   csi->include_null = include_null;
 //  csi->prefix=g_strdup_printf("`%s` IS NULL OR `%s` = '%s' OR", field, field, csi->chunk_step->char_step.cmin_escaped);
@@ -281,6 +281,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, struct ch
   /* Get minimum/maximum */
 
   g_message("get_new_minmax::");
+  g_mutex_lock(previous->char_step.mutex);
   gchar *middle=get_escaped_middle_char(td->thrconn, previous->char_step.cmax, previous->char_step.cmax_len, previous->char_step.cursor != NULL ? previous->char_step.cursor: previous->char_step.cmin, previous->char_step.cursor != NULL ?previous->char_step.cursor_len:previous->char_step.cmin_len, char_chunk);
 //  guchar d=middle[0];
 //  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
@@ -299,6 +300,7 @@ g_message("get_new_minmax Query: %s", query);
   if (!minmax){
     mysql_free_result(minmax);
     g_message("No middle point");
+    g_mutex_unlock(previous->char_step.mutex);
     return FALSE;
   }
 
@@ -306,6 +308,7 @@ g_message("get_new_minmax Query: %s", query);
   if (row == NULL){
     mysql_free_result(minmax);
     g_message("No middle point");
+    g_mutex_unlock(previous->char_step.mutex);
     return FALSE;
   }
 //  guchar c=row[0][0];
@@ -327,6 +330,8 @@ g_message("get_new_minmax Query: %s", query);
   mysql_real_escape_string(td->thrconn, previous->char_step.cmax_escaped, row[0], lengths[0]);
 
   previous->char_step.status=0;
+  
+  g_mutex_unlock(previous->char_step.mutex);
 
   csi->chunk_step->char_step.cmin_clen = lengths[0];
   csi->chunk_step->char_step.cmin_len = lengths[0]+1;

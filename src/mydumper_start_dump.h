@@ -170,6 +170,8 @@ struct char_step {
 
   guint64 estimated_remaining_steps;
   guint status;
+
+  GMutex *mutex;
 };
 
 struct partition_step{

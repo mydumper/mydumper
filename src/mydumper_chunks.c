@@ -218,11 +218,11 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       case MYSQL_TYPE_STRING:
       case MYSQL_TYPE_VAR_STRING:
 
-
+/*
         if (minmax)
           mysql_free_result(minmax);
         return new_none_chunk_step();
-
+*/
 
         csi=new_char_step_item(conn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
         if (minmax)
