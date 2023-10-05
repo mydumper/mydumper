@@ -235,7 +235,7 @@ FILE * m_open_pipe(gchar **filename, const char *type){
     f->stdout_filename=new_filename;
   }else{
     f=g_new0(struct fifo, 1);
-//    f->mutex=g_mutex_new();
+    f->mutex=g_mutex_new();
 //    g_mutex_lock(f->mutex);
     f->file = file;
     f->queue = g_async_queue_new();
