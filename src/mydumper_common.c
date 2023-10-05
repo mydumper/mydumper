@@ -46,7 +46,7 @@ guint table_number=0;
 GAsyncQueue *available_pids=NULL;
 GAsyncQueue *available_pids_hard=NULL;
 GHashTable *fifo_hash=NULL;
-GHashTable *fifo_hash_by_pid=NULL;
+//GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
 GThread * cft = NULL;
 guint open_pipe=0;
@@ -122,8 +122,9 @@ void initialize_common(){
   }
   ref_table_mutex = g_mutex_new();
   ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
-  fifo_hash_by_pid=g_hash_table_new(g_int_hash,g_int_equal);
-  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
+//  fifo_hash_by_pid=g_hash_table_new(g_int_hash,g_int_equal);
+//  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
+  fifo_hash=g_hash_table_new(g_str_hash, g_str_equal);  
   fifo_table_mutex = g_mutex_new();
 
   cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
@@ -152,7 +153,7 @@ void wait_close_files(){
   g_mutex_lock(fifo_table_mutex);
 
   struct fifo *ff=NULL;
-  FILE * lkey=NULL;
+  gchar * lkey=NULL;
   if (fifo_hash){
     g_hash_table_iter_init ( &iter, fifo_hash );
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
@@ -164,7 +165,6 @@ void wait_close_files(){
   }
 
   g_mutex_unlock(fifo_table_mutex);
-//  wait_fifo(lkey);
   close_file_queue_push(&f);
   g_thread_join(cft);
 }
@@ -217,9 +217,10 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   int child_proc = execute_file_per_thread(*filename,new_filename);
   FILE *file=g_fopen(*filename,type);
   g_mutex_lock(fifo_table_mutex); 
-  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+  struct fifo *f=g_hash_table_lookup(fifo_hash,*filename);
 
   if (f!=NULL){
+    g_critical("Why do we need to reopen: %s", *filename);
     g_mutex_unlock(fifo_table_mutex);
 //    g_mutex_lock(f->mutex);
     f->pid = child_proc;
@@ -234,8 +235,8 @@ FILE * m_open_pipe(gchar **filename, const char *type){
     f->pid = child_proc;
     f->filename=g_strdup(*filename);
     f->stdout_filename=new_filename;
-    g_hash_table_insert(fifo_hash,file,f);
-    g_hash_table_insert(fifo_hash_by_pid,&(f->pid), file);
+    g_hash_table_insert(fifo_hash,f->filename,f);
+//    g_hash_table_insert(fifo_hash_by_pid,&(f->pid), file);
     g_mutex_unlock(fifo_table_mutex);
   }
   return file;
@@ -255,12 +256,13 @@ void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, flo
 
 int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
   release_pid();
+  (void)file;
   (void)thread_id;
   (void)size;
   (void)dbt;
   (void)filename;
   g_mutex_lock(fifo_table_mutex);
-  struct fifo *f=g_hash_table_lookup(fifo_hash,file);
+  struct fifo *f=g_hash_table_lookup(fifo_hash,filename);
   g_mutex_unlock(fifo_table_mutex);
   if (f){
     f->size=size;
@@ -270,7 +272,7 @@ int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, str
   return 0;
 }
 
-
+/*
 void child_process_ended(int child_pid){
 //  g_message("Child process: %d", child_pid);
   g_mutex_lock(fifo_table_mutex);
@@ -288,6 +290,7 @@ void child_process_ended(int child_pid){
   }
 }
 
+*/
 int m_close_file(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
   int r=fclose(file);
   if (size > 0){
