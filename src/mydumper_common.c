@@ -223,6 +223,10 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   }
   int child_proc = execute_file_per_thread(*filename,new_filename);
   FILE *file=g_fopen(*filename,type);
+  if (!file){
+    g_error("cannot open named pipe %s (%d)", *filename, errno);
+  }
+
   g_mutex_lock(fifo_table_mutex); 
   struct fifo *f=g_hash_table_lookup(fifo_hash,*filename);
 
