@@ -320,7 +320,8 @@ struct fifo{
   GAsyncQueue * queue;
   float size;
   struct db_table *dbt;
-//  GMutex *mutex;
+  FILE *file;
+  //  GMutex *mutex;
 };
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);

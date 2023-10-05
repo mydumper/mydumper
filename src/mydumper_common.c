@@ -53,21 +53,20 @@ guint open_pipe=0;
 int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
 
-void wait_fifo(FILE *file, gchar *filename){
+void wait_fifo(struct fifo *f){
   int bytesAv = 0;
-  if (file){
-  ioctl (fileno(file), FIONREAD, &bytesAv);
-  g_message("Fifo %s waiting: %d", filename,bytesAv);
-  while (bytesAv > 0){
-    g_message("Fifo %s waiting: %d", filename,bytesAv);
-    usleep(100);
-    ioctl (fileno(file), FIONREAD, &bytesAv);
-  }
+  if (f->file){
+    ioctl (fileno(f->file), FIONREAD, &bytesAv);
+    while (f->file && bytesAv > 0){
+      g_message("Fifo %s waiting: %d", f->filename,bytesAv);
+      usleep(100000);
+      ioctl (fileno(f->file), FIONREAD, &bytesAv);
+    }
   }
 }
 
 
-
+/*
 void * wait_pid(void *data){
   (void)data;
   int status=0;
@@ -81,6 +80,7 @@ void * wait_pid(void *data){
   }
   return NULL;
 }
+*/
 
 void release_pid_hard();
 void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt);
@@ -92,6 +92,10 @@ void * close_file_thread(void *data){
     f=g_async_queue_pop(close_file_queue);
     if (f->pid == -10)
       break;
+
+    wait_fifo(f);
+    close(fileno(f->file));
+    f->file=NULL;
     g_async_queue_pop(available_pids_hard);
 //    g_message("Pop so I can remove: %s", f->filename);
     g_async_queue_pop(f->queue);
@@ -124,7 +128,7 @@ void initialize_common(){
 
   cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
 
-  g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
+//  g_thread_create((GThreadFunc)wait_pid, NULL, FALSE, NULL);
 }
 
 void close_file_queue_push(struct fifo *f){
@@ -134,13 +138,15 @@ void close_file_queue_push(struct fifo *f){
 void wait_close_files(){
   struct fifo f;
   f.pid=-10;
+
+/*
   guint i=0;
   while (g_atomic_int_get(&open_pipe) != 0 && i < 5){
     g_message("Waiting files to complete");
     sleep(1);
     i++;
   }
-
+*/
 
   GHashTableIter iter;
   g_mutex_lock(fifo_table_mutex);
@@ -150,7 +156,7 @@ void wait_close_files(){
   if (fifo_hash){
     g_hash_table_iter_init ( &iter, fifo_hash );
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &ff ) ) {
-      wait_fifo(lkey, ff->filename);
+      wait_fifo(ff);
       if (ff->queue){
         g_async_queue_push(ff->queue, GINT_TO_POINTER(1));      
       }
@@ -223,6 +229,7 @@ FILE * m_open_pipe(gchar **filename, const char *type){
     f=g_new0(struct fifo, 1);
 //    f->mutex=g_mutex_new();
 //    g_mutex_lock(f->mutex);
+    f->file = file;
     f->queue = g_async_queue_new();
     f->pid = child_proc;
     f->filename=g_strdup(*filename);
@@ -248,48 +255,19 @@ void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, flo
 
 int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
   release_pid();
-
+  (void)thread_id;
+  (void)size;
+  (void)dbt;
+  (void)filename;
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
-//  write(fileno(file), 0, sizeof(int));
-  wait_fifo(file, filename);
-  int r=close(fileno(file));
-  if (f != NULL){
-/*    int status=0;
-    g_message("Thread %d: waitpid %d: started", thread_id, f->pid);
-    waitpid(f->pid, &status, 0);
-    g_message("Thread %d: waitpid %d: eneded", thread_id, f->pid);
-    g_mutex_lock(fifo_table_mutex);
-    g_mutex_unlock(f->mutex);
-    g_mutex_unlock(fifo_table_mutex); */
-//    g_mutex_lock(f->mutex);
-//g_message("g_async_queue_pop(f->queue: %d", f->pid);
+  if (f){
     f->size=size;
     f->dbt=dbt;
-//    g_message("Enqueueing : %s", f->filename);
-    close_file_queue_push(f);
-//    g_async_queue_pop(f->queue);
-//    remove(f->filename);
-  }else{
-    struct fifo new_f;
-    new_f.dbt=dbt;
-    new_f.size=size;
-    new_f.filename=filename;
-    final_step_close_file(thread_id, filename, &new_f, size, dbt);
-  //  g_mutex_unlock(fifo_table_mutex);
   }
-/*  if (size > 0){
-    if (stream) stream_queue_push(dbt,g_strdup(f->stdout_filename));
-  }else if (!build_empty_files){
-    if (remove(f->stdout_filename)) {
-      g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
-    }else{
-      g_debug("Thread %d: File removed: %s", thread_id, filename);
-    } 
-}
-*/
-  return r;
+  close_file_queue_push(f);
+  return 0;
 }
 
 
