@@ -55,14 +55,19 @@ int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struc
 
 void wait_fifo(struct fifo *f){
   int bytesAv = 0;
+  g_mutex_lock(f->mutex);
   if (f->file){
     ioctl (fileno(f->file), FIONREAD, &bytesAv);
     while (f->file && bytesAv > 0){
+      g_mutex_unlock(f->mutex);
       g_message("Fifo %s waiting: %d", f->filename,bytesAv);
       usleep(100000);
-      ioctl (fileno(f->file), FIONREAD, &bytesAv);
+      g_mutex_lock(f->mutex);
+      if (f->file)
+        ioctl (fileno(f->file), FIONREAD, &bytesAv);
     }
   }
+  g_mutex_unlock(f->mutex);
 }
 
 
@@ -94,8 +99,10 @@ void * close_file_thread(void *data){
       break;
 
     wait_fifo(f);
+    g_mutex_lock(f->mutex);
     close(fileno(f->file));
     f->file=NULL;
+    g_mutex_unlock(f->mutex);
     g_async_queue_pop(available_pids_hard);
 //    g_message("Pop so I can remove: %s", f->filename);
     g_async_queue_pop(f->queue);

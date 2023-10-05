@@ -321,7 +321,7 @@ struct fifo{
   float size;
   struct db_table *dbt;
   FILE *file;
-  //  GMutex *mutex;
+  GMutex *mutex;
 };
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
