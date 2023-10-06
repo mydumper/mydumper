@@ -42,10 +42,15 @@ static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
 int (*m_close)(void *file) = NULL;
+struct database *database_db=NULL;
 
 void initialize_common(){
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
+  if (db){
+    database_db=get_db_hash(g_strdup(db), g_strdup(db));
+  }
 }
 
 
