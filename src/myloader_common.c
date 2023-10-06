@@ -201,7 +201,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 
 */
 gboolean execute_use(struct thread_data *td){
-  gchar *query = g_strdup_printf("USE `%s`", td->current_database);
+  gchar *query = g_strdup_printf("USE `%s`", td->current_database->real_database);
   if (mysql_query(td->thrconn, query)) {
 //    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
     g_free(query);
@@ -211,9 +211,9 @@ gboolean execute_use(struct thread_data *td){
   return FALSE;
 }
 
-void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg){
+void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg){
   if ( database != NULL && db == NULL ){
-    if (td->current_database==NULL || g_strcmp0(database, td->current_database) != 0){
+    if (td->current_database==NULL || g_strcmp0(database->real_database, td->current_database->real_database) != 0){
       td->current_database=database;
       if (execute_use(td)){
         m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
@@ -302,10 +302,8 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   g_strfreev(split);
 }
 
-void append_alter_table(GString * alter_table_statement, char *database, char *table){
+void append_alter_table(GString * alter_table_statement, char *table){
   g_string_append(alter_table_statement,"ALTER TABLE `");
-  g_string_append(alter_table_statement, database);
-  g_string_append(alter_table_statement,"`.`");
   g_string_append(alter_table_statement,table);
   g_string_append(alter_table_statement,"` ");
 }
@@ -323,8 +321,8 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
-  append_alter_table(alter_table_statement, dbt->database->real_database,dbt->real_table);
-  append_alter_table(alter_table_constraint_statement, dbt->database->real_database,dbt->real_table);
+  append_alter_table(alter_table_statement, dbt->real_table);
+  append_alter_table(alter_table_constraint_statement, dbt->real_table);
   int fulltext_counter=0;
   int i=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
@@ -344,7 +342,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
         if (fulltext_counter>1){
           fulltext_counter=1;
           finish_alter_table(alter_table_statement);
-          append_alter_table(alter_table_statement,dbt->database->real_database,dbt->real_table);
+          append_alter_table(alter_table_statement,dbt->real_table);
         }
         g_string_append(alter_table_statement,"\n ADD");
         g_string_append(alter_table_statement, split_file[i]);

@@ -294,7 +294,7 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
     g_free(load_data_fifo_filename);
   }
 */
-  myl_close(filename, infile);
+  myl_close(filename, infile, TRUE);
   g_free(path);
   return r;
 }

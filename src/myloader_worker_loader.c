@@ -66,7 +66,7 @@ void initialize_loader_threads(struct configuration *conf){
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
   g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database->real_database, dbt->table);
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
-  g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
+  g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;
 }
@@ -115,7 +115,7 @@ void *process_loader_thread(struct thread_data * td) {
     case DATA:
       rj = (struct restore_job *)g_async_queue_pop(data_queue);
       dbt = rj->dbt;
-      job=new_job(JOB_RESTORE,rj, dbt->database->real_database);
+      job=new_job(JOB_RESTORE,rj, dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
       cont=process_job(td, job);
       g_mutex_lock(dbt->mutex);
@@ -155,7 +155,7 @@ void *loader_thread(struct thread_data *td) {
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   if (db){
-    td->current_database=db;
+    td->current_database=database_db;
     if (execute_use(td)){
       m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }

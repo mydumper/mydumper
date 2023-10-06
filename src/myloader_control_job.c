@@ -50,7 +50,7 @@ void initialize_control_job (struct configuration *conf){
 //  index_threads_counter = 0;
 }
 
-struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database) {
+struct control_job * new_job (enum control_job_type type, void *job_data, struct database *use_database) {
   struct control_job *j = g_new0(struct control_job, 1);
   j->type = type;
   j->use_database=use_database;
@@ -182,6 +182,10 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
 	  i++;
   while (iter != NULL){
     struct db_table * dbt = iter->data;
+    if (dbt->database->schema_state == NOT_FOUND){
+      iter=iter->next;
+      continue;
+    }
 //    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->real_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
     if (dbt->schema_state>=DATA_DONE){
 //          g_message("DB: %s Table: %s Schema State: %d data done?", dbt->database->real_database,dbt->real_table, dbt->schema_state);

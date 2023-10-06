@@ -105,6 +105,8 @@ gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
 
+struct database *database_db=NULL;
+
 GHashTable * myloader_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
   if (!enable_binlog)
@@ -213,6 +215,10 @@ int main(int argc, char *argv[]) {
 
   if (db == NULL && source_db != NULL) {
     db = g_strdup(source_db);
+  }
+
+  if (db){
+    database_db=get_db_hash(db,db);
   }
 
   context = load_contex_entries();
