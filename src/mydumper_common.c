@@ -65,45 +65,12 @@ void * close_file_thread(void *data){
     f=g_async_queue_pop(close_file_queue);
     if (f->gpid == -10)
       break;
-
-//    wait_fifo(f);
-//    fflush(f->file);
-//    g_message("Waiting for %d to close %s",f->pid, f->filename);
     fclose(f->fdin);
     close(f->pipe[1]);
     close(f->pipe[0]);
-//    close(f->fdout);
     g_mutex_lock(f->out_mutex);
-//    g_message("CLOSED Waiting for %d to close %s",f->pid, f->filename);
-/*    if (f->stdin){
-//	    fflush(f->stdin);
-      g_message("Clsoing stdin on %s", f->filename);
-      close(fileno(f->stdin));
-      
-    }
-    */
-//        getchar();
-//    f->file=NULL;
     g_async_queue_pop(available_pids_hard);
-//    g_message("Pop so I can remove: %s", f->filename);
-//    g_async_queue_pop(f->queue);
     release_pid_hard();
-/*    siginfo_t infop;
-    g_message("Waiting for %d to close %s",f->pid, f->filename);
-    waitid(P_PID, f->pid, &infop, WNOHANG);
-    while(WIFEXITED(infop.si_status)){
-    g_message("status: %d, code: %d CLD_EXITED: %d, CLD_KILLED: %d, CLD_STOPPED: %d, CLD_CONTINUED:%d, pid: %d, ourpid: %d, SIGCHLD: %d, infop.si_pid: %d", infop.si_status,infop.si_code, CLD_EXITED,CLD_KILLED,CLD_STOPPED, CLD_CONTINUED, infop.si_signo, f->pid, SIGCHLD, infop.si_pid);
-    sleep(1);
-        waitid(P_PID, f->pid, &infop, WNOHANG);
-    }
-  */  
-/*    while (!WIFEXITED(infop.si_status)){
-	    g_message("Waiting AGAIN for %d to close %s",f->pid, f->filename);
-	    sleep(1);
-	    waitid(P_PID, f->pid, &infop, WNOHANG);
-    }
-    */
-//    remove(f->filename);
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
     g_message("Removed: %s | Pipe Files still open: %d", f->filename, g_atomic_int_get(&open_pipe));
@@ -213,6 +180,9 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
   f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC|O_CLOEXEC);
+  if (f->fdout){
+    g_error("opening file: %s", new_filename);
+  }
   f->queue = g_async_queue_new();
   f->filename=g_strdup(*filename);
   f->stdout_filename=new_filename;
