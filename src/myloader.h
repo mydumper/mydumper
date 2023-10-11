@@ -36,12 +36,13 @@ struct restore_errors {
   guint constraints_errors;
   guint retries;
 };
+struct database;
 
 enum thread_states { WAITING, STARTED, COMPLETED };
 struct thread_data {
   struct configuration *conf;
   MYSQL *thrconn;
-  gchar *current_database;
+  struct database *current_database;
   guint thread_id;
   enum thread_states status;
 };

@@ -383,7 +383,6 @@ int main(int argc, char *argv[]) {
   conf.stream_queue = g_async_queue_new();
   conf.table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   conf.table_hash_mutex=g_mutex_new();
-  db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
 
   if (g_file_test("resume",G_FILE_TEST_EXISTS)){
     if (!resume){
@@ -402,15 +401,13 @@ int main(int argc, char *argv[]) {
   t.current_database=NULL;
   t.status=WAITING;
 
+  if (database_db){
+    create_database(&t, database_db->real_database);
+    database_db->schema_state=CREATED;
+  }
+
   if (tables_list)
     tables = get_table_list(tables_list);
-
-  // Create database before the thread, to allow connection
-  if (db){
-    struct database * d=get_db_hash(g_strdup(db), g_strdup(db));
-    create_database(&t, db);
-    d->schema_state=CREATED;
-  }
 
   if (serial_tbl_creation)
     max_threads_for_schema_creation=1;

@@ -100,3 +100,4 @@ extern gchar **exec_per_thread_cmd;
 extern GMutex *index_mutex;
 extern gchar **zstd_decompress_cmd;
 extern gchar **gzip_decompress_cmd;
+extern struct database *database_db;

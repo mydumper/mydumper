@@ -40,4 +40,4 @@ gboolean process_schema_view_filename(gchar *filename);
 gboolean process_metadata_global(gchar *file);
 gboolean process_schema_sequence_filename(gchar *filename);
 FILE * myl_open(char *filename, const char *type);
-void myl_close(char *filename, FILE *file);
+void myl_close(char *filename, FILE *file, gboolean rm);
