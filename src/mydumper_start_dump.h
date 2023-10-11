@@ -320,7 +320,7 @@ struct fifo{
   float size;
   struct db_table *dbt;
   FILE *fdin;
-  int fdout;
+  FILE *fdout;
   GPid gpid;
   int pipe[2];
   GMutex *out_mutex;

@@ -38,7 +38,6 @@
 #include "mydumper_stream.h"
 #include <sys/wait.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>
 #include <unistd.h>
 #include <sys/file.h>
 
@@ -51,9 +50,12 @@ GAsyncQueue *available_pids_hard=NULL;
 GHashTable *fifo_hash=NULL;
 //GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
+GMutex *pipe_creation=NULL;
 GThread * cft = NULL;
 guint open_pipe=0;
 int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
+
+guint number_list[100];
 
 void release_pid_hard();
 void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt);
@@ -65,11 +67,18 @@ void * close_file_thread(void *data){
     f=g_async_queue_pop(close_file_queue);
     if (f->gpid == -10)
       break;
+    g_mutex_lock(pipe_creation);
     fclose(f->fdin);
     close(f->pipe[1]);
     close(f->pipe[0]);
+    if (number_list[f->pipe[0]]==0 || number_list[f->pipe[1]]==0 ){
+	    g_message("THIS IS  APROBLEMA");
+    } 
+    number_list[f->pipe[0]]=0;
+    number_list[f->pipe[1]]=0;
+    g_mutex_unlock(pipe_creation);
     g_mutex_lock(f->out_mutex);
-    g_async_queue_pop(available_pids_hard);
+    fclose(f->fdout);
     release_pid_hard();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
@@ -78,12 +87,16 @@ void * close_file_thread(void *data){
   return NULL;
 }
 
+
 void initialize_common(){
+guint i=0;
+for (i=0; i<100; i++)
+number_list[i]=0 ;
+
   available_pids = g_async_queue_new(); 
   available_pids_hard = g_async_queue_new();
   close_file_queue=g_async_queue_new();
 
-  guint i=0;
   for (i=0; i < (num_threads * 2); i++){
     release_pid();
   }
@@ -91,6 +104,7 @@ void initialize_common(){
     release_pid_hard();
   }
   ref_table_mutex = g_mutex_new();
+  pipe_creation = g_mutex_new();
   ref_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free );
 //  fifo_hash_by_pid=g_hash_table_new(g_int_hash,g_int_equal);
 //  fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
@@ -156,17 +170,15 @@ void release_pid_hard(){
 //  g_message("available pids HARD queue size: %d", g_async_queue_length(available_pids_hard));
 }
 
-const  char *zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
-
 void wait_my_pid (GPid pid,
                     gint wait_status,
                     gpointer user_data){
 
 (void)pid;
 (void)wait_status;
+g_message("wait_my_pid: %d with status: %d", pid, wait_status);
       	g_mutex_unlock(((struct fifo*)user_data)->out_mutex);
 }
-
 
 // filename must never use the compression extension. .fifo files should be deprecated
 FILE * m_open_pipe(gchar **filename, const char *type){
@@ -176,22 +188,65 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   gchar *new_filename = g_strdup_printf("%s%s", *filename, exec_per_thread_extension);
   (void)type;
 //  g_message("Opening %s with type %s", *filename,type);
-  struct fifo *f=g_new0(struct fifo, 1);
+  struct fifo *f=NULL;
+
+  g_mutex_lock(fifo_table_mutex);
+  f=g_hash_table_lookup(fifo_hash,*filename);
+  g_mutex_unlock(fifo_table_mutex);
+  if (f){
+    g_error("file already open: %s", *filename);
+  }
+  f=g_new0(struct fifo, 1);
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC|O_CLOEXEC);
-  if (f->fdout){
+//  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC);
+  f->fdout=g_fopen(new_filename, type);  
+  if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
+  g_async_queue_pop(available_pids_hard);
+//  argv=(gchar **)zstd_cmd;
   f->queue = g_async_queue_new();
   f->filename=g_strdup(*filename);
   f->stdout_filename=new_filename;
-  pipe(f->pipe);
-  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, zstd_cmd, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
-  if (!b)
-    g_error("g_spawn_async_with_pipes_and_fds::didn't work");
-  g_child_watch_add(f->gpid, wait_my_pid, f);
+  guint e=0;
+  g_mutex_lock(pipe_creation);
+  gint status=pipe(f->pipe);
+  if (status != 0){
+    g_error("Not able to create pipe (%d)", e);
+  }
+  
+  if (number_list[f->pipe[0]]==0){
+	  number_list[f->pipe[0]]=1;
+  }else{
+	  g_message("WE HAVE APROBLEM %s", *filename);
+  }
+
+  if (number_list[f->pipe[1]]==0){
+          number_list[f->pipe[1]]=1;
+  }else{
+          g_message("WE HAVE APROBLEM %s", *filename);
+  }  
+
+
   f->fdin=fdopen(f->pipe[1],type);
+/*  guint i=0;
+  for(i=0; i<2; i++)
+    g_strlcpy((gchar *)&(cmd_cmd[i]),gzip_cmd[i],50);
+    */
+//  cmd_cmd[2][0]='\0';
+  GError* error=NULL;
+  g_message("Pipe %s fd: %d %d", *filename, f->pipe[0], f->pipe[1]);
+  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], fileno(f->fdout), -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,&error);
+  if (!b){
+    g_message("g_spawn_async_with_pipes_and_fds::didn't work. Retrying: %s", error->message);
+    b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], fileno(f->fdout), -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
+    if (!b){
+      g_error("g_spawn_async_with_pipes_and_fds::didn't work. %s", *filename);
+    }
+  }
+  g_child_watch_add(f->gpid, wait_my_pid, f);
+  g_mutex_unlock(pipe_creation);
   g_mutex_lock(fifo_table_mutex);
   g_hash_table_insert(fifo_hash,f->filename,f);
   g_mutex_unlock(fifo_table_mutex);
