@@ -314,14 +314,16 @@ struct schema_post {
 };
 
 struct fifo{
-  int pid;
   gchar *filename;
   gchar *stdout_filename;
   GAsyncQueue * queue;
   float size;
   struct db_table *dbt;
-  FILE *file;
-  GMutex *mutex;
+  FILE *fdin;
+  int fdout;
+  GPid gpid;
+  int pipe[2];
+  GMutex *out_mutex;
 };
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);

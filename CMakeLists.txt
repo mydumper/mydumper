@@ -29,6 +29,10 @@ if (PC_GLIB2_VERSION VERSION_GREATER "2.51")
   option(WITH_GLIB_uuid_string_random "uuid_string_random not available" ON)
 endif (PC_GLIB2_VERSION VERSION_GREATER "2.51")
 
+if (PC_GLIB2_VERSION VERSION_LESS "2.68")
+	MESSAGE(FATAL_ERROR "GLIB version lower than 2.68")
+endif (PC_GLIB2_VERSION VERSION_LESS "2.68")
+
 option(WITH_SSL "Build SSL support" ON)
 if (MARIADB_FOUND AND NOT MARIADB_SSL AND WITH_SSL)
     message(WARNING "MariaDB was not build with SSL so cannot turn SSL on")

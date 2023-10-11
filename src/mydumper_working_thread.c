@@ -214,13 +214,13 @@ void initialize_working_thread(){
       if ((cmd=get_gzip_cmd()) == NULL){
         g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
       }
-      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread=g_strdup_printf("/usr/bin/stdbuf -i0 -o0 -e0 %s -c", cmd);
       exec_per_thread_extension=GZIP_EXTENSION;
     }else if ( g_strcmp0(compress_method,ZSTD)==0){
       if ( (cmd=get_zstd_cmd()) == NULL ){
         g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
       }
-      exec_per_thread=g_strdup_printf("%s -c", cmd);
+      exec_per_thread=g_strdup_printf("/usr/bin/stdbuf -i0 -o0 -e0 %s -c", cmd);
       exec_per_thread_extension=ZSTD_EXTENSION;
     }
     m_open=&m_open_pipe;

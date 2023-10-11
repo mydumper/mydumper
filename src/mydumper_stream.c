@@ -24,6 +24,7 @@
 #include "mydumper_global.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
+#include <sys/file.h>
 
 extern GAsyncQueue *stream_queue;
 
@@ -76,11 +77,13 @@ void *process_stream(void *data){
   ssize_t len=0;
   GDateTime *datetime;
   struct stream_queue_element *sf = NULL;
+//sleep(2);
   for(;;){
     sf = g_async_queue_pop(stream_queue);
     if (sf->done != NULL) {
       g_async_queue_push(sf->done, GINT_TO_POINTER(1));
     }
+
     if (strlen(sf->filename) == 0){
       break;
     }
@@ -91,14 +94,21 @@ void *process_stream(void *data){
     total_size+=5;
     total_size+=strlen(used_filemame);
     free(used_filemame);
-
     if (no_stream == FALSE){
-//      g_message("Opening: %s",filename);
+      g_message("Stream Opening: %s",sf->filename);
       f=g_fopen(sf->filename,"r");
       if (!f){
         m_error("File failed to open: %s",sf->filename);
       }else{
-        if (!f){
+/*
+      	      if (flock(fileno(f),LOCK_EX)){
+          g_async_queue_push(stream_queue,sf);
+	  g_message("File not possible to lock %s",sf->filename);
+	  continue;
+	}
+	flock(fileno(f),LOCK_UN);
+*/
+	if (!f){
           g_critical("File failed to open: %s. Reetrying",sf->filename);
           f=g_fopen(sf->filename,"r");
           if (!f){
@@ -111,7 +121,13 @@ void *process_stream(void *data){
         fstat(fd, &st);
         off_t size = st.st_size;
         
-//        g_message("File size of %s is %"G_GINT64_FORMAT, filename, size);
+        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
+/*	if (size == 0){
+		g_async_queue_push(stream_queue,sf);
+		fclose(f);
+		continue;
+	}
+*/
         gchar *c = g_strdup_printf("%"G_GINT64_FORMAT,size);
         len=write(fileno(stdout), c, strlen(c));
         len=write(fileno(stdout), "\n", 1);
