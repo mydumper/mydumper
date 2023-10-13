@@ -13,8 +13,12 @@ RUN \
 RUN \
   wget https://download.gnome.org/sources/glib/2.68/glib-2.68.4.tar.xz -P /tmp/src/ && \
   tar xJf /tmp/src/glib-2.68.4.tar.xz -C /tmp/src && \
+  sudo apt-get install python3.7 && \
+  sudo unlink /usr/bin/python3 && \
+  sudo ln /usr/bin/python3.7 /usr/bin/python3 && \
   sudo apt-get install python3-pip && \
-  sudo pip3 install --upgrade meson
+  sudo pip3 install --upgrade meson && \
+  sudo pip3 install --upgrade ninja
 
 RUN \
   cd /tmp/src/glib-2.68.4 && \
