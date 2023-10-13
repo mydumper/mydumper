@@ -39,9 +39,10 @@
 #include "mydumper_chunks.h"
 #include "mydumper_global.h"
 #include <sys/wait.h>
+#include <fcntl.h>
 
 extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
-
+int (*m_open)(char **filename, const char *);
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
 gboolean ignore_generated_fields = FALSE;
@@ -92,11 +93,10 @@ gchar * get_tablespace_query(){
 }
 
 void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
-  void *outfile = NULL;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
-  outfile = m_open(&filename,"w");
+  int outfile = m_open(&filename,"w");
   if (!outfile) {
     g_critical("Error: Could not create output file %s (%d)",
                filename, errno);
@@ -123,7 +123,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   GString *statement = g_string_sized_new(statement_size);
   while ((row = mysql_fetch_row(result))) {
     g_string_printf(statement, "CREATE TABLESPACE `%s` ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", row[0],row[1],row[2]);
-    if (!write_data((FILE *)outfile, statement)) {
+    if (!write_data(outfile, statement)) {
       g_critical("Could not write tablespace data for %s", row[0]);
       errors++;
       return;
@@ -133,7 +133,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
 }
 
 void write_schema_definition_into_file(MYSQL *conn, struct database *database, char *filename) {
-  void *outfile = NULL;
+  int outfile=0;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
@@ -167,13 +167,13 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   row = mysql_fetch_row(result);
   g_string_append(statement, row[1]);
   g_string_append(statement, ";\n");
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write create database for %s", database->name);
     errors++;
   }
   g_free(query);
 
-  m_close(0, outfile, filename, 1, NULL);
+  m_close(0, &outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -186,7 +186,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
 
 void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
                       char *filename, gboolean checksum_filename, gboolean checksum_index_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
@@ -203,7 +203,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   initialize_sql_statement(statement);
 
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -240,13 +240,13 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     g_free(create_table);
   }
   g_string_append(statement, ";\n");
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
   g_free(query);
 
-  m_close(0, outfile, filename, 1, dbt);
+  m_close(0, &outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -261,7 +261,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   return;
 }
 
-void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct database *database, gchar *message, FILE *outfile) {
+void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct database *database, gchar *message, int outfile) {
   MYSQL_RES *result2 = NULL;
   MYSQL_ROW row2;
   MYSQL_ROW row;
@@ -270,7 +270,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
   GString *statement = g_string_sized_new(statement_size);
   while ((row = mysql_fetch_row(result))) {
     set_charset(statement, row[8], row[9]);
-    if (!write_data((FILE *)outfile, statement)) {
+    if (!write_data(outfile, statement)) {
       g_critical("Could not write triggers data for %s", message);
       errors++;
       return;
@@ -289,7 +289,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
     g_strfreev(splited_st);
     g_string_append(statement, ";\n");
     restore_charset(statement);
-    if (!write_data((FILE *)outfile, statement)) {
+    if (!write_data(outfile, statement)) {
       g_critical("Could not write triggers data for %s", message);
       errors++;
       return;
@@ -300,7 +300,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
 }
 
 void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
@@ -333,7 +333,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
   g_free(message);
 
-  m_close(0, outfile, filename, 1, dbt);
+  m_close(0, &outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -342,7 +342,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
 }
 
 void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
@@ -373,7 +373,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
-  m_close(0, outfile, filename, 1, NULL);
+  m_close(0, &outfile, filename, 1, NULL);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -382,7 +382,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 }
 
 void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, char *filename2, gboolean checksum_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
@@ -404,7 +404,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_printf(statement,"%s;\n",set_names_statement);
   }
 
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -439,7 +439,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   if (result)
     mysql_free_result(result);
 
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write view schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
@@ -459,10 +459,10 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  m_close(0, outfile, filename, 1, dbt);
+  m_close(0, &outfile, filename, 1, dbt);
   g_string_set_size(statement, 0);
 
-  void *outfile2;
+  int outfile2;
   outfile2 = m_open(&filename2,"w");
   if (!outfile2) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
@@ -478,7 +478,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
   g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
 
-  if (!write_data((FILE *)outfile2, statement)) {
+  if (!write_data(outfile2, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -495,13 +495,13 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append(statement, row[1]);
   g_string_append(statement, ";\n");
   restore_charset(statement);
-  if (!write_data((FILE *)outfile2, statement)) {
+  if (!write_data(outfile2, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
   g_free(query);
 
-  m_close(0, outfile2, filename2, 1, dbt);
+  m_close(0, &outfile2, filename2, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -513,7 +513,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 }
 
 void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
@@ -534,7 +534,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     g_string_printf(statement,"%s;\n",set_names_str);
   }
 
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -544,7 +544,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
   g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
 
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -572,7 +572,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
   g_string_append(statement, row[1]);
   g_string_append(statement, ";\n");
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
@@ -600,13 +600,13 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
   g_string_printf(statement, "SELECT SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
-  if (!write_data((FILE *)outfile, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
 
   g_free(query);
-  m_close(0, outfile, filename, 1, dbt);
+  m_close(0, &outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -620,7 +620,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 // Routines, Functions and Events
 // TODO: We need to split it in 3 functions 
 void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
-  void *outfile;
+  int outfile;
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_RES *result2 = NULL;
@@ -659,7 +659,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       set_charset(statement, row[8], row[9]);
       g_string_append_printf(statement, "DROP FUNCTION IF EXISTS `%s`;\n",
                              row[1]);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
@@ -679,7 +679,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");
       restore_charset(statement);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write function data for %s.%s", database->name, row[1]);
         errors++;
         return;
@@ -706,7 +706,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       set_charset(statement, row[8], row[9]);
       g_string_append_printf(statement, "DROP PROCEDURE IF EXISTS `%s`;\n",
                              row[1]);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
@@ -726,7 +726,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");
       restore_charset(statement);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
@@ -757,7 +757,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     while ((row = mysql_fetch_row(result))) {
       set_charset(statement, row[12], row[13]);
       g_string_append_printf(statement, "DROP EVENT IF EXISTS `%s`;\n", row[1]);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
@@ -776,7 +776,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
       g_string_append(statement, ";\n");
       restore_charset(statement);
-      if (!write_data((FILE *)outfile, statement)) {
+      if (!write_data(outfile, statement)) {
         g_critical("Could not write event data for %s.%s", database->name, row[1]);
         errors++;
         return;
@@ -786,7 +786,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   }
 
   g_free(query);
-  m_close(0, outfile, filename, 1, NULL);
+  m_close(0, &outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -1067,7 +1067,7 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-int initialize_fn(gchar ** sql_filename, struct db_table * dbt, FILE ** sql_file, guint64 fn, guint sub_part, gchar * f(), gchar **stdout_fn){
+int initialize_fn(gchar ** sql_filename, struct db_table * dbt, int * sql_file, guint64 fn, guint sub_part, gchar * f(), gchar **stdout_fn){
 (void)stdout_fn;
   int r=0;
   if (*sql_filename)
@@ -1086,7 +1086,7 @@ void initialize_load_data_fn(struct table_job * tj){
 }
 
 gboolean update_files_on_table_job(struct table_job *tj){
-  if (tj->sql_file == NULL){
+  if (tj->sql_file == 0){
     if (tj->chunk_step_item->chunk_type == INTEGER && tj->chunk_step_item->chunk_step->integer_step.is_step_fixed_length ){
       if (tj->chunk_step_item->chunk_step->integer_step.is_unsigned)
         tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.unsign.min / tj->chunk_step_item->chunk_step->integer_step.step + 1; 
@@ -1097,7 +1097,7 @@ gboolean update_files_on_table_job(struct table_job *tj){
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql_file = m_open(&(tj->sql_filename),"w");
+      tj->sql_file = open(tj->sql_filename,O_CREAT|O_WRONLY|O_TRUNC);
       return TRUE;
     }else{
       initialize_sql_fn(tj);
@@ -1121,9 +1121,9 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->order_by=g_strdup(order_by);
   tj->nchunk=nchunk;
   tj->sub_part = 0;
-  tj->dat_file = NULL;
+  tj->dat_file = 0;
   tj->dat_filename = NULL;
-  tj->sql_file = NULL;
+  tj->sql_file = 0;
   tj->sql_filename = NULL;
   tj->exec_out_filename = NULL;
   tj->dbt=dbt;
@@ -1142,12 +1142,12 @@ void free_table_job(struct table_job *tj){
 //  g_message("free_table_job");
 
   if (tj->sql_file){
-    m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
-    tj->sql_file=NULL;
+    m_close(tj->td->thread_id, &(tj->sql_file), tj->sql_filename, tj->filesize, tj->dbt);
+    tj->sql_file=0;
   }
   if (tj->dat_file){
-    m_close(tj->td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
-    tj->dat_file=NULL;
+    m_close(tj->td->thread_id, &(tj->dat_file), tj->dat_filename, tj->filesize, tj->dbt);
+    tj->dat_file=0;
   }
 
   if (tj->where!=NULL)

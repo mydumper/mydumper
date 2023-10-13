@@ -68,7 +68,7 @@ void * close_file_thread(void *data){
     if (f->gpid == -10)
       break;
     g_mutex_lock(pipe_creation);
-    fclose(f->fdin);
+//    fclose(f->fdin);
     close(f->pipe[1]);
     close(f->pipe[0]);
     if (number_list[f->pipe[0]]==0 || number_list[f->pipe[1]]==0 ){
@@ -78,7 +78,7 @@ void * close_file_thread(void *data){
     number_list[f->pipe[1]]=0;
     g_mutex_unlock(pipe_creation);
     g_mutex_lock(f->out_mutex);
-    fclose(f->fdout);
+    close(f->fdout);
     release_pid_hard();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
@@ -181,13 +181,13 @@ g_message("wait_my_pid: %d with status: %d", pid, wait_status);
 }
 
 // filename must never use the compression extension. .fifo files should be deprecated
-FILE * m_open_pipe(gchar **filename, const char *type){
+int m_open_pipe(gchar **filename, const char *type){
   (void)type;
   g_atomic_int_inc(&open_pipe);
 
   gchar *new_filename = g_strdup_printf("%s%s", *filename, exec_per_thread_extension);
   (void)type;
-//  g_message("Opening %s with type %s", *filename,type);
+  g_message("Opening %s with type %s", *filename,type);
   struct fifo *f=NULL;
 
   g_mutex_lock(fifo_table_mutex);
@@ -199,8 +199,9 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   f=g_new0(struct fifo, 1);
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
-//  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC);
-  f->fdout=g_fopen(new_filename, type);  
+  g_message("Opening %s gzip out file", new_filename);
+  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC);
+//  f->fdout=g_fopen(new_filename, type);  
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
@@ -229,7 +230,8 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   }  
 
 
-  f->fdin=fdopen(f->pipe[1],type);
+//  f->fdin=fdopen(f->pipe[1],type);
+  f->fdin=NULL;
 /*  guint i=0;
   for(i=0; i<2; i++)
     g_strlcpy((gchar *)&(cmd_cmd[i]),gzip_cmd[i],50);
@@ -237,10 +239,11 @@ FILE * m_open_pipe(gchar **filename, const char *type){
 //  cmd_cmd[2][0]='\0';
   GError* error=NULL;
   g_message("Pipe %s fd: %d %d", *filename, f->pipe[0], f->pipe[1]);
-  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], fileno(f->fdout), -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,&error);
+
+  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,&error);
   if (!b){
     g_message("g_spawn_async_with_pipes_and_fds::didn't work. Retrying: %s", error->message);
-    b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], fileno(f->fdout), -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
+    b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
     if (!b){
       g_error("g_spawn_async_with_pipes_and_fds::didn't work. %s", *filename);
     }
@@ -250,7 +253,7 @@ FILE * m_open_pipe(gchar **filename, const char *type){
   g_mutex_lock(fifo_table_mutex);
   g_hash_table_insert(fifo_hash,f->filename,f);
   g_mutex_unlock(fifo_table_mutex);
-  return f->fdin;
+  return f->pipe[1];
 }
 
 void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt) {

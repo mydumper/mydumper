@@ -87,7 +87,7 @@ extern guint rows;
 extern unsigned long long int total_data_sql_files;
 extern int detected_server;
 extern int (*m_close)(void *file);
-extern int (*m_write)(FILE * file, const char * buff, int len);
+//extern int (*m_write)(FILE * file, const char * buff, int len);
 extern gchar identifier_quote_character;
 extern gchar * identifier_quote_character_str;
 extern GString *change_master_statement;

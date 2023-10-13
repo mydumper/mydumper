@@ -38,7 +38,7 @@ extern gchar*set_names_statement;
 extern guint num_threads;
 extern GString *set_global_back;
 extern MYSQL *main_connection;
-FILE * (*m_open)(char **filename, const char *);
+//FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
 
@@ -53,8 +53,8 @@ const char *const_zstd_cmd[][3] = { {"/usr/bin/zstd", "-c", NULL},
 gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
 gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
 
-gchar * zstd_paths_2[2];
-gchar * gzip_paths_2[2];
+gchar * zstd_paths_2[4];
+gchar * gzip_paths_2[4];
 
 const  char *usr_bin_gzip_cmd[] = {"/usr/bin/gzip", "-c", NULL};
 const  char *bin_gzip_cmd[] = {"/bin/gzip", "-c", NULL};
@@ -72,30 +72,36 @@ gchar **exec_per_thread_command = NULL;
 void initialize_share_common(){
 
   zstd_paths_2[0] = (char *) bin_zstd_cmd[0];
-  zstd_paths_2[1] = (char *) usr_bin_zstd_cmd[0];
+  zstd_paths_2[1] = (char *) bin_zstd_cmd;
+  zstd_paths_2[2] = (char *) usr_bin_zstd_cmd[0];
+  zstd_paths_2[3] = (char *) usr_bin_zstd_cmd;
   gzip_paths_2[0] = (char *) bin_gzip_cmd[0];
-  gzip_paths_2[1] = (char *) usr_bin_gzip_cmd[0];
+  gzip_paths_2[1] = (char *) bin_gzip_cmd;
+  gzip_paths_2[2] = (char *) usr_bin_gzip_cmd[0];
+  gzip_paths_2[3] = (char *) usr_bin_gzip_cmd;
 
 }
 
 
 void initialize_zstd_cmd(){
-  guint i=0;
-  for(i=0; i<2; i++){
-    if (g_file_test( zstd_paths_2[i] , G_FILE_TEST_EXISTS)){
-      zstd_cmd=zstd_paths_2;
-      break;
-    }
+  if (g_file_test(usr_bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
+    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
+    return;
+  }
+  if (g_file_test(bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
+    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
+    return;
   }
 }
 
 void initialize_gzip_cmd(){
-  guint i=0;
-  for(i=0; i<2; i++){
-    if (g_file_test( gzip_paths_2[i] , G_FILE_TEST_EXISTS)){
-      gzip_cmd=gzip_paths_2;
-      break;
-    }
+  if (g_file_test(usr_bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
+    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
+    return;
+  }
+  if (g_file_test(bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
+    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
+    return;
   }
 }
 

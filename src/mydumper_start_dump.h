@@ -220,9 +220,9 @@ struct table_job {
   char *order_by;
   struct db_table *dbt;
   gchar *sql_filename;
-  FILE *sql_file;
+  int sql_file;
   gchar *dat_filename;
-  FILE *dat_file;
+  int dat_file;
   gchar *exec_out_filename;
   float filesize;
   guint st_in_file;
@@ -320,7 +320,7 @@ struct fifo{
   float size;
   struct db_table *dbt;
   FILE *fdin;
-  FILE *fdout;
+  int fdout;
   GPid gpid;
   int pipe[2];
   GMutex *out_mutex;

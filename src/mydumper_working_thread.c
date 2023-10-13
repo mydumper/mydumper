@@ -77,6 +77,7 @@
 
 extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
 
+extern int (*m_write)(int file, const char * buff, int len);
 
 GMutex *init_mutex = NULL;
 /* Program options */
@@ -151,8 +152,14 @@ void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, gui
   g_strfreev(split);
 }
 
-FILE * m_fopen(char **filename, const char *type ){
-  return g_fopen(*filename, type);
+int m_fopen(char **filename, const char *type ){
+	(void) type;
+  return open(*filename, O_CREAT|O_WRONLY|O_TRUNC );
+}
+
+
+int new_m_fopen(char **filename, int type ){
+  return open(*filename, type);
 }
 
 void initialize_working_thread(){
@@ -198,34 +205,36 @@ void initialize_working_thread(){
 // TODO: We need to cleanup this
 
   m_close=(void *) &m_close_pipe;
-  m_write=(void *)&write_file;
+  m_write=(void *)&write;
 
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
     m_open=&m_fopen;
     m_close=(void *) &m_close_file;
-    m_write=(void *)&write_file;
+    m_write=(void *)&write;
     exec_per_thread_extension=EMPTY_STRING;
   } else {
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
       m_critical("--compression and --exec-per-thread are not comptatible");
     }
     gchar *cmd=NULL;
+    initialize_gzip_cmd();
     if ( g_strcmp0(compress_method,GZIP)==0){
       if ((cmd=get_gzip_cmd()) == NULL){
         g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
       }
-      initialize_gzip_cmd();
       exec_per_thread=g_strdup_printf("%s -c", cmd);
       exec_per_thread_command=gzip_cmd;
       exec_per_thread_extension=GZIP_EXTENSION;
-    }else if ( g_strcmp0(compress_method,ZSTD)==0){
+    }else{ 
+      initialize_zstd_cmd();
+      if ( g_strcmp0(compress_method,ZSTD)==0){
       if ( (cmd=get_zstd_cmd()) == NULL ){
         g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
       }
-      initialize_zstd_cmd();
       exec_per_thread=g_strdup_printf("%s -c", cmd);
       exec_per_thread_command=zstd_cmd;
       exec_per_thread_extension=ZSTD_EXTENSION;
+    }
     }
     m_open=&m_open_pipe;
     m_close=&m_close_pipe;
