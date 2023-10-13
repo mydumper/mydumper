@@ -53,7 +53,7 @@ GMutex *fifo_table_mutex=NULL;
 GMutex *pipe_creation=NULL;
 GThread * cft = NULL;
 guint open_pipe=0;
-int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
+int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
 guint number_list[100];
 
@@ -269,7 +269,7 @@ void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, flo
   }
 }
 
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
+int m_close_pipe(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt){
   release_pid();
   (void)file;
   (void)thread_id;
@@ -309,8 +309,8 @@ void child_process_ended(int child_pid){
 }
 
 */
-int m_close_file(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt){
-  int r=fclose(file);
+int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt){
+  int r=close(file);
   if (size > 0){
     if (stream) stream_queue_push(dbt, g_strdup(filename));
   }else if (!build_empty_files){

@@ -42,7 +42,6 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 
 int (*m_write)(int file, const char * buff, int len);
 
@@ -469,8 +468,8 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
         return;
       }
 
-      m_close(tj->td->thread_id, &(tj->sql_file), g_strdup(tj->sql_filename), 1, dbt);
-      m_close(tj->td->thread_id, &(tj->dat_file), g_strdup(tj->dat_filename), 1, dbt);
+      m_close(tj->td->thread_id, tj->sql_file, g_strdup(tj->sql_filename), 1, dbt);
+      m_close(tj->td->thread_id, tj->dat_file, g_strdup(tj->dat_filename), 1, dbt);
       tj->sql_file=0;
       tj->dat_file=0;
 
@@ -599,7 +598,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize) {
         tj->sub_part++;
-        m_close(tj->td->thread_id, &(tj->sql_file), tj->sql_filename, 1, dbt);
+        m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1, dbt);
         tj->sql_file=0;
         update_files_on_table_job(tj);
         tj->st_in_file = 0;

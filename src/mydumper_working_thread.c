@@ -75,7 +75,6 @@
 #endif
 
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint64 size, struct db_table * dbt);
 
 extern int (*m_write)(int file, const char * buff, int len);
 

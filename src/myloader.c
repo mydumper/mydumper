@@ -209,6 +209,7 @@ int main(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
 
+  initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
 
   if (db == NULL && source_db != NULL) {

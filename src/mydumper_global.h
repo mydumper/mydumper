@@ -47,6 +47,8 @@ extern gboolean help;
 extern GKeyFile * key_file;
 extern char **tables;
 extern int (*m_open)(char **filename, const char *);
+struct db_table;
+extern int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt);
 extern GAsyncQueue *start_scheduled_dump;
 //extern GAsyncQueue *stream_queue;
 extern gboolean daemon_mode;

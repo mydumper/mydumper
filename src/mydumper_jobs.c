@@ -41,7 +41,6 @@
 #include <sys/wait.h>
 #include <fcntl.h>
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 int (*m_open)(char **filename, const char *);
 gboolean dump_triggers = FALSE;
 gboolean order_by_primary_key = FALSE;
@@ -173,7 +172,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
   g_free(query);
 
-  m_close(0, &outfile, filename, 1, NULL);
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -246,7 +245,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   g_free(query);
 
-  m_close(0, &outfile, filename, 1, dbt);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -333,7 +332,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
   g_free(message);
 
-  m_close(0, &outfile, filename, 1, dbt);
+  m_close(0, outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -373,7 +372,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
-  m_close(0, &outfile, filename, 1, NULL);
+  m_close(0, outfile, filename, 1, NULL);
   if (result)
     mysql_free_result(result);
   if (checksum_filename)
@@ -459,7 +458,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  m_close(0, &outfile, filename, 1, dbt);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_set_size(statement, 0);
 
   int outfile2;
@@ -501,7 +500,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   }
   g_free(query);
 
-  m_close(0, &outfile2, filename2, 1, dbt);
+  m_close(0, outfile2, filename2, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -606,7 +605,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   g_free(query);
-  m_close(0, &outfile, filename, 1, dbt);
+  m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
@@ -786,7 +785,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   }
 
   g_free(query);
-  m_close(0, &outfile, filename, 1, NULL);
+  m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
   if (result)
@@ -1142,11 +1141,11 @@ void free_table_job(struct table_job *tj){
 //  g_message("free_table_job");
 
   if (tj->sql_file){
-    m_close(tj->td->thread_id, &(tj->sql_file), tj->sql_filename, tj->filesize, tj->dbt);
+    m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
     tj->sql_file=0;
   }
   if (tj->dat_file){
-    m_close(tj->td->thread_id, &(tj->dat_file), tj->dat_filename, tj->filesize, tj->dbt);
+    m_close(tj->td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
     tj->dat_file=0;
   }
 
