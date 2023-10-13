@@ -17,7 +17,7 @@ RUN \
   sudo pip3 install --upgrade meson
 
 RUN \
-  cd /tmp/src && \
+  cd /tmp/src/glib-2.68.4 && \
   /usr/local/bin/meson _build && \
   ninja -C _build && \
   sudo ninja -C _build install
