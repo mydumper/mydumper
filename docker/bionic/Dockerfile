@@ -17,6 +17,7 @@ RUN \
   sudo unlink /usr/bin/python3 && \
   sudo ln /usr/bin/python3.7 /usr/bin/python3 && \
   sudo apt-get install python3-pip && \
+  sudo pip3 install --upgrade scikit-build && \
   sudo pip3 install --upgrade meson && \
   sudo pip3 install --upgrade ninja
 
