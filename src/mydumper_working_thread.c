@@ -153,7 +153,7 @@ void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, gui
 
 int m_fopen(char **filename, const char *type ){
 	(void) type;
-  return open(*filename, O_CREAT|O_WRONLY|O_TRUNC );
+  return open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
 }
 
 

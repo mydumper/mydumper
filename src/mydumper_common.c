@@ -200,7 +200,7 @@ int m_open_pipe(gchar **filename, const char *type){
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
   g_message("Opening %s gzip out file", new_filename);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC);
+  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, 0660);
 //  f->fdout=g_fopen(new_filename, type);  
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
