@@ -1096,7 +1096,7 @@ gboolean update_files_on_table_job(struct table_job *tj){
     if (load_data){
       initialize_load_data_fn(tj);
       tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql_file = open(tj->sql_filename,O_CREAT|O_WRONLY|O_TRUNC, 0660);
+      tj->sql_file = m_open(&(tj->sql_filename),"w");
       return TRUE;
     }else{
       initialize_sql_fn(tj);
