@@ -84,13 +84,13 @@ union chunk_step *new_char_step(MYSQL *conn, MYSQL_ROW row, gulong *lengths, GMu
   cs->char_step.cmax_escaped = g_new(char, lengths[1] * 2 + 1);
   mysql_real_escape_string(conn, cs->char_step.cmax_escaped, row[1], lengths[1]);
 
-  g_message("new_char_step: cmin: `%s` %d | cmax: `%s` %d", print_hex(cs->char_step.cmin, cs->char_step.cmin_len), cs->char_step.cmin_len, print_hex(cs->char_step.cmax, cs->char_step.cmax_len),cs->char_step.cmax_len);
+//  g_message("new_char_step: cmin: `%s` %d | cmax: `%s` %d", print_hex(cs->char_step.cmin, cs->char_step.cmin_len), cs->char_step.cmin_len, print_hex(cs->char_step.cmax, cs->char_step.cmax_len),cs->char_step.cmax_len);
 //  cs->char_step.number = number;
   cs->char_step.previous=NULL;
 //  cs->char_step.list = list; 
 
   cs->char_step.estimated_remaining_steps=1;
-  g_message("new_char_step: min: `%s` | max: `%s`", print_hex(cs->char_step.cmin_escaped, strlen(cs->char_step.cmin_escaped)), print_hex(cs->char_step.cmax_escaped, strlen(cs->char_step.cmax_escaped)));
+//  g_message("new_char_step: min: `%s` | max: `%s`", print_hex(cs->char_step.cmin_escaped, strlen(cs->char_step.cmin_escaped)), print_hex(cs->char_step.cmax_escaped, strlen(cs->char_step.cmax_escaped)));
   cs->char_step.status = 0;
   return cs;
 }
@@ -214,8 +214,8 @@ gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, 
   mysql_real_escape_string(conn, escapedresult, cresult, cresultlen);
   g_free(cresult);
 
-  g_message("Middle point: `%s`: `%s` %d /`%s`/`%s` %d",cresult, print_hex(c1, c1len), c1len, print_hex(cresult, strlen(cresult)),print_hex(c2, c2len), c2len);
-  g_message("Middle point: `%s`: `%s`/`%s`/`%s`",escapedresult, print_hex(c1, c1len), print_hex(escapedresult, strlen(escapedresult)),print_hex(c2, c2len));
+//  g_message("Middle point: `%s`: `%s` %d /`%s`/`%s` %d",cresult, print_hex(c1, c1len), c1len, print_hex(cresult, strlen(cresult)),print_hex(c2, c2len), c2len);
+//  g_message("Middle point: `%s`: `%s`/`%s`/`%s`",escapedresult, print_hex(c1, c1len), print_hex(escapedresult, strlen(escapedresult)),print_hex(c2, c2len));
 
 
   return escapedresult;
@@ -226,7 +226,7 @@ gchar* update_cursor (MYSQL *conn, struct chunk_step_item *csi, struct db_table 
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
-  g_message("update_cursor::");
+//  g_message("update_cursor::");
   gchar * middle = get_escaped_middle_char(conn, csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cmax_len, csi->chunk_step->char_step.cmin, csi->chunk_step->char_step.cmin_len, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
   mysql_query(conn, query = g_strdup_printf(
                         "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
@@ -293,7 +293,7 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, struct ch
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         csi->field, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, middle, (gchar*)dbt->primary_key->data, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, previous->char_step.cmax_escaped, (gchar*)dbt->primary_key->data));
 
-g_message("get_new_minmax Query: %s", query);
+//g_message("get_new_minmax Query: %s", query);
 
   g_free(query);
   minmax = mysql_store_result(td->thrconn);

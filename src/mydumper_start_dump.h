@@ -319,7 +319,6 @@ struct fifo{
   GAsyncQueue * queue;
   float size;
   struct db_table *dbt;
-  FILE *fdin;
   int fdout;
   GPid gpid;
   int child_pid;

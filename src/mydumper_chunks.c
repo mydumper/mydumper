@@ -111,7 +111,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                             ? "/*!40001 SQL_NO_CACHE */"
                             : "",
                         field, field, field, field, dbt->database->name, dbt->table, where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
-    g_message("Query: %s", query);
+//    g_message("Query: %s", query);
     g_free(query);
     minmax = mysql_store_result(conn);
 
