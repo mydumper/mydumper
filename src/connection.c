@@ -133,6 +133,22 @@ GOptionGroup * load_connection_entries(GOptionContext *context){
 }
 
 
+static
+void check_pem_exists(const char *filename, const char *option) {
+  if (!filename)
+    m_critical("SSL required option missing: %s\n", option);
+  else if (!g_file_test(filename, G_FILE_TEST_EXISTS))
+    m_critical("%s file does not exist: %s\n", option, filename);
+}
+
+static
+void check_capath(const char *path) {
+  if (!g_file_test(path, G_FILE_TEST_IS_DIR))
+    m_critical("capath is not directory: %s\n", path);
+
+}
+
+
 void configure_connection(MYSQL *conn) {
   if (connection_defaults_file != NULL)
     mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
@@ -157,9 +173,17 @@ void configure_connection(MYSQL *conn) {
   if (ssl_mode) {
       if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
         mysql_options(conn, MYSQL_OPT_SSL_ENFORCE, &enable);
+        if (key || cert) {
+          check_pem_exists(key, "key");
+          check_pem_exists(cert, "cert");
+        }
       }
       else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
         mysql_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &enable);
+        if (capath)
+          check_capath(capath);
+        else
+          check_pem_exists(ca, "ca");
       }
       else {
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
@@ -177,15 +201,31 @@ void configure_connection(MYSQL *conn) {
       }
       else if (g_ascii_strncasecmp(ssl_mode, "PREFERRED", 16) == 0) {
         i = SSL_MODE_PREFERRED;
+        if (key || cert) {
+          check_pem_exists(key, "key");
+          check_pem_exists(cert, "cert");
+        }
       }
       else if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
         i = SSL_MODE_REQUIRED;
+        if (key || cert) {
+          check_pem_exists(key, "key");
+          check_pem_exists(cert, "cert");
+        }
       }
       else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_CA", 16) == 0) {
         i = SSL_MODE_VERIFY_CA;
+        if (capath)
+          check_capath(capath);
+        else
+          check_pem_exists(ca, "ca");
       }
       else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
         i = SSL_MODE_VERIFY_IDENTITY;
+        if (capath)
+          check_capath(capath);
+        else
+          check_pem_exists(ca, "ca");
       }
       else {
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
