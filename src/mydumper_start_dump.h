@@ -322,8 +322,10 @@ struct fifo{
   FILE *fdin;
   int fdout;
   GPid gpid;
+  int child_pid;
   int pipe[2];
   GMutex *out_mutex;
+  int error_number;
 };
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);

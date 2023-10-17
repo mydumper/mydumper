@@ -66,7 +66,7 @@ void stream_queue_push(struct db_table *dbt,gchar *filename){
 
 void *process_stream(void *data){
   (void)data;
-  FILE * f=NULL;
+  int f=0;
   char buf[STREAM_BUFFER_SIZE];
   int buflen;
   guint64 total_size=0;
@@ -77,7 +77,6 @@ void *process_stream(void *data){
   ssize_t len=0;
   GDateTime *datetime;
   struct stream_queue_element *sf = NULL;
-//sleep(2);
   for(;;){
     sf = g_async_queue_pop(stream_queue);
     if (sf->done != NULL) {
@@ -95,8 +94,8 @@ void *process_stream(void *data){
     total_size+=strlen(used_filemame);
     free(used_filemame);
     if (no_stream == FALSE){
-      g_message("Stream Opening: %s",sf->filename);
-      f=g_fopen(sf->filename,"r");
+//      g_message("Stream Opening: %s",sf->filename);
+      f=open(sf->filename,O_RDONLY|O_DSYNC);
       if (!f){
         m_error("File failed to open: %s",sf->filename);
       }else{
@@ -110,24 +109,18 @@ void *process_stream(void *data){
 */
 	if (!f){
           g_critical("File failed to open: %s. Reetrying",sf->filename);
-          f=g_fopen(sf->filename,"r");
+          f=open(sf->filename,O_RDONLY);
           if (!f){
             m_error("File failed to open: %s. Cancelling",sf->filename);
             exit(EXIT_FAILURE);
           }
         }
         struct stat st;
-        int fd = fileno(f);
-        fstat(fd, &st);
+        fstat(f, &st);
         off_t size = st.st_size;
         
-        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
-/*	if (size == 0){
-		g_async_queue_push(stream_queue,sf);
-		fclose(f);
-		continue;
-	}
-*/
+//        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
+//        g_message("Streaming file %s", sf->filename);
         gchar *c = g_strdup_printf("%"G_GINT64_FORMAT,size);
         len=write(fileno(stdout), c, strlen(c));
         len=write(fileno(stdout), "\n", 1);
@@ -136,13 +129,13 @@ void *process_stream(void *data){
 
         guint total_len=0;
         GDateTime *start_time=g_date_time_new_now_local();
-        buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+        buflen = read(f, buf, STREAM_BUFFER_SIZE);
         while(buflen > 0){
           len=write(fileno(stdout), buf, buflen);
           total_len=total_len + buflen;
           if (len != buflen)
             m_error("Stream failed during transmition of file: %s",sf->filename);
-          buflen = read(fileno(f), buf, STREAM_BUFFER_SIZE);
+          buflen = read(f, buf, STREAM_BUFFER_SIZE);
         }
 //        g_message("Bytes readed of %s is %d", filename, total_len);
         datetime = g_date_time_new_now_local();
@@ -156,7 +149,7 @@ void *process_stream(void *data){
           g_message("File %s transferred | Global: %" G_GINT64_FORMAT "MB/s",sf->filename,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }
         total_size+=total_len;
-        fclose(f);
+        close(f);
       }
     }
     if (no_delete == FALSE){

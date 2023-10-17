@@ -77,8 +77,15 @@ void * close_file_thread(void *data){
     number_list[f->pipe[0]]=0;
     number_list[f->pipe[1]]=0;
     g_mutex_unlock(pipe_creation);
+    g_message("Waiting: %s to finally close", f->filename);
     g_mutex_lock(f->out_mutex);
+    if (f->error_number==EAGAIN){
+      usleep(1000);
+    }
+    if (fsync(f->fdout))
+      g_error("while syncing file %s (%d)",f->filename, errno);
     close(f->fdout);
+
     release_pid_hard();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
@@ -118,11 +125,43 @@ number_list[i]=0 ;
 
 void close_file_queue_push(struct fifo *f){
   g_async_queue_push(close_file_queue, f);
-}
+  if (f->child_pid>0){
+  int status;
+  int pid;
+  gboolean b=TRUE;
+  do{
+  do {
+    g_mutex_lock(pipe_creation);
+    pid=waitpid(f->child_pid, &status, WNOHANG);
+    g_mutex_unlock(pipe_creation);
+//    g_message("close_file_queue_push:: child pid %d waiting",f->child_pid);
+//    usleep(1000000);
+//  }else{
+//	  g_message("close_file_queue_push:: child pid %d NOT ended yet", f->child_pid);
+  
 
+    if (pid > 0){
+      b=FALSE;
+      break;
+    }else if (pid == -1 && errno == ECHILD){
+      b=FALSE;
+      break;
+    }
+
+  } while (pid == -1 && errno == EINTR); 
+  
+}while (b);
+g_message("close_file_queue_push:: %s child pid %d ended with %d and error: %d | EINTR=%d ECHILD=%d EINVAL=%d | b=%d",f->filename?f->filename:"NOFILENAME", f->child_pid, pid , errno, EINTR, ECHILD, EINVAL, b);
+//usleep(100000);
+f->error_number=errno;
+g_mutex_unlock(f->out_mutex);
+}
+}
 void wait_close_files(){
   struct fifo f;
   f.gpid=-10;
+  f.child_pid=-10;
+  f.filename=NULL;
 
 /*
   guint i=0;
@@ -179,6 +218,24 @@ void wait_my_pid (GPid pid,
 g_message("wait_my_pid: %d with status: %d", pid, wait_status);
       	g_mutex_unlock(((struct fifo*)user_data)->out_mutex);
 }
+// f->pipe[0], f->fdout
+int execute_file_per_thread( int p_in[2], int out){
+  int childpid=fork();
+  if(!childpid){
+    dup2(p_in[0], STDIN_FILENO);
+    close(p_in[1]);
+    dup2(out, STDOUT_FILENO);
+    close(out);
+    int fd=3;
+    for (fd=3; fd<256; fd++) (void) close(fd);
+//    close();
+//    close(fileno(sql_file3));
+    execv(exec_per_thread_command[0],exec_per_thread_command);
+  }
+  return childpid;
+}
+
+
 
 // filename must never use the compression extension. .fifo files should be deprecated
 int m_open_pipe(gchar **filename, const char *type){
@@ -200,7 +257,7 @@ int m_open_pipe(gchar **filename, const char *type){
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
   g_message("Opening %s gzip out file", new_filename);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, 0660);
+  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC|O_DSYNC, 0660);
 //  f->fdout=g_fopen(new_filename, type);  
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
@@ -237,18 +294,21 @@ int m_open_pipe(gchar **filename, const char *type){
     g_strlcpy((gchar *)&(cmd_cmd[i]),gzip_cmd[i],50);
     */
 //  cmd_cmd[2][0]='\0';
-  GError* error=NULL;
+//  GError* error=NULL;
   g_message("Pipe %s fd: %d %d", *filename, f->pipe[0], f->pipe[1]);
-
-  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,&error);
+/*
+  gboolean b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)exec_per_thread_command, NULL, G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_LEAVE_DESCRIPTORS_OPEN, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,&error);
   if (!b){
     g_message("g_spawn_async_with_pipes_and_fds::didn't work. Retrying: %s", error->message);
-    b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*)/*exec_per_thread_cmd*/ exec_per_thread_command  /*zstd_cmd*/, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
+    b=g_spawn_async_with_pipes_and_fds(NULL, (const gchar * const*) exec_per_thread_command, NULL, G_SPAWN_DO_NOT_REAP_CHILD, NULL, NULL, f->pipe[0], f->fdout, -1, NULL, NULL, 0,  &(f->gpid), NULL, NULL,NULL,NULL);
     if (!b){
       g_error("g_spawn_async_with_pipes_and_fds::didn't work. %s", *filename);
     }
   }
-  g_child_watch_add(f->gpid, wait_my_pid, f);
+  */
+//  g_child_watch_add(f->gpid, wait_my_pid, f);
+  f->child_pid=execute_file_per_thread(f->pipe, f->fdout);
+
   g_mutex_unlock(pipe_creation);
   g_mutex_lock(fifo_table_mutex);
   g_hash_table_insert(fifo_hash,f->filename,f);
