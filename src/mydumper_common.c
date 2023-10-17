@@ -46,7 +46,6 @@ GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
 GAsyncQueue *available_pids=NULL;
-GAsyncQueue *available_pids_hard=NULL;
 GHashTable *fifo_hash=NULL;
 //GHashTable *fifo_hash_by_pid=NULL;
 GMutex *fifo_table_mutex=NULL;
@@ -57,7 +56,6 @@ int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct 
 
 guint number_list[100];
 
-void release_pid_hard();
 void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt);
 
 void * close_file_thread(void *data){
@@ -86,7 +84,7 @@ void * close_file_thread(void *data){
       g_error("while syncing file %s (%d)",f->filename, errno);
     close(f->fdout);
 
-    release_pid_hard();
+    release_pid();
     final_step_close_file(0, f->filename, f, f->size, f->dbt);
     g_atomic_int_dec_and_test(&open_pipe);
     g_message("Removed: %s | Pipe Files still open: %d", f->filename, g_atomic_int_get(&open_pipe));
@@ -101,14 +99,10 @@ for (i=0; i<100; i++)
 number_list[i]=0 ;
 
   available_pids = g_async_queue_new(); 
-  available_pids_hard = g_async_queue_new();
   close_file_queue=g_async_queue_new();
 
   for (i=0; i < (num_threads * 2); i++){
     release_pid();
-  }
-  for (i=0; i < (num_threads * 1 ); i++){
-    release_pid_hard();
   }
   ref_table_mutex = g_mutex_new();
   pipe_creation = g_mutex_new();
@@ -204,11 +198,6 @@ void release_pid(){
   g_async_queue_push(available_pids, GINT_TO_POINTER(1));
 }
 
-void release_pid_hard(){
-  g_async_queue_push(available_pids_hard, GINT_TO_POINTER(1));
-//  g_message("available pids HARD queue size: %d", g_async_queue_length(available_pids_hard));
-}
-
 void wait_my_pid (GPid pid,
                     gint wait_status,
                     gpointer user_data){
@@ -262,7 +251,7 @@ int m_open_pipe(gchar **filename, const char *type){
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
-  g_async_queue_pop(available_pids_hard);
+  g_async_queue_pop(available_pids);
 //  argv=(gchar **)zstd_cmd;
   f->queue = g_async_queue_new();
   f->filename=g_strdup(*filename);
