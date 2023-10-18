@@ -7,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 RUN \
   yum -y install epel-release && \
   yum -y install wget curl && \
-  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel jemalloc-devel sudo gcc-toolset-12-libstdc++-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++  && \
+  yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo gcc-toolset-12-libstdc++-devel gcc-toolset-12-gcc gcc-toolset-12-gcc-c++  && \
   echo "export PATH=/opt/rh/gcc-toolset-12/root/usr/bin/:$PATH" >> /etc/profile.d/sh.local
 
 RUN \
