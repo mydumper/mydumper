@@ -172,7 +172,7 @@ int execute_file_per_thread( int p_in[2], int out){
     close(out);
     int fd=3;
     for (fd=3; fd<256; fd++) (void) close(fd);
-    execv(exec_per_thread_command[0],exec_per_thread_command);
+    execv(exec_per_thread_cmd[0],exec_per_thread_cmd);
   }
   return childpid;
 }
