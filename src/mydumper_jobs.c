@@ -431,7 +431,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "%c%s%c int", identifier_quote_character,row[0],identifier_quote_character);
   }
-  g_string_append(statement, "\n);\n");
+  g_string_append(statement, "\n) ENGINE=MEMORY;\n");
 
   if (result)
     mysql_free_result(result);
