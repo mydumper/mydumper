@@ -92,7 +92,7 @@ gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean no_ddl_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
-GList *all_dbts = NULL;
+GHashTable *all_dbts=NULL;
 GList *table_schemas = NULL;
 GList *trigger_schemas = NULL;
 GList *view_schemas = NULL;
@@ -117,6 +117,7 @@ struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, N
 gchar *exec_command=NULL;
 
 void initialize_start_dump(){
+  all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
   initialize_set_names();
   initialize_working_thread();
   conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -1207,27 +1208,15 @@ void start_dump() {
 
 
   wait_close_files();
-
-  GList *iter = NULL;
-  // TODO: We need to create jobs for metadata.
-  all_dbts = g_list_reverse(all_dbts);
-  for (iter = all_dbts; iter != NULL; iter = iter->next) {
-    dbt = (struct db_table *)iter->data;
-//    write_table_metadata_into_file(dbt);
-/*    fprintf(mdfile,"\n[`%s`.`%s`]\nRows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->rows);
-    if (dbt->data_checksum)
-      fprintf(mdfile,"data_checksum = %s\n", dbt->data_checksum);
-    if (dbt->schema_checksum)
-      fprintf(mdfile,"schema_checksum = %s\n", dbt->schema_checksum);
-    if (dbt->indexes_checksum)
-      fprintf(mdfile,"indexes_checksum = %s\n", dbt->indexes_checksum);
-    if (dbt->triggers_checksum)
-      fprintf(mdfile,"triggers_checksum = %s\n", dbt->triggers_checksum);
-*/
+  GHashTableIter iter;
+  g_hash_table_iter_init ( &iter, all_dbts );
+  gchar *lkey;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
+//    dbt = (struct db_table *)iter->data;
     print_dbt_on_metadata(mdfile, dbt);
     free_db_table(dbt);
   }
-  g_list_free(all_dbts);
+  g_hash_table_unref(all_dbts);
   write_database_on_disk(mdfile);
   g_list_free(table_schemas);
   table_schemas=NULL;

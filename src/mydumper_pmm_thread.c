@@ -47,12 +47,12 @@ void append_pmm_entry_queue(GString *content, const gchar *key, GAsyncQueue * qu
 }
 
 void append_pmm_entry_all_tables(GString *content){
-  GList *tl=all_dbts;
   struct db_table *dbt=NULL;
-  while (tl!=NULL){
-    dbt=((struct db_table *)(tl->data));
+  GHashTableIter iter;
+  g_hash_table_iter_init ( &iter, all_dbts );
+  gchar *lkey;
+  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
     append_pmm_entry(content,"table",dbt->table, dbt->estimated_remaining_steps);
-    tl=tl->next;
   }
 }
 
@@ -66,7 +66,7 @@ void write_pmm_entries(GString *content, struct configuration* conf){
   append_pmm_entry_queue(content,"unlock_tables",     conf->unlock_tables);
   append_pmm_entry_queue(content,"pause_resume",      conf->pause_resume);
   append_pmm_entry(content,"queueu", "stream",            get_stream_queue_length());
-  append_pmm_entry(content,"object", "all_tables",        g_list_length(all_dbts));
+  append_pmm_entry(content,"object", "all_tables",        g_hash_table_size(all_dbts));
   append_pmm_entry(content,"object", "innodb_tables",     g_list_length(innodb_table));
   append_pmm_entry(content,"object", "non_innodb_tables", g_list_length(non_innodb_table));
   append_pmm_entry_all_tables(content);
