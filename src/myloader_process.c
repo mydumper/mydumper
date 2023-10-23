@@ -218,8 +218,9 @@ void myl_close(char *filename, FILE *file, gboolean rm){
 
     remove(f->stdout_filename);
   }
-  if (rm)
+  if (rm){
     m_remove(NULL,filename);
+  }
 }
 
 
@@ -319,7 +320,7 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
   struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_job(JOB_RESTORE,rj,dbt->database);
 //  g_async_queue_push(conf->table_queue, new_job(JOB_RESTORE,rj,dbt->database->real_database));
-  myl_close(filename,infile,TRUE);
+  myl_close(filename,infile,FALSE);
 
   g_string_free(data,TRUE);
 

@@ -87,7 +87,7 @@ void initialize_intermediate_queue (struct configuration *c){
 
 void intermediate_queue_new(gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
-  iflnm->filename = filename;
+  iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
   g_async_queue_push(intermediate_queue, iflnm);
 }

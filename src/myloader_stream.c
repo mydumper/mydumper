@@ -143,12 +143,14 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             g_strfreev(sp);
 //          g_message("Raaded Size from file is %d", b);
             real_filename = g_build_filename(directory,filename,NULL);
-            g_message("FILENAME: %s", filename);
+//            g_message("FILENAME: %s", filename);
             if (file){
               m_close(file);
             }
-            if (previous_filename)
+            if (previous_filename){
               intermediate_queue_new(previous_filename);
+	      previous_filename=NULL;
+	    }
             if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
               g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
               file = NULL;
