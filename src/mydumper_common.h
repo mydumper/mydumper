@@ -21,14 +21,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct fifo{
-  int pid;
-  gchar *filename;
-  gchar *stdout_filename;
-  GAsyncQueue * queue;
-//  GMutex *mutex;
-};
-
 void initialize_common();
 gchar *get_ref_table(gchar *k);
 char * determine_filename (char * table);
@@ -49,13 +41,15 @@ gchar * build_fifo_filename(char *database, char *table, guint64 part, guint sub
 gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension);
 gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part);
 void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
+void determine_explain_columns(MYSQL_RES *result, guint *rowscol);
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length);
 void m_replace_char_with_char(gchar neddle, gchar replace, gchar *from, unsigned long length);
 void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned long length);
 void free_common();
 void initialize_sql_statement(GString *statement);
 void set_tidb_snapshot(MYSQL *conn);
-int execute_file_per_thread( const gchar *sql_fn, const gchar *sql_fn3);
-FILE * m_open_pipe(char **filename, const char *type);
+int m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
+void wait_close_files();
+guint64 my_pow_two_plus_prev(guint64 prev, guint max);

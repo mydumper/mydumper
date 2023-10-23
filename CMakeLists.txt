@@ -12,7 +12,7 @@ find_package(PCRE)
 find_package(JeMalloc)
 
 if (NOT JEMALLOC_FOUND)
-    MESSAGE(FATAL_ERROR "Could not find JeMalloc library")
+    MESSAGE(WARNING "Could not find JeMalloc library")
 endif ()
 
 if (NOT MYSQL_FOUND)
@@ -28,6 +28,10 @@ endif (BUILD_DOCS)
 if (PC_GLIB2_VERSION VERSION_GREATER "2.51")
   option(WITH_GLIB_uuid_string_random "uuid_string_random not available" ON)
 endif (PC_GLIB2_VERSION VERSION_GREATER "2.51")
+
+#if (PC_GLIB2_VERSION VERSION_LESS "2.68")
+#	MESSAGE(FATAL_ERROR "GLIB version lower than 2.68")
+#endif (PC_GLIB2_VERSION VERSION_LESS "2.68")
 
 option(WITH_SSL "Build SSL support" ON)
 if (MARIADB_FOUND AND NOT MARIADB_SSL AND WITH_SSL)
@@ -66,16 +70,20 @@ MARK_AS_ADVANCED(CMAKE)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h )
 SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/regex.c )
-SET( MYDUMPER_SRCS src/mydumper.c ${SHARED_SRCS} src/mydumper_pmm_thread.c src/mydumper_start_dump.c src/mydumper_jobs.c src/mydumper_common.c src/mydumper_stream.c src/mydumper_database.c src/mydumper_working_thread.c src/mydumper_daemon_thread.c src/mydumper_exec_command.c src/mydumper_masquerade.c src/mydumper_chunks.c src/mydumper_write.c src/mydumper_arguments.c src/common_options.c)
+SET( MYDUMPER_SRCS src/mydumper.c ${SHARED_SRCS} src/mydumper_pmm_thread.c src/mydumper_start_dump.c src/mydumper_jobs.c src/mydumper_common.c src/mydumper_stream.c src/mydumper_database.c src/mydumper_working_thread.c src/mydumper_daemon_thread.c src/mydumper_exec_command.c src/mydumper_masquerade.c src/mydumper_chunks.c src/mydumper_write.c src/mydumper_arguments.c src/common_options.c src/mydumper_char_chunks.c src/mydumper_integer_chunks.c src/mydumper_partition_chunks.c ) #src/mydumper_multicolumn_integer_chunks.c)
 SET( MYLOADER_SRCS src/myloader.c ${SHARED_SRCS} src/myloader_pmm_thread.c src/myloader_stream.c src/myloader_stream.c src/myloader_process.c src/myloader_common.c src/myloader_directory.c src/myloader_restore.c src/myloader_restore_job.c src/myloader_control_job.c src/myloader_intermediate_queue.c src/myloader_arguments.c src/common_options.c src/myloader_worker_index.c src/myloader_worker_schema.c src/myloader_worker_loader.c src/myloader_worker_post.c )
 
 add_executable(mydumper ${MYDUMPER_SRCS})
-target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )
-
 add_executable(myloader ${MYLOADER_SRCS})
-target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++)
 
+if (NOT JEMALLOC_FOUND)
+  target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )
+  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++)
+else ()
+  target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m )
+  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE_PCRE_LIBRARY} ${ZLIB_LIBRARIES} stdc++)
 
+endif ()
 
 INSTALL(TARGETS mydumper myloader
   RUNTIME DESTINATION bin
@@ -111,4 +119,13 @@ MESSAGE(STATUS "WITH_TSAN = ${WITH_TSAN}")
 MESSAGE(STATUS "Change a values with: cmake -D<Variable>=<Value>")
 MESSAGE(STATUS "------------------------------------------------")
 MESSAGE(STATUS)
+
+
+#get_cmake_property(_variableNames VARIABLES)
+#list (SORT _variableNames)
+#foreach (_variableName ${_variableNames})
+#    message(STATUS "${_variableName}=${${_variableName}}")
+#endforeach()
+
+
 

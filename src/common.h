@@ -25,9 +25,13 @@
 
 extern gchar zstd_paths[2][15];
 extern gchar gzip_paths[2][15];
-
+extern gchar **zstd_cmd;
+extern gchar **gzip_cmd;
 #ifndef _src_common_h
 #define _src_common_h
+void initialize_share_common();
+void initialize_zstd_cmd();
+void initialize_gzip_cmd();
 
 struct configuration_per_table{
   GHashTable *all_anonymized_function;

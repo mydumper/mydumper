@@ -42,13 +42,19 @@ enum job_type {
 };
 
 enum chunk_type{
-  UNDEFINED,
-  DEFINING,
   NONE,
   INTEGER,
   CHAR,
-  PARTITION
+  PARTITION,
+  MULTICOLUMN_INTEGER
 };
+
+enum db_table_states{
+  UNDEFINED,
+  DEFINING,
+  READY
+};
+
 
 enum chunk_states{
   UNASSIGNED,
@@ -115,28 +121,32 @@ union type {
   struct signed_int   sign;
 };
 
+struct table_job;
+struct db_table;
+struct chunk_step_item;
+
+
+struct chunk_functions{
+  void (*process)(struct table_job *tj, struct chunk_step_item *csi);
+//  gchar *(*update_where)(union chunk_step * chunk_step);
+  struct chunk_step_item *(*get_next)(struct db_table *dbt);
+};
+
 struct integer_step {
   gboolean is_unsigned;
-  gchar *prefix;
-  gchar *field;
-//  guint64 nmin;
-//  guint64 cursor;
-//  guint64 nmax;
   union type type; 
+  gboolean is_step_fixed_length;
   guint64 step;
+  guint64 min_chunk_step_size;
+  guint64 max_chunk_step_size;
   guint64 estimated_remaining_steps;
-  guint64 number;
-  guint deep;
-  GMutex *mutex;
-  enum chunk_states status;
+//  guint64 number;
+//  guint deep;
   gboolean check_max;
   gboolean check_min;
 };
 
 struct char_step {
-  gchar *prefix;
-  gchar *field;
-
   gchar *cmin;
   guint cmin_len;
   guint cmin_clen;
@@ -152,25 +162,23 @@ struct char_step {
   guint cmax_clen;
   gchar *cmax_escaped;
 
-  guint number;
+//  guint number;
   guint deep;
   GList *list;
-  GMutex *mutex;
-  gboolean assigned;
   guint64 step;
   union chunk_step *previous;
 
   guint64 estimated_remaining_steps;
   guint status;
+
+  GMutex *mutex;
 };
 
 struct partition_step{
   GList *list;
   gchar *current_partition;
-  guint number;
-  guint deep;
-  GMutex *mutex;
-  gboolean assigned;
+//  guint number;
+//  guint deep;
 };
 
 union chunk_step {
@@ -179,6 +187,26 @@ union chunk_step {
   struct partition_step partition_step;
 };
 
+
+struct chunk_step_item{
+  union chunk_step *chunk_step;
+  enum chunk_type chunk_type;
+  struct chunk_step_item *next;
+  struct chunk_functions chunk_functions;
+  GString *where;
+  gboolean include_null;
+  GString *prefix;
+  gchar *field;
+  guint64 number;
+  guint deep;
+  guint position;
+  GMutex *mutex;
+  gboolean needs_refresh;
+//  gboolean assigned;
+  enum chunk_states status;
+};
+
+
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
 // second number : when load data is used
@@ -186,14 +214,15 @@ struct table_job {
   char *partition;
   guint64 nchunk;
   guint sub_part;
-  char *where;
-  union chunk_step *chunk_step;  
+  GString *where;
+//  union chunk_step *chunk_step;  
+  struct chunk_step_item *chunk_step_item;
   char *order_by;
   struct db_table *dbt;
   gchar *sql_filename;
-  FILE *sql_file;
+  int sql_file;
   gchar *dat_filename;
-  FILE *dat_file;
+  int dat_file;
   gchar *exec_out_filename;
   float filesize;
   guint st_in_file;
@@ -233,7 +262,7 @@ struct db_table {
   char *escaped_table;
   char *min;
   char *max;
-  char *field;
+//  char *field;
   guint64 rows_in_sts;
   GString *select_fields;
   gboolean complete_insert;
@@ -252,20 +281,25 @@ struct db_table {
   gchar *columns_on_insert;
   pcre *partition_regex;
   guint num_threads;
-  enum chunk_type chunk_type;
+//  enum chunk_type chunk_type;
   GList *chunks;
+//  struct chunk_step_item * initial_chunk_step;
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
-  gchar *primary_key;
+  GList *primary_key;
+  gchar *primary_key_separated_by_comma;
+  gboolean multicolumn;
   gint * chunks_completed;
   gchar *data_checksum;
   gchar *schema_checksum;
   gchar *indexes_checksum;
   gchar *triggers_checksum;
   guint chunk_filesize;  
-  guint64 min_rows_per_file;
-  guint64 start_rows_per_file;
-  guint64 max_rows_per_file;
+  guint64 min_chunk_step_size;
+  guint64 starting_chunk_step_size;
+  guint64 max_chunk_step_size;
+// struct chunk_functions chunk_functions;
+  enum db_table_states status;
 };
 
 
@@ -279,6 +313,20 @@ struct schema_post {
   struct database *database;
 };
 
+struct fifo{
+  gchar *filename;
+  gchar *stdout_filename;
+  GAsyncQueue * queue;
+  float size;
+  struct db_table *dbt;
+  int fdout;
+  GPid gpid;
+  int child_pid;
+  int pipe[2];
+  GMutex *out_mutex;
+  int error_number;
+};
+
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();
 void start_dump();
@@ -288,5 +336,5 @@ gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
 void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);
-int m_close_pipe(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
-int m_close_file(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+int m_close_pipe(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt);
+int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt);

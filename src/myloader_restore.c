@@ -217,40 +217,41 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             from++;
             gchar *to = g_strstr_len(from, -1, "'");
             load_data_filename=g_strndup(from, to-from);
-            if (fifo_directory != NULL){
-              new_data = g_string_new_len(data->str, from - data->str);
-              g_string_append(new_data, fifo_directory);
-              g_string_append_c(new_data, '/');
-              g_string_append(new_data, from);
-              g_string_free(data,TRUE);
-              from = g_strstr_len(new_data->str, -1, "'") + 1;
-              data=new_data;
-              to = g_strstr_len(from, -1, "'");
-            }
             wait_til_data_file_is_close(load_data_filename);
             gchar **command=NULL;
             if (get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename)){ 
+              if (fifo_directory != NULL){
+                new_data = g_string_new_len(data->str, from - data->str);
+                g_string_append(new_data, fifo_directory);
+                g_string_append_c(new_data, '/');
+                g_string_append(new_data, from);
+                g_string_free(data,TRUE);
+                from = g_strstr_len(new_data->str, -1, "'") + 1;
+                data=new_data;
+                to = g_strstr_len(from, -1, "'");
+              }
               guint a=0;
               for(;a<strlen(load_data_filename)-strlen(load_data_fifo_filename);a++){
                 *to=' '; to--;
               }
               *to='\'';
 
-
               if (fifo_directory != NULL){
                 new_load_data_fifo_filename=g_strdup_printf("%s/%s", fifo_directory, load_data_fifo_filename);
                 g_free(load_data_fifo_filename);
                 load_data_fifo_filename=new_load_data_fifo_filename;
               }
-
+              g_message("load_data_fifo_filename:: %s", load_data_fifo_filename);
               if (mkfifo(load_data_fifo_filename,0666)){
                 g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
               }
-              execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+	      execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
               release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
-            }
+            }else{
+	      g_message("load_data_fifo_filename:: %s", load_data_fifo_filename);
 
+	    }
 
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
             if (load_data_fifo_filename!=NULL) 

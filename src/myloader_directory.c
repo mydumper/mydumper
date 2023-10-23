@@ -53,6 +53,7 @@ void *process_directory(struct configuration *conf){
   }else{
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
+      g_debug("File found: %s", filename);
       intermediate_queue_new(g_strdup(filename));
     }
   }

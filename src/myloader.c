@@ -209,6 +209,7 @@ int main(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
 
+  initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
 
   if (db == NULL && source_db != NULL) {
@@ -314,6 +315,8 @@ int main(int argc, char *argv[]) {
       fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
     }
     create_fifo_dir(fifo_directory);
+  }else{
+    fifo_directory=directory;
   }
 
   g_free(current_dir);
