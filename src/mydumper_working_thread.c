@@ -937,7 +937,9 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
       g_string_append(field_list, ",");
     }
 
-    gchar *tb = g_strdup_printf("`%s`", row[0]);
+    char *field_name= backtick_protect(row[0]);
+    gchar *tb = g_strdup_printf("`%s`", field_name);
+    g_free(field_name);
     g_string_append(field_list, tb);
     g_free(tb);
   }
@@ -1076,7 +1078,10 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
     }else{
       g_string_append(field_list, ",");
     }
-    g_string_append(field_list, (char*)list->data);
+    char *field_name= backtick_protect((char*) list->data);
+    gchar *tb = g_strdup_printf("`%s`", field_name);
+    g_free(field_name);
+    g_string_append(field_list, tb);
     list=list->next;
   }
   dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
@@ -1152,7 +1157,7 @@ gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *c
     dbt = g_new(struct db_table, 1);
     dbt->status = UNDEFINED;
     dbt->database = database;
-    dbt->table = g_strdup(table);
+    dbt->table = backtick_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->rows_in_sts = rows_in_sts;
     dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);

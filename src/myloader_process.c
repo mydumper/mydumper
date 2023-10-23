@@ -330,10 +330,6 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
 
 
 void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part, guint *sub_part){
-  guint l = strlen(filename)-4;
-  if (exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension)) {
-    l-=strlen(exec_per_thread_extension);
-  }
   gchar **split_db_tbl = g_strsplit(filename, ".", 4);
   if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
@@ -473,6 +469,7 @@ gboolean process_metadata_global(gchar *file){
   guint j=0;
   GError *error = NULL;
   gchar *value=NULL;
+  gchar *real_table_name;
   gsize len=0;
   gsize length=0;
   gchar **groups=g_key_file_get_groups(kf, &length);
@@ -481,46 +478,50 @@ gboolean process_metadata_global(gchar *file){
   change_master_statement=g_string_new("");
   gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
   for (j=0; j<length; j++){
-    if (g_str_has_prefix(groups[j],"`")){
-      database_table= g_strsplit(groups[j]+1, delimiter, 2);
+    gchar *group= newline_unprotect(groups[j]);
+    if (g_str_has_prefix(group,"`")){
+      database_table= g_strsplit(group+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
         dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
         error = NULL;
-        gchar **keys=g_key_file_get_keys(kf,groups[j], &len, &error);
-        dbt->data_checksum=get_value(kf,groups[j],"data_checksum");
-        dbt->schema_checksum=get_value(kf,groups[j],"schema_checksum");
-        dbt->indexes_checksum= get_value(kf,groups[j],"indexes_checksum");
-        dbt->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
-        value=get_value(kf,groups[j],"is_view");
+        gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
+        dbt->data_checksum=get_value(kf,group,"data_checksum");
+        dbt->schema_checksum=get_value(kf,group,"schema_checksum");
+        dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
+        dbt->triggers_checksum=get_value(kf,group,"triggers_checksum");
+        value=get_value(kf,group,"is_view");
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
         if (value) g_free(value);
-        if (get_value(kf,groups[j],"rows")){
-          dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+        if (get_value(kf,group,"rows")){
+          dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
         }
-        value=get_value(kf,groups[j],"real_table_name");
+        value= get_value(kf, group, "real_table_name");
         if (value){
-          if (g_strcmp0(dbt->real_table,value))
-            dbt->real_table=value;
+          real_table_name= newline_unprotect(value);
+          g_free(value);
+          if (g_strcmp0(dbt->real_table, real_table_name))
+            dbt->real_table= real_table_name;
           else
-            g_free(value);
+            g_free(real_table_name);
         }
         g_strfreev(keys);
       }else{
         database_table[0][strlen(database_table[0])-1]='\0';
         struct database *database=get_db_hash(database_table[0],database_table[0]);
-        database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
-        database->post_checksum=get_value(kf,groups[j],"post_checksum");
-        database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
+        database->schema_checksum=get_value(kf,group,"schema_checksum");
+        database->post_checksum=get_value(kf,group,"post_checksum");
+        database->triggers_checksum=get_value(kf,group,"triggers_checksum");
       }
-    }else if (g_str_has_prefix(groups[j],"replication")){
-      change_master(kf, groups[j], change_master_statement);
-    }else if (g_strstr_len(groups[j],6,"master")){
-      change_master(kf, groups[j], change_master_statement);
+    }else if (g_str_has_prefix(group,"replication")){
+      change_master(kf, group, change_master_statement);
+    }else if (g_strstr_len(group,6,"master")){
+      change_master(kf, group, change_master_statement);
     }
+    g_free(group);
   }
   g_free(delimiter);
   return TRUE;

@@ -19,6 +19,7 @@
 #include "mydumper_common.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"
+#include "common.h"
 GHashTable *database_hash = NULL;
 GMutex * database_hash_mutex = NULL;
 extern char *regex; 
@@ -50,7 +51,7 @@ void initialize_database(){
 
 struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped){
   struct database * d=g_new(struct database,1);
-  d->name = g_strdup(database_name);
+  d->name = backtick_protect(database_name);
   d->filename = get_ref_table(d->name);
   d->escaped = escape_string(conn,d->name);
   d->already_dumped = already_dumped;
