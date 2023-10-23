@@ -113,22 +113,29 @@ all_os[${os}_1]="debian:bullseye"
 all_os[${os}_2]="percona-release_latest.bullseye_all.deb"
 all_os[${os}_3]="true"
 
+os=bookworm
+all_os[${os}_0]="bookworm"
+all_os[${os}_1]="debian:bookworm"
+all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
+all_os[${os}_3]="true"
+
+
 # os=
 # all_os[${os}_0]=""
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9")
 list_ubuntu_os=("bionic" "focal" "jammy")
-list_debian_os=("buster" "bullseye")
-list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" )
+list_debian_os=("buster" "bullseye" "bookworm")
+list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
 
 #list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
 
-list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el8_mysql80_aarch64"  "el9_mysql80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
+list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el8_mysql80_aarch64"  "el9_mysql80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64" "bookworm_percona80_amd64")
 
 #list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
-filter_out="jammy|el9_percona57|el7_mysql80_aarch64"
+filter_out="jammy|el9_percona57|el7_mysql80_aarch64|bookworm_mariadb1006"
 
 for os in ${list_all_os[@]}
 do
