@@ -546,11 +546,16 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   return TRUE;
 }
 
-gboolean is_table_in_list(gchar *table_name, gchar **tl){
+gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl){
+  gchar * table_name=g_strdup_printf("%s.%s", database, table);
   guint i = 0;
-  for (i = 0; tl[i] != NULL; i++)
-    if (g_ascii_strcasecmp(tl[i], table_name) == 0)
+  for (i = 0; tl[i] != NULL; i++) {
+    if (g_ascii_strcasecmp(tl[i], table_name) == 0){
+      g_free(table_name);
       return TRUE;
+    }
+  }
+  g_free(table_name);
   return FALSE;
 }
 
