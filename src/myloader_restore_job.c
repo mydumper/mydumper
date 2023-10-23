@@ -30,6 +30,8 @@ unsigned long long int total_data_sql_files = 0;
 #include "myloader_common.h"
 #include "myloader_control_job.h"
 #include "myloader_worker_loader.h"
+#include "myloader_worker_index.h"
+
 gboolean shutdown_triggered=FALSE;
 GAsyncQueue *file_list_to_do=NULL;
 static GMutex *progress_mutex = NULL;
