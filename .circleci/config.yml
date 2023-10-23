@@ -894,6 +894,22 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
+  bookworm_mariadb1006:
+    docker:
+    - image: mydumper/mydumper-builder-bookworm
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.6
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
   bookworm_tidb:
     docker:
     - image: mydumper/mydumper-builder-bookworm
@@ -904,6 +920,20 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
     - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  bookworm_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-bookworm
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1174,6 +1204,12 @@ commands:
     - prepare_ubuntu_mariadb1011
 
 
+  prepare_bullseye_mariadb1006:
+    steps:
+    - prepare_mariadb1006
+    - prepare_ubuntu_mariadb1006
+
+
   prepare_bookworm_tidb:
     steps:
     - prepare_ubuntu_percona57
@@ -1181,13 +1217,11 @@ commands:
 
   prepare_bookworm_percona57:
     steps:
-#    - prepare_bookworm_percona_package
     - prepare_ubuntu_percona57
 
 
   prepare_bookworm_percona80:
     steps:
-#    - prepare_bookworm_percona_package
     - prepare_ubuntu_percona80
 
 
@@ -1195,6 +1229,12 @@ commands:
     steps:
     - prepare_mariadb1011
     - prepare_ubuntu_mariadb1011
+
+
+  prepare_bookworm_mariadb1006:
+    steps:
+    - prepare_mariadb1006
+    - prepare_ubuntu_mariadb1006
 
 
 
@@ -1863,6 +1903,28 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+
+  compile_and_test_mydumper_in_bookworm_mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bookworm_mariadb1006
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bookworm_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3388,6 +3450,94 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_bookworm_percona57_arm64:
+#    executor: bookworm_percona57
+    executor: bookworm
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bookworm_percona57
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_bookworm_percona80_arm64:
+#    executor: bookworm_percona80
+    executor: bookworm
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bookworm_percona80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_bookworm_mariadb1011_arm64:
+#    executor: bookworm_mariadb1011
+    executor: bookworm
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bookworm_mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_bookworm_mariadb1006_arm64:
+#    executor: bookworm_mariadb1006
+    executor: bookworm
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bookworm_mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona57_amd64:
 #    executor: bionic_percona57
     executor: bionic
@@ -3806,8 +3956,31 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build_bullseye_mariadb1006_amd64:
+#    executor: bullseye_mariadb1006
+    executor: bullseye
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bullseye_mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_percona57_amd64:
-    executor: bookworm_percona57
+#    executor: bookworm_percona57
+    executor: bookworm
     resource_class: large
     steps:
     - checkout
@@ -3818,7 +3991,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_amd64 amd64
@@ -3828,7 +4001,8 @@ jobs:
          paths:
            - .
   build_bookworm_percona80_amd64:
-    executor: bookworm_percona80
+#    executor: bookworm_percona80
+    executor: bookworm
     resource_class: large
     steps:
     - checkout
@@ -3839,6 +4013,7 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_amd64 amd64
@@ -3848,7 +4023,8 @@ jobs:
          paths:
            - .
   build_bookworm_mariadb1011_amd64:
-    executor: bookworm_mariadb1011
+#    executor: bookworm_mariadb1011
+    executor: bookworm
     resource_class: large
     steps:
     - checkout
@@ -3859,10 +4035,32 @@ jobs:
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_amd64 amd64
 
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_bookworm_mariadb1006_amd64:
+#    executor: bookworm_mariadb1006
+    executor: bookworm
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare_bookworm_mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3906,9 +4104,14 @@ workflows:
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011
+    - compile_and_test_mydumper_in_bullseye_mariadb1006
     - compile_and_test_mydumper_in_bookworm_percona57
     - compile_and_test_mydumper_in_bookworm_percona80
     - compile_and_test_mydumper_in_bookworm_mariadb1011
+    - compile_and_test_mydumper_in_bookworm_mariadb1006
+    - compile_and_test_mydumper_in_el7_mysql80
+    - compile_and_test_mydumper_in_el8_mysql80
+    - compile_and_test_mydumper_in_el9_mysql80
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
         e: jammy_percona57
@@ -3920,6 +4123,10 @@ workflows:
     - compile_and_test_mydumper_in_jammy_mariadb1011:
         test: true
         e: jammy_mariadb1011
+
+    - compile_and_test_mydumper_in_jammy_mariadb1006:
+        test: true
+        e: jammy_mariadb1006
 
     - build_bionic_percona80_amd64:
         filters:
