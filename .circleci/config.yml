@@ -4108,7 +4108,6 @@ workflows:
     - compile_and_test_mydumper_in_bookworm_percona57
     - compile_and_test_mydumper_in_bookworm_percona80
     - compile_and_test_mydumper_in_bookworm_mariadb1011
-    - compile_and_test_mydumper_in_bookworm_mariadb1006
     - compile_and_test_mydumper_in_el7_mysql80
     - compile_and_test_mydumper_in_el8_mysql80
     - compile_and_test_mydumper_in_el9_mysql80
