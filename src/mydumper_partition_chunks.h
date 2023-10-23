@@ -18,11 +18,7 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-
-void load_write_entries(GOptionGroup *main_group, GOptionContext *context);
-void initialize_write();
-void finalize_write();
-void write_table_job_into_file(struct table_job *tj);
-gboolean write_data(int file, GString *data);
-gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, guint num_fields);
-void initialize_sql_statement(GString *statement);
+union chunk_step *new_real_partition_step(GList *partition, guint deep, guint number);
+struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt);
+GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt);
+void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi);

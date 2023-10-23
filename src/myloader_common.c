@@ -42,10 +42,15 @@ static GMutex *db_hash_mutex = NULL;
 GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
 int (*m_close)(void *file) = NULL;
+struct database *database_db=NULL;
 
 void initialize_common(){
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+  db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
+  if (db){
+    database_db=get_db_hash(g_strdup(db), g_strdup(db));
+  }
 }
 
 
@@ -173,7 +178,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
     g_error("Table name is null on eval_table()");
   g_mutex_lock(mutex);
   if ( tables ){
-    if ( ! is_table_in_list(table_name, tables) ){
+    if (!is_table_in_list( db_name, table_name, tables)){
       g_mutex_unlock(mutex);
       return FALSE;
     }
@@ -201,7 +206,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 
 */
 gboolean execute_use(struct thread_data *td){
-  gchar *query = g_strdup_printf("USE `%s`", td->current_database);
+  gchar *query = g_strdup_printf("USE `%s`", td->current_database->real_database);
   if (mysql_query(td->thrconn, query)) {
 //    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
     g_free(query);
@@ -211,9 +216,9 @@ gboolean execute_use(struct thread_data *td){
   return FALSE;
 }
 
-void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg){
+void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg){
   if ( database != NULL && db == NULL ){
-    if (td->current_database==NULL || g_strcmp0(database, td->current_database) != 0){
+    if (td->current_database==NULL || g_strcmp0(database->real_database, td->current_database->real_database) != 0){
       td->current_database=database;
       if (execute_use(td)){
         m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
@@ -302,10 +307,8 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   g_strfreev(split);
 }
 
-void append_alter_table(GString * alter_table_statement, char *database, char *table){
+void append_alter_table(GString * alter_table_statement, char *table){
   g_string_append(alter_table_statement,"ALTER TABLE `");
-  g_string_append(alter_table_statement, database);
-  g_string_append(alter_table_statement,"`.`");
   g_string_append(alter_table_statement,table);
   g_string_append(alter_table_statement,"` ");
 }
@@ -323,8 +326,8 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
-  append_alter_table(alter_table_statement, dbt->database->real_database,dbt->real_table);
-  append_alter_table(alter_table_constraint_statement, dbt->database->real_database,dbt->real_table);
+  append_alter_table(alter_table_statement, dbt->real_table);
+  append_alter_table(alter_table_constraint_statement, dbt->real_table);
   int fulltext_counter=0;
   int i=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
@@ -344,7 +347,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
         if (fulltext_counter>1){
           fulltext_counter=1;
           finish_alter_table(alter_table_statement);
-          append_alter_table(alter_table_statement,dbt->database->real_database,dbt->real_table);
+          append_alter_table(alter_table_statement,dbt->real_table);
         }
         g_string_append(alter_table_statement,"\n ADD");
         g_string_append(alter_table_statement, split_file[i]);
@@ -492,5 +495,6 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
     *dotpos='.';
     return TRUE;
   }
+  *basename=g_strdup(filename);
   return FALSE;
 }

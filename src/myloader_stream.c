@@ -52,7 +52,7 @@ void flush(char *buffer, int from, int to, FILE *file, guint *total_size){
 //  char * tmp=g_strndup(&(buffer[from]),to-from);
 //  g_message("Flushing data %d: %s",to-from, tmp);
   if (file){ 
-    if (m_write(file,&(buffer[from]),to-from+1) != to-from+1) 
+    if (write_file(file,&(buffer[from]),to-from+1) != to-from+1) 
       g_critical("error on writing");
     *total_size=*total_size+(to-from)+1;
   }
@@ -147,14 +147,16 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
             if (file){
               m_close(file);
             }
-            if (previous_filename)
+            if (previous_filename){
               intermediate_queue_new(previous_filename);
+	      previous_filename=NULL;
+	    }
             if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
               g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
               file = NULL;
             }else{
               file = g_fopen(real_filename, "w");
-              m_write=(void *)&write_file;
+//              m_write=(void *)&write_file;
               m_close=(void *) &fclose;
             }
             if (!has_mydumper_suffix(filename)){

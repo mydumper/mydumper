@@ -142,7 +142,7 @@ void *worker_schema_thread(struct thread_data *td) {
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   if (db){
-    td->current_database=db;
+    td->current_database=database_db;
     if (execute_use(td)){
       m_critical("S-Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }

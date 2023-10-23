@@ -26,7 +26,7 @@
 #include "common.h"
 //guint execute_use(struct thread_data *td, const gchar * msg);
 gboolean execute_use(struct thread_data *td);
-void execute_use_if_needs_to(struct thread_data *td, gchar *database, const gchar * msg);
+void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg);
 enum file_type get_file_type (const char * filename);
 struct database * get_db_hash(gchar *k, gchar *v);
 //struct database * db_hash_insert(gchar *k, gchar *v);

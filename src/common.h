@@ -25,9 +25,13 @@
 
 extern gchar zstd_paths[2][15];
 extern gchar gzip_paths[2][15];
-
+extern gchar **zstd_cmd;
+extern gchar **gzip_cmd;
 #ifndef _src_common_h
 #define _src_common_h
+void initialize_share_common();
+void initialize_zstd_cmd();
+void initialize_gzip_cmd();
 
 struct configuration_per_table{
   GHashTable *all_anonymized_function;
@@ -78,7 +82,7 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
-gboolean is_table_in_list(gchar *table_name, gchar **tl);
+gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl);
 GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
 void free_hash(GHashTable * set_session_hash);

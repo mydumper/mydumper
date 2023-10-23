@@ -38,13 +38,76 @@ extern gchar*set_names_statement;
 extern guint num_threads;
 extern GString *set_global_back;
 extern MYSQL *main_connection;
-FILE * (*m_open)(char **filename, const char *);
+//FILE * (*m_open)(char **filename, const char *);
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
+
+/*
+const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
+const char *bin_zstd_cmd[] = {"/bin/zstd", "-c", NULL};
+
+const char *const_zstd_cmd[][3] = { {"/usr/bin/zstd", "-c", NULL},
+                             {"/bin/zstd", "-c", NULL}};
+*/
+
 
 gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
 gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
 
+/*
+gchar * zstd_paths_2[4];
+gchar * gzip_paths_2[4];
+
+
+const  char *usr_bin_gzip_cmd[] = {"/usr/bin/gzip", "-c", NULL};
+const  char *bin_gzip_cmd[] = {"/bin/gzip", "-c", NULL};
+*/
+
+//gchar **argv;
+
+//gchar **zstd_cmd = NULL;
+//gchar **gzip_cmd = NULL;
+
+
+
+//gchar **exec_per_thread_command = NULL;
+
+
+void initialize_share_common(){
+/*
+  zstd_paths_2[0] = (char *) bin_zstd_cmd[0];
+  zstd_paths_2[1] = (char *) bin_zstd_cmd;
+  zstd_paths_2[2] = (char *) usr_bin_zstd_cmd[0];
+  zstd_paths_2[3] = (char *) usr_bin_zstd_cmd;
+  gzip_paths_2[0] = (char *) bin_gzip_cmd[0];
+  gzip_paths_2[1] = (char *) bin_gzip_cmd;
+  gzip_paths_2[2] = (char *) usr_bin_gzip_cmd[0];
+  gzip_paths_2[3] = (char *) usr_bin_gzip_cmd;
+*/
+}
+/*
+void initialize_zstd_cmd(){
+  if (g_file_test(usr_bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
+    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
+    return;
+  }
+  if (g_file_test(bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
+    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
+    return;
+  }
+}
+
+void initialize_gzip_cmd(){
+  if (g_file_test(usr_bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
+    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
+    return;
+  }
+  if (g_file_test(bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
+    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
+    return;
+  }
+}
+*/
 
 gchar *get_zstd_cmd(){
   guint i=0;
@@ -432,6 +495,8 @@ void create_fifo_dir(char *new_fifo_directory) {
         m_critical("Unable to create `%s': %s", new_fifo_directory, g_strerror(errno));
       }
     }
+  }else{
+    g_warning("Fifo directoy provided was invalid");
   }
 }
 
@@ -481,11 +546,16 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   return TRUE;
 }
 
-gboolean is_table_in_list(gchar *table_name, gchar **tl){
+gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl){
+  gchar * table_name=g_strdup_printf("%s.%s", database, table);
   guint i = 0;
-  for (i = 0; tl[i] != NULL; i++)
-    if (g_ascii_strcasecmp(tl[i], table_name) == 0)
+  for (i = 0; tl[i] != NULL; i++) {
+    if (g_ascii_strcasecmp(tl[i], table_name) == 0){
+      g_free(table_name);
       return TRUE;
+    }
+  }
+  g_free(table_name);
   return FALSE;
 }
 

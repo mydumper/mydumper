@@ -42,7 +42,8 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
 
-extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
+
+int (*m_write)(int file, const char * buff, int len);
 
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
@@ -239,7 +240,7 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append(dbt->insert_statement, " VALUES");
 }
 
-gboolean real_write_data(FILE *file, float *filesize, GString *data) {
+gboolean real_write_data(int file, float *filesize, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
   gboolean second_write_zero = FALSE;
@@ -267,7 +268,7 @@ gboolean real_write_data(FILE *file, float *filesize, GString *data) {
 }
 
 
-gboolean write_data(FILE *file, GString *data) {
+gboolean write_data(int file, GString *data) {
   float f=0;
   return real_write_data(file, &f, data);
 }
@@ -302,7 +303,7 @@ void initialize_load_data_statement(GString *statement, struct db_table *dbt, gc
   g_string_append(statement,";\n");
 }
 
-gboolean write_statement(FILE *load_data_file, float *filessize, GString *statement, struct db_table * dbt){
+gboolean write_statement(int load_data_file, float *filessize, GString *statement, struct db_table * dbt){
   if (!real_write_data(load_data_file, filessize, statement)) {
     g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
     return FALSE;
@@ -322,7 +323,7 @@ gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, g
   }
   return TRUE;
 }
-
+/*
 guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   GList *l=dbt->chunks;
   guint64 total=0;
@@ -332,6 +333,7 @@ guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   }
   return total;
 }
+*/
 
 guint64 get_estimated_remaining_of(GList *list, GMutex *mutex){
   GList *tl=list;
@@ -351,13 +353,13 @@ guint64 get_estimated_remaining_of_all_chunks(){
 
 
 
-void message_dumping_data(struct thread_data *td, struct table_job *tj){
+void message_dumping_data(struct table_job *tj){
   g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT" All remaining jobs: %"G_GINT64_FORMAT,
-                    td->thread_id,
+                    tj->td->thread_id,
                     tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
-                     (tj->where || where_option   || tj->dbt->where) ? "WHERE" : "" ,      tj->where ?      tj->where : "",
-                     (tj->where && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
-                    ((tj->where || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
+                     (tj->where->len || where_option   || tj->dbt->where) ? "WHERE" : "" , tj->where->len ? tj->where->str : "",
+                     (tj->where->len && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
+                    ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
                     tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
                     tj->sql_filename, tj->dbt->estimated_remaining_steps, get_estimated_remaining_of_all_chunks()); // get_estimated_remaining_chunks_on_dbt(tj->dbt)); //, get_estimated_remaining_of_all_chunks());
 //                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
@@ -453,7 +455,7 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
   if (update_files_on_table_job(tj)){
     write_load_data_statement(tj, fields, num_fields);
   }
-  message_dumping_data(tj->td,tj);
+  message_dumping_data(tj);
 
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
@@ -468,8 +470,8 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
 
       m_close(tj->td->thread_id, tj->sql_file, g_strdup(tj->sql_filename), 1, dbt);
       m_close(tj->td->thread_id, tj->dat_file, g_strdup(tj->dat_filename), 1, dbt);
-      tj->sql_file=NULL;
-      tj->dat_file=NULL;
+      tj->sql_file=0;
+      tj->dat_file=0;
 
       g_free(tj->sql_filename);
       g_free(tj->dat_filename);
@@ -535,9 +537,9 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
 //  guint fn = tj->nchunk;
 //  if (tj->sql_file == NULL)
 //    initialize_sql_fn(tj);
-
-  update_files_on_table_job(tj);
-  message_dumping_data(tj->td,tj);
+  if (tj->sql_file == 0)
+    update_files_on_table_job(tj);
+  message_dumping_data(tj);
   if (dbt->insert_statement==NULL){
     g_mutex_lock(dbt->chunks_mutex);
     if (dbt->insert_statement==NULL)
@@ -597,7 +599,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
               dbt->chunk_filesize) {
         tj->sub_part++;
         m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, 1, dbt);
-        tj->sql_file=NULL;
+        tj->sql_file=0;
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
@@ -640,7 +642,8 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
 }
 
 /* Do actual data chunk reading/writing magic */
-void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
+void write_table_job_into_file(struct table_job * tj){
+  MYSQL *conn = tj->td->thrconn;
   MYSQL_RES *result = NULL;
   char *query = NULL;
 
@@ -652,9 +655,9 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
       tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
-       (tj->where || where_option   || tj->dbt->where) ? "WHERE"  : "" ,      tj->where ?      tj->where : "",
-       (tj->where && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
-      ((tj->where || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
+       (tj->where->len || where_option   || tj->dbt->where) ? "WHERE"  : "" , tj->where->len ? tj->where->str : "",
+       (tj->where->len && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
+      ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
       tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );

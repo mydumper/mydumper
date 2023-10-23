@@ -30,10 +30,10 @@ union control_job_data {
 struct control_job {
   enum control_job_type type;
   union control_job_data data;
-  char * use_database;
+  struct database* use_database;
 };
 
-struct control_job * new_job (enum control_job_type type, void *job_data, char *use_database);
+struct control_job * new_job (enum control_job_type type, void *job_data, struct database *use_database);
 gboolean process_job(struct thread_data *td, struct control_job *job);
 void refresh_db_and_jobs(enum file_type current_ft);
 void initialize_control_job (struct configuration *conf);
