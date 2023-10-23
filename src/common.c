@@ -42,35 +42,39 @@ extern MYSQL *main_connection;
 GAsyncQueue *stream_queue = NULL;
 extern int detected_server;
 
+/*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
 const char *bin_zstd_cmd[] = {"/bin/zstd", "-c", NULL};
 
 const char *const_zstd_cmd[][3] = { {"/usr/bin/zstd", "-c", NULL},
                              {"/bin/zstd", "-c", NULL}};
-
+*/
 
 
 gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
 gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
 
+/*
 gchar * zstd_paths_2[4];
 gchar * gzip_paths_2[4];
 
+
 const  char *usr_bin_gzip_cmd[] = {"/usr/bin/gzip", "-c", NULL};
 const  char *bin_gzip_cmd[] = {"/bin/gzip", "-c", NULL};
-
+*/
 
 //gchar **argv;
-gchar **zstd_cmd = NULL;
-gchar **gzip_cmd = NULL;
+
+//gchar **zstd_cmd = NULL;
+//gchar **gzip_cmd = NULL;
 
 
 
-gchar **exec_per_thread_command = NULL;
+//gchar **exec_per_thread_command = NULL;
 
 
 void initialize_share_common(){
-
+/*
   zstd_paths_2[0] = (char *) bin_zstd_cmd[0];
   zstd_paths_2[1] = (char *) bin_zstd_cmd;
   zstd_paths_2[2] = (char *) usr_bin_zstd_cmd[0];
@@ -79,10 +83,9 @@ void initialize_share_common(){
   gzip_paths_2[1] = (char *) bin_gzip_cmd;
   gzip_paths_2[2] = (char *) usr_bin_gzip_cmd[0];
   gzip_paths_2[3] = (char *) usr_bin_gzip_cmd;
-
+*/
 }
-
-
+/*
 void initialize_zstd_cmd(){
   if (g_file_test(usr_bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
     zstd_cmd=(gchar **)usr_bin_zstd_cmd;
@@ -104,11 +107,12 @@ void initialize_gzip_cmd(){
     return;
   }
 }
+*/
 
 gchar *get_zstd_cmd(){
   guint i=0;
   for(i=0; i<2; i++){
-    if (g_file_test( zstd_paths_2[i] , G_FILE_TEST_EXISTS))
+    if (g_file_test( zstd_paths[i] , G_FILE_TEST_EXISTS))
       return zstd_paths[i];
   }
   return NULL;

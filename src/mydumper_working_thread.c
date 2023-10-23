@@ -216,22 +216,18 @@ void initialize_working_thread(){
       m_critical("--compression and --exec-per-thread are not comptatible");
     }
     gchar *cmd=NULL;
-    initialize_gzip_cmd();
     if ( g_strcmp0(compress_method,GZIP)==0){
       if ((cmd=get_gzip_cmd()) == NULL){
         g_error("gzip command not found on any static location, use --exec-per-thread for non default locations");
       }
       exec_per_thread=g_strdup_printf("%s -c", cmd);
-      exec_per_thread_command=gzip_cmd;
       exec_per_thread_extension=GZIP_EXTENSION;
     }else{ 
-      initialize_zstd_cmd();
       if ( g_strcmp0(compress_method,ZSTD)==0){
       if ( (cmd=get_zstd_cmd()) == NULL ){
         g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
       }
       exec_per_thread=g_strdup_printf("%s -c", cmd);
-      exec_per_thread_command=zstd_cmd;
       exec_per_thread_extension=ZSTD_EXTENSION;
     }
     }
