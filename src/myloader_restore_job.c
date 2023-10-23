@@ -284,6 +284,7 @@ cleanup:
 GMutex **pause_mutex_per_thread=NULL;
 
 gboolean sig_triggered(void * user_data, int signal) {
+  struct configuration *conf=(struct configuration *)user_data;
   guint i=0;
   GAsyncQueue *queue=NULL;
   g_mutex_lock(shutdown_triggered_mutex);
@@ -296,9 +297,9 @@ gboolean sig_triggered(void * user_data, int signal) {
         pause_mutex_per_thread[i]=g_mutex_new();
       }
     }
-    if (((struct configuration *)user_data)->pause_resume == NULL)
-      ((struct configuration *)user_data)->pause_resume = g_async_queue_new();
-    queue = ((struct configuration *)user_data)->pause_resume;
+    if (conf->pause_resume == NULL)
+      conf->pause_resume = g_async_queue_new();
+    queue = conf->pause_resume;
     for(i=0;i<num_threads;i++){
       g_mutex_lock(pause_mutex_per_thread[i]);
       g_async_queue_push(queue,pause_mutex_per_thread[i]);
@@ -324,6 +325,7 @@ gboolean sig_triggered(void * user_data, int signal) {
     }
   }
   inform_restore_job_running();
+  create_index_shutdown_job(conf);
   g_message("Writing resume.partial file");
   gchar *filename;
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
