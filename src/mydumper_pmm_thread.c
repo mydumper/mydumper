@@ -67,8 +67,8 @@ void write_pmm_entries(GString *content, struct configuration* conf){
   append_pmm_entry_queue(content,"pause_resume",      conf->pause_resume);
   append_pmm_entry(content,"queueu", "stream",            get_stream_queue_length());
   append_pmm_entry(content,"object", "all_tables",        g_hash_table_size(all_dbts));
-  append_pmm_entry(content,"object", "innodb_tables",     g_list_length(innodb_table));
-  append_pmm_entry(content,"object", "non_innodb_tables", g_list_length(non_innodb_table));
+  append_pmm_entry(content,"object", "innodb_tables",     g_list_length(innodb_table->list));
+  append_pmm_entry(content,"object", "non_innodb_tables", g_list_length(non_innodb_table->list));
   append_pmm_entry_all_tables(content);
   g_file_set_contents( filename , content->str, content->len, NULL);
 }

@@ -16,6 +16,10 @@
 */
 #include <pcre.h>
 
+struct MList;
+
+#ifndef _mydumper_start_dump_h 
+#define _mydumper_start_dump_h
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 enum job_type {
@@ -39,6 +43,11 @@ enum job_type {
   JOB_DUMP_ALL_DATABASES,
   JOB_DUMP_TABLE_LIST,
   JOB_WRITE_MASTER_STATUS
+};
+
+struct MList{
+  GList *list;
+  GMutex *mutex;
 };
 
 enum chunk_type{
@@ -326,6 +335,8 @@ struct fifo{
   GMutex *out_mutex;
   int error_number;
 };
+
+#endif
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
 void initialize_start_dump();

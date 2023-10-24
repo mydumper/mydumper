@@ -371,8 +371,9 @@ cleanup:
 }
 
 
-gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_step_item **csi, GList **dbt_list){
-  GList *iter=*dbt_list;
+gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_step_item **csi, struct MList *dbt_list){
+  g_mutex_lock(dbt_list->mutex);
+  GList *iter=dbt_list->list;
   struct db_table *d;
   gboolean are_there_jobs_defining=FALSE;
   struct chunk_step_item *lcs;
@@ -402,7 +403,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
         *dbt=iter->data;
 //        *csi=d->initial_chunk_step;
         *csi = lcs;
-        *dbt_list=g_list_remove(*dbt_list,d);
+        dbt_list->list=g_list_remove(dbt_list->list,d);
         g_mutex_unlock(d->chunks_mutex);
         break;
       }
@@ -419,7 +420,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
       }else{
 //        g_message("Checking table: %s.%s is null", d->database->name, d->table);
         iter=iter->next;
-        *dbt_list=g_list_remove(*dbt_list,d);
+	dbt_list->list=g_list_remove(dbt_list->list,d);
         g_mutex_unlock(d->chunks_mutex);
         continue;
       }
@@ -430,6 +431,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
 next:
     iter=iter->next;
   }
+  g_mutex_unlock(dbt_list->mutex);
   return are_there_jobs_defining;
 }
 
@@ -451,7 +453,7 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
   }
 }
 
-void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList **table_list){
+void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, struct MList *table_list){
   struct db_table *dbt;
   struct chunk_step_item *csi;
   gboolean are_there_jobs_defining=FALSE;
@@ -464,7 +466,6 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
     csi=NULL;
     are_there_jobs_defining=FALSE;
     are_there_jobs_defining=get_next_dbt_and_chunk_step_item(&dbt,&csi,table_list);
-
 
     if (dbt!=NULL){
 
@@ -511,12 +512,12 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, GList 
 void *chunk_builder_thread(struct configuration *conf){
 
   g_message("Starting Non-InnoDB tables");
-  table_job_enqueue(give_me_another_non_innodb_chunk_step_queue, conf->non_innodb_queue, &non_innodb_table);
+  table_job_enqueue(give_me_another_non_innodb_chunk_step_queue, conf->non_innodb_queue, non_innodb_table);
   g_message("Non-InnoDB tables completed");
   enqueue_shutdown_jobs(conf->non_innodb_queue);
 
   g_message("Starting InnoDB tables");
-  table_job_enqueue(give_me_another_innodb_chunk_step_queue, conf->innodb_queue, &innodb_table);
+  table_job_enqueue(give_me_another_innodb_chunk_step_queue, conf->innodb_queue, innodb_table);
   g_message("InnoDB tables completed");
   enqueue_shutdown_jobs(conf->innodb_queue);
 
