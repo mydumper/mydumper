@@ -53,6 +53,7 @@ extern gboolean innodb_optimize_keys_all_tables;
 extern gboolean innodb_optimize_keys_per_table;
 extern gboolean intermediate_queue_ended;
 extern gboolean no_data;
+extern gboolean no_schemas;
 extern gboolean no_delete;
 extern gboolean overwrite_tables;
 extern gboolean resume;
