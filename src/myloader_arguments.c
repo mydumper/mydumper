@@ -77,7 +77,7 @@ static GOptionEntry threads_entries[] = {
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
      "Maximum number of threads for index creation, default 4", NULL},
     {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
-     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 4", NULL},
+     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
