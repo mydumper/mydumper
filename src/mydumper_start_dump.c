@@ -1121,8 +1121,8 @@ void start_dump() {
 
   if (trx_consistency_only) {
     g_message("Transactions started, unlocking tables");
-    release_global_lock_function(conn);
-//    mysql_query(conn, "UNLOCK TABLES /* trx-only */");
+    if (release_global_lock_function)
+      release_global_lock_function(conn);
     if (release_binlog_function != NULL){
       g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
