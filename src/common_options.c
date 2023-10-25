@@ -42,6 +42,7 @@ GString *set_session = NULL;
 GString *set_global = NULL;
 GString *set_global_back = NULL;
 MYSQL *main_connection = NULL;
+gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
 

@@ -463,12 +463,12 @@ int main(int argc, char *argv[]) {
   g_hash_table_iter_init ( &iter, db_hash);
   struct database *d=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    if (d->schema_checksum != NULL)
-      checksum_database_template(d->name, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
-    if (d->post_checksum != NULL)
-      checksum_database_template(d->name, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
-    if (d->triggers_checksum != NULL)
-      checksum_database_template(d->name, d->triggers_checksum,  conn, "Triggers checksum", checksum_trigger_structure_from_database);
+    if (d->schema_checksum != NULL && !no_schemas)
+      checksum_database_template(d->real_database, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
+    if (d->post_checksum != NULL && !skip_post)
+      checksum_database_template(d->real_database, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
+    if (d->triggers_checksum != NULL && !skip_triggers)
+      checksum_database_template(d->real_database, d->triggers_checksum,  conn, "Triggers checksum", checksum_trigger_structure_from_database);
   }
 
 

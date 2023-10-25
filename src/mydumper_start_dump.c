@@ -85,7 +85,6 @@ int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
-gboolean no_schemas = FALSE;
 gboolean no_locks = FALSE;
 gboolean it_is_a_consistent_backup = FALSE;
 gboolean less_locking = FALSE;
