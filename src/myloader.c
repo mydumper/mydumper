@@ -112,6 +112,21 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   if (commit_count > 1)
     g_hash_table_insert(set_session_hash,g_strdup("AUTOCOMMIT"),g_strdup("0"));
 
+  const int m= get_major();
+  const int s= get_secondary();
+  const int r= get_revision();
+
+  if (m >= 4) {
+    if (m > 4 || s > 0 || r >= 14) {
+      g_hash_table_insert(set_session_hash,g_strdup("UNIQUE_CHECKS"), g_strdup("0"));
+      g_hash_table_insert(set_session_hash,g_strdup("FOREIGN_KEY_CHECKS"), g_strdup("0"));
+    }
+    if (m > 4 || s > 1 || (s == 1 && r >= 1))
+      g_hash_table_insert(set_session_hash,g_strdup("SQL_MODE"), g_strdup("'NO_AUTO_VALUE_ON_ZERO'"));
+    if (m > 4 || s > 1 || (s == 1 && r >= 11))
+      g_hash_table_insert(set_session_hash,g_strdup("SQL_NOTES"), g_strdup("0"));
+  }
+
   return set_session_hash;
 }
 
