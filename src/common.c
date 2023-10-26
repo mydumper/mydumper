@@ -788,25 +788,37 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
+/*
+  Read one line of data terminated by \n or maybe not terminated in case of EOF.
+
+  FIXME: passing both *eof and *line here makes no sense. The caller may increment
+  line by this condition:
+
+  if (read_data(file, data, &eof) && !eof)
+    ++line;
+*/
 gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
-  char buffer[256];
+  char buffer[4096];
+  size_t l;
 
-  do {
-    if (fgets(buffer, 256, file) == NULL) {
-      if (feof(file)) {
-        *eof = TRUE;
-        buffer[0] = '\0';
-      } else {
-        return FALSE;
-      }
-    }
+  while (fgets(buffer, sizeof(buffer), file)) {
+    l= strlen(buffer);
+    g_assert(l > 0 && l < sizeof(buffer));
     g_string_append(data, buffer);
-    if (buffer[strlen(buffer)-1] == '\n')
+    if (buffer[l - 1] == '\n') {
       (*line)++;
-  } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
+      *eof= FALSE;
+      return TRUE;
+    }
+  }
 
-  return TRUE;
+  if (feof(file)) {
+    *eof= TRUE;
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 gchar *m_date_time_new_now_local(){
