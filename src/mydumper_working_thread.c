@@ -463,7 +463,6 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }*/
   free_table_job(tj);
-  tj->td=NULL;
   g_free(job);
 }
 
