@@ -596,7 +596,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_printf(statement, "SELECT SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
+  g_string_printf(statement, "DO SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
