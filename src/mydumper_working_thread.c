@@ -276,6 +276,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   if (mysql_query(td->thrconn, "SHOW DATABASES") ||
       !(databases = mysql_store_result(td->thrconn))) {
     m_critical("Unable to list databases: %s", mysql_error(td->thrconn));
+    return;
   }
 
   while ((row = mysql_fetch_row(databases))) {
