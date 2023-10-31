@@ -276,7 +276,7 @@ gboolean write_data(int file, GString *data) {
 
 void initialize_load_data_statement(GString *statement, struct db_table *dbt, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
   gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
-  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' REPLACE INTO TABLE `%s` ", basename, exec_per_thread_extension, dbt->table);
+  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' INTO TABLE `%s` ", basename, exec_per_thread_extension, dbt->table);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
