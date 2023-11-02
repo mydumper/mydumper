@@ -431,7 +431,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "%c%s%c int", identifier_quote_character,row[0],identifier_quote_character);
   }
-  g_string_append(statement, "\n);\n");
+  g_string_append(statement, "\n) ENGINE=MEMORY;\n");
 
   if (result)
     mysql_free_result(result);
@@ -528,7 +528,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   if (set_names_str) {
-    g_string_printf(statement,"%s;\n",set_names_str);
+    g_string_printf(statement, "%s;\n", set_names_statement);
   }
 
   if (!write_data(outfile, statement)) {
@@ -596,7 +596,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_printf(statement, "SELECT SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
+  g_string_printf(statement, "DO SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;

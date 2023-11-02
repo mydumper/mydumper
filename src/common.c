@@ -788,25 +788,37 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
+/*
+  Read one line of data terminated by \n or maybe not terminated in case of EOF.
+
+  FIXME: passing both *eof and *line here makes no sense. The caller may increment
+  line by this condition:
+
+  if (read_data(file, data, &eof) && !eof)
+    ++line;
+*/
 gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
-  char buffer[256];
+  char buffer[4096];
+  size_t l;
 
-  do {
-    if (fgets(buffer, 256, file) == NULL) {
-      if (feof(file)) {
-        *eof = TRUE;
-        buffer[0] = '\0';
-      } else {
-        return FALSE;
-      }
-    }
+  while (fgets(buffer, sizeof(buffer), file)) {
+    l= strlen(buffer);
+    g_assert(l > 0 && l < sizeof(buffer));
     g_string_append(data, buffer);
-    if (buffer[strlen(buffer)-1] == '\n')
+    if (buffer[l - 1] == '\n') {
       (*line)++;
-  } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
+      *eof= FALSE;
+      return TRUE;
+    }
+  }
 
-  return TRUE;
+  if (feof(file)) {
+    *eof= TRUE;
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 gchar *m_date_time_new_now_local(){
@@ -818,3 +830,69 @@ gchar *m_date_time_new_now_local(){
   return g_string_free(datetimestr,FALSE);
 }
 
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+guint
+g_string_replace (GString     *string,
+                  const gchar *find,
+                  const gchar *replace,
+                  guint        limit)
+{
+  gsize f_len, r_len, pos;
+  gchar *cur, *next;
+  guint n = 0;
+
+  g_return_val_if_fail (string != NULL, 0);
+  g_return_val_if_fail (find != NULL, 0);
+  g_return_val_if_fail (replace != NULL, 0);
+
+  f_len = strlen (find);
+  r_len = strlen (replace);
+  cur = string->str;
+
+  while ((next = strstr (cur, find)) != NULL)
+    {
+      pos = next - string->str;
+      g_string_erase (string, pos, f_len);
+      g_string_insert (string, pos, replace);
+      cur = string->str + pos + r_len;
+      n++;
+      /* Only match the empty string once at any given position, to
+       * avoid infinite loops */
+      if (f_len == 0)
+        {
+          if (cur[0] == '\0')
+            break;
+          else
+            cur++;
+        }
+      if (n == limit)
+        break;
+    }
+
+  return n;
+}
+#endif
+
+char * backtick_protect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "`", "``", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
+char * newline_protect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "\n", "\u10000", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
+char * newline_unprotect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "\u10000", "\n", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}

@@ -183,7 +183,7 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str,"`=CONVERT(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
-    }else if (fields[i].type == MYSQL_TYPE_BLOB){
+    }else if (hex_blob && fields[i].type == MYSQL_TYPE_BLOB){
       g_string_append_c(statement,'@');
       g_string_append(statement, fields[i].name);
       if (str->len > 4)

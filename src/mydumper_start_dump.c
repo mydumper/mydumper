@@ -679,8 +679,14 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
+  char *name= newline_protect(dbt->database->name);
+  char *table_filename= newline_protect(dbt->table_filename);
+  char *table= newline_protect(dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", dbt->database->name, dbt->table_filename, dbt->table, dbt->rows);
+  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", name, table_filename, table, dbt->rows);
+  g_free(name);
+  g_free(table_filename);
+  g_free(table);
   if (dbt->data_checksum)
     g_string_append_printf(data,"data_checksum = %s\n", dbt->data_checksum);
   if (dbt->schema_checksum)

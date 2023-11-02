@@ -221,7 +221,7 @@ void execute_use_if_needs_to(struct thread_data *td, struct database *database, 
     if (td->current_database==NULL || g_strcmp0(database->real_database, td->current_database->real_database) != 0){
       td->current_database=database;
       if (execute_use(td)){
-        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
+        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database->real_database, msg);
       }
     }
   }

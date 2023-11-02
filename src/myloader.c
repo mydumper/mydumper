@@ -87,7 +87,7 @@ guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
-guint max_threads_for_post_creation=4;
+guint max_threads_for_post_creation= 1;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 

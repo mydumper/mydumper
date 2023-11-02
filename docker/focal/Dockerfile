@@ -6,7 +6,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
   sudo apt-get update && \
-  sudo apt-get install -y lsb-release cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev libjemalloc-dev wget gnupg curl && \
+  sudo apt-get install -y lsb-release cmake g++ git make libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev wget gnupg curl && \
   sudo apt-get clean
 
 RUN \
