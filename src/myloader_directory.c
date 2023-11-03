@@ -51,10 +51,17 @@ void *process_directory(struct configuration *conf){
     } 
     fclose(file);
   }else{
+    /*
+      set_db_schema_created() depends on sequences variable. It will not be
+      updated until metadata is read. If DB schema is processed before metadata
+      we will get wrong condition (sequences == sequences_processed == 0).
+    */
+    if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR))
+      intermediate_queue_new("metadata");
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
-      g_debug("File found: %s", filename);
-      intermediate_queue_new(g_strdup(filename));
+      if (strcmp(filename, "metadata"))
+        intermediate_queue_new(filename);
     }
   }
   intermediate_queue_end();

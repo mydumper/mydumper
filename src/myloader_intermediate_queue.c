@@ -85,7 +85,7 @@ void initialize_intermediate_queue (struct configuration *c){
   initialize_control_job(c);
 }
 
-void intermediate_queue_new(gchar *filename){
+void intermediate_queue_new(const gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
@@ -148,8 +148,9 @@ enum file_type process_filename(char *filename){
         return DO_NOT_ENQUEUE;
       break;
     case SCHEMA_SEQUENCE:
-      if (!process_schema_sequence_filename(filename))
-        return INCOMPLETE;
+      if (!process_schema_sequence_filename(filename)){
+        return DO_NOT_ENQUEUE;
+      }
       break;
     case SCHEMA_TRIGGER:
       if (!skip_triggers)
@@ -227,7 +228,6 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     return;
   }
   if (current_ft != SCHEMA_VIEW &&
-      current_ft != SCHEMA_SEQUENCE &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&

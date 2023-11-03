@@ -704,6 +704,8 @@ void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   g_free(name);
   g_free(table_filename);
   g_free(table);
+  if (dbt->is_sequence)
+    g_string_append_printf(data,"is_sequence = 1\n");
   if (dbt->data_checksum)
     g_string_append_printf(data,"data_checksum = %s\n", dbt->data_checksum);
   if (dbt->schema_checksum)
