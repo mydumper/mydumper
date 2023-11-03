@@ -268,6 +268,7 @@ void refresh_db_and_jobs(enum file_type current_ft){
   switch (current_ft){
     case SCHEMA_CREATE:
     case SCHEMA_TABLE:
+    case SCHEMA_SEQUENCE:
       schema_queue_push(current_ft);
       break;
     case DATA:

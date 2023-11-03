@@ -269,8 +269,14 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
           get_total_done(td->conf, &total); 
           g_message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
                     rj->data.srj->database->real_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
-          if ( restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE ) > 0 )
+          if (dbt)
+            dbt->schema_state= CREATING;
+          if ( restore_data_from_file(td, rj->data.srj->database->real_database, NULL, rj->filename, TRUE ) > 0 ) {
             increse_object_error(rj->data.srj->object);
+            if (dbt)
+              dbt->schema_state= NOT_CREATED;
+          } else if (dbt)
+            dbt->schema_state= CREATED;
         }
       }
       free_schema_restore_job(rj->data.srj);

@@ -29,7 +29,6 @@ guint schema_counter = 0;
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
-gboolean first_metadata = FALSE;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
@@ -38,7 +37,6 @@ gchar ** gzip_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
-GMutex *metadata_mutex = NULL;
 GMutex *start_intermediate_thread=NULL;
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
@@ -49,12 +47,10 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_queue = g_async_queue_new();
   exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
   exec_process_id_mutex=g_mutex_new();
-  metadata_mutex = g_mutex_new();
   start_intermediate_thread = g_mutex_new();
   g_mutex_lock(start_intermediate_thread);
   if (stream)
     g_mutex_unlock(start_intermediate_thread);
-  g_mutex_lock(metadata_mutex);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
   if (exec_per_thread_extension != NULL){
@@ -85,7 +81,7 @@ void initialize_intermediate_queue (struct configuration *c){
   initialize_control_job(c);
 }
 
-void intermediate_queue_new(gchar *filename){
+void intermediate_queue_new(const gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
@@ -109,11 +105,6 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
   iflnm->iterations++;
   g_async_queue_push(intermediate_queue, iflnm);
 }
-
-void wait_until_first_metadata(){
-  g_mutex_lock(metadata_mutex);
-}
-
 
 enum file_type process_filename(char *filename){
 //  g_message("Filename: %s", filename);
@@ -148,8 +139,9 @@ enum file_type process_filename(char *filename){
         return DO_NOT_ENQUEUE;
       break;
     case SCHEMA_SEQUENCE:
-      if (!process_schema_sequence_filename(filename))
-        return INCOMPLETE;
+      if (!process_schema_sequence_filename(filename)){
+        return DO_NOT_ENQUEUE;
+      }
       break;
     case SCHEMA_TRIGGER:
       if (!skip_triggers)
@@ -168,10 +160,6 @@ enum file_type process_filename(char *filename){
       intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
       break;
     case METADATA_GLOBAL:
-      if (!first_metadata){
-        g_mutex_unlock(metadata_mutex);
-        first_metadata=TRUE;
-      }
       process_metadata_global(filename);
       refresh_table_list(intermediate_conf);
       break;
@@ -227,7 +215,6 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     return;
   }
   if (current_ft != SCHEMA_VIEW &&
-      current_ft != SCHEMA_SEQUENCE &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&

@@ -139,7 +139,9 @@ struct database * new_database(gchar *database, gchar *filename){
   d->name=database;
   d->real_database = g_strdup(db ? db : d->name);
   d->filename = filename;
+  g_cond_init(&d->state_cond);
   d->mutex=g_mutex_new();
+  d->sequence_queue= g_async_queue_new();
   d->queue=g_async_queue_new();;
   d->schema_state=NOT_FOUND;
   d->schema_checksum=NULL;

@@ -79,6 +79,10 @@ gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint sequences = 0;
+guint sequences_processed = 0;
+GMutex sequences_mutex;
+GCond sequences_cond;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
@@ -399,7 +403,7 @@ int main(int argc, char *argv[]) {
 
   struct thread_data t;
   t.thread_id = 0;
-  t.conf = &conf;
+  t.conf = &conf; // TODO: if conf is singleton it must be accessed as global variable
   t.thrconn = conn;
   t.current_database=NULL;
   t.status=WAITING;
@@ -415,6 +419,7 @@ int main(int argc, char *argv[]) {
   if (serial_tbl_creation)
     max_threads_for_schema_creation=1;
 
+  /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
@@ -424,8 +429,6 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
-
-    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);

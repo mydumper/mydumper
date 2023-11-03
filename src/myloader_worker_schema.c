@@ -43,14 +43,46 @@ void schema_queue_push(enum file_type current_ft){
   g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(current_ft));
 }
 
-void set_db_schema_state_to_created( struct database * database, GAsyncQueue * object_queue){
-  database->schema_state=CREATED;
-  struct control_job * cj = g_async_queue_try_pop(database->queue);
+
+static
+void wait_db_schema_created(struct database * database)
+{
+  if (database->schema_state != CREATED) {
+    trace("Waiting DB created: %s", database->name);
+    g_mutex_lock(database->mutex);
+    while (database->schema_state != CREATED)
+      g_cond_wait(&database->state_cond, database->mutex);
+    g_mutex_unlock(database->mutex);
+  }
+}
+
+
+static
+void set_db_schema_created(struct database * real_db_name, struct configuration *conf)
+{
+  struct control_job * cj;
+  enum file_type ft;
+  GAsyncQueue *queue;
+  GAsyncQueue * object_queue= conf->table_queue;
+  real_db_name->schema_state= CREATED;
+
+  /* Until all sequences processed we requeue only sequences */
+  if (sequences_processed < sequences) {
+    ft= SCHEMA_SEQUENCE;
+    queue= real_db_name->sequence_queue;
+  } else {
+    ft= SCHEMA_TABLE;
+    queue= real_db_name->queue;
+  }
+  cj= g_async_queue_try_pop(queue);
   while (cj != NULL){
     g_async_queue_push(object_queue, cj);
-    g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
-    cj = g_async_queue_try_pop(database->queue);
+    g_async_queue_push(refresh_db_queue2, data);
+    cj = g_async_queue_try_pop(queue);
   }
+
+  // TODO: use g_cond_signal() after ensuring INTERMEDIATE_ENDED processed only in one thread
+  g_cond_broadcast(&real_db_name->state_cond);
 }
 
 
@@ -88,22 +120,41 @@ gboolean process_schema(struct thread_data * td){
       real_db_name=job->data.restore_job->data.srj->database;
       g_mutex_lock(real_db_name->mutex);
       ret=process_job(td, job);
-      set_db_schema_state_to_created(real_db_name, td->conf->table_queue);
+      set_db_schema_created(real_db_name, td->conf);
       g_mutex_unlock(real_db_name->mutex);
       break;
     case SCHEMA_TABLE:
+    case SCHEMA_SEQUENCE: {
       job=g_async_queue_pop(td->conf->table_queue);
-      execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+      const gboolean restore= (job->type == JOB_RESTORE);
+      char *filename;
+      if (restore) {
+        filename= job->data.restore_job->filename;
+        execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+      }
       ret=process_job(td, job);
-      refresh_db_and_jobs(DATA);
+      if (ft == SCHEMA_TABLE)
+        refresh_db_and_jobs(DATA);
+      else if (restore) {
+        g_assert(ft == SCHEMA_SEQUENCE && sequences_processed < sequences);
+        g_mutex_lock(&sequences_mutex);
+        ++sequences_processed;
+        // TODO: use g_cond_signal() after ensuring INTERMEDIATE_ENDED processed only in one thread
+        g_cond_broadcast(&sequences_cond);
+        g_mutex_unlock(&sequences_mutex);
+      }
       break;
+    }
     case INTERMEDIATE_ENDED:
       if (!second_round){
+        g_mutex_lock(&sequences_mutex);
+        while (sequences_processed < sequences)
+          g_cond_wait(&sequences_cond, &sequences_mutex);
+        g_mutex_unlock(&sequences_mutex);
         g_hash_table_iter_init ( &iter, db_hash );
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
-          g_mutex_lock(real_db_name->mutex);
-          set_db_schema_state_to_created(real_db_name, td->conf->table_queue);
-          g_mutex_unlock(real_db_name->mutex);
+          wait_db_schema_created(real_db_name);
+          set_db_schema_created(real_db_name, td->conf);
         }
         g_message("Schema creation enqueing completed");
         second_round=TRUE;

@@ -96,6 +96,7 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
       dbt->indexes_checksum=NULL;
       dbt->data_checksum=NULL;
       dbt->is_view=FALSE;
+      dbt->is_sequence=FALSE;
     }else{
 //      g_message("Found db_table: %s", lkey);
       g_free(table);
@@ -445,7 +446,11 @@ gboolean process_table_filename(char * filename){
   dbt->schema_state=NOT_CREATED;
   struct control_job * cj = load_schema(dbt, g_build_filename(directory,filename,NULL));
   g_mutex_lock(real_db_name->mutex);
-  if (real_db_name->schema_state != CREATED){
+  /*
+    When processing is possible buffer queues from real_db_name requeued into
+    object queue td->conf->table_queue (see set_db_schema_state_to_created()).
+  */
+  if (real_db_name->schema_state != CREATED || sequences_processed < sequences){
     g_async_queue_push(real_db_name->queue, cj);
     g_mutex_unlock(real_db_name->mutex);
     return FALSE;
@@ -458,7 +463,8 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-gboolean process_metadata_global(gchar *file){
+void process_metadata_global(const char *file)
+{
 //  void *infile;
   gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
@@ -496,6 +502,12 @@ gboolean process_metadata_global(gchar *file){
           dbt->is_view=TRUE;
         }
         if (value) g_free(value);
+        value=get_value(kf, group, "is_sequence");
+        if (value != NULL && g_strcmp0(value, "1") == 0){
+          dbt->is_sequence= TRUE;
+          ++sequences;
+        }
+        if (value) g_free(value);
         if (get_value(kf,group,"rows")){
           dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
         }
@@ -524,7 +536,6 @@ gboolean process_metadata_global(gchar *file){
     g_free(group);
   }
   g_free(delimiter);
-  return TRUE;
 }
 
 
@@ -550,9 +561,11 @@ gboolean process_schema_view_filename(gchar *filename) {
 gboolean process_schema_sequence_filename(gchar *filename) {
   gchar *database=NULL, *table_name=NULL;
   struct database *real_db_name=NULL;
+  struct db_table *dbt;
   get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
   if (database == NULL){
-    g_critical("Database is null on: %s",filename);
+    g_error("Database is null on: %s", filename);
+    return FALSE;
   }
   real_db_name=get_db_hash(database,database);
   if (real_db_name==NULL){
@@ -563,13 +576,21 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     g_warning("File %s has been filter out",filename);
     return TRUE;
   }
-//  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
-//  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
-//  g_free(lkey);
-//  if (dbt==NULL)
-//    return FALSE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, SEQUENCE );
-  g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name));
+  dbt= append_new_db_table(real_db_name, table_name, 0, NULL);
+  dbt->is_sequence= TRUE;
+  dbt->schema_state= NOT_CREATED;
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, real_db_name, NULL, SEQUENCE );
+  struct control_job *cj= new_job(JOB_RESTORE,rj,real_db_name);
+  g_mutex_lock(real_db_name->mutex);
+  if (real_db_name->schema_state != CREATED){
+    g_async_queue_push(real_db_name->sequence_queue, cj);
+    g_mutex_unlock(real_db_name->mutex);
+    return FALSE;
+  }else{
+    if (cj)
+      g_async_queue_push(conf->table_queue, cj);
+  }
+  g_mutex_unlock(real_db_name->mutex);
   return TRUE;
 }
 
