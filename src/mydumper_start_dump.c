@@ -299,6 +299,7 @@ void *signal_thread(void *data) {
 GHashTable * mydumper_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
   g_hash_table_insert(set_session_hash,g_strdup("information_schema_stats_expiry"),g_strdup("0 /*!80003"));
+  g_hash_table_insert(set_session_hash, g_strdup("sql_mode"), g_strdup(sql_mode));
   return set_session_hash;
 }
 
@@ -315,13 +316,14 @@ MYSQL *create_connection() {
 void  detect_identifier_quote_character_mix(MYSQL *conn){
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
+  GString *str;
 
-  gchar *query = g_strdup("SELECT FIND_IN_SET('ANSI',@@sql_mode)");
+  const char *query = "SELECT FIND_IN_SET('ANSI', @@SQL_MODE) OR FIND_IN_SET('ANSI_QUOTES', @@SQL_MODE)";
+
   if (mysql_query(conn, query)){
     g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
     return ;
   }
-  g_free(query);
 
   if (!(res = mysql_store_result(conn))){
     g_warning("We were not able to determine ANSI mode");
@@ -332,6 +334,21 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
   || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
     m_error("We found a mixed usage of the identifier quote character. Check SQL_MODE and --identifier-quote-character");
   }
+  mysql_free_result(res);
+
+  query= "SELECT REPLACE(REPLACE(REPLACE(REPLACE(@@SQL_MODE, 'NO_BACKSLASH_ESCAPES', ''), ',,', ','), 'PIPES_AS_CONCAT', ''), ',,', ',')";
+  if (mysql_query(conn, query)){
+    g_critical("Error getting SQL_MODE: %s", mysql_error(conn));
+  }
+
+  if (!(res= mysql_store_result(conn))){
+    g_critical("Error getting SQL_MODE");
+  }
+  row= mysql_fetch_row(res);
+  str= g_string_new(NULL);
+  g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
+  sql_mode= str->str;
+  g_string_free(str, FALSE);
   mysql_free_result(res);
 }
 
@@ -347,6 +364,7 @@ MYSQL *create_main_connection() {
 //  detected_server = detect_server(conn);
   detect_server_version(conn);
   detected_server = get_product(); 
+  detect_identifier_quote_character_mix(conn);
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -387,7 +405,6 @@ MYSQL *create_main_connection() {
     break;
   }
   
-  detect_identifier_quote_character_mix(conn);
   return conn;
 }
 

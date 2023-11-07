@@ -41,6 +41,7 @@ int detected_server = 0;
 GString *set_session = NULL;
 GString *set_global = NULL;
 GString *set_global_back = NULL;
+gchar *sql_mode= NULL;
 MYSQL *main_connection = NULL;
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
