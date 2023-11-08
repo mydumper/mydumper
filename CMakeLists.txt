@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(mydumper)
-set(VERSION 0.15.2-8)
+file(READ "VERSION" ver_str)
+string(REGEX MATCH "ver=\"([^\"]+)\"" _ ${ver_str})
+set(ver ${CMAKE_MATCH_1})
+string(REGEX MATCH "rev=\"([^\"]+)\"" _ ${ver_str})
+set(rev ${CMAKE_MATCH_1})
+set(VERSION "${ver}-${rev}")
 set(ARCHIVE_NAME "${CMAKE_PROJECT_NAME}-${VERSION}")
 
 #Required packages

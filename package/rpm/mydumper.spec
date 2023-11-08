@@ -34,6 +34,10 @@ install -m 0755 -d ${RPM_BUILD_ROOT}%{_sysconfdir}
 install -m 0755 mydumper ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0755 myloader ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0664 mydumper.cnf ${RPM_BUILD_ROOT}%{_sysconfdir}
+%define install_include %(test -f SOURCES/install.inc && echo $_)
+%if "%{install_include}"
+    %include %{install_include}
+%endif
 
 %clean
 rm -rf ${RPM_BUILD_ROOT}
@@ -42,5 +46,9 @@ rm -rf ${RPM_BUILD_ROOT}
 %defattr(-,root,root,-)
 %config(noreplace) %{_sysconfdir}/*
 %{_bindir}/*
+%define files_include %(test -f SOURCES/files.inc && echo $_)
+%if "%{files_include}"
+    %include %{files_include}
+%endif
 
 %changelog
