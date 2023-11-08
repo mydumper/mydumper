@@ -685,6 +685,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       g_string_set_size(statement, 0);
     }
 
+    mysql_free_result(result);
+
     // get sp
     query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
@@ -734,6 +736,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     }
     if (checksum_filename)
      database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
+    mysql_free_result(result);
+    if (result2)
+      mysql_free_result(result2);
   }
 
   // get events
@@ -781,16 +786,15 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       }
       g_string_set_size(statement, 0);
     }
+    mysql_free_result(result);
+    if (result2)
+      mysql_free_result(result2);
   }
 
   g_free(query);
   m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);
-  if (result)
-    mysql_free_result(result);
-  if (result2)
-    mysql_free_result(result2);
 
   return;
 }
