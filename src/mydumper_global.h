@@ -105,6 +105,7 @@ extern GRecMutex *ready_table_dump_mutex;
 extern GString *set_global;
 extern GString *set_global_back;
 extern GString *set_session;
+extern gchar *sql_mode;
 extern guint char_chunk;
 extern guint complete_insert;
 extern guint dump_number;

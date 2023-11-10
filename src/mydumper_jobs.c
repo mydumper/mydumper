@@ -147,6 +147,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
 
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
 
   query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database->name);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {

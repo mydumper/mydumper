@@ -549,6 +549,8 @@ void initialize_sql_statement(GString *statement){
     if (set_names_statement)
       g_string_printf(statement,"%s;\n",set_names_statement);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+    if (sql_mode)
+      g_string_printf(statement, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
@@ -558,6 +560,8 @@ void initialize_sql_statement(GString *statement){
     }
   } else {
     g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+    if (sql_mode)
+      g_string_printf(statement, "SET SQL_MODE=%s;\n", sql_mode);
   }
 }
 
