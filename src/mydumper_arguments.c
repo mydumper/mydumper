@@ -79,6 +79,7 @@ static GOptionEntry extra_entries[] = {
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
+    {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, "Give less verbose output. Disables header/footer constructs.", NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
