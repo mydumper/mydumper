@@ -137,7 +137,7 @@ list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_am
 
 #list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
-filter_out="jammy|el9_percona57|el7_mysql80_aarch64|bookworm_mariadb1006"
+filter_out="jammy|el9_percona57|el7_mysql80_aarch64|bookworm_mariadb1006|bionic_mariadb1011|bionic_mariadb1006"
 
 for os in ${list_all_os[@]}
 do
