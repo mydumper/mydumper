@@ -374,6 +374,7 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
 }
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  g_string_set_size(ss,0);
   refresh_set_from_hash(ss, "SESSION", set_session_hash);
 }
 

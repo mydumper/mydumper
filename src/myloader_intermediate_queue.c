@@ -39,7 +39,7 @@ gchar ** gzip_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
 GMutex *metadata_mutex = NULL;
-GMutex *start_intermediate_thread=NULL;
+//GMutex *start_intermediate_thread=NULL;
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
 
@@ -50,10 +50,10 @@ void initialize_intermediate_queue (struct configuration *c){
   exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
   exec_process_id_mutex=g_mutex_new();
   metadata_mutex = g_mutex_new();
-  start_intermediate_thread = g_mutex_new();
-  g_mutex_lock(start_intermediate_thread);
-  if (stream)
-    g_mutex_unlock(start_intermediate_thread);
+//  start_intermediate_thread = g_mutex_new();
+//  g_mutex_lock(start_intermediate_thread);
+//  if (stream)
+//    g_mutex_unlock(start_intermediate_thread);
   g_mutex_lock(metadata_mutex);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
@@ -85,7 +85,7 @@ void initialize_intermediate_queue (struct configuration *c){
   initialize_control_job(c);
 }
 
-void intermediate_queue_new(gchar *filename){
+void intermediate_queue_new(const gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
@@ -93,7 +93,7 @@ void intermediate_queue_new(gchar *filename){
 }
 
 void intermediate_queue_end(){
-  g_mutex_unlock(start_intermediate_thread);
+//  g_mutex_unlock(start_intermediate_thread);
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
   g_message("Intermediate queue: Sending END job");
@@ -171,9 +171,12 @@ enum file_type process_filename(char *filename){
       if (!first_metadata){
         g_mutex_unlock(metadata_mutex);
         first_metadata=TRUE;
+        process_metadata_global(filename);
+        refresh_table_list(intermediate_conf);
+      }else if (stream){ 
+        process_metadata_global(filename);
+        refresh_table_list(intermediate_conf);
       }
-      process_metadata_global(filename);
-      refresh_table_list(intermediate_conf);
       break;
     case DATA:
       if (!no_data){
@@ -239,7 +242,7 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
 
 void *intermediate_thread(){
   struct intermediate_filename  * iflnm=NULL;
-  g_mutex_lock(start_intermediate_thread);
+//  g_mutex_lock(start_intermediate_thread);
   do{
     iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);
     if ( g_strcmp0(iflnm->filename,"END") == 0 ){

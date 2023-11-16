@@ -105,14 +105,17 @@ gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
 
-GHashTable * myloader_initialize_hash_of_session_variables(){
-  GHashTable * set_session_hash=initialize_hash_of_session_variables();
-  if (!enable_binlog)
-    g_hash_table_insert(set_session_hash,g_strdup("SQL_LOG_BIN"),g_strdup("0"));
-  if (commit_count > 1)
-    g_hash_table_insert(set_session_hash,g_strdup("AUTOCOMMIT"),g_strdup("0"));
 
-  return set_session_hash;
+GHashTable * set_session_hash=NULL;
+
+GHashTable * myloader_initialize_hash_of_session_variables(){
+  GHashTable * ssh=initialize_hash_of_session_variables();
+  if (!enable_binlog)
+    g_hash_table_insert(ssh,g_strdup("SQL_LOG_BIN"),g_strdup("0"));
+  if (commit_count > 1)
+    g_hash_table_insert(ssh,g_strdup("AUTOCOMMIT"),g_strdup("0"));
+
+  return ssh;
 }
 
 
@@ -345,7 +348,7 @@ int main(int argc, char *argv[]) {
   set_global_back = g_string_new(NULL);
   detect_server_version(conn);
   detected_server = get_product();
-  GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
+  set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
@@ -415,26 +418,29 @@ int main(int argc, char *argv[]) {
   if (serial_tbl_creation)
     max_threads_for_schema_creation=1;
 
-  initialize_worker_schema(&conf);
-  initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
 
   if (stream){
     if (resume){
       m_critical("We don't expect to find resume files in a stream scenario");
     }
+    initialize_worker_schema(&conf);
+    initialize_worker_index(&conf);
+    initialize_loader_threads(&conf);
+
     initialize_stream(&conf);
 
     wait_until_first_metadata();
-  }
-
-  initialize_loader_threads(&conf);
-
-  if (stream){
     wait_stream_to_finish();
   }else{
+    intermediate_queue_new("metadata");
+    wait_until_first_metadata();
+    initialize_worker_schema(&conf);
+    initialize_worker_index(&conf);
+    initialize_loader_threads(&conf);
     process_directory(&conf);
   }
+
   wait_schema_worker_to_finish();
   wait_loader_threads_to_finish();
   create_index_shutdown_job(&conf);

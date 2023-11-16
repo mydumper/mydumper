@@ -316,7 +316,6 @@ MYSQL *create_connection() {
 void  detect_identifier_quote_character_mix(MYSQL *conn){
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
-  GString *str;
 
   const char *query = "SELECT FIND_IN_SET('ANSI', @@SQL_MODE) OR FIND_IN_SET('ANSI_QUOTES', @@SQL_MODE)";
 
@@ -335,8 +334,15 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
     m_error("We found a mixed usage of the identifier quote character. Check SQL_MODE and --identifier-quote-character");
   }
   mysql_free_result(res);
+}
 
-  query= "SELECT REPLACE(REPLACE(REPLACE(REPLACE(@@SQL_MODE, 'NO_BACKSLASH_ESCAPES', ''), ',,', ','), 'PIPES_AS_CONCAT', ''), ',,', ',')";
+
+void  detect_sql_mode(MYSQL *conn){
+  MYSQL_RES *res = NULL;
+  MYSQL_ROW row;
+  GString *str;
+
+  const char *query= "SELECT REPLACE(REPLACE(REPLACE(REPLACE(@@SQL_MODE, 'NO_BACKSLASH_ESCAPES', ''), ',,', ','), 'PIPES_AS_CONCAT', ''), ',,', ',')";
   if (mysql_query(conn, query)){
     g_critical("Error getting SQL_MODE: %s", mysql_error(conn));
   }
@@ -364,7 +370,7 @@ MYSQL *create_main_connection() {
 //  detected_server = detect_server(conn);
   detect_server_version(conn);
   detected_server = get_product(); 
-  detect_identifier_quote_character_mix(conn);
+ // detect_identifier_quote_character_mix(conn);
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -378,6 +384,8 @@ MYSQL *create_main_connection() {
   g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
+  detect_identifier_quote_character_mix(conn);
+  detect_sql_mode(conn);
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
@@ -1262,6 +1270,10 @@ void start_dump() {
 
   g_async_queue_unref(conf.ready_non_innodb_queue);
   conf.ready_non_innodb_queue=NULL;
+
+  fprintf(mdfile, "\n[myloader_session_variables]");
+  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
+
 
   g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();
