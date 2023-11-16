@@ -299,7 +299,8 @@ void *signal_thread(void *data) {
 GHashTable * mydumper_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
   g_hash_table_insert(set_session_hash,g_strdup("information_schema_stats_expiry"),g_strdup("0 /*!80003"));
-  g_hash_table_insert(set_session_hash, g_strdup("sql_mode"), g_strdup(sql_mode));
+  if (sql_mode)
+    g_hash_table_insert(set_session_hash, g_strdup("SQL_MODE"), g_strdup(sql_mode));
   return set_session_hash;
 }
 
