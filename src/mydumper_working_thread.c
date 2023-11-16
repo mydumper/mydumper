@@ -118,12 +118,12 @@ gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
 gchar *where_option=NULL;
 gchar *rows_per_chunk=NULL;
-
-void dump_database_thread(MYSQL *, struct configuration*, struct database *);
-
 guint64 min_chunk_step_size = 0;
 guint64 rows_per_file = 0;
 guint64 max_chunk_step_size = 0;
+
+void dump_database_thread(struct thread_data *td, struct database *);
+void new_table_to_dump(struct thread_data *td, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts);
 
 void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
   gchar **split=g_strsplit(rows_p_chunk, ":", 0);
@@ -308,7 +308,7 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
   g_message("Thread %d: dumping db information for `%s`", td->thread_id,
             ddj->database->name);
-  dump_database_thread(td->thrconn, td->conf, ddj->database);
+  dump_database_thread(td, ddj->database);
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -385,7 +385,7 @@ void get_table_info_to_process_from_list( struct thread_data *td, gchar ** table
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(td->thrconn, td->conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+      new_table_to_dump(td, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -911,21 +911,19 @@ void *working_thread(struct thread_data *td) {
   return NULL;
 }
 
-GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
+GString *get_insertable_fields(struct thread_data *td, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
   GString *field_list = g_string_new("");
 
-  gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
+  g_string_printf(td->query,"select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
                       "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%'",
                       database, table);
-  mysql_query(conn, query);
-  g_free(query);
+  mysql_query(td->thrconn, td->query->str);
 
-  res = mysql_store_result(conn);
+  res = mysql_store_result(td->thrconn);
   gboolean first = TRUE;
   while ((row = mysql_fetch_row(res))) {
     if (first) {
@@ -947,19 +945,17 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
 }
 
 
-gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
+gboolean has_json_fields(struct thread_data *td, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
-  gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
+  g_string_printf(td->query,"select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
                       "COLUMN_TYPE ='json'",
                       database, table);
-  mysql_query(conn, query);
-  g_free(query);
+  mysql_query(td->thrconn, td->query->str);
 
-  res = mysql_store_result(conn);
+  res = mysql_store_result(td->thrconn);
   if (res == NULL){
     return FALSE;
   }
@@ -975,7 +971,7 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
 }
 
 
-struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
+struct function_pointer ** get_anonymized_function_for(struct thread_data *td, gchar *database, gchar *table){
   // TODO #364: this is the place where we need to link the column between file loaded and dbt.
   // Currently, we are using identity_function, which return the same data.
   // Key: `database`.`table`.`column`
@@ -987,15 +983,13 @@ struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *datab
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
 
-    gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
+    g_string_printf(td->query,"select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
                       database, table);
-    mysql_query(conn, query);
-    g_free(query);
+    mysql_query(td->thrconn, td->query->str);
 
     struct function_pointer *fp;
-    res = mysql_store_result(conn);
+    res = mysql_store_result(td->thrconn);
     guint i=0;
     anonymized_function_list = g_new0(struct function_pointer *, mysql_num_rows(res));
     g_message("Using masquerade function on `%s`.`%s`", database, table);
@@ -1142,7 +1136,73 @@ void get_primary_key_string_old(MYSQL *conn, struct db_table * dbt) {
 }
 */
 
-gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength, guint64 rows_in_sts){
+void get_primary_key(struct thread_data *td, struct db_table * dbt){
+  MYSQL_RES *indexes = NULL;
+  MYSQL_ROW row;
+//  char *field = NULL;
+  dbt->primary_key=NULL;
+// first have to pick index, in future should be able to preset in
+//   configuration too
+  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", dbt->database->name, dbt->table);
+  mysql_query(td->thrconn, query);
+  g_free(query);
+  indexes = mysql_store_result(td->thrconn);
+
+  if (indexes){
+    while ((row = mysql_fetch_row(indexes))) {
+      if (!strcmp(row[2], "PRIMARY") ) {
+//         Pick first column in PK, cardinality doesn't matter
+        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
+//        field = g_strdup(row[4]);
+//        break;
+      }
+    }
+    if (dbt->primary_key)
+      goto cleanup;
+
+//     If no PK found, try using first UNIQUE index
+    mysql_data_seek(indexes, 0);
+    while ((row = mysql_fetch_row(indexes))) {
+      if (!strcmp(row[1], "0")) {
+//         Again, first column of any unique index
+        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
+//          field = g_strdup(row[4]);
+//          break;
+      }
+    }
+
+    if (dbt->primary_key)
+      goto cleanup;
+
+//    Still unlucky? Pick any high-cardinality index
+    if (!dbt->primary_key && td->conf->use_any_index) {
+      guint64 max_cardinality = 0;
+      guint64 cardinality = 0;
+      gchar *field=NULL;
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[3], "1")) {
+          if (row[6])
+            cardinality = strtoul(row[6], NULL, 10);
+          if (cardinality > max_cardinality) {
+            field = g_strdup(row[4]);
+            max_cardinality = cardinality;
+          }
+        }
+      }
+      if (field)
+        dbt->primary_key=g_list_append(dbt->primary_key,field);
+    }
+  }
+
+cleanup:
+  if (indexes)
+    mysql_free_result(indexes);
+//  return field;
+}
+
+
+gboolean new_db_table( struct db_table **d, struct thread_data *td, struct database *database, char *table, char *table_collation, char *datalength, guint64 rows_in_sts){
   gchar * lkey = g_strdup_printf("`%s`.`%s`",database->name,table);
   g_mutex_lock(all_dbts_mutex);
   struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
@@ -1157,11 +1217,11 @@ gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *c
     dbt->table = backtick_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->rows_in_sts = rows_in_sts;
-    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
-    dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
+    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(td->thrconn, table_collation);
+    dbt->has_json_fields = has_json_fields(td, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
-    dbt->escaped_table = escape_string(conn,dbt->table);
-    dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
+    dbt->escaped_table = escape_string(td->thrconn,dbt->table);
+    dbt->anonymized_function=get_anonymized_function_for(td, dbt->database->name, dbt->table);
     dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, lkey);
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
     dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
@@ -1194,7 +1254,7 @@ gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *c
     dbt->chunks_queue=g_async_queue_new();
     dbt->chunks_completed=g_new(int,1);
     *(dbt->chunks_completed)=0;
-    get_primary_key(conn,dbt,conf);
+    get_primary_key(td,dbt);
     dbt->primary_key_separated_by_comma = NULL;
     if (order_by_primary_key)
       get_primary_key_separated_by_comma(dbt);
@@ -1204,9 +1264,9 @@ gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *c
     dbt->chunk_filesize=chunk_filesize;
 //  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
 
-    dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+    dbt->complete_insert = complete_insert || detect_generated_fields(td->thrconn, dbt->database->escaped, dbt->escaped_table);
     if (dbt->complete_insert) {
-      dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+      dbt->select_fields = get_insertable_fields(td, dbt->database->escaped, dbt->escaped_table);
     } else {
       dbt->select_fields = g_string_new("*");
     }
@@ -1272,17 +1332,17 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
+void new_table_to_dump(struct thread_data *td, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
-    create_job_to_dump_schema(database, conf);
+    create_job_to_dump_schema(database, td->conf);
     database->already_dumped=TRUE;
   }
   g_mutex_unlock(database->ad_mutex);
 
   struct db_table *dbt=NULL;
-  gboolean b=new_db_table(&dbt, conn, conf, database, table, collation, datalength, rows_in_sts);
+  gboolean b=new_db_table(&dbt, td, database, table, collation, datalength, rows_in_sts);
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
@@ -1292,15 +1352,15 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       g_mutex_lock(table_schemas_mutex);
       table_schemas=g_list_prepend( table_schemas, dbt) ;
       g_mutex_unlock(table_schemas_mutex);
-      create_job_to_dump_table_schema( dbt, conf);
+      create_job_to_dump_table_schema( dbt, td->conf);
     }
     if (dump_triggers && !database->dump_triggers) {
-      create_job_to_dump_triggers(conn, dbt, conf);
+      create_job_to_dump_triggers(td->thrconn, dbt, td->conf);
     }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
-          create_job_to_dump_checksum(dbt, conf);
+          create_job_to_dump_checksum(dbt, td->conf);
         }
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
@@ -1326,19 +1386,18 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
   } else if (is_view) {
     if (!no_schemas) {
-      create_job_to_dump_view(dbt, conf);
+      create_job_to_dump_view(dbt, td->conf);
     }
   } else { // is_sequence
     if (!no_schemas) {
-      create_job_to_dump_sequence(dbt, conf);
+      create_job_to_dump_sequence(dbt, td->conf);
     }
   }
   }
 }
 
-gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct database *database){
-  char *query;
-  MYSQL_RES *result = mysql_store_result(conn);
+gboolean determine_if_schema_is_elected_to_dump_post(struct thread_data *td, struct database *database){
+  MYSQL_RES *result = NULL; //= mysql_store_result(td->thrconn);
   MYSQL_ROW row;
   // Store Procedures and Events
   // As these are not attached to tables we need to define when we need to dump
@@ -1351,16 +1410,14 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
   if (dump_routines) {
     // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
-    if (mysql_query(conn, (query))) {
+    g_string_printf(td->query,"SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
+    if (mysql_query(td->thrconn, (td->query->str))) {
       g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
-                 mysql_error(conn));
+                 mysql_error(td->thrconn));
       errors++;
-      g_free(query);
       return FALSE;
     }
-    g_free(query);
-    result = mysql_store_result(conn);
+    result = mysql_store_result(td->thrconn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1376,16 +1433,14 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
     if (!post_dump) {
       // FUNCTIONS
-      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
-      if (mysql_query(conn, (query))) {
+      g_string_printf(td->query,"SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
+      if (mysql_query(td->thrconn, td->query->str)) {
         g_critical("Error showing function on: %s - Could not execute query: %s", database->name,
-                   mysql_error(conn));
+                   mysql_error(td->thrconn));
         errors++;
-        g_free(query);
         return FALSE;
       }
-      g_free(query);
-      result = mysql_store_result(conn);
+      result = mysql_store_result(td->thrconn);
       while ((row = mysql_fetch_row(result)) && !post_dump) {
         /* Checks skip list on 'database.sp' string */
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1402,16 +1457,14 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
   if (dump_events && !post_dump) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
-    if (mysql_query(conn, (query))) {
+    g_string_printf(td->query,"SHOW EVENTS FROM `%s`", database->name);
+    if (mysql_query(td->thrconn, td->query->str)) {
       g_critical("Error showing events on: %s - Could not execute query: %s", database->name,
-                 mysql_error(conn));
+                 mysql_error(td->thrconn));
       errors++;
-      g_free(query);
       return FALSE;
     }
-    g_free(query);
-    result = mysql_store_result(conn);
+    result = mysql_store_result(td->thrconn);
     while ((row = mysql_fetch_row(result)) && !post_dump) {
       /* Checks skip list on 'database.sp' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1427,37 +1480,34 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   return post_dump;
 }
 
-void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
+void dump_database_thread(struct thread_data *td, struct database *database) {
 
-  char *query;
-  mysql_select_db(conn, database->name);
+  mysql_select_db(td->thrconn, database->name);
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA || detected_server == SERVER_TYPE_UNKNOWN ||
       detected_server == SERVER_TYPE_TIDB)
-    query = g_strdup("SHOW TABLE STATUS");
+    g_string_printf(td->query,"SHOW TABLE STATUS");
   else if (detected_server == SERVER_TYPE_MARIADB)
-    query =
-        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
+    g_string_printf(td->query,"SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
                         "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s'",
                         database->escaped);
   else
       return;
 
-  if (mysql_query(conn, (query))) {
+  if (mysql_query(td->thrconn, (td->query->str))) {
       g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
-               mysql_error(conn));
+               mysql_error(td->thrconn));
     errors++;
-    g_free(query);
     return;
   }
 
-  MYSQL_RES *result = mysql_store_result(conn);
+  MYSQL_RES *result = mysql_store_result(td->thrconn);
   guint ecol = -1;
   guint ccol = -1;
   guint collcol = -1;
   guint rowscol = 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
   if (!result) {
-    g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
+    g_critical("Could not list tables for %s: %s", database->name, mysql_error(td->thrconn));
     errors++;
     return;
   }
@@ -1551,14 +1601,14 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
     
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+    new_table_to_dump(td, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
 
   }
 
   mysql_free_result(result);
 
-  if (determine_if_schema_is_elected_to_dump_post(conn,database)) {
-    create_job_to_dump_post(database, conf);
+  if (determine_if_schema_is_elected_to_dump_post(td,database)) {
+    create_job_to_dump_post(database, td->conf);
 //    struct schema_post *sp = g_new(struct schema_post, 1);
 //    sp->database = database;
 //    schema_post = g_list_prepend(schema_post, sp);
@@ -1566,9 +1616,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
 
   if (database->dump_triggers)
-    create_job_to_dump_schema_triggers(database, conf);
-
-  g_free(query);
+    create_job_to_dump_schema_triggers(database, td->conf);
 
   return;
 }

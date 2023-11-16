@@ -22,7 +22,7 @@ guint64 gint64_abs(gint64 a);
 void load_chunks_entries(GOptionContext *context);
 GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
-void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf);
+//void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf);
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt);
 void free_char_step(union chunk_step * cs);
 void free_integer_step(union chunk_step * cs);

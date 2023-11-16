@@ -304,14 +304,14 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   dbt->status=READY;
   g_mutex_unlock(dbt->chunks_mutex);
 }
-
+/*
 void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
   MYSQL_RES *indexes = NULL;
   MYSQL_ROW row;
 //  char *field = NULL;
   dbt->primary_key=NULL;
-  /* first have to pick index, in future should be able to preset in
- *    * configuration too */
+// first have to pick index, in future should be able to preset in
+//   configuration too 
   gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", dbt->database->name, dbt->table);
   mysql_query(conn, query);
   g_free(query);
@@ -320,7 +320,7 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   if (indexes){
     while ((row = mysql_fetch_row(indexes))) {
       if (!strcmp(row[2], "PRIMARY") ) {
-        /* Pick first column in PK, cardinality doesn't matter */
+//         Pick first column in PK, cardinality doesn't matter 
         dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
 //        field = g_strdup(row[4]);
 //        break;
@@ -329,11 +329,11 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
     if (dbt->primary_key)
       goto cleanup;
 
-    /* If no PK found, try using first UNIQUE index */
+//     If no PK found, try using first UNIQUE index 
     mysql_data_seek(indexes, 0);
     while ((row = mysql_fetch_row(indexes))) {
       if (!strcmp(row[1], "0")) {
-        /* Again, first column of any unique index */
+//         Again, first column of any unique index 
         dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
 //          field = g_strdup(row[4]);
 //          break;
@@ -343,7 +343,7 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
     if (dbt->primary_key)
       goto cleanup;
 
-    /* Still unlucky? Pick any high-cardinality index */
+//    Still unlucky? Pick any high-cardinality index 
     if (!dbt->primary_key && conf->use_any_index) {
       guint64 max_cardinality = 0;
       guint64 cardinality = 0;
@@ -369,7 +369,7 @@ cleanup:
     mysql_free_result(indexes);
 //  return field;
 }
-
+*/
 
 gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_step_item **csi, struct MList *dbt_list){
   g_mutex_lock(dbt_list->mutex);
