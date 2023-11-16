@@ -131,9 +131,8 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   }
 }
 
-void write_schema_definition_into_file(MYSQL *conn, struct database *database, char *filename) {
+void write_schema_definition_into_file(struct thread_data *td, struct database *database, char *filename) {
   int outfile=0;
-  char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
 
@@ -146,44 +145,41 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
     return;
   }
 
-  GString *statement = g_string_sized_new(statement_size);
-  initialize_sql_statement(statement);
+  g_string_set_size(td->statement, 0);
+  initialize_sql_statement(td->statement);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database->name);
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    if (success_on_1146 && mysql_errno(conn) == 1146) {
+  g_string_set_size(td->query, 0);
+  g_string_printf(td->query,"SHOW CREATE DATABASE IF NOT EXISTS `%s`", database->name);
+  if (mysql_query(td->thrconn, td->query->str) || !(result = mysql_use_result(td->thrconn))) {
+    if (success_on_1146 && mysql_errno(td->thrconn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database->name,
-                mysql_error(conn));
+                mysql_error(td->thrconn));
     } else {
       g_critical("Error dumping create database (%s): %s", database->name,
-                 mysql_error(conn));
+                 mysql_error(td->thrconn));
       errors++;
     }
-    g_free(query);
     return;
   }
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_append(statement, row[1]);
-  g_string_append(statement, ";\n");
-  if (!write_data(outfile, statement)) {
+  g_string_append(td->statement, row[1]);
+  g_string_append(td->statement, ";\n");
+  if (!write_data(outfile, td->statement)) {
     g_critical("Could not write create database for %s", database->name);
     errors++;
   }
-  g_free(query);
   m_close(0, outfile, filename, 1, NULL);
-  g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
 
-
   if (schema_checksums)
-    database->schema_checksum = write_checksum_into_file(conn, database, NULL, checksum_database_defaults);
+    database->schema_checksum = write_checksum_into_file(td->thrconn, database, NULL, checksum_database_defaults);
   return;
 }
 
-void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
+void write_table_definition_into_file(struct thread_data *td, struct db_table *dbt,
                       char *filename, gboolean checksum_filename, gboolean checksum_index_filename) {
   int outfile;
   char *query = NULL;
@@ -198,31 +194,30 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     return;
   }
 
-  GString *statement = g_string_sized_new(statement_size);
+  g_string_set_size(td->statement, 0);
+  initialize_sql_statement(td->statement);
 
-  initialize_sql_statement(statement);
-
-  if (!write_data(outfile, statement)) {
+  if (!write_data(outfile, td->statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
   }
 
   query = g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", dbt->database->name, dbt->table);
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    if (success_on_1146 && mysql_errno(conn) == 1146) {
+  if (mysql_query(td->thrconn, query) || !(result = mysql_use_result(td->thrconn))) {
+    if (success_on_1146 && mysql_errno(td->thrconn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
-                mysql_error(conn));
+                mysql_error(td->thrconn));
     } else {
       g_critical("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
-                 mysql_error(conn));
+                 mysql_error(td->thrconn));
       errors++;
     }
     g_free(query);
     return;
   }
 
-  g_string_set_size(statement, 0);
+  g_string_set_size(td->statement, 0);
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
@@ -234,27 +229,26 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     create_table = row[1];
   }
 
-  g_string_append(statement, create_table);
+  g_string_append(td->statement, create_table);
   if (schema_sequence_fix) {
     g_free(create_table);
   }
-  g_string_append(statement, ";\n");
-  if (!write_data(outfile, statement)) {
+  g_string_append(td->statement, ";\n");
+  if (!write_data(outfile, td->statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
   g_free(query);
   m_close(0, outfile, filename, 1, dbt);
-  g_string_free(statement, TRUE);
   if (result)
     mysql_free_result(result);
 
   if (checksum_filename){
-    dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
+    dbt->schema_checksum=write_checksum_into_file(td->thrconn, dbt->database, dbt->table, checksum_table_structure);
 //    g_message("Checksum for table schema: %s", dbt->schema_checksum);
   }
   if (checksum_index_filename){
-    dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
+    dbt->indexes_checksum=write_checksum_into_file(td->thrconn, dbt->database, dbt->table, checksum_table_indexes);
   }
   return;
 }
@@ -851,7 +845,7 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
   struct database_job * dj = (struct database_job *)job->job_data;
   g_message("Thread %d: dumping schema create for `%s`", td->thread_id,
             dj->database->name);
-  write_schema_definition_into_file(td->thrconn, dj->database, dj->filename);
+  write_schema_definition_into_file(td, dj->database, dj->filename);
   free_database_job(dj);
   g_free(job);
 }
@@ -907,7 +901,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *sj = (struct schema_job *)job->job_data;
   g_message("Thread %d: dumping schema for `%s`.`%s`", td->thread_id,
             sj->dbt->database->name, sj->dbt->table);
-  write_table_definition_into_file(td->thrconn, sj->dbt, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
+  write_table_definition_into_file(td, sj->dbt, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
   free_schema_job(sj);
   g_free(job);
 //  if (g_atomic_int_dec_and_test(&table_counter)) {

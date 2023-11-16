@@ -317,10 +317,9 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   }
 }
 
-void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
+void get_table_info_to_process_from_list( struct thread_data *td, gchar ** table_list) {
 
   gchar **dt = NULL;
-  char *query = NULL;
   guint x;
 
   for (x = 0; table_list[x] != NULL; x++) {
@@ -328,30 +327,28 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
   // Need 7 columns with DATA_LENGTH as the last one for this to work
     if (detected_server == SERVER_TYPE_MARIADB){
-      query =
-          g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
+          g_string_printf(td->query, "SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
                           "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
                           dt[0], dt[1]);
     }else{
-      query =
-          g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
+          g_string_printf(td->query,"SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
     }
-    if (mysql_query(conn, (query))) {
+    if (mysql_query(td->thrconn, td->query->str)) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
-                 mysql_error(conn));
+                 mysql_error(td->thrconn));
       errors++;
       return;
     }
 
-    MYSQL_RES *result = mysql_store_result(conn);
+    MYSQL_RES *result = mysql_store_result(td->thrconn);
     guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
     determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
     struct database * database=NULL;
-    if (get_database(conn, dt[0], &database)){
+    if (get_database(td->thrconn, dt[0], &database)){
       if (!database->already_dumped){
         g_mutex_lock(database->ad_mutex);
         if (!database->already_dumped){
-          create_job_to_dump_schema(database, conf);
+          create_job_to_dump_schema(database, td->conf);
           database->already_dumped=TRUE;
         }
         g_mutex_unlock(database->ad_mutex);
@@ -360,7 +357,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     }
 
     if (!result) {
-      g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
+      g_critical("Could not list tables for %s: %s", database->name, mysql_error(td->thrconn));
       errors++;
       return;
     }
@@ -388,15 +385,14 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+      new_table_to_dump(td->thrconn, td->conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
     }
     mysql_free_result(result);
     g_strfreev(dt);
   }
 
-  g_free(query);
   if (g_atomic_int_dec_and_test(&database_counter)) {
-    g_async_queue_push(conf->db_ready,GINT_TO_POINTER(1));
+    g_async_queue_push(td->conf->db_ready,GINT_TO_POINTER(1));
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
   }
 
@@ -406,7 +402,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
 void thd_JOB_DUMP_TABLE_LIST(struct thread_data *td, struct job *job){
   struct dump_table_list_job * dtlj = (struct dump_table_list_job *)job->job_data;
-  get_table_info_to_process_from_list(td->thrconn, td->conf, dtlj->table_list);
+  get_table_info_to_process_from_list(td, dtlj->table_list);
   g_free(dtlj);
 }
 

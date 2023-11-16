@@ -1120,6 +1120,8 @@ void start_dump() {
     td[n].binlog_snapshot_gtid_executed = NULL;
     td[n].pause_resume_mutex=NULL;
     td[n].table_name=NULL;
+    td[n].statement = g_string_sized_new(statement_size);
+    td[n].query = g_string_sized_new(statement_size);
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);

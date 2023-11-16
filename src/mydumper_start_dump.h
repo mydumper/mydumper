@@ -101,6 +101,8 @@ struct thread_data {
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
   GMutex *pause_resume_mutex;
+  GString *statement;
+  GString *query;
 };
 
 struct job {

@@ -643,14 +643,12 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
 
 /* Do actual data chunk reading/writing magic */
 void write_table_job_into_file(struct table_job * tj){
-  MYSQL *conn = tj->td->thrconn;
   MYSQL_RES *result = NULL;
-  char *query = NULL;
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
   /* Poor man's database code */
-  query = g_strdup_printf(
+  g_string_printf(tj->td->query,
       "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
@@ -661,14 +659,14 @@ void write_table_job_into_file(struct table_job * tj){
       tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+  if (mysql_query(tj->td->thrconn, tj->td->query->str) || !(result = mysql_use_result(tj->td->thrconn))) {
     // ERROR 1146
-    if (success_on_1146 && mysql_errno(conn) == 1146) {
+    if (success_on_1146 && mysql_errno(tj->td->thrconn) == 1146) {
       g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
-                mysql_error(conn), query);
+                mysql_error(tj->td->thrconn), tj->td->query->str);
     } else {
       g_critical("Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->dbt->database->name, tj->dbt->table,
-                 mysql_error(conn), query);
+                 mysql_error(tj->td->thrconn), tj->td->query->str);
       errors++;
     }
     goto cleanup;
@@ -676,19 +674,17 @@ void write_table_job_into_file(struct table_job * tj){
 
   /* Poor man's data dump code */
   if (load_data)
-    write_row_into_file_in_load_data_mode(conn, result, tj);
+    write_row_into_file_in_load_data_mode(tj->td->thrconn, result, tj);
   else
-    write_row_into_file_in_sql_mode(conn, result, tj);
+    write_row_into_file_in_sql_mode(tj->td->thrconn, result, tj);
 
-  if (mysql_errno(conn)) {
+  if (mysql_errno(tj->td->thrconn)) {
     g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,
-               mysql_error(conn));
+               mysql_error(tj->td->thrconn));
     errors++;
   }
 
 cleanup:
-  g_free(query);
-
   if (result) {
     mysql_free_result(result);
   }
