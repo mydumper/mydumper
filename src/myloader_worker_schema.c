@@ -128,10 +128,11 @@ gboolean process_schema(struct thread_data * td){
       ret=process_job(td, job);
       trace("Set DB created: %s", real_db_name->name);
       set_db_schema_created(real_db_name);
+      trace("Set DB created: %s", real_db_name->name);
       g_mutex_unlock(real_db_name->mutex);
       break;
     case SCHEMA_TABLE:
-    case SCHEMA_SEQUENCE:
+    case SCHEMA_SEQUENCE: {
       job=g_async_queue_pop(td->conf->table_queue);
       const gboolean restore= (job->type == JOB_RESTORE);
       char *filename;
@@ -139,9 +140,8 @@ gboolean process_schema(struct thread_data * td){
         filename= job->data.restore_job->filename;
         trace("table_queue -> %s: %s", ft2str(ft), filename);
         execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
-        trace("table_queue -> %s: %s", ft2str(ft), job->data.restore_job->filename);
-      }
-      else
+        trace("table_queue -> %s: %s", ft2str(ft), filename);
+      } else
         trace("table_queue -> %s", jtype2str(job->type));
       ret=process_job(td, job);
       if (ft == SCHEMA_TABLE)
@@ -156,6 +156,7 @@ gboolean process_schema(struct thread_data * td){
         g_mutex_unlock(&sequences_mutex);
       }
       break;
+    }
     case INTERMEDIATE_ENDED:
       if (!second_round){
         g_mutex_lock(&sequences_mutex);
