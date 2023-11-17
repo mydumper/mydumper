@@ -242,7 +242,6 @@ void initialize_working_thread(){
 
   initialize_jobs();
   initialize_chunk();
-  initialize_write();
 
   if (dump_checksums){
     data_checksums = TRUE;

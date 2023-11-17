@@ -51,13 +51,13 @@ guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
 gboolean csv = FALSE;
-gchar *fields_enclosed_by=NULL;
+const gchar *fields_enclosed_by=NULL;
 gchar *fields_escaped_by=NULL;
 gchar *fields_terminated_by=NULL;
 gchar *lines_starting_by=NULL;
 gchar *lines_terminated_by=NULL;
 gchar *statement_terminated_by=NULL;
-gchar *fields_enclosed_by_ld=NULL;
+const gchar *fields_enclosed_by_ld=NULL;
 gchar *lines_starting_by_ld=NULL;
 gchar *lines_terminated_by_ld=NULL;
 gchar *statement_terminated_by_ld=NULL;
@@ -75,25 +75,25 @@ void initialize_write(){
     g_warning("We are going to chunk by row and by filesize when possible");
   }
 
-  fields_enclosed_by=g_strdup("\"");
+  g_assert(fields_enclosed_by); // initialized in detect_quote_character()
+
   if (csv){
     load_data=TRUE;
     if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
-    if (!fields_enclosed_by_ld) fields_enclosed_by_ld=g_strdup("\"");
+    if (!fields_enclosed_by_ld) fields_enclosed_by_ld= "\"";
     if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
     if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\\n");
   }
 //  if (load_data){
     if (!fields_enclosed_by_ld){
       if (load_data){
-        g_free(fields_enclosed_by);
-        fields_enclosed_by=g_strdup("");
+        fields_enclosed_by= "";
       }
-      fields_enclosed_by_ld=fields_enclosed_by;
+      fields_enclosed_by_ld= fields_enclosed_by;
     }else if(strlen(fields_enclosed_by_ld)>1){
       m_critical("--fields-enclosed-by must be a single character");
     }else{
-      fields_enclosed_by=fields_enclosed_by_ld;
+      fields_enclosed_by= fields_enclosed_by_ld;
     }
 
   if (load_data){
@@ -157,7 +157,6 @@ void initialize_write(){
 }
 
 void finalize_write(){
-  g_free(fields_enclosed_by);
   g_free(fields_terminated_by);
   g_free(lines_starting_by);
   g_free(lines_terminated_by);

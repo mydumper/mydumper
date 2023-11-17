@@ -57,6 +57,7 @@
 #include "regex.h"
 #include "common.h"
 #include "common_options.h"
+#include "mydumper_global.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_jobs.h"
 #include "mydumper_common.h"
@@ -313,7 +314,9 @@ MYSQL *create_connection() {
   return conn;
 }
 
-void  detect_identifier_quote_character_mix(MYSQL *conn){
+static
+void detect_quote_character(MYSQL *conn)
+{
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
   GString *str;
@@ -330,9 +333,14 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
     return ;
   }
   row = mysql_fetch_row(res);
-  if ((g_strcmp0(row[0], "0") && identifier_quote_character==BACKTICK)
-  || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
-    m_error("We found a mixed usage of the identifier quote character. Check SQL_MODE and --identifier-quote-character");
+  if (!strcmp(row[0], "0")) {
+    identifier_quote_character= BACKTICK;
+    identifier_quote_character_str= "`";
+    fields_enclosed_by= "\"";
+  } else {
+    identifier_quote_character= DOUBLE_QUOTE;
+    identifier_quote_character_str= "\"";
+    fields_enclosed_by= "'";
   }
   mysql_free_result(res);
 
@@ -364,7 +372,8 @@ MYSQL *create_main_connection() {
 //  detected_server = detect_server(conn);
   detect_server_version(conn);
   detected_server = get_product(); 
-  detect_identifier_quote_character_mix(conn);
+  detect_quote_character(conn);
+  initialize_write();
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -694,13 +703,16 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 }
 
 
+// see write_database_on_disk() for db write to metadata
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->name);
   char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
+  const char q= identifier_quote_character;
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", name, table_filename, table, dbt->rows);
+  g_string_append_printf(data,"\n[%c%s%c.%c%s%c]\n", q, name, q, q, table_filename, q);
+  g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
   g_free(table_filename);
   g_free(table);

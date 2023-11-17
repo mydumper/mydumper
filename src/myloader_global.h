@@ -63,6 +63,8 @@ extern gboolean skip_definer;
 extern gboolean skip_post;
 extern gboolean skip_triggers;
 extern gboolean stream;
+/* Whether --quote-character was set from CLI */
+extern gboolean quote_character_cli;
 extern gchar *compress_extension;
 extern gchar *db;
 extern gchar *directory;
@@ -78,6 +80,7 @@ extern GMutex *load_data_list_mutex;
 extern GString *set_session;
 extern guint commit_count;
 extern guint errors;
+extern guint max_errors;
 extern guint max_threads_for_index_creation;
 extern guint max_threads_for_post_creation;
 extern guint max_threads_for_schema_creation;
@@ -93,8 +96,6 @@ extern unsigned long long int total_data_sql_files;
 extern int detected_server;
 extern int (*m_close)(void *file);
 //extern int (*m_write)(FILE * file, const char * buff, int len);
-extern gchar identifier_quote_character;
-extern gchar * identifier_quote_character_str;
 extern GString *change_master_statement;
 
 extern gchar *exec_per_thread;

@@ -86,6 +86,7 @@ GCond sequences_cond;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
+guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
@@ -94,6 +95,7 @@ guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
+gboolean quote_character_cli= FALSE;
 
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
@@ -360,7 +362,6 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
-  identifier_quote_character_str=g_strdup_printf("%c",identifier_quote_character);
   // TODO: we need to set the variables in the initilize session varibles, not from:
 //  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
 //    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));

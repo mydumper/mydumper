@@ -84,14 +84,17 @@ gboolean get_database(MYSQL *conn, char *database_name, struct database ** datab
   return FALSE;
 }
 
+// see print_dbt_on_metadata_gstring() for table write to metadata
+
 void write_database_on_disk(FILE *mdfile){
   GHashTableIter iter;
   gchar * lkey;
+  const char q= identifier_quote_character;
   g_hash_table_iter_init ( &iter, database_hash);
   struct database *d=NULL;
   while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
     if (d->schema_checksum != NULL || d->post_checksum != NULL || d->triggers_checksum)
-      fprintf(mdfile, "\n[`%s`]\n", d->name);
+      fprintf(mdfile, "\n[%c%s%c]\n", q, d->name, q);
     if (d->schema_checksum != NULL)
       fprintf(mdfile, "%s = %s\n", "schema_checksum", d->schema_checksum);
     if (d->post_checksum != NULL)

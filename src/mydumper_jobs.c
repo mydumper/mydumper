@@ -165,6 +165,11 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
+  if (!strstr(row[1], identifier_quote_character_str)) {
+    g_critical("Identifier quote [%s] not found when fetching %s",
+               identifier_quote_character_str, database->name);
+    errors++;
+  }
   g_string_append(statement, row[1]);
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {

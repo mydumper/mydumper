@@ -34,23 +34,34 @@ extern gboolean enable_binlog;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
-  if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
+  if (!strcmp(option_name, "--innodb-optimize-keys")) {
     innodb_optimize_keys = TRUE;
     if (value==NULL){
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,22,AFTER_IMPORT_PER_TABLE)){
+    if (!strcmp(value, AFTER_IMPORT_PER_TABLE)) {
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,23,AFTER_IMPORT_ALL_TABLES)){
+    if (!strcmp(value, AFTER_IMPORT_ALL_TABLES)) {
       innodb_optimize_keys_all_tables = TRUE;
       innodb_optimize_keys_per_table = FALSE;
       return TRUE;
     }
+  } else if (!strcmp(option_name, "--quote-character")) {
+    quote_character_cli= TRUE;
+    if (!strcmp(value, "BACKTICK") || !strcmp(value, "bt") || !strcmp(value, "`")) {
+      identifier_quote_character= BACKTICK;
+      return TRUE;
+    }
+    if (!strcmp(value, "DOUBLE_QUOTE") || !strcmp(value, "dq") || !strcmp(value, "\"")) {
+      identifier_quote_character= DOUBLE_QUOTE;
+      return TRUE;
+    }
+    g_critical("--quote-character accepts BACKTICK, bt, `, DOUBLE_QUOTE, dt, \"");
   }
   return FALSE;
 }
@@ -63,7 +74,10 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
-
+    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Identifier quote character used in INSERT statements. "
+      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+      "Default: detect from dump if possible, otherwise BACKTICK", NULL},
 
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},

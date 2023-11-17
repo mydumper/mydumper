@@ -461,6 +461,8 @@ void process_database_filename(char * filename) {
   }
 }
 
+
+/* @return TRUE to enqueue */
 gboolean process_table_filename(char * filename){
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
@@ -478,6 +480,10 @@ gboolean process_table_filename(char * filename){
   dbt=append_new_db_table(real_db_name, table_name,0,NULL);
   dbt->schema_state=NOT_CREATED;
   struct control_job * cj = load_schema(dbt, g_build_filename(directory,filename,NULL));
+  if (!cj) {
+    g_free(dbt);
+    return FALSE;
+  }
   g_mutex_lock(real_db_name->mutex);
   /*
     When processing is possible buffer queues from real_db_name requeued into
@@ -508,26 +514,47 @@ void process_metadata_global(const char *file)
 
   message("Reading metadata: %s", file);
   guint j=0;
-  GError *error = NULL;
   gchar *value=NULL;
   gchar *real_table_name;
-  gsize len=0;
   gsize length=0;
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
   change_master_statement=g_string_new("");
-  gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
+  const char *delim_bt= "`.`";
+  const char *delim_dq= "\".\"";
+  if (!quote_character_cli) {
+    identifier_quote_character_str= 0;
+    for (j= 0; j < length; ++j) {
+      identifier_quote_character= groups[j][0];
+      switch (identifier_quote_character) {
+      case BACKTICK:
+        identifier_quote_character_str= "`";
+        break;
+      case DOUBLE_QUOTE:
+        identifier_quote_character_str= "\"";
+        break;
+      default:
+        continue;
+      }
+      break;
+    }
+    if (!identifier_quote_character_str)
+      g_error("metadata is broken: quote character not found in groups");
+  }
+  const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
+  const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
+  trace("metadata: quote character is %c", identifier_quote_character);
   for (j=0; j<length; j++){
     gchar *group= newline_unprotect(groups[j]);
-    if (g_str_has_prefix(group,"`")){
+    if (g_str_has_prefix(group, wrong_quote))
+      g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
+    else if (g_str_has_prefix(group, identifier_quote_character_str)) {
       database_table= g_strsplit(group+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
         dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
-        error = NULL;
-        gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
         dbt->data_checksum=get_value(kf,group,"data_checksum");
         dbt->schema_checksum=get_value(kf,group,"schema_checksum");
         dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
@@ -555,8 +582,7 @@ void process_metadata_global(const char *file)
           else
             g_free(real_table_name);
         }
-        g_strfreev(keys);
-      }else{
+      } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         struct database *database=get_db_hash(database_table[0],database_table[0]);
         database->schema_checksum=get_value(kf,group,"schema_checksum");
@@ -567,10 +593,11 @@ void process_metadata_global(const char *file)
       change_master(kf, group, change_master_statement);
     }else if (g_strstr_len(group,6,"master")){
       change_master(kf, group, change_master_statement);
+    } else {
+      trace("metadata: skipping group %s", group);
     }
     g_free(group);
   }
-  g_free(delimiter);
 }
 
 
