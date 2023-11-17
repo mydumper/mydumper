@@ -116,3 +116,9 @@ gchar *get_gzip_cmd();
 char * backtick_protect(char *r);
 char * newline_protect(char *r);
 char * newline_unprotect(char *r);
+extern void trace(const char *format, ...);
+#define message(...) \
+  if (debug) \
+    trace(__VA_ARGS__); \
+  else \
+    g_message(__VA_ARGS__);

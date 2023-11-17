@@ -64,21 +64,24 @@ void initialize_loader_threads(struct configuration *conf){
 }
 
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  g_message("Thread %d: Enqueuing index for table: `%s`.`%s`", tdid, dbt->database->real_database, dbt->table);
+  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
+  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
   g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;
 }
 
-void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+gboolean enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
   if (dbt->schema_state==DATA_DONE){
     if (dbt->indexes == NULL){
       dbt->schema_state=ALL_DONE;
+      return FALSE;
     }else{
-      create_index_job(conf, dbt, 0);
+      return create_index_job(conf, dbt, 0);
     }
   }
+  return dbt->schema_state != ALL_DONE;
 }
 
 void enqueue_indexes_if_possible(struct configuration *conf){
@@ -89,7 +92,7 @@ void enqueue_indexes_if_possible(struct configuration *conf){
   while (iter != NULL){
     dbt=iter->data;
     g_mutex_lock(dbt->mutex);
-    enqueue_index_for_dbt_if_possible(conf,dbt);
+    (void) enqueue_index_for_dbt_if_possible(conf,dbt);
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }
@@ -109,11 +112,14 @@ void *process_loader_thread(struct thread_data * td) {
   struct db_table * dbt = NULL;
   while (cont){
     // control job threads needs to know that I'm ready to receive another job
+    trace("refresh_db_queue <- %s", ft2str(THREAD));
     g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(here_is_your_job));
+    trace("here_is_your_job -> %s", ft2str(ft));
     switch (ft){
     case DATA:
       rj = (struct restore_job *)g_async_queue_pop(data_queue);
+      trace("data_queue -> %s: %s", rjtype2str(rj->type), rj->dbt ? rj->dbt->table : rj->filename);
       dbt = rj->dbt;
       job=new_job(JOB_RESTORE,rj, dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
@@ -161,13 +167,13 @@ void *loader_thread(struct thread_data *td) {
     }
   }
 
-  g_debug("Thread %d: Starting import", td->thread_id);
+  trace("Thread %d: Starting import", td->thread_id);
   process_loader_thread(td);
 
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("Thread %d: ending", td->thread_id);
+  trace("Thread %d: ending", td->thread_id);
   return NULL;
 }
 

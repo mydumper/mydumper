@@ -417,7 +417,7 @@ void process_database_filename(char * filename) {
     m_critical("It was not possible to process db file: %s",filename);
   }
 
-  g_debug("Adding database: %s -> %s", db_kname, db_vname);
+  trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *real_db_name = get_db_hash(db_kname, db_vname);
   if (!db){
     real_db_name->schema_state=NOT_CREATED;
@@ -455,8 +455,10 @@ gboolean process_table_filename(char * filename){
     g_mutex_unlock(real_db_name->mutex);
     return FALSE;
   }else{
-    if (cj)
+    if (cj) {
+      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
       g_async_queue_push(conf->table_queue, cj);
+    }
   }
   g_mutex_unlock(real_db_name->mutex);
   return TRUE;
@@ -470,7 +472,7 @@ gboolean process_metadata_global(gchar *file){
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
-  g_message("Reading metadata: %s", file);
+  message("Reading metadata: %s", file);
   guint j=0;
   GError *error = NULL;
   gchar *value=NULL;
@@ -583,12 +585,16 @@ gboolean process_schema_sequence_filename(gchar *filename) {
   struct control_job *cj= new_job(JOB_RESTORE,rj,real_db_name);
   g_mutex_lock(real_db_name->mutex);
   if (real_db_name->schema_state != CREATED){
+    trace("%s.sequence_queue <- %s: %s", database, rjtype2str(cj->data.restore_job->type), filename);
+    trace("real_db_name: %p; sequence_queue: %p", real_db_name, real_db_name->sequence_queue);
     g_async_queue_push(real_db_name->sequence_queue, cj);
     g_mutex_unlock(real_db_name->mutex);
     return FALSE;
   }else{
-    if (cj)
+    if (cj) {
+      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
       g_async_queue_push(conf->table_queue, cj);
+    }
   }
   g_mutex_unlock(real_db_name->mutex);
   return TRUE;

@@ -20,6 +20,22 @@
 #include "myloader.h"
 
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_TO_CREATE_TABLE, JOB_RESTORE_STRING };
+static inline
+const char * rjtype2str(enum restore_job_type rjtype)
+{
+  switch (rjtype) {
+  case JOB_RESTORE_SCHEMA_FILENAME:
+    return "JOB_RESTORE_SCHEMA_FILENAME";
+  case JOB_RESTORE_FILENAME:
+    return "JOB_RESTORE_FILENAME";
+  case JOB_TO_CREATE_TABLE:
+    return "JOB_TO_CREATE_TABLE";
+  case JOB_RESTORE_STRING:
+    return "JOB_RESTORE_STRING";
+  }
+  g_assert(0);
+  return 0;
+}
 enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE };
 
 struct data_restore_job{
