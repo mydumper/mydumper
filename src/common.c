@@ -896,3 +896,19 @@ char * newline_unprotect(char *r) {
   r= g_string_free(s, FALSE);
   return r;
 }
+
+extern gboolean debug;
+
+void trace(const char *format, ...)
+{
+  if (!debug)
+    return;
+  char format2[1024];
+  char msg[1024];
+  snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
+  va_list args;
+  va_start(args, format);
+  vsnprintf(msg, sizeof(msg), format2, args);
+  va_end(args);
+  g_debug("%s", msg);
+}

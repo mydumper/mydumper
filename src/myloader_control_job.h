@@ -21,6 +21,18 @@
 #include "myloader.h"
 
 enum control_job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN };
+static inline const char *jtype2str(enum control_job_type jtype)
+{
+  switch (jtype) {
+  case JOB_RESTORE:
+    return "JOB_RESTORE";
+  case JOB_WAIT:
+    return "JOB_WAIT";
+  case JOB_SHUTDOWN:
+    return "JOB_SHUTDOWN";
+  }
+  g_assert(0);
+}
 
 union control_job_data {
   struct restore_job *restore_job;

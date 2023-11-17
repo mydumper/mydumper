@@ -36,10 +36,11 @@
 #include "myloader_global.h"
 #include "myloader_worker_schema.h"
 
-
+/* refresh_db_queue2 is for schemas creation */
 GAsyncQueue *refresh_db_queue2 = NULL;
 
 void schema_queue_push(enum file_type current_ft){
+  trace("refresh_db_queue2 <- %s", ft2str(current_ft));
   g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(current_ft));
 }
 
@@ -77,7 +78,8 @@ void set_db_schema_created(struct database * real_db_name, struct configuration 
   cj= g_async_queue_try_pop(queue);
   while (cj != NULL){
     g_async_queue_push(object_queue, cj);
-    g_async_queue_push(refresh_db_queue2, data);
+    trace("refresh_db_queue2 <- %s (requeuing from db queue)", ft2str(ft));
+    g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(ft));
     cj = g_async_queue_try_pop(queue);
   }
 
@@ -113,14 +115,17 @@ gboolean process_schema(struct thread_data * td){
   struct control_job *job = NULL;
   gboolean ret=TRUE;
   ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue2));
+  trace("refresh_db_queue2 -> %s", ft2str(ft));
   switch (ft){
 
     case SCHEMA_CREATE:
       job=g_async_queue_pop(td->conf->database_queue);
       real_db_name=job->data.restore_job->data.srj->database;
+      trace("database_queue -> %s: %s", ft2str(ft), real_db_name->name);
       g_mutex_lock(real_db_name->mutex);
       ret=process_job(td, job);
       set_db_schema_created(real_db_name, td->conf);
+      trace("Set DB created: %s", real_db_name->name);
       g_mutex_unlock(real_db_name->mutex);
       break;
     case SCHEMA_TABLE:
@@ -130,8 +135,11 @@ gboolean process_schema(struct thread_data * td){
       char *filename;
       if (restore) {
         filename= job->data.restore_job->filename;
+        trace("table_queue -> %s: %s", ft2str(ft), filename);
         execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
-      }
+        trace("table_queue -> %s: %s", ft2str(ft), filename);
+      } else
+        trace("table_queue -> %s", jtype2str(job->type));
       ret=process_job(td, job);
       if (ft == SCHEMA_TABLE)
         refresh_db_and_jobs(DATA);
@@ -139,6 +147,7 @@ gboolean process_schema(struct thread_data * td){
         g_assert(ft == SCHEMA_SEQUENCE && sequences_processed < sequences);
         g_mutex_lock(&sequences_mutex);
         ++sequences_processed;
+        trace("Processed sequence: %s (%u of %u)", filename, sequences_processed, sequences);
         // TODO: use g_cond_signal() after ensuring INTERMEDIATE_ENDED processed only in one thread
         g_cond_broadcast(&sequences_cond);
         g_mutex_unlock(&sequences_mutex);
@@ -148,30 +157,34 @@ gboolean process_schema(struct thread_data * td){
     case INTERMEDIATE_ENDED:
       if (!second_round){
         g_mutex_lock(&sequences_mutex);
-        while (sequences_processed < sequences)
+        while (sequences_processed < sequences) {
+          trace("INTERMEDIATE_ENDED waits %d sequences", sequences - sequences_processed);
           g_cond_wait(&sequences_cond, &sequences_mutex);
+        }
         g_mutex_unlock(&sequences_mutex);
         g_hash_table_iter_init ( &iter, db_hash );
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
           wait_db_schema_created(real_db_name);
           set_db_schema_created(real_db_name, td->conf);
         }
-        g_message("Schema creation enqueing completed");
+        message("Schema creation enqueing completed");
         second_round=TRUE;
+        trace("refresh_db_queue2 <- %s (first round)", ft2str(ft));
         g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(ft));
       }else{
         set_table_schema_state_to_created(td->conf);
-        g_message("Table creation enqueing completed");
+        message("Table creation enqueing completed");
         guint n=0;
         for (n = 0; n < max_threads_for_schema_creation; n++) {
+          trace("table_queue <- JOB_SHUTDOWN");
           g_async_queue_push(td->conf->table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-
+          trace("refresh_db_queue2 <- %s (second round)", ft2str(SCHEMA_TABLE));
           g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
         }
       }
       break;
     default:
-        g_message("Default in schema: %d", ft);
+        message("Default in schema: %d", ft);
       break;
   }
 
@@ -198,18 +211,17 @@ void *worker_schema_thread(struct thread_data *td) {
       m_critical("S-Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }
   }
-    
-  g_message("S-Thread %d: Starting import", td->thread_id);
+
+  message("S-Thread %d: Starting import", td->thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_schema(td);
   }
-  g_message("S-Thread %d: Import completed", td->thread_id);
+  message("S-Thread %d: Import completed", td->thread_id);
 
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("S-Thread %d: ending", td->thread_id);
   return NULL;
 }
 

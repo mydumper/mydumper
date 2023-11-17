@@ -85,6 +85,7 @@ void intermediate_queue_new(const gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
+  trace("intermediate_queue <- %s (%u)", iflnm->filename, iflnm->iterations);
   g_async_queue_push(intermediate_queue, iflnm);
 }
 
@@ -92,9 +93,9 @@ void intermediate_queue_end(){
   g_mutex_unlock(start_intermediate_thread);
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
-  g_message("Intermediate queue: Sending END job");
+  message("Intermediate queue: Sending END job");
   g_thread_join(stream_intermediate_thread);
-  g_message("Intermediate thread: SHUTDOWN");
+  message("Intermediate thread: SHUTDOWN");
   intermediate_queue_ended=TRUE;
 }
 
@@ -103,6 +104,7 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 // the idea is to keep track how many times a filename was incomplete and
 // at what stage
   iflnm->iterations++;
+  trace("intermediate_queue <- %s (%u) incomplete", iflnm->filename, iflnm->iterations);
   g_async_queue_push(intermediate_queue, iflnm);
 }
 
@@ -208,7 +210,6 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     if (iflnm->iterations > 5){
       g_warning("Max renqueing reached for: %s", iflnm->filename);
     }else{
-      g_debug("Requeuing in intermediate queue %u: %s", iflnm->iterations, iflnm->filename);
       intermediate_queue_incomplete(iflnm);
     }
 //    g_async_queue_push(intermediate_queue, filename);
@@ -229,8 +230,10 @@ void *intermediate_thread(){
   g_mutex_lock(start_intermediate_thread);
   do{
     iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);
+    trace("intermediate_queue -> %s (%u)", iflnm->filename, iflnm->iterations);
     if ( g_strcmp0(iflnm->filename,"END") == 0 ){
       if (g_async_queue_length(intermediate_queue)>0){
+        trace("intermediate_queue <- %s (%u)", iflnm->filename, iflnm->iterations);
         g_async_queue_push(intermediate_queue,iflnm);
         continue;
       }
@@ -247,7 +250,7 @@ void *intermediate_thread(){
   }
 //  if (innodb_optimize_keys_all_tables)
 //    enqueue_all_index_jobs(intermediate_conf);
-  g_message("Intermediate thread ended");
+  message("Intermediate thread ended");
   refresh_db_and_jobs(INTERMEDIATE_ENDED);
   return NULL;
 }

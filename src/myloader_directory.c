@@ -44,7 +44,6 @@ void *process_directory(struct configuration *conf){
       for (i=0; i<g_strv_length(split);i++){
         if (strlen(split[i])>2){
           filename=split[i];
-          g_debug("Resuming file: %s", filename);
           intermediate_queue_new(g_strdup(filename));
         }
       }
