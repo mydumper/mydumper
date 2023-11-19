@@ -78,7 +78,7 @@ gboolean process_job(struct thread_data *td, struct control_job *job){
 //      GAsyncQueue *queue=job->data.queue;
       g_async_queue_pop(job->data.queue);
       break;
-    case JOB_SHUTDOWN:
+    case JOB_SHUTDOWN: // TODO: do we need JOB_SHUTDOWN for data_queue as it is done in here_is_your_job queue?
 //      g_message("Thread %d: shutting down", td->thread_id);
       g_free(job);
       return FALSE;
@@ -343,7 +343,7 @@ void wake_threads_waiting(struct configuration *conf, guint *threads_waiting){
 void *control_job_thread(struct configuration *conf){
   enum file_type ft;
   struct restore_job *rj=NULL;
-  guint threads_waiting=0;
+  guint threads_waiting= num_threads;
 //  GHashTableIter iter;
 //  gchar * lkey=NULL;
   gboolean giveup;
