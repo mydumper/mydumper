@@ -38,6 +38,7 @@
 
 /* refresh_db_queue2 is for schemas creation */
 GAsyncQueue *refresh_db_queue2 = NULL;
+struct thread_data *schema_td = NULL;
 
 void schema_queue_push(enum file_type current_ft){
   trace("refresh_db_queue2 <- %s", ft2str(current_ft));
@@ -175,7 +176,8 @@ gboolean process_schema(struct thread_data * td){
         set_table_schema_state_to_created(td->conf);
         message("Table creation enqueing completed");
         guint n=0;
-        for (n = 0; n < max_threads_for_schema_creation; n++) {
+        td= schema_td;
+        for (n = 0; n < max_threads_for_schema_creation; n++, td++) {
           trace("table_queue <- JOB_SHUTDOWN");
           g_async_queue_push(td->conf->table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
           trace("refresh_db_queue2 <- %s (second round)", ft2str(SCHEMA_TABLE));
@@ -226,7 +228,6 @@ void *worker_schema_thread(struct thread_data *td) {
 }
 
 GThread **schema_threads = NULL;
-struct thread_data *schema_td = NULL;
 
 void initialize_worker_schema(struct configuration *conf){
   guint n=0;
