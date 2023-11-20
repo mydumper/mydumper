@@ -248,7 +248,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
         dbt->current_threads++;
         g_mutex_unlock(dbt->mutex);
         giveup=FALSE;
-        trace("%s.%s sending %s: %s, prohibiting finish", dbt->database->real_database, dbt->real_table, rjtype2str(job->type), job->filename);
+        trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->real_database, dbt->real_table,
+              rjtype2str(job->type), job->filename, dbt->current_threads);
         break;
       }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
@@ -278,18 +279,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
   g_mutex_unlock(conf->table_list_mutex);
   *rj = job;
   return giveup;
-}
-
-gboolean give_me_next_data_job(struct thread_data * td, gboolean test_condition, struct restore_job ** rj){
-  return give_me_next_data_job_conf(td->conf, test_condition, rj);
-}
-
-gboolean give_any_data_job_conf(struct configuration *conf, struct restore_job ** rj){
- return give_me_next_data_job_conf(conf, FALSE, rj);
-}
-
-gboolean give_any_data_job(struct thread_data * td, struct restore_job ** rj){
- return give_me_next_data_job_conf(td->conf, FALSE, rj);
 }
 
 void refresh_db_and_jobs(enum file_type current_ft){
@@ -375,7 +364,7 @@ void *control_job_thread(struct configuration *conf){
         g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
       }else{
 //        g_message("Thread is asking for job again");
-        giveup = give_any_data_job_conf(conf, &rj);
+        giveup = give_me_next_data_job_conf(conf, FALSE, &rj);
         if (rj != NULL){
 //          g_message("job available in give_any_data_job");
           trace("data_queue <- %s: %s", rjtype2str(rj->type), rj->dbt ? rj->dbt->table : rj->filename);
