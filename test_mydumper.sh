@@ -27,6 +27,8 @@ do
   fi
 done
 
+ulimit -c unlimited
+
 test_case_dir (){
   # Test case
   # We should consider each test case, with different mydumper/myloader parameters
@@ -51,6 +53,11 @@ test_case_dir (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
+      echo -n "Core pattern: "
+      cat /proc/sys/kernel/core_pattern
+      core=$(find . -name "core*" -print -quit)
+      [ -n "$core" ] &&
+        gdb -q --batch -c $core $mydumper -ex "set print frame-arguments all" -ex "p *cs" -ex "p *csi" -ex "bt full"
       echo "Retrying export due error"
       echo "Exporting database: ${mydumper_parameters}"
       rm -rf /tmp/fifodir
