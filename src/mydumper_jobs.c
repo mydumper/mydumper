@@ -737,8 +737,11 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     if (checksum_filename)
      database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
     mysql_free_result(result);
-    if (result2)
+    result= NULL;
+    if (result2) {
       mysql_free_result(result2);
+      result2= NULL;
+    }
   }
 
   // get events
