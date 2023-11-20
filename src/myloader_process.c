@@ -249,16 +249,49 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
           // We consider that 30 is the max length to find the identifier
           // We considered that the CREATE TABLE could inlcude the IF NOT EXISTS clause
           if (!g_strstr_len(data->str,30,identifier_quote_character_str)){
-            g_critical("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
+            g_error("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
+            return NULL;
           }
-          gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
-          dbt->real_table=g_strdup(create_table[1]);
+          {
+            GError *err= NULL;
+            GMatchInfo *match_info;
+            char *expr= g_strdup_printf("CREATE\\s+TABLE\\s+[^%c]*%c(.+?)%c\\s*\\(", identifier_quote_character, identifier_quote_character, identifier_quote_character);
+            /*
+              G_REGEX_DOTALL: A dot metacharacter (".") in the pattern matches
+              all characters, including newlines. Without it, newlines are excluded. This
+              option can be changed within a pattern by a ("?s") option setting.
+
+              G_REGEX_ANCHORED: The pattern is forced to be "anchored", that is,
+              it is constrained to match only at the first matching point in the string that
+              is being searched. This effect can also be achieved by appropriate constructs in
+              the pattern itself such as the "^" metacharacter.
+
+              G_REGEX_RAW: Usually strings must be valid UTF-8 strings, using
+              this flag they are considered as a raw sequence of bytes.
+            */
+            const GRegexCompileFlags flags= G_REGEX_CASELESS|G_REGEX_MULTILINE|G_REGEX_DOTALL|G_REGEX_ANCHORED|G_REGEX_RAW;
+            GRegex *regex= g_regex_new(expr, flags, 0, &err);
+            if (!regex)
+              goto regex_error;
+            if (!g_regex_match(regex, data->str, 0, &match_info) ||
+                !g_match_info_matches(match_info)) {
+              g_regex_unref(regex);
+regex_error:
+              g_free(expr);
+              g_error("Cannot parse real table name from CREATE TABLE statement:\n%s", data->str);
+              return NULL;
+            }
+            dbt->real_table= g_match_info_fetch(match_info, 1);
+            g_regex_unref(regex);
+            if (!strlen(dbt->real_table))
+              goto regex_error;
+            g_free(expr);
+          }
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
             g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
           }else{
             g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
           }
-          g_strfreev(create_table);
           if (append_if_not_exist){
             if ((g_strstr_len(data->str,13,"CREATE TABLE ")) && !(g_strstr_len(data->str,15,"CREATE TABLE IF"))){
               GString *tmp_data=g_string_sized_new(data->len);
