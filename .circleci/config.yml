@@ -974,18 +974,18 @@ commands:
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
+    - run: sudo apt-get install -y gdb libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
   prepare_ubuntu_percona80:
     steps:
     - run: sudo percona-release setup -y ps80
-    - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo apt-get install -y gdb libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
 
   prepare_ubuntu_mariadb1006:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1006:
     steps:
@@ -995,8 +995,8 @@ commands:
 
   prepare_ubuntu_mariadb1011:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1011:
     steps:

@@ -27,6 +27,23 @@ do
   fi
 done
 
+ulimit -c unlimited
+core_pattern=$(cat /proc/sys/kernel/core_pattern)
+echo "Core pattern: $core_pattern"
+
+print_core()
+{
+  [[ -n "$(which gdb 2> /dev/null)" && "$core_pattern" =~ ^core ]] ||
+    return
+
+  local core=$(find . -name "core*" -print -quit)
+  if [ -n "$core" ]
+  then
+    gdb -q --batch -c $core $mydumper -ex "set print frame-arguments all" -ex "bt full"
+    rm -f "$core"
+  fi
+}
+
 test_case_dir (){
   # Test case
   # We should consider each test case, with different mydumper/myloader parameters
@@ -51,6 +68,7 @@ test_case_dir (){
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
     then
+      print_core
       echo "Retrying export due error"
       echo "Exporting database: ${mydumper_parameters}"
       rm -rf /tmp/fifodir
@@ -60,6 +78,7 @@ test_case_dir (){
       cat $tmp_mydumper_log >> $mydumper_log
       if (( $error > 0 ))
         then
+        print_core
         mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
         echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
         cat $tmp_mydumper_log
@@ -86,6 +105,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
     then
+      print_core
       echo "Retrying import due error"
       echo "Importing database: ${myloader_parameters}"
       mysqldump --no-defaults -f -h 127.0.0.1 -u root --all-databases > $mysqldumplog
@@ -95,6 +115,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql --no-defaults -f -h 127.0.0.1 -u root
       cat $tmp_myloader_log >> $myloader_log
       if (( $error > 0 ))
       then
+        print_core
         mv $mysqldumplog $mydumper_stor_dir
         echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
         echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
