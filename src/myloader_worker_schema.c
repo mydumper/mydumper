@@ -60,13 +60,12 @@ void wait_db_schema_created(struct database * database)
 
 
 static
-void set_db_schema_created(struct database * real_db_name)
+void set_db_schema_created(struct database * real_db_name, struct configuration *conf)
 {
   struct control_job * cj;
   enum file_type ft;
   GAsyncQueue *queue;
-  g_assert(real_db_name->td);
-  GAsyncQueue * object_queue= real_db_name->td->conf->table_queue;
+  GAsyncQueue * object_queue= conf->table_queue;
   real_db_name->schema_state= CREATED;
 
   /* Until all sequences processed we requeue only sequences */
@@ -123,12 +122,11 @@ gboolean process_schema(struct thread_data * td){
     case SCHEMA_CREATE:
       job=g_async_queue_pop(td->conf->database_queue);
       real_db_name=job->data.restore_job->data.srj->database;
-      real_db_name->td= td;
       trace("database_queue -> %s: %s", ft2str(ft), real_db_name->name);
       g_mutex_lock(real_db_name->mutex);
       ret=process_job(td, job);
       trace("Set DB created: %s", real_db_name->name);
-      set_db_schema_created(real_db_name);
+      set_db_schema_created(real_db_name, td->conf);
       trace("Set DB created: %s", real_db_name->name);
       g_mutex_unlock(real_db_name->mutex);
       break;
@@ -169,7 +167,7 @@ gboolean process_schema(struct thread_data * td){
         g_hash_table_iter_init ( &iter, db_hash );
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
           wait_db_schema_created(real_db_name);
-          set_db_schema_created(real_db_name);
+          set_db_schema_created(real_db_name, td->conf);
         }
         message("Schema creation enqueing completed");
         second_round=TRUE;
