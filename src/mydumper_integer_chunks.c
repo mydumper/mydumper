@@ -110,7 +110,8 @@ void free_integer_step_item(struct chunk_step_item * csi){
     free_integer_step(csi->chunk_step);
     csi->chunk_step=NULL;
   }
-  g_free(csi);
+  // We cannot free it here, otherwise get_next_integer_chunk() fails
+  // g_free(csi);
 }
 
 struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
@@ -288,15 +289,17 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
                 g_mutex_unlock(csi->next->mutex);
                 g_mutex_unlock(csi->mutex);
                 return new_csi;
+	      }else{
+		free_integer_step_item(new_csi);
 	      }
-              free_integer_step_item(new_csi);
             }
             g_mutex_unlock(csi->next->mutex);
             //split_unsigned_chunk_step
           }
         }
+      }else{
+        free_integer_step_item(csi);
       }
-      free_integer_step_item(csi);
       g_mutex_unlock(csi->mutex);
       csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);
     }
