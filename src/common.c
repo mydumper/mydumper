@@ -374,6 +374,10 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
 }
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  if (!g_hash_table_contains(set_session_hash, "FOREIGN_KEY_CHECKS")) {
+    g_hash_table_insert(set_session_hash, g_strdup("FOREIGN_KEY_CHECKS"), g_strdup("0"));
+  }
+
   refresh_set_from_hash(ss, "SESSION", set_session_hash);
 }
 
