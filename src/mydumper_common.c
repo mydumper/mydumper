@@ -52,10 +52,10 @@ GMutex *fifo_table_mutex=NULL;
 GMutex *pipe_creation=NULL;
 GThread * cft = NULL;
 guint open_pipe=0;
-guint nroutines= 0;
 guint server_version= 0;
 
 const char *routine_type[]= {"FUNCTION", "PROCEDURE", "PACKAGE", "PACKAGE BODY"};
+guint nroutines= 4;
 
 int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 

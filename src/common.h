@@ -125,3 +125,11 @@ extern void trace(const char *format, ...);
     g_message(__VA_ARGS__);
 
 #define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
+
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+extern guint
+g_string_replace (GString     *string,
+                  const gchar *find,
+                  const gchar *replace,
+                  guint        limit);
+#endif
