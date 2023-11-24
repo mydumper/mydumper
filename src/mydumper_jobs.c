@@ -643,111 +643,66 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   GString *statement = g_string_sized_new(statement_size);
 
   if (dump_routines) {
-    // get functions
-    query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
-    if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-      if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping functions from %s: %s", database->name,
-                  mysql_error(conn));
-      } else {
-        g_critical("Error dumping functions from %s: %s", database->name,
-                   mysql_error(conn));
-        errors++;
-      }
-      g_free(query);
-      return;
-    }
-
-    while ((row = mysql_fetch_row(result))) {
-      set_charset(statement, row[8], row[9]);
-      g_string_append_printf(statement, "DROP FUNCTION IF EXISTS `%s`;\n",
-                             row[1]);
-      if (!write_data(outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database->name,
-                   row[1]);
-        errors++;
+    g_assert(nroutines > 0);
+    for (guint r= 0; r < nroutines; r++) {
+      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
+      if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
+        if (success_on_1146 && mysql_errno(conn) == 1146) {
+          g_warning("Error dumping %s from %s: %s", routine_type[r], database->name,
+                    mysql_error(conn));
+        } else {
+          g_critical("Error dumping %s from %s: %s", routine_type[r], database->name,
+                    mysql_error(conn));
+          errors++;
+        }
+        g_free(query);
         return;
       }
-      g_string_set_size(statement, 0);
-      query =
-          g_strdup_printf("SHOW CREATE FUNCTION `%s`.`%s`", database->name, row[1]);
-      mysql_query(conn, query);
-      result2 = mysql_store_result(conn);
-      row2 = mysql_fetch_row(result2);
-      g_string_printf(statement, "%s", row2[2]);
-      if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
-        remove_definer(statement);
-      }
-      splited_st = g_strsplit(statement->str, ";\n", 0);
-      g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-      g_string_append(statement, ";\n");
-      restore_charset(statement);
-      if (!write_data(outfile, statement)) {
-        g_critical("Could not write function data for %s.%s", database->name, row[1]);
-        errors++;
-        return;
-      }
-      g_string_set_size(statement, 0);
-    }
 
-    mysql_free_result(result);
+      while ((row= mysql_fetch_row(result))) {
+        set_charset(statement, row[8], row[9]);
+        g_string_append_printf(statement, "DROP %s IF EXISTS `%s`;\n", routine_type[r], row[1]);
+        if (!write_data(outfile, statement)) {
+          g_critical("Could not write %s data for %s.%s", routine_type[r], database->name,
+                    row[1]);
+          errors++;
+          mysql_free_result(result);
+          return;
+        }
+        g_string_set_size(statement, 0);
+        query= g_strdup_printf("SHOW CREATE %s `%s`.`%s`", routine_type[r], database->name, row[1]);
+        mysql_query(conn, query);
+        result2= mysql_store_result(conn);
+        row2= mysql_fetch_row(result2);
+        g_string_printf(statement, "%s", row2[2]);
+        if (skip_definer && g_str_has_prefix(statement->str, "CREATE")) {
+          remove_definer(statement);
+        }
+        splited_st= g_strsplit(statement->str, ";\n", 0);
+        g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+        g_string_append(statement, ";\n");
+        restore_charset(statement);
+        if (!write_data(outfile, statement)) {
+          g_critical("Could not write %s data for %s.%s", routine_type[r], database->name, row[1]);
+          errors++;
+          mysql_free_result(result);
+          if (result2)
+            mysql_free_result(result2);
+          return;
+        }
+        g_string_set_size(statement, 0);
+      }
 
-    // get sp
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
-    if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-      if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping stored procedures from %s: %s", database->name,
-                  mysql_error(conn));
-      } else {
-        g_critical("Error dumping stored procedures from %s: %s", database->name,
-                   mysql_error(conn));
-        errors++;
+      mysql_free_result(result);
+      if (result2) {
+        mysql_free_result(result2);
+        result2= NULL;
       }
-      g_free(query);
-      return;
-    }
+    } // for (guint r= 0; r < nroutines; r++)
 
-    while ((row = mysql_fetch_row(result))) {
-      set_charset(statement, row[8], row[9]);
-      g_string_append_printf(statement, "DROP PROCEDURE IF EXISTS `%s`;\n",
-                             row[1]);
-      if (!write_data(outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database->name,
-                   row[1]);
-        errors++;
-        return;
-      }
-      g_string_set_size(statement, 0);
-      query =
-          g_strdup_printf("SHOW CREATE PROCEDURE `%s`.`%s`", database->name, row[1]);
-      mysql_query(conn, query);
-      result2 = mysql_store_result(conn);
-      row2 = mysql_fetch_row(result2);
-      g_string_printf(statement, "%s", row2[2]);
-      if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
-        remove_definer(statement);
-      }
-      splited_st = g_strsplit(statement->str, ";\n", 0);
-      g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-      g_string_append(statement, ";\n");
-      restore_charset(statement);
-      if (!write_data(outfile, statement)) {
-        g_critical("Could not write stored procedure data for %s.%s", database->name,
-                   row[1]);
-        errors++;
-        return;
-      }
-      g_string_set_size(statement, 0);
-    }
     if (checksum_filename)
      database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
-    mysql_free_result(result);
-    result= NULL;
-    if (result2) {
-      mysql_free_result(result2);
-      result2= NULL;
-    }
-  }
+  } // if (dump_routines)
 
   // get events
   if (dump_events) {
@@ -772,6 +727,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
         errors++;
+        mysql_free_result(result);
         return;
       }
       query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database->name, row[1]);
@@ -790,6 +746,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       if (!write_data(outfile, statement)) {
         g_critical("Could not write event data for %s.%s", database->name, row[1]);
         errors++;
+        mysql_free_result(result);
+        if (result2)
+          mysql_free_result(result2);
         return;
       }
       g_string_set_size(statement, 0);

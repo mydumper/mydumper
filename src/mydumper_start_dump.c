@@ -1000,12 +1000,16 @@ void start_dump() {
 
 
 // TODO: this should be deleted on future releases. 
-  if (mysql_get_server_version(conn) < 40108) {
+  server_version= mysql_get_server_version(conn);
+  if (server_version < 40108) {
     mysql_query(
         conn,
         "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
     need_dummy_read = 1;
   }
+  /* TODO: MySQL also supports PACKAGE (Percona?) */
+  if (get_product() != SERVER_TYPE_MARIADB || server_version < 100300)
+    nroutines= 2;
 
   // tokudb do not support consistent snapshot
   mysql_query(conn, "SELECT @@tokudb_version");

@@ -1351,60 +1351,36 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   // schema being dumped So I will use only regex to dump or not SP and EVENTS I
   // only need one match to dump all
 
-  gboolean post_dump = FALSE;
-
   if (dump_routines) {
-    // SP
-    query = g_strdup_printf("SHOW PROCEDURE STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
-    if (mysql_query(conn, (query))) {
-      g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
-                 mysql_error(conn));
-      errors++;
-      g_free(query);
-      return FALSE;
-    }
-    g_free(query);
-    result = mysql_store_result(conn);
-    while ((row = mysql_fetch_row(result)) && !post_dump) {
-      /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
-        continue;
-
-      /* Checks PCRE expressions on 'database.sp' string */
-      if (!eval_regex(database->name, row[1]))
-        continue;
-
-      post_dump = TRUE;
-    }
-    mysql_free_result(result);
-
-    if (!post_dump) {
-      // FUNCTIONS
-      query = g_strdup_printf("SHOW FUNCTION STATUS WHERE CAST(Db AS BINARY) = '%s'", database->escaped);
+    g_assert(nroutines > 0);
+    for (guint r= 0; r < nroutines; r++) {
+      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
       if (mysql_query(conn, (query))) {
-        g_critical("Error showing function on: %s - Could not execute query: %s", database->name,
-                   mysql_error(conn));
+        g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
+                  mysql_error(conn));
         errors++;
         g_free(query);
         return FALSE;
       }
       g_free(query);
-      result = mysql_store_result(conn);
-      while ((row = mysql_fetch_row(result)) && !post_dump) {
+      result= mysql_store_result(conn);
+      while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
           continue;
+
         /* Checks PCRE expressions on 'database.sp' string */
-        if ( !eval_regex(database->name, row[1]))
+        if (!eval_regex(database->name, row[1]))
           continue;
 
-        post_dump = TRUE;
+        mysql_free_result(result);
+        return TRUE;
       }
       mysql_free_result(result);
-    }
-  }
+    } // for (i= 0; i < upper_bound; i++)
+  } // if (dump_routines)
 
-  if (dump_events && !post_dump) {
+  if (dump_events) {
     // EVENTS
     query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
     if (mysql_query(conn, (query))) {
@@ -1416,7 +1392,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     }
     g_free(query);
     result = mysql_store_result(conn);
-    while ((row = mysql_fetch_row(result)) && !post_dump) {
+    while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
         continue;
@@ -1424,11 +1400,12 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       if ( !eval_regex(database->name, row[1]))
         continue;
 
-      post_dump = TRUE;
+      mysql_free_result(result);
+      return TRUE;
     }
     mysql_free_result(result);
   }
-  return post_dump;
+  return FALSE;
 }
 
 void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {

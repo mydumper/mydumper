@@ -123,3 +123,5 @@ extern void trace(const char *format, ...);
     trace(__VA_ARGS__); \
   else \
     g_message(__VA_ARGS__);
+
+#define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
