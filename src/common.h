@@ -125,6 +125,7 @@ extern void trace(const char *format, ...);
     g_message(__VA_ARGS__);
 
 #define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
+#define key_strcmp ((int (*)(const void *, const void *)) &strcmp)
 
 #if !GLIB_CHECK_VERSION(2, 68, 0)
 extern guint
