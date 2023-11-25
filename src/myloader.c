@@ -82,7 +82,6 @@ guint rows = 0;
 guint sequences = 0;
 guint sequences_processed = 0;
 GMutex sequences_mutex;
-GCond sequences_cond;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;

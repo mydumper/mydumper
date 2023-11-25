@@ -97,7 +97,6 @@ struct database {
   char *real_database; // aka: the output schema name this can change when use -B.
   gchar *filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
   enum schema_status schema_state;
-  GCond state_cond;
   GAsyncQueue *sequence_queue;
   GAsyncQueue *queue;
   GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()

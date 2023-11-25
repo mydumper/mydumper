@@ -47,19 +47,6 @@ void schema_queue_push(enum file_type current_ft){
 
 
 static
-void wait_db_schema_created(struct database * database)
-{
-  if (database->schema_state != CREATED) {
-    trace("Waiting DB created: %s", database->name);
-    g_mutex_lock(database->mutex);
-    while (database->schema_state != CREATED)
-      g_cond_wait(&database->state_cond, database->mutex);
-    g_mutex_unlock(database->mutex);
-  }
-}
-
-
-static
 void set_db_schema_created(struct database * real_db_name, struct configuration *conf)
 {
   struct control_job * cj;
@@ -83,9 +70,6 @@ void set_db_schema_created(struct database * real_db_name, struct configuration 
     g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(ft));
     cj = g_async_queue_try_pop(queue);
   }
-
-  // TODO: use g_cond_signal() after ensuring INTERMEDIATE_ENDED processed only in one thread
-  g_cond_broadcast(&real_db_name->state_cond);
 }
 
 
@@ -149,8 +133,6 @@ gboolean process_schema(struct thread_data * td){
         g_mutex_lock(&sequences_mutex);
         ++sequences_processed;
         trace("Processed sequence: %s (%u of %u)", filename, sequences_processed, sequences);
-        // TODO: use g_cond_signal() after ensuring INTERMEDIATE_ENDED processed only in one thread
-        g_cond_broadcast(&sequences_cond);
         g_mutex_unlock(&sequences_mutex);
       }
       break;
@@ -158,14 +140,23 @@ gboolean process_schema(struct thread_data * td){
     case INTERMEDIATE_ENDED:
       if (!second_round){
         g_mutex_lock(&sequences_mutex);
-        while (sequences_processed < sequences) {
+        if (sequences_processed < sequences) {
           trace("INTERMEDIATE_ENDED waits %d sequences", sequences - sequences_processed);
-          g_cond_wait(&sequences_cond, &sequences_mutex);
+          refresh_db_and_jobs(INTERMEDIATE_ENDED);
+          g_mutex_unlock(&sequences_mutex);
+          return TRUE;
         }
         g_mutex_unlock(&sequences_mutex);
         g_hash_table_iter_init ( &iter, db_hash );
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
-          wait_db_schema_created(real_db_name);
+          g_mutex_lock(real_db_name->mutex);
+          if (real_db_name->schema_state != CREATED) {
+            trace("INTERMEDIATE_ENDED waits %s created", real_db_name->name);
+            refresh_db_and_jobs(INTERMEDIATE_ENDED);
+            g_mutex_unlock(real_db_name->mutex);
+            return TRUE;
+          }
+          g_mutex_unlock(real_db_name->mutex);
           set_db_schema_created(real_db_name, td->conf);
         }
         message("Schema creation enqueing completed");

@@ -91,7 +91,6 @@ extern guint rows;
 extern guint sequences;
 extern guint sequences_processed;
 extern GMutex sequences_mutex;
-extern GCond sequences_cond;
 extern unsigned long long int total_data_sql_files;
 extern int detected_server;
 extern int (*m_close)(void *file);
