@@ -544,7 +544,8 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
-    remove(path);
+    if (remove(path) < 0)
+      g_warning("Remove failed: %s (%s)", path, strerror(errno));
     g_free(path);
   }
   return TRUE;

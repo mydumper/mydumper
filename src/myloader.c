@@ -478,8 +478,9 @@ int main(int argc, char *argv[]) {
 
   if (stream && no_delete == FALSE && input_directory == NULL){
     m_remove(directory,"metadata");
-    if (g_rmdir(directory) != 0)
-        g_critical("Restore directory not removed: %s", directory);
+    m_remove(directory, "metadata.header");
+    if (g_rmdir(directory) < 0)
+        g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
   }
 
   if (change_master_statement != NULL ){

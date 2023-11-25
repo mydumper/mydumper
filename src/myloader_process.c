@@ -523,31 +523,31 @@ void process_metadata_global(const char *file)
   change_master_statement=g_string_new("");
   const char *delim_bt= "`.`";
   const char *delim_dq= "\".\"";
-  if (!quote_character_cli) {
-    identifier_quote_character_str= 0;
-    for (j= 0; j < length; ++j) {
-      identifier_quote_character= groups[j][0];
-      switch (identifier_quote_character) {
-      case BACKTICK:
-        identifier_quote_character_str= "`";
-        break;
-      case DOUBLE_QUOTE:
-        identifier_quote_character_str= "\"";
-        break;
-      default:
-        continue;
-      }
-      break;
-    }
-    if (!identifier_quote_character_str)
-      g_error("metadata is broken: quote character not found in groups");
-  }
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
   const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
-  trace("metadata: quote character is %c", identifier_quote_character);
-  for (j=0; j<length; j++){
+  for (j= 0; j < length; j++) {
     gchar *group= newline_unprotect(groups[j]);
-    if (g_str_has_prefix(group, wrong_quote))
+    if (g_str_has_prefix(group, "config")) {
+      if (j > 0)
+        m_critical("Wrong metadata: [config] group must be first");
+      value= get_value(kf, group, "quote_character");
+      if (value) {
+        if (!strcmp(value, "BACKTICK")) {
+          identifier_quote_character= BACKTICK;
+          identifier_quote_character_str= "`";
+          wrong_quote= "\"";
+          delimiter= delim_bt;
+        } else if (!strcmp(value, "DOUBLE_QUOTE")) {
+          identifier_quote_character= DOUBLE_QUOTE;
+          identifier_quote_character_str= "\"";
+          delimiter= delim_dq;
+          wrong_quote= "`";
+        } else {
+          m_critical("Wrong quote_character = %s in metadata", value);
+        }
+        trace("metadata: quote character is %c", identifier_quote_character);
+      }
+    } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {
       database_table= g_strsplit(group+1, delimiter, 2);

@@ -246,7 +246,8 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
 
 enum file_type get_file_type (const char * filename){
 
-  if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
+  if (!strcmp(filename, "metadata") || !strcmp(filename, "metadata.header") ||
+      (g_str_has_prefix(filename, "metadata.partial") && !g_str_has_suffix(filename, ".sql")))
     return METADATA_GLOBAL;
 
   if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))

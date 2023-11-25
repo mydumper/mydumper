@@ -950,12 +950,15 @@ void start_dump() {
     }
   }
 
-  metadata_partial_filename = g_strdup_printf("%s/metadata.partial", dump_directory);
-  metadata_filename = g_strndup(metadata_partial_filename, (unsigned)strlen(metadata_partial_filename) - 8);
+  if (stream)
+    metadata_partial_filename= g_strdup_printf("%s/metadata.header", dump_directory);
+  else
+    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
+  metadata_filename = g_strdup_printf("%s/metadata", dump_directory);
 
   FILE *mdfile = g_fopen(metadata_partial_filename, "w");
   if (!mdfile) {
-    m_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
+    m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
   }
 
   if (updated_since > 0) {
@@ -1076,8 +1079,23 @@ void start_dump() {
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
 
+  /* Write dump config into beginning of metadata, stream this first */
+  {
+    g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
+    const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
+    fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
+    fflush(mdfile);
+  }
+
   if (stream){
     initialize_stream();
+    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
+    fclose(mdfile);
+    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
+    mdfile= g_fopen(metadata_partial_filename, "w");
+    if (!mdfile) {
+      m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
+    }
   }
 
   if (exec_command != NULL){
@@ -1279,10 +1297,7 @@ void start_dump() {
     dbt= (struct db_table *) g_hash_table_lookup(all_dbts, it->data);
     g_assert(dbt);
     print_dbt_on_metadata(mdfile, dbt);
-    free_db_table(dbt);
   }
-  g_list_free(keys);
-  g_hash_table_unref(all_dbts);
   write_database_on_disk(mdfile);
   g_list_free(table_schemas);
   table_schemas=NULL;
@@ -1315,15 +1330,11 @@ void start_dump() {
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);
-  g_rename(metadata_partial_filename, metadata_filename);
-  if (stream) stream_queue_push(NULL, g_strdup(metadata_filename));
 
-  g_free(metadata_partial_filename);
-  g_free(metadata_filename);
-  g_message("Finished dump at: %s",datetimestr);
-  g_free(datetimestr);
+  g_rename(metadata_partial_filename, metadata_filename);
 
   if (stream) {
+    stream_queue_push(NULL, g_strdup(metadata_filename));
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
     }else{
@@ -1334,6 +1345,17 @@ void start_dump() {
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);
   }
+
+  for (GList *it= keys; it; it= g_list_next(it)) {
+    dbt= (struct db_table *) g_hash_table_lookup(all_dbts, it->data);
+    free_db_table(dbt);
+  }
+  g_list_free(keys);
+  g_hash_table_unref(all_dbts);
+  g_free(metadata_partial_filename);
+  g_free(metadata_filename);
+  g_message("Finished dump at: %s", datetimestr);
+  g_free(datetimestr);
 
   g_free(td);
   g_free(threads);
