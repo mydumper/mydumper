@@ -61,6 +61,7 @@
 #include "myloader_worker_schema.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_post.h"
+#include "myloader_control_job.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -445,6 +446,7 @@ int main(int argc, char *argv[]) {
   initialize_post_loding_threads(&conf);
   create_post_shutdown_job(&conf);
   wait_post_worker_to_finish();
+  wait_control_job();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 

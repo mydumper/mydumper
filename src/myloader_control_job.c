@@ -33,7 +33,7 @@ gboolean dont_wait_for_schema_create=FALSE;
 /* refresh_db_queue is for data loads */
 GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
 //GAsyncQueue *give_me_another_job_queue = NULL;
-GThread *control_job_t = NULL;
+static GThread *control_job_t = NULL;
 
 gint last_wait=0;
 //guint index_threads_counter = 0;
@@ -49,6 +49,11 @@ void initialize_control_job (struct configuration *conf){
   control_job_t = g_thread_create((GThreadFunc)control_job_thread, conf, TRUE, NULL);
 
 //  index_threads_counter = 0;
+}
+
+void wait_control_job()
+{
+  g_thread_join(control_job_t);
 }
 
 struct control_job * new_job (enum control_job_type type, void *job_data, struct database *use_database) {
@@ -311,7 +316,8 @@ void refresh_db_and_jobs(enum file_type current_ft){
   }
 }
 
-void last_wait_control_job_to_shutdown(){
+void maybe_shutdown_control_job()
+{
    if (g_atomic_int_dec_and_test(&last_wait)){
      g_message("SHUTDOWN last_wait_control_job_to_shutdown");
      refresh_db_and_jobs(SHUTDOWN);

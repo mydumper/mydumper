@@ -49,5 +49,6 @@ struct control_job * new_job (enum control_job_type type, void *job_data, struct
 gboolean process_job(struct thread_data *td, struct control_job *job);
 void refresh_db_and_jobs(enum file_type current_ft);
 void initialize_control_job (struct configuration *conf);
-void last_wait_control_job_to_shutdown();
+void wait_control_job();
+void maybe_shutdown_control_job();
 #endif

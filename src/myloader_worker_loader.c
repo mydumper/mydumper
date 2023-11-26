@@ -140,7 +140,7 @@ void *process_loader_thread(struct thread_data * td) {
   }
   enqueue_indexes_if_possible(td->conf);
   g_message("Thread %d: Data import ended", td->thread_id);
-  last_wait_control_job_to_shutdown();
+  maybe_shutdown_control_job();
 //  process_index(td);
   return NULL;
 }
