@@ -57,6 +57,7 @@
 #include "regex.h"
 #include "common.h"
 #include "common_options.h"
+#include "mydumper_global.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_jobs.h"
 #include "mydumper_common.h"
@@ -299,7 +300,11 @@ void *signal_thread(void *data) {
 GHashTable * mydumper_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
   g_hash_table_insert(set_session_hash,g_strdup("information_schema_stats_expiry"),g_strdup("0 /*!80003"));
-  g_hash_table_insert(set_session_hash, g_strdup("sql_mode"), g_strdup(sql_mode));
+  GString *str= g_string_new(sql_mode);
+  g_string_replace(str, "ORACLE", "", 0);
+  g_string_replace(str, ",,", ",", 0);
+  g_hash_table_insert(set_session_hash, g_strdup("sql_mode"), str->str);
+  g_string_free(str, FALSE);
   return set_session_hash;
 }
 
@@ -313,7 +318,9 @@ MYSQL *create_connection() {
   return conn;
 }
 
-void  detect_identifier_quote_character_mix(MYSQL *conn){
+static
+void detect_quote_character(MYSQL *conn)
+{
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
   GString *str;
@@ -330,13 +337,18 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
     return ;
   }
   row = mysql_fetch_row(res);
-  if ((g_strcmp0(row[0], "0") && identifier_quote_character==BACKTICK)
-  || (!g_strcmp0(row[0], "0") && identifier_quote_character==DOUBLE_QUOTE )){
-    m_error("We found a mixed usage of the identifier quote character. Check SQL_MODE and --identifier-quote-character");
+  if (!strcmp(row[0], "0")) {
+    identifier_quote_character= BACKTICK;
+    identifier_quote_character_str= "`";
+    fields_enclosed_by= "\"";
+  } else {
+    identifier_quote_character= DOUBLE_QUOTE;
+    identifier_quote_character_str= "\"";
+    fields_enclosed_by= "'";
   }
   mysql_free_result(res);
 
-  query= "SELECT REPLACE(REPLACE(REPLACE(REPLACE(@@SQL_MODE, 'NO_BACKSLASH_ESCAPES', ''), ',,', ','), 'PIPES_AS_CONCAT', ''), ',,', ',')";
+  query= "SELECT @@SQL_MODE";
   if (mysql_query(conn, query)){
     g_critical("Error getting SQL_MODE: %s", mysql_error(conn));
   }
@@ -347,6 +359,26 @@ void  detect_identifier_quote_character_mix(MYSQL *conn){
   row= mysql_fetch_row(res);
   str= g_string_new(NULL);
   g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
+  g_string_replace(str, "NO_BACKSLASH_ESCAPES", "", 0);
+  g_string_replace(str, ",,", ",", 0);
+
+  /*
+    The below 4 will be returned back if there is ORACLE in SQL_MODE. We can
+    not remove ORACLE from dump files because restoring PACKAGE requires it. But we
+    may remove ORACLE from mydumper session because SHOW CREATE PACKAGE works
+    without ORACLE (see mydumper_initialize_hash_of_session_variables()).
+    The dump must retain all table options, so we cut out NO_TABLE_OPTIONS here:
+    it doesn't play any role in dump files, but we are interested it doesn't
+    appear in mydumpmer session.
+  */
+  g_string_replace(str, "PIPES_AS_CONCAT", "", 0);
+  g_string_replace(str, ",,", ",", 0);
+  g_string_replace(str, "NO_KEY_OPTIONS", "", 0);
+  g_string_replace(str, ",,", ",", 0);
+  g_string_replace(str, "NO_TABLE_OPTIONS", "", 0);
+  g_string_replace(str, ",,", ",", 0);
+  g_string_replace(str, "NO_FIELD_OPTIONS", "", 0);
+  g_string_replace(str, ",,", ",", 0);
   sql_mode= str->str;
   g_string_free(str, FALSE);
   mysql_free_result(res);
@@ -364,7 +396,8 @@ MYSQL *create_main_connection() {
 //  detected_server = detect_server(conn);
   detect_server_version(conn);
   detected_server = get_product(); 
-  detect_identifier_quote_character_mix(conn);
+  detect_quote_character(conn);
+  initialize_write();
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -694,16 +727,21 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 }
 
 
+// see write_database_on_disk() for db write to metadata
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->name);
   char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
+  const char q= identifier_quote_character;
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[`%s`.`%s`]\nreal_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", name, table_filename, table, dbt->rows);
+  g_string_append_printf(data,"\n[%c%s%c.%c%s%c]\n", q, name, q, q, table_filename, q);
+  g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
   g_free(table_filename);
   g_free(table);
+  if (dbt->is_sequence)
+    g_string_append_printf(data,"is_sequence = 1\n");
   if (dbt->data_checksum)
     g_string_append_printf(data,"data_checksum = %s\n", dbt->data_checksum);
   if (dbt->schema_checksum)
@@ -912,12 +950,15 @@ void start_dump() {
     }
   }
 
-  metadata_partial_filename = g_strdup_printf("%s/metadata.partial", dump_directory);
-  metadata_filename = g_strndup(metadata_partial_filename, (unsigned)strlen(metadata_partial_filename) - 8);
+  if (stream)
+    metadata_partial_filename= g_strdup_printf("%s/metadata.header", dump_directory);
+  else
+    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
+  metadata_filename = g_strdup_printf("%s/metadata", dump_directory);
 
   FILE *mdfile = g_fopen(metadata_partial_filename, "w");
   if (!mdfile) {
-    m_critical("Couldn't write metadata file %s (%d)", metadata_partial_filename, errno);
+    m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
   }
 
   if (updated_since > 0) {
@@ -986,12 +1027,16 @@ void start_dump() {
 
 
 // TODO: this should be deleted on future releases. 
-  if (mysql_get_server_version(conn) < 40108) {
+  server_version= mysql_get_server_version(conn);
+  if (server_version < 40108) {
     mysql_query(
         conn,
         "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
     need_dummy_read = 1;
   }
+  /* TODO: MySQL also supports PACKAGE (Percona?) */
+  if (get_product() != SERVER_TYPE_MARIADB || server_version < 100300)
+    nroutines= 2;
 
   // tokudb do not support consistent snapshot
   mysql_query(conn, "SELECT @@tokudb_version");
@@ -1034,8 +1079,23 @@ void start_dump() {
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
 
+  /* Write dump config into beginning of metadata, stream this first */
+  {
+    g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
+    const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
+    fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
+    fflush(mdfile);
+  }
+
   if (stream){
     initialize_stream();
+    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
+    fclose(mdfile);
+    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
+    mdfile= g_fopen(metadata_partial_filename, "w");
+    if (!mdfile) {
+      m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
+    }
   }
 
   if (exec_command != NULL){
@@ -1230,15 +1290,14 @@ void start_dump() {
 
 
   wait_close_files();
-  GHashTableIter iter;
-  g_hash_table_iter_init ( &iter, all_dbts );
-  gchar *lkey;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-//    dbt = (struct db_table *)iter->data;
+
+  GList *keys= g_hash_table_get_keys(all_dbts);
+  keys= g_list_sort(keys, key_strcmp);
+  for (GList *it= keys; it; it= g_list_next(it)) {
+    dbt= (struct db_table *) g_hash_table_lookup(all_dbts, it->data);
+    g_assert(dbt);
     print_dbt_on_metadata(mdfile, dbt);
-    free_db_table(dbt);
   }
-  g_hash_table_unref(all_dbts);
   write_database_on_disk(mdfile);
   g_list_free(table_schemas);
   table_schemas=NULL;
@@ -1271,15 +1330,11 @@ void start_dump() {
   fclose(mdfile);
   if (updated_since > 0)
     fclose(nufile);
-  g_rename(metadata_partial_filename, metadata_filename);
-  if (stream) stream_queue_push(NULL, g_strdup(metadata_filename));
 
-  g_free(metadata_partial_filename);
-  g_free(metadata_filename);
-  g_message("Finished dump at: %s",datetimestr);
-  g_free(datetimestr);
+  g_rename(metadata_partial_filename, metadata_filename);
 
   if (stream) {
+    stream_queue_push(NULL, g_strdup(metadata_filename));
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
     }else{
@@ -1290,6 +1345,17 @@ void start_dump() {
       if (g_rmdir(output_directory) != 0)
         g_critical("Backup directory not removed: %s", output_directory);
   }
+
+  for (GList *it= keys; it; it= g_list_next(it)) {
+    dbt= (struct db_table *) g_hash_table_lookup(all_dbts, it->data);
+    free_db_table(dbt);
+  }
+  g_list_free(keys);
+  g_hash_table_unref(all_dbts);
+  g_free(metadata_partial_filename);
+  g_free(metadata_filename);
+  g_message("Finished dump at: %s", datetimestr);
+  g_free(datetimestr);
 
   g_free(td);
   g_free(threads);

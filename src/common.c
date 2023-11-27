@@ -374,6 +374,10 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
 }
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  if (!g_hash_table_contains(set_session_hash, "FOREIGN_KEY_CHECKS")) {
+    g_hash_table_insert(set_session_hash, g_strdup("FOREIGN_KEY_CHECKS"), g_strdup("0"));
+  }
+
   refresh_set_from_hash(ss, "SESSION", set_session_hash);
 }
 
@@ -540,7 +544,8 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
-    remove(path);
+    if (remove(path) < 0)
+      g_warning("Remove failed: %s (%s)", path, strerror(errno));
     g_free(path);
   }
   return TRUE;
@@ -895,4 +900,20 @@ char * newline_unprotect(char *r) {
   g_assert (s->str != r);
   r= g_string_free(s, FALSE);
   return r;
+}
+
+extern gboolean debug;
+
+void trace(const char *format, ...)
+{
+  if (!debug)
+    return;
+  char format2[1024];
+  char msg[1024];
+  snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
+  va_list args;
+  va_start(args, format);
+  vsnprintf(msg, sizeof(msg), format2, args);
+  va_end(args);
+  g_debug("%s", msg);
 }

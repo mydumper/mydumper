@@ -53,3 +53,8 @@ void release_pid();
 void child_process_ended(int child_pid);
 void wait_close_files();
 guint64 my_pow_two_plus_prev(guint64 prev, guint max);
+
+
+extern guint nroutines;
+extern guint server_version;
+extern const char *routine_type[];

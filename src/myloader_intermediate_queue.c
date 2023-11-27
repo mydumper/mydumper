@@ -29,7 +29,6 @@ guint schema_counter = 0;
 gboolean intermediate_queue_ended = FALSE;
 GAsyncQueue *intermediate_queue = NULL;
 GThread *stream_intermediate_thread = NULL;
-gboolean first_metadata = FALSE;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
@@ -38,7 +37,6 @@ gchar ** gzip_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
-GMutex *metadata_mutex = NULL;
 GMutex *start_intermediate_thread=NULL;
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
@@ -49,12 +47,10 @@ void initialize_intermediate_queue (struct configuration *c){
   intermediate_queue = g_async_queue_new();
   exec_process_id=g_hash_table_new ( g_str_hash, g_str_equal );
   exec_process_id_mutex=g_mutex_new();
-  metadata_mutex = g_mutex_new();
   start_intermediate_thread = g_mutex_new();
   g_mutex_lock(start_intermediate_thread);
   if (stream)
     g_mutex_unlock(start_intermediate_thread);
-  g_mutex_lock(metadata_mutex);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = g_thread_create((GThreadFunc)intermediate_thread, NULL, TRUE, NULL);
   if (exec_per_thread_extension != NULL){
@@ -85,10 +81,11 @@ void initialize_intermediate_queue (struct configuration *c){
   initialize_control_job(c);
 }
 
-void intermediate_queue_new(gchar *filename){
+void intermediate_queue_new(const gchar *filename){
   struct intermediate_filename * iflnm=g_new0(struct intermediate_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
+  trace("intermediate_queue <- %s (%u)", iflnm->filename, iflnm->iterations);
   g_async_queue_push(intermediate_queue, iflnm);
 }
 
@@ -96,9 +93,9 @@ void intermediate_queue_end(){
   g_mutex_unlock(start_intermediate_thread);
   gchar *e=g_strdup("END");
   intermediate_queue_new(e);
-  g_message("Intermediate queue: Sending END job");
+  message("Intermediate queue: Sending END job");
   g_thread_join(stream_intermediate_thread);
-  g_message("Intermediate thread: SHUTDOWN");
+  message("Intermediate thread: SHUTDOWN");
   intermediate_queue_ended=TRUE;
 }
 
@@ -107,13 +104,9 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 // the idea is to keep track how many times a filename was incomplete and
 // at what stage
   iflnm->iterations++;
+  trace("intermediate_queue <- %s (%u) incomplete", iflnm->filename, iflnm->iterations);
   g_async_queue_push(intermediate_queue, iflnm);
 }
-
-void wait_until_first_metadata(){
-  g_mutex_lock(metadata_mutex);
-}
-
 
 enum file_type process_filename(char *filename){
 //  g_message("Filename: %s", filename);
@@ -148,8 +141,9 @@ enum file_type process_filename(char *filename){
         return DO_NOT_ENQUEUE;
       break;
     case SCHEMA_SEQUENCE:
-      if (!process_schema_sequence_filename(filename))
-        return INCOMPLETE;
+      if (!process_schema_sequence_filename(filename)){
+        return DO_NOT_ENQUEUE;
+      }
       break;
     case SCHEMA_TRIGGER:
       if (!skip_triggers)
@@ -168,10 +162,6 @@ enum file_type process_filename(char *filename){
       intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
       break;
     case METADATA_GLOBAL:
-      if (!first_metadata){
-        g_mutex_unlock(metadata_mutex);
-        first_metadata=TRUE;
-      }
       process_metadata_global(filename);
       refresh_table_list(intermediate_conf);
       break;
@@ -220,14 +210,12 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
     if (iflnm->iterations > 5){
       g_warning("Max renqueing reached for: %s", iflnm->filename);
     }else{
-      g_debug("Requeuing in intermediate queue %u: %s", iflnm->iterations, iflnm->filename);
       intermediate_queue_incomplete(iflnm);
     }
 //    g_async_queue_push(intermediate_queue, filename);
     return;
   }
   if (current_ft != SCHEMA_VIEW &&
-      current_ft != SCHEMA_SEQUENCE &&
       current_ft != SCHEMA_TRIGGER &&
       current_ft != SCHEMA_POST &&
       current_ft != CHECKSUM &&
@@ -242,8 +230,10 @@ void *intermediate_thread(){
   g_mutex_lock(start_intermediate_thread);
   do{
     iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);
+    trace("intermediate_queue -> %s (%u)", iflnm->filename, iflnm->iterations);
     if ( g_strcmp0(iflnm->filename,"END") == 0 ){
       if (g_async_queue_length(intermediate_queue)>0){
+        trace("intermediate_queue <- %s (%u)", iflnm->filename, iflnm->iterations);
         g_async_queue_push(intermediate_queue,iflnm);
         continue;
       }
@@ -260,7 +250,7 @@ void *intermediate_thread(){
   }
 //  if (innodb_optimize_keys_all_tables)
 //    enqueue_all_index_jobs(intermediate_conf);
-  g_message("Intermediate thread ended");
+  message("Intermediate thread ended");
   refresh_db_and_jobs(INTERMEDIATE_ENDED);
   return NULL;
 }

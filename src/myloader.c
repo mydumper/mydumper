@@ -61,6 +61,7 @@
 #include "myloader_worker_schema.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_post.h"
+#include "myloader_control_job.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -79,9 +80,13 @@ gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint sequences = 0;
+guint sequences_processed = 0;
+GMutex sequences_mutex;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
+guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_per_table=4;
 guint max_threads_per_table_hard=4;
@@ -90,6 +95,7 @@ guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
+gboolean quote_character_cli= FALSE;
 
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
@@ -356,7 +362,6 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
-  identifier_quote_character_str=g_strdup_printf("%c",identifier_quote_character);
   // TODO: we need to set the variables in the initilize session varibles, not from:
 //  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
 //    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
@@ -399,7 +404,7 @@ int main(int argc, char *argv[]) {
 
   struct thread_data t;
   t.thread_id = 0;
-  t.conf = &conf;
+  t.conf = &conf; // TODO: if conf is singleton it must be accessed as global variable
   t.thrconn = conn;
   t.current_database=NULL;
   t.status=WAITING;
@@ -415,6 +420,7 @@ int main(int argc, char *argv[]) {
   if (serial_tbl_creation)
     max_threads_for_schema_creation=1;
 
+  /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
@@ -424,8 +430,6 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
-
-    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);
@@ -442,6 +446,7 @@ int main(int argc, char *argv[]) {
   initialize_post_loding_threads(&conf);
   create_post_shutdown_job(&conf);
   wait_post_worker_to_finish();
+  wait_control_job();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 
@@ -474,8 +479,9 @@ int main(int argc, char *argv[]) {
 
   if (stream && no_delete == FALSE && input_directory == NULL){
     m_remove(directory,"metadata");
-    if (g_rmdir(directory) != 0)
-        g_critical("Restore directory not removed: %s", directory);
+    m_remove(directory, "metadata.header");
+    if (g_rmdir(directory) < 0)
+        g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
   }
 
   if (change_master_statement != NULL ){
@@ -540,6 +546,7 @@ int main(int argc, char *argv[]) {
   }
 */
 
+  if (key_file)  g_key_file_free(key_file);
 
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
