@@ -340,11 +340,17 @@ void detect_quote_character(MYSQL *conn)
   if (!strcmp(row[0], "0")) {
     identifier_quote_character= BACKTICK;
     identifier_quote_character_str= "`";
-    fields_enclosed_by= "\"";
+    if (!load_data)
+      fields_enclosed_by= "\"";
+    else
+      fields_enclosed_by= "";
   } else {
     identifier_quote_character= DOUBLE_QUOTE;
     identifier_quote_character_str= "\"";
-    fields_enclosed_by= "'";
+    if (!load_data)
+      fields_enclosed_by= "'";
+    else
+      fields_enclosed_by= "";
   }
   mysql_free_result(res);
 

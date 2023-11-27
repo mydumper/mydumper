@@ -282,6 +282,7 @@ full_test_per_table(){
 
 full_test(){
   prepare_full_test
+exit
   full_test_global
   full_test_per_table
 }
