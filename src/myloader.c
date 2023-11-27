@@ -436,11 +436,11 @@ int main(int argc, char *argv[]) {
     initialize_loader_threads(&conf);
 
     initialize_stream(&conf);
-    wait_until_first_metadata();
+//    wait_until_first_metadata();
     wait_stream_to_finish();
   }else{
     intermediate_queue_new("metadata");
-    wait_until_first_metadata();
+//    wait_until_first_metadata();
     /* TODO: if conf is singleton it must be accessed as global variable */
     initialize_worker_schema(&conf);
     initialize_worker_index(&conf);

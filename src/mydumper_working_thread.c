@@ -1217,6 +1217,8 @@ gboolean new_db_table( struct db_table **d, struct thread_data *td, struct datab
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->rows_in_sts = rows_in_sts;
     dbt->is_sequence= is_sequence;
+    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(td->thrconn, table_collation);
+    dbt->has_json_fields = has_json_fields(td, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->escaped_table = escape_string(td->thrconn,dbt->table);
     dbt->anonymized_function=get_anonymized_function_for(td, dbt->database->name, dbt->table);

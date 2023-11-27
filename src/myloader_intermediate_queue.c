@@ -41,6 +41,7 @@ GMutex *metadata_mutex = NULL;
 //GMutex *start_intermediate_thread=NULL;
 void *intermediate_thread();
 struct configuration *intermediate_conf = NULL;
+gboolean first_metadata = FALSE;
 
 void initialize_intermediate_queue (struct configuration *c){
 //  schema_counter = g_async_queue_new();
@@ -110,6 +111,11 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
   trace("intermediate_queue <- %s (%u) incomplete", iflnm->filename, iflnm->iterations);
   g_async_queue_push(intermediate_queue, iflnm);
 }
+
+void wait_until_first_metadata(){
+  g_mutex_lock(metadata_mutex);
+}
+
 
 enum file_type process_filename(char *filename){
 //  g_message("Filename: %s", filename);

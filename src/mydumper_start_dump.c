@@ -323,6 +323,7 @@ void detect_quote_character(MYSQL *conn)
 {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
+  GString *str;
 
   const char *query = "SELECT FIND_IN_SET('ANSI', @@SQL_MODE) OR FIND_IN_SET('ANSI_QUOTES', @@SQL_MODE)";
 
