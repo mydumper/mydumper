@@ -190,6 +190,8 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");
 
+  g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
+
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
@@ -263,9 +265,14 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
           }
         }
-        r+=tr;
+        r|= tr;
         if (tr > 0){
+          // FIXME: CLI option for max_errors (and AUTO for --identifier-quote-character), test
+          if (max_errors && errors > max_errors) {
+            m_critical("Error occurs between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
+          } else {
             g_critical("Error occurs between lines: %d and %d on file %s: %s",preline,line,filename,mysql_error(td->thrconn));
+          }
         }
         g_string_set_size(data, 0);
         preline=line+1;

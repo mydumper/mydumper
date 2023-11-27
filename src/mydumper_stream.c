@@ -25,6 +25,7 @@
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
 #include <sys/file.h>
+#include <errno.h>
 
 extern GAsyncQueue *stream_queue;
 
@@ -79,11 +80,10 @@ void *process_stream(void *data){
   struct stream_queue_element *sf = NULL;
   for(;;){
     sf = g_async_queue_pop(stream_queue);
-    if (sf->done != NULL) {
-      g_async_queue_push(sf->done, GINT_TO_POINTER(1));
-    }
 
     if (strlen(sf->filename) == 0){
+      if (sf->done)
+        g_async_queue_push(sf->done, GINT_TO_POINTER(1));
       break;
     }
     char *used_filemame=g_path_get_basename(sf->filename);
@@ -96,8 +96,8 @@ void *process_stream(void *data){
     if (no_stream == FALSE){
 //      g_message("Stream Opening: %s",sf->filename);
       f=open(sf->filename,O_RDONLY|O_DSYNC);
-      if (!f){
-        m_error("File failed to open: %s",sf->filename);
+      if (f < 0){
+        m_error("File failed to open: %s (%s)", sf->filename, strerror(errno));
       }else{
 /*
       	      if (flock(fileno(f),LOCK_EX)){
@@ -107,14 +107,15 @@ void *process_stream(void *data){
 	}
 	flock(fileno(f),LOCK_UN);
 */
-	if (!f){
-          g_critical("File failed to open: %s. Reetrying",sf->filename);
+	if (f < 0){
+          g_critical("File failed to open: %s (%s). Retrying", sf->filename, strerror(errno));
           f=open(sf->filename,O_RDONLY);
-          if (!f){
-            m_error("File failed to open: %s. Cancelling",sf->filename);
+          if (f < 0){
+            m_error("File failed to open: %s (%s). Cancelling",sf->filename, strerror(errno));
             exit(EXIT_FAILURE);
           }
         }
+        trace("Streaming %s", sf->filename);
         struct stat st;
         fstat(f, &st);
         off_t size = st.st_size;
@@ -153,8 +154,11 @@ void *process_stream(void *data){
       }
     }
     if (no_delete == FALSE){
+      trace("Deleting %s", sf->filename);
       remove(sf->filename);
     }
+    if (sf->done)
+      g_async_queue_push(sf->done, GINT_TO_POINTER(1));
     g_free(sf->filename);
     g_free(sf);
   }
@@ -176,6 +180,11 @@ void send_initial_metadata(){
   g_async_queue_pop(initial_metadata_lock_queue);
 }
 
+static gchar *make_partial_filename(guint i)
+{
+  return g_strdup_printf("%s/metadata.partial.%d", dump_directory, i);
+}
+
 void *metadata_partial_writer(void *data){
   (void) data;
   struct db_table *dbt=NULL;
@@ -194,7 +203,7 @@ void *metadata_partial_writer(void *data){
   }
   g_string_set_size(output,0);
   g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
-  filename=g_strdup_printf("metadata.partial.%d",0);
+  filename= make_partial_filename(0);
   g_file_set_contents(filename, output->str,output->len,&gerror);
   stream_queue_push(NULL, filename);
   for(i=0;i<num_threads;i++){
@@ -216,7 +225,7 @@ void *metadata_partial_writer(void *data){
     diff=g_date_time_difference(current_datetime,prev_datetime)/G_TIME_SPAN_SECOND;
     if (diff > METADATA_PARTIAL_INTERVAL){
       if (g_list_length(dbt_list) > 0){  
-        filename=g_strdup_printf("metadata.partial.%d",i);
+        filename= make_partial_filename(i);
         i++;
         g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
         g_file_set_contents(filename,output->str,output->len,&gerror);

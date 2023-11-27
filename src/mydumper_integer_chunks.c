@@ -110,7 +110,8 @@ void free_integer_step_item(struct chunk_step_item * csi){
     free_integer_step(csi->chunk_step);
     csi->chunk_step=NULL;
   }
-//  g_free(csi);
+  // We cannot free it here, otherwise get_next_integer_chunk() fails
+  // g_free(csi);
 }
 
 struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){

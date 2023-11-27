@@ -8,6 +8,8 @@ orbs:
 
 executors:"
 
+# TODO: make ASAN counterpart of builders
+
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="mysql80"
@@ -207,7 +209,7 @@ commands:
 echo "
   prepare_el_mysql80:
     steps:
-    - run: sudo yum install -y mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb mysql-community-libs mysql-community-devel mysql-community-client
 
   prepare_el8_mysql80:
     steps:
@@ -217,35 +219,35 @@ echo "
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
+    - run: sudo apt-get install -y gdb libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
   prepare_ubuntu_percona80:
     steps:
     - run: sudo percona-release setup -y ps80
-    - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo apt-get install -y gdb libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
 
   prepare_ubuntu_mariadb1006:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1006:
     steps:
     - prepare_mariadb1006
-    - run: sudo yum install -y MariaDB-devel
-    - run: sudo yum install -y MariaDB-compat || true
+    - run: sudo yum install -y libasan gdb MariaDB-devel
+    - run: sudo yum install -y libasan gdb MariaDB-compat || true
 
   prepare_ubuntu_mariadb1011:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1011:
     steps:
     - prepare_mariadb1011
-    - run: sudo yum install -y MariaDB-devel
-    - run: sudo yum install -y MariaDB-compat || true
+    - run: sudo yum install -y libasan gdb MariaDB-devel
+    - run: sudo yum install -y libasan gdb MariaDB-compat || true
     "
 
 for os in el7 el9
@@ -313,7 +315,7 @@ done
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
-    - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
+    - run: yum -y install libasan Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_tidb:
     steps:
@@ -322,7 +324,7 @@ done
   prepare_el_percona80:
     steps:
     - run: percona-release setup -y ps80
-    - run: yum -y install percona-server-devel percona-server-client
+    - run: yum -y install libasan percona-server-devel percona-server-client
 
   compile:
     parameters:
@@ -334,7 +336,7 @@ done
         command: |
           source /etc/profile.d/sh.local || true
     - run: cmake . <<parameters.CMAKED>>
-    - run: make
+    - run: make VERBOSE=1
     - run: sudo make install
     - run: ./mydumper --version
 

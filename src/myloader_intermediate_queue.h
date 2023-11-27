@@ -26,4 +26,3 @@ void intermediate_queue_end();
 void intermediate_queue_new(const gchar *filename);
 void initialize_intermediate_queue (struct configuration *c);
 void remove_fifo_file(gchar *fifo_name);
-void wait_until_first_metadata();
