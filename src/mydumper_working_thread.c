@@ -708,7 +708,7 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
 gboolean process_job(struct thread_data *td, struct job *job){
     switch (job->type) {
     case JOB_DETERMINE_CHUNK_TYPE:
-      set_chunk_strategy_for_dbt(td->thrconn, (struct db_table *)(job->job_data));
+      set_chunk_strategy_for_dbt(td, (struct db_table *)(job->job_data));
       g_free(job);
       break;
     case JOB_DUMP:
@@ -982,9 +982,10 @@ struct function_pointer ** get_anonymized_function_for(struct thread_data *td, g
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
 
-    g_string_printf(td->query,"select COLUMN_NAME from information_schema.COLUMNS "
-                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
-                      database, table);
+    g_string_printf(td->query,
+        "select COLUMN_NAME from information_schema.COLUMNS "
+        "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
+        database, table);
     mysql_query(td->thrconn, td->query->str);
 
     struct function_pointer *fp;
@@ -1008,7 +1009,7 @@ struct function_pointer ** get_anonymized_function_for(struct thread_data *td, g
   return anonymized_function_list;
 }
 
-gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
+gboolean detect_generated_fields(struct thread_data *td, struct db_table *dbt) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
@@ -1016,15 +1017,14 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   if (ignore_generated_fields)
     return FALSE;
 
-  gchar *query = g_strdup_printf(
+  g_string_printf(td->query,
       "select COLUMN_NAME from information_schema.COLUMNS where "
       "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
-      database, table);
+      dbt->database->escaped, dbt->escaped_table);
 
-  mysql_query(conn, query);
-  g_free(query);
+  mysql_query(td->thrconn, td->query->str);
 
-  res = mysql_store_result(conn);
+  res = mysql_store_result(td->thrconn);
   if (res == NULL){
     return FALSE;
   }
@@ -1037,19 +1037,18 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   return result;
 }
 
-gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
+gchar *get_character_set_from_collation(struct thread_data *td, gchar *collation){
   g_mutex_lock(character_set_hash_mutex);
   gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
   if (character_set == NULL){
     MYSQL_RES *res = NULL;
     MYSQL_ROW row;
-    gchar *query =
-      g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
-                      "WHERE collation_name='%s'",
-                      collation);
-    mysql_query(conn, query);
-    g_free(query);
-    res = mysql_store_result(conn);
+    g_string_printf(td->query, 
+        "SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
+        "WHERE collation_name='%s'",
+        collation);
+    mysql_query(td->thrconn, td->query->str);
+    res = mysql_store_result(td->thrconn);
     row = mysql_fetch_row(res);
     g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
     mysql_free_result(res);
@@ -1077,64 +1076,6 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
   dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
 
-/*
-void get_primary_key_string_old(MYSQL *conn, struct db_table * dbt) {
-  dbt->primary_key_separated_by_comma = NULL;
-  dbt->multicolumn = FALSE;
-  if (!order_by_primary_key) return;
-
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  GString *field_list = g_string_new("");
-
-  gchar *query =
-          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
-                          "FROM information_schema.table_constraints t "
-                          "LEFT JOIN information_schema.key_column_usage k "
-                          "USING(constraint_name,table_schema,table_name) "
-                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
-                          "AND t.table_schema='%s' "
-                          "AND t.table_name='%s' "
-                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
-                          dbt->database->name, dbt->table);
-
-  if (mysql_query(conn, query)){
-    return;
-  }
-  g_free(query);
-
-  if (!(res = mysql_store_result(conn)))
-    return;
-  gboolean first = TRUE;
-  while ((row = mysql_fetch_row(res))) {
-    if (first) {
-      first = FALSE;
-    } else if (atoi(row[1]) > 1) {
-      if (atoi(row[1]) == 2) {
-//        second_field=
-      }
-      dbt->multicolumn = TRUE;
-      g_string_append(field_list, ",");
-    } else {
-      break;
-    }
-
-    gchar *tb = g_strdup_printf("`%s`", row[0]);
-    g_string_append(field_list, tb);
-    g_free(tb);
-  }
-  mysql_free_result(res);
-  // Return NULL if we never found a PRIMARY or UNIQUE key
-  if (first) {
-    g_string_free(field_list, TRUE);
-    return;
-  } else {
-    dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE);
-  }
-}
-*/
-
 void get_primary_key(struct thread_data *td, struct db_table * dbt){
   MYSQL_RES *indexes = NULL;
   MYSQL_ROW row;
@@ -1142,9 +1083,10 @@ void get_primary_key(struct thread_data *td, struct db_table * dbt){
   dbt->primary_key=NULL;
 // first have to pick index, in future should be able to preset in
 //   configuration too
-  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", dbt->database->name, dbt->table);
-  mysql_query(td->thrconn, query);
-  g_free(query);
+  g_string_printf(td->query,
+      "SHOW INDEX FROM `%s`.`%s`", 
+      dbt->database->name, dbt->table);
+  mysql_query(td->thrconn, td->query->str);
   indexes = mysql_store_result(td->thrconn);
 
   if (indexes){
@@ -1217,7 +1159,7 @@ gboolean new_db_table( struct db_table **d, struct thread_data *td, struct datab
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->rows_in_sts = rows_in_sts;
     dbt->is_sequence= is_sequence;
-    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(td->thrconn, table_collation);
+    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(td, table_collation);
     dbt->has_json_fields = has_json_fields(td, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->escaped_table = escape_string(td->thrconn,dbt->table);
@@ -1264,7 +1206,7 @@ gboolean new_db_table( struct db_table **d, struct thread_data *td, struct datab
     dbt->chunk_filesize=chunk_filesize;
 //  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
 
-    dbt->complete_insert = complete_insert || detect_generated_fields(td->thrconn, dbt->database->escaped, dbt->escaped_table);
+    dbt->complete_insert = complete_insert || detect_generated_fields(td, dbt);
     if (dbt->complete_insert) {
       dbt->select_fields = get_insertable_fields(td, dbt->database->escaped, dbt->escaped_table);
     } else {

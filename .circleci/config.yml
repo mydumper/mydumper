@@ -20,6 +20,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bionic_percona80:
@@ -36,6 +39,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bionic_mariadb1011:
@@ -52,6 +58,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bionic_mariadb1006:
@@ -68,6 +77,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bionic_tidb:
@@ -84,6 +96,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bionic_mysql80:
@@ -125,6 +140,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   focal_percona80:
@@ -141,6 +159,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   focal_mariadb1011:
@@ -157,6 +178,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   focal_mariadb1006:
@@ -173,6 +197,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   focal_tidb:
@@ -189,6 +216,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   focal_mysql80:
@@ -230,6 +260,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   jammy_percona80:
@@ -246,6 +279,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   jammy_mariadb1011:
@@ -262,6 +298,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   jammy_mariadb1006:
@@ -278,6 +317,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   jammy_tidb:
@@ -294,6 +336,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   jammy_mysql80:
@@ -335,6 +380,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el7_percona80:
@@ -351,6 +399,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el7_mariadb1011:
@@ -367,6 +418,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el7_mariadb1006:
@@ -383,6 +437,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el7_tidb:
@@ -399,6 +456,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el7_mysql80:
@@ -440,6 +500,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el8_percona80:
@@ -456,6 +519,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el8_mariadb1011:
@@ -472,6 +538,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el8_mariadb1006:
@@ -488,6 +557,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el8_tidb:
@@ -504,6 +576,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el8_mysql80:
@@ -545,6 +620,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el9_percona80:
@@ -561,6 +639,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el9_mariadb1011:
@@ -577,6 +658,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el9_mariadb1006:
@@ -593,6 +677,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el9_tidb:
@@ -609,6 +696,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   el9_mysql80:
@@ -650,6 +740,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   buster_percona80:
@@ -666,6 +759,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   buster_mariadb1011:
@@ -682,6 +778,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   buster_mariadb1006:
@@ -698,6 +797,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   buster_tidb:
@@ -714,6 +816,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   buster_mysql80:
@@ -755,6 +860,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bullseye_percona80:
@@ -771,6 +879,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bullseye_mariadb1011:
@@ -787,6 +898,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bullseye_mariadb1006:
@@ -803,6 +917,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bullseye_tidb:
@@ -819,6 +936,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bullseye_mysql80:
@@ -860,6 +980,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bookworm_percona80:
@@ -876,6 +999,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bookworm_mariadb1011:
@@ -892,6 +1018,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bookworm_mariadb1006:
@@ -908,6 +1037,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bookworm_tidb:
@@ -924,6 +1056,9 @@ executors:
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
+      security_opt:
+        seccomp: unconfined
+
     working_directory: /tmp/src/mydumper
 
   bookworm_mysql80:

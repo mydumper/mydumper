@@ -114,17 +114,18 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
   return NULL;
 }
 
-GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
+GList * get_partitions_for_table(struct thread_data *td, struct db_table *dbt){
   MYSQL_RES *res=NULL;
   MYSQL_ROW row;
 
   GList *partition_list = NULL;
 
-  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->name, dbt->table);
-  mysql_query(conn,query);
-  g_free(query);
+  g_string_printf(td->query,
+      "select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", 
+      dbt->database->name, dbt->table);
+  mysql_query(td->thrconn,td->query->str);
 
-  res = mysql_store_result(conn);
+  res = mysql_store_result(td->thrconn);
   if (res == NULL)
     //partitioning is not supported
     return partition_list;
