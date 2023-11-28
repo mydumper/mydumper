@@ -356,6 +356,11 @@ done
         destination: artifact-file
     - store_artifacts:
         path: /tmp/data/
+    - store_artifacts:
+        path: /tmp/test_myloader.log.tmp
+    - store_artifacts:
+        path: /tmp/test_myloader.log.tmp
+ 
 
   set_env_vars:
     steps:
