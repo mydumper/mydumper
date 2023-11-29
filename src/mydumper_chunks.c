@@ -96,24 +96,21 @@ struct chunk_step_item * new_none_chunk_step(){
   return csi;
 }
 
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
+struct chunk_step_item * initialize_chunk_step_item (struct thread_data *td, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
     struct chunk_step_item * csi=NULL;
 
 //  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
     gchar *field=g_list_nth_data(dbt->primary_key, position);
-    gchar *query = NULL;
     MYSQL_ROW row;
     MYSQL_RES *minmax = NULL;
     /* Get minimum/maximum */
-    mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s %s %s",
-                        is_mysql_like()
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, field, field, field, dbt->database->name, dbt->table, where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
+    g_string_printf(td->query,
+        "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s %s %s",
+        is_mysql_like()?"/*!40001 SQL_NO_CACHE */":"",
+        field, field, field, field, dbt->database->name, dbt->table, where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : "");
 //    g_message("Query: %s", query);
-    g_free(query);
-    minmax = mysql_store_result(conn);
+    mysql_query(td->thrconn, td->query->str);
+    minmax = mysql_store_result(td->thrconn);
 
     if (!minmax){
       g_message("It is NONE with minmax == NULL");
@@ -224,7 +221,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         return new_none_chunk_step();
 */
 
-        csi=new_char_step_item(conn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
+        csi=new_char_step_item(td->thrconn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
         if (minmax)
           mysql_free_result(minmax);
         return csi;
@@ -241,19 +238,16 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 }
 
 
-guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field){
-  gchar *query = NULL;
+guint64 get_rows_from_explain(struct thread_data *td, struct db_table *dbt, GString *where, gchar *field){
   MYSQL_ROW row = NULL;
   MYSQL_RES *res= NULL;
   /* Get minimum/maximum */
-
-  mysql_query(conn, query = g_strdup_printf(
-                        "EXPLAIN SELECT %s %s%s%s FROM `%s`.`%s`%s%s",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        field?"`":"", field?field:"*", field?"`":"",dbt->database->name, dbt->table, where?" WHERE ":"",where?where->str:""));
-
-  g_free(query);
-  res = mysql_store_result(conn);
+  g_string_printf(td->query, 
+      "EXPLAIN SELECT %s %s%s%s FROM `%s`.`%s`%s%s",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      field?"`":"", field?field:"*", field?"`":"",dbt->database->name, dbt->table, where?" WHERE ":"",where?where->str:"");
+  mysql_query(td->thrconn, td->query->str);
+  res = mysql_store_result(td->thrconn);
 
   guint row_col=-1;
 
@@ -276,7 +270,7 @@ void set_chunk_strategy_for_dbt(struct thread_data *td, struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   struct chunk_step_item * csi = NULL;
 
-  guint64 rows = get_rows_from_explain(td->thrconn, dbt, NULL ,NULL);
+  guint64 rows = get_rows_from_explain(td, dbt, NULL ,NULL);
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
@@ -290,7 +284,7 @@ void set_chunk_strategy_for_dbt(struct thread_data *td, struct db_table *dbt){
       csi->chunk_step=new_real_partition_step(partitions,0,0);
     }else{
       if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
-        csi = initialize_chunk_step_item(td->thrconn, dbt, 0, NULL, rows);
+        csi = initialize_chunk_step_item(td, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();
       }

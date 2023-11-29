@@ -742,7 +742,7 @@ void m_warning(const char *fmt, ...){
 }
 
 /* Function to work around a bug in MariaDB which outputs the explicit
- * scehma for a sequence in a SHOW CREATE TABLE even if it is local to the
+ * schema for a sequence in a SHOW CREATE TABLE even if it is local to the
  * current table
  */
 gchar *filter_sequence_schemas(const gchar *create_table)

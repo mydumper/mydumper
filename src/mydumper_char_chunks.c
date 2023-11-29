@@ -221,19 +221,18 @@ gchar * get_escaped_middle_char(MYSQL *conn, gchar *c1, guint c1len, gchar *c2, 
   return escapedresult;
 }
 
-gchar* update_cursor (MYSQL *conn, struct chunk_step_item *csi, struct db_table *dbt, struct table_job *tj){
-  gchar *query = NULL;
+gchar* update_cursor (struct thread_data *td, struct chunk_step_item *csi, struct db_table *dbt, struct table_job *tj){
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
 //  g_message("update_cursor::");
-  gchar * middle = get_escaped_middle_char(conn, csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cmax_len, csi->chunk_step->char_step.cmin, csi->chunk_step->char_step.cmin_len, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, csi->chunk_step->char_step.cmin_escaped, csi->field, middle, csi->field, csi->field, csi->chunk_step->char_step.cmax_escaped, csi->field));
-  g_free(query);
-  minmax = mysql_store_result(conn);
+  gchar * middle = get_escaped_middle_char(td->thrconn, csi->chunk_step->char_step.cmax, csi->chunk_step->char_step.cmax_len, csi->chunk_step->char_step.cmin, csi->chunk_step->char_step.cmin_len, tj->char_chunk_part>0?tj->char_chunk_part:1);//num_threads*(num_threads - cs->char_step.deep>0?num_threads-cs->char_step.deep:1));
+  g_string_printf(td->query, 
+      "SELECT %s `%s` FROM `%s`.`%s` WHERE '%s' <= `%s` AND '%s' <= `%s` AND `%s` <= '%s' ORDER BY `%s` LIMIT 1",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      csi->field, dbt->database->name, dbt->table, csi->chunk_step->char_step.cmin_escaped, csi->field, middle, csi->field, csi->field, csi->chunk_step->char_step.cmax_escaped, csi->field);
+  mysql_query(td->thrconn, td->query->str);
+  minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
 //    g_message("No middle point");
@@ -262,7 +261,7 @@ cleanup:
     csi->chunk_step->char_step.cursor = g_new(char, csi->chunk_step->char_step.cursor_len);
     g_strlcpy(csi->chunk_step->char_step.cursor, row[0], csi->chunk_step->char_step.cursor_len);
     csi->chunk_step->char_step.cursor_escaped = g_new(char, lengths[0] * 2 + 1);
-    mysql_real_escape_string(conn, csi->chunk_step->char_step.cursor_escaped, row[0], lengths[0]);
+    mysql_real_escape_string(td->thrconn, csi->chunk_step->char_step.cursor_escaped, row[0], lengths[0]);
   }else{
     csi->chunk_step->char_step.cursor_clen = csi->chunk_step->char_step.cmax_clen;
     csi->chunk_step->char_step.cursor_len = csi->chunk_step->char_step.cmax_len;
@@ -275,7 +274,6 @@ cleanup:
 
 gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, struct chunk_step_item *csi){
 //  g_message("Thread %d: get_new_minmax", td->thread_id);
-  gchar *query = NULL;
   MYSQL_ROW row;
   MYSQL_RES *minmax = NULL;
   union chunk_step * previous=csi->chunk_step->char_step.previous;
@@ -287,15 +285,13 @@ gboolean get_new_minmax (struct thread_data *td, struct db_table *dbt, struct ch
 //  guchar d=middle[0];
 //  g_message("Middle point: `%s` | `%c` %u", middle, middle[0], d);
 
-
-  mysql_query(td->thrconn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, middle, (gchar*)dbt->primary_key->data, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, previous->char_step.cmax_escaped, (gchar*)dbt->primary_key->data));
-
+  g_string_printf(td->query,
+      "SELECT %s `%s` FROM `%s`.`%s` WHERE `%s` > (SELECT `%s` FROM `%s`.`%s` WHERE `%s` > '%s' ORDER BY `%s` LIMIT 1) AND '%s' < `%s` AND `%s` < '%s' ORDER BY `%s` LIMIT 1",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      csi->field, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, dbt->database->name, dbt->table, (gchar*)dbt->primary_key->data, middle, (gchar*)dbt->primary_key->data, previous->char_step.cursor_escaped!=NULL?previous->char_step.cursor_escaped:previous->char_step.cmin_escaped, (gchar*)dbt->primary_key->data, (gchar*)dbt->primary_key->data, previous->char_step.cmax_escaped, (gchar*)dbt->primary_key->data);
+  mysql_query(td->thrconn, td->query->str);
 //g_message("get_new_minmax Query: %s", query);
 
-  g_free(query);
   minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
@@ -356,7 +352,7 @@ guint process_char_chunk_step(struct thread_data *td, struct table_job *tj, stru
 //  update_estimated_remaining_chunks_on_dbt(tj->dbt);
 
   if (csi->chunk_step->char_step.cmax)
-    update_cursor(td->thrconn,tj->chunk_step_item,tj->dbt, tj);
+    update_cursor(td,tj->chunk_step_item,tj->dbt, tj);
 
   g_mutex_unlock(csi->mutex);
 

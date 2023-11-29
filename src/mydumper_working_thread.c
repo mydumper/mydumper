@@ -1297,7 +1297,7 @@ void new_table_to_dump(struct thread_data *td, gboolean is_view, gboolean is_seq
       create_job_to_dump_table_schema( dbt, td->conf);
     }
     if (dump_triggers && !database->dump_triggers) {
-      create_job_to_dump_triggers(td->thrconn, dbt, td->conf);
+      create_job_to_dump_triggers(td, dbt);
     }
     if (!no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {

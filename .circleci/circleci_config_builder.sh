@@ -158,8 +158,6 @@ do
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-      security_opt:
-        seccomp: unconfined
 
     working_directory: /tmp/src/mydumper"
 done

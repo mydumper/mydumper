@@ -307,19 +307,17 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
   return NULL;
 }
 
-void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
+void refresh_integer_min_max(struct thread_data *td, struct db_table *dbt, struct chunk_step_item *csi ){
   struct integer_step * ics = &(csi->chunk_step->integer_step);
-  gchar *query = NULL;
   MYSQL_ROW row = NULL;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
-
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`%s%s",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, csi->field, dbt->database->name, dbt->table,csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""));
-  g_free(query);
-  minmax = mysql_store_result(conn);
+  g_string_printf(td->query,
+      "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`%s%s",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      csi->field, csi->field, dbt->database->name, dbt->table,csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:"");
+  mysql_query(td->thrconn, td->query->str);
+  minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
     return;
@@ -346,24 +344,21 @@ void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_ste
 }
 
 
-void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
+void update_integer_min(struct thread_data *td, struct db_table *dbt, struct chunk_step_item *csi ){
 //  union chunk_step *cs= tj->chunk_step;
   struct integer_step * ics = &(csi->chunk_step->integer_step);
-  gchar *query = NULL;
   MYSQL_ROW row = NULL;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
 
   GString *where = g_string_new("");
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
-
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` ASC LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, where->str, csi->field));
-  g_free(query);
-  minmax = mysql_store_result(conn);
-
+  g_string_printf(td->query,
+      "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` ASC LIMIT 1",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      csi->field, dbt->database->name, dbt->table, where->str, csi->field);
+  mysql_query(td->thrconn, td->query->str);
+  minmax = mysql_store_result(td->thrconn);
   if (!minmax){
     return;
   }
@@ -383,22 +378,20 @@ void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_ite
   mysql_free_result(minmax);
 }
 
-void update_integer_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi ){
+void update_integer_max(struct thread_data *td,struct db_table *dbt, struct chunk_step_item *csi ){
   struct integer_step * ics = &(csi->chunk_step->integer_step);
-  gchar *query = NULL;
   MYSQL_ROW row = NULL;
   MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
 
   GString *where = g_string_new("");
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
-
-  mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` DESC LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, where->str, csi->field));
-  minmax = mysql_store_result(conn);
-  g_free(query);
+  g_string_printf(td->query,
+      "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` DESC LIMIT 1",
+      is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+      csi->field, dbt->database->name, dbt->table, where->str, csi->field);
+  mysql_query(td->thrconn, td->query->str);
+  minmax = mysql_store_result(td->thrconn);
 
   if (!minmax){
 //    g_message("No middle point");
@@ -449,12 +442,12 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
 
   if (cs->integer_step.check_max){
 //    g_message("Thread %d: Updating MAX", td->thread_id);
-    update_integer_max(td->thrconn, tj->dbt, csi);
+    update_integer_max(td, tj->dbt, csi);
     cs->integer_step.check_max=FALSE;
   }
   if (cs->integer_step.check_min){
 //    g_message("Thread %d: Updating MIN", td->thread_id);
-    update_integer_min(td->thrconn, tj->dbt, csi);
+    update_integer_min(td, tj->dbt, csi);
 //    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
     cs->integer_step.check_min=FALSE;
   }
@@ -504,7 +497,7 @@ if (cs->integer_step.is_unsigned){
   if (csi->next !=NULL){
 //g_message("Thread %d: Next->prefix: %s, field: %s", td->thread_id, csi->next->prefix?csi->next->prefix->str:"", csi->next->field);
     if (csi->next->needs_refresh)
-      refresh_integer_min_max(td->thrconn, tj->dbt, csi->next);
+      refresh_integer_min_max(td, tj->dbt, csi->next);
 
     csi->next->chunk_functions.process( tj , csi->next);
     csi->next->needs_refresh=TRUE;
@@ -564,9 +557,9 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
 //    GString *where = g_string_new("");
     g_string_set_size(csi->where,0);
     update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
-    guint64 rows=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
+    guint64 rows=get_rows_from_explain(td, tj->dbt, csi->where, csi->field);
     if (rows > csi->chunk_step->integer_step.min_chunk_step_size ){
-      struct chunk_step_item *next_csi = initialize_chunk_step_item(td->thrconn, dbt, csi->position + 1, csi->where, rows);
+      struct chunk_step_item *next_csi = initialize_chunk_step_item(td, dbt, csi->position + 1, csi->where, rows);
       if (next_csi && next_csi->chunk_type!=NONE){
         csi->next=next_csi;
         multicolumn_process=TRUE;
