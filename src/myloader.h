@@ -206,5 +206,6 @@ const char *ft2str(enum file_type ft)
     return "INTERMEDIATE_ENDED";
   }
   g_assert(0);
+  return NULL;
 }
 #endif

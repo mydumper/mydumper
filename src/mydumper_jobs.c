@@ -119,9 +119,13 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
     g_free(query);
     return;
   }
+
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
+
   while ((row = mysql_fetch_row(result))) {
-    g_string_printf(statement, "CREATE TABLESPACE `%s` ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", row[0],row[1],row[2]);
+    g_string_append_printf(statement, "CREATE TABLESPACE %c%s%c ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", q, row[0], q, row[1], row[2]);
     if (!write_data(outfile, statement)) {
       g_critical("Could not write tablespace data for %s", row[0]);
       errors++;
@@ -146,10 +150,11 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
     return;
   }
 
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
 
-  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS `%s`", database->name);
+  query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", q, database->name, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping create database (%s): %s", database->name,
@@ -203,8 +208,8 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     return;
   }
 
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
-
   initialize_sql_statement(statement);
 
   if (!write_data(outfile, statement)) {
@@ -213,7 +218,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     return;
   }
 
-  query = g_strdup_printf("SHOW CREATE TABLE `%s`.`%s`", dbt->database->name, dbt->table);
+  query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
@@ -270,7 +275,16 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
   MYSQL_ROW row;
   gchar *query = NULL;
   gchar **splited_st = NULL;
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
+
+  if (!write_data(outfile, statement)) {
+    g_critical("Could not write triggers for %s", message);
+    errors++;
+    return;
+  }
+
   while ((row = mysql_fetch_row(result))) {
     set_charset(statement, row[8], row[9]);
     if (!write_data(outfile, statement)) {
@@ -279,7 +293,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
       return;
     }
     g_string_set_size(statement, 0);
-    query = g_strdup_printf("SHOW CREATE TRIGGER `%s`.`%s`", database->name, row[0]);
+    query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", q, database->name, q, q, row[0], q);
     mysql_query(conn, query);
     result2 = mysql_store_result(conn);
     row2 = mysql_fetch_row(result2);
@@ -317,7 +331,8 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   }
 
   // get triggers
-  query = g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->table);
+  const char q= identifier_quote_character;
+  query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", q, dbt->database->name, q, dbt->table);
   if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping triggers (%s.%s): %s", dbt->database->name, dbt->table,
@@ -359,7 +374,8 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
   }
 
   // get triggers
-  query = g_strdup_printf("SHOW TRIGGERS FROM `%s`", database->name);
+  const char q= identifier_quote_character;
+  query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c", q, database->name, q);
   if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping triggers (%s): %s", database->name,
@@ -389,7 +405,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
 
   mysql_select_db(conn, dbt->database->name);
 
@@ -403,10 +421,6 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if (is_mysql_like() && set_names_statement) {
-    g_string_printf(statement,"%s;\n",set_names_statement);
-  }
-
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
@@ -415,7 +429,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   // we create tables as workaround
   // for view dependencies
-  query = g_strdup_printf("SHOW FIELDS FROM `%s`.`%s`", dbt->database->name, dbt->table);
+  query = g_strdup_printf("SHOW FIELDS FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
@@ -430,12 +444,12 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   }
   g_free(query);
   g_string_set_size(statement, 0);
-  g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS %c%s%c(\n", identifier_quote_character,dbt->table,identifier_quote_character);
+  g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS %c%s%c(\n", q, dbt->table, q);
   row = mysql_fetch_row(result);
-  g_string_append_printf(statement, "%c%s%c int", identifier_quote_character,row[0],identifier_quote_character);
+  g_string_append_printf(statement, "%c%s%c int", q, row[0], q);
   while ((row = mysql_fetch_row(result))) {
     g_string_append(statement, ",\n");
-    g_string_append_printf(statement, "%c%s%c int", identifier_quote_character,row[0],identifier_quote_character);
+    g_string_append_printf(statement, "%c%s%c int", q, row[0], q);
   }
   g_string_append(statement, "\n) ENGINE=MEMORY;\n");
 
@@ -448,7 +462,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   }
 
   // real view
-  query = g_strdup_printf("SHOW CREATE VIEW `%s`.`%s`", dbt->database->name, dbt->table);
+  query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
@@ -474,12 +488,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  if (is_mysql_like() && set_names_statement) {
-    g_string_printf(statement,"%s;\n",set_names_statement);
-  }
-
-  g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
-  g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
+  initialize_sql_statement(statement);
+  g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", q, dbt->table, q);
+  g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", q, dbt->table, q);
 
   if (!write_data(outfile2, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
@@ -520,7 +531,9 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   char *query = NULL;
   MYSQL_RES *result = NULL;
   MYSQL_ROW row;
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
 
   mysql_select_db(conn, dbt->database->name);
 
@@ -533,19 +546,9 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     return;
   }
 
-  if (set_names_str) {
-    g_string_printf(statement, "%s;\n", set_names_statement);
-  }
-
-  if (!write_data(outfile, statement)) {
-    g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
-    errors++;
-    return;
-  }
-
   // DROP TABLE works for sequences
-  g_string_append_printf(statement, "DROP TABLE IF EXISTS `%s`;\n", dbt->table);
-  g_string_append_printf(statement, "DROP VIEW IF EXISTS `%s`;\n", dbt->table);
+  g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", q, dbt->table, q);
+  g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", q, dbt->table, q);
 
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
@@ -553,7 +556,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     return;
   }
 
-  query = g_strdup_printf("SHOW CREATE SEQUENCE `%s`.`%s`", dbt->database->name, dbt->table);
+  query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
@@ -586,7 +589,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   // Get current sequence position
-  query = g_strdup_printf("SELECT next_not_cached_value FROM `%s`.`%s`", dbt->database->name, dbt->table);
+  query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping schemas (%s.%s): %s", dbt->database->name, dbt->table,
@@ -602,7 +605,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
-  g_string_printf(statement, "DO SETVAL(`%s`, %s, 0);\n", dbt->table, row[0]);
+  g_string_printf(statement, "DO SETVAL(%c%s%c, %s, 0);\n", q, dbt->table, q, row[0]);
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
@@ -640,7 +643,16 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     return;
   }
 
+  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
+  initialize_sql_statement(statement);
+
+
+  if (!write_data(outfile, statement)) {
+    g_critical("Could not write %s", filename);
+    errors++;
+    return;
+  }
 
   if (dump_routines) {
     g_assert(nroutines > 0);
@@ -661,7 +673,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
 
       while ((row= mysql_fetch_row(result))) {
         set_charset(statement, row[8], row[9]);
-        g_string_append_printf(statement, "DROP %s IF EXISTS `%s`;\n", routine_type[r], row[1]);
+        g_string_append_printf(statement, "DROP %s IF EXISTS %c%s%c;\n", routine_type[r], q, row[1], q);
         if (!write_data(outfile, statement)) {
           g_critical("Could not write %s data for %s.%s", routine_type[r], database->name,
                     row[1]);
@@ -670,7 +682,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
           return;
         }
         g_string_set_size(statement, 0);
-        query= g_strdup_printf("SHOW CREATE %s `%s`.`%s`", routine_type[r], database->name, row[1]);
+        query= g_strdup_printf("SHOW CREATE %s %c%s%c.%c%s%c", routine_type[r], q, database->name, q,  q, row[1], q);
         mysql_query(conn, query);
         result2= mysql_store_result(conn);
         row2= mysql_fetch_row(result2);
@@ -706,7 +718,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
 
   // get events
   if (dump_events) {
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
+    query = g_strdup_printf("SHOW EVENTS FROM %c%s%c", q, database->name, q);
     if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
       if (success_on_1146 && mysql_errno(conn) == 1146) {
         g_warning("Error dumping events from %s: %s", database->name,
@@ -722,7 +734,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
 
     while ((row = mysql_fetch_row(result))) {
       set_charset(statement, row[12], row[13]);
-      g_string_append_printf(statement, "DROP EVENT IF EXISTS `%s`;\n", row[1]);
+      g_string_append_printf(statement, "DROP EVENT IF EXISTS %c%s%c;\n", q, row[1], q);
       if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,
                    row[1]);
@@ -730,7 +742,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         mysql_free_result(result);
         return;
       }
-      query = g_strdup_printf("SHOW CREATE EVENT `%s`.`%s`", database->name, row[1]);
+      query = g_strdup_printf("SHOW CREATE EVENT %c%s%c.%c%s%c", q, database->name, q, q, row[1], q);
       mysql_query(conn, query);
       result2 = mysql_store_result(conn);
       // DROP EVENT IF EXISTS event_name
@@ -952,8 +964,9 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
   char *query = NULL;
   MYSQL_RES *result = NULL;
 
+  const char q= identifier_quote_character;
   query =
-      g_strdup_printf("SHOW TRIGGERS FROM `%s` LIKE '%s'", dbt->database->name, dbt->escaped_table);
+      g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", q, dbt->database->name, q, dbt->escaped_table);
   if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
     g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
                mysql_error(conn),query);

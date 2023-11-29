@@ -32,6 +32,7 @@ static inline const char *jtype2str(enum control_job_type jtype)
     return "JOB_SHUTDOWN";
   }
   g_assert(0);
+  return NULL;
 }
 
 union control_job_data {
