@@ -354,7 +354,6 @@ done
         - run: bash ./test_mydumper.sh SSL
     - store_artifacts:
         path: /tmp/stream.sql
-        destination: artifact-file
     - store_artifacts:
         path: /tmp/data/
     - store_artifacts:
@@ -365,6 +364,8 @@ done
         path: /tmp/test_mydumper.log
     - store_artifacts:
         path: /tmp/test_myloader.log
+    - store_artifacts:
+        path: /tmp/mysqldump.sql
 
   set_env_vars:
     steps:
