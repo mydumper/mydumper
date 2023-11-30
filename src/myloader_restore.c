@@ -30,9 +30,11 @@
 #include "myloader_intermediate_queue.h"
 #include "myloader_process.h"
 gboolean skip_definer = FALSE;
-int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter)
+int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter, gchar* load_data_filename, gchar* load_data_fifo_filename, gchar** command)
 {
-  
+(void)  load_data_filename;
+(void)load_data_fifo_filename;
+(void)command;
   guint en=mysql_real_query(td->thrconn, data->str, data->len);
   if (en) {
     if (is_schema)
@@ -53,6 +55,13 @@ int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, 
     }
 
     g_warning("Thread %d: Retrying last failed executed statement", td->thread_id);
+    if (command){
+      remove(load_data_fifo_filename);
+      if (mkfifo(load_data_fifo_filename,0666)){
+        g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
+      }
+      execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+    }
     g_atomic_int_inc(&(detailed_errors.retries));
     if (mysql_real_query(td->thrconn, data->str, data->len)) {
       if (is_schema)
@@ -91,7 +100,7 @@ int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_s
        if (strlen(line[i])>2){
          GString *str=g_string_new(line[i]);
          g_string_append_c(str,';');
-         r+=restore_data_in_gstring_by_statement(td, str, is_schema, query_counter);
+         r+=restore_data_in_gstring_by_statement(td, str, is_schema, query_counter, NULL, NULL, NULL);
          g_string_free(str,TRUE);
        }
     }
@@ -126,7 +135,7 @@ int split_and_restore_data_in_gstring_by_statement(struct thread_data *td,
       current_offset_line++;
     } while (current_rows < rows && next_line != NULL);
     if (new_insert->len > insert_statement_prefix_len)
-      tr=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter);
+      tr=restore_data_in_gstring_by_statement(td, new_insert, is_schema, query_counter, NULL, NULL, NULL);
     else
       tr=0;
     r+=tr;
@@ -255,14 +264,14 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
 
 	    }
 
-            tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+            tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter, load_data_filename, load_data_fifo_filename, command);
             if (load_data_fifo_filename!=NULL) 
               m_remove(NULL, load_data_fifo_filename);
             else
               m_remove(NULL, load_data_filename);
 
           }else{
-            tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
+            tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter, NULL, NULL, NULL);
           }
         }
         r|= tr;
