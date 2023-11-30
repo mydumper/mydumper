@@ -361,7 +361,10 @@ done
         path: /tmp/test_myloader.log.tmp
     - store_artifacts:
         path: /tmp/test_myloader.log.tmp
- 
+    - store_artifacts:
+        path: /tmp/test_myloader.log
+    - store_artifacts:
+        path: /tmp/test_myloader.log
 
   set_env_vars:
     steps:
