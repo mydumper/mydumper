@@ -358,11 +358,11 @@ done
     - store_artifacts:
         path: /tmp/data/
     - store_artifacts:
-        path: /tmp/test_myloader.log.tmp
+        path: /tmp/test_mydumper.log.tmp
     - store_artifacts:
         path: /tmp/test_myloader.log.tmp
     - store_artifacts:
-        path: /tmp/test_myloader.log
+        path: /tmp/test_mydumper.log
     - store_artifacts:
         path: /tmp/test_myloader.log
 
