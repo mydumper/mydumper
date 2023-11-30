@@ -420,43 +420,48 @@ void refresh_table_list(struct configuration *conf){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
-void checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
+gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
   int errn=0;
   gchar *checksum=fun(conn, dbt->database->real_database, dbt->real_table, &errn);
   if (g_strcmp0(dbt_checksum,checksum)){
     g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", message,dbt->database->real_database, dbt->real_table, checksum, dbt_checksum);
+    return FALSE;
   }else{
     g_message("%s confirmed for `%s`.`%s`", message, dbt->database->real_database, dbt->real_table);
   }
+  return TRUE;
 }
 
-void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
+gboolean checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
   int errn=0;
   gchar *checksum=fun(conn, database, NULL, &errn);
   if (g_strcmp0(dbt_checksum,checksum)){
     g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s'", message, database, checksum, dbt_checksum);
+    return FALSE;
   }else{
     g_message("%s confirmed for `%s`", message, database);
   }
+  return TRUE;
 }
 
-void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
+gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
+  gboolean checksum_ok=TRUE;
   if (!no_schemas){
     if (dbt->schema_checksum!=NULL){
       if (dbt->is_view)
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn, "View checksum", checksum_view_structure);
+        checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn, "View checksum", checksum_view_structure);
       else
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn, "Structure checksum", checksum_table_structure);
+        checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn, "Structure checksum", checksum_table_structure);
     }
     if (dbt->indexes_checksum!=NULL)
-      checksum_dbt_template(dbt, dbt->indexes_checksum, conn, "Schema index checksum", checksum_table_indexes);
+      checksum_ok&=checksum_dbt_template(dbt, dbt->indexes_checksum, conn, "Schema index checksum", checksum_table_indexes);
   }
   if (dbt->triggers_checksum!=NULL && !skip_triggers)
-    checksum_dbt_template(dbt, dbt->triggers_checksum, conn, "Trigger checksum", checksum_trigger_structure);
+    checksum_ok&=checksum_dbt_template(dbt, dbt->triggers_checksum, conn, "Trigger checksum", checksum_trigger_structure);
 
   if (dbt->data_checksum!=NULL && !no_data)
-    checksum_dbt_template(dbt, dbt->data_checksum, conn, "Data checksum", checksum_table);
-
+    checksum_ok&=checksum_dbt_template(dbt, dbt->data_checksum, conn, "Data checksum", checksum_table);
+  return checksum_ok;
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
