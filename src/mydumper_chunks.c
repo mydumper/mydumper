@@ -289,7 +289,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       csi->chunk_functions.get_next = &get_next_partition_chunk;
       csi->chunk_step=new_real_partition_step(partitions,0,0);
     }else{
-      if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
+      if (dbt->starting_chunk_step_size > 0) {
         csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();
