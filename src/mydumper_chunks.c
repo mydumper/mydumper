@@ -393,6 +393,11 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
         break;
       }
 
+      // Set by set_chunk_strategy_for_dbt() in working_thread()
+      g_assert(d->status == READY);
+
+      // Initially chunks are set by set_chunk_strategy_for_dbt() and then by
+      // chunk_functions.get_next(d) (see below)
       if (d->chunks == NULL){
         g_mutex_unlock(d->chunks_mutex);
         goto next;
@@ -433,14 +438,6 @@ next:
   }
   g_mutex_unlock(dbt_list->mutex);
   return are_there_jobs_defining;
-}
-
-void give_me_another_non_innodb_chunk_step(){
-  g_async_queue_push(give_me_another_non_innodb_chunk_step_queue, GINT_TO_POINTER(1));
-}
-
-void give_me_another_innodb_chunk_step(){
-  g_async_queue_push(give_me_another_innodb_chunk_step_queue, GINT_TO_POINTER(1));
 }
 
 void enqueue_shutdown_jobs(GAsyncQueue * queue){

@@ -124,6 +124,8 @@ void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 guint64 min_chunk_step_size = 0;
 guint64 rows_per_file = 0;
 guint64 max_chunk_step_size = 0;
+static const guint tablecol= 0;
+static const guint datalengthcol= 5;
 
 void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
   gchar **split=g_strsplit(rows_p_chunk, ":", 0);
@@ -387,7 +389,9 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
+                        row[collcol], row[datalengthcol], row[ecol],
+                        (rowscol > 0 ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -775,19 +779,26 @@ void check_pause_resume( struct thread_data *td ){
   }
 }
 
-void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean (*p)(), void (*f)()){
+void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_builder, GAsyncQueue *chunk_step_queue){
   struct job *job = NULL;
   for (;;) {
     check_pause_resume(td);
-    if (f!=NULL)
-      f();
+    if (chunk_step_queue) {
+      g_async_queue_push(chunk_step_queue, GINT_TO_POINTER(1));
+    }
     job = (struct job *)g_async_queue_pop(queue);
     if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
       g_message("Thread %d: Process has been cacelled",td->thread_id);
       return;
     }
-    if (!p(td, job)){
-      break;
+    if (do_builder) {
+      if (!process_job_builder_job(td, job)) {
+        break;
+      }
+    } else {
+      if (!process_job(td, job)) {
+        break;
+      }
     }
   }
 }
@@ -860,11 +871,11 @@ void *working_thread(struct thread_data *td) {
   // Thread Ready to process jobs
   
   g_message("Thread %d: Creating Jobs", td->thread_id);
-  process_queue(td->conf->initial_queue,td, process_job_builder_job, NULL);
+  process_queue(td->conf->initial_queue,td, TRUE, NULL);
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
-  process_queue(td->conf->schema_queue,td, process_job, NULL);
+  process_queue(td->conf->schema_queue,td, FALSE, NULL);
 
   if (stream) send_initial_metadata();
 
@@ -880,17 +891,17 @@ void *working_thread(struct thread_data *td) {
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb_queue, td, FALSE, give_me_another_non_innodb_chunk_step_queue);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
     }else{
-      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb_queue, td, FALSE, give_me_another_non_innodb_chunk_step_queue);
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
-    process_queue(td->conf->innodb_queue, td, process_job, give_me_another_innodb_chunk_step);
+    process_queue(td->conf->innodb_queue, td, FALSE, give_me_another_innodb_chunk_step_queue);
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
@@ -901,7 +912,7 @@ void *working_thread(struct thread_data *td) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
 
-  process_queue(td->conf->post_data_queue, td, process_job, NULL);
+  process_queue(td->conf->post_data_queue, td, FALSE, NULL);
 
   g_message("Thread %d: shutting down", td->thread_id);
 
@@ -1276,7 +1287,10 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
+                       gboolean is_sequence, struct database * database, char *table,
+                       char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts)
+{
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -1532,7 +1546,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
     
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[5], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
+                      row[collcol], row[datalengthcol], row[ecol],
+                      (rowscol>0 && row[rowscol] !=NULL ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
 
   }
 

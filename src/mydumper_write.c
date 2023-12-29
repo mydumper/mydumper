@@ -561,7 +561,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
         }
         g_string_set_size(statement, 0);
       }
-      g_mutex_lock(dbt->chunks_mutex);
+      g_mutex_lock(dbt->chunks_mutex); // FIXME: why this mutex needed? Only to get INSERT ... beginning?
       g_string_append(statement, dbt->insert_statement->str);
       g_mutex_unlock(dbt->chunks_mutex);
       num_rows_st = 0;

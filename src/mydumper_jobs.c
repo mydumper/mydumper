@@ -1067,13 +1067,15 @@ void initialize_load_data_fn(struct table_job * tj){
   tj->child_process=initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part, &build_load_data_filename, &(tj->exec_out_filename));
 }
 
-gboolean update_files_on_table_job(struct table_job *tj){
+gboolean update_files_on_table_job(struct table_job *tj)
+{
+  struct chunk_step_item *csi= tj->chunk_step_item;
   if (tj->sql_file == 0){
-    if (tj->chunk_step_item->chunk_type == INTEGER && tj->chunk_step_item->chunk_step->integer_step.is_step_fixed_length ){
-      if (tj->chunk_step_item->chunk_step->integer_step.is_unsigned)
-        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.unsign.min / tj->chunk_step_item->chunk_step->integer_step.step + 1; 
-      else
-        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.sign.min   / tj->chunk_step_item->chunk_step->integer_step.step + 1;
+    if (csi->chunk_type == INTEGER) {
+      struct integer_step *s= &csi->chunk_step->integer_step;
+      if (s->is_step_fixed_length) {
+        tj->sub_part= (s->is_unsigned ? s->type.unsign.min : (guint64) s->type.sign.min) / s->step + 1;
+      }
     }
 
     if (load_data){

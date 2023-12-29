@@ -907,7 +907,9 @@ void start_dump() {
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf;
+  memset(&conf, 0, sizeof(conf));
+  conf.use_any_index= 1;
   char *metadata_partial_filename, *metadata_filename;
   char *u;
 //  detect_server_version(conn);
