@@ -74,6 +74,7 @@ extern gboolean stream;
 extern gboolean success_on_1146;
 extern gboolean use_fifo;
 extern gboolean use_savepoints;
+extern gboolean clear_dumpdir;
 extern gchar *db;
 extern gchar *disk_limits;
 extern gchar *dump_directory;

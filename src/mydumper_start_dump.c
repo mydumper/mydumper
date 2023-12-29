@@ -885,6 +885,8 @@ void send_lock_all_tables(MYSQL *conn){
 }
 
 void start_dump() {
+  if (clear_dumpdir)
+    clear_dump_directory(dump_directory);
   initialize_start_dump();
   initialize_common();
 

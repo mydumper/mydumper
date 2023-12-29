@@ -99,7 +99,7 @@ void *exec_thread(void *data) {
     char *dump_number_str=g_strdup_printf("%d",dump_number);
     dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
-    clear_dump_directory(dump_directory);
+    g_assert(clear_dumpdir);
     start_dump();
     // start_dump already closes mysql
 

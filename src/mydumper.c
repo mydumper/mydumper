@@ -157,6 +157,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (daemon_mode) {
+    clear_dumpdir= TRUE;
     initialize_daemon_thread();
     run_daemon();
   }else{
