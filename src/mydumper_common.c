@@ -537,6 +537,9 @@ void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *
     else if (!strcasecmp(fields[i].name, "Rows"))
       *rowscol = i;
   }
+  g_assert(*ecol > 0);
+  g_assert(*ccol > 0);
+  g_assert(*collcol > 0);
 }
 
 void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
