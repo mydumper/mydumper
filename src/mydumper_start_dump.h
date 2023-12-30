@@ -72,12 +72,19 @@ enum chunk_states{
   COMPLETED
 };
 
+struct table_queuing {
+  GAsyncQueue *queue;
+  GAsyncQueue *request_chunk;
+  struct MList *table_list;
+  const char *descr;
+};
+
 struct configuration {
   char use_any_index;
   GAsyncQueue *initial_queue;
   GAsyncQueue *schema_queue;
-  GAsyncQueue *non_innodb_queue;
-  GAsyncQueue *innodb_queue;
+  struct table_queuing non_innodb;
+  struct table_queuing innodb;
   GAsyncQueue *post_data_queue;
   GAsyncQueue *ready;
   GAsyncQueue *ready_non_innodb_queue;

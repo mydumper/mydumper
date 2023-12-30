@@ -1113,9 +1113,20 @@ void start_dump() {
   conf.initial_queue = g_async_queue_new();
   conf.schema_queue = g_async_queue_new();
   conf.post_data_queue = g_async_queue_new();
-  conf.innodb_queue = g_async_queue_new();
+  conf.innodb.queue= g_async_queue_new();
+  // These are initialized in the guts of initialize_start_dump() above
+  g_assert(give_me_another_innodb_chunk_step_queue &&
+           give_me_another_non_innodb_chunk_step_queue &&
+           innodb_table &&
+           non_innodb_table);
+  conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
+  conf.innodb.table_list= innodb_table;
+  conf.innodb.descr= "InnoDB";
   conf.ready = g_async_queue_new();
-  conf.non_innodb_queue = g_async_queue_new();
+  conf.non_innodb.queue= g_async_queue_new();
+  conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
+  conf.non_innodb.table_list= non_innodb_table;
+  conf.non_innodb.descr= "Non-InnoDB";
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
   conf.gtid_pos_checked = g_async_queue_new();
@@ -1282,7 +1293,11 @@ void start_dump() {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
   }
-  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue), g_async_queue_length(conf.schema_queue), g_async_queue_length(conf.non_innodb_queue), g_async_queue_length(conf.innodb_queue), g_async_queue_length(conf.post_data_queue));
+  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
+            g_async_queue_length(conf.schema_queue),
+            g_async_queue_length(conf.non_innodb.queue),
+            g_async_queue_length(conf.innodb.queue),
+            g_async_queue_length(conf.post_data_queue));
   // close main connection
   if (conn != second_conn)
     mysql_close(second_conn);
@@ -1306,10 +1321,10 @@ void start_dump() {
   if (pmm){
     kill_pmm_thread();
   }
-  g_async_queue_unref(conf.innodb_queue);
-  conf.innodb_queue=NULL;
-  g_async_queue_unref(conf.non_innodb_queue);
-  conf.non_innodb_queue=NULL;
+  g_async_queue_unref(conf.innodb.queue);
+  conf.innodb.queue= NULL;
+  g_async_queue_unref(conf.non_innodb.queue);
+  conf.non_innodb.queue= NULL;
   g_async_queue_unref(conf.unlock_tables);
   conf.unlock_tables=NULL;
   g_async_queue_unref(conf.ready);
