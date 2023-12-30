@@ -451,6 +451,13 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
   }
 }
 
+static inline
+void enqueue_shutdown(struct table_queuing *q)
+{
+  enqueue_shutdown_jobs(q->queue);
+  enqueue_shutdown_jobs(q->defer);
+}
+
 static
 void table_job_enqueue(struct table_queuing *q)
 {
@@ -479,7 +486,8 @@ void table_job_enqueue(struct table_queuing *q)
         switch (csi->chunk_type) {
         case INTEGER:
           create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push,
-                                   q->queue);
+                                   q->defer);
+          create_job_defer(dbt, q->queue);
           break;
         case CHAR:
           create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
@@ -507,7 +515,7 @@ void table_job_enqueue(struct table_queuing *q)
     }
   } // for (;;)
   g_message("%s tables completed", q->descr);
-  enqueue_shutdown_jobs(q->queue);
+  enqueue_shutdown(q);
 }
 
 void *chunk_builder_thread(struct configuration *conf)

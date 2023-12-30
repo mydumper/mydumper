@@ -27,6 +27,7 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_DEFER,
   JOB_DETERMINE_CHUNK_TYPE,
   JOB_TABLE,
   JOB_CHECKSUM,
@@ -74,6 +75,7 @@ enum chunk_states{
 
 struct table_queuing {
   GAsyncQueue *queue;
+  GAsyncQueue *defer;
   GAsyncQueue *request_chunk;
   struct MList *table_list;
   const char *descr;

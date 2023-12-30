@@ -1176,6 +1176,14 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nch
   f(queue,j);
 }
 
+void create_job_defer(struct db_table *dbt, GAsyncQueue *queue)
+{
+  struct job *j = g_new0(struct job,1);
+  j->type = JOB_DEFER;
+  j->job_data=(void*) dbt;
+  g_async_queue_push(queue,j);
+}
+
 void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue){
   struct job *j = g_new0(struct job,1);
   j->type = JOB_DETERMINE_CHUNK_TYPE;

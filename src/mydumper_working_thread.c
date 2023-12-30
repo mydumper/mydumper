@@ -718,6 +718,8 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_DUMP_NON_INNODB:
       thd_JOB_DUMP(td, job);
       break;
+    case JOB_DEFER:
+      break;
     case JOB_CHECKSUM:
       do_JOB_CHECKSUM(td,job);
       break;
@@ -885,16 +887,19 @@ void *working_thread(struct thread_data *td) {
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
       process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
+      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
     }else{
       process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
+      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
     process_queue(td->conf->innodb.queue, td, FALSE, td->conf->innodb.request_chunk);
+    process_queue(td->conf->innodb.defer, td, FALSE, NULL);
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));

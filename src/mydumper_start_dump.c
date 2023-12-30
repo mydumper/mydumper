@@ -1119,6 +1119,7 @@ void start_dump() {
   conf.schema_queue = g_async_queue_new();
   conf.post_data_queue = g_async_queue_new();
   conf.innodb.queue= g_async_queue_new();
+  conf.innodb.defer= g_async_queue_new();
   // These are initialized in the guts of initialize_start_dump() above
   g_assert(give_me_another_innodb_chunk_step_queue &&
            give_me_another_non_innodb_chunk_step_queue &&
@@ -1129,6 +1130,7 @@ void start_dump() {
   conf.innodb.descr= "InnoDB";
   conf.ready = g_async_queue_new();
   conf.non_innodb.queue= g_async_queue_new();
+  conf.non_innodb.defer= g_async_queue_new();
   conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
   conf.non_innodb.table_list= non_innodb_table;
   conf.non_innodb.descr= "Non-InnoDB";
@@ -1300,8 +1302,8 @@ void start_dump() {
   }
   g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
             g_async_queue_length(conf.schema_queue),
-            g_async_queue_length(conf.non_innodb.queue),
-            g_async_queue_length(conf.innodb.queue),
+            g_async_queue_length(conf.non_innodb.queue) + g_async_queue_length(conf.non_innodb.defer),
+            g_async_queue_length(conf.innodb.queue) + g_async_queue_length(conf.innodb.defer),
             g_async_queue_length(conf.post_data_queue));
   // close main connection
   if (conn != second_conn)
@@ -1326,8 +1328,12 @@ void start_dump() {
   if (pmm){
     kill_pmm_thread();
   }
+  g_async_queue_unref(conf.innodb.defer);
+  conf.innodb.defer= NULL;
   g_async_queue_unref(conf.innodb.queue);
   conf.innodb.queue= NULL;
+  g_async_queue_unref(conf.non_innodb.defer);
+  conf.non_innodb.defer= NULL;
   g_async_queue_unref(conf.non_innodb.queue);
   conf.non_innodb.queue= NULL;
   g_async_queue_unref(conf.unlock_tables);
