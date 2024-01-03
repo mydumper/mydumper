@@ -485,9 +485,14 @@ void table_job_enqueue(struct table_queuing *q)
       if (csi!=NULL){
         switch (csi->chunk_type) {
         case INTEGER:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push,
-                                   q->defer);
-          create_job_defer(dbt, q->queue);
+          if (!skip_defer) {
+            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+                                     csi, g_async_queue_push, q->defer);
+            create_job_defer(dbt, q->queue);
+          } else {
+            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+                                     csi, g_async_queue_push, q->queue);
+          }
           break;
         case CHAR:
           create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
