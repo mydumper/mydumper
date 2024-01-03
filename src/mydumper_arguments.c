@@ -50,6 +50,8 @@ static GOptionEntry entries[] = {
      "Directory to output files to", NULL},
     {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
      "Clear output directory before dumping", NULL},
+    {"dirty", 0, 0, G_OPTION_ARG_NONE, &dirty_dumpdir,
+     "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
 //    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,

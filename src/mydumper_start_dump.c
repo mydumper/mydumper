@@ -887,6 +887,9 @@ void send_lock_all_tables(MYSQL *conn){
 void start_dump() {
   if (clear_dumpdir)
     clear_dump_directory(dump_directory);
+  else if (!dirty_dumpdir && !is_empty_dir(dump_directory)) {
+    g_error("Directory is not empty (use --clear or --dirty): %s\n", dump_directory);
+  }
   initialize_start_dump();
   initialize_common();
 

@@ -82,6 +82,7 @@ GMutex *init_mutex = NULL;
 /* Program options */
 gboolean use_savepoints = FALSE;
 gboolean clear_dumpdir= FALSE;
+gboolean dirty_dumpdir= FALSE;
 gint database_counter = 0;
 //gint table_counter = 0;
 gchar *ignore_engines = NULL;

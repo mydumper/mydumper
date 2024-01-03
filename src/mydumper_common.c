@@ -382,6 +382,24 @@ void clear_dump_directory(gchar *directory) {
   g_dir_close(dir);
 }
 
+gboolean is_empty_dir(gchar *directory)
+{
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory,
+               error->message);
+    errors++;
+    return FALSE;
+  }
+
+  const gchar *filename= g_dir_read_name(dir);
+  g_dir_close(dir);
+
+  return filename ? FALSE : TRUE;
+}
+
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
   if (mysql_query(conn,
                   "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
