@@ -257,6 +257,10 @@ innodb_flush_log_at_trx_commit = 0
 [`db`.`table`]
 where = column > 20
 limit = 10000
+
+[`myd_test`.`t`]
+columns_on_select=qty,price+20
+columns_on_insert=qty,price
 ```
 
 IMPORTANT: when using options that doesn't required an argument like: --no-data or --events, you need to set any value to those variables which will always indicate: TRUE/ON/ENABLE. It is a MISCONCEPTION if you think that adding `--no-data=0` will export data:
