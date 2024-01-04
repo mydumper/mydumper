@@ -156,6 +156,10 @@ int main(int argc, char *argv[]) {
     parse_disk_limits();
   }
 
+  if (num_threads < 2) {
+    skip_defer= TRUE;
+  }
+
   if (daemon_mode) {
     clear_dumpdir= TRUE;
     initialize_daemon_thread();
