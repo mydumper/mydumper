@@ -409,7 +409,12 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
 
-  mysql_select_db(conn, dbt->database->name);
+  if (mysql_select_db(conn, dbt->database->name)) {
+    g_critical("Could not select database: %s (%s)", dbt->database->name,
+              mysql_error(conn));
+    errors++;
+    return;
+  }
 
   outfile = m_open(&filename,"w");
 

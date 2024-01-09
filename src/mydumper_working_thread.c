@@ -1414,10 +1414,15 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
 
   const char *query= "SHOW TABLE STATUS";
-  mysql_select_db(conn, database->name);
+
+  if (mysql_select_db(conn, database->name)) {
+    g_critical("Could not select database: %s (%s)", database->name, mysql_error(conn));
+    errors++;
+    return;
+  }
 
   if (mysql_query(conn, (query))) {
-      g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
+    g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
     return;
