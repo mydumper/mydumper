@@ -159,7 +159,7 @@ do
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
-done
+    done
 
     for vendor in ${list_mysql_version[@]}
     do
@@ -177,10 +177,7 @@ done
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
-done
-
-
-
+    done
                 echo "
   ${all_os[${os}_0]}:
     docker:
@@ -194,7 +191,8 @@ done
     working_directory: /tmp/src/mydumper"
 done
 
-echo '
+cat <<EOF
+
 commands:
 
   prepare_mariadb1006:
@@ -204,9 +202,7 @@ commands:
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
-'
 
-echo "
   prepare_el_mysql80:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
@@ -248,19 +244,18 @@ echo "
     - prepare_mariadb1011
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
-    "
+EOF
 
 for os in el7 el9
 do
     for vendor in ${list_mysql_version[@]}
-        do
-echo "
+    do
+        echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_el_${all_vendors[${vendor}_0]}
 "
-done
-
+    done
 done
 
 
@@ -268,49 +263,46 @@ done
 for os in ${list_el_os[@]}
 do
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
-        do
-echo "
+    do
+        echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_el_${all_vendors[${vendor}_0]}
 "
-done
-
+    done
 done
 
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        vendor=tidb
+    vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - prepare_ubuntu_percona57
 "
 
-
     for vendor in ${list_percona_version[@]}
-        do
+    do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
-done
-        for vendor in ${list_mariadb_version[@]}
-        do
+    done
+
+    for vendor in ${list_mariadb_version[@]}
+    do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
+    done
 done
 
-done
-
-    echo "
-
+cat <<EOF
   prepare_el_percona57:
     steps:
     - run: percona-release setup -y ps57
@@ -329,7 +321,7 @@ done
   compile:
     parameters:
       CMAKED:
-        default: \"\"
+        default: ""
         type: string
     steps:
     - run:
@@ -361,19 +353,20 @@ done
     steps:
     - run:
         command: |
-          echo 'export MYDUMPER_VERSION=\$(  echo \"\${CIRCLE_TAG:1}\" | cut -d'-' -f1 ) ' >> \"\$BASH_ENV\"
-          echo 'export MYDUMPER_REVISION=\$( echo \"\${CIRCLE_TAG:1}\" | cut -d'-' -f2 ) ' >> \"\$BASH_ENV\"
-          cat /etc/profile.d/sh.local >> \"\$BASH_ENV\" || true
-          source \"\$BASH_ENV\"
-jobs:
-"
+          echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
+          echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
+          cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
+          source "\$BASH_ENV"
 
+jobs:
+
+EOF
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb
-        do
-echo "
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -394,15 +387,16 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
+
+EOF
+    done
 done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb
-        do
-echo "
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -423,12 +417,13 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
 
-        for vendor in ${list_mysql_version[@]}
-        do
-echo "
+EOF
+    done
+
+    for vendor in ${list_mysql_version[@]}
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -449,16 +444,15 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
 
-
+EOF
+    done
 done
 
 for arch in ${list_arch[@]}
 do
-for os in ${list_el_os[@]}
-do
+    for os in ${list_el_os[@]}
+    do
         for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
@@ -483,14 +477,14 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
          root: /tmp/package
          paths:
            - ."
-done
-done
+        done
+    done
 done
 
 for arch in ${list_arch[@]}
 do
-for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
-do
+    for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
+    do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
@@ -515,8 +509,8 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
          root: /tmp/package
          paths:
            - ."
-done
-done
+        done
+    done
 done
 
 echo '  publish-github-release:
@@ -534,31 +528,30 @@ workflows:
 
 for os in ${list_all_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
-        do
+    for vendor in ${list_all_vendors[@]}
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
-done
+    done
 done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_mysql_version[@]}
-        do
+    for vendor in ${list_mysql_version[@]}
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
-done
+    done
 done
 
 
 for os in jammy
 do
-        for vendor in ${list_all_vendors[@]} # tidb
-        do
+    for vendor in ${list_all_vendors[@]} # tidb
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         test: true
         e: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
 "
-
-done
+    done
 done
 
 for os in ${list_build[@]}

@@ -961,7 +961,6 @@ commands:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
 
-
   prepare_el_mysql80:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
@@ -1003,7 +1002,6 @@ commands:
     - prepare_mariadb1011
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
-    
 
   prepare_el7_mysql80:
     steps:
@@ -1236,8 +1234,6 @@ commands:
     - prepare_mariadb1006
     - prepare_ubuntu_mariadb1006
 
-
-
   prepare_el_percona57:
     steps:
     - run: percona-release setup -y ps57
@@ -1292,8 +1288,8 @@ commands:
           echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
           cat /etc/profile.d/sh.local >> "$BASH_ENV" || true
           source "$BASH_ENV"
-jobs:
 
+jobs:
 
   compile_and_test_mydumper_in_bionic_percona57:
     parameters:
@@ -1316,7 +1312,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bionic_percona80:
     parameters:
       test:
@@ -1337,7 +1332,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bionic_mariadb1011:
     parameters:
@@ -1360,7 +1354,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bionic_mariadb1006:
     parameters:
       test:
@@ -1381,7 +1374,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bionic_tidb:
     parameters:
@@ -1404,7 +1396,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_focal_percona57:
     parameters:
       test:
@@ -1425,7 +1416,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_focal_percona80:
     parameters:
@@ -1448,7 +1438,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_focal_mariadb1011:
     parameters:
       test:
@@ -1469,7 +1458,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_focal_mariadb1006:
     parameters:
@@ -1492,7 +1480,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_focal_tidb:
     parameters:
       test:
@@ -1513,7 +1500,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_jammy_percona57:
     parameters:
@@ -1536,7 +1522,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_jammy_percona80:
     parameters:
       test:
@@ -1557,7 +1542,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_jammy_mariadb1011:
     parameters:
@@ -1580,7 +1564,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_jammy_mariadb1006:
     parameters:
       test:
@@ -1601,7 +1584,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_jammy_tidb:
     parameters:
@@ -1624,7 +1606,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_buster_percona57:
     parameters:
       test:
@@ -1645,7 +1626,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_buster_percona80:
     parameters:
@@ -1668,7 +1648,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_buster_mariadb1011:
     parameters:
       test:
@@ -1689,7 +1668,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_buster_mariadb1006:
     parameters:
@@ -1712,7 +1690,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_buster_tidb:
     parameters:
       test:
@@ -1733,7 +1710,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bullseye_percona57:
     parameters:
@@ -1756,7 +1732,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bullseye_percona80:
     parameters:
       test:
@@ -1777,7 +1752,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bullseye_mariadb1011:
     parameters:
@@ -1800,7 +1774,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bullseye_mariadb1006:
     parameters:
       test:
@@ -1821,7 +1794,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bullseye_tidb:
     parameters:
@@ -1844,7 +1816,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bookworm_percona57:
     parameters:
       test:
@@ -1865,7 +1836,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bookworm_percona80:
     parameters:
@@ -1888,7 +1858,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bookworm_mariadb1011:
     parameters:
       test:
@@ -1909,7 +1878,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_bookworm_mariadb1006:
     parameters:
@@ -1932,7 +1900,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_bookworm_tidb:
     parameters:
       test:
@@ -1953,7 +1920,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el7_percona57:
     parameters:
@@ -1976,7 +1942,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el7_percona80:
     parameters:
       test:
@@ -1997,7 +1962,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el7_mariadb1011:
     parameters:
@@ -2020,7 +1984,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el7_mariadb1006:
     parameters:
       test:
@@ -2041,7 +2004,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el7_tidb:
     parameters:
@@ -2064,7 +2026,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el7_mysql80:
     parameters:
       test:
@@ -2085,7 +2046,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el8_percona57:
     parameters:
@@ -2108,7 +2068,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el8_percona80:
     parameters:
       test:
@@ -2129,7 +2088,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el8_mariadb1011:
     parameters:
@@ -2152,7 +2110,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el8_mariadb1006:
     parameters:
       test:
@@ -2173,7 +2130,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el8_tidb:
     parameters:
@@ -2196,7 +2152,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el8_mysql80:
     parameters:
       test:
@@ -2217,7 +2172,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el9_percona57:
     parameters:
@@ -2240,7 +2194,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el9_percona80:
     parameters:
       test:
@@ -2261,7 +2214,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el9_mariadb1011:
     parameters:
@@ -2284,7 +2236,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el9_mariadb1006:
     parameters:
       test:
@@ -2306,7 +2257,6 @@ jobs:
          paths:
            - .
 
-
   compile_and_test_mydumper_in_el9_tidb:
     parameters:
       test:
@@ -2327,7 +2277,6 @@ jobs:
          root: /tmp/src/mydumper
          paths:
            - .
-
 
   compile_and_test_mydumper_in_el9_mysql80:
     parameters:
