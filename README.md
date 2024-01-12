@@ -56,6 +56,12 @@ By using [Homebrew](https://brew.sh/)
 ```bash
 brew install mydumper
 ```
+Take into account that the mydumper.cnf file is going to be located on /usr/local/etc or /opt/homebrew/etc.
+So, you might need to run mydumper/myloader with:
+```bash
+mydumper --defaults-file=/opt/homebrew/etc/mydumper.cnf
+myloader --defaults-file=/opt/homebrew/etc/mydumper.cnf
+```
 
 ## Dependencies for building MyDumper
 
