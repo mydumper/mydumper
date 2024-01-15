@@ -27,20 +27,10 @@
 #include "config.h"
 #include "connection.h"
 #include <stdarg.h>
-extern gboolean no_delete;
-extern gboolean stream;
-extern gchar *defaults_file;
-extern gchar *defaults_extra_file;
-extern GKeyFile * key_file;
-extern gboolean no_stream;
-extern gchar*set_names_str;
-extern gchar*set_names_statement;
-extern guint num_threads;
-extern GString *set_global_back;
-extern MYSQL *main_connection;
-//FILE * (*m_open)(char **filename, const char *);
+#include "mydumper_global.h"
+
 GAsyncQueue *stream_queue = NULL;
-extern int detected_server;
+gboolean skip_defer= FALSE;
 
 /*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
@@ -271,7 +261,8 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   g_strfreev(keys);
 }
 
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer(gchar*)){
+void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * cpt, struct function_pointer * init_function_pointer(gchar*))
+{
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
   GHashTable *ht=NULL;
@@ -292,38 +283,38 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_where_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_where_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"limit") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_limit_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_limit_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"num_threads") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"columns_on_select") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"columns_on_insert") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             pcre *r=NULL; 
             init_regex( &r, value);
-            g_hash_table_insert(conf_per_table->all_partition_regex_per_table, g_strdup(groups[i]), r);
+            g_hash_table_insert(cpt->all_partition_regex_per_table, g_strdup(groups[i]), r);
           }
           if (g_strcmp0(keys[j],"rows") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
           }
 
         }
       }
-      g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);
+      g_hash_table_insert(cpt->all_anonymized_function,g_strdup(groups[i]),ht);
     }
   }
   g_strfreev(groups);
@@ -650,8 +641,8 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 //  g_key_file_free(extra_key_file);
 }
 
-gchar **get_table_list(gchar *tables_list){
-  gchar ** tl = g_strsplit(tables_list, ",", 0);
+gchar **get_table_list(gchar *_tables_list){
+  gchar ** tl = g_strsplit(_tables_list, ",", 0);
   guint i=0;
   for(i=0; i < g_strv_length(tl); i++){
     if (g_strstr_len(tl[i],strlen(tl[i]),".") == NULL )
@@ -692,6 +683,7 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   (void) data;
   if (g_strstr_len(option_name,8,"--stream")){
     stream = TRUE;
+    skip_defer= TRUE;
     if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
       return TRUE;
     }
@@ -837,29 +829,29 @@ gchar *m_date_time_new_now_local(){
 
 #if !GLIB_CHECK_VERSION(2, 68, 0)
 guint
-g_string_replace (GString     *string,
-                  const gchar *find,
-                  const gchar *replace,
-                  guint        limit)
+g_string_replace (GString     *_string,
+                  const gchar *_find,
+                  const gchar *_replace,
+                  guint        _limit)
 {
   gsize f_len, r_len, pos;
   gchar *cur, *next;
   guint n = 0;
 
-  g_return_val_if_fail (string != NULL, 0);
-  g_return_val_if_fail (find != NULL, 0);
-  g_return_val_if_fail (replace != NULL, 0);
+  g_return_val_if_fail (_string != NULL, 0);
+  g_return_val_if_fail (_find != NULL, 0);
+  g_return_val_if_fail (_replace != NULL, 0);
 
-  f_len = strlen (find);
-  r_len = strlen (replace);
-  cur = string->str;
+  f_len = strlen (_find);
+  r_len = strlen (_replace);
+  cur = _string->str;
 
-  while ((next = strstr (cur, find)) != NULL)
+  while ((next = strstr (cur, _find)) != NULL)
     {
-      pos = next - string->str;
-      g_string_erase (string, pos, f_len);
-      g_string_insert (string, pos, replace);
-      cur = string->str + pos + r_len;
+      pos = next - _string->str;
+      g_string_erase (_string, pos, f_len);
+      g_string_insert (_string, pos, _replace);
+      cur = _string->str + pos + r_len;
       n++;
       /* Only match the empty string once at any given position, to
        * avoid infinite loops */
@@ -870,7 +862,7 @@ g_string_replace (GString     *string,
           else
             cur++;
         }
-      if (n == limit)
+      if (n == _limit)
         break;
     }
 

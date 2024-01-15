@@ -27,6 +27,7 @@ enum job_type {
   JOB_RESTORE,
   JOB_DUMP,
   JOB_DUMP_NON_INNODB,
+  JOB_DEFER,
   JOB_DETERMINE_CHUNK_TYPE,
   JOB_TABLE,
   JOB_CHECKSUM,
@@ -72,12 +73,20 @@ enum chunk_states{
   COMPLETED
 };
 
+struct table_queuing {
+  GAsyncQueue *queue;
+  GAsyncQueue *defer;
+  GAsyncQueue *request_chunk;
+  struct MList *table_list;
+  const char *descr;
+};
+
 struct configuration {
   char use_any_index;
   GAsyncQueue *initial_queue;
   GAsyncQueue *schema_queue;
-  GAsyncQueue *non_innodb_queue;
-  GAsyncQueue *innodb_queue;
+  struct table_queuing non_innodb;
+  struct table_queuing innodb;
   GAsyncQueue *post_data_queue;
   GAsyncQueue *ready;
   GAsyncQueue *ready_non_innodb_queue;
@@ -280,7 +289,6 @@ struct db_table {
   gboolean is_sequence;
   gboolean has_json_fields;
   char *character_set;
-  guint64 datalength;
   guint64 rows;
   guint64 estimated_remaining_steps;
   GMutex *rows_lock;

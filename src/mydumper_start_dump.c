@@ -885,6 +885,11 @@ void send_lock_all_tables(MYSQL *conn){
 }
 
 void start_dump() {
+  if (clear_dumpdir)
+    clear_dump_directory(dump_directory);
+  else if (!dirty_dumpdir && !is_empty_dir(dump_directory)) {
+    g_error("Directory is not empty (use --clear or --dirty): %s\n", dump_directory);
+  }
   initialize_start_dump();
   initialize_common();
 
@@ -907,7 +912,9 @@ void start_dump() {
   MYSQL *conn = create_main_connection();
   main_connection = conn;
   MYSQL *second_conn = conn;
-  struct configuration conf = {1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf;
+  memset(&conf, 0, sizeof(conf));
+  conf.use_any_index= 1;
   char *metadata_partial_filename, *metadata_filename;
   char *u;
 //  detect_server_version(conn);
@@ -1111,9 +1118,22 @@ void start_dump() {
   conf.initial_queue = g_async_queue_new();
   conf.schema_queue = g_async_queue_new();
   conf.post_data_queue = g_async_queue_new();
-  conf.innodb_queue = g_async_queue_new();
+  conf.innodb.queue= g_async_queue_new();
+  conf.innodb.defer= g_async_queue_new();
+  // These are initialized in the guts of initialize_start_dump() above
+  g_assert(give_me_another_innodb_chunk_step_queue &&
+           give_me_another_non_innodb_chunk_step_queue &&
+           innodb_table &&
+           non_innodb_table);
+  conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
+  conf.innodb.table_list= innodb_table;
+  conf.innodb.descr= "InnoDB";
   conf.ready = g_async_queue_new();
-  conf.non_innodb_queue = g_async_queue_new();
+  conf.non_innodb.queue= g_async_queue_new();
+  conf.non_innodb.defer= g_async_queue_new();
+  conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
+  conf.non_innodb.table_list= non_innodb_table;
+  conf.non_innodb.descr= "Non-InnoDB";
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
   conf.gtid_pos_checked = g_async_queue_new();
@@ -1280,7 +1300,11 @@ void start_dump() {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
   }
-  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue), g_async_queue_length(conf.schema_queue), g_async_queue_length(conf.non_innodb_queue), g_async_queue_length(conf.innodb_queue), g_async_queue_length(conf.post_data_queue));
+  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
+            g_async_queue_length(conf.schema_queue),
+            g_async_queue_length(conf.non_innodb.queue) + g_async_queue_length(conf.non_innodb.defer),
+            g_async_queue_length(conf.innodb.queue) + g_async_queue_length(conf.innodb.defer),
+            g_async_queue_length(conf.post_data_queue));
   // close main connection
   if (conn != second_conn)
     mysql_close(second_conn);
@@ -1304,10 +1328,14 @@ void start_dump() {
   if (pmm){
     kill_pmm_thread();
   }
-  g_async_queue_unref(conf.innodb_queue);
-  conf.innodb_queue=NULL;
-  g_async_queue_unref(conf.non_innodb_queue);
-  conf.non_innodb_queue=NULL;
+  g_async_queue_unref(conf.innodb.defer);
+  conf.innodb.defer= NULL;
+  g_async_queue_unref(conf.innodb.queue);
+  conf.innodb.queue= NULL;
+  g_async_queue_unref(conf.non_innodb.defer);
+  conf.non_innodb.defer= NULL;
+  g_async_queue_unref(conf.non_innodb.queue);
+  conf.non_innodb.queue= NULL;
   g_async_queue_unref(conf.unlock_tables);
   conf.unlock_tables=NULL;
   g_async_queue_unref(conf.ready);

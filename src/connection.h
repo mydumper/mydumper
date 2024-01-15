@@ -28,4 +28,9 @@ void m_connect(MYSQL *conn);
 void hide_password(int argc, char *argv[]);
 void ask_password();
 GOptionGroup * load_connection_entries(GOptionContext *context);
+
+extern char *hostname;
+extern char *username;
+extern char *socket_path;
+extern guint port;
 #endif

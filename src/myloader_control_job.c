@@ -410,6 +410,7 @@ void *control_job_thread(struct configuration *conf){
       enqueue_indexes_if_possible(conf);
       wake_threads_waiting(conf, &threads_waiting);        
       intermediate_queue_ended_local = TRUE;
+      wake_threads_waiting(conf, &threads_waiting);
       break;
     case SHUTDOWN:
       cont=FALSE;

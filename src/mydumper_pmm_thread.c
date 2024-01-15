@@ -59,8 +59,10 @@ void append_pmm_entry_all_tables(GString *content){
 void write_pmm_entries(GString *content, struct configuration* conf){
   g_string_set_size(content,0);
   append_pmm_entry_queue(content,"schema_queue",      conf->schema_queue);
-  append_pmm_entry_queue(content,"non_innodb_queue",  conf->non_innodb_queue);
-  append_pmm_entry_queue(content,"innodb_queue",      conf->innodb_queue);
+  append_pmm_entry_queue(content,"non_innodb_queue",  conf->non_innodb.queue);
+  append_pmm_entry_queue(content,"non_innodb_defer_queue", conf->non_innodb.defer);
+  append_pmm_entry_queue(content,"innodb_queue",      conf->innodb.queue);
+  append_pmm_entry_queue(content,"integer_queue",     conf->innodb.defer);
   append_pmm_entry_queue(content,"post_data_queue",   conf->post_data_queue);
   append_pmm_entry_queue(content,"ready",             conf->ready);
   append_pmm_entry_queue(content,"unlock_tables",     conf->unlock_tables);

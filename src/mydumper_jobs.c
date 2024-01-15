@@ -409,7 +409,12 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
 
-  mysql_select_db(conn, dbt->database->name);
+  if (mysql_select_db(conn, dbt->database->name)) {
+    g_critical("Could not select database: %s (%s)", dbt->database->name,
+              mysql_error(conn));
+    errors++;
+    return;
+  }
 
   outfile = m_open(&filename,"w");
 
@@ -1067,13 +1072,15 @@ void initialize_load_data_fn(struct table_job * tj){
   tj->child_process=initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part, &build_load_data_filename, &(tj->exec_out_filename));
 }
 
-gboolean update_files_on_table_job(struct table_job *tj){
+gboolean update_files_on_table_job(struct table_job *tj)
+{
+  struct chunk_step_item *csi= tj->chunk_step_item;
   if (tj->sql_file == 0){
-    if (tj->chunk_step_item->chunk_type == INTEGER && tj->chunk_step_item->chunk_step->integer_step.is_step_fixed_length ){
-      if (tj->chunk_step_item->chunk_step->integer_step.is_unsigned)
-        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.unsign.min / tj->chunk_step_item->chunk_step->integer_step.step + 1; 
-      else
-        tj->sub_part = tj->chunk_step_item->chunk_step->integer_step.type.sign.min   / tj->chunk_step_item->chunk_step->integer_step.step + 1;
+    if (csi->chunk_type == INTEGER) {
+      struct integer_step *s= &csi->chunk_step->integer_step;
+      if (s->is_step_fixed_length) {
+        tj->sub_part= (s->is_unsigned ? s->type.unsign.min : (guint64) s->type.sign.min) / s->step + 1;
+      }
     }
 
     if (load_data){
@@ -1167,6 +1174,14 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nch
   j->job_data=(void*) tj;
   j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
   f(queue,j);
+}
+
+void create_job_defer(struct db_table *dbt, GAsyncQueue *queue)
+{
+  struct job *j = g_new0(struct job,1);
+  j->type = JOB_DEFER;
+  j->job_data=(void*) dbt;
+  g_async_queue_push(queue,j);
 }
 
 void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue){

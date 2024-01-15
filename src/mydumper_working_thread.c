@@ -81,6 +81,8 @@ extern int (*m_write)(int file, const char * buff, int len);
 GMutex *init_mutex = NULL;
 /* Program options */
 gboolean use_savepoints = FALSE;
+gboolean clear_dumpdir= FALSE;
+gboolean dirty_dumpdir= FALSE;
 gint database_counter = 0;
 //gint table_counter = 0;
 gchar *ignore_engines = NULL;
@@ -124,6 +126,7 @@ void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 guint64 min_chunk_step_size = 0;
 guint64 rows_per_file = 0;
 guint64 max_chunk_step_size = 0;
+static const guint tablecol= 0;
 
 void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
   gchar **split=g_strsplit(rows_p_chunk, ":", 0);
@@ -325,16 +328,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
   for (x = 0; table_list[x] != NULL; x++) {
     dt = g_strsplit(table_list[x], ".", 0);
 
-  // Need 7 columns with DATA_LENGTH as the last one for this to work
-    if (detected_server == SERVER_TYPE_MARIADB){
-      query =
-          g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
-                          "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s'",
-                          dt[0], dt[1]);
-    }else{
-      query =
-          g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
-    }
+    query= g_strdup_printf("SHOW TABLE STATUS FROM %s LIKE '%s'", dt[0], dt[1]);
+
     if (mysql_query(conn, (query))) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
                  mysql_error(conn));
@@ -387,7 +382,9 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[6], row[ecol], rowscol>0?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
+                        row[collcol], row[ecol],
+                        (rowscol > 0 ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -721,6 +718,8 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_DUMP_NON_INNODB:
       thd_JOB_DUMP(td, job);
       break;
+    case JOB_DEFER:
+      break;
     case JOB_CHECKSUM:
       do_JOB_CHECKSUM(td,job);
       break;
@@ -775,19 +774,26 @@ void check_pause_resume( struct thread_data *td ){
   }
 }
 
-void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean (*p)(), void (*f)()){
+void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_builder, GAsyncQueue *chunk_step_queue){
   struct job *job = NULL;
   for (;;) {
     check_pause_resume(td);
-    if (f!=NULL)
-      f();
+    if (chunk_step_queue) {
+      g_async_queue_push(chunk_step_queue, GINT_TO_POINTER(1));
+    }
     job = (struct job *)g_async_queue_pop(queue);
     if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
       g_message("Thread %d: Process has been cacelled",td->thread_id);
       return;
     }
-    if (!p(td, job)){
-      break;
+    if (do_builder) {
+      if (!process_job_builder_job(td, job)) {
+        break;
+      }
+    } else {
+      if (!process_job(td, job)) {
+        break;
+      }
     }
   }
 }
@@ -860,11 +866,11 @@ void *working_thread(struct thread_data *td) {
   // Thread Ready to process jobs
   
   g_message("Thread %d: Creating Jobs", td->thread_id);
-  process_queue(td->conf->initial_queue,td, process_job_builder_job, NULL);
+  process_queue(td->conf->initial_queue,td, TRUE, NULL);
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
-  process_queue(td->conf->schema_queue,td, process_job, NULL);
+  process_queue(td->conf->schema_queue,td, FALSE, NULL);
 
   if (stream) send_initial_metadata();
 
@@ -880,17 +886,20 @@ void *working_thread(struct thread_data *td) {
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
+      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
       }
     }else{
-      process_queue(td->conf->non_innodb_queue, td, process_job, give_me_another_non_innodb_chunk_step);
+      process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
+      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
-    process_queue(td->conf->innodb_queue, td, process_job, give_me_another_innodb_chunk_step);
+    process_queue(td->conf->innodb.queue, td, FALSE, td->conf->innodb.request_chunk);
+    process_queue(td->conf->innodb.defer, td, FALSE, NULL);
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
@@ -901,7 +910,7 @@ void *working_thread(struct thread_data *td) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
 
-  process_queue(td->conf->post_data_queue, td, process_job, NULL);
+  process_queue(td->conf->post_data_queue, td, FALSE, NULL);
 
   g_message("Thread %d: shutting down", td->thread_id);
 
@@ -1145,7 +1154,10 @@ void get_primary_key_string_old(MYSQL *conn, struct db_table * dbt) {
 }
 */
 
-gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *conf, struct database *database, char *table, char *table_collation, char *datalength, guint64 rows_in_sts, gboolean is_sequence){
+gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
+                      struct database *database, char *table, char *table_collation,
+                      guint64 rows_in_sts, gboolean is_sequence)
+{
   gchar * lkey = g_strdup_printf("`%s`.`%s`",database->name,table);
   g_mutex_lock(all_dbts_mutex);
   struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
@@ -1219,11 +1231,6 @@ gboolean new_db_table( struct db_table **d, MYSQL *conn, struct configuration *c
     dbt->schema_checksum=NULL;
     dbt->triggers_checksum=NULL;
     dbt->rows=0;
-    if (!datalength)
-      dbt->datalength = 0;
-    else
-      dbt->datalength = g_ascii_strtoull(datalength, NULL, 10);
-
  // dbt->chunk_functions.process=NULL;
     g_hash_table_insert(all_dbts, lkey, dbt);
     b=TRUE;
@@ -1276,7 +1283,10 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database * database, char *table, char *collation, char *datalength, gchar *ecol, guint64 rows_in_sts){
+void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
+                       gboolean is_sequence, struct database * database, char *table,
+                       char *collation, gchar *ecol, guint64 rows_in_sts)
+{
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
@@ -1286,7 +1296,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   g_mutex_unlock(database->ad_mutex);
 
   struct db_table *dbt=NULL;
-  gboolean b=new_db_table(&dbt, conn, conf, database, table, collation, datalength, rows_in_sts, is_sequence);
+  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, rows_in_sts, is_sequence);
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
@@ -1410,32 +1420,23 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
 void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
 
-  char *query;
-  mysql_select_db(conn, database->name);
-  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_PERCONA || detected_server == SERVER_TYPE_UNKNOWN ||
-      detected_server == SERVER_TYPE_TIDB)
-    query = g_strdup("SHOW TABLE STATUS");
-  else if (detected_server == SERVER_TYPE_MARIADB)
-    query =
-        g_strdup_printf("SELECT TABLE_NAME, ENGINE, TABLE_TYPE as COMMENT, TABLE_COLLATION as COLLATION, AVG_ROW_LENGTH, DATA_LENGTH FROM "
-                        "INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA='%s'",
-                        database->escaped);
-  else
-      return;
+  const char *query= "SHOW TABLE STATUS";
+
+  if (mysql_select_db(conn, database->name)) {
+    g_critical("Could not select database: %s (%s)", database->name, mysql_error(conn));
+    errors++;
+    return;
+  }
 
   if (mysql_query(conn, (query))) {
-      g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
+    g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
                mysql_error(conn));
     errors++;
-    g_free(query);
     return;
   }
 
   MYSQL_RES *result = mysql_store_result(conn);
-  guint ecol = -1;
-  guint ccol = -1;
-  guint collcol = -1;
-  guint rowscol = 0;
+  guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
   if (!result) {
     g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
@@ -1532,7 +1533,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     if (!dump)
       continue;
     
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[0], row[collcol], row[5], row[ecol], rowscol>0 && row[rowscol] !=NULL ?g_ascii_strtoull(row[rowscol], NULL, 10):0);
+    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
+                      row[collcol], row[ecol],
+                      (rowscol>0 && row[rowscol] !=NULL ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
 
   }
 
@@ -1548,8 +1551,6 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   if (database->dump_triggers)
     create_job_to_dump_schema_triggers(database, conf);
-
-  g_free(query);
 
   return;
 }
