@@ -200,7 +200,7 @@ int m_open_pipe(gchar **filename, const char *type){
   f=g_new0(struct fifo, 1);
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC|O_DSYNC, 0660);
+  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, 0660);
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
