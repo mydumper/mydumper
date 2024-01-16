@@ -95,7 +95,7 @@ void *process_stream(void *data){
     free(used_filemame);
     if (no_stream == FALSE){
 //      g_message("Stream Opening: %s",sf->filename);
-      f=open(sf->filename,O_RDONLY|O_DSYNC);
+      f=open(sf->filename,O_RDONLY);
       if (f < 0){
         m_error("File failed to open: %s (%s)", sf->filename, strerror(errno));
       }else{
