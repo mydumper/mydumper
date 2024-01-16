@@ -71,12 +71,16 @@ struct control_job * new_job (enum control_job_type type, void *job_data, struct
   return j;
 }
 
-gboolean process_job(struct thread_data *td, struct control_job *job){
+gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry)
+{
   switch (job->type) {
-    case JOB_RESTORE:
+    case JOB_RESTORE: {
 //      g_message("Restore Job");
-      process_restore_job(td,job->data.restore_job);
-      break;
+      gboolean res= process_restore_job(td, job->data.restore_job);
+      if (retry)
+        *retry= res;
+      return TRUE;
+    }
     case JOB_WAIT:
 //      g_message("Wait Job");
       g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
@@ -114,7 +118,9 @@ void schema_file_missed_lets_continue(struct thread_data * td){
 }
 
 gboolean are_we_waiting_for_schema_jobs_to_complete(struct thread_data * td){
-  if (g_async_queue_length(td->conf->database_queue)>0 || g_async_queue_length(td->conf->table_queue)>0)
+  if (g_async_queue_length(td->conf->database_queue) > 0 ||
+      g_async_queue_length(td->conf->table_queue) > 0 ||
+      g_async_queue_length(td->conf->retry_queue) > 0)
     return TRUE;
 
   g_mutex_lock(td->conf->table_list_mutex);

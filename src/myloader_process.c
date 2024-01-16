@@ -75,6 +75,7 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
       dbt->current_threads=0;
       dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
       dbt->max_threads_hard=max_threads_per_table_hard>num_threads?num_threads:max_threads_per_table_hard;
+      dbt->retry_count= retry_count;
       dbt->mutex=g_mutex_new();
       dbt->indexes=alter_table_statement;
       dbt->start_data_time=NULL;

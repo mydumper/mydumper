@@ -54,6 +54,7 @@ void write_pmm_entries(const gchar* filename, GString *content, struct configura
   g_string_set_size(content,0);
   append_pmm_entry(content,"database_queue",    conf->database_queue);
   append_pmm_entry(content,"table_queue",       conf->table_queue);
+  append_pmm_entry(content,"retry_queue",       conf->retry_queue);
   append_pmm_entry(content,"ready",             conf->ready);
   append_pmm_entry(content,"data_queue",        conf->data_queue);
   append_pmm_entry(content,"post_table_queue",  conf->post_table_queue);

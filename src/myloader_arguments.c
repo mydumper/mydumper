@@ -113,6 +113,10 @@ static GOptionEntry execution_entries[] = {
 
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
+    {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
+     "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
+    {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
+     "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
 
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
       "Table recreation will be executed in series, one thread at a time. This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},

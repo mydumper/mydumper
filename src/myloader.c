@@ -68,6 +68,7 @@ gchar *input_directory = NULL;
 gchar *directory = NULL;
 gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
+gboolean overwrite_unsafe = FALSE;
 
 gboolean innodb_optimize_keys = FALSE;
 gboolean innodb_optimize_keys_per_table = FALSE;
@@ -93,6 +94,7 @@ guint max_threads_per_table_hard=4;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
+guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 gboolean quote_character_cli= FALSE;
@@ -207,7 +209,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -242,6 +244,9 @@ int main(int argc, char *argv[]) {
   } else {
     set_verbose(verbose);
   }
+
+  if (overwrite_unsafe)
+    overwrite_tables= TRUE;
 
   initialize_common_options(context, "myloader");
   g_option_context_free(context);
@@ -380,6 +385,7 @@ int main(int argc, char *argv[]) {
   // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
+  conf.retry_queue = g_async_queue_new();
   conf.data_queue = g_async_queue_new();
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
@@ -500,6 +506,7 @@ int main(int argc, char *argv[]) {
 
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);
+  g_async_queue_unref(conf.retry_queue);
   g_async_queue_unref(conf.pause_resume);
   g_async_queue_unref(conf.post_table_queue);
   g_async_queue_unref(conf.post_queue);
