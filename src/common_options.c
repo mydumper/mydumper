@@ -47,7 +47,7 @@ gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
 
-guint num_threads = 4;
+guint num_threads= 4;
 guint verbose = 2;
 gboolean debug = FALSE;
 //gboolean ssl = FALSE;
@@ -73,7 +73,7 @@ gboolean schema_sequence_fix = FALSE;
 
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
-     "Number of threads to use, default 4", NULL},
+     "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
      "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,

@@ -85,7 +85,6 @@ extern guint max_errors;
 extern guint max_threads_for_index_creation;
 extern guint max_threads_for_post_creation;
 extern guint max_threads_for_schema_creation;
-extern guint max_threads_per_table_hard;
 extern guint max_threads_per_table;
 extern guint retry_count;
 extern guint num_threads;

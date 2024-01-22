@@ -879,6 +879,90 @@ g_string_replace (GString     *_string,
 }
 #endif
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+/**
+ * g_get_num_processors:
+ *
+ * Determine the approximate number of threads that the system will
+ * schedule simultaneously for this process.  This is intended to be
+ * used as a parameter to g_thread_pool_new() for CPU bound tasks and
+ * similar cases.
+ *
+ * Returns: Number of schedulable threads, always greater than 0
+ *
+ * Since: 2.36
+ */
+guint
+g_get_num_processors (void)
+{
+#ifdef G_OS_WIN32
+  unsigned int count;
+  SYSTEM_INFO sysinfo;
+  DWORD_PTR process_cpus;
+  DWORD_PTR system_cpus;
+
+  /* This *never* fails, use it as fallback */
+  GetNativeSystemInfo (&sysinfo);
+  count = (int) sysinfo.dwNumberOfProcessors;
+
+  if (GetProcessAffinityMask (GetCurrentProcess (),
+                              &process_cpus, &system_cpus))
+    {
+      unsigned int af_count;
+
+      for (af_count = 0; process_cpus != 0; process_cpus >>= 1)
+        if (process_cpus & 1)
+          af_count++;
+
+      /* Prefer affinity-based result, if available */
+      if (af_count > 0)
+        count = af_count;
+    }
+
+  if (count > 0)
+    return count;
+#elif defined(_SC_NPROCESSORS_ONLN) && defined(THREADS_POSIX) && defined(HAVE_PTHREAD_GETAFFINITY_NP)
+  {
+    int idx;
+    int ncores = MIN (sysconf (_SC_NPROCESSORS_ONLN), CPU_SETSIZE);
+    cpu_set_t cpu_mask;
+    CPU_ZERO (&cpu_mask);
+
+    int af_count = 0;
+    int err = pthread_getaffinity_np (pthread_self (), sizeof (cpu_mask), &cpu_mask);
+    if (!err)
+      for (idx = 0; idx < ncores && idx < CPU_SETSIZE; ++idx)
+        af_count += CPU_ISSET (idx, &cpu_mask);
+
+    int count = (af_count > 0) ? af_count : ncores;
+    return count;
+  }
+#elif defined(_SC_NPROCESSORS_ONLN)
+  {
+    int count;
+
+    count = sysconf (_SC_NPROCESSORS_ONLN);
+    if (count > 0)
+      return count;
+  }
+#elif defined HW_NCPU
+  {
+    int mib[2], count = 0;
+    size_t len;
+
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
+    len = sizeof(count);
+
+    if (sysctl (mib, 2, &count, &len, NULL, 0) == 0 && count > 0)
+      return count;
+  }
+#endif
+
+  return 1; /* Fallback */
+}
+#endif
+
 char * backtick_protect(char *r) {
   GString *s= g_string_new_len(r, strlen(r) + 1);
   g_string_replace(s, "`", "``", 0);

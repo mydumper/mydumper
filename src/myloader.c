@@ -89,8 +89,7 @@ gchar *purge_mode_str=NULL;
 guint errors = 0;
 guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-guint max_threads_per_table=4;
-guint max_threads_per_table_hard=4;
+guint max_threads_per_table= G_MAXUINT;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
@@ -247,6 +246,18 @@ int main(int argc, char *argv[]) {
 
   if (overwrite_unsafe)
     overwrite_tables= TRUE;
+
+  if (!num_threads) {
+    num_threads= g_get_num_processors();
+    g_assert(num_threads > 0);
+    if (num_threads < 4)
+      num_threads= 4;
+  }
+
+  if (num_threads > max_threads_per_table)
+    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
+  else
+    g_message("Using %u loader threads", num_threads);
 
   initialize_common_options(context, "myloader");
   g_option_context_free(context);
