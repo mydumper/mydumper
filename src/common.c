@@ -325,7 +325,7 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
   GString *s=g_string_new(str);
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_c(s,'_');
-  g_string_append(s,get_product_name());
+  g_string_append(s, g_utf8_strdown(get_product_name(), -1));
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_printf(s,"_%d",get_major());
   load_hash_from_key_file(kf,set_session_hash,s->str);

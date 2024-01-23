@@ -416,29 +416,26 @@ MYSQL *create_main_connection() {
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
-    g_message("Connected to a MySQL server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
   case SERVER_TYPE_MARIADB:
-    g_message("Connected to a MariaDB server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
   case SERVER_TYPE_TIDB:
-    g_message("Connected to a TiDB server");
     data_checksums=FALSE;
     break;
   case SERVER_TYPE_PERCONA:
-    g_message("Connected to a Percona server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
   case SERVER_TYPE_UNKNOWN:
-    g_message("Connected to an unknown server");
     set_transaction_isolation_level_repeatable_read(conn);
     break;
   default:
     m_critical("Cannot detect server type");
     break;
   }
+
+  g_message("Connected to %s %d.%d.%d", get_product_name(), get_major(), get_secondary(), get_revision());
   
   return conn;
 }
@@ -542,6 +539,17 @@ void long_query_wait(MYSQL *conn){
 }
 
 
+int mysql_query_verbose(MYSQL *mysql, const char *q)
+{
+  int res= mysql_query(mysql, q);
+  if (!res)
+    g_message("%s: OK", q);
+  else
+    g_message("%s: %s (%d)", q, mysql_error(mysql), res);
+  return res;
+}
+
+
 void send_backup_stage_on_block_commit(MYSQL *conn){
 /*
   if (mysql_query(conn, "BACKUP STAGE START")) {
@@ -550,7 +558,7 @@ void send_backup_stage_on_block_commit(MYSQL *conn){
     errors++;
   }
 */
-  if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
+  if (mysql_query_verbose(conn, "BACKUP STAGE BLOCK_COMMIT")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
                mysql_error(conn));
     errors++;
@@ -559,7 +567,7 @@ void send_backup_stage_on_block_commit(MYSQL *conn){
 
 
 void send_mariadb_backup_locks(MYSQL *conn){
-  if (mysql_query(conn, "BACKUP STAGE START")) {
+  if (mysql_query_verbose(conn, "BACKUP STAGE START")) {
     m_critical("Couldn't acquire BACKUP STAGE START: %s",
                mysql_error(conn));
     errors++;
@@ -571,7 +579,7 @@ void send_mariadb_backup_locks(MYSQL *conn){
     errors++;
   }
 */
-  if (mysql_query(conn, "BACKUP STAGE BLOCK_DDL")) {
+  if (mysql_query_verbose(conn, "BACKUP STAGE BLOCK_DDL")) {
     m_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
                mysql_error(conn));
     errors++;
@@ -586,14 +594,14 @@ void send_mariadb_backup_locks(MYSQL *conn){
 }
 
 void send_percona57_backup_locks(MYSQL *conn){
-  if (mysql_query(conn, "LOCK TABLES FOR BACKUP")) {
+  if (mysql_query_verbose(conn, "LOCK TABLES FOR BACKUP")) {
     m_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
                "not be consistent: %s",
                mysql_error(conn));
     errors++;
   }
 
-  if (mysql_query(conn, "LOCK BINLOG FOR BACKUP")) {
+  if (mysql_query_verbose(conn, "LOCK BINLOG FOR BACKUP")) {
     m_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
                "not be consistent: %s",
                mysql_error(conn));
@@ -602,7 +610,7 @@ void send_percona57_backup_locks(MYSQL *conn){
 }
 
 void send_ddl_lock_instance_backup(MYSQL *conn){
-  if (mysql_query(conn, "LOCK INSTANCE FOR BACKUP")) {
+  if (mysql_query_verbose(conn, "LOCK INSTANCE FOR BACKUP")) {
     m_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
                mysql_error(conn));
     errors++;
@@ -610,29 +618,27 @@ void send_ddl_lock_instance_backup(MYSQL *conn){
 } 
 
 void send_unlock_tables(MYSQL *conn){
-  mysql_query(conn, "UNLOCK TABLES");
+  mysql_query_verbose(conn, "UNLOCK TABLES");
 }
 
 void send_unlock_binlogs(MYSQL *conn){
-  mysql_query(conn, "UNLOCK BINLOG");
+  mysql_query_verbose(conn, "UNLOCK BINLOG");
 }
 
 void send_ddl_unlock_instance_backup(MYSQL *conn){
-  mysql_query(conn, "UNLOCK INSTANCE");
+  mysql_query_verbose(conn, "UNLOCK INSTANCE");
 }
 
 void send_backup_stage_end(MYSQL *conn){
-  mysql_query(conn, "BACKUP STAGE END");
+  mysql_query_verbose(conn, "BACKUP STAGE END");
 }
 
 void send_flush_table_with_read_lock(MYSQL *conn){
-        g_message("Sending Flush Table");
-        if (mysql_query(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
+        if (mysql_query_verbose(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
           g_warning("Flush tables failed, we are continuing anyways: %s",
                    mysql_error(conn));
         }
-        g_message("Acquiring FTWRL");
-       if (mysql_query(conn, "FLUSH TABLES WITH READ LOCK")) {
+       if (mysql_query_verbose(conn, "FLUSH TABLES WITH READ LOCK")) {
           g_critical("Couldn't acquire global lock, snapshots will not be "
                    "consistent: %s",
                    mysql_error(conn));
@@ -701,23 +707,15 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
       }
       break;
     case SERVER_TYPE_MARIADB:
-      if (get_major() == 10){
-        switch (get_secondary()){
-          case 5:
-          case 6:
-            *acquire_ddl_lock_function = &send_mariadb_backup_locks;
+      if ((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) {
+        *acquire_ddl_lock_function = &send_mariadb_backup_locks;
 //            *release_ddl_lock_function = &send_backup_stage_end;
-            *release_ddl_lock_function = NULL;
+        *release_ddl_lock_function = NULL;
 
-            *acquire_global_lock_function = &send_backup_stage_on_block_commit;
-            *release_global_lock_function = &send_backup_stage_end;
+        *acquire_global_lock_function = &send_backup_stage_on_block_commit;
+        *release_global_lock_function = &send_backup_stage_end;
 
 //            *conn = create_connection();
-            break;
-          default:
-            default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
-            break;
-        }
       }else{
         default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
