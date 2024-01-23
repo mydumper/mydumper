@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <mysql.h>
+#include <mysqld_error.h>
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <stdio.h>
@@ -123,7 +124,15 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
               database, table);
     query = g_strdup_printf("DROP TABLE IF EXISTS `%s`.`%s`",
                             database, table);
-    m_query(conn, query, m_critical, "Drop table failed");
+    if (mysql_query(conn, query)) {
+      unsigned int err= mysql_errno(conn);
+      if (overwrite_unsafe || (err != ER_LOCK_WAIT_TIMEOUT && err != ER_LOCK_DEADLOCK)) {
+        m_critical("Drop table %s.%s failed: %s", database, table, mysql_error(conn));
+      } else {
+        m_warning("Drop table %s.%s failed: %s", database, table, mysql_error(conn));
+      }
+      truncate_or_delete_failed= 1;
+    }
 //    mysql_query(conn, query);
     g_free(query);
     query = g_strdup_printf("DROP VIEW IF EXISTS `%s`.`%s`", database,
@@ -133,13 +142,13 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
   } else if (purge_mode == TRUNCATE) {
     message("Truncating table `%s`.`%s`", database, table);
     query= g_strdup_printf("TRUNCATE TABLE `%s`.`%s`", database, table);
-    truncate_or_delete_failed= m_query(conn, query, m_warning, "TRUNCATE TABLE failed");
+    truncate_or_delete_failed= m_query(conn, query, m_warning, "TRUNCATE TABLE failed") ? 0 : 1;
     if (truncate_or_delete_failed)
       g_warning("Truncate failed, we are going to try to create table or view");
   } else if (purge_mode == DELETE) {
     message("Deleting content of table `%s`.`%s`", database, table);
     query= g_strdup_printf("DELETE FROM `%s`.`%s`", database, table);
-    truncate_or_delete_failed= m_query(conn, query, m_warning, "DELETE failed");
+    truncate_or_delete_failed= m_query(conn, query, m_warning, "DELETE failed") ? 0 : 1;
     if (truncate_or_delete_failed)
       g_warning("Delete failed, we are going to try to create table or view");
   }
@@ -184,7 +193,7 @@ void get_total_done(struct configuration * conf, void *total){
 }
 
 
-void process_restore_job(struct thread_data *td, struct restore_job *rj){
+int process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (resume_mutex != NULL){
@@ -224,11 +233,24 @@ void process_restore_job(struct thread_data *td, struct restore_job *rj){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
         message("Thread %d: restoring table `%s`.`%s` from %s", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->filename);
-        int truncate_or_delete_failed=0;
-        if (overwrite_tables)
-          truncate_or_delete_failed=overwrite_table(td->thrconn,dbt->database->real_database, dbt->real_table);
-        if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !truncate_or_delete_failed){
-          message("Skipping table creation `%s`.`%s` from %s", dbt->database->real_database, dbt->real_table, rj->filename);
+        int overwrite_error= 0;
+        if (overwrite_tables) {
+          overwrite_error= overwrite_table(td->thrconn, dbt->database->real_database, dbt->real_table);
+          if (overwrite_error) {
+            if (dbt->retry_count) {
+              dbt->retry_count--;
+              dbt->schema_state= NOT_CREATED;
+              m_warning("Drop table %s.%s failed: retry %u of %u", dbt->database->real_database, dbt->real_table, retry_count - dbt->retry_count, retry_count);
+              return 1;
+            } else {
+              m_critical("Drop table %s.%s failed: exiting", dbt->database->real_database, dbt->real_table);
+            }
+          } else if (dbt->retry_count < retry_count) {
+              m_warning("Drop table %s.%s succeeded!", dbt->database->real_database, dbt->real_table);
+          }
+        }
+        if ((purge_mode == TRUNCATE || purge_mode == DELETE) && overwrite_error) {
+          message("Skipping table creation %s.%s from %s", dbt->database->real_database, dbt->real_table, rj->filename);
         }else{
           message("Thread %d: Creating table `%s`.`%s` from content in %s. On db: %s", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename, dbt->database->name);
           if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, &query_counter)){
@@ -288,6 +310,7 @@ cleanup:
   (void) rj;
 //  if (rj != NULL ) free_restore_job(rj);
     td->status=COMPLETED;
+  return 0;
 }
 
 

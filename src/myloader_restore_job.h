@@ -67,7 +67,7 @@ void initialize_restore_job();
 //struct restore_job * new_restore_job( char * filename, /*char * database,*/ struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object);
 struct restore_job * new_data_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, guint part, guint sub_part);
 struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, const char *object);
-void process_restore_job(struct thread_data *td, struct restore_job *rj);
+int process_restore_job(struct thread_data *td, struct restore_job *rj);
 void restore_job_finish();
 void stop_signal_thread();
 void *signal_thread(void *data);

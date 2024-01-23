@@ -71,12 +71,16 @@ struct control_job * new_job (enum control_job_type type, void *job_data, struct
   return j;
 }
 
-gboolean process_job(struct thread_data *td, struct control_job *job){
+gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry)
+{
   switch (job->type) {
-    case JOB_RESTORE:
+    case JOB_RESTORE: {
 //      g_message("Restore Job");
-      process_restore_job(td,job->data.restore_job);
-      break;
+      gboolean res= process_restore_job(td, job->data.restore_job);
+      if (retry)
+        *retry= res;
+      return TRUE;
+    }
     case JOB_WAIT:
 //      g_message("Wait Job");
       g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
@@ -114,7 +118,9 @@ void schema_file_missed_lets_continue(struct thread_data * td){
 }
 
 gboolean are_we_waiting_for_schema_jobs_to_complete(struct thread_data * td){
-  if (g_async_queue_length(td->conf->database_queue)>0 || g_async_queue_length(td->conf->table_queue)>0)
+  if (g_async_queue_length(td->conf->database_queue) > 0 ||
+      g_async_queue_length(td->conf->table_queue) > 0 ||
+      g_async_queue_length(td->conf->retry_queue) > 0)
     return TRUE;
 
   g_mutex_lock(td->conf->table_list_mutex);
@@ -182,10 +188,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
   struct restore_job *job = NULL;
 //  g_debug("Elements in table_list: %d",g_list_length(conf->table_list));
 //  We are going to check every table and see if there is any missing job
-  gboolean second=FALSE;
-  int i=0;
-  while (i<2 && job ==NULL){
-	  i++;
   while (iter != NULL){
     struct db_table * dbt = iter->data;
     if (dbt->database->schema_state == NOT_FOUND){
@@ -212,7 +214,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
     }
 //    g_message("DB: %s Table: %s len: %d state: %d", dbt->database->real_database,dbt->real_table,g_list_length(dbt->restore_job_list), dbt->schema_state);
     g_mutex_lock(dbt->mutex);
-    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < (second?dbt->max_threads_hard:dbt->max_threads))){
+    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < dbt->max_threads)) {
       // I could do some job in here, do we have some for me?
 //      g_message("DB: %s Table: %s max_threads: %d current: %d", dbt->database->real_database,dbt->real_table, dbt->max_threads,dbt->current_threads);
 //      g_mutex_lock(dbt->mutex);
@@ -272,8 +274,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
     }
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
-  }
-  second=TRUE;
   }
   g_mutex_unlock(conf->table_list_mutex);
   *rj = job;

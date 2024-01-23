@@ -379,6 +379,8 @@ void detect_quote_character(MYSQL *conn)
   g_string_replace(str, ",,", ",", 0);
   g_string_replace(str, "NO_FIELD_OPTIONS", "", 0);
   g_string_replace(str, ",,", ",", 0);
+  g_string_replace(str, "STRICT_TRANS_TABLES", "", 0);
+  g_string_replace(str, ",,", ",", 0);
   sql_mode= str->str;
   g_string_free(str, FALSE);
   mysql_free_result(res);

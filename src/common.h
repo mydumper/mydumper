@@ -134,3 +134,7 @@ g_string_replace (GString     *string,
                   const gchar *replace,
                   guint        limit);
 #endif
+
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+extern guint g_get_num_processors (void);
+#endif

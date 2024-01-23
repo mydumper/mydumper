@@ -123,7 +123,7 @@ void *process_loader_thread(struct thread_data * td) {
       dbt = rj->dbt;
       job=new_job(JOB_RESTORE,rj, dbt->database);
       execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
-      cont=process_job(td, job);
+      cont=process_job(td, job, NULL);
       g_mutex_lock(dbt->mutex);
       dbt->current_threads--;
       g_mutex_unlock(dbt->mutex);
