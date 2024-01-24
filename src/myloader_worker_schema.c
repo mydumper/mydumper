@@ -99,6 +99,7 @@ gboolean process_schema(struct thread_data * td){
   struct database * real_db_name = NULL;
   struct control_job *job = NULL;
   gboolean ret=TRUE;
+  const gboolean postpone_load= (overwrite_tables && !overwrite_unsafe);
   ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue2));
   trace("refresh_db_queue2 -> %s", ft2str(ft));
   switch (ft){
@@ -113,6 +114,9 @@ gboolean process_schema(struct thread_data * td){
       trace("Set DB created: %s", real_db_name->name);
       g_mutex_unlock(real_db_name->mutex);
       break;
+    case CJT_RESUME:
+      cjt_resume();
+      // fall through
     case SCHEMA_TABLE:
     case SCHEMA_SEQUENCE: {
       const char *qname;
@@ -144,8 +148,7 @@ gboolean process_schema(struct thread_data * td){
         break;
       }
       if (ft == SCHEMA_TABLE) { /* TODO: for spoof view table don't do DATA */
-        if (!overwrite_tables || overwrite_unsafe)
-          refresh_db_and_jobs(DATA);
+        refresh_db_and_jobs(DATA);
       } else if (restore) {
         g_assert(ft == SCHEMA_SEQUENCE && sequences_processed < sequences);
         g_mutex_lock(&sequences_mutex);
@@ -191,10 +194,11 @@ gboolean process_schema(struct thread_data * td){
           trace("table_queue <- JOB_SHUTDOWN");
           g_async_queue_push(td->conf->table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
           trace("refresh_db_queue2 <- %s (second round)", ft2str(SCHEMA_TABLE));
-          g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
+          if (!postpone_load || n < max_threads_for_schema_creation - 1)
+            g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
         }
-        if (overwrite_tables && !overwrite_unsafe)
-          refresh_db_and_jobs(DATA);
+        if (postpone_load)
+          g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(CJT_RESUME));
       }
       break;
     default:

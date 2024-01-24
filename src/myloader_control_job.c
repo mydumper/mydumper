@@ -40,11 +40,25 @@ gint last_wait=0;
 //GMutex *index_mutex=NULL;
 void *control_job_thread(struct configuration *conf);
 
+static GMutex *cjt_mutex= NULL;
+static GCond *cjt_cond= NULL;
+static gboolean cjt_paused= FALSE;
+
+void cjt_resume()
+{
+  g_mutex_lock(cjt_mutex);
+  cjt_paused= FALSE;
+  g_cond_signal(cjt_cond);
+  g_mutex_unlock(cjt_mutex);
+}
+
 void initialize_control_job (struct configuration *conf){
   refresh_db_queue = g_async_queue_new();
   here_is_your_job = g_async_queue_new();
   last_wait = num_threads;
   data_queue = g_async_queue_new();
+  cjt_mutex= g_mutex_new();
+  cjt_cond= g_cond_new();
 //  give_me_another_job_queue = g_async_queue_new();
   control_job_t = g_thread_create((GThreadFunc)control_job_thread, conf, TRUE, NULL);
 
@@ -54,6 +68,8 @@ void initialize_control_job (struct configuration *conf){
 void wait_control_job()
 {
   g_thread_join(control_job_t);
+  g_mutex_free(cjt_mutex);
+  g_cond_free(cjt_cond);
 }
 
 struct control_job * new_job (enum control_job_type type, void *job_data, struct database *use_database) {
@@ -346,6 +362,14 @@ void *control_job_thread(struct configuration *conf){
 //  struct control_job *job = NULL;
   gboolean cont=TRUE;
   set_thread_name("CJT");
+  if (overwrite_tables && !overwrite_unsafe) {
+    trace("Thread control_job_thread paused");
+    cjt_paused= TRUE;
+    g_mutex_lock (cjt_mutex);
+    while (cjt_paused)
+      g_cond_wait (cjt_cond, cjt_mutex);
+    g_mutex_unlock (cjt_mutex);
+  }
   trace("Thread control_job_thread started");
   while(cont){
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 
