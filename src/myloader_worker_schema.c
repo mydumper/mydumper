@@ -226,12 +226,13 @@ void *worker_schema_thread(struct thread_data *td) {
     }
   }
 
-  message("S-Thread %d: Starting import", td->thread_id);
+  set_thread_name("S%02u", td->thread_id);
+  message("S-Thread %u: Starting import", td->thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_schema(td);
   }
-  message("S-Thread %d: Import completed", td->thread_id);
+  message("S-Thread %u: Import completed", td->thread_id);
 
   if (td->thrconn)
     mysql_close(td->thrconn);

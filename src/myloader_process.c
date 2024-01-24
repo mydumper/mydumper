@@ -512,6 +512,7 @@ void process_metadata_global(const char *file)
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
+  set_thread_name("MDT");
   message("Reading metadata: %s", file);
   guint j=0;
   gchar *value=NULL;

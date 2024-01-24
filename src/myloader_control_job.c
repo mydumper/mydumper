@@ -308,7 +308,7 @@ void refresh_db_and_jobs(enum file_type current_ft){
 void maybe_shutdown_control_job()
 {
    if (g_atomic_int_dec_and_test(&last_wait)){
-     g_message("SHUTDOWN last_wait_control_job_to_shutdown");
+     trace("SHUTDOWN last_wait_control_job_to_shutdown");
      refresh_db_and_jobs(SHUTDOWN);
    }
 }
@@ -345,6 +345,7 @@ void *control_job_thread(struct configuration *conf){
 //  struct database * real_db_name = NULL;
 //  struct control_job *job = NULL;
   gboolean cont=TRUE;
+  set_thread_name("CJT");
   trace("Thread control_job_thread started");
   while(cont){
     ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 

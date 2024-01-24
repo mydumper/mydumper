@@ -227,6 +227,7 @@ void process_stream_filename(struct intermediate_filename  * iflnm){
 
 void *intermediate_thread(){
   struct intermediate_filename  * iflnm=NULL;
+  set_thread_name("IQT");
   g_mutex_lock(start_intermediate_thread);
   do{
     iflnm = (struct intermediate_filename  *)g_async_queue_pop(intermediate_queue);

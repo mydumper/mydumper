@@ -989,13 +989,28 @@ char * newline_unprotect(char *r) {
 
 extern gboolean debug;
 
+static __thread char __name_buf[32];
+static __thread char *__thread_name= NULL;
+
+void set_thread_name(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(__name_buf, sizeof(__name_buf), format, args);
+  va_end(args);
+  __thread_name= __name_buf;
+}
+
 void trace(const char *format, ...)
 {
   if (!debug)
     return;
   char format2[1024];
   char msg[1024];
-  snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
+  if (__thread_name)
+    snprintf(format2, sizeof(format2), "[%s] %s", __thread_name, format);
+  else
+    snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
   va_list args;
   va_start(args, format);
   vsnprintf(msg, sizeof(msg), format2, args);

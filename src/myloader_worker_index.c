@@ -105,8 +105,9 @@ void *worker_index_thread(struct thread_data *td) {
   if (innodb_optimize_keys_all_tables){
     g_async_queue_pop(innodb_optimize_keys_all_tables_queue);
   }
-    
-  trace("I-Thread %d: Starting import", td->thread_id);
+
+  set_thread_name("I%02u", td->thread_id);
+  trace("I-Thread %u: Starting import", td->thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
@@ -115,7 +116,7 @@ void *worker_index_thread(struct thread_data *td) {
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("I-Thread %d: ending", td->thread_id);
+  g_debug("I-Thread %u: ending", td->thread_id);
   return NULL;
 }
 
