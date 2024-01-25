@@ -248,12 +248,7 @@ int main(int argc, char *argv[]) {
   if (overwrite_unsafe)
     overwrite_tables= TRUE;
 
-  if (!num_threads) {
-    num_threads= g_get_num_processors();
-    g_assert(num_threads > 0);
-    if (num_threads < 4)
-      num_threads= 4;
-  }
+  check_num_threads();
 
   if (num_threads > max_threads_per_table)
     g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);

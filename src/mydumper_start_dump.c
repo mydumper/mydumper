@@ -890,6 +890,8 @@ void start_dump() {
   else if (!dirty_dumpdir && !is_empty_dir(dump_directory)) {
     g_error("Directory is not empty (use --clear or --dirty): %s\n", dump_directory);
   }
+  check_num_threads();
+  g_message("Using %u dumper threads", num_threads);
   initialize_start_dump();
   initialize_common();
 
@@ -903,9 +905,6 @@ void start_dump() {
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
-
-  /* Validate that thread count passed on CLI is a valid count */
-  check_num_threads();
 
   initialize_regex(partition_regex);
 //  detect_server_version(conn);

@@ -709,7 +709,13 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   return FALSE;
 }
 
-void check_num_threads(){
+void check_num_threads()
+{
+  if (!num_threads) {
+    num_threads= g_get_num_processors();
+    g_assert(num_threads > 0);
+  }
+
   if (num_threads < MIN_THREAD_COUNT) {
     g_warning("Invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
