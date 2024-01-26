@@ -87,8 +87,8 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper"
-optstring_short="c:LD"
+optstring_long="case:,rr-myloader,rr-mydumper,debug"
+optstring_short="c:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
@@ -98,6 +98,7 @@ unset case_num
 unset case_repeat
 unset rr_myloader
 unset rr_mydumper
+log_level="-v 4"
 
 while true
 do
@@ -119,6 +120,9 @@ do
     shift;;
   -D|--rr-mydumper)
     mydumper="rr record $mydumper"
+    shift;;
+  -d|--debug)
+    log_level="--debug"
     shift;;
   --) shift; break;;
   esac
@@ -190,7 +194,7 @@ test_case_dir (){
     # Export
     echo "Exporting database: ${mydumper_parameters}"
     rm -rf /tmp/fifodir
-    "${time2[@]}" $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+    "${time2[@]}" $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
@@ -200,14 +204,14 @@ test_case_dir (){
       echo "Exporting database: ${mydumper_parameters}"
       rm -rf /tmp/fifodir
       rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
-      $mydumper -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters}
+      $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
       error=$?
       cat $tmp_mydumper_log >> $mydumper_log
       if (( $error > 0 ))
         then
         print_core
         mysqldump --all-databases > $mysqldumplog
-        echo "Error running: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $mydumper -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
         cat $tmp_mydumper_log
         mv $tmp_mydumper_log $mydumper_stor_dir
         backtrace
@@ -228,7 +232,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql
     echo "Importing database: ${myloader_parameters}"
     mysqldump --all-databases > $mysqldumplog
     rm -rf /tmp/fifodir
-    "${time2[@]}" $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+    "${time2[@]}" $myloader -u root $log_level -L $tmp_myloader_log ${myloader_parameters}
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     if (( $error > 0 ))
@@ -238,15 +242,15 @@ DROP DATABASE IF EXISTS empty_db;" | mysql
       echo "Importing database: ${myloader_parameters}"
       mysqldump --all-databases > $mysqldumplog
       rm -rf /tmp/fifodir
-      $myloader -u root -v 4 -L $tmp_myloader_log ${myloader_parameters}
+      $myloader -u root $log_level -L $tmp_myloader_log ${myloader_parameters}
       error=$?
       cat $tmp_myloader_log >> $myloader_log
       if (( $error > 0 ))
       then
         print_core
         mv $mysqldumplog $mydumper_stor_dir
-        echo "Error running: $myloader -u root -v 4 -L $myloader_log ${myloader_parameters}"
-        echo "Error running myloader with mydumper: $mydumper -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $myloader -u root $log_level -L $myloader_log ${myloader_parameters}"
+        echo "Error running myloader with mydumper: $mydumper -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
         cat $tmp_mydumper_log
         cat $tmp_myloader_log
         mv $tmp_mydumper_log $mydumper_stor_dir
@@ -275,23 +279,23 @@ test_case_stream (){
     rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
     mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
     # Export
-    echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+    echo "Exporting database: $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream"
     rm -rf /tmp/fifodir
-    "${time2[@]}" $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+    "${time2[@]}" $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
     error=$?
     mysqldump --all-databases > $mysqldumplog
     if (( $error > 0 ))
     then
       echo "Retrying export due error"
-      echo "Exporting database: $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream"
+      echo "Exporting database: $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream"
       rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
       rm -rf /tmp/fifodir
-      $mydumper --stream -u root -M -v 4 -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
+      $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
       error=$?
       mysqldump --all-databases > $mysqldumplog
       if (( $error > 0 ))
       then
-        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $mydumper --stream -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
         cat $tmp_mydumper_log
         mv $tmp_mydumper_log $mydumper_stor_dir
         backtrace
@@ -306,7 +310,7 @@ DROP DATABASE IF EXISTS myd_test_no_fk;
 DROP DATABASE IF EXISTS empty_db;" | mysql
   fi
     rm -rf /tmp/fifodir
-    cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+    cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
     cat $tmp_mydumper_log >> $mydumper_log
@@ -314,15 +318,15 @@ DROP DATABASE IF EXISTS empty_db;" | mysql
     then
       echo "Retrying import due error"
       rm -rf /tmp/fifodir
-      cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root -v 4 -L $tmp_myloader_log ${myloader_parameters} --stream
+      cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
       error=$?
       cat $tmp_myloader_log >> $myloader_log
       cat $tmp_mydumper_log >> $mydumper_log
       if (( $error > 0 ))
       then
         mv $mysqldumplog $mydumper_stor_dir
-        echo "Error running: $mydumper --stream -u root -M -v 4 -L $mydumper_log ${mydumper_parameters}"
-        echo "Error running: $myloader ${myloader_general_options} -u root -v 4 -L $myloader_log ${myloader_parameters} --stream"
+        echo "Error running: $mydumper --stream -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
+        echo "Error running: $myloader ${myloader_general_options} -u root $log_level -L $myloader_log ${myloader_parameters} --stream"
         cat $tmp_mydumper_log
         cat $tmp_myloader_log
         mv $tmp_mydumper_log $mydumper_stor_dir
@@ -374,8 +378,8 @@ prepare_full_test()
   # export -- import
   # 1000 rows -- database must not exist
 
-  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))' --fifodir=/tmp/fifodir $MYDUMPER_ARGS"
-  myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $MYLOADER_ARGS"
+  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))' --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
+  myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }
 
 full_test_global(){

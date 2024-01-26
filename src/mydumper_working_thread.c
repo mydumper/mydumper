@@ -480,7 +480,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
   while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
 //  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
 //    sleep(td->thread_id);
-    g_debug("Thread %d: Start trasaction #%d", td->thread_id, start_transaction_retry);
+    g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
     if (mysql_query(td->thrconn,
                   "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
       m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
