@@ -325,7 +325,7 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
   GString *s=g_string_new(str);
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_c(s,'_');
-  g_string_append(s,get_product_name());
+  g_string_append(s, g_utf8_strdown(get_product_name(), -1));
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_printf(s,"_%d",get_major());
   load_hash_from_key_file(kf,set_session_hash,s->str);
@@ -709,7 +709,13 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   return FALSE;
 }
 
-void check_num_threads(){
+void check_num_threads()
+{
+  if (!num_threads) {
+    num_threads= g_get_num_processors();
+    g_assert(num_threads > 0);
+  }
+
   if (num_threads < MIN_THREAD_COUNT) {
     g_warning("Invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
@@ -989,13 +995,28 @@ char * newline_unprotect(char *r) {
 
 extern gboolean debug;
 
+static __thread char __name_buf[32];
+static __thread char *__thread_name= NULL;
+
+void set_thread_name(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(__name_buf, sizeof(__name_buf), format, args);
+  va_end(args);
+  __thread_name= __name_buf;
+}
+
 void trace(const char *format, ...)
 {
   if (!debug)
     return;
   char format2[1024];
   char msg[1024];
-  snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
+  if (__thread_name)
+    snprintf(format2, sizeof(format2), "[%s] %s", __thread_name, format);
+  else
+    snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
   va_list args;
   va_start(args, format);
   vsnprintf(msg, sizeof(msg), format2, args);

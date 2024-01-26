@@ -501,25 +501,24 @@ void update_where_on_char_step(struct chunk_step_item * csi){
 */
 void update_where_on_char_step(struct chunk_step_item * csi){
   g_string_set_size(csi->where,0);
-  if (csi->prefix && csi->prefix->len>0)
+  const gboolean has_prefix= (csi->prefix && csi->prefix->len > 0);
+  if (has_prefix)
     g_string_append_printf(csi->where,"(%s AND ",
                           csi->prefix->str);
   g_string_append(csi->where,"(");
   if (csi->include_null)
     g_string_append_printf(csi->where,"`%s` IS NULL OR",csi->field);
 
-  if (csi->chunk_step->char_step.cmax == NULL){
-    g_string_append_printf(csi->where,"`%s` >= '%s'",
-                      csi->field, csi->chunk_step->char_step.cmin_escaped
-                      );
-  }else{
-    g_string_append_printf(csi->where,"'%s' < `%s` AND `%s` <= '%s'",
-                      csi->chunk_step->char_step.cmin_escaped, csi->field,
-                      csi->field, csi->chunk_step->char_step.cursor_escaped
-                      );
+  struct char_step *cs= &csi->chunk_step->char_step;
+  if (cs->cmax == NULL) {
+    g_string_append_printf(csi->where,"`%s` >= '%s'", csi->field, cs->cmin_escaped);
+  } else {
+    g_string_append_printf(csi->where,"'%s' <= `%s` AND `%s` <%s '%s'",
+                           cs->cmin_escaped, csi->field, csi->field,
+                           (cs->cursor == cs->cmax ? "=" : ""), cs->cursor_escaped);
   }
 
-  if (csi->prefix && csi->prefix->len>0)
+  if (has_prefix)
     g_string_append(csi->where,")");
   g_string_append(csi->where,")");
 }

@@ -84,9 +84,10 @@ int get_revision(){
 
 const gchar * get_product_name(){
   switch (get_product()){
-  case SERVER_TYPE_PERCONA: return "percona"; break;
-  case SERVER_TYPE_MYSQL:   return "mysql";   break;
-  case SERVER_TYPE_MARIADB: return "mariadb"; break;
+  case SERVER_TYPE_PERCONA: return "Percona"; break;
+  case SERVER_TYPE_MYSQL:   return "MySQL";   break;
+  case SERVER_TYPE_MARIADB: return "MariaDB"; break;
+  case SERVER_TYPE_TIDB:    return "TiDB"; break;
   case SERVER_TYPE_UNKNOWN: return "unknown"; break;
   default: return "";
 }

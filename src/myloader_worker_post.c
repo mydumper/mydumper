@@ -98,14 +98,15 @@ void *worker_post_thread(struct thread_data *td) {
   if (db){
     td->current_database=database_db;
     if (execute_use(td)){
-      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
+      m_critical("Thread %u: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }
   }
     
   gboolean cont=TRUE;
   struct control_job *job = NULL;
 
-  g_message("Thread %d: Starting post import task over table", td->thread_id);
+  set_thread_name("T%02u", td->thread_id);
+  g_message("Thread %u: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
@@ -131,7 +132,7 @@ void *worker_post_thread(struct thread_data *td) {
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("Thread %d: ending", td->thread_id);
+  g_debug("Thread %u: ending", td->thread_id);
   return NULL;
 }
 

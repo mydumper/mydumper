@@ -67,6 +67,7 @@ gboolean has_mydumper_suffix(gchar *line){
 }
 
 void *process_stream(struct configuration *stream_conf){
+  set_thread_name("STT");
   char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
   char *buffer=g_new(char, STREAM_BUFFER_SIZE);
   FILE *file=NULL;
