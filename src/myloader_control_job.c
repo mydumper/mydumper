@@ -42,7 +42,7 @@ void *control_job_thread(struct configuration *conf);
 
 static GMutex *cjt_mutex= NULL;
 static GCond *cjt_cond= NULL;
-static gboolean cjt_paused= FALSE;
+static gboolean cjt_paused= TRUE;
 
 void cjt_resume()
 {
@@ -362,9 +362,8 @@ void *control_job_thread(struct configuration *conf){
 //  struct control_job *job = NULL;
   gboolean cont=TRUE;
   set_thread_name("CJT");
-  if (overwrite_tables && !overwrite_unsafe) {
+  if (overwrite_tables && !overwrite_unsafe && cjt_paused) {
     trace("Thread control_job_thread paused");
-    cjt_paused= TRUE;
     g_mutex_lock (cjt_mutex);
     while (cjt_paused)
       g_cond_wait (cjt_cond, cjt_mutex);
