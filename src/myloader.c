@@ -76,6 +76,7 @@ gboolean innodb_optimize_keys_all_tables = FALSE;
 
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
+enum checksum_modes checksum_mode= CHECKSUM_FAIL;
 gboolean skip_triggers = FALSE;
 gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
@@ -476,17 +477,22 @@ int main(int argc, char *argv[]) {
   }
 
 
-  GHashTableIter iter;
-  gchar * lkey;
-  g_hash_table_iter_init ( &iter, db_hash);
-  struct database *d=NULL;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    if (d->schema_checksum != NULL && !no_schemas)
-      checksum_database_template(d->real_database, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
-    if (d->post_checksum != NULL && !skip_post)
-      checksum_database_template(d->real_database, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
-    if (d->triggers_checksum != NULL && !skip_triggers)
-      checksum_database_template(d->real_database, d->triggers_checksum,  conn, "Triggers checksum", checksum_trigger_structure_from_database);
+  if (checksum_mode != CHECKSUM_SKIP) {
+    GHashTableIter iter;
+    gchar *lkey;
+    g_hash_table_iter_init(&iter, db_hash);
+    struct database *d= NULL;
+    while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
+      if (d->schema_checksum != NULL && !no_schemas)
+        checksum_database_template(d->real_database, d->schema_checksum,  conn,
+                                  "Schema create checksum", checksum_database_defaults);
+      if (d->post_checksum != NULL && !skip_post)
+        checksum_database_template(d->real_database, d->post_checksum,  conn,
+                                  "Post checksum", checksum_process_structure);
+      if (d->triggers_checksum != NULL && !skip_triggers)
+        checksum_database_template(d->real_database, d->triggers_checksum,  conn,
+                                  "Triggers checksum", checksum_trigger_structure_from_database);
+    }
   }
 
 

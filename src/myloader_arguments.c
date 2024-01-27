@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "connection.h"
 #include "regex.h"
+#include <strings.h>
 
 extern gboolean enable_binlog;
 
@@ -41,28 +42,44 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcmp(value, AFTER_IMPORT_PER_TABLE)) {
+    if (!strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcmp(value, AFTER_IMPORT_ALL_TABLES)) {
+    if (!strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       innodb_optimize_keys_all_tables = TRUE;
       innodb_optimize_keys_per_table = FALSE;
       return TRUE;
     }
+    g_critical("--innodb-optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
   } else if (!strcmp(option_name, "--quote-character")) {
     quote_character_cli= TRUE;
-    if (!strcmp(value, "BACKTICK") || !strcmp(value, "bt") || !strcmp(value, "`")) {
+    if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
       identifier_quote_character= BACKTICK;
       return TRUE;
     }
-    if (!strcmp(value, "DOUBLE_QUOTE") || !strcmp(value, "dq") || !strcmp(value, "\"")) {
+    if (!strcasecmp(value, "DOUBLE_QUOTE") || !strcasecmp(value, "DQ") || !strcmp(value, "\"")) {
       identifier_quote_character= DOUBLE_QUOTE;
       return TRUE;
     }
-    g_critical("--quote-character accepts BACKTICK, bt, `, DOUBLE_QUOTE, dt, \"");
+    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dt, \"");
+  } else if (!strcmp(option_name, "--checksum")) {
+    if (value == NULL || !strcasecmp(value, "FAIL")) {
+      checksum_mode= CHECKSUM_FAIL;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "WARN")) {
+      checksum_mode= CHECKSUM_WARN;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "SKIP")) {
+      checksum_mode= CHECKSUM_SKIP;
+      return TRUE;
+    }
+    g_critical("--checksum accepts: fail (default), warn, skip");
   }
+
   return FALSE;
 }
 
@@ -108,6 +125,8 @@ static GOptionEntry execution_entries[] = {
       "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
+    {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "Treat checksums: skip, fail, warn (default).", NULL },
 
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
@@ -155,14 +174,6 @@ static GOptionEntry statement_entries[] ={
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-
-
-
-
-
-
 
 
 GOptionContext * load_contex_entries(){
