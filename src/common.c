@@ -31,6 +31,7 @@
 
 GAsyncQueue *stream_queue = NULL;
 gboolean skip_defer= FALSE;
+gboolean check_row_count= FALSE;
 
 /*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
