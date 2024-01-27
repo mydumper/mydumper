@@ -99,7 +99,6 @@ struct chunk_step_item * new_none_chunk_step(){
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
     struct chunk_step_item * csi=NULL;
 
-//  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
     gchar *field=g_list_nth_data(dbt->primary_key, position);
     gchar *query = NULL;
     MYSQL_ROW row;
@@ -276,7 +275,8 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   struct chunk_step_item * csi = NULL;
 
-  guint64 rows = get_rows_from_explain(conn, dbt, NULL ,NULL);
+  const guint64 rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
+  dbt->rows_total= rows;
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
