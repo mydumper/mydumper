@@ -155,6 +155,8 @@ struct database * get_db_hash(gchar *filename, gchar *name){
   if (d==NULL){
     d=new_database(g_strdup(name), filename);
     g_hash_table_insert(db_hash, filename, d);
+    if (g_strcmp0(filename,name))
+      g_hash_table_insert(db_hash, g_strdup(name), d);
   }else{
     if (filename != name){
       d->name=g_strdup(name);

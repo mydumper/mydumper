@@ -425,6 +425,8 @@ gchar * get_database_name_from_content(gchar *filename){
           real_database=g_strdup(create[1]);
           g_strfreev(create);
           break;
+        }else{
+          g_string_set_size(data,0);
         }
       }
     }
@@ -446,6 +448,8 @@ void process_database_filename(char * filename) {
   if (db_kname!=NULL){
     if (g_str_has_prefix(db_kname,"mydumper_"))
       db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+    if(!db_vname)
+      m_critical("It was not possible to process db content in file: %s",filename);
   }else{
     m_critical("It was not possible to process db file: %s",filename);
   }
