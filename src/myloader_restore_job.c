@@ -157,15 +157,6 @@ int overwrite_table(MYSQL *conn,gchar * database, gchar * table){
   return truncate_or_delete_failed;
 }
 
-void is_all_done(void* key, void* dbt, void *total){
-  (void) key;
-  (void) dbt;
-//  *((guint *)total)= 100;
-  if (((struct db_table*)dbt)->schema_state >= ALL_DONE)
-    *((guint *)total)= *((guint *)total) + 1;
-//*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
-}
-
 void increse_object_error(const gchar *object){
         if (!g_strcmp0(object,SEQUENCE))
           g_atomic_int_inc(&(detailed_errors.sequence_errors));
@@ -187,9 +178,31 @@ void increse_object_error(const gchar *object){
 
 }
 
-void get_total_done(struct configuration * conf, void *total){
+void schema_state_increment(gchar* key, struct db_table* dbt, guint *total, enum schema_status schema_state){
+  (void) key;
+  if (dbt->schema_state >= schema_state){
+    *total = *total + 1;
+  }
+}
+
+void is_all_done(gchar* key, struct db_table* dbt, guint *total){
+  schema_state_increment(key, dbt, total, ALL_DONE);
+}
+
+void is_created(gchar* key, struct db_table* dbt, guint *total){
+  schema_state_increment(key, dbt, total, CREATED);
+}
+
+
+void get_total_done(struct configuration * conf, guint *total){
   g_mutex_lock(conf->table_hash_mutex);
-  g_hash_table_foreach(conf->table_hash,&is_all_done, total);
+  g_hash_table_foreach(conf->table_hash,(void (*)(void *, void *, void *)) &is_all_done, total);
+  g_mutex_unlock(conf->table_hash_mutex);
+}
+
+void get_total_created(struct configuration * conf, guint *total){
+  g_mutex_lock(conf->table_hash_mutex);
+  g_hash_table_foreach(conf->table_hash,(void (*)(void *, void *, void *)) &is_created, total);
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
@@ -261,8 +274,8 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             else 
               g_critical("Thread %d: issue restoring %s: %s",td->thread_id,rj->filename, mysql_error(td->thrconn));
           }else{
-            get_total_done(td->conf, &total);
-            message("Thread %d: Table %s.%s created. Tables %d of %d completed", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
+            get_total_created(td->conf, &total);
+            message("Thread %d: Table %s.%s created. Tables that pass created stage: %d of %d", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
           }
         }
         if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
