@@ -87,6 +87,8 @@ static GOptionEntry extra_entries[] = {
      "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
     {"skip-defer", 0, 0, G_OPTION_ARG_NONE, &skip_defer,
      "Do not defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
+    {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
+     "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {

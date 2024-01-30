@@ -99,7 +99,6 @@ struct chunk_step_item * new_none_chunk_step(){
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
     struct chunk_step_item * csi=NULL;
 
-//  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
     gchar *field=g_list_nth_data(dbt->primary_key, position);
     gchar *query = NULL;
     MYSQL_ROW row;
@@ -272,11 +271,39 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
   return rows_in_explain;
 }
 
+static
+guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
+{
+  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM `%s`.`%s`",
+                               is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                               dbt->database->name, dbt->table);
+  mysql_query(conn, query);
+
+  g_free(query);
+  MYSQL_RES *res= mysql_store_result(conn);
+  MYSQL_ROW row= mysql_fetch_row(res);
+
+  if (!row || !row[0]) {
+    mysql_free_result(res);
+    return 0;
+  }
+  guint64 rows= strtoull(row[0], NULL, 10);
+  mysql_free_result(res);
+  return rows;
+}
+
+
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   struct chunk_step_item * csi = NULL;
-
-  guint64 rows = get_rows_from_explain(conn, dbt, NULL ,NULL);
+  guint64 rows;
+  if (check_row_count) {
+    rows= get_rows_from_count(conn, dbt);
+  } else
+    rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
+  g_message("%s.%s has %s%lu rows", dbt->database->name, dbt->table,
+            (check_row_count ? "": "~"), rows);
+  dbt->rows_total= rows;
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){

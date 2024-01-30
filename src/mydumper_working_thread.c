@@ -383,8 +383,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         continue;
 
       new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
-                        row[collcol], row[ecol],
-                        (rowscol > 0 ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
+                        row[collcol], row[ecol]);
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -1156,7 +1155,7 @@ void get_primary_key_string_old(MYSQL *conn, struct db_table * dbt) {
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
-                      guint64 rows_in_sts, gboolean is_sequence)
+                      gboolean is_sequence)
 {
   gchar * lkey = g_strdup_printf("`%s`.`%s`",database->name,table);
   g_mutex_lock(all_dbts_mutex);
@@ -1171,7 +1170,6 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->database = database;
     dbt->table = backtick_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
-    dbt->rows_in_sts = rows_in_sts;
     dbt->is_sequence= is_sequence;
     dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
     dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
@@ -1285,7 +1283,7 @@ void free_db_table(struct db_table * dbt){
 
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
                        gboolean is_sequence, struct database * database, char *table,
-                       char *collation, gchar *ecol, guint64 rows_in_sts)
+                       char *collation, gchar *ecol)
 {
     /* Green light! */
   g_mutex_lock(database->ad_mutex);
@@ -1296,7 +1294,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   g_mutex_unlock(database->ad_mutex);
 
   struct db_table *dbt=NULL;
-  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, rows_in_sts, is_sequence);
+  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence);
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
@@ -1534,8 +1532,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
     
     new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
-                      row[collcol], row[ecol],
-                      (rowscol>0 && row[rowscol] !=NULL ? g_ascii_strtoull(row[rowscol], NULL, 10) : 0));
+                      row[collcol], row[ecol]);
 
   }
 

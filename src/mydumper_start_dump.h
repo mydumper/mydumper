@@ -281,7 +281,6 @@ struct db_table {
   char *min;
   char *max;
 //  char *field;
-  guint64 rows_in_sts;
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;
@@ -289,6 +288,7 @@ struct db_table {
   gboolean is_sequence;
   gboolean has_json_fields;
   char *character_set;
+  guint64 rows_total;
   guint64 rows;
   guint64 estimated_remaining_steps;
   GMutex *rows_lock;

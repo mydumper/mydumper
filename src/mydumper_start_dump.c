@@ -757,6 +757,10 @@ void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt){
   GString *data = g_string_sized_new(100);
   print_dbt_on_metadata_gstring(dbt, data);
   fprintf(mdfile, "%s", data->str);
+  if (check_row_count && (dbt->rows != dbt->rows_total)) {
+    m_critical("Row count mismatch found for %s.%s: got %u of %u expected",
+               dbt->database->name, dbt->table, dbt->rows, dbt->rows_total);
+  }
 }
 
 

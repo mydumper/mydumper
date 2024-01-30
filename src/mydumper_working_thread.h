@@ -31,7 +31,7 @@ void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
                        gboolean is_sequence, struct database * database, char *table,
-                       char *collation, gchar *ecol, guint64 rows_in_st);
+                       char *collation, gchar *ecol);
 void initialize_working_thread();
 void finalize_working_thread();
 void free_db_table(struct db_table * dbt);
