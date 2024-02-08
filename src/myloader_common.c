@@ -422,7 +422,7 @@ void refresh_table_list(struct configuration *conf){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
-static inline void
+static inline gboolean
 checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
                   const char *info_templ, const char *message, const char *_db, const char *_table)
 {
@@ -439,58 +439,61 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
       else
         g_critical(err_templ, message, _db, checksum, dbt_checksum);
     }
+    return FALSE;
   } else {
     g_message(info_templ, message, _db, _table);
   }
+  return TRUE;
 }
 
-void checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
+gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
                            const gchar *message, gchar* fun())
 {
   int errn= 0;
   const char *_db= dbt->database->real_database;
   const char *_table= dbt->real_table;
   const char *checksum= fun(conn, _db, _table, &errn);
-  checksum_template(dbt_checksum, checksum,
+  return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
                     "%s confirmed for %s.%s", message, _db, _table);
 }
 
-void checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
+gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
                                 const gchar *message, gchar* fun())
 {
   int errn= 0;
   const char *checksum= fun(conn, _db, NULL, &errn);
-  checksum_template(dbt_checksum, checksum,
+  return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s: got %s, expecting %s",
                     "%s confirmed for %s", message, _db, NULL);
 }
 
-void checksum_dbt(struct db_table *dbt,  MYSQL *conn)
+gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
 {
-  if (checksum_mode == CHECKSUM_SKIP)
-    return;
-  if (!no_schemas){
-    if (dbt->schema_checksum!=NULL){
-      if (dbt->is_view)
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn,
-                              "View checksum", checksum_view_structure);
-      else
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn,
-                              "Structure checksum", checksum_table_structure);
+  gboolean checksum_ok=TRUE;
+  if (checksum_mode != CHECKSUM_SKIP){
+    if (!no_schemas){
+      if (dbt->schema_checksum!=NULL){
+        if (dbt->is_view)
+          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+                                "View checksum", checksum_view_structure);
+        else
+          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+                                "Structure checksum", checksum_table_structure);
+      }
+      if (dbt->indexes_checksum!=NULL)
+        checksum_ok&=checksum_dbt_template(dbt, dbt->indexes_checksum, conn,
+                              "Schema index checksum", checksum_table_indexes);
     }
-    if (dbt->indexes_checksum!=NULL)
-      checksum_dbt_template(dbt, dbt->indexes_checksum, conn,
-                            "Schema index checksum", checksum_table_indexes);
+    if (dbt->triggers_checksum!=NULL && !skip_triggers)
+      checksum_ok&=checksum_dbt_template(dbt, dbt->triggers_checksum, conn,
+                            "Trigger checksum", checksum_trigger_structure);
+
+    if (dbt->data_checksum!=NULL && !no_data)
+      checksum_ok&=checksum_dbt_template(dbt, dbt->data_checksum, conn,
+                            "Data checksum", checksum_table);
   }
-  if (dbt->triggers_checksum!=NULL && !skip_triggers)
-    checksum_dbt_template(dbt, dbt->triggers_checksum, conn,
-                          "Trigger checksum", checksum_trigger_structure);
-
-  if (dbt->data_checksum!=NULL && !no_data)
-    checksum_dbt_template(dbt, dbt->data_checksum, conn,
-                          "Data checksum", checksum_table);
-
+  return checksum_ok;
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){

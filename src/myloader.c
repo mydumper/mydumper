@@ -470,11 +470,15 @@ int main(int argc, char *argv[]) {
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
 
+  gboolean checksum_ok=TRUE;
   GList * tl=conf.table_list;
   while (tl != NULL){
-    checksum_dbt(tl->data, conn);
+    checksum_ok&=checksum_dbt(tl->data, conn);
     tl=tl->next;
   }
+
+  if (!checksum_ok)
+    g_error("Checksum failed");
 
 
   if (checksum_mode != CHECKSUM_SKIP) {
@@ -484,17 +488,19 @@ int main(int argc, char *argv[]) {
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
       if (d->schema_checksum != NULL && !no_schemas)
-        checksum_database_template(d->real_database, d->schema_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum,  conn,
                                   "Schema create checksum", checksum_database_defaults);
       if (d->post_checksum != NULL && !skip_post)
-        checksum_database_template(d->real_database, d->post_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum,  conn,
                                   "Post checksum", checksum_process_structure);
       if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_database_template(d->real_database, d->triggers_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum,  conn,
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
 
+  if (!checksum_ok)
+    g_error("Checksum failed");
 
   if (stream && no_delete == FALSE && input_directory == NULL){
     m_remove(directory,"metadata");
