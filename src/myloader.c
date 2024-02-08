@@ -61,12 +61,14 @@
 #include "myloader_worker_schema.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_post.h"
+#include "myloader_control_job.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
 gchar *directory = NULL;
 gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
+gboolean overwrite_unsafe = FALSE;
 
 gboolean innodb_optimize_keys = FALSE;
 gboolean innodb_optimize_keys_per_table = FALSE;
@@ -74,22 +76,28 @@ gboolean innodb_optimize_keys_all_tables = FALSE;
 
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
+enum checksum_modes checksum_mode= CHECKSUM_FAIL;
 gboolean skip_triggers = FALSE;
 gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint sequences = 0;
+guint sequences_processed = 0;
+GMutex sequences_mutex;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
 guint errors = 0;
+guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-guint max_threads_per_table=4;
-guint max_threads_per_table_hard=4;
+guint max_threads_per_table= G_MAXUINT;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
+guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
+gboolean quote_character_cli= FALSE;
 
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
@@ -201,13 +209,14 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
 
   GError *error = NULL;
   GOptionContext *context;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
+  set_thread_name("MNT");
 
   initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
@@ -236,6 +245,16 @@ int main(int argc, char *argv[]) {
   } else {
     set_verbose(verbose);
   }
+
+  if (overwrite_unsafe)
+    overwrite_tables= TRUE;
+
+  check_num_threads();
+
+  if (num_threads > max_threads_per_table)
+    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
+  else
+    g_message("Using %u loader threads", num_threads);
 
   initialize_common_options(context, "myloader");
   g_option_context_free(context);
@@ -356,7 +375,6 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
-  identifier_quote_character_str=g_strdup_printf("%c",identifier_quote_character);
   // TODO: we need to set the variables in the initilize session varibles, not from:
 //  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
 //    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
@@ -375,6 +393,7 @@ int main(int argc, char *argv[]) {
   // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
+  conf.retry_queue = g_async_queue_new();
   conf.data_queue = g_async_queue_new();
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
@@ -399,7 +418,7 @@ int main(int argc, char *argv[]) {
 
   struct thread_data t;
   t.thread_id = 0;
-  t.conf = &conf;
+  t.conf = &conf; // TODO: if conf is singleton it must be accessed as global variable
   t.thrconn = conn;
   t.current_database=NULL;
   t.status=WAITING;
@@ -415,6 +434,7 @@ int main(int argc, char *argv[]) {
   if (serial_tbl_creation)
     max_threads_for_schema_creation=1;
 
+  /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
   initialize_intermediate_queue(&conf);
@@ -424,8 +444,6 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
-
-    wait_until_first_metadata();
   }
 
   initialize_loader_threads(&conf);
@@ -442,6 +460,7 @@ int main(int argc, char *argv[]) {
   initialize_post_loding_threads(&conf);
   create_post_shutdown_job(&conf);
   wait_post_worker_to_finish();
+  wait_control_job();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
 
@@ -458,24 +477,30 @@ int main(int argc, char *argv[]) {
   }
 
 
-  GHashTableIter iter;
-  gchar * lkey;
-  g_hash_table_iter_init ( &iter, db_hash);
-  struct database *d=NULL;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &d ) ) {
-    if (d->schema_checksum != NULL && !no_schemas)
-      checksum_database_template(d->real_database, d->schema_checksum,  conn, "Schema create checksum", checksum_database_defaults);
-    if (d->post_checksum != NULL && !skip_post)
-      checksum_database_template(d->real_database, d->post_checksum,  conn, "Post checksum", checksum_process_structure);
-    if (d->triggers_checksum != NULL && !skip_triggers)
-      checksum_database_template(d->real_database, d->triggers_checksum,  conn, "Triggers checksum", checksum_trigger_structure_from_database);
+  if (checksum_mode != CHECKSUM_SKIP) {
+    GHashTableIter iter;
+    gchar *lkey;
+    g_hash_table_iter_init(&iter, db_hash);
+    struct database *d= NULL;
+    while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
+      if (d->schema_checksum != NULL && !no_schemas)
+        checksum_database_template(d->real_database, d->schema_checksum,  conn,
+                                  "Schema create checksum", checksum_database_defaults);
+      if (d->post_checksum != NULL && !skip_post)
+        checksum_database_template(d->real_database, d->post_checksum,  conn,
+                                  "Post checksum", checksum_process_structure);
+      if (d->triggers_checksum != NULL && !skip_triggers)
+        checksum_database_template(d->real_database, d->triggers_checksum,  conn,
+                                  "Triggers checksum", checksum_trigger_structure_from_database);
+    }
   }
 
 
   if (stream && no_delete == FALSE && input_directory == NULL){
     m_remove(directory,"metadata");
-    if (g_rmdir(directory) != 0)
-        g_critical("Restore directory not removed: %s", directory);
+    m_remove(directory, "metadata.header");
+    if (g_rmdir(directory) < 0)
+        g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
   }
 
   if (change_master_statement != NULL ){
@@ -494,6 +519,7 @@ int main(int argc, char *argv[]) {
 
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);
+  g_async_queue_unref(conf.retry_queue);
   g_async_queue_unref(conf.pause_resume);
   g_async_queue_unref(conf.post_table_queue);
   g_async_queue_unref(conf.post_queue);
@@ -540,6 +566,7 @@ int main(int argc, char *argv[]) {
   }
 */
 
+  if (key_file)  g_key_file_free(key_file);
 
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }

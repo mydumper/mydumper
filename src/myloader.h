@@ -17,10 +17,9 @@
 
 
 
-#include <mysql.h>
-
 #ifndef _src_myloader_h
 #define _src_myloader_h
+#include <mysql.h>
 
 #define MYLOADER "myloader"
 
@@ -50,6 +49,7 @@ struct thread_data {
 struct configuration {
   GAsyncQueue *database_queue;
   GAsyncQueue *table_queue;
+  GAsyncQueue *retry_queue;
   GAsyncQueue *data_queue;
   GAsyncQueue *post_table_queue;
   GAsyncQueue *view_queue;
@@ -70,14 +70,37 @@ struct configuration {
 
 
 enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, INDEX_ENQUEUED, ALL_DONE};
+static inline
+const char * status2str(enum schema_status status)
+{
+  switch (status) {
+  case NOT_FOUND:
+    return "NOT_FOUND";
+  case NOT_CREATED:
+    return "NOT_CREATED";
+  case CREATING:
+    return "CREATING";
+  case CREATED:
+    return "CREATED";
+  case DATA_DONE:
+    return "DATA_DONE";
+  case INDEX_ENQUEUED:
+    return "INDEX_ENQUEUED";
+  case ALL_DONE:
+    return "ALL_DONE";
+  }
+  g_assert(0);
+  return 0;
+}
 
 struct database {
   gchar *name; // aka: the logical schema name, that could be different of the filename.
   char *real_database; // aka: the output schema name this can change when use -B.
   gchar *filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
   enum schema_status schema_state;
+  GAsyncQueue *sequence_queue;
   GAsyncQueue *queue;
-  GMutex * mutex;
+  GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()
   gchar *schema_checksum;
   gchar *post_checksum;
   gchar *triggers_checksum;
@@ -94,7 +117,7 @@ struct db_table {
   GList * restore_job_list;
   guint current_threads;
   guint max_threads;
-  guint max_threads_hard;
+  guint retry_count;
   GMutex *mutex;
   GString *indexes;
   GString *constraints;
@@ -112,14 +135,16 @@ struct db_table {
   gchar *indexes_checksum;
   gchar *triggers_checksum;
   gboolean is_view;
+  gboolean is_sequence;
 };
 
 enum file_type { 
   INIT, 
   SCHEMA_TABLESPACE, 
   SCHEMA_CREATE, 
-  SCHEMA_TABLE, 
-  DATA, 
+  CJT_RESUME,
+  SCHEMA_TABLE,
+  DATA,
   SCHEMA_VIEW, 
   SCHEMA_SEQUENCE,
   SCHEMA_TRIGGER, 
@@ -137,4 +162,54 @@ enum file_type {
   INDEX,
   INTERMEDIATE_ENDED };
 
+static inline
+const char *ft2str(enum file_type ft)
+{
+  switch (ft) {
+  case INIT:
+    return "INIT";
+  case SCHEMA_TABLESPACE:
+    return "SCHEMA_TABLESPACE";
+  case SCHEMA_CREATE:
+    return "SCHEMA_CREATE";
+  case CJT_RESUME:
+    return "CJT_RESUME";
+  case SCHEMA_TABLE:
+    return "SCHEMA_TABLE";
+  case DATA:
+    return "DATA";
+  case SCHEMA_VIEW:
+    return "SCHEMA_VIEW";
+  case SCHEMA_SEQUENCE:
+    return "SCHEMA_SEQUENCE";
+  case SCHEMA_TRIGGER:
+    return "SCHEMA_TRIGGER";
+  case SCHEMA_POST:
+    return "SCHEMA_POST";
+  case CHECKSUM:
+    return "CHECKSUM";
+  case METADATA_GLOBAL:
+    return "METADATA_GLOBAL";
+  case RESUME:
+    return "RESUME";
+  case IGNORED:
+    return "IGNORED";
+  case LOAD_DATA:
+    return "LOAD_DATA";
+  case SHUTDOWN:
+    return "SHUTDOWN";
+  case INCOMPLETE:
+    return "INCOMPLETE";
+  case DO_NOT_ENQUEUE:
+    return "DO_NOT_ENQUEUE";
+  case THREAD:
+    return "THREAD";
+  case INDEX:
+    return "INDEX";
+  case INTERMEDIATE_ENDED:
+    return "INTERMEDIATE_ENDED";
+  }
+  g_assert(0);
+  return NULL;
+}
 #endif

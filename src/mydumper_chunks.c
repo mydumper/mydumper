@@ -99,7 +99,6 @@ struct chunk_step_item * new_none_chunk_step(){
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
     struct chunk_step_item * csi=NULL;
 
-//  if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
     gchar *field=g_list_nth_data(dbt->primary_key, position);
     gchar *query = NULL;
     MYSQL_ROW row;
@@ -272,11 +271,39 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
   return rows_in_explain;
 }
 
+static
+guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
+{
+  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM `%s`.`%s`",
+                               is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                               dbt->database->name, dbt->table);
+  mysql_query(conn, query);
+
+  g_free(query);
+  MYSQL_RES *res= mysql_store_result(conn);
+  MYSQL_ROW row= mysql_fetch_row(res);
+
+  if (!row || !row[0]) {
+    mysql_free_result(res);
+    return 0;
+  }
+  guint64 rows= strtoull(row[0], NULL, 10);
+  mysql_free_result(res);
+  return rows;
+}
+
+
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_mutex_lock(dbt->chunks_mutex);
   struct chunk_step_item * csi = NULL;
-
-  guint64 rows = get_rows_from_explain(conn, dbt, NULL ,NULL);
+  guint64 rows;
+  if (check_row_count) {
+    rows= get_rows_from_count(conn, dbt);
+  } else
+    rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
+  g_message("%s.%s has %s%lu rows", dbt->database->name, dbt->table,
+            (check_row_count ? "": "~"), rows);
+  dbt->rows_total= rows;
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
@@ -289,7 +316,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       csi->chunk_functions.get_next = &get_next_partition_chunk;
       csi->chunk_step=new_real_partition_step(partitions,0,0);
     }else{
-      if (dbt->starting_chunk_step_size>0 && dbt->rows_in_sts > dbt->min_chunk_step_size ){
+      if (dbt->starting_chunk_step_size > 0) {
         csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();
@@ -393,6 +420,11 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
         break;
       }
 
+      // Set by set_chunk_strategy_for_dbt() in working_thread()
+      g_assert(d->status == READY);
+
+      // Initially chunks are set by set_chunk_strategy_for_dbt() and then by
+      // chunk_functions.get_next(d) (see below)
       if (d->chunks == NULL){
         g_mutex_unlock(d->chunks_mutex);
         goto next;
@@ -435,14 +467,7 @@ next:
   return are_there_jobs_defining;
 }
 
-void give_me_another_non_innodb_chunk_step(){
-  g_async_queue_push(give_me_another_non_innodb_chunk_step_queue, GINT_TO_POINTER(1));
-}
-
-void give_me_another_innodb_chunk_step(){
-  g_async_queue_push(give_me_another_innodb_chunk_step_queue, GINT_TO_POINTER(1));
-}
-
+static
 void enqueue_shutdown_jobs(GAsyncQueue * queue){
   struct job *j=NULL;
   guint n;
@@ -453,40 +478,57 @@ void enqueue_shutdown_jobs(GAsyncQueue * queue){
   }
 }
 
-void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, struct MList *table_list){
+static inline
+void enqueue_shutdown(struct table_queuing *q)
+{
+  enqueue_shutdown_jobs(q->queue);
+  enqueue_shutdown_jobs(q->defer);
+}
+
+static
+void table_job_enqueue(struct table_queuing *q)
+{
   struct db_table *dbt;
   struct chunk_step_item *csi;
   gboolean are_there_jobs_defining=FALSE;
+  g_message("Starting %s tables", q->descr);
   for (;;) {
-    g_async_queue_pop(pop_queue);
+    g_async_queue_pop(q->request_chunk);
     if (shutdown_triggered) {
-      return; 
+      break;
     }
     dbt=NULL;
     csi=NULL;
     are_there_jobs_defining=FALSE;
-    are_there_jobs_defining=get_next_dbt_and_chunk_step_item(&dbt,&csi,table_list);
+    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_list);
 
     if (dbt!=NULL){
 
       if (dbt->status == DEFINING){
-        create_job_to_determine_chunk_type(dbt, g_async_queue_push, push_queue);
+        create_job_to_determine_chunk_type(dbt, g_async_queue_push, q->queue);
         continue;
       }
 
       if (csi!=NULL){
         switch (csi->chunk_type) {
         case INTEGER:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
+          if (!skip_defer) {
+            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+                                     csi, g_async_queue_push, q->defer);
+            create_job_defer(dbt, q->queue);
+          } else {
+            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+                                     csi, g_async_queue_push, q->queue);
+          }
           break;
         case CHAR:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
           break;
         case NONE:
-          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, push_queue);
+          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
           break;
         default:
           m_error("This should not happen %s", csi->chunk_type);
@@ -496,31 +538,22 @@ void table_job_enqueue(GAsyncQueue * pop_queue, GAsyncQueue * push_queue, struct
     }else{
       if (are_there_jobs_defining){
 //        g_debug("chunk_builder_thread: Are jobs defining... should we wait and try again later?");
-        g_async_queue_push(pop_queue, GINT_TO_POINTER(1));
+        g_async_queue_push(q->request_chunk, GINT_TO_POINTER(1));
         usleep(1);
         continue;
       }
 //      g_debug("chunk_builder_thread: There were not job defined");
       break;
     }
-
-
-
-  }
+  } // for (;;)
+  g_message("%s tables completed", q->descr);
+  enqueue_shutdown(q);
 }
 
-void *chunk_builder_thread(struct configuration *conf){
-
-  g_message("Starting Non-InnoDB tables");
-  table_job_enqueue(give_me_another_non_innodb_chunk_step_queue, conf->non_innodb_queue, non_innodb_table);
-  g_message("Non-InnoDB tables completed");
-  enqueue_shutdown_jobs(conf->non_innodb_queue);
-
-  g_message("Starting InnoDB tables");
-  table_job_enqueue(give_me_another_innodb_chunk_step_queue, conf->innodb_queue, innodb_table);
-  g_message("InnoDB tables completed");
-  enqueue_shutdown_jobs(conf->innodb_queue);
-
+void *chunk_builder_thread(struct configuration *conf)
+{
+  table_job_enqueue(&conf->non_innodb);
+  table_job_enqueue(&conf->innodb);
   return NULL;
 }
 
