@@ -138,3 +138,4 @@ extern gchar **exec_per_thread_cmd;
 extern const gchar *compress_method;
 extern guint64 min_chunk_step_size;
 extern guint64 max_chunk_step_size;
+extern gboolean compact;
