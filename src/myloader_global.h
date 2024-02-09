@@ -104,6 +104,7 @@ extern int detected_server;
 extern int (*m_close)(void *file);
 //extern int (*m_write)(FILE * file, const char * buff, int len);
 extern GString *change_master_statement;
+extern GHashTable * set_session_hash;
 
 extern gchar *exec_per_thread;
 extern gchar *exec_per_thread_extension;

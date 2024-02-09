@@ -109,18 +109,21 @@ extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 const char DIRECTORY[] = "import";
 
+
+GHashTable * set_session_hash=NULL;
+
 gchar *pmm_resolution = NULL;
 gchar *pmm_path = NULL;
 gboolean pmm = FALSE;
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
-  GHashTable * set_session_hash=initialize_hash_of_session_variables();
+  GHashTable * _set_session_hash=initialize_hash_of_session_variables();
   if (!enable_binlog)
-    g_hash_table_insert(set_session_hash,g_strdup("SQL_LOG_BIN"),g_strdup("0"));
+    set_session_hash_insert(_set_session_hash,"SQL_LOG_BIN",g_strdup("0"));
   if (commit_count > 1)
-    g_hash_table_insert(set_session_hash,g_strdup("AUTOCOMMIT"),g_strdup("0"));
+    set_session_hash_insert(_set_session_hash,"AUTOCOMMIT",g_strdup("0"));
 
-  return set_session_hash;
+  return _set_session_hash;
 }
 
 
@@ -364,7 +367,7 @@ int main(int argc, char *argv[]) {
   set_global_back = g_string_new(NULL);
   detect_server_version(conn);
   detected_server = get_product();
-  GHashTable * set_session_hash = myloader_initialize_hash_of_session_variables();
+  set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
