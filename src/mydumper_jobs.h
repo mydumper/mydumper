@@ -90,6 +90,7 @@ void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
 struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item);
 void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
+void create_job_defer(struct db_table *dbt, GAsyncQueue *queue);
 gboolean update_files_on_table_job(struct table_job *tj);
 #endif
 gchar *get_ref_table(gchar *k);

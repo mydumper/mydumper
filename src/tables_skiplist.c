@@ -68,8 +68,13 @@ void read_tables_skiplist(const gchar *filename, guint *errors) {
 /* Check database.table string against skip list; returns TRUE if found */
 
 gboolean check_skiplist(char *database, char *table) {
-  gchar * k=g_strdup_printf("%s.%s", database, table);
   gboolean b = g_sequence_lookup(tables_skiplist,
+                        database,
+                        tables_skiplist_cmp, NULL) != NULL;
+  if (!table || b)
+    return b;
+  gchar * k=g_strdup_printf("%s.%s", database, table);
+  b = g_sequence_lookup(tables_skiplist,
                         k,
                         tables_skiplist_cmp, NULL) != NULL;
   g_free(k);

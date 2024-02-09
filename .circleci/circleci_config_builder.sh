@@ -8,6 +8,8 @@ orbs:
 
 executors:"
 
+# TODO: make ASAN counterpart of builders
+
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="mysql80"
@@ -135,7 +137,7 @@ list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_am
 
 #list_build=("bionic_percona80_amd64" "focal_percona80_amd64" "jammy_percona80_amd64" "el7_percona57_x86_64" "el8_percona57_x86_64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "buster_percona80_amd64")
 
-filter_out="jammy|el9_percona57|el7_mysql80_aarch64|bookworm_mariadb1006"
+filter_out="jammy|el9_percona57|el7_mysql80_aarch64|bookworm_mariadb1006|bionic_mariadb1011|bionic_mariadb1006"
 
 for os in ${list_all_os[@]}
 do
@@ -157,7 +159,7 @@ do
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
-done
+    done
 
     for vendor in ${list_mysql_version[@]}
     do
@@ -175,10 +177,7 @@ done
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
-done
-
-
-
+    done
                 echo "
   ${all_os[${os}_0]}:
     docker:
@@ -192,7 +191,8 @@ done
     working_directory: /tmp/src/mydumper"
 done
 
-echo '
+cat <<EOF
+
 commands:
 
   prepare_mariadb1006:
@@ -202,12 +202,10 @@ commands:
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
-'
 
-echo "
   prepare_el_mysql80:
     steps:
-    - run: sudo yum install -y mysql-community-libs mysql-community-devel mysql-community-client
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
   prepare_el8_mysql80:
     steps:
@@ -217,48 +215,47 @@ echo "
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
-    - run: sudo apt-get install -y libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
   prepare_ubuntu_percona80:
     steps:
     - run: sudo percona-release setup -y ps80
-    - run: sudo apt-get install -y libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
 
   prepare_ubuntu_mariadb1006:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1006:
     steps:
     - prepare_mariadb1006
-    - run: sudo yum install -y MariaDB-devel
-    - run: sudo yum install -y MariaDB-compat || true
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_ubuntu_mariadb1011:
     steps:
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
-    - run: sudo apt-get install -y mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
+    - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
   prepare_el_mariadb1011:
     steps:
     - prepare_mariadb1011
-    - run: sudo yum install -y MariaDB-devel
-    - run: sudo yum install -y MariaDB-compat || true
-    "
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+EOF
 
 for os in el7 el9
 do
     for vendor in ${list_mysql_version[@]}
-        do
-echo "
+    do
+        echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_el_${all_vendors[${vendor}_0]}
 "
-done
-
+    done
 done
 
 
@@ -266,54 +263,51 @@ done
 for os in ${list_el_os[@]}
 do
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
-        do
-echo "
+    do
+        echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_el_${all_vendors[${vendor}_0]}
 "
-done
-
+    done
 done
 
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        vendor=tidb
+    vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - prepare_ubuntu_percona57
 "
 
-
     for vendor in ${list_percona_version[@]}
-        do
+    do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
-done
-        for vendor in ${list_mariadb_version[@]}
-        do
+    done
+
+    for vendor in ${list_mariadb_version[@]}
+    do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_ubuntu_${all_vendors[${vendor}_0]}
 "
+    done
 done
 
-done
-
-    echo "
-
+cat <<EOF
   prepare_el_percona57:
     steps:
     - run: percona-release setup -y ps57
     - run: dnf -y module disable mysql || true
-    - run: yum -y install Percona-Server-devel-57 Percona-Server-client-57
+    - run: yum -y install libasan gdb screen time Percona-Server-devel-57 Percona-Server-client-57
 
   prepare_el_tidb:
     steps:
@@ -322,19 +316,19 @@ done
   prepare_el_percona80:
     steps:
     - run: percona-release setup -y ps80
-    - run: yum -y install percona-server-devel percona-server-client
+    - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
 
   compile:
     parameters:
       CMAKED:
-        default: \"\"
+        default: ""
         type: string
     steps:
     - run:
         command: |
           source /etc/profile.d/sh.local || true
     - run: cmake . <<parameters.CMAKED>>
-    - run: make
+    - run: make VERBOSE=1
     - run: sudo make install
     - run: ./mydumper --version
 
@@ -359,19 +353,20 @@ done
     steps:
     - run:
         command: |
-          echo 'export MYDUMPER_VERSION=\$(  echo \"\${CIRCLE_TAG:1}\" | cut -d'-' -f1 ) ' >> \"\$BASH_ENV\"
-          echo 'export MYDUMPER_REVISION=\$( echo \"\${CIRCLE_TAG:1}\" | cut -d'-' -f2 ) ' >> \"\$BASH_ENV\"
-          cat /etc/profile.d/sh.local >> \"\$BASH_ENV\" || true
-          source \"\$BASH_ENV\"
-jobs:
-"
+          echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
+          echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
+          cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
+          source "\$BASH_ENV"
 
+jobs:
+
+EOF
 
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb
-        do
-echo "
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -392,15 +387,16 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
+
+EOF
+    done
 done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_all_vendors[@]} tidb
-        do
-echo "
+    for vendor in ${list_all_vendors[@]} tidb
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -421,12 +417,13 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
 
-        for vendor in ${list_mysql_version[@]}
-        do
-echo "
+EOF
+    done
+
+    for vendor in ${list_mysql_version[@]}
+    do
+        cat <<EOF
   compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     parameters:
       test:
@@ -447,16 +444,15 @@ echo "
          root: /tmp/src/mydumper
          paths:
            - .
-"
-done
 
-
+EOF
+    done
 done
 
 for arch in ${list_arch[@]}
 do
-for os in ${list_el_os[@]}
-do
+    for os in ${list_el_os[@]}
+    do
         for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
@@ -481,14 +477,14 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
          root: /tmp/package
          paths:
            - ."
-done
-done
+        done
+    done
 done
 
 for arch in ${list_arch[@]}
 do
-for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
-do
+    for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
+    do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
@@ -513,8 +509,8 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
          root: /tmp/package
          paths:
            - ."
-done
-done
+        done
+    done
 done
 
 echo '  publish-github-release:
@@ -532,31 +528,30 @@ workflows:
 
 for os in ${list_all_os[@]}
 do
-        for vendor in ${list_all_vendors[@]}
-        do
+    for vendor in ${list_all_vendors[@]}
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
-done
+    done
 done
 
 for os in ${list_el_os[@]}
 do
-        for vendor in ${list_mysql_version[@]}
-        do
+    for vendor in ${list_mysql_version[@]}
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}" | egrep -v "${filter_out}"
-done
+    done
 done
 
 
 for os in jammy
 do
-        for vendor in ${list_all_vendors[@]} # tidb
-        do
+    for vendor in ${list_all_vendors[@]} # tidb
+    do
 echo "    - compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
         test: true
         e: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
 "
-
-done
+    done
 done
 
 for os in ${list_build[@]}

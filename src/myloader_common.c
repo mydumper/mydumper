@@ -140,6 +140,7 @@ struct database * new_database(gchar *database, gchar *filename){
   d->real_database = g_strdup(db ? db : d->name);
   d->filename = filename;
   d->mutex=g_mutex_new();
+  d->sequence_queue= g_async_queue_new();
   d->queue=g_async_queue_new();;
   d->schema_state=NOT_FOUND;
   d->schema_checksum=NULL;
@@ -154,6 +155,8 @@ struct database * get_db_hash(gchar *filename, gchar *name){
   if (d==NULL){
     d=new_database(g_strdup(name), filename);
     g_hash_table_insert(db_hash, filename, d);
+    if (g_strcmp0(filename,name))
+      g_hash_table_insert(db_hash, g_strdup(name), d);
   }else{
     if (filename != name){
       d->name=g_strdup(name);
@@ -221,7 +224,7 @@ void execute_use_if_needs_to(struct thread_data *td, struct database *database, 
     if (td->current_database==NULL || g_strcmp0(database->real_database, td->current_database->real_database) != 0){
       td->current_database=database;
       if (execute_use(td)){
-        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
+        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database->real_database, msg);
       }
     }
   }
@@ -244,7 +247,8 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
 
 enum file_type get_file_type (const char * filename){
 
-  if ( strcmp(filename, "metadata") == 0 || g_strstr_len(filename, -1 ,"metadata.partial"))
+  if (!strcmp(filename, "metadata") || !strcmp(filename, "metadata.header") ||
+      (g_str_has_prefix(filename, "metadata.partial") && !g_str_has_suffix(filename, ".sql")))
     return METADATA_GLOBAL;
 
   if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
@@ -418,43 +422,78 @@ void refresh_table_list(struct configuration *conf){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
-void checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
-  int errn=0;
-  gchar *checksum=fun(conn, dbt->database->real_database, dbt->real_table, &errn);
-  if (g_strcmp0(dbt_checksum,checksum)){
-    g_warning("%s mismatch found for `%s`.`%s`. Got '%s', expecting '%s'", message,dbt->database->real_database, dbt->real_table, checksum, dbt_checksum);
-  }else{
-    g_message("%s confirmed for `%s`.`%s`", message, dbt->database->real_database, dbt->real_table);
-  }
-}
-
-void checksum_database_template(gchar *database, gchar *dbt_checksum,  MYSQL *conn, const gchar *message, gchar* fun()) {
-  int errn=0;
-  gchar *checksum=fun(conn, database, NULL, &errn);
-  if (g_strcmp0(dbt_checksum,checksum)){
-    g_warning("%s mismatch found for `%s`. Got '%s', expecting '%s'", message, database, checksum, dbt_checksum);
-  }else{
-    g_message("%s confirmed for `%s`", message, database);
-  }
-}
-
-void checksum_dbt(struct db_table *dbt,  MYSQL *conn) {
-  if (!no_schemas){
-    if (dbt->schema_checksum!=NULL){
-      if (dbt->is_view)
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn, "View checksum", checksum_view_structure);
+static inline gboolean
+checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
+                  const char *info_templ, const char *message, const char *_db, const char *_table)
+{
+  g_assert(checksum_mode != CHECKSUM_SKIP);
+  if (g_strcmp0(dbt_checksum, checksum)) {
+    if (_table) {
+      if (checksum_mode == CHECKSUM_WARN)
+        g_warning(err_templ, message, _db, _table, checksum, dbt_checksum);
       else
-        checksum_dbt_template(dbt, dbt->schema_checksum, conn, "Structure checksum", checksum_table_structure);
+        g_critical(err_templ, message, _db, _table, checksum, dbt_checksum);
+    } else {
+      if (checksum_mode == CHECKSUM_WARN)
+        g_warning(err_templ, message, _db, checksum, dbt_checksum);
+      else
+        g_critical(err_templ, message, _db, checksum, dbt_checksum);
     }
-    if (dbt->indexes_checksum!=NULL)
-      checksum_dbt_template(dbt, dbt->indexes_checksum, conn, "Schema index checksum", checksum_table_indexes);
+    return FALSE;
+  } else {
+    g_message(info_templ, message, _db, _table);
   }
-  if (dbt->triggers_checksum!=NULL && !skip_triggers)
-    checksum_dbt_template(dbt, dbt->triggers_checksum, conn, "Trigger checksum", checksum_trigger_structure);
+  return TRUE;
+}
 
-  if (dbt->data_checksum!=NULL && !no_data)
-    checksum_dbt_template(dbt, dbt->data_checksum, conn, "Data checksum", checksum_table);
+gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
+                           const gchar *message, gchar* fun())
+{
+  int errn= 0;
+  const char *_db= dbt->database->real_database;
+  const char *_table= dbt->real_table;
+  const char *checksum= fun(conn, _db, _table, &errn);
+  return checksum_template(dbt_checksum, checksum,
+                    "%s mismatch found for %s.%s: got %s, expecting %s",
+                    "%s confirmed for %s.%s", message, _db, _table);
+}
 
+gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
+                                const gchar *message, gchar* fun())
+{
+  int errn= 0;
+  const char *checksum= fun(conn, _db, NULL, &errn);
+  return checksum_template(dbt_checksum, checksum,
+                    "%s mismatch found for %s: got %s, expecting %s",
+                    "%s confirmed for %s", message, _db, NULL);
+}
+
+gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
+{
+  gboolean checksum_ok=TRUE;
+  if (checksum_mode != CHECKSUM_SKIP){
+    if (!no_schemas){
+      if (dbt->schema_checksum!=NULL){
+        if (dbt->is_view)
+          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+                                "View checksum", checksum_view_structure);
+        else
+          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+                                "Structure checksum", checksum_table_structure);
+      }
+      if (dbt->indexes_checksum!=NULL)
+        checksum_ok&=checksum_dbt_template(dbt, dbt->indexes_checksum, conn,
+                              "Schema index checksum", checksum_table_indexes);
+    }
+    if (dbt->triggers_checksum!=NULL && !skip_triggers)
+      checksum_ok&=checksum_dbt_template(dbt, dbt->triggers_checksum, conn,
+                            "Trigger checksum", checksum_trigger_structure);
+
+    if (dbt->data_checksum!=NULL && !no_data)
+      checksum_ok&=checksum_dbt_template(dbt, dbt->data_checksum, conn,
+                            "Data checksum", checksum_table);
+  }
+  return checksum_ok;
 }
 
 gboolean has_exec_per_thread_extension(const gchar *filename){

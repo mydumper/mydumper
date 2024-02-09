@@ -20,3 +20,5 @@
 
 #define BACKTICK '`'
 #define DOUBLE_QUOTE '"'
+extern char identifier_quote_character;
+extern const char *identifier_quote_character_str;

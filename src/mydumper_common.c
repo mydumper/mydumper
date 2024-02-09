@@ -41,6 +41,7 @@
 #include <unistd.h>
 #include <sys/file.h>
 
+gboolean compact = FALSE;
 GAsyncQueue *close_file_queue=NULL;
 GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
@@ -52,6 +53,11 @@ GMutex *fifo_table_mutex=NULL;
 GMutex *pipe_creation=NULL;
 GThread * cft = NULL;
 guint open_pipe=0;
+guint server_version= 0;
+
+const char *routine_type[]= {"FUNCTION", "PROCEDURE", "PACKAGE", "PACKAGE BODY"};
+guint nroutines= 4;
+
 int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
 void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, float size, struct db_table * dbt);
@@ -195,7 +201,7 @@ int m_open_pipe(gchar **filename, const char *type){
   f=g_new0(struct fifo, 1);
   f->out_mutex=g_mutex_new();
   g_mutex_lock(f->out_mutex);
-  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC|O_DSYNC, 0660);
+  f->fdout = open(new_filename, O_CREAT|O_WRONLY|O_TRUNC, 0660);
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
@@ -377,6 +383,24 @@ void clear_dump_directory(gchar *directory) {
   g_dir_close(dir);
 }
 
+gboolean is_empty_dir(gchar *directory)
+{
+  GError *error = NULL;
+  GDir *dir = g_dir_open(directory, 0, &error);
+
+  if (error) {
+    g_critical("cannot open directory %s, %s\n", directory,
+               error->message);
+    errors++;
+    return FALSE;
+  }
+
+  const gchar *filename= g_dir_read_name(dir);
+  g_dir_close(dir);
+
+  return filename ? FALSE : TRUE;
+}
+
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
   if (mysql_query(conn,
                   "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
@@ -532,6 +556,9 @@ void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *
     else if (!strcasecmp(fields[i].name, "Rows"))
       *rowscol = i;
   }
+  g_assert(*ecol > 0);
+  g_assert(*ccol > 0);
+  g_assert(*collcol > 0);
 }
 
 void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
@@ -545,10 +572,13 @@ void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
 
 
 void initialize_sql_statement(GString *statement){
-  if (is_mysql_like())  {
+  g_string_set_size(statement, 0);
+  if (is_mysql_like()) {
     if (set_names_statement)
       g_string_printf(statement,"%s;\n",set_names_statement);
     g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+    if (sql_mode && !compact)
+      g_string_append_printf(statement, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
     if (!skip_tz) {
       g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
@@ -558,6 +588,8 @@ void initialize_sql_statement(GString *statement){
     }
   } else {
     g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+    if (sql_mode && !compact)
+      g_string_append_printf(statement, "SET SQL_MODE=%s;\n", sql_mode);
   }
 }
 

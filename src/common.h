@@ -18,6 +18,7 @@
 #include <mysql.h>
 #include <stdio.h>
 #include <pcre.h>
+#include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 
 #define ZSTD_EXTENSION ".zst"
@@ -96,6 +97,8 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
 void initialize_set_names();
 void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
+void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value);
+
 #endif
 
 /* using fewer than 2 threads can cause mydumper to hang */
@@ -112,3 +115,29 @@ gchar *m_date_time_new_now_local();
 
 gchar *get_zstd_cmd();
 gchar *get_gzip_cmd();
+
+char * backtick_protect(char *r);
+char * newline_protect(char *r);
+char * newline_unprotect(char *r);
+void set_thread_name(const char *format, ...);
+extern void trace(const char *format, ...);
+#define message(...) \
+  if (debug) \
+    trace(__VA_ARGS__); \
+  else \
+    g_message(__VA_ARGS__);
+
+#define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
+#define key_strcmp ((int (*)(const void *, const void *)) &strcmp)
+
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+extern guint
+g_string_replace (GString     *string,
+                  const gchar *find,
+                  const gchar *replace,
+                  guint        limit);
+#endif
+
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+extern guint g_get_num_processors (void);
+#endif

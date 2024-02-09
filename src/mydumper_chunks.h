@@ -31,8 +31,8 @@ gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min)
 void *chunk_builder_thread(struct configuration *conf);
 void initialize_chunk();
 void finalize_chunk();
-void give_me_another_non_innodb_chunk_step();
-void give_me_another_innodb_chunk_step();
+extern GAsyncQueue *give_me_another_innodb_chunk_step_queue;
+extern GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
 void next_chunk_in_char_step(union chunk_step * cs);
 //union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where);
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *local_where, guint64 rows) ;

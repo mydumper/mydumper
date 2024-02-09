@@ -118,7 +118,7 @@ Filter Options
 
 .. option:: -O, --omit-from-file
 
-  File containing a list of database.table entries to skip, one per line (skips before applying regex option)
+  File containing a list of database[.table] entries to skip, one per line (skips before applying regex option)
 
 .. option:: -T, --tables-list
 

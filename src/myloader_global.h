@@ -35,7 +35,14 @@ extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
 
+enum checksum_modes {
+  CHECKSUM_SKIP= 0,
+  CHECKSUM_WARN,
+  CHECKSUM_FAIL
+};
+
 extern gboolean disable_redo_log;
+extern enum checksum_modes checksum_mode;
 extern gchar *purge_mode_str;
 extern GString *set_global;
 extern GString *set_global_back;
@@ -56,6 +63,7 @@ extern gboolean no_data;
 extern gboolean no_schemas;
 extern gboolean no_delete;
 extern gboolean overwrite_tables;
+extern gboolean overwrite_unsafe;
 extern gboolean resume;
 extern gboolean serial_tbl_creation;
 extern gboolean shutdown_triggered;
@@ -63,6 +71,8 @@ extern gboolean skip_definer;
 extern gboolean skip_post;
 extern gboolean skip_triggers;
 extern gboolean stream;
+/* Whether --quote-character was set from CLI */
+extern gboolean quote_character_cli;
 extern gchar *compress_extension;
 extern gchar *db;
 extern gchar *directory;
@@ -78,20 +88,23 @@ extern GMutex *load_data_list_mutex;
 extern GString *set_session;
 extern guint commit_count;
 extern guint errors;
+extern guint max_errors;
 extern guint max_threads_for_index_creation;
 extern guint max_threads_for_post_creation;
 extern guint max_threads_for_schema_creation;
-extern guint max_threads_per_table_hard;
 extern guint max_threads_per_table;
+extern guint retry_count;
 extern guint num_threads;
 extern guint rows;
+extern guint sequences;
+extern guint sequences_processed;
+extern GMutex sequences_mutex;
 extern unsigned long long int total_data_sql_files;
 extern int detected_server;
 extern int (*m_close)(void *file);
 //extern int (*m_write)(FILE * file, const char * buff, int len);
-extern gchar identifier_quote_character;
-extern gchar * identifier_quote_character_str;
 extern GString *change_master_statement;
+extern GHashTable * set_session_hash;
 
 extern gchar *exec_per_thread;
 extern gchar *exec_per_thread_extension;

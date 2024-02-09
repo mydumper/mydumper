@@ -23,7 +23,6 @@ struct intermediate_filename{
 
 void intermediate_queue_incomplete(struct intermediate_filename * iflnm);
 void intermediate_queue_end();
-void intermediate_queue_new(gchar *filename);
+void intermediate_queue_new(const gchar *filename);
 void initialize_intermediate_queue (struct configuration *c);
 void remove_fifo_file(gchar *fifo_name);
-void wait_until_first_metadata();

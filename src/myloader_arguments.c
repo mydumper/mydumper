@@ -27,6 +27,7 @@
 #include "logging.h"
 #include "connection.h"
 #include "regex.h"
+#include <strings.h>
 
 extern gboolean enable_binlog;
 
@@ -34,24 +35,51 @@ extern gboolean enable_binlog;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
-  if (g_strstr_len(option_name,22,"--innodb-optimize-keys")){
+  if (!strcmp(option_name, "--innodb-optimize-keys")) {
     innodb_optimize_keys = TRUE;
     if (value==NULL){
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,22,AFTER_IMPORT_PER_TABLE)){
+    if (!strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (g_strstr_len(value,23,AFTER_IMPORT_ALL_TABLES)){
+    if (!strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       innodb_optimize_keys_all_tables = TRUE;
       innodb_optimize_keys_per_table = FALSE;
       return TRUE;
     }
+    g_critical("--innodb-optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
+  } else if (!strcmp(option_name, "--quote-character")) {
+    quote_character_cli= TRUE;
+    if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
+      identifier_quote_character= BACKTICK;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "DOUBLE_QUOTE") || !strcasecmp(value, "DQ") || !strcmp(value, "\"")) {
+      identifier_quote_character= DOUBLE_QUOTE;
+      return TRUE;
+    }
+    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dt, \"");
+  } else if (!strcmp(option_name, "--checksum")) {
+    if (value == NULL || !strcasecmp(value, "FAIL")) {
+      checksum_mode= CHECKSUM_FAIL;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "WARN")) {
+      checksum_mode= CHECKSUM_WARN;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "SKIP")) {
+      checksum_mode= CHECKSUM_SKIP;
+      return TRUE;
+    }
+    g_critical("--checksum accepts: fail (default), warn, skip");
   }
+
   return FALSE;
 }
 
@@ -63,7 +91,10 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
-
+    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Identifier quote character used in INSERT statements. "
+      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+      "Default: detect from dump if possible, otherwise BACKTICK", NULL},
 
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
@@ -71,13 +102,11 @@ static GOptionEntry entries[] = {
 
 static GOptionEntry threads_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-     "Maximum number of threads per table to use, default 4", NULL},
-    {"max-threads-per-table-hard", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table_hard,
-     "Maximum hard number of threads per table to use, we are not going to use more than this amount of threads per table, default 4", NULL},
+     "Maximum number of threads per table to use, defaults to --threads", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
      "Maximum number of threads for index creation, default 4", NULL},
     {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
-     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 4", NULL},
+     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
@@ -96,9 +125,15 @@ static GOptionEntry execution_entries[] = {
       "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
+    {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "Treat checksums: skip, fail, warn (default).", NULL },
 
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
+    {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
+     "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
+    {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
+     "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
 
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
       "Table recreation will be executed in series, one thread at a time. This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
@@ -139,14 +174,6 @@ static GOptionEntry statement_entries[] ={
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
-
-
-
-
-
-
 
 
 GOptionContext * load_contex_entries(){

@@ -27,20 +27,11 @@
 #include "config.h"
 #include "connection.h"
 #include <stdarg.h>
-extern gboolean no_delete;
-extern gboolean stream;
-extern gchar *defaults_file;
-extern gchar *defaults_extra_file;
-extern GKeyFile * key_file;
-extern gboolean no_stream;
-extern gchar*set_names_str;
-extern gchar*set_names_statement;
-extern guint num_threads;
-extern GString *set_global_back;
-extern MYSQL *main_connection;
-//FILE * (*m_open)(char **filename, const char *);
+#include "mydumper_global.h"
+
 GAsyncQueue *stream_queue = NULL;
-extern int detected_server;
+gboolean skip_defer= FALSE;
+gboolean check_row_count= FALSE;
 
 /*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
@@ -131,8 +122,8 @@ gchar *get_gzip_cmd(){
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+    set_session_hash_insert(set_session_hash, "WAIT_TIMEOUT", g_strdup("2147483"));
+    set_session_hash_insert(set_session_hash, "NET_WRITE_TIMEOUT", g_strdup("2147483"));
   }
   return set_session_hash;
 }
@@ -266,12 +257,13 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
-      g_hash_table_insert(set_session_hash, g_strdup(keys[i]), g_strdup(value));
+      set_session_hash_insert(set_session_hash, keys[i], g_strdup(value));
   }
   g_strfreev(keys);
 }
 
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer(gchar*)){
+void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * cpt, struct function_pointer * init_function_pointer(gchar*))
+{
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
   GHashTable *ht=NULL;
@@ -292,38 +284,38 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_where_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_where_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"limit") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_limit_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_limit_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"num_threads") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"columns_on_select") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"columns_on_insert") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             pcre *r=NULL; 
             init_regex( &r, value);
-            g_hash_table_insert(conf_per_table->all_partition_regex_per_table, g_strdup(groups[i]), r);
+            g_hash_table_insert(cpt->all_partition_regex_per_table, g_strdup(groups[i]), r);
           }
           if (g_strcmp0(keys[j],"rows") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(conf_per_table->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
+            g_hash_table_insert(cpt->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
           }
 
         }
       }
-      g_hash_table_insert(conf_per_table->all_anonymized_function,g_strdup(groups[i]),ht);
+      g_hash_table_insert(cpt->all_anonymized_function,g_strdup(groups[i]),ht);
     }
   }
   g_strfreev(groups);
@@ -334,7 +326,7 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
   GString *s=g_string_new(str);
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_c(s,'_');
-  g_string_append(s,get_product_name());
+  g_string_append(s, g_utf8_strdown(get_product_name(), -1));
   load_hash_from_key_file(kf,set_session_hash,s->str);
   g_string_append_printf(s,"_%d",get_major());
   load_hash_from_key_file(kf,set_session_hash,s->str);
@@ -373,7 +365,17 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
   }
 }
 
+void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value){
+  g_hash_table_insert(set_session_hash, g_utf8_strup(key, strlen(key)), value);
+}
+
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  g_string_set_size(ss,0);
+
+  if (!g_hash_table_contains(set_session_hash, "FOREIGN_KEY_CHECKS")) {
+    set_session_hash_insert(set_session_hash, "FOREIGN_KEY_CHECKS", g_strdup("0"));
+  }
+
   refresh_set_from_hash(ss, "SESSION", set_session_hash);
 }
 
@@ -540,7 +542,8 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
-    remove(path);
+    if (remove(path) < 0)
+      g_warning("Remove failed: %s (%s)", path, strerror(errno));
     g_free(path);
   }
   return TRUE;
@@ -615,9 +618,13 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   key_file=load_config_file(defaults_file);
 
-  if (key_file!=NULL && g_key_file_has_group(key_file, group )){
-    parse_key_file_group(key_file, context, group);
-    set_connection_defaults_file_and_group(defaults_file, group); 
+  if (key_file!=NULL){
+    if (g_key_file_has_group(key_file, group )){
+      parse_key_file_group(key_file, context, group);
+      set_connection_defaults_file_and_group(defaults_file, group); 
+    }else if (g_key_file_has_group(key_file, "client" )){
+      set_connection_defaults_file_and_group(defaults_file, NULL);
+    }
   }else
     set_connection_defaults_file_and_group(defaults_file, NULL);
 
@@ -632,12 +639,17 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   GKeyFile * extra_key_file=load_config_file(defaults_extra_file);
 
-  if (extra_key_file!=NULL && g_key_file_has_group(extra_key_file, group )){
-    g_message("Parsing extra key file");
-    parse_key_file_group(extra_key_file, context, group);
-    set_connection_defaults_file_and_group(defaults_extra_file, group);
+  if (extra_key_file!=NULL){ 
+    if (g_key_file_has_group(extra_key_file, group )){
+      g_message("Parsing extra key file");
+      parse_key_file_group(extra_key_file, context, group);
+      set_connection_defaults_file_and_group(defaults_extra_file, group);
+    } else if (g_key_file_has_group(extra_key_file, "client" )){
+      set_connection_defaults_file_and_group(defaults_extra_file, NULL);
+    }
   }else
     set_connection_defaults_file_and_group(defaults_extra_file, NULL);
+
   g_message("Merging config files user: ");
 
   m_key_file_merge(key_file, extra_key_file);
@@ -645,8 +657,8 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 //  g_key_file_free(extra_key_file);
 }
 
-gchar **get_table_list(gchar *tables_list){
-  gchar ** tl = g_strsplit(tables_list, ",", 0);
+gchar **get_table_list(gchar *_tables_list){
+  gchar ** tl = g_strsplit(_tables_list, ",", 0);
   guint i=0;
   for(i=0; i < g_strv_length(tl); i++){
     if (g_strstr_len(tl[i],strlen(tl[i]),".") == NULL )
@@ -687,6 +699,7 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   (void) data;
   if (g_strstr_len(option_name,8,"--stream")){
     stream = TRUE;
+    skip_defer= TRUE;
     if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
       return TRUE;
     }
@@ -703,7 +716,13 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   return FALSE;
 }
 
-void check_num_threads(){
+void check_num_threads()
+{
+  if (!num_threads) {
+    num_threads= g_get_num_processors();
+    g_assert(num_threads > 0);
+  }
+
   if (num_threads < MIN_THREAD_COUNT) {
     g_warning("Invalid number of threads %d, setting to %d", num_threads, MIN_THREAD_COUNT);
     num_threads = MIN_THREAD_COUNT;
@@ -788,25 +807,37 @@ GRecMutex * g_rec_mutex_new(){
 
 }
 
+/*
+  Read one line of data terminated by \n or maybe not terminated in case of EOF.
+
+  FIXME: passing both *eof and *line here makes no sense. The caller may increment
+  line by this condition:
+
+  if (read_data(file, data, &eof) && !eof)
+    ++line;
+*/
 gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
-  char buffer[256];
+  char buffer[4096];
+  size_t l;
 
-  do {
-    if (fgets(buffer, 256, file) == NULL) {
-      if (feof(file)) {
-        *eof = TRUE;
-        buffer[0] = '\0';
-      } else {
-        return FALSE;
-      }
-    }
+  while (fgets(buffer, sizeof(buffer), file)) {
+    l= strlen(buffer);
+    g_assert(l > 0 && l < sizeof(buffer));
     g_string_append(data, buffer);
-    if (buffer[strlen(buffer)-1] == '\n')
+    if (buffer[l - 1] == '\n') {
       (*line)++;
-  } while ((buffer[strlen(buffer)] != '\0') && *eof == FALSE);
+      *eof= FALSE;
+      return TRUE;
+    }
+  }
 
-  return TRUE;
+  if (feof(file)) {
+    *eof= TRUE;
+    return TRUE;
+  }
+
+  return FALSE;
 }
 
 gchar *m_date_time_new_now_local(){
@@ -818,3 +849,184 @@ gchar *m_date_time_new_now_local(){
   return g_string_free(datetimestr,FALSE);
 }
 
+#if !GLIB_CHECK_VERSION(2, 68, 0)
+guint
+g_string_replace (GString     *_string,
+                  const gchar *_find,
+                  const gchar *_replace,
+                  guint        _limit)
+{
+  gsize f_len, r_len, pos;
+  gchar *cur, *next;
+  guint n = 0;
+
+  g_return_val_if_fail (_string != NULL, 0);
+  g_return_val_if_fail (_find != NULL, 0);
+  g_return_val_if_fail (_replace != NULL, 0);
+
+  f_len = strlen (_find);
+  r_len = strlen (_replace);
+  cur = _string->str;
+
+  while ((next = strstr (cur, _find)) != NULL)
+    {
+      pos = next - _string->str;
+      g_string_erase (_string, pos, f_len);
+      g_string_insert (_string, pos, _replace);
+      cur = _string->str + pos + r_len;
+      n++;
+      /* Only match the empty string once at any given position, to
+       * avoid infinite loops */
+      if (f_len == 0)
+        {
+          if (cur[0] == '\0')
+            break;
+          else
+            cur++;
+        }
+      if (n == _limit)
+        break;
+    }
+
+  return n;
+}
+#endif
+
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+/**
+ * g_get_num_processors:
+ *
+ * Determine the approximate number of threads that the system will
+ * schedule simultaneously for this process.  This is intended to be
+ * used as a parameter to g_thread_pool_new() for CPU bound tasks and
+ * similar cases.
+ *
+ * Returns: Number of schedulable threads, always greater than 0
+ *
+ * Since: 2.36
+ */
+guint
+g_get_num_processors (void)
+{
+#ifdef G_OS_WIN32
+  unsigned int count;
+  SYSTEM_INFO sysinfo;
+  DWORD_PTR process_cpus;
+  DWORD_PTR system_cpus;
+
+  /* This *never* fails, use it as fallback */
+  GetNativeSystemInfo (&sysinfo);
+  count = (int) sysinfo.dwNumberOfProcessors;
+
+  if (GetProcessAffinityMask (GetCurrentProcess (),
+                              &process_cpus, &system_cpus))
+    {
+      unsigned int af_count;
+
+      for (af_count = 0; process_cpus != 0; process_cpus >>= 1)
+        if (process_cpus & 1)
+          af_count++;
+
+      /* Prefer affinity-based result, if available */
+      if (af_count > 0)
+        count = af_count;
+    }
+
+  if (count > 0)
+    return count;
+#elif defined(_SC_NPROCESSORS_ONLN) && defined(THREADS_POSIX) && defined(HAVE_PTHREAD_GETAFFINITY_NP)
+  {
+    int idx;
+    int ncores = MIN (sysconf (_SC_NPROCESSORS_ONLN), CPU_SETSIZE);
+    cpu_set_t cpu_mask;
+    CPU_ZERO (&cpu_mask);
+
+    int af_count = 0;
+    int err = pthread_getaffinity_np (pthread_self (), sizeof (cpu_mask), &cpu_mask);
+    if (!err)
+      for (idx = 0; idx < ncores && idx < CPU_SETSIZE; ++idx)
+        af_count += CPU_ISSET (idx, &cpu_mask);
+
+    int count = (af_count > 0) ? af_count : ncores;
+    return count;
+  }
+#elif defined(_SC_NPROCESSORS_ONLN)
+  {
+    int count;
+
+    count = sysconf (_SC_NPROCESSORS_ONLN);
+    if (count > 0)
+      return count;
+  }
+#elif defined HW_NCPU
+  {
+    int mib[2], count = 0;
+    size_t len;
+
+    mib[0] = CTL_HW;
+    mib[1] = HW_NCPU;
+    len = sizeof(count);
+
+    if (sysctl (mib, 2, &count, &len, NULL, 0) == 0 && count > 0)
+      return count;
+  }
+#endif
+
+  return 1; /* Fallback */
+}
+#endif
+
+char * backtick_protect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "`", "``", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
+char * newline_protect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "\n", "\u10000", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
+char * newline_unprotect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "\u10000", "\n", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
+extern gboolean debug;
+
+static __thread char __name_buf[32];
+static __thread char *__thread_name= NULL;
+
+void set_thread_name(const char *format, ...)
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(__name_buf, sizeof(__name_buf), format, args);
+  va_end(args);
+  __thread_name= __name_buf;
+}
+
+void trace(const char *format, ...)
+{
+  if (!debug)
+    return;
+  char format2[1024];
+  char msg[1024];
+  if (__thread_name)
+    snprintf(format2, sizeof(format2), "[%s] %s", __thread_name, format);
+  else
+    snprintf(format2, sizeof(format2), "[%p] %s", g_thread_self(), format);
+  va_list args;
+  va_start(args, format);
+  vsnprintf(msg, sizeof(msg), format2, args);
+  va_end(args);
+  g_debug("%s", msg);
+}

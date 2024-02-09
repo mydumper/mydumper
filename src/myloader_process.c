@@ -74,7 +74,7 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
 //      dbt->queue=g_async_queue_new();
       dbt->current_threads=0;
       dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
-      dbt->max_threads_hard=max_threads_per_table_hard>num_threads?num_threads:max_threads_per_table_hard;
+      dbt->retry_count= retry_count;
       dbt->mutex=g_mutex_new();
       dbt->indexes=alter_table_statement;
       dbt->start_data_time=NULL;
@@ -96,6 +96,7 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
       dbt->indexes_checksum=NULL;
       dbt->data_checksum=NULL;
       dbt->is_view=FALSE;
+      dbt->is_sequence=FALSE;
     }else{
 //      g_message("Found db_table: %s", lkey);
       g_free(table);
@@ -248,16 +249,49 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
           // We consider that 30 is the max length to find the identifier
           // We considered that the CREATE TABLE could inlcude the IF NOT EXISTS clause
           if (!g_strstr_len(data->str,30,identifier_quote_character_str)){
-            g_critical("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
+            g_error("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
+            return NULL;
           }
-          gchar** create_table= g_strsplit(data->str, identifier_quote_character_str, 3);
-          dbt->real_table=g_strdup(create_table[1]);
+          {
+            GError *err= NULL;
+            GMatchInfo *match_info;
+            char *expr= g_strdup_printf("CREATE\\s+TABLE\\s+[^%c]*%c(.+?)%c\\s*\\(", identifier_quote_character, identifier_quote_character, identifier_quote_character);
+            /*
+              G_REGEX_DOTALL: A dot metacharacter (".") in the pattern matches
+              all characters, including newlines. Without it, newlines are excluded. This
+              option can be changed within a pattern by a ("?s") option setting.
+
+              G_REGEX_ANCHORED: The pattern is forced to be "anchored", that is,
+              it is constrained to match only at the first matching point in the string that
+              is being searched. This effect can also be achieved by appropriate constructs in
+              the pattern itself such as the "^" metacharacter.
+
+              G_REGEX_RAW: Usually strings must be valid UTF-8 strings, using
+              this flag they are considered as a raw sequence of bytes.
+            */
+            const GRegexCompileFlags flags= G_REGEX_CASELESS|G_REGEX_MULTILINE|G_REGEX_DOTALL|G_REGEX_ANCHORED|G_REGEX_RAW;
+            GRegex *regex= g_regex_new(expr, flags, 0, &err);
+            if (!regex)
+              goto regex_error;
+            if (!g_regex_match(regex, data->str, 0, &match_info) ||
+                !g_match_info_matches(match_info)) {
+              g_regex_unref(regex);
+regex_error:
+              g_free(expr);
+              g_error("Cannot parse real table name from CREATE TABLE statement:\n%s", data->str);
+              return NULL;
+            }
+            dbt->real_table= g_match_info_fetch(match_info, 1);
+            g_regex_unref(regex);
+            if (!strlen(dbt->real_table))
+              goto regex_error;
+            g_free(expr);
+          }
           if ( g_str_has_prefix(dbt->table,"mydumper_")){
             g_hash_table_insert(tbl_hash, dbt->table, dbt->real_table);
           }else{
             g_hash_table_insert(tbl_hash, dbt->real_table, dbt->real_table);
           }
-          g_strfreev(create_table);
           if (append_if_not_exist){
             if ((g_strstr_len(data->str,13,"CREATE TABLE ")) && !(g_strstr_len(data->str,15,"CREATE TABLE IF"))){
               GString *tmp_data=g_string_sized_new(data->len);
@@ -330,10 +364,6 @@ struct control_job * load_schema(struct db_table *dbt, gchar *filename){
 
 
 void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part, guint *sub_part){
-  guint l = strlen(filename)-4;
-  if (exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension)) {
-    l-=strlen(exec_per_thread_extension);
-  }
   gchar **split_db_tbl = g_strsplit(filename, ".", 4);
   if (g_strv_length(split_db_tbl)>=2) {
     (*database)=g_strdup(split_db_tbl[0]);
@@ -395,6 +425,8 @@ gchar * get_database_name_from_content(gchar *filename){
           real_database=g_strdup(create[1]);
           g_strfreev(create);
           break;
+        }else{
+          g_string_set_size(data,0);
         }
       }
     }
@@ -416,11 +448,13 @@ void process_database_filename(char * filename) {
   if (db_kname!=NULL){
     if (g_str_has_prefix(db_kname,"mydumper_"))
       db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+    if(!db_vname)
+      m_critical("It was not possible to process db content in file: %s",filename);
   }else{
     m_critical("It was not possible to process db file: %s",filename);
   }
 
-  g_debug("Adding database: %s -> %s", db_kname, db_vname);
+  trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *real_db_name = get_db_hash(db_kname, db_vname);
   if (!db){
     real_db_name->schema_state=NOT_CREATED;
@@ -431,6 +465,8 @@ void process_database_filename(char * filename) {
   }
 }
 
+
+/* @return TRUE to enqueue */
 gboolean process_table_filename(char * filename){
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
@@ -448,82 +484,128 @@ gboolean process_table_filename(char * filename){
   dbt=append_new_db_table(real_db_name, table_name,0,NULL);
   dbt->schema_state=NOT_CREATED;
   struct control_job * cj = load_schema(dbt, g_build_filename(directory,filename,NULL));
+  if (!cj) {
+    g_free(dbt);
+    return FALSE;
+  }
   g_mutex_lock(real_db_name->mutex);
-  if (real_db_name->schema_state != CREATED){
+  /*
+    When processing is possible buffer queues from real_db_name requeued into
+    object queue td->conf->table_queue (see set_db_schema_state_to_created()).
+  */
+  if (real_db_name->schema_state != CREATED || sequences_processed < sequences){
     g_async_queue_push(real_db_name->queue, cj);
     g_mutex_unlock(real_db_name->mutex);
     return FALSE;
   }else{
-    if (cj)
+    if (cj) {
+      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
       g_async_queue_push(conf->table_queue, cj);
+    }
   }
   g_mutex_unlock(real_db_name->mutex);
   return TRUE;
 //  g_free(filename);
 }
 
-gboolean process_metadata_global(gchar *file){
+void process_metadata_global(const char *file)
+{
 //  void *infile;
   gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
-  g_message("Reading metadata: %s", file);
+  set_thread_name("MDT");
+  message("Reading metadata: %s", file);
   guint j=0;
-  GError *error = NULL;
   gchar *value=NULL;
-  gsize len=0;
+  gchar *real_table_name;
   gsize length=0;
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
   change_master_statement=g_string_new("");
-  gchar *delimiter=g_strdup_printf("%c.%c", identifier_quote_character,identifier_quote_character);
-  for (j=0; j<length; j++){
-    if (g_str_has_prefix(groups[j],"`")){
-      database_table= g_strsplit(groups[j]+1, delimiter, 2);
+  const char *delim_bt= "`.`";
+  const char *delim_dq= "\".\"";
+  const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
+  const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
+  for (j= 0; j < length; j++) {
+    gchar *group= newline_unprotect(groups[j]);
+    if (g_str_has_prefix(group, "config")) {
+      if (j > 0)
+        m_critical("Wrong metadata: [config] group must be first");
+      value= get_value(kf, group, "quote_character");
+      if (value) {
+        if (!strcmp(value, "BACKTICK")) {
+          identifier_quote_character= BACKTICK;
+          identifier_quote_character_str= "`";
+          wrong_quote= "\"";
+          delimiter= delim_bt;
+        } else if (!strcmp(value, "DOUBLE_QUOTE")) {
+          identifier_quote_character= DOUBLE_QUOTE;
+          identifier_quote_character_str= "\"";
+          delimiter= delim_dq;
+          wrong_quote= "`";
+        } else {
+          m_critical("Wrong quote_character = %s in metadata", value);
+        }
+        trace("metadata: quote character is %c", identifier_quote_character);
+      }
+    } else if (g_str_has_prefix(group, wrong_quote))
+      g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
+    else if (g_str_has_prefix(group, identifier_quote_character_str)) {
+      database_table= g_strsplit(group+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
         dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
-        error = NULL;
-        gchar **keys=g_key_file_get_keys(kf,groups[j], &len, &error);
-        dbt->data_checksum=get_value(kf,groups[j],"data_checksum");
-        dbt->schema_checksum=get_value(kf,groups[j],"schema_checksum");
-        dbt->indexes_checksum= get_value(kf,groups[j],"indexes_checksum");
-        dbt->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
-        value=get_value(kf,groups[j],"is_view");
+        dbt->data_checksum=get_value(kf,group,"data_checksum");
+        dbt->schema_checksum=get_value(kf,group,"schema_checksum");
+        dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
+        dbt->triggers_checksum=get_value(kf,group,"triggers_checksum");
+        value=get_value(kf,group,"is_view");
         if (value != NULL && g_strcmp0(value,"1")==0){
           dbt->is_view=TRUE;
         }
         if (value) g_free(value);
-        if (get_value(kf,groups[j],"rows")){
-          dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+        value=get_value(kf, group, "is_sequence");
+        if (value != NULL && g_strcmp0(value, "1") == 0){
+          dbt->is_sequence= TRUE;
+          ++sequences;
         }
-        value=get_value(kf,groups[j],"real_table_name");
+        if (value) g_free(value);
+        if (get_value(kf,group,"rows")){
+          dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
+        }
+        value= get_value(kf, group, "real_table_name");
         if (value){
-          if (g_strcmp0(dbt->real_table,value))
-            dbt->real_table=value;
+          real_table_name= newline_unprotect(value);
+          g_free(value);
+          if (g_strcmp0(dbt->real_table, real_table_name))
+            dbt->real_table= real_table_name;
           else
-            g_free(value);
+            g_free(real_table_name);
         }
-        g_strfreev(keys);
-      }else{
+      } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         struct database *database=get_db_hash(database_table[0],database_table[0]);
-        database->schema_checksum=get_value(kf,groups[j],"schema_checksum");
-        database->post_checksum=get_value(kf,groups[j],"post_checksum");
-        database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
+        database->schema_checksum=get_value(kf,group,"schema_checksum");
+        database->post_checksum=get_value(kf,group,"post_checksum");
+        database->triggers_checksum=get_value(kf,group,"triggers_checksum");
       }
-    }else if (g_str_has_prefix(groups[j],"replication")){
-      change_master(kf, groups[j], change_master_statement);
-    }else if (g_strstr_len(groups[j],6,"master")){
-      change_master(kf, groups[j], change_master_statement);
+    }else if (g_str_has_prefix(group,"replication")){
+      change_master(kf, group, change_master_statement);
+    }else if (g_strstr_len(group,6,"master")){
+      change_master(kf, group, change_master_statement);
+    }else if (g_strstr_len(group, 26,"myloader_session_variables")){
+      load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
+      refresh_set_session_from_hash(set_session,set_session_hash);
+    } else {
+      trace("metadata: skipping group %s", group);
     }
+    g_free(group);
   }
-  g_free(delimiter);
-  return TRUE;
 }
 
 
@@ -549,9 +631,11 @@ gboolean process_schema_view_filename(gchar *filename) {
 gboolean process_schema_sequence_filename(gchar *filename) {
   gchar *database=NULL, *table_name=NULL;
   struct database *real_db_name=NULL;
+  struct db_table *dbt;
   get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
   if (database == NULL){
-    g_critical("Database is null on: %s",filename);
+    g_error("Database is null on: %s", filename);
+    return FALSE;
   }
   real_db_name=get_db_hash(database,database);
   if (real_db_name==NULL){
@@ -562,13 +646,25 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     g_warning("File %s has been filter out",filename);
     return TRUE;
   }
-//  gchar *lkey=g_strdup_printf("%s_%s",database, table_name);
-//  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
-//  g_free(lkey);
-//  if (dbt==NULL)
-//    return FALSE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, SEQUENCE );
-  g_async_queue_push(conf->view_queue, new_job(JOB_RESTORE,rj,real_db_name));
+  dbt= append_new_db_table(real_db_name, table_name, 0, NULL);
+  dbt->is_sequence= TRUE;
+  dbt->schema_state= NOT_CREATED;
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, real_db_name, NULL, SEQUENCE );
+  struct control_job *cj= new_job(JOB_RESTORE,rj,real_db_name);
+  g_mutex_lock(real_db_name->mutex);
+  if (real_db_name->schema_state != CREATED){
+    trace("%s.sequence_queue <- %s: %s", database, rjtype2str(cj->data.restore_job->type), filename);
+    trace("real_db_name: %p; sequence_queue: %p", real_db_name, real_db_name->sequence_queue);
+    g_async_queue_push(real_db_name->sequence_queue, cj);
+    g_mutex_unlock(real_db_name->mutex);
+    return FALSE;
+  }else{
+    if (cj) {
+      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
+      g_async_queue_push(conf->table_queue, cj);
+    }
+  }
+  g_mutex_unlock(real_db_name->mutex);
   return TRUE;
 }
 

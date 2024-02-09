@@ -48,6 +48,10 @@ static GOptionEntry entries[] = {
     {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
      "Directory to output files to", NULL},
+    {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
+     "Clear output directory before dumping", NULL},
+    {"dirty", 0, 0, G_OPTION_ARG_NONE, &dirty_dumpdir,
+     "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
 //    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
@@ -63,7 +67,7 @@ static GOptionEntry entries[] = {
 
 static GOptionEntry extra_entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
-     "Split tables into chunks of this output file size. This value is in MB",
+     "Split data files into pieces of this size in MB. Useful for myloader multi-threading.",
      NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
@@ -79,8 +83,13 @@ static GOptionEntry extra_entries[] = {
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
      "Sort the data by Primary Key or Unique key if no primary key exists",
      NULL},
+    {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, "Give less verbose output. Disables header/footer constructs.", NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
+    {"skip-defer", 0, 0, G_OPTION_ARG_NONE, &skip_defer,
+     "Do not defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
+    {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
+     "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {
@@ -172,7 +181,8 @@ static GOptionEntry checksum_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db, "Database to dump", NULL},
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
+      "Comma delimited list of databases to dump", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
      "Comma delimited list of storage engines to ignore", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,

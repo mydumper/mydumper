@@ -32,6 +32,7 @@ void set_charset(GString *statement, char *character_set,
                  char *collation_connection);
 void restore_charset(GString *statement);
 void clear_dump_directory(gchar *directory);
+gboolean is_empty_dir(gchar *directory);
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn);
 gchar * build_tablespace_filename();
 gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
@@ -53,3 +54,8 @@ void release_pid();
 void child_process_ended(int child_pid);
 void wait_close_files();
 guint64 my_pow_two_plus_prev(guint64 prev, guint max);
+
+
+extern guint nroutines;
+extern guint server_version;
+extern const char *routine_type[];

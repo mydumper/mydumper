@@ -98,19 +98,20 @@ void *worker_post_thread(struct thread_data *td) {
   if (db){
     td->current_database=database_db;
     if (execute_use(td)){
-      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
+      m_critical("Thread %u: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
     }
   }
     
   gboolean cont=TRUE;
   struct control_job *job = NULL;
 
-  g_message("Thread %d: Starting post import task over table", td->thread_id);
+  set_thread_name("T%02u", td->thread_id);
+  g_message("Thread %u: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post table");
-    cont=process_job(td, job);
+    cont=process_job(td, job, NULL);
   }
 
 //  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
@@ -118,20 +119,20 @@ void *worker_post_thread(struct thread_data *td) {
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
-    cont=process_job(td, job);
+    cont=process_job(td, job, NULL);
   }
   sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
     execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
-    cont=process_job(td, job);
+    cont=process_job(td, job, NULL);
   }
 
   if (td->thrconn)
     mysql_close(td->thrconn);
   mysql_thread_end();
-  g_debug("Thread %d: ending", td->thread_id);
+  g_debug("Thread %u: ending", td->thread_id);
   return NULL;
 }
 
