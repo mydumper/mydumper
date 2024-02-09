@@ -296,14 +296,13 @@ void *signal_thread(void *data) {
   return NULL;
 }
 
-
 GHashTable * mydumper_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
-  g_hash_table_insert(set_session_hash,g_strdup("information_schema_stats_expiry"),g_strdup("0 /*!80003"));
+  set_session_hash_insert(set_session_hash, "information_schema_stats_expiry", g_strdup("0 /*!80003"));
   GString *str= g_string_new(sql_mode);
   g_string_replace(str, "ORACLE", "", 0);
   g_string_replace(str, ",,", ",", 0);
-  g_hash_table_insert(set_session_hash, g_strdup("sql_mode"), str->str);
+  set_session_hash_insert(set_session_hash, "sql_mode", str->str);
   g_string_free(str, FALSE);
   return set_session_hash;
 }
@@ -358,7 +357,10 @@ void detect_quote_character(MYSQL *conn)
   }
   row= mysql_fetch_row(res);
   str= g_string_new(NULL);
-  g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
+  if (!g_strstr_len(row[0],-1, "NO_AUTO_VALUE_ON_ZERO"))
+    g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
+  else
+    g_string_printf(str, "'%s'", row[0]);
   g_string_replace(str, "NO_BACKSLASH_ESCAPES", "", 0);
   g_string_replace(str, ",,", ",", 0);
 
@@ -382,6 +384,8 @@ void detect_quote_character(MYSQL *conn)
   g_string_replace(str, "STRICT_TRANS_TABLES", "", 0);
   g_string_replace(str, ",,", ",", 0);
   sql_mode= str->str;
+
+  g_message("sql_mode:: %s", sql_mode);
   g_string_free(str, FALSE);
   mysql_free_result(res);
 }
@@ -398,8 +402,8 @@ MYSQL *create_main_connection() {
 //  detected_server = detect_server(conn);
   detect_server_version(conn);
   detected_server = get_product(); 
-  detect_quote_character(conn);
-  initialize_write();
+//  detect_quote_character(conn);
+//  initialize_write();
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -413,6 +417,8 @@ MYSQL *create_main_connection() {
   g_hash_table_unref(set_session_hash);
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
+  detect_quote_character(conn);
+  initialize_write();
 
   switch (detected_server) {
   case SERVER_TYPE_MYSQL:
@@ -1094,6 +1100,8 @@ void start_dump() {
     g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
     const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
     fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
+    fprintf(mdfile, "\n[myloader_session_variables]");
+    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
     fflush(mdfile);
   }
 
@@ -1352,6 +1360,9 @@ void start_dump() {
 
   g_async_queue_unref(conf.ready_non_innodb_queue);
   conf.ready_non_innodb_queue=NULL;
+
+  fprintf(mdfile, "\n[myloader_session_variables]");
+  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
 
   g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();

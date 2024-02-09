@@ -97,6 +97,8 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
 void initialize_set_names();
 void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
+void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value);
+
 #endif
 
 /* using fewer than 2 threads can cause mydumper to hang */

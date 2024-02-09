@@ -122,8 +122,8 @@ gchar *get_gzip_cmd(){
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB){
-    g_hash_table_insert(set_session_hash,g_strdup("WAIT_TIMEOUT"),g_strdup("2147483"));
-    g_hash_table_insert(set_session_hash,g_strdup("NET_WRITE_TIMEOUT"),g_strdup("2147483"));
+    set_session_hash_insert(set_session_hash, "WAIT_TIMEOUT", g_strdup("2147483"));
+    set_session_hash_insert(set_session_hash, "NET_WRITE_TIMEOUT", g_strdup("2147483"));
   }
   return set_session_hash;
 }
@@ -257,7 +257,7 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error)
-      g_hash_table_insert(set_session_hash, g_strdup(keys[i]), g_strdup(value));
+      set_session_hash_insert(set_session_hash, keys[i], g_strdup(value));
   }
   g_strfreev(keys);
 }
@@ -365,9 +365,15 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
   }
 }
 
+void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value){
+  g_hash_table_insert(set_session_hash, g_utf8_strup(key, strlen(key)), value);
+}
+
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
+  g_string_set_size(ss,0);
+
   if (!g_hash_table_contains(set_session_hash, "FOREIGN_KEY_CHECKS")) {
-    g_hash_table_insert(set_session_hash, g_strdup("FOREIGN_KEY_CHECKS"), g_strdup("0"));
+    set_session_hash_insert(set_session_hash, "FOREIGN_KEY_CHECKS", g_strdup("0"));
   }
 
   refresh_set_from_hash(ss, "SESSION", set_session_hash);
