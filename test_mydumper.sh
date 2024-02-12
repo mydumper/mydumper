@@ -87,13 +87,14 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare"
 optstring_short="c:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
 eval set -- "$opts"
 
+unset prepare_only
 unset case_num
 unset case_repeat
 unset rr_myloader
@@ -123,6 +124,9 @@ do
     shift;;
   -d|--debug)
     log_level="--debug"
+    shift;;
+  --prepare)
+    prepare_only=1
     shift;;
   --) shift; break;;
   esac
@@ -377,8 +381,10 @@ prepare_full_test()
 
   # export -- import
   # 1000 rows -- database must not exist
-
-  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))' --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
+  if [[ -n "$prepare_only"  ]]; then
+    exit
+  fi
+  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
   myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }
 
@@ -402,7 +408,7 @@ full_test_global(){
             # statement size to 2MB -- overriting database
             do_case $test $backup_mode $compress_mode $rows_and_filesize_mode -s 2000000                      ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
             # compress and rows
-            $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints --less-locking ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints --less-locking ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
  
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"

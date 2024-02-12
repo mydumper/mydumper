@@ -197,6 +197,7 @@ gboolean are_available_jobs(struct thread_data * td){
 }
 
 gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_condition, struct restore_job ** rj){
+(void) test_condition;
   gboolean giveup = TRUE;
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
@@ -230,7 +231,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
     }
 //    g_message("DB: %s Table: %s len: %d state: %d", dbt->database->real_database,dbt->real_table,g_list_length(dbt->restore_job_list), dbt->schema_state);
     g_mutex_lock(dbt->mutex);
-    if (!test_condition || (dbt->schema_state==CREATED && dbt->current_threads < dbt->max_threads)) {
+    if ( /*!test_condition ||*/ //(dbt->schema_state==CREATED && dbt->current_threads < dbt->max_threads)) {
+        1 ){
       // I could do some job in here, do we have some for me?
 //      g_message("DB: %s Table: %s max_threads: %d current: %d", dbt->database->real_database,dbt->real_table, dbt->max_threads,dbt->current_threads);
 //      g_mutex_lock(dbt->mutex);
@@ -254,11 +256,19 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
       }
 
 //      g_message("DB: %s Table: %s checking size %d", dbt->database->real_database,dbt->real_table, g_list_length(dbt->restore_job_list));
-      if (g_list_length(dbt->restore_job_list) > 0){
+      if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
+        if (dbt->current_threads >= dbt->max_threads ){
+          giveup=FALSE;
+          g_mutex_unlock(dbt->mutex);
+          continue;
+        }
         // We found a job that we can process!
         job = dbt->restore_job_list->data;
-//        next = dbt->restore_job_list->next;
-        dbt->restore_job_list=g_list_remove_link(dbt->restore_job_list,dbt->restore_job_list);
+//        GList * next = dbt->restore_job_list->next;
+        GList * current = dbt->restore_job_list;
+        dbt->restore_job_list = dbt->restore_job_list->next;
+        g_list_free_1(current);
+        //dbt->restore_job_list=g_list_remove_link(dbt->restore_job_list,dbt->restore_job_list);
 //        g_list_free_1(dbt->restore_job_list);
 //        dbt->restore_job_list = next;
         dbt->current_threads++;
@@ -269,6 +279,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
         break;
       }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
+        trace("No remaining jobs on %s.%s", dbt->database->real_database, dbt->real_table); 
         if (intermediate_queue_ended_local && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
           dbt->schema_state = DATA_DONE;
           gboolean res= enqueue_index_for_dbt_if_possible(conf,dbt);
@@ -354,7 +365,8 @@ void wake_threads_waiting(struct configuration *conf, guint *threads_waiting){
 void *control_job_thread(struct configuration *conf){
   enum file_type ft;
   struct restore_job *rj=NULL;
-  guint threads_waiting= num_threads;
+  guint _num_threads = num_threads;
+  guint threads_waiting= 0; //num_threads;
 //  GHashTableIter iter;
 //  gchar * lkey=NULL;
   gboolean giveup;
@@ -381,13 +393,13 @@ void *control_job_thread(struct configuration *conf){
 //      g_message("Thread is asking for job");
       giveup = give_me_next_data_job_conf(conf, TRUE, &rj);
       if (rj != NULL){
-//        g_message("job available in give_me_next_data_job_conf");
+        trace("job available in give_me_next_data_job_conf");
         trace("data_queue <- %s: %s", rjtype2str(rj->type), rj->dbt ? rj->dbt->table : rj->filename);
         g_async_queue_push(data_queue,rj);
         trace("here_is_your_job <- %s", ft2str(DATA));
         g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
       }else{
-//        g_message("Thread is asking for job again");
+        trace("Thread is asking for job again");
         giveup = give_me_next_data_job_conf(conf, FALSE, &rj);
         if (rj != NULL){
 //          g_message("job available in give_any_data_job");
@@ -396,25 +408,29 @@ void *control_job_thread(struct configuration *conf){
           trace("here_is_your_job <- %s", ft2str(DATA));
           g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
         }else{
-//          g_message("No job available");
-
-
+          trace("No job available");
           if (intermediate_queue_ended_local){
             if (giveup){
-              threads_waiting++;
-              trace("here_is_your_job <- %s (%u times)", ft2str(SHUTDOWN), threads_waiting);
-              for(; 0 < threads_waiting; threads_waiting--){
-                g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+              trace("Giving up...");
+              g_atomic_int_dec_and_test(&_num_threads);
+              if (threads_waiting>0){
+//                threads_waiting--;
+                wake_threads_waiting(conf, &threads_waiting);
               }
+              trace("here_is_your_job <- %s (%u times)", ft2str(SHUTDOWN), threads_waiting);
+              g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+//              }
             }else{
-            //  g_message("Ignoring");
+              trace("Thread will be waiting");
             //  g_async_queue_push(here_is_your_job, GINT_TO_POINTER(IGNORED));
 //              g_message("Thread waiting");
-              threads_waiting=threads_waiting<num_threads?threads_waiting+1:num_threads;
+              if (threads_waiting<_num_threads)
+                threads_waiting++;
+//=threads_waiting<num_threads?threads_waiting+1:num_threads;
             }
           }else{
 //            g_message("Thread waiting");
-            threads_waiting=threads_waiting<num_threads?threads_waiting+1:num_threads;
+            threads_waiting=threads_waiting<_num_threads?threads_waiting+1:_num_threads;
           }
         }
       }
