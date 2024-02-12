@@ -87,13 +87,14 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare"
 optstring_short="c:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
 eval set -- "$opts"
 
+unset prepare_only
 unset case_num
 unset case_repeat
 unset rr_myloader
@@ -123,6 +124,9 @@ do
     shift;;
   -d|--debug)
     log_level="--debug"
+    shift;;
+  --prepare)
+    prepare_only=1
     shift;;
   --) shift; break;;
   esac
@@ -377,7 +381,9 @@ prepare_full_test()
 
   # export -- import
   # 1000 rows -- database must not exist
-
+  if [[ -n "$prepare_only"  ]]; then
+    exit
+  fi
   mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
   myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }

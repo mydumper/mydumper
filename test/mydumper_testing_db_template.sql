@@ -10,12 +10,12 @@ INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
-INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
+-- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
 -- INSERT into mydumper_aipk_uuid (val) SELECT uuid() from mydumper_aipk_uuid;
@@ -28,8 +28,8 @@ INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from
 INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
 INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
 INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
-INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
-INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+-- INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
+-- INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
 
 INSERT INTO `char_hex_test` VALUES("»CY	e1Ìç¥\0\'_˜M",539);
 
