@@ -378,7 +378,7 @@ prepare_full_test()
   # export -- import
   # 1000 rows -- database must not exist
 
-  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex '^(?!(mysql\.|sys\.))' --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
+  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
   myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }
 
