@@ -673,8 +673,8 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
     write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
-    g_critical("Could not read data from %s.%s: %s", tj->dbt->database->name, tj->dbt->table,
-               mysql_error(conn));
+    g_critical("Could not read data from %s.%s: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
+               mysql_error(conn), query);
     errors++;
   }
 
