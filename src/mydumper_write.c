@@ -41,6 +41,7 @@
 #include "mydumper_write.h"
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
+#include "connection.h"
 
 extern int (*m_close)(guint thread_id, void *file, gchar *filename, guint size, struct db_table * dbt);
 
@@ -643,16 +644,26 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    // ERROR 1146
-    if (success_on_1146 && mysql_errno(conn) == 1146) {
-      g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
-                mysql_error(conn), query);
-    } else {
-      g_critical("Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->dbt->database->name, tj->dbt->table,
-                 mysql_error(conn), query);
-      errors++;
+    g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
+              mysql_error(conn), query);
+
+    if (mysql_ping(tj->td->thrconn)) {
+      m_connect(tj->td->thrconn);
+      execute_gstring(tj->td->thrconn, set_session);
     }
-    goto cleanup;
+    g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
+    if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+      // ERROR 1146
+      if (success_on_1146 && mysql_errno(conn) == 1146) {
+        g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
+                  mysql_error(conn), query);
+      } else {
+        g_critical("Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->dbt->database->name, tj->dbt->table,
+                   mysql_error(conn), query);
+        errors++;
+      }
+      goto cleanup;
+    }
   }
 
   /* Poor man's data dump code */
