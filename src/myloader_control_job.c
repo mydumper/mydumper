@@ -414,7 +414,7 @@ void *control_job_thread(struct configuration *conf){
               trace("Giving up...");
               g_atomic_int_dec_and_test(&_num_threads);
               if (threads_waiting>0){
-                threads_waiting--;
+//                threads_waiting--;
                 wake_threads_waiting(conf, &threads_waiting);
               }
               trace("here_is_your_job <- %s (%u times)", ft2str(SHUTDOWN), threads_waiting);
