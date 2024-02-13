@@ -644,21 +644,34 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
-              mysql_error(conn), query);
+    if (!it_is_a_consistent_backup){
+      g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
+                mysql_error(conn), query);
 
-    if (mysql_ping(tj->td->thrconn)) {
-      m_connect(tj->td->thrconn);
-      execute_gstring(tj->td->thrconn, set_session);
-    }
-    g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
-    if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-      // ERROR 1146
+      if (mysql_ping(tj->td->thrconn)) {
+        m_connect(tj->td->thrconn);
+        execute_gstring(tj->td->thrconn, set_session);
+      }
+      g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
+
+      if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+       // ERROR 1146
+        if (success_on_1146 && mysql_errno(conn) == 1146) {
+          g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
+                  mysql_error(conn), query);
+        } else {
+          g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
+                     mysql_error(conn), query);
+          errors++;
+        }
+        goto cleanup;
+      }
+    }else{
       if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Error dumping table (%s.%s) data: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
+        g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
                   mysql_error(conn), query);
       } else {
-        g_critical("Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->dbt->database->name, tj->dbt->table,
+        g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
                    mysql_error(conn), query);
         errors++;
       }
@@ -673,10 +686,15 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
     write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
-    g_critical("Could not read data from %s.%s: %s\nQuery: %s", tj->dbt->database->name, tj->dbt->table,
-               mysql_error(conn), query);
+    g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->sql_filename, tj->filesize,
+               mysql_error(conn));
     errors++;
-  }
+    if (mysql_ping(tj->td->thrconn)) {
+      g_warning("Thread %d: Reconnecting due errors", tj->td->thread_id);
+      m_connect(tj->td->thrconn);
+      execute_gstring(tj->td->thrconn, set_session);
+    } 
+ }
 
 cleanup:
   g_free(query);
