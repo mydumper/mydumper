@@ -690,9 +690,11 @@ void write_table_job_into_file(MYSQL *conn, struct table_job * tj){
                mysql_error(conn));
     errors++;
     if (mysql_ping(tj->td->thrconn)) {
-      g_warning("Thread %d: Reconnecting due errors", tj->td->thread_id);
-      m_connect(tj->td->thrconn);
-      execute_gstring(tj->td->thrconn, set_session);
+      if (!it_is_a_consistent_backup){
+        g_warning("Thread %d: Reconnecting due errors", tj->td->thread_id);
+        m_connect(tj->td->thrconn);
+        execute_gstring(tj->td->thrconn, set_session);
+      }
     } 
  }
 
