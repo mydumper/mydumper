@@ -509,6 +509,8 @@ void initialize_consistent_snapshot(struct thread_data *td){
   if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){
     if (no_locks){
       g_warning("We are not able to determine if the backup will be consistent.");
+    }else{
+      it_is_a_consistent_backup=TRUE;
     }
   }else{
     if (cont){
