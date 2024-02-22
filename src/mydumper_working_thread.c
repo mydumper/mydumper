@@ -565,7 +565,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 
   
   if (mysql_query(conn, "SHOW MASTER STATUS"))
-    m_critical("Couldn't get master position: %s", mysql_error(conn));
+    m_warning("Couldn't get master position: %s", mysql_error(conn));
     
   master = mysql_store_result(conn);
   if (master && (row = mysql_fetch_row(master))) {
