@@ -90,7 +90,6 @@ gchar *purge_mode_str=NULL;
 guint errors = 0;
 guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-guint max_threads_per_table= G_MAXUINT;
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;

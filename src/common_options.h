@@ -22,3 +22,4 @@
 #define DOUBLE_QUOTE '"'
 extern char identifier_quote_character;
 extern const char *identifier_quote_character_str;
+extern guint max_threads_per_table;

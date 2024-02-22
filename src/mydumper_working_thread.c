@@ -453,6 +453,9 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
 
 //  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
   tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
+  g_mutex_lock(tj->dbt->chunks_mutex);
+  tj->dbt->current_threads_running--;
+  g_mutex_unlock(tj->dbt->chunks_mutex);
 
 /*  if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
@@ -1203,6 +1206,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
     dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
+    dbt->max_threads_per_table=max_threads_per_table;
+    dbt->current_threads_running=0;
     gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
     if (rows_p_chunk )
       parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));

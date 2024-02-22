@@ -441,6 +441,12 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_ste
       }
 //      get_next=d->initial_chunk_step->chunk_functions.get_next;
 
+      if (d->max_threads_per_table <= d->current_threads_running){
+        g_mutex_unlock(d->chunks_mutex);
+        goto next;
+      }
+      d->current_threads_running++;
+
       lcs=lcs->chunk_functions.get_next(d);
 
       if (lcs!=NULL){
