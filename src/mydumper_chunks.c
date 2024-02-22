@@ -307,14 +307,16 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   if (rows > dbt->min_chunk_step_size){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
-      csi = g_new0(struct chunk_step_item, 1);
-      csi->chunk_step=NULL;
-      csi->chunk_functions.process=&process_none_chunk;
+//      csi = g_new0(struct chunk_step_item, 1);
+//      csi->chunk_step=NULL;
       partitions = get_partitions_for_table(conn, dbt);
-      csi->chunk_type=PARTITION;
-      csi->chunk_functions.process = &process_partition_chunk;
-      csi->chunk_functions.get_next = &get_next_partition_chunk;
-      csi->chunk_step=new_real_partition_step(partitions,0,0);
+//      csi->chunk_type=PARTITION;
+//      csi->chunk_functions.process = &process_partition_chunk;
+//      csi->chunk_functions.get_next = &get_next_partition_chunk;
+//      csi->chunk_step=new_real_partition_step(partitions,0,0);
+
+      csi=new_real_partition_step_item(partitions,0,0);
+
     }else{
       if (dbt->starting_chunk_step_size > 0) {
         csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);

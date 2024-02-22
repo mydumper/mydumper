@@ -41,6 +41,7 @@
 gboolean split_partitions = FALSE;
 gchar *partition_regex = FALSE;
 
+struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt);
 
 void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi){
   union chunk_step *cs = csi->chunk_step;
@@ -70,7 +71,10 @@ union chunk_step *new_real_partition_step(GList *partition){
 
 struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint number){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item, 1);
+  csi->chunk_type=PARTITION;
   csi->chunk_step = new_real_partition_step(partition);
+  csi->chunk_functions.process = &process_partition_chunk;
+  csi->chunk_functions.get_next = &get_next_partition_chunk;
   csi->status= UNASSIGNED;
   csi->mutex = g_mutex_new();
   csi->deep = deep;
