@@ -156,6 +156,8 @@ static GOptionEntry daemon_entries[] = {
 
 
 static GOptionEntry chunks_entries[] = {
+    {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
+     "Maximum number of threads per table to use", NULL},
     {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
      "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,

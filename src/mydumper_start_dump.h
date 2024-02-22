@@ -318,6 +318,8 @@ struct db_table {
   guint64 max_chunk_step_size;
 // struct chunk_functions chunk_functions;
   enum db_table_states status;
+  guint max_threads_per_table;
+  guint current_threads_running;
 };
 
 
