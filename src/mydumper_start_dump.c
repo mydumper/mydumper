@@ -86,6 +86,7 @@ int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
+gboolean replica_stopped = FALSE;
 gboolean no_locks = FALSE;
 gboolean it_is_a_consistent_backup = FALSE;
 gboolean less_locking = FALSE;
@@ -904,6 +905,105 @@ void send_lock_all_tables(MYSQL *conn){
   g_list_free(tables_lock);
 }
 
+void write_replica_info(MYSQL *conn, FILE *file) {
+  MYSQL_RES *slave = NULL;
+  MYSQL_FIELD *fields;
+  MYSQL_ROW row;
+
+  char *slavehost = NULL;
+  char *slavelog = NULL;
+  char *slavepos = NULL;
+  char *slavegtid = NULL;
+
+  char *channel_name = NULL;
+
+  const char *gtid_title = NULL;
+  guint i;
+  guint isms = 0;
+  mysql_query(conn, "SELECT @@default_master_connection");
+  MYSQL_RES *rest = mysql_store_result(conn);
+  if (rest != NULL && mysql_num_rows(rest)) {
+    mysql_free_result(rest);
+    g_message("Multisource slave detected.");
+    isms = 1;
+  }
+
+  if (isms)
+    mysql_query(conn, "SHOW ALL SLAVES STATUS");
+  else
+    mysql_query(conn, "SHOW SLAVE STATUS");
+
+  guint slave_count=0;
+  slave = mysql_store_result(conn);
+
+  if (mysql_num_rows(slave) == 0){
+    goto cleanup;
+  }
+  mysql_free_result(slave);
+  g_message("Stopping replica");
+  replica_stopped=!mysql_query(conn, "STOP REPLICA SQL_THREAD");
+  if (!replica_stopped){
+    g_warning("Not able to stop replica: %s", mysql_error(conn));
+  }
+  if (isms)
+    mysql_query(conn, "SHOW ALL SLAVES STATUS");
+  else
+    mysql_query(conn, "SHOW SLAVE STATUS");
+
+  slave = mysql_store_result(conn);
+
+  GString *replication_section_str = g_string_sized_new(100);
+
+  while (slave && (row = mysql_fetch_row(slave))) {
+    g_string_set_size(replication_section_str,0);
+    fields = mysql_fetch_fields(slave);
+    slavepos=NULL;
+    slavelog=NULL;
+    slavehost=NULL;
+    slavegtid=NULL;
+    channel_name=NULL;
+    gtid_title=NULL;
+    for (i = 0; i < mysql_num_fields(slave); i++) {
+      if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
+        slavepos = row[i];
+      } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
+        slavelog = row[i];
+      } else if (!strcasecmp("master_host", fields[i].name)) {
+        slavehost = row[i];
+      } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name)){
+        gtid_title="Executed_Gtid_Set";
+        slavegtid = remove_new_line(row[i]);
+      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
+        gtid_title="Gtid_Slave_Pos";
+        slavegtid = remove_new_line(row[i]);
+      } else if ( ( !strcasecmp("connection_name", fields[i].name) || !strcasecmp("Channel_Name", fields[i].name) ) && strlen(row[i]) > 1) {
+        channel_name = row[i];
+      }
+      g_string_append_printf(replication_section_str,"# %s = ", fields[i].name);
+      (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT )  ?
+      g_string_append_printf(replication_section_str,"'%s'\n", remove_new_line(row[i])):
+      g_string_append_printf(replication_section_str,"%s\n", remove_new_line(row[i]));
+    }
+    if (slavehost) {
+      slave_count++;
+      fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
+      fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
+              slavelog, slavepos, gtid_title, slavegtid);
+      fprintf(file,"%s",replication_section_str->str);
+      fprintf(file,"# myloader_exec_reset_slave = 0 # 1 means execute the command\n# myloader_exec_change_master = 0 # 1 means execute the command\n# myloader_exec_start_slave = 0 # 1 means execute the command\n");
+      g_message("Written slave status");
+    }
+  }
+  g_string_free(replication_section_str,TRUE);
+  if (slave_count > 1)
+    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
+
+  fflush(file);
+cleanup:
+  if (slave)
+    mysql_free_result(slave);
+}
+
 void start_dump() {
   if (clear_dumpdir)
     clear_dump_directory(dump_directory);
@@ -1003,6 +1103,36 @@ void start_dump() {
 		long_query_wait(conn);
   }
 
+  GDateTime *datetime = g_date_time_new_now_local();
+  char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
+  g_message("Started dump at: %s", datetimestr);
+  g_free(datetimestr);
+
+  /* Write dump config into beginning of metadata, stream this first */
+  {
+    g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
+    const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
+    fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
+    fprintf(mdfile, "\n[myloader_session_variables]");
+    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
+    fflush(mdfile);
+  }
+
+  if (stream){
+    initialize_stream();
+    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
+    fclose(mdfile);
+    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
+    mdfile= g_fopen(metadata_partial_filename, "w");
+    if (!mdfile) {
+      m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
+    }
+  }
+
+  write_replica_info(conn, mdfile);
+
+
   if (detected_server == SERVER_TYPE_TIDB) {
     g_message("Skipping locks because of TiDB");
     if (!tidb_snapshot) {
@@ -1051,6 +1181,12 @@ void start_dump() {
     }
   }
 
+  if (replica_stopped){
+    g_message("Starting replica");
+    if (mysql_query(conn, "START REPLICA SQL_THREAD")){
+      g_warning("Not able to start replica: %s", mysql_error(conn));
+    }
+  }
 
 // TODO: this should be deleted on future releases. 
   server_version= mysql_get_server_version(conn);
@@ -1098,21 +1234,22 @@ void start_dump() {
     if (res)
       mysql_free_result(res);
   }
-
+/*
   GDateTime *datetime = g_date_time_new_now_local();
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
 
-  /* Write dump config into beginning of metadata, stream this first */
+  // Write dump config into beginning of metadata, stream this first 
   {
     g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
     const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
     fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
     fprintf(mdfile, "\n[myloader_session_variables]");
-    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
-    fflush(mdfile);
+*/
+//    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
+/*    fflush(mdfile);
   }
 
   if (stream){
@@ -1125,6 +1262,9 @@ void start_dump() {
       m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
     }
   }
+
+  write_replica_info(conn, mdfile);
+*/
 
   if (exec_command != NULL){
     initialize_exec_command();

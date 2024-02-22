@@ -556,22 +556,12 @@ void check_connection_status(struct thread_data *td){
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
-  MYSQL_RES *master = NULL, *slave = NULL, *mdb = NULL;
-  MYSQL_FIELD *fields;
+  MYSQL_RES *master = NULL, *mdb = NULL;
   MYSQL_ROW row;
 
   char *masterlog = NULL;
   char *masterpos = NULL;
   char *mastergtid = NULL;
-
-  char *slavehost = NULL;
-  char *slavelog = NULL;
-  char *slavepos = NULL;
-  char *slavegtid = NULL;
-  char *channel_name = NULL;
-  const char *gtid_title = NULL;
-  guint isms;
-  guint i;
 
   
   if (mysql_query(conn, "SHOW MASTER STATUS"))
@@ -603,7 +593,30 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     g_message("Written master status");
   }
 
-  isms = 0;
+  fflush(file);
+
+  if (master)
+    mysql_free_result(master);
+  if (mdb)
+    mysql_free_result(mdb);
+
+}
+/*
+void write_replica_info(MYSQL *conn, FILE *file) {
+  MYSQL_RES *slave = NULL;
+  MYSQL_FIELD *fields;
+  MYSQL_ROW row;
+
+  char *slavehost = NULL;
+  char *slavelog = NULL;
+  char *slavepos = NULL;
+  char *slavegtid = NULL;
+
+  char *channel_name = NULL;
+
+  const char *gtid_title = NULL;
+  guint i;
+  guint isms = 0;
   mysql_query(conn, "SELECT @@default_master_connection");
   MYSQL_RES *rest = mysql_store_result(conn);
   if (rest != NULL && mysql_num_rows(rest)) {
@@ -619,6 +632,19 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 
   guint slave_count=0;
   slave = mysql_store_result(conn);
+
+  if (mysql_num_rows(slave) == 0){
+    goto cleanup;
+  }
+  mysql_free_result(slave);
+  mysql_query(conn, "STOP REPLICA SQL_THREAD");
+  if (isms)
+    mysql_query(conn, "SHOW ALL SLAVES STATUS");
+  else
+    mysql_query(conn, "SHOW SLAVE STATUS");
+
+  slave = mysql_store_result(conn);
+
   GString *replication_section_str = g_string_sized_new(100);
 
   while (slave && (row = mysql_fetch_row(slave))) {
@@ -666,17 +692,11 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
   fflush(file);
-  if (master)
-    mysql_free_result(master);
+cleanup:
   if (slave)
     mysql_free_result(slave);
-  if (mdb)
-    mysql_free_result(mdb);
-
-//    if (g_atomic_int_dec_and_test(&schema_counter)) {
-//      g_mutex_unlock(ready_schema_mutex);
-//    }
 }
+*/
 
 gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     switch (job->type) {
