@@ -2,7 +2,7 @@
 #
 # This is the main configuration file of MyDumper
 # All the default setting are here
-# You can modify them but we recommend you to use --default-extra-file
+# You can modify them but we recommend you to use --defaults-extra-file
 #
 #############################################################################
 
