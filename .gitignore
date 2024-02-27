@@ -16,3 +16,4 @@ export-*
 mydumper
 myloader
 sakila-db*
+data/
