@@ -149,22 +149,16 @@ gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
     *mutex=g_mutex_new();
     g_mutex_lock(*mutex);
-    g_hash_table_insert(load_data_list,g_strdup(filename), *mutex);
+    g_hash_table_insert(load_data_list, g_strdup(filename), *mutex);
     g_mutex_unlock(load_data_list_mutex);
     return TRUE;
   }
-  if (orig_key!=NULL)
+  if (orig_key!=NULL){
     g_hash_table_remove(load_data_list, orig_key);
+//    g_mutex_free(*mutex);
+  }
   g_mutex_unlock(load_data_list_mutex);
   return FALSE;
-}
-
-void wait_til_data_file_is_close( gchar * filename ){
-  GMutex * mutex=NULL;
-  if (load_data_mutex_locate(filename, &mutex)){
-    g_mutex_lock(mutex);
-    // TODO we need to free filename and mutex from the hash.
-  }
 }
 
 void release_load_data_as_it_is_close( gchar * filename ){
@@ -177,7 +171,6 @@ void release_load_data_as_it_is_close( gchar * filename ){
   }
   g_mutex_unlock(load_data_list_mutex);
 }
-
 
 int restore_data_from_file(struct thread_data *td, char *database, char *table,
                   char *filename, gboolean is_schema){
@@ -219,9 +212,14 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
             from++;
             gchar *to = g_strstr_len(from, -1, "'");
             load_data_filename=g_strndup(from, to-from);
-            wait_til_data_file_is_close(load_data_filename);
+            GMutex * mutex=NULL;
+            if (load_data_mutex_locate(load_data_filename, &mutex)){
+              g_mutex_lock(mutex);
+	      // TODO we need to free filename and mutex from the hash.
+	    }
             gchar **command=NULL;
-            if (get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename)){ 
+	    gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
+            if (is_fifo){ 
               if (fifo_directory != NULL){
                 new_data = g_string_new_len(data->str, from - data->str);
                 g_string_append(new_data, fifo_directory);
@@ -243,22 +241,18 @@ int restore_data_from_file(struct thread_data *td, char *database, char *table,
                 g_free(load_data_fifo_filename);
                 load_data_fifo_filename=new_load_data_fifo_filename;
               }
-              g_message("load_data_fifo_filename:: %s", load_data_fifo_filename);
               if (mkfifo(load_data_fifo_filename,0666)){
                 g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
               }
 	      execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
               release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
-            }else{
-	      g_message("load_data_fifo_filename:: %s", load_data_fifo_filename);
-
-	    }
+            }
 
             tr=restore_data_in_gstring_by_statement(td, data, is_schema, &query_counter);
-            if (load_data_fifo_filename!=NULL) 
-              m_remove(NULL, load_data_fifo_filename);
-            else
+            if (is_fifo) 
+              m_remove0(NULL, load_data_fifo_filename);
+	    else
               m_remove(NULL, load_data_filename);
 
           }else{

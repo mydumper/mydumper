@@ -71,6 +71,7 @@ int write_file(FILE * file, char * buff, int len);
 void create_backup_dir(char *new_directory, char *new_fifo_directory);
 void create_fifo_dir(char *new_fifo_directory);
 guint strcount(gchar *text);
+void m_remove0(gchar * directory, const gchar * filename);
 gboolean m_remove(gchar * directory, const gchar * filename);
 GKeyFile * load_config_file(gchar * config_file);
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
