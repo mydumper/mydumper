@@ -508,7 +508,8 @@ void create_backup_dir(char *new_directory, char *new_fifo_directory) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
-  create_fifo_dir(new_fifo_directory);
+  if (new_fifo_directory)
+    create_fifo_dir(new_fifo_directory);
 }
 
 guint strcount(gchar *text){
