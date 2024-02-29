@@ -622,7 +622,8 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     if (g_key_file_has_group(key_file, group )){
       parse_key_file_group(key_file, context, group);
       set_connection_defaults_file_and_group(defaults_file, group); 
-    }else if (g_key_file_has_group(key_file, "client" )){
+    }
+    if (g_key_file_has_group(key_file, "client" )){
       set_connection_defaults_file_and_group(defaults_file, NULL);
     }
   }else
@@ -644,7 +645,8 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
       g_message("Parsing extra key file");
       parse_key_file_group(extra_key_file, context, group);
       set_connection_defaults_file_and_group(defaults_extra_file, group);
-    } else if (g_key_file_has_group(extra_key_file, "client" )){
+    } 
+    if (g_key_file_has_group(extra_key_file, "client" )){
       set_connection_defaults_file_and_group(defaults_extra_file, NULL);
     }
   }else
