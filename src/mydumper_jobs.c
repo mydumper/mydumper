@@ -332,7 +332,8 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
 
   // get triggers
   const char q= identifier_quote_character;
-  query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", q, dbt->database->name, q, dbt->table);
+  query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c WHERE %cTable%c = '%s'", q, dbt->database->name, q, q, q, dbt->table);
+
   if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
     if (success_on_1146 && mysql_errno(conn) == 1146) {
       g_warning("Error dumping triggers (%s.%s): %s", dbt->database->name, dbt->table,
