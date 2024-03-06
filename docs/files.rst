@@ -74,12 +74,13 @@ by default is going to use GZIP compression method. You can also use ZSTD to com
 The internal compression mechanisim has been removed from the code and we are using /usr/bin/gzip and 
 /usr/bin/zstd. If you need to change to a different location or different compression software, you
 need to set::
+
   --exec-per-thread
   --exec-per-thread-extension
 
 Binary Logs
 -----------
-Binary logs are retrieved when :option:`--binlogs <mydumper --binlogs>` option
+Binary logs are retrieved when :option:`--enable-binlog <myloader --enable-binlog>` option
 has been set.  This will store them in the ``binlog_snapshot/`` sub-directory
 inside the dump directory.
 
