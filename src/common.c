@@ -508,7 +508,8 @@ void create_backup_dir(char *new_directory, char *new_fifo_directory) {
       m_critical("Unable to create `%s': %s", new_directory, g_strerror(errno));
     }
   }
-  create_fifo_dir(new_fifo_directory);
+  if (new_fifo_directory)
+    create_fifo_dir(new_fifo_directory);
 }
 
 guint strcount(gchar *text){
@@ -538,13 +539,17 @@ gchar * remove_new_line(gchar *to){
   return to;
 }
 
-gboolean m_remove(gchar * directory, const gchar * filename){
-  if (stream && no_delete == FALSE){
+void m_remove0(gchar * directory, const gchar * filename){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
     if (remove(path) < 0)
       g_warning("Remove failed: %s (%s)", path, strerror(errno));
     g_free(path);
+}
+
+gboolean m_remove(gchar * directory, const gchar * filename){
+  if (stream && no_delete == FALSE){
+    m_remove0(directory,filename);
   }
   return TRUE;
 }

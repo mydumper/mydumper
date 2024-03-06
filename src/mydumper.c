@@ -138,19 +138,8 @@ int main(int argc, char *argv[]) {
   }else{
     output_directory=output_directory_param;
   }
-  char *current_dir=g_get_current_dir();
-  if (fifo_directory){
-    if (fifo_directory[0] != '/' ){
-      gchar *tmp_fifo_directory=fifo_directory;
-      fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
-    }
-    create_fifo_dir(fifo_directory);
-  }else{
-    fifo_directory=output_directory;
-  }
-  
-
-  create_backup_dir(output_directory, fifo_directory);
+//  char *current_dir=g_get_current_dir();
+  create_backup_dir(output_directory, NULL);
 
   if (disk_limits!=NULL){
     parse_disk_limits();

@@ -68,6 +68,7 @@
 #include "mydumper_write.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
+#include "mydumper_file_handler.h"
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
@@ -75,8 +76,6 @@
 #endif
 
 
-
-extern int (*m_write)(int file, const char * buff, int len);
 
 GMutex *init_mutex = NULL;
 /* Program options */
@@ -154,16 +153,6 @@ void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, gui
   g_strfreev(split);
 }
 
-int m_fopen(char **filename, const char *type ){
-	(void) type;
-  return open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
-}
-
-
-int new_m_fopen(char **filename, int type ){
-  return open(*filename, type);
-}
-
 void initialize_working_thread(){
   database_counter = 0;
   if (rows_per_chunk)
@@ -211,15 +200,10 @@ void initialize_working_thread(){
 
 // TODO: We need to cleanup this
 
-  m_close=(void *) &m_close_pipe;
-  m_write=(void *)&write;
-
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
-    m_open=&m_fopen;
-    m_close=(void *) &m_close_file;
-    m_write=(void *)&write;
     exec_per_thread_extension=EMPTY_STRING;
-  } else {
+    initialize_file_handler(FALSE);
+  }else{
     if (compress_method!=NULL && (exec_per_thread!=NULL || exec_per_thread_extension!=NULL)){
       m_critical("--compression and --exec-per-thread are not comptatible");
     }
@@ -230,17 +214,15 @@ void initialize_working_thread(){
       }
       exec_per_thread=g_strdup_printf("%s -c", cmd);
       exec_per_thread_extension=GZIP_EXTENSION;
-    }else{ 
-      if ( g_strcmp0(compress_method,ZSTD)==0){
+    }else 
+    if ( g_strcmp0(compress_method,ZSTD)==0){
       if ( (cmd=get_zstd_cmd()) == NULL ){
         g_error("zstd command not found on any static location, use --exec-per-thread for non default locations");
       }
       exec_per_thread=g_strdup_printf("%s -c", cmd);
       exec_per_thread_extension=ZSTD_EXTENSION;
     }
-    }
-    m_open=&m_open_pipe;
-    m_close=&m_close_pipe;
+    initialize_file_handler(TRUE);
   }
 
   initialize_jobs();

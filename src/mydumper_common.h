@@ -38,7 +38,6 @@ gchar * build_tablespace_filename();
 gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension);
 //gchar * build_filename(char *database, char *table, guint part, guint sub_part, const gchar *extension);
 gchar * build_data_filename(char *database, char *table, guint64 part, guint sub_part);
-gchar * build_fifo_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extesion);
 gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension);
 gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part);
 void determine_show_table_status_columns(MYSQL_RES *result, guint *ecol, guint *ccol, guint *collcol, guint *rowscol);
