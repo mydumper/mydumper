@@ -928,20 +928,23 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     isms = 1;
   }
 
-  if (isms)
-    mysql_query(conn, "SHOW ALL SLAVES STATUS");
-  else
-    mysql_query(conn, "SHOW SLAVE STATUS");
+  if (isms){
+    if (mysql_query(conn, "SHOW ALL SLAVES STATUS"))
+      g_critical("Error executing SHOW ALL SLAVES STATUS: %s", mysql_error(conn));
+  }else{
+    if (mysql_query(conn, "SHOW SLAVE STATUS"))
+      g_critical("Error executing SHOW SLAVE STATUS: %s", mysql_error(conn));
+  }
 
   guint slave_count=0;
   slave = mysql_store_result(conn);
 
-  if (mysql_num_rows(slave) == 0){
+  if (!slave || mysql_num_rows(slave) == 0){
     goto cleanup;
   }
   mysql_free_result(slave);
   g_message("Stopping replica");
-  replica_stopped=!mysql_query(conn, "STOP REPLICA SQL_THREAD");
+  replica_stopped=!mysql_query(conn, "STOP SLAVE SQL_THREAD");
   if (!replica_stopped){
     g_warning("Not able to stop replica: %s", mysql_error(conn));
   }
@@ -1183,7 +1186,7 @@ void start_dump() {
 
   if (replica_stopped){
     g_message("Starting replica");
-    if (mysql_query(conn, "START REPLICA SQL_THREAD")){
+    if (mysql_query(conn, "START SLAVE SQL_THREAD")){
       g_warning("Not able to start replica: %s", mysql_error(conn));
     }
   }
