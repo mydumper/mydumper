@@ -22,6 +22,7 @@ extern gboolean hex_blob;
 extern gchar *lines_terminated_by_ld;
 extern gchar *fields_terminated_by_ld;
 extern gboolean csv;
+extern gboolean include_header;
 extern gboolean replace;
 extern guint chunk_filesize;
 extern gchar *ignore_engines;

@@ -1211,6 +1211,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 //  dbt->chunk_type_item.chunk_step = NULL;
     dbt->chunks=NULL;
 //  dbt->initial_chunk_step=NULL;
+    dbt->load_data_header=NULL;
+    dbt->load_data_suffix=NULL;
     dbt->insert_statement=NULL;
     dbt->chunks_mutex=g_mutex_new();
 //  g_mutex_lock(dbt->chunks_mutex);

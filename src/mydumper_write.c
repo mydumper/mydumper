@@ -50,6 +50,7 @@ guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
 gboolean csv = FALSE;
+gboolean include_header = FALSE;
 const gchar *fields_enclosed_by=NULL;
 gchar *fields_escaped_by=NULL;
 gchar *fields_terminated_by=NULL;
@@ -271,34 +272,49 @@ gboolean write_data(int file, GString *data) {
   return real_write_data(file, &f, data);
 }
 
-
-void initialize_load_data_statement(GString *statement, struct db_table *dbt, gchar *basename, MYSQL_FIELD * fields, guint num_fields){
+void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
   gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
-  g_string_append_printf(statement, "LOAD DATA LOCAL INFILE '%s%s' INTO TABLE `%s` ", basename, exec_per_thread_extension, dbt->table);
+  dbt->load_data_suffix=g_string_sized_new(statement_size);
+  g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE `%s` ", exec_per_thread_extension, dbt->table);
   if (character_set && strlen(character_set)!=0)
-    g_string_append_printf(statement, "CHARACTER SET %s ",character_set);
+    g_string_append_printf(dbt->load_data_suffix, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
-    g_string_append_printf(statement, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+    g_string_append_printf(dbt->load_data_suffix, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
   if (fields_enclosed_by_ld)
-    g_string_append_printf(statement, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+    g_string_append_printf(dbt->load_data_suffix, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
   if (fields_escaped_by)
-    g_string_append_printf(statement, "ESCAPED BY '%s' ",fields_escaped_by);
-  g_string_append(statement, "LINES ");
+    g_string_append_printf(dbt->load_data_suffix, "ESCAPED BY '%s' ",fields_escaped_by);
+  g_string_append(dbt->load_data_suffix, "LINES ");
   if (lines_starting_by_ld)
-    g_string_append_printf(statement, "STARTING BY '%s' ",lines_starting_by_ld);
-  g_string_append_printf(statement, "TERMINATED BY '%s' (", lines_terminated_by_ld);
+    g_string_append_printf(dbt->load_data_suffix, "STARTING BY '%s' ",lines_starting_by_ld);
+  g_string_append_printf(dbt->load_data_suffix, "TERMINATED BY '%s' (", lines_terminated_by_ld);
   if (dbt->columns_on_insert){
-    g_string_append(statement,dbt->columns_on_insert);
-    g_string_append(statement,")");
+    g_string_append(dbt->load_data_suffix,dbt->columns_on_insert);
+    g_string_append(dbt->load_data_suffix,")");
   }else{
-    GString * set_statement=append_load_data_columns(statement,fields,num_fields);
-    g_string_append(statement,")");
+    GString * set_statement=append_load_data_columns(dbt->load_data_suffix,fields,num_fields);
+    g_string_append(dbt->load_data_suffix,")");
     if (set_statement != NULL){
-      g_string_append(statement,set_statement->str);
+      g_string_append(dbt->load_data_suffix,set_statement->str);
       g_string_free(set_statement,TRUE);
     }
   }
-  g_string_append(statement,";\n");
+  g_string_append(dbt->load_data_suffix,";\n");
+}
+
+void initialize_load_data_header(struct db_table *dbt, MYSQL_FIELD *fields, guint num_fields){
+  dbt->load_data_header = g_string_sized_new(statement_size);
+  guint i = 0;
+  for (i = 0; i < num_fields-1; ++i) {
+    g_string_append(dbt->load_data_header,fields_enclosed_by);
+    g_string_append(dbt->load_data_header,fields[i].name);
+    g_string_append(dbt->load_data_header,fields_enclosed_by);
+    g_string_append(dbt->load_data_header,fields_terminated_by);
+  }
+  g_string_append(dbt->load_data_header,fields_enclosed_by);
+  g_string_append(dbt->load_data_header,fields[i].name);
+  g_string_append(dbt->load_data_header,fields_enclosed_by);
+  g_string_append(dbt->load_data_header,lines_terminated_by);
 }
 
 gboolean write_statement(int load_data_file, float *filessize, GString *statement, struct db_table * dbt){
@@ -310,17 +326,26 @@ gboolean write_statement(int load_data_file, float *filessize, GString *statemen
   return TRUE;
 }
 
-gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, guint num_fields){
+gboolean write_load_data_statement(struct table_job * tj){
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->dat_filename);
   initialize_sql_statement(statement);
-  initialize_load_data_statement(statement, tj->dbt, basename, fields, num_fields);
+  g_string_append_printf(statement, "%s%s%s", LOAD_DATA_PREFIX, basename, tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql_file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
     return FALSE;
   }
   return TRUE;
 }
+
+gboolean write_header(struct table_job * tj){
+  if (tj->dbt->load_data_header && !write_data(tj->dat_file, tj->dbt->load_data_header)) {
+    g_critical("Could not write header for %s.%s", tj->dbt->database->name, tj->dbt->table);
+    return FALSE;
+  }
+  return TRUE;
+}
+
 /*
 guint64 get_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   GList *l=dbt->chunks;
@@ -450,8 +475,20 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
   GString *statement_row = g_string_sized_new(0);
   GString *statement = g_string_sized_new(2*statement_size);
 
+  if (dbt->load_data_suffix==NULL){
+    g_mutex_lock(dbt->chunks_mutex);
+    if (dbt->load_data_suffix==NULL){
+      initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
+      if (include_header)
+  	initialize_load_data_header(tj->dbt, fields, num_fields);
+    }
+    g_mutex_unlock(dbt->chunks_mutex);
+  }
+
+
   if (update_files_on_table_job(tj)){
-    write_load_data_statement(tj, fields, num_fields);
+    write_load_data_statement(tj);
+    write_header(tj);
   }
   message_dumping_data(tj);
 
@@ -479,7 +516,8 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
       tj->sub_part++;
 
       if (update_files_on_table_job(tj)){
-        write_load_data_statement(tj, fields, num_fields);
+        write_load_data_statement(tj);
+        write_header(tj);
       }
       tj->st_in_file = 0;
       tj->filesize = 0;

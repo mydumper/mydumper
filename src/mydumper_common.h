@@ -22,6 +22,7 @@
 #include <stdlib.h>
 
 void initialize_common();
+void initialize_headers();
 gchar *get_ref_table(gchar *k);
 char * determine_filename (char * table);
 char * escape_string(MYSQL *conn, char *str);

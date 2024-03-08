@@ -18,11 +18,10 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-
+#define LOAD_DATA_PREFIX "LOAD DATA LOCAL INFILE '" 
 void load_write_entries(GOptionGroup *main_group, GOptionContext *context);
 void initialize_write();
 void finalize_write();
 void write_table_job_into_file(struct table_job *tj);
 gboolean write_data(int file, GString *data);
-gboolean write_load_data_statement(struct table_job * tj, MYSQL_FIELD *fields, guint num_fields);
 void initialize_sql_statement(GString *statement);

@@ -429,6 +429,7 @@ MYSQL *create_main_connection() {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
   detect_quote_character(conn);
+  initialize_headers();
   initialize_write();
 
   switch (detected_server) {
