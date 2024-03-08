@@ -287,7 +287,10 @@ void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * f
   g_string_append(dbt->load_data_suffix, "LINES ");
   if (lines_starting_by_ld)
     g_string_append_printf(dbt->load_data_suffix, "STARTING BY '%s' ",lines_starting_by_ld);
-  g_string_append_printf(dbt->load_data_suffix, "TERMINATED BY '%s' (", lines_terminated_by_ld);
+  g_string_append_printf(dbt->load_data_suffix, "TERMINATED BY '%s' ", lines_terminated_by_ld);
+  if (include_header)
+    g_string_append(dbt->load_data_suffix, "IGNORE 1 LINES ");
+  g_string_append_printf(dbt->load_data_suffix, "(");
   if (dbt->columns_on_insert){
     g_string_append(dbt->load_data_suffix,dbt->columns_on_insert);
     g_string_append(dbt->load_data_suffix,")");
