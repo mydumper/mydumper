@@ -284,6 +284,8 @@ struct db_table {
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;
+  GString *load_data_header;
+  GString *load_data_suffix;
   gboolean is_innodb;
   gboolean is_sequence;
   gboolean has_json_fields;

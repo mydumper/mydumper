@@ -46,6 +46,7 @@ GMutex *ref_table_mutex = NULL;
 GHashTable *ref_table=NULL;
 guint table_number=0;
 guint server_version= 0;
+GString *headers;
 
 const char *routine_type[]= {"FUNCTION", "PROCEDURE", "PACKAGE", "PACKAGE BODY"};
 guint nroutines= 4;
@@ -359,28 +360,32 @@ void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
   }
 }
 
-
-void initialize_sql_statement(GString *statement){
-  g_string_set_size(statement, 0);
+void initialize_headers(){
+  headers=g_string_sized_new(100);
   if (is_mysql_like()) {
     if (set_names_statement)
-      g_string_printf(statement,"%s;\n",set_names_statement);
-    g_string_append(statement, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+      g_string_printf(headers,"%s;\n",set_names_statement);
+    g_string_append(headers, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(statement, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
+      g_string_append_printf(headers, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
     if (!skip_tz) {
-      g_string_append(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_append(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else if (detected_server == SERVER_TYPE_TIDB) {
     if (!skip_tz) {
-      g_string_printf(statement, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_printf(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else {
-    g_string_printf(statement, "SET FOREIGN_KEY_CHECKS=0;\n");
+    g_string_printf(headers, "SET FOREIGN_KEY_CHECKS=0;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(statement, "SET SQL_MODE=%s;\n", sql_mode);
+      g_string_append_printf(headers, "SET SQL_MODE=%s;\n", sql_mode);
   }
 }
+
+void initialize_sql_statement(GString *statement){
+  g_string_printf(statement,"%s",headers->str);
+}
+
 
 void set_tidb_snapshot(MYSQL *conn){
   gchar *query =
