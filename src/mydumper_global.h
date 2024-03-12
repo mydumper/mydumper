@@ -43,6 +43,7 @@ extern int longquery;
 extern int longquery_retry_interval;
 extern int longquery_retries;
 extern int lock_all_tables;
+extern gboolean skip_ddl_locks;
 extern gboolean no_backup_locks;
 extern gchar *logfile;
 extern gboolean help;

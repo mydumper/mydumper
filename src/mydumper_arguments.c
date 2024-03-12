@@ -111,6 +111,7 @@ static GOptionEntry lock_entries[] = {
      "Minimize locking time on InnoDB tables.", NULL},
     {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
      "Transactional consistency only", NULL},
+    {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
