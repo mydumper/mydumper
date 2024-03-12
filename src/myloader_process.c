@@ -558,35 +558,37 @@ void process_metadata_global(const char *file)
       database_table= g_strsplit(group+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
-        struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
-        dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
-        dbt->data_checksum=get_value(kf,group,"data_checksum");
-        dbt->schema_checksum=get_value(kf,group,"schema_checksum");
-        dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
-        dbt->triggers_checksum=get_value(kf,group,"triggers_checksum");
-        value=get_value(kf,group,"is_view");
-        if (value != NULL && g_strcmp0(value,"1")==0){
-          dbt->is_view=TRUE;
-        }
-        if (value) g_free(value);
-        value=get_value(kf, group, "is_sequence");
-        if (value != NULL && g_strcmp0(value, "1") == 0){
-          dbt->is_sequence= TRUE;
-          ++sequences;
-        }
-        if (value) g_free(value);
-        if (get_value(kf,group,"rows")){
-          dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
-        }
-        value= get_value(kf, group, "real_table_name");
-        if (value){
-          real_table_name= newline_unprotect(value);
-          g_free(value);
-          if (g_strcmp0(dbt->real_table, real_table_name))
-            dbt->real_table= real_table_name;
-          else
-            g_free(real_table_name);
-        }
+	if (!source_db || g_strcmp0(database_table[1],source_db)==0){
+          struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
+          dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
+          dbt->data_checksum=get_value(kf,group,"data_checksum");
+          dbt->schema_checksum=get_value(kf,group,"schema_checksum");
+          dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
+          dbt->triggers_checksum=get_value(kf,group,"triggers_checksum");
+          value=get_value(kf,group,"is_view");
+          if (value != NULL && g_strcmp0(value,"1")==0){
+            dbt->is_view=TRUE;
+          }
+          if (value) g_free(value);
+          value=get_value(kf, group, "is_sequence");
+          if (value != NULL && g_strcmp0(value, "1") == 0){
+            dbt->is_sequence= TRUE;
+            ++sequences;
+          }
+          if (value) g_free(value);
+          if (get_value(kf,group,"rows")){
+            dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
+          }
+          value= get_value(kf, group, "real_table_name");
+          if (value){
+            real_table_name= newline_unprotect(value);
+            g_free(value);
+            if (g_strcmp0(dbt->real_table, real_table_name))
+              dbt->real_table= real_table_name;
+            else
+              g_free(real_table_name);
+          }
+	}
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         struct database *database=get_db_hash(database_table[0],database_table[0]);
