@@ -86,6 +86,7 @@ int need_dummy_read = 0;
 int need_dummy_toku_read = 0;
 int killqueries = 0;
 int lock_all_tables = 0;
+gboolean skip_ddl_locks= FALSE;
 gboolean replica_stopped = FALSE;
 gboolean no_locks = FALSE;
 gboolean it_is_a_consistent_backup = FALSE;
@@ -1165,6 +1166,10 @@ void start_dump() {
     if (!no_locks) {
       // This backup will lock the database
       determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+      if (skip_ddl_locks){
+        acquire_ddl_lock_function=NULL;
+        release_ddl_lock_function=NULL;
+      }
 
       if (lock_all_tables) {
         send_lock_all_tables(conn);
