@@ -164,10 +164,10 @@ This for now does not provide consistent snapshots for non-transactional engines
 
 ## How to exclude (or include) databases?
 
-Once can use --regex functionality, for example not to dump mysql and test databases:
+Once can use --regex functionality, for example not to dump mysql, sys and test databases:
 
 ```bash
- mydumper --regex '^(?!(mysql\.|test\.))'
+ mydumper --regex '^(?!(mysql\.|sys\.|test\.))'
 ```
 
 To dump only mysql and test databases:
