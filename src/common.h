@@ -21,6 +21,17 @@
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 
+#define START_SLAVE "START SLAVE"
+#define START_SLAVE_SQL_THREAD "START SLAVE SQL_THREAD"
+#define STOP_SLAVE_SQL_THREAD "STOP SLAVE SQL_THREAD"
+#define STOP_SLAVE "STOP SLAVE"
+#define RESET_SLAVE "RESET SLAVE"
+#define START_REPLICA "START REPLICA"
+#define START_REPLICA_SQL_THREAD "START REPLICA SQL_THREAD"
+#define STOP_REPLICA "STOP REPLICA"
+#define STOP_REPLICA_SQL_THREAD "STOP REPLICA SQL_THREAD"
+#define RESET_REPLICA "RESET REPLICA"
+
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
 
@@ -28,6 +39,12 @@ extern gchar zstd_paths[2][15];
 extern gchar gzip_paths[2][15];
 extern gchar **zstd_cmd;
 extern gchar **gzip_cmd;
+extern const gchar *start_replica;
+extern const gchar *stop_replica;
+extern const gchar *start_replica_sql_thread;
+extern const gchar *stop_replica_sql_thread;
+extern const gchar *reset_replica;
+
 #ifndef _src_common_h
 #define _src_common_h
 void initialize_share_common();

@@ -685,7 +685,8 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 
           *acquire_global_lock_function = &send_flush_table_with_read_lock;
           *release_global_lock_function = &send_unlock_tables;
-          break;
+
+	  break;
         case 5:
           if (get_secondary() == 7) {
             if (no_backup_locks){
@@ -946,7 +947,7 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   }
   mysql_free_result(slave);
   g_message("Stopping replica");
-  replica_stopped=!mysql_query(conn, "STOP SLAVE SQL_THREAD");
+  replica_stopped=!mysql_query(conn, stop_replica_sql_thread);
   if (!replica_stopped){
     g_warning("Not able to stop replica: %s", mysql_error(conn));
   }
@@ -1190,13 +1191,6 @@ void start_dump() {
     }
   }
 
-  if (replica_stopped){
-    g_message("Starting replica");
-    if (mysql_query(conn, "START SLAVE SQL_THREAD")){
-      g_warning("Not able to start replica: %s", mysql_error(conn));
-    }
-  }
-
 // TODO: this should be deleted on future releases. 
   server_version= mysql_get_server_version(conn);
   if (server_version < 40108) {
@@ -1400,6 +1394,13 @@ void start_dump() {
       g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
+    }
+  }
+
+  if (replica_stopped){
+    g_message("Starting replica");
+    if (mysql_query(conn, start_replica_sql_thread)){
+      g_warning("Not able to start replica: %s", mysql_error(conn));
     }
   }
 

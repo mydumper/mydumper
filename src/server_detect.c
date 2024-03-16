@@ -26,6 +26,12 @@ int major=0;
 int secondary=0;
 int revision=0;
 
+const gchar *start_replica=NULL;
+const gchar *stop_replica=NULL;
+const gchar *start_replica_sql_thread=NULL;
+const gchar *stop_replica_sql_thread=NULL;
+const gchar *reset_replica=NULL;
+
 void detect_server_version(MYSQL * conn) {
   if (mysql_query(conn, "SELECT @@version_comment, @@version")){
     g_warning("Not able to determine database version: %s",
@@ -62,6 +68,27 @@ void detect_server_version(MYSQL * conn) {
   mysql_free_result(res);
   g_free(ascii_version);
   g_free(ascii_version_comment);
+
+  switch(get_product()){
+    case SERVER_TYPE_PERCONA:
+      switch (get_major()) {
+        case 8:
+          start_replica=START_REPLICA;
+          stop_replica=STOP_REPLICA;
+          start_replica_sql_thread=START_REPLICA_SQL_THREAD;
+          stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
+          reset_replica=RESET_REPLICA;
+          break;
+        case 5:
+          start_replica=START_SLAVE;
+          stop_replica=STOP_SLAVE;
+          start_replica_sql_thread=START_SLAVE_SQL_THREAD;
+          stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
+          reset_replica=RESET_SLAVE;
+          break;
+      }
+      break;
+  }
 }
 
 int get_product(){

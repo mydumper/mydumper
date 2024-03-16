@@ -107,7 +107,10 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
 
   if (exec_change_master){
     if (exec_reset_slave){
-      g_string_append(output_statement,"STOP SLAVE ;\nRESET SLAVE ");
+      g_string_append(output_statement,stop_replica);
+      g_string_append(output_statement,";\n");
+      g_string_append(output_statement,reset_replica);
+      g_string_append(output_statement," ");
       if (exec_reset_slave>1)
         g_string_append(output_statement,"ALL ");
       if (channel_name!=NULL)
@@ -117,8 +120,10 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
 
     g_string_append(output_statement,s->str);
 
-    if (exec_start_slave)
-      g_string_append(output_statement,"START SLAVE;\n");
+    if (exec_start_slave){
+      g_string_append(output_statement,start_replica);
+      g_string_append(output_statement,";\n");
+    }
     g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
   }
 }
