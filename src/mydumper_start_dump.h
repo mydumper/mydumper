@@ -22,6 +22,7 @@ struct MList;
 #define _mydumper_start_dump_h
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
+
 enum job_type {
   JOB_SHUTDOWN,
   JOB_RESTORE,
