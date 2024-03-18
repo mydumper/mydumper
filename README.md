@@ -3,7 +3,7 @@
  # What is MyDumper?
 MyDumper is a MySQL Logical Backup Tool. It has 2 tools:
 * `mydumper` which is responsible to export a consistent backup of MySQL databases
-* `myloader` reads the backup from mydumper, connects the to destination database and imports the backup.
+* `myloader` reads the backup from mydumper, connects to the destination database and imports the backup.
 
 Both tools use multithreading capabilities.
 <br>MyDumper is Open Source and maintained by the community, it is not a Percona, MariaDB or MySQL product.
@@ -157,7 +157,7 @@ This is all done following best MySQL practices and traditions:
 * Global read lock is acquired ("FLUSH TABLES WITH READ LOCK")
 * Various metadata is read ("SHOW SLAVE STATUS","SHOW MASTER STATUS")
 * Other threads connect and establish snapshots ("START TRANSACTION WITH CONSISTENT SNAPSHOT")
-** On pre-4.1.8 it creates dummy InnoDB table, and reads from it.
+** On pre-4.1.8 it creates a dummy InnoDB table, and reads from it.
 * Once all worker threads announce the snapshot establishment, master executes "UNLOCK TABLES" and starts queueing jobs.
 
 This for now does not provide consistent snapshots for non-transactional engines - support for that is expected in 0.2 :)
@@ -182,7 +182,7 @@ To not dump all databases starting with test:
  mydumper --regex '^(?!(test))'
 ```
 
-To dump specify tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
+To dump specific tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
 
 ```bash
  mydumper --regex '^(db1\.table1$|db2\.table2$)'
@@ -205,7 +205,7 @@ You can execute external commands with --exec like this:
  mydumper --exec "/usr/bin/gzip FILENAME"
 ```
 
---exec is single threaded, similar implementation than Stream. The exec program must be an absolute path. FILENAME will be replaced by the filename that you want to be processed. You can set FILENAME in any place as argument.
+--exec is single threaded, similar implementation than Stream. The exec program must be an absolute path. FILENAME will be replaced by the filename that you want to be processed. You can set FILENAME in any place as an argument.
 
 ## Defaults file
 
@@ -269,7 +269,7 @@ columns_on_select=qty,price+20
 columns_on_insert=qty,price
 ```
 
-IMPORTANT: when using options that doesn't required an argument like: --no-data or --events, you need to set any value to those variables which will always indicate: TRUE/ON/ENABLE. It is a MISCONCEPTION if you think that adding `--no-data=0` will export data:
+IMPORTANT: when using options that don't require an argument like: --no-data or --events, you need to set any value to those variables which will always indicate: TRUE/ON/ENABLE. It is a MISCONCEPTION if you think that adding `--no-data=0` will export data:
 ```
 [mydumper]
 no-data=0
