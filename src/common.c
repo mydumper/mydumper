@@ -30,7 +30,7 @@
 #include "mydumper_global.h"
 
 GAsyncQueue *stream_queue = NULL;
-gboolean skip_defer= FALSE;
+gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
 
 /*
@@ -706,7 +706,7 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   (void) data;
   if (g_strstr_len(option_name,8,"--stream")){
     stream = TRUE;
-    skip_defer= TRUE;
+    use_defer= FALSE;
     if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
       return TRUE;
     }

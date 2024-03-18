@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (num_threads < 2) {
-    skip_defer= TRUE;
+    use_defer= FALSE;
   }
 
   if (daemon_mode) {
