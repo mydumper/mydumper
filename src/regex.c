@@ -23,11 +23,9 @@
 #include "common.h"
 const char * filename_regex="^[\\w\\-_ ]+$";
 
-//static pcre *re = NULL;
 GList *re_list = NULL;
 static pcre *filename_re = NULL;
 static pcre *partition_re = NULL;
-char *regex = NULL;
 GList *regex_list=NULL;
 
 gboolean regex_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -43,7 +41,6 @@ gboolean is_regex_being_used(){
 
 
 GOptionEntry regex_entries[] = {
-//    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regex,
     {"regex", 'x', 0, G_OPTION_ARG_CALLBACK, &regex_arguments_callback,
      "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
