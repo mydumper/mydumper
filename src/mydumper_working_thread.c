@@ -1461,7 +1461,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
   }
 
 
-  if (database->dump_triggers)
+  if (dump_triggers && database->dump_triggers)
     create_job_to_dump_schema_triggers(database, conf);
 
   return;
