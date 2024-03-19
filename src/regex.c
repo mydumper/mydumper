@@ -37,6 +37,10 @@ gboolean regex_arguments_callback(const gchar *option_name,const gchar *value, g
   return TRUE;
 }
 
+gboolean is_regex_being_used(){
+  return regex_list!=NULL;
+}
+
 
 GOptionEntry regex_entries[] = {
 //    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regex,
