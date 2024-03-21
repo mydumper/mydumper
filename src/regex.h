@@ -22,3 +22,4 @@ void initialize_regex(gchar * partition_regex);
 void init_regex(pcre **r, const char *str);
 gboolean eval_pcre_regex(pcre * p, char * word);
 void free_regex();
+gboolean is_regex_being_used();

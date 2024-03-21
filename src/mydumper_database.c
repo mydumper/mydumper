@@ -20,9 +20,11 @@
 #include "mydumper_database.h"
 #include "mydumper_global.h"
 #include "common.h"
+#include "regex.h"
+
 GHashTable *database_hash = NULL;
 GMutex * database_hash_mutex = NULL;
-extern char *regex; 
+
 void free_database(struct database * d){
 //  g_free(d->name);
   if (d->escaped!=NULL){
@@ -59,7 +61,7 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
   d->schema_checksum=NULL;
   d->post_checksum=NULL;
   d->triggers_checksum=NULL;
-  d->dump_triggers= regex == NULL && tables_list == NULL;
+  d->dump_triggers= !is_regex_being_used() && tables_list == NULL;
   g_hash_table_insert(database_hash, d->name,d);
   return d;
 }

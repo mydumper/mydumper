@@ -23,14 +23,25 @@
 #include "common.h"
 const char * filename_regex="^[\\w\\-_ ]+$";
 
-static pcre *re = NULL;
+GList *re_list = NULL;
 static pcre *filename_re = NULL;
 static pcre *partition_re = NULL;
-char *regex = NULL;
+GList *regex_list=NULL;
+
+gboolean regex_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data; (void) option_name;
+  regex_list=g_list_append(regex_list,g_strdup(value));
+  return TRUE;
+}
+
+gboolean is_regex_being_used(){
+  return regex_list!=NULL;
+}
 
 
 GOptionEntry regex_entries[] = {
-    {"regex", 'x', 0, G_OPTION_ARG_STRING, &regex,
+    {"regex", 'x', 0, G_OPTION_ARG_CALLBACK, &regex_arguments_callback,
      "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -63,29 +74,42 @@ void init_regex(pcre **r, const char *str){
 }
 
 void initialize_regex(gchar * partition_regex){
-  if (regex)
-    init_regex(&re,regex);
+  GList *l=NULL;
+  pcre *_re=NULL;
+  l=regex_list;
+  while (l){
+    init_regex(&_re,l->data);
+    re_list=g_list_append(re_list,_re);
+    _re=NULL;
+    l=l->next;
+  }
   init_regex(&filename_re,filename_regex);
   if (partition_regex)
     init_regex(&partition_re, partition_regex);
 }
 
 /* Check database.table string against regular expression */
-gboolean check_regex(pcre *tre, char *database, char *table) {
+gboolean check_regex(pcre *tre, char *_database_name, char * _table_name) {
   /* This is not going to be used in threads */
   int rc;
   int ovector[9] = {0};
 
-  char * p = g_strdup_printf("%s.%s", database, table);
+  char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
   rc = pcre_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
   g_free(p);
 
   return (rc > 0) ? TRUE : FALSE;
 }
 
-gboolean eval_regex(char * a,char * b){
-  if (re){
-    return check_regex(re, a, b);
+gboolean eval_regex(char * _database_name,char * _table_name){
+  if (re_list){
+    GList *l=re_list;
+    gboolean r=FALSE;
+    while (l && !r){
+      r=check_regex(l->data, _database_name, _table_name);
+      l=l->next;
+    }
+    return r;
   }
   return TRUE;
 }
@@ -103,11 +127,7 @@ gboolean eval_partition_regex(char * word){
   return TRUE;
 }
 
-
-
 void free_regex(){
-  if (regex)
-    g_free(re);
   g_free(filename_re);
 }
 
