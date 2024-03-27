@@ -360,6 +360,11 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (tables_skiplist_file && check_skiplist(database->name, row[0]))
         continue;
 
+      /* Special tables */
+      if (is_mysql_special_tables(database->name, row[0])) {
+        continue;
+      }
+
       /* Checks PCRE expressions on 'database.table' string */
       if (!eval_regex(database->name, row[0]))
         continue;
@@ -1414,11 +1419,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       continue;
 
     /* Special tables */
-    if (g_ascii_strcasecmp(database->name, "mysql") == 0 &&
-        (g_ascii_strcasecmp(row[0], "general_log") == 0 ||
-         g_ascii_strcasecmp(row[0], "slow_log") == 0 ||
-         g_ascii_strcasecmp(row[0], "innodb_index_stats") == 0 ||
-         g_ascii_strcasecmp(row[0], "innodb_table_stats") == 0)) {
+    if (is_mysql_special_tables(database->name, row[0])) {
       dump = 0;
       continue;
     }

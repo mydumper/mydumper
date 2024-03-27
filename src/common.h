@@ -102,6 +102,7 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
 gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl);
+gboolean is_mysql_special_tables(gchar *database, gchar *table);
 GHashTable * initialize_hash_of_session_variables();
 void load_common_entries(GOptionGroup *main_group);
 void free_hash(GHashTable * set_session_hash);

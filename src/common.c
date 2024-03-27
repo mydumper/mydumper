@@ -567,7 +567,13 @@ gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl){
   return FALSE;
 }
 
-
+gboolean is_mysql_special_tables(gchar *database, gchar *table){
+  return g_ascii_strcasecmp(database, "mysql") == 0 &&
+        (g_ascii_strcasecmp(table, "general_log") == 0 ||
+         g_ascii_strcasecmp(table, "slow_log") == 0 ||
+         g_ascii_strcasecmp(table, "innodb_index_stats") == 0 ||
+         g_ascii_strcasecmp(table, "innodb_table_stats") == 0);
+}
 
 void m_key_file_merge(GKeyFile *b, GKeyFile *a){
   gsize  group_len = 0, key_len=0;
