@@ -4092,6 +4092,18 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_focal_percona80_arm64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_jammy_percona80_arm64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
         filters:
           branches:
@@ -4140,11 +4152,32 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_bullseye_percona80_arm64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_buster_percona80_arm64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_bookworm_percona80_arm64:
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - publish-github-release:
         requires:
           - build_bionic_percona80_amd64
           - build_focal_percona80_amd64
           - build_jammy_percona80_amd64
+          - build_bionic_percona80_arm64
+          - build_focal_percona80_arm64
+          - build_jammy_percona80_arm64
           - build_el7_percona57_x86_64
           - build_el8_percona57_x86_64
           - build_el8_mysql80_aarch64
@@ -4153,6 +4186,9 @@ workflows:
           - build_bullseye_percona80_amd64
           - build_buster_percona80_amd64
           - build_bookworm_percona80_amd64
+          - build_bullseye_percona80_arm64
+          - build_buster_percona80_arm64
+          - build_bookworm_percona80_arm64
         filters:
           branches:
             ignore: /.*/
