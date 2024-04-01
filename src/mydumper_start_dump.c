@@ -802,7 +802,7 @@ void send_lock_all_tables(MYSQL *conn){
       dt = g_strsplit(tables[i], ".", 0);
       g_string_printf(query, "SHOW TABLES IN %s LIKE '%s'", dt[0], dt[1]);
       if (mysql_query(conn, query->str)) {
-        g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
+        g_error("Error showing tables in: %s - Could not execute query: %s", dt[0],
                   mysql_error(conn));
         errors++;
         return;
