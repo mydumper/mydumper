@@ -310,7 +310,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
   for (x = 0; table_list[x] != NULL; x++) {
     dt = g_strsplit(table_list[x], ".", 0);
 
-    query= g_strdup_printf("SHOW TABLE STATUS FROM `%s` LIKE '%s'", dt[0], dt[1]);
+    query= g_strdup_printf("SHOW TABLE STATUS FROM %s%s%s LIKE '%s'", identifier_quote_character_str, dt[0], identifier_quote_character_str, dt[1]);
 
     if (mysql_query(conn, (query))) {
       g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
@@ -715,13 +715,13 @@ void build_lock_tables_statement(struct configuration *conf){
   if ( iter != NULL){
     dbt = (struct db_table *)iter->data;
     conf->lock_tables_statement = g_string_sized_new(30);
-    g_string_printf(conf->lock_tables_statement, "LOCK TABLES `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
+    g_string_printf(conf->lock_tables_statement, "LOCK TABLES %s%s%s.%s%s%s READ LOCAL",
+                    identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     iter = iter->next;
     for (; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
-      g_string_append_printf(conf->lock_tables_statement, ", `%s`.`%s` READ LOCAL",
-                      dbt->database->name, dbt->table);
+      g_string_append_printf(conf->lock_tables_statement, ", %s%s%s.%s%s%s READ LOCAL",
+                             identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     }
   }
   g_mutex_unlock(non_innodb_table->mutex);
@@ -856,8 +856,8 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
       g_string_append(field_list, ",");
     }
 
-    char *field_name= backtick_protect(row[0]);
-    gchar *tb = g_strdup_printf("`%s`", field_name);
+    char *field_name= identifier_quote_character_protect(row[0]);
+    gchar *tb = g_strdup_printf("%s%s%s", identifier_quote_character_str, field_name, identifier_quote_character_str);
     g_free(field_name);
     g_string_append(field_list, tb);
     g_free(tb);
@@ -997,72 +997,14 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
     }else{
       g_string_append(field_list, ",");
     }
-    char *field_name= backtick_protect((char*) list->data);
-    gchar *tb = g_strdup_printf("`%s`", field_name);
+    char *field_name= identifier_quote_character_protect((char*) list->data);
+    gchar *tb = g_strdup_printf("%s%s%s", identifier_quote_character_str, field_name, identifier_quote_character_str);
     g_free(field_name);
     g_string_append(field_list, tb);
     list=list->next;
   }
   dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
-
-/*
-void get_primary_key_string_old(MYSQL *conn, struct db_table * dbt) {
-  dbt->primary_key_separated_by_comma = NULL;
-  dbt->multicolumn = FALSE;
-  if (!order_by_primary_key) return;
-
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  GString *field_list = g_string_new("");
-
-  gchar *query =
-          g_strdup_printf("SELECT k.COLUMN_NAME, ORDINAL_POSITION "
-                          "FROM information_schema.table_constraints t "
-                          "LEFT JOIN information_schema.key_column_usage k "
-                          "USING(constraint_name,table_schema,table_name) "
-                          "WHERE t.constraint_type IN ('PRIMARY KEY', 'UNIQUE') "
-                          "AND t.table_schema='%s' "
-                          "AND t.table_name='%s' "
-                          "ORDER BY t.constraint_type, ORDINAL_POSITION; ",
-                          dbt->database->name, dbt->table);
-
-  if (mysql_query(conn, query)){
-    return;
-  }
-  g_free(query);
-
-  if (!(res = mysql_store_result(conn)))
-    return;
-  gboolean first = TRUE;
-  while ((row = mysql_fetch_row(res))) {
-    if (first) {
-      first = FALSE;
-    } else if (atoi(row[1]) > 1) {
-      if (atoi(row[1]) == 2) {
-//        second_field=
-      }
-      dbt->multicolumn = TRUE;
-      g_string_append(field_list, ",");
-    } else {
-      break;
-    }
-
-    gchar *tb = g_strdup_printf("`%s`", row[0]);
-    g_string_append(field_list, tb);
-    g_free(tb);
-  }
-  mysql_free_result(res);
-  // Return NULL if we never found a PRIMARY or UNIQUE key
-  if (first) {
-    g_string_free(field_list, TRUE);
-    return;
-  } else {
-    dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE);
-  }
-}
-*/
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
@@ -1079,7 +1021,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt = g_new(struct db_table, 1);
     dbt->status = UNDEFINED;
     dbt->database = database;
-    dbt->table = backtick_protect(table);
+    dbt->table = identifier_quote_character_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->is_sequence= is_sequence;
     dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
@@ -1154,7 +1096,6 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 }
 
 void free_db_table(struct db_table * dbt){
-//  g_debug("Freeing dbt: `%s`.`%s`", dbt->database->name, dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
   g_mutex_free(dbt->rows_lock);
   g_free(dbt->escaped_table);
@@ -1163,32 +1104,9 @@ void free_db_table(struct db_table * dbt){
   g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);
-/*  g_free();
-  g_free();
-  g_free();*/
   g_free(dbt->data_checksum);
   dbt->data_checksum=NULL;
   g_free(dbt->chunks_completed);
-//  g_free(dbt->field);
-
-/*
-
-  union chunk_step * cs = NULL;
-  switch (dbt->chunk_type) {
-    case INTEGER:  
-      cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
-      while (cs != NULL ){
-        if (cs->integer_step.status==COMPLETED)
-          free_integer_step(cs);
-        else
-          g_error("Trying to free uncompleted integer step `%s`.`%s`", dbt->database->name, dbt->table);
-        cs = (union chunk_step *)g_async_queue_try_pop(dbt->chunks_queue);
-      }
-      g_async_queue_unref(dbt->chunks_queue);
-    default:
-      break;
-  }
-*/
 
   g_free(dbt->table);
   g_mutex_unlock(dbt->chunks_mutex);
@@ -1305,7 +1223,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
   if (dump_events) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM `%s`", database->name);
+    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->name, identifier_quote_character_str);
     if (mysql_query(conn, (query))) {
       g_critical("Error showing events on: %s - Could not execute query: %s", database->name,
                  mysql_error(conn));

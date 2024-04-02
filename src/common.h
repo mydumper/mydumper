@@ -133,7 +133,7 @@ gchar *m_date_time_new_now_local();
 
 gchar *get_zstd_cmd();
 gchar *get_gzip_cmd();
-
+char * double_quoute_protect(char *r);
 char * backtick_protect(char *r);
 char * newline_protect(char *r);
 char * newline_unprotect(char *r);

@@ -171,15 +171,15 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
     if (i > 0) {
       g_string_append_c(statement, ',');
     }
-//    g_string_append_printf(statement, "`%s`", fields[i].name);
     if (fields[i].type == MYSQL_TYPE_JSON){
       g_string_append_c(statement,'@');
       g_string_append(statement, fields[i].name);
       if (str->len > 4)
         g_string_append_c(str, ',');
-      g_string_append_c(str,'`');
+      g_string_append(str,identifier_quote_character_str);
       g_string_append(str,fields[i].name);
-      g_string_append(str,"`=CONVERT(@");
+      g_string_append(str,identifier_quote_character_str);
+      g_string_append(str,"=CONVERT(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
     }else if (hex_blob && fields[i].type == MYSQL_TYPE_BLOB){
@@ -187,15 +187,16 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(statement, fields[i].name);
       if (str->len > 4)
         g_string_append_c(str, ',');
-      g_string_append_c(str,'`');
+      g_string_append(str,identifier_quote_character_str);
       g_string_append(str,fields[i].name);
-      g_string_append(str,"`=UNHEX(@");
+      g_string_append(str,identifier_quote_character_str);
+      g_string_append(str,"=UNHEX(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, ")");
     }else{
-      g_string_append_c(statement,'`');
+      g_string_append(str,identifier_quote_character_str);
       g_string_append(statement, fields[i].name);
-      g_string_append_c(statement,'`');
+      g_string_append(str,identifier_quote_character_str);
     }
   }
   if (str->len > 4)
@@ -275,7 +276,7 @@ gboolean write_data(int file, GString *data) {
 void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
   gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
   dbt->load_data_suffix=g_string_sized_new(statement_size);
-  g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE `%s` ", exec_per_thread_extension, dbt->table);
+  g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(dbt->load_data_suffix, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
@@ -380,9 +381,9 @@ guint64 get_estimated_remaining_of_all_chunks(){
 
 
 void message_dumping_data(struct table_job *tj){
-  g_message("Thread %d: dumping data for `%s`.`%s` %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT" All remaining jobs: %"G_GINT64_FORMAT,
+  g_message("Thread %d: dumping data for %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT" All remaining jobs: %"G_GINT64_FORMAT,
                     tj->td->thread_id,
-                    tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
+                    identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
                      (tj->where->len || where_option   || tj->dbt->where) ? "WHERE" : "" , tj->where->len ? tj->where->str : "",
                      (tj->where->len && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
                     ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
@@ -690,10 +691,10 @@ void write_table_job_into_file(struct table_job * tj){
    * for now */
   /* Poor man's database code */
   query = g_strdup_printf(
-      "SELECT %s %s FROM `%s`.`%s` %s %s %s %s %s %s %s %s %s %s %s",
+      "SELECT %s %s FROM %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s %s %s",
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
-      tj->dbt->database->name, tj->dbt->table, tj->partition?tj->partition:"",
+      identifier_quote_character_str,tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
        (tj->where->len || where_option   || tj->dbt->where) ? "WHERE"  : "" , tj->where->len ? tj->where->str : "",
        (tj->where->len && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
       ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
