@@ -167,6 +167,7 @@ void finalize_write(){
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
   GString *str=g_string_new("SET ");
+  gboolean appendable=FALSE;
   for (i = 0; i < num_fields; ++i) {
     if (i > 0) {
       g_string_append_c(statement, ',');
@@ -182,6 +183,7 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str,"=CONVERT(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
+      appendable=TRUE;
     }else if (hex_blob && fields[i].type == MYSQL_TYPE_BLOB){
       g_string_append_c(statement,'@');
       g_string_append(statement, fields[i].name);
@@ -193,13 +195,14 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str,"=UNHEX(@");
       g_string_append(str, fields[i].name);
       g_string_append(str, ")");
+      appendable=TRUE;
     }else{
-      g_string_append(str,identifier_quote_character_str);
+      g_string_append(statement, identifier_quote_character_str);
       g_string_append(statement, fields[i].name);
-      g_string_append(str,identifier_quote_character_str);
+      g_string_append(statement, identifier_quote_character_str);
     }
   }
-  if (str->len > 4)
+  if (appendable)
     return str;
   else{
     g_string_free(str,TRUE);
