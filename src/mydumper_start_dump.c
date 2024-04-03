@@ -111,7 +111,7 @@ guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
 //GThread *wait_pid_thread=NULL;
-
+char * (*identifier_quote_character_protect)(char *r);
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
 
@@ -302,7 +302,7 @@ void initialize_sql_mode(GHashTable * set_session_hash){
   GString *str= g_string_new(sql_mode);
   g_string_replace(str, "ORACLE", "", 0);
   g_string_replace(str, ",,", ",", 0);
-  set_session_hash_insert(set_session_hash, "sql_mode", str->str);
+  set_session_hash_insert(set_session_hash, "SQL_MODE", str->str);
   g_string_free(str, FALSE);
 }
 
@@ -345,10 +345,12 @@ void detect_quote_character(MYSQL *conn)
     identifier_quote_character= BACKTICK;
     identifier_quote_character_str= "`";
     fields_enclosed_by= "\"";
+    identifier_quote_character_protect = &backtick_protect;
   } else {
     identifier_quote_character= DOUBLE_QUOTE;
     identifier_quote_character_str= "\"";
     fields_enclosed_by= "'";
+    identifier_quote_character_protect = &double_quoute_protect;
   }
   mysql_free_result(res);
 }
@@ -396,7 +398,7 @@ void detect_sql_mode(MYSQL *conn){
   g_string_replace(str, "STRICT_TRANS_TABLES", "", 0);
   g_string_replace(str, ",,", ",", 0);
   sql_mode= str->str;
-
+  g_assert(sql_mode);
   g_string_free(str, FALSE);
   mysql_free_result(res);
 }
@@ -419,7 +421,8 @@ MYSQL *create_main_connection() {
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"mydumper_session_variables");
     load_per_table_info_from_key_file(key_file, &conf_per_table, &init_function_pointer);
   }
-  if (!g_hash_table_lookup(set_session_hash,"SQL_MODE")){
+  sql_mode=g_strdup(g_hash_table_lookup(set_session_hash,"SQL_MODE"));
+  if (!sql_mode){
     detect_sql_mode(conn);
     initialize_sql_mode(set_session_hash);
   }
@@ -803,7 +806,7 @@ void send_lock_all_tables(MYSQL *conn){
         continue;
       if (!eval_regex(dt[0], dt[1]))
         continue;
-      dbtb = g_strdup_printf("`%s`.`%s`", dt[0], dt[1]);
+      dbtb = g_strdup_printf("%s%s%s.%s%s%s", identifier_quote_character_str, dt[0], identifier_quote_character_str, identifier_quote_character_str, dt[1], identifier_quote_character_str);
       tables_lock = g_list_prepend(tables_lock, dbtb);
     }
     tables_lock = g_list_reverse(tables_lock);
@@ -860,7 +863,7 @@ void send_lock_all_tables(MYSQL *conn){
         if (lock && !eval_regex(row[0], row[1]))
           continue;
         if (lock) {
-          dbtb = g_strdup_printf("`%s`.`%s`", row[0], row[1]);
+          dbtb = g_strdup_printf("%s%s%s.%s%s%s", identifier_quote_character_str, row[0], identifier_quote_character_str, identifier_quote_character_str, row[1], identifier_quote_character_str);
           tables_lock = g_list_prepend(tables_lock, dbtb);
         }
       }
@@ -872,7 +875,7 @@ void send_lock_all_tables(MYSQL *conn){
   // disappearing
     while (!success && retry < 4) {
       g_string_set_size(query,0);
-      g_string_append(query, "LOCK TABLE");
+      g_string_append(query, "LOCK TABLE ");
       for (iter = tables_lock; iter != NULL; iter = iter->next) {
         g_string_append_printf(query, "%s READ,", (char *)iter->data);
       }
@@ -1520,9 +1523,6 @@ void start_dump() {
 
   g_async_queue_unref(conf.ready_non_innodb_queue);
   conf.ready_non_innodb_queue=NULL;
-
-  fprintf(mdfile, "\n[myloader_session_variables]");
-  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
 
   g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();
