@@ -315,9 +315,11 @@ void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_ste
   /* Get minimum/maximum */
 
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`) FROM `%s`.`%s`%s%s",
+                        "SELECT %s MIN(%s%s%s),MAX(%s%s%s) FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, csi->field, dbt->database->name, dbt->table,csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""));
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str, identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""));
   g_free(query);
   minmax = mysql_store_result(conn);
 
@@ -358,9 +360,12 @@ void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_ite
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` ASC LIMIT 1",
+                        "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s ASC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, where->str, csi->field));
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+			where->str, 
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str));
   g_free(query);
   minmax = mysql_store_result(conn);
 
@@ -394,9 +399,12 @@ void update_integer_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
   mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s `%s` FROM `%s`.`%s` WHERE %s ORDER BY `%s` DESC LIMIT 1",
+                        "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s DESC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        csi->field, dbt->database->name, dbt->table, where->str, csi->field));
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        where->str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str));
   minmax = mysql_store_result(conn);
   g_free(query);
 
@@ -644,7 +652,7 @@ void update_integer_where_on_gstring(GString *where, gboolean include_null, GStr
   }
   if (include_null){
 //    g_message("update_integer_where_on_gstring:: with_null");
-    g_string_append_printf(where,"(`%s` IS NULL OR",field);
+    g_string_append_printf(where,"(%s%s%s IS NULL OR", identifier_quote_character_str, field, identifier_quote_character_str);
   }
   g_string_append(where,"(");
   if (is_unsigned){
@@ -654,12 +662,13 @@ void update_integer_where_on_gstring(GString *where, gboolean include_null, GStr
       else
         t.unsign.cursor = type.unsign.cursor;
       if (t.unsign.min == t.unsign.cursor) {
-                g_string_append_printf(where, "`%s` = %"G_GUINT64_FORMAT,
-                          field, t.unsign.cursor);
+                g_string_append_printf(where, "%s%s%s = %"G_GUINT64_FORMAT,
+                          identifier_quote_character_str, field, identifier_quote_character_str, t.unsign.cursor);
       }else{
-                g_string_append_printf(where,"%"G_GUINT64_FORMAT" <= `%s` AND `%s` <= %"G_GUINT64_FORMAT,
-                          t.unsign.min, field,
-                          field, t.unsign.cursor);
+                g_string_append_printf(where,"%"G_GUINT64_FORMAT" <= %s%s%s AND %s%s%s <= %"G_GUINT64_FORMAT,
+                          t.unsign.min,
+	                  identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
+                          t.unsign.cursor);
       }
   }else{
       t.sign.min = type.sign.min;
@@ -668,12 +677,13 @@ void update_integer_where_on_gstring(GString *where, gboolean include_null, GStr
       else
         t.sign.cursor = type.sign.cursor;
       if (t.sign.min == t.sign.cursor){
-                g_string_append_printf(where,"`%s` = %"G_GINT64_FORMAT,
-                          field, t.sign.cursor);
+                g_string_append_printf(where,"%s%s%s = %"G_GINT64_FORMAT,
+                          identifier_quote_character_str, field, identifier_quote_character_str, t.sign.cursor);
       }else{
-                g_string_append_printf(where,"%"G_GINT64_FORMAT" <= `%s` AND `%s` <= %"G_GINT64_FORMAT,
-                          t.sign.min, field,
-                          field, t.sign.cursor);
+                g_string_append_printf(where,"%"G_GINT64_FORMAT" <= %s%s%s AND %s%s%s <= %"G_GINT64_FORMAT,
+                          t.sign.min,
+                          identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
+                          t.sign.cursor);
       }
   }
   if (include_null)

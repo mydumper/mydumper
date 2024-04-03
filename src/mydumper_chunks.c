@@ -105,11 +105,12 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     MYSQL_RES *minmax = NULL;
     /* Get minimum/maximum */
     mysql_query(conn, query = g_strdup_printf(
-                        "SELECT %s MIN(`%s`),MAX(`%s`),LEFT(MIN(`%s`),1),LEFT(MAX(`%s`),1) FROM `%s`.`%s` %s %s %s %s",
-                        is_mysql_like()
-                            ? "/*!40001 SQL_NO_CACHE */"
-                            : "",
-                        field, field, field, field, dbt->database->name, dbt->table, where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
+                        "SELECT %s MIN(%s%s%s),MAX(%s%s%s),LEFT(MIN(%s%s%s),1),LEFT(MAX(%s%s%s),1) FROM %s%s%s.%s%s%s %s %s %s %s",
+                        is_mysql_like()? "/*!40001 SQL_NO_CACHE */":"",
+                        identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
+                        identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
+			identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+			where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
 //    g_message("Query: %s", query);
     g_free(query);
     minmax = mysql_store_result(conn);
@@ -146,8 +147,6 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         unmax = strtoull(row[1], NULL, 10);
         nmin  = strtoll (row[0], NULL, 10);
         nmax  = strtoll (row[1], NULL, 10);
-
-//        prefix= g_strdup_printf("`%s` IS NULL OR ", field) ;
 
         if (fields[0].flags & UNSIGNED_FLAG){
           abs=gint64_abs(unmax-unmin);
@@ -245,9 +244,11 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
   /* Get minimum/maximum */
 
   mysql_query(conn, query = g_strdup_printf(
-                        "EXPLAIN SELECT %s %s%s%s FROM `%s`.`%s`%s%s",
+                        "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        field?"`":"", field?field:"*", field?"`":"",dbt->database->name, dbt->table, where?" WHERE ":"",where?where->str:""));
+                        field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        where?" WHERE ":"",where?where->str:""));
 
   g_free(query);
   res = mysql_store_result(conn);
@@ -272,9 +273,9 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
 static
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
 {
-  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM `%s`.`%s`",
+  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
                                is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                               dbt->database->name, dbt->table);
+                               identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   mysql_query(conn, query);
 
   g_free(query);
@@ -339,7 +340,8 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   dbt->primary_key=NULL;
   /* first have to pick index, in future should be able to preset in
  *    * configuration too */
-  gchar *query = g_strdup_printf("SHOW INDEX FROM `%s`.`%s`", dbt->database->name, dbt->table);
+  gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   mysql_query(conn, query);
   g_free(query);
   indexes = mysql_store_result(conn);

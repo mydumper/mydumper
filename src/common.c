@@ -989,6 +989,14 @@ g_get_num_processors (void)
 }
 #endif
 
+char * double_quoute_protect(char *r) {
+  GString *s= g_string_new_len(r, strlen(r) + 1);
+  g_string_replace(s, "\"", "\"\"", 0);
+  g_assert (s->str != r);
+  r= g_string_free(s, FALSE);
+  return r;
+}
+
 char * backtick_protect(char *r) {
   GString *s= g_string_new_len(r, strlen(r) + 1);
   g_string_replace(s, "`", "``", 0);
