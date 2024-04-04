@@ -1333,6 +1333,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* In case of table-list option is enabled, check if table is part of the
      * list */
+    /* if tables and db both exists , should not call dump_database_thread */
     if (tables && !is_table_in_list(database->name, row[0], tables))
       continue;
 

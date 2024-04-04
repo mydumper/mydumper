@@ -798,10 +798,9 @@ void send_lock_all_tables(MYSQL *conn){
   GList *iter = NULL;
   guint success = 0;
   guint retry = 0;
-  guint i = 0;
 
   if (tables) {
-    for (i = 0; tables[i] != NULL; i++) {
+    for (guint i = 0; tables[i] != NULL; i++) {
       dt = g_strsplit(tables[i], ".", 0);
       g_string_printf(query, "SHOW TABLES IN %s LIKE '%s'", dt[0], dt[1]);
       if (mysql_query(conn, query->str)) {
@@ -828,11 +827,8 @@ void send_lock_all_tables(MYSQL *conn){
     if (db) {
       GString *db_quoted_list=NULL;
       db_quoted_list=g_string_sized_new(strlen(db));
-      g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
-      i++;
-      while (i<g_strv_length(db_items)){
+      for (guint i=0; i<g_strv_length(db_items); i++){
         g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
-        i++;
       }
 
       g_string_printf(
@@ -1321,7 +1317,11 @@ void start_dump() {
   if (dump_tablespaces){
     create_job_to_dump_tablespaces(&conf);
   }
-  if (db) {
+
+  // if tables and db both exists , should not call dump_database_thread
+  if (tables && g_strv_length(tables) > 0) {
+    create_job_to_dump_table_list(tables, &conf);
+  } else if (db_items && g_strv_length(db_items) > 0) {
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
       struct database *this_db=new_database(conn,db_items[i],TRUE);
@@ -1331,11 +1331,7 @@ void start_dump() {
       if (!no_schemas)
         create_job_to_dump_schema(this_db, &conf);
     }
-  }
-  if (tables) {
-    create_job_to_dump_table_list(tables, &conf);
-  }
-  if (( db == NULL ) && ( tables == NULL )) {
+  } else {
     create_job_to_dump_all_databases(&conf);
   }
   g_message("End job creation");
