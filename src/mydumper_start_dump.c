@@ -826,8 +826,11 @@ void send_lock_all_tables(MYSQL *conn){
   } else { 
     if (db) {
       GString *db_quoted_list=NULL;
+      guint i=0;
       db_quoted_list=g_string_sized_new(strlen(db));
-      for (guint i=0; i<g_strv_length(db_items); i++){
+      g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
+      i++;
+      for (; i<g_strv_length(db_items); i++){
         g_string_append_printf(db_quoted_list,",'%s'",db_items[i]);
       }
 
