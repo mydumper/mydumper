@@ -851,13 +851,13 @@ void send_lock_all_tables(MYSQL *conn){
       res = mysql_store_result(conn);
       while ((row = mysql_fetch_row(res))) {
         // no need to check if the tb exists in the tables.
-        if (tables_skiplist_file && check_skiplist(dt[0], row[0]))
+        if (tables_skiplist_file && check_skiplist(row[0], row[1]))
           continue;
-        if (is_mysql_special_tables(dt[0], row[0]))
+        if (is_mysql_special_tables(row[0], row[1]))
           continue;
-        if (!eval_regex(dt[0], row[0]))
+        if (!eval_regex(row[0], row[1]))
           continue;
-        dbtb = g_strdup_printf("%s%s%s.%s%s%s", identifier_quote_character_str, dt[0], identifier_quote_character_str, identifier_quote_character_str, row[0], identifier_quote_character_str);
+        dbtb = g_strdup_printf("%s%s%s.%s%s%s", identifier_quote_character_str, row[0], identifier_quote_character_str, identifier_quote_character_str, row[1], identifier_quote_character_str);
         tables_lock = g_list_prepend(tables_lock, dbtb);
       }
     }
