@@ -259,6 +259,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, gboolean test_co
       if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
         if (dbt->current_threads >= dbt->max_threads ){
           giveup=FALSE;
+          iter=iter->next;
           g_mutex_unlock(dbt->mutex);
           continue;
         }
