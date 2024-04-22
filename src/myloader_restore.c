@@ -409,7 +409,6 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
               g_string_append(new_data, fifo_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
-              g_string_free(data,TRUE);
               from = g_strstr_len(new_data->str, -1, "'") + 1;
               g_string_free(data, TRUE);
               data=new_data;
