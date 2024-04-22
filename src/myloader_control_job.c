@@ -413,6 +413,7 @@ void *control_job_thread(struct configuration *conf){
             trace("Giving up...");
             trace("here_is_your_job <- %s", ft2str(SHUTDOWN));
             g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+            wake_threads_waiting(&threads_waiting);
         }else{
           trace("Thread will be waiting");
           if (threads_waiting<_num_threads)
