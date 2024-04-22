@@ -135,7 +135,7 @@ gboolean process_schema(struct thread_data * td){
       char *filename;
       if (restore) {
         filename= job->data.restore_job->filename;
-        execute_use_if_needs_to(td, job->use_database, "Restoring table structure");
+//        execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring table structure");
         trace("%s -> %s: %s", qname, ft2str(ft), filename);
       } else
         trace("%s -> %s", qname, jtype2str(job->type));
@@ -192,7 +192,7 @@ gboolean process_schema(struct thread_data * td){
         td= schema_td; /* we also sending to ourselves and upper loop of worker_schema_thread() will send us to SCHEMA_TABLE/JOB_SHUTDOWN */
         for (n = 0; n < max_threads_for_schema_creation; n++, td++) {
           trace("table_queue <- JOB_SHUTDOWN");
-          g_async_queue_push(td->conf->table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+          g_async_queue_push(td->conf->table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
           trace("refresh_db_queue2 <- %s (second round)", ft2str(SCHEMA_TABLE));
           if (!postpone_load || n < max_threads_for_schema_creation - 1)
             g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
@@ -213,34 +213,37 @@ static GMutex *init_connection_mutex=NULL;
 
 void *worker_schema_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_connection_mutex);
-  td->thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_connection_mutex);
-  td->current_database=NULL;
+//  g_mutex_lock(init_connection_mutex);
+//  td->connection_data.thrconn = mysql_init(NULL);
+//  g_mutex_unlock(init_connection_mutex);
+//  td->connection_data.current_database=NULL;
 
-  m_connect(td->thrconn);
+//  m_connect(td->connection_data.thrconn);
 
-  execute_gstring(td->thrconn, set_session);
+//  execute_gstring(td->connection_data.thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
+/*
   if (db){
-    td->current_database=database_db;
-    if (execute_use(td)){
-      m_critical("S-Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
+    td->connection_data.current_database=database_db;
+    if (execute_use(&(td->connection_data))){
+      m_critical("S-Thread %d: Error switching to database `%s` when initializing", td->connection_data.thread_id, td->connection_data.current_database);
     }
   }
+*/
 
-  set_thread_name("S%02u", td->thread_id);
-  message("S-Thread %u: Starting import", td->thread_id);
+//  set_thread_name("S%02u", td->connection_data.thread_id);
+//  message("S-Thread %u: Starting import", td->connection_data.thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_schema(td);
   }
-  message("S-Thread %u: Import completed", td->thread_id);
-
-  if (td->thrconn)
-    mysql_close(td->thrconn);
+//  message("S-Thread %u: Import completed", td->connection_data.thread_id);
+  message("S-Thread: Import completed");
+/*  if (td->connection_data.thrconn)
+    mysql_close(td->connection_data.thrconn);
   mysql_thread_end();
+*/
   return NULL;
 }
 
@@ -254,9 +257,7 @@ void initialize_worker_schema(struct configuration *conf){
   schema_td = g_new(struct thread_data, max_threads_for_schema_creation);
   g_message("Initializing initialize_worker_schema");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
-    schema_td[n].conf = conf;
-    schema_td[n].thread_id = n + 1 + num_threads;
-    schema_td[n].status=WAITING;
+    initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
     schema_threads[n] =
         g_thread_create((GThreadFunc)worker_schema_thread, &schema_td[n], TRUE, NULL);
   }

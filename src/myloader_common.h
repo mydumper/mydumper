@@ -25,8 +25,10 @@
 #include <stdio.h> 
 #include "common.h"
 //guint execute_use(struct thread_data *td, const gchar * msg);
-gboolean execute_use(struct thread_data *td);
-void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg);
+//gboolean execute_use(struct thread_data *td);
+gboolean execute_use(struct connection_data *cd);
+//void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg);
+void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg);
 enum file_type get_file_type (const char * filename);
 struct database * get_db_hash(gchar *k, gchar *v);
 //struct database * db_hash_insert(gchar *k, gchar *v);
@@ -56,4 +58,5 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
 void change_master(GKeyFile * kf,gchar *group, GString *s);
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
+void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt);
 #endif

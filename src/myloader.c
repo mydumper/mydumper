@@ -154,31 +154,23 @@ void show_dbt(void* key, void* dbt, void *total){
   }
 
 void create_database(struct thread_data *td, gchar *database) {
-  gchar *query = NULL;
 
   const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql", database);
-  const gchar *filenamegz =
       g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
-  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql",
-                                          directory, database);
-  const gchar *filepathgz = g_strdup_printf("%s/%s-schema-create.sql%s",
+  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql%s",
                                             directory, database, exec_per_thread_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filename, TRUE));
-  } else if (g_file_test(filepathgz, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, database, NULL, filenamegz, TRUE));
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, filename, TRUE, NULL));
   } else {
-    query = g_strdup_printf("CREATE DATABASE IF NOT EXISTS `%s`", database);
-    if (!m_query(td->thrconn, query, m_warning, "Fail to create database: %s", database))
+    GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
+    g_string_append_printf(data,"`%s`", database);
+    if (! restore_data_in_gstring_extended(NULL, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
+	      //	    m_query(td->connection_data.thrconn, query, m_warning, "Fail to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
-//    if (mysql_query(td->thrconn, query)){
-//      g_warning("Fail to create database: %s", database);
-//    }
+    g_string_free(data, TRUE);
   }
 
-  g_free(query);
   return;
 }
 
@@ -377,21 +369,14 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
-  // TODO: we need to set the variables in the initilize session varibles, not from:
-//  if (mysql_query(conn, "SET SESSION wait_timeout = 2147483")) {
-//    g_warning("Failed to increase wait_timeout: %s", mysql_error(conn));
-//  }
-
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
       g_message("Disabling redologs");
       m_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", m_critical, "DISABLE INNODB REDO LOG failed");
-//      mysql_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG");
     }else{
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-//  mysql_query(conn, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/");
   // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
@@ -418,12 +403,10 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  initialize_connection_pool();
   struct thread_data t;
-  t.thread_id = 0;
-  t.conf = &conf; // TODO: if conf is singleton it must be accessed as global variable
-  t.thrconn = conn;
-  t.current_database=NULL;
-  t.status=WAITING;
+  initialize_thread_data(&t, &conf, WAITING, 0, NULL);
+//  t.connection_data.thrconn = conn;
 
   if (database_db){
     create_database(&t, database_db->real_database);
