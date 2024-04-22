@@ -45,10 +45,8 @@ extern GAsyncQueue *data_queue;
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
 void *loader_thread(struct thread_data *td);
-static GMutex *init_mutex=NULL;
 
 void initialize_loader_threads(struct configuration *conf){
-  init_mutex = g_mutex_new();
   guint n=0;
   threads = g_new(GThread *, num_threads);
   loader_td = g_new(struct thread_data, num_threads);
@@ -151,32 +149,13 @@ void *process_loader_thread(struct thread_data * td) {
 
 void *loader_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_mutex);
-//  td->connection_data.thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_mutex);
-//  td->connection_data.current_database=NULL;
-
-//  m_connect(td->connection_data.thrconn);
-//  g_async_queue_push(td->connection_pool,&(td->connection_data));
-
-//  execute_gstring(td->connection_data.thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
-/*  if (db){
-    td->connection_data.current_database=database_db;
-    if (execute_use(&(td->connection_data))){
-      m_critical("Thread %d: Error switching to database `%s` when initializing", td->connection_data.thread_id, td->connection_data.current_database);
-    }
-  }
-*/
-//  set_thread_name("T%02u", td->connection_data.thread_id);
-//  trace("Thread %u: Starting import", td->connection_data.thread_id);
+  set_thread_name("T%02u", td->thread_id);
+  trace("Thread %u: Starting import", td->thread_id);
   process_loader_thread(td);
 
-//  if (td->connection_data.thrconn)
-//    mysql_close(td->connection_data.thrconn);
-//  mysql_thread_end();
-//  trace("Thread %u: ending", td->connection_data.thread_id);
+  trace("Thread %u: ending", td->thread_id);
   return NULL;
 }
 

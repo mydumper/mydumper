@@ -162,6 +162,7 @@ struct database * get_db_hash(gchar *filename, gchar *name){
     g_hash_table_insert(db_hash, filename, d);
     if (g_strcmp0(filename,name))
       g_hash_table_insert(db_hash, g_strdup(name), d);
+    d=g_hash_table_lookup(db_hash, name);
   }else{
     if (filename != name){
       d->name=g_strdup(name);
@@ -225,7 +226,7 @@ gboolean execute_use(struct connection_data *cd){
 }
 
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg){
-  if ( database != NULL && db == NULL ){
+  if ( database != NULL && (db == NULL || cd->current_database==NULL)){
     if (cd->current_database==NULL || g_strcmp0(database->real_database, cd->current_database->real_database) != 0){
       cd->current_database=database;
       if (execute_use(cd)){

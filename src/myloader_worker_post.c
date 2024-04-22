@@ -39,7 +39,6 @@
 
 GThread **post_threads = NULL;
 struct thread_data *post_td = NULL;
-static GMutex *init_connection_mutex=NULL;
 void *worker_post_thread(struct thread_data *td);
 GMutex *sync_mutex;
 GMutex *sync_mutex1;
@@ -51,7 +50,6 @@ guint sync_threads_remaining2;
 void initialize_post_loding_threads(struct configuration *conf){
   guint n=0;
 //  post_mutex = g_mutex_new();
-  init_connection_mutex = g_mutex_new();
   post_threads = g_new(GThread *, max_threads_for_post_creation);
   post_td = g_new(struct thread_data, max_threads_for_post_creation);
   sync_threads_remaining=max_threads_for_post_creation;
@@ -83,54 +81,32 @@ void sync_threads(guint *counter, GMutex *mutex){
 
 void *worker_post_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_connection_mutex);
-//  td->connection_data.thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_connection_mutex);
-//  td->connection_data.current_database=NULL;
 
-//  m_connect(td->connection_data.thrconn);
-
-//  execute_gstring(td->connection_data.thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-/*
-  if (db){
-    td->connection_data.current_database=database_db;
-    if (execute_use(&(td->connection_data))){
-      m_critical("Thread %u: Error switching to database `%s` when initializing", td->connection_data.thread_id, td->connection_data.current_database);
-    }
-  }
-  */  
   gboolean cont=TRUE;
   struct control_job *job = NULL;
 
-//  set_thread_name("T%02u", td->connection_data.thread_id);
-//  g_message("Thread %u: Starting post import task over table", td->connection_data.thread_id);
+  set_thread_name("T%02u", td->thread_id);
+  g_message("Thread %u: Starting post import task over table", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
-//    execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring post table");
     cont=process_job(td, job, NULL);
   }
 
-//  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->connection_data.thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
-//    execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring post tasks");
     cont=process_job(td, job, NULL);
   }
   sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
-//    execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring view tasks");
     cont=process_job(td, job, NULL);
   }
 
-//  if (td->connection_data.thrconn)
-//    mysql_close(td->connection_data.thrconn);
-//  mysql_thread_end();
-//  g_debug("Thread %u: ending", td->connection_data.thread_id);
+  trace("Thread %u: ending", td->thread_id);
   return NULL;
 }
 

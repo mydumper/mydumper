@@ -213,37 +213,16 @@ static GMutex *init_connection_mutex=NULL;
 
 void *worker_schema_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-//  g_mutex_lock(init_connection_mutex);
-//  td->connection_data.thrconn = mysql_init(NULL);
-//  g_mutex_unlock(init_connection_mutex);
-//  td->connection_data.current_database=NULL;
 
-//  m_connect(td->connection_data.thrconn);
-
-//  execute_gstring(td->connection_data.thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
-/*
-  if (db){
-    td->connection_data.current_database=database_db;
-    if (execute_use(&(td->connection_data))){
-      m_critical("S-Thread %d: Error switching to database `%s` when initializing", td->connection_data.thread_id, td->connection_data.current_database);
-    }
-  }
-*/
-
-//  set_thread_name("S%02u", td->connection_data.thread_id);
-//  message("S-Thread %u: Starting import", td->connection_data.thread_id);
+  set_thread_name("S%02u", td->thread_id);
+  message("S-Thread %u: Starting import", td->thread_id);
   gboolean cont=TRUE;
   while (cont){
     cont=process_schema(td);
   }
-//  message("S-Thread %u: Import completed", td->connection_data.thread_id);
-  message("S-Thread: Import completed");
-/*  if (td->connection_data.thrconn)
-    mysql_close(td->connection_data.thrconn);
-  mysql_thread_end();
-*/
+  message("S-Thread %u: Import completed", td->thread_id);
   return NULL;
 }
 

@@ -48,12 +48,13 @@ struct connection_data *new_connection_data(guint n){
   cd->current_database=NULL;
   cd->thread_id=n;
   m_connect(cd->thrconn);
-  if (database_db){
+/*  if (!database_db){
     cd->current_database=database_db;
     if (execute_use(cd)){
-      m_critical("S-Thread %d: Error switching to database `%s` when initializing", cd->thread_id, cd->current_database);
+      m_critical("S-Thread %d: Error switching to database `%s` when initializing", cd->thread_id, cd->current_database->real_database);
     }
   }
+  */
   cd->ready=g_async_queue_new();
   cd->queue=NULL;
   execute_gstring(cd->thrconn, set_session);

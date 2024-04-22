@@ -165,7 +165,7 @@ void create_database(struct thread_data *td, gchar *database) {
   } else {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);
-    if (! restore_data_in_gstring_extended(NULL, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
+    if (! restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
 	      //	    m_query(td->connection_data.thrconn, query, m_warning, "Fail to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
     g_string_free(data, TRUE);
@@ -215,10 +215,6 @@ int main(int argc, char *argv[]) {
   initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
 
-  if (db == NULL && source_db != NULL) {
-    db = g_strdup(source_db);
-  }
-
   context = load_contex_entries();
 
   gchar ** tmpargv=g_strdupv(argv);
@@ -227,6 +223,10 @@ int main(int argc, char *argv[]) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
   }
   g_strfreev(tmpargv);
+
+  if (db == NULL && source_db != NULL) {
+    db = g_strdup(source_db);
+  }
 
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
@@ -404,12 +404,12 @@ int main(int argc, char *argv[]) {
   }
 
   initialize_connection_pool();
-  struct thread_data t;
-  initialize_thread_data(&t, &conf, WAITING, 0, NULL);
+  struct thread_data *t=g_new(struct thread_data,1);
+  initialize_thread_data(t, &conf, WAITING, 0, NULL);
 //  t.connection_data.thrconn = conn;
 
   if (database_db){
-    create_database(&t, database_db->real_database);
+    create_database(t, database_db->real_database);
     database_db->schema_state=CREATED;
   }
 
