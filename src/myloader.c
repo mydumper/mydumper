@@ -438,6 +438,14 @@ int main(int argc, char *argv[]) {
   }else{
     process_directory(&conf);
   }
+  GList * tl=conf.table_list;
+  while (tl != NULL){
+    if(((struct db_table *)(tl->data))->max_connections_per_job==1){
+      ((struct db_table *)(tl->data))->max_connections_per_job=0;
+    }
+    tl=tl->next;
+  }
+
   wait_schema_worker_to_finish();
   wait_loader_threads_to_finish();
   create_index_shutdown_job(&conf);
@@ -456,7 +464,6 @@ int main(int argc, char *argv[]) {
   conf.data_queue=NULL;
 
   gboolean checksum_ok=TRUE;
-  GList * tl=conf.table_list;
   while (tl != NULL){
     checksum_ok&=checksum_dbt(tl->data, conn);
     tl=tl->next;

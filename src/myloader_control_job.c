@@ -254,7 +254,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
 
 //      g_message("DB: %s Table: %s checking size %d", dbt->database->real_database,dbt->real_table, g_list_length(dbt->restore_job_list));
     if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
-      if (dbt->current_threads >= 1 ){ //dbt->max_threads ){
+      if (dbt->current_threads >= 1){ //dbt->max_threads ){
         giveup=FALSE;
         g_mutex_unlock(dbt->mutex);
         continue;
@@ -413,8 +413,8 @@ void *control_job_thread(struct configuration *conf){
           trace("Giving up...");
           trace("here_is_your_job <- %s", ft2str(SHUTDOWN));
           g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
-          trace("refresh_db_queue <- %s", ft2str(THREAD));
-          g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));            
+//          trace("refresh_db_queue <- %s", ft2str(THREAD));
+//          g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));            
         }else{
           trace("Thread will be waiting");
           if (threads_waiting<_num_threads)

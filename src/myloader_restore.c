@@ -74,12 +74,14 @@ void initialize_connection_pool(){
   struct connection_data *cd=NULL;
   struct io_restore_result *iors=NULL;
   for (n = 0; n < num_threads; n++) {
-    g_async_queue_push(free_results_queue, new_statement());
     cd=new_connection_data(n); 
     g_async_queue_push(connection_pool,cd);
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
     g_thread_create((GThreadFunc)restore_thread, cd, TRUE, NULL);
+  }
+  for (n = 0; n < 2*num_threads; n++) {
+    g_async_queue_push(free_results_queue, new_statement());
   }
 }
 
@@ -333,14 +335,20 @@ void assing_statement(struct statement *ir, gchar *stmt, guint preline, gboolean
 }
 
 
-guint process_result_vstatement(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, va_list args){
-  *ir=g_async_queue_pop(get_insert_result_queue);
+guint process_result_vstatement_pop(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, va_list args, void * g_async_queue_pop_fun(GAsyncQueue *) ){
+  *ir=g_async_queue_pop_fun(get_insert_result_queue);
+  if (*ir==NULL)
+    return 0;
   if ((*ir)->kind_of_statement!=CLOSE && (*ir)->result>0){
     gchar *c=g_strdup_vprintf(fmt,args);
     log_fun("%s: %s (%d)", c, (*ir)->error, (*ir)->error_number);
     g_free(c);
   }
   return (*ir)->result;
+}
+
+guint process_result_vstatement(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, va_list args){
+  return process_result_vstatement_pop(get_insert_result_queue,ir,log_fun,fmt,args,g_async_queue_pop);
 }
 
 guint process_result_statement(GAsyncQueue * get_insert_result_queue, struct statement **ir, void log_fun(const char *, ...) , const char *fmt, ...){
@@ -372,10 +380,14 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
   gchar *load_data_fifo_filename=NULL;
   gchar *new_load_data_fifo_filename=NULL;
   struct connection_data *cd=wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database );
+  guint i=0;
+//  GAsyncQueue *local_result_statement_queue=g_async_queue_new();
+
+//  g_async_queue_push(local_result_statement_queue,ir);
+
   struct statement *ir=g_async_queue_pop(free_results_queue);
-  GList *list_of_ir=NULL;
-  list_of_ir=g_list_append(list_of_ir,ir);
-  g_assert(ir->kind_of_statement!=CLOSE);
+  gboolean results_added=FALSE;
+  //  g_assert(ir->kind_of_statement!=CLOSE);
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -383,16 +395,29 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
           remove_definer(data);
         }
         if ( g_strrstr_len(data->str,6,"INSERT")){
-          if (request_another_connection(td, cd->queue, cd->transaction, use_database)){
-            struct statement *another_ir=g_async_queue_pop(free_results_queue);
-            g_async_queue_push(cd->queue->result, initialize_statement(another_ir));
-            list_of_ir=g_list_prepend(list_of_ir,another_ir);
-          }
-          assing_statement(ir, data->str, preline, FALSE, INSERT);
+          request_another_connection(td, cd->queue, cd->transaction, use_database);
+          if (!results_added){
+            results_added=TRUE;
+            struct statement * other_ir=NULL;
+            for(i=0;i<7;i++){
+              other_ir=g_async_queue_pop(free_results_queue);
+              g_async_queue_push(cd->queue->result,initialize_statement(other_ir));
+            }
+          } 
+        //  assing_statement(ir, data->str, preline, FALSE, INSERT);
+          initialize_statement(ir);
+          GString *tmp=data;
+          data=ir->buffer;
+          ir->buffer=tmp;
+          ir->preline=preline;
+          ir->is_schema=FALSE;
+          ir->kind_of_statement=INSERT;
+
           g_async_queue_push(cd->queue->restore, ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
+//          ir=g_async_queue_pop(local_result_statement_queue);
           GString *new_data = NULL;
           gchar *from = g_strstr_len(data->str, -1, "'");
           from++;
@@ -463,16 +488,15 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
     }
   }
   struct io_restore_result *queue= cd->queue;
-  guint i=td->granted_connections-1;
-  for(;i>0;i--){
-    process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
+  g_async_queue_push(free_results_queue,ir);
+  if (results_added){
+    for(i=0;i<7;i++){
+      process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
+  //    g_assert(ir->kind_of_statement!=CLOSE);
+      g_async_queue_push(free_results_queue,ir);
+    }
   }
-  GList * loir = list_of_ir;
-  while(loir){
-    g_async_queue_push(free_results_queue,loir->data);
-    loir=loir->next;
-  }
-  g_list_free(list_of_ir);
+
   g_assert(g_async_queue_length(queue->result)==0);
   for(;td->granted_connections>0;td->granted_connections--){
     g_async_queue_push(queue->restore,&release_connection_statement);
