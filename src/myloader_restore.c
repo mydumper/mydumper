@@ -80,7 +80,7 @@ void initialize_connection_pool(){
     g_async_queue_push(restore_queues, iors);
     g_thread_create((GThreadFunc)restore_thread, cd, TRUE, NULL);
   }
-  for (n = 0; n < 2*num_threads; n++) {
+  for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
   }
 }
