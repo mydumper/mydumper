@@ -137,6 +137,7 @@ struct db_table {
   GList * restore_job_list;
   guint current_threads;
   guint max_threads;
+  guint max_connections_per_job;
   guint retry_count;
   GMutex *mutex;
   GString *indexes;
