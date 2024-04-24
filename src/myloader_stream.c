@@ -26,7 +26,7 @@ GThread *stream_thread = NULL;
 void *process_stream();
 
 void initialize_stream (struct configuration *c){
-  stream_thread = g_thread_create((GThreadFunc)process_stream, c, TRUE, NULL);
+  stream_thread = g_thread_new("myloader_stream",(GThreadFunc)process_stream, c);
 }
 
 void wait_stream_to_finish(){

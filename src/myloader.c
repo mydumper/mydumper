@@ -281,12 +281,10 @@ int main(int argc, char *argv[]) {
   if (pmm){
 
     g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
-    GError *serror;
     pmmthread =
-        g_thread_create(pmm_thread, &conf, FALSE, &serror);
+        g_thread_new("myloader_pmm",pmm_thread, &conf);
     if (pmmthread == NULL) {
-      m_critical("Could not create pmm thread: %s", serror->message);
-      g_error_free(serror);
+      m_critical("Could not create pmm thread");
     }
   }
 //  initialize_job(purge_mode_str);
@@ -341,12 +339,10 @@ int main(int argc, char *argv[]) {
   initialize_common();
   initialize_connection(MYLOADER);
   initialize_regex(NULL);
-  GError *serror;
   GThread *sthread =
-      g_thread_create(signal_thread, &conf, FALSE, &serror);
+      g_thread_new("myloader_signal",signal_thread, &conf);
   if (sthread == NULL) {
-    m_critical("Could not create signal thread: %s", serror->message);
-    g_error_free(serror);
+    m_critical("Could not create signal thread");
   }
 
   MYSQL *conn;

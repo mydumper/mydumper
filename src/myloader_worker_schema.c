@@ -238,7 +238,7 @@ void initialize_worker_schema(struct configuration *conf){
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
     schema_threads[n] =
-        g_thread_create((GThreadFunc)worker_schema_thread, &schema_td[n], TRUE, NULL);
+        g_thread_new("myloader_schema",(GThreadFunc)worker_schema_thread, &schema_td[n]);
   }
 }
 

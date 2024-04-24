@@ -60,7 +60,7 @@ void initialize_control_job (struct configuration *conf){
   cjt_mutex= g_mutex_new();
   cjt_cond= g_cond_new();
 //  give_me_another_job_queue = g_async_queue_new();
-  control_job_t = g_thread_create((GThreadFunc)control_job_thread, conf, TRUE, NULL);
+  control_job_t = g_thread_new("myloader_ctr",(GThreadFunc)control_job_thread, conf);
 
 //  index_threads_counter = 0;
 }
@@ -200,12 +200,13 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   gboolean giveup = TRUE;
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
-//  GList * next = NULL;
   struct restore_job *job = NULL;
 //  g_debug("Elements in table_list: %d",g_list_length(conf->table_list));
 //  We are going to check every table and see if there is any missing job
+  struct db_table * dbt;
   while (iter != NULL){
-    struct db_table * dbt = iter->data;
+    trace("Iter");
+    dbt = iter->data;
     if (dbt->database->schema_state == NOT_FOUND){
       iter=iter->next;
       /*
@@ -221,18 +222,13 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }
 //    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->real_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
     if (dbt->schema_state >= DATA_DONE ||
-        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence)))
-    {
-//          g_message("DB: %s Table: %s Schema State: %d data done?", dbt->database->real_database,dbt->real_table, dbt->schema_state);
+        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
       trace("%s.%s done: %s, voting for finish", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
       iter=iter->next;
       continue;
     }
-//    g_message("DB: %s Table: %s len: %d state: %d", dbt->database->real_database,dbt->real_table,g_list_length(dbt->restore_job_list), dbt->schema_state);
     g_mutex_lock(dbt->mutex);
-      // I could do some job in here, do we have some for me?
-//      g_message("DB: %s Table: %s max_threads: %d current: %d", dbt->database->real_database,dbt->real_table, dbt->max_threads,dbt->current_threads);
-//      g_mutex_lock(dbt->mutex);
+    // I could do some job in here, do we have some for me?
     if (!resume && dbt->schema_state<CREATED ){
       giveup=FALSE;
       trace("%s.%s not yet created: %s, waiting", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
@@ -243,31 +239,25 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
 
       // TODO: can we do without double check (not under and under dbt->mutex)?
     if (dbt->schema_state >= DATA_DONE ||
-        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence)))
-    {
-//        g_message("DB: %s Table: %s DATA DONE %d", dbt->database->real_database,dbt->real_table, dbt->schema_state);
+        (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
       trace("%s.%s done just now: %s, voting for finish", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
       iter=iter->next;
       g_mutex_unlock(dbt->mutex);
       continue;
     }
 
-//      g_message("DB: %s Table: %s checking size %d", dbt->database->real_database,dbt->real_table, g_list_length(dbt->restore_job_list));
     if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
       if (dbt->current_threads >= 1){ //dbt->max_threads ){
         giveup=FALSE;
+        iter=iter->next;
         g_mutex_unlock(dbt->mutex);
         continue;
       }
-        // We found a job that we can process!
+      // We found a job that we can process!
       job = dbt->restore_job_list->data;
-//        GList * next = dbt->restore_job_list->next;
       GList * current = dbt->restore_job_list;
       dbt->restore_job_list = dbt->restore_job_list->next;
       g_list_free_1(current);
-        //dbt->restore_job_list=g_list_remove_link(dbt->restore_job_list,dbt->restore_job_list);
-//        g_list_free_1(dbt->restore_job_list);
-//        dbt->restore_job_list = next;
       dbt->current_threads++;
       g_mutex_unlock(dbt->mutex);
       giveup=FALSE;
@@ -288,14 +278,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
           trace("%s.%s skipping indexes, voting for finish", dbt->database->real_database, dbt->real_table);
         }
       }
-//        g_message("DB: %s Table: %s no more jobs in it", dbt->database->real_database,dbt->real_table);
     }
-/*      if (intermediate_queue_ended_local){
-        dbt->completed=TRUE;
-        create_index_job(td->conf, dbt, td->thread_id);
-      }
-*/
-//      g_mutex_unlock(dbt->mutex);
+    
     g_mutex_unlock(dbt->mutex);
     iter=iter->next;
   }

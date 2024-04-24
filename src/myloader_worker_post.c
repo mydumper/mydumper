@@ -65,7 +65,7 @@ void initialize_post_loding_threads(struct configuration *conf){
   for (n = 0; n < max_threads_for_post_creation; n++) {
     initialize_thread_data(&(post_td[n]), conf, WAITING, n + 1 + num_threads + max_threads_for_schema_creation + max_threads_for_index_creation, NULL);
     post_threads[n] =
-        g_thread_create((GThreadFunc)worker_post_thread, &post_td[n], TRUE, NULL);
+        g_thread_new("myloader_post",(GThreadFunc)worker_post_thread, &post_td[n]);
   }
 }
 

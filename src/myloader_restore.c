@@ -78,7 +78,7 @@ void initialize_connection_pool(){
     g_async_queue_push(connection_pool,cd);
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
-    g_thread_create((GThreadFunc)restore_thread, cd, TRUE, NULL);
+    g_thread_new("myloader_conn",(GThreadFunc)restore_thread, cd);
   }
   for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
@@ -159,11 +159,13 @@ struct connection_data *wait_for_available_restore_thread(struct thread_data *td
 }
 
 
-gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database){
+gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header){
   if (td->granted_connections < max_threads_per_table){
+    g_assert(header);
     struct connection_data *cd=g_async_queue_try_pop(connection_pool);
     if(cd){
       setup_connection(cd,td,io_restore_result,start_transaction, use_database);
+      execute_gstring(cd->thrconn,header);
       return TRUE;
     }
   }
@@ -384,10 +386,10 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
 //  GAsyncQueue *local_result_statement_queue=g_async_queue_new();
 
 //  g_async_queue_push(local_result_statement_queue,ir);
-
   struct statement *ir=g_async_queue_pop(free_results_queue);
   gboolean results_added=FALSE;
   //  g_assert(ir->kind_of_statement!=CLOSE);
+  GString *header=g_string_sized_new(256);
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
@@ -395,7 +397,7 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
           remove_definer(data);
         }
         if ( g_strrstr_len(data->str,6,"INSERT")){
-          request_another_connection(td, cd->queue, cd->transaction, use_database);
+          request_another_connection(td, cd->queue, cd->transaction, use_database, header);
           if (!results_added){
             results_added=TRUE;
             struct statement * other_ir=NULL;
@@ -404,15 +406,15 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
               g_async_queue_push(cd->queue->result,initialize_statement(other_ir));
             }
           } 
-        //  assing_statement(ir, data->str, preline, FALSE, INSERT);
-          initialize_statement(ir);
+          assing_statement(ir, data->str, preline, FALSE, INSERT);
+/*          initialize_statement(ir);
           GString *tmp=data;
           data=ir->buffer;
           ir->buffer=tmp;
           ir->preline=preline;
           ir->is_schema=FALSE;
           ir->kind_of_statement=INSERT;
-
+*/
           g_async_queue_push(cd->queue->restore, ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
@@ -468,6 +470,11 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
           else
             m_remove(NULL, load_data_filename);
         }else{
+          if (g_strrstr_len(data->str,3,"/*!")){
+            g_string_append(header,data->str);
+          }else{
+            header=NULL;
+          }
           assing_statement(ir,data->str, preline, is_schema, OTHER);
           g_async_queue_push(cd->queue->restore,ir);
           ir=NULL;
