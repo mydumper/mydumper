@@ -375,7 +375,9 @@ void *control_job_thread(struct configuration *conf){
   }
   trace("Thread control_job_thread started");
   while(cont){
-    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(refresh_db_queue)); 
+    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_timeout_pop(refresh_db_queue,10000000));
+    if (ft==GPOINTER_TO_INT(NULL))
+      ft=THREAD;
     trace("refresh_db_queue -> %s (%u loaders waiting)", ft2str(ft), threads_waiting);
     switch (ft){
     case DATA:
