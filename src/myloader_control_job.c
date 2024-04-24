@@ -411,8 +411,11 @@ void *control_job_thread(struct configuration *conf){
         trace("No job available");
         if (intermediate_queue_ended_local && giveup){
           trace("Giving up...");
-          trace("here_is_your_job <- %s", ft2str(SHUTDOWN));
-          g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+          guint i;
+          for (i=0;i<num_threads;i++){
+            trace("here_is_your_job <- %s", ft2str(SHUTDOWN));
+            g_async_queue_push(here_is_your_job, GINT_TO_POINTER(SHUTDOWN));
+          }
 //          trace("refresh_db_queue <- %s", ft2str(THREAD));
 //          g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));            
         }else{
