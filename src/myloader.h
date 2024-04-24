@@ -47,7 +47,7 @@ struct io_restore_result{
 struct connection_data{
   MYSQL *thrconn;
   struct database *current_database;
-  guint thread_id;
+  long unsigned int thread_id;
   struct io_restore_result *queue;
   GAsyncQueue * ready;
   gboolean transaction;

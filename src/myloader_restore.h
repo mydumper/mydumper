@@ -26,6 +26,7 @@ struct statement{
   gboolean is_schema;
   gchar *error;
   guint error_number;
+//  struct thread_data *td;
 };
 
 void initialize_connection_pool();

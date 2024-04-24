@@ -205,7 +205,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
 //  We are going to check every table and see if there is any missing job
   struct db_table * dbt;
   while (iter != NULL){
-    trace("Iter");
     dbt = iter->data;
     if (dbt->database->schema_state == NOT_FOUND){
       iter=iter->next;
