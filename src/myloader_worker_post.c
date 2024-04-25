@@ -39,7 +39,6 @@
 
 GThread **post_threads = NULL;
 struct thread_data *post_td = NULL;
-static GMutex *init_connection_mutex=NULL;
 void *worker_post_thread(struct thread_data *td);
 GMutex *sync_mutex;
 GMutex *sync_mutex1;
@@ -51,7 +50,6 @@ guint sync_threads_remaining2;
 void initialize_post_loding_threads(struct configuration *conf){
   guint n=0;
 //  post_mutex = g_mutex_new();
-  init_connection_mutex = g_mutex_new();
   post_threads = g_new(GThread *, max_threads_for_post_creation);
   post_td = g_new(struct thread_data, max_threads_for_post_creation);
   sync_threads_remaining=max_threads_for_post_creation;
@@ -65,11 +63,9 @@ void initialize_post_loding_threads(struct configuration *conf){
   g_mutex_lock(sync_mutex2);
 
   for (n = 0; n < max_threads_for_post_creation; n++) {
-    post_td[n].conf = conf;
-    post_td[n].thread_id = n + 1 + num_threads + max_threads_for_schema_creation + max_threads_for_index_creation;
-    post_td[n].status = WAITING;
+    initialize_thread_data(&(post_td[n]), conf, WAITING, n + 1 + num_threads + max_threads_for_schema_creation + max_threads_for_index_creation, NULL);
     post_threads[n] =
-        g_thread_create((GThreadFunc)worker_post_thread, &post_td[n], TRUE, NULL);
+        g_thread_new("myloader_post",(GThreadFunc)worker_post_thread, &post_td[n]);
   }
 }
 
@@ -85,23 +81,8 @@ void sync_threads(guint *counter, GMutex *mutex){
 
 void *worker_post_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_connection_mutex);
-  td->thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_connection_mutex);
-  td->current_database=NULL;
 
-  m_connect(td->thrconn);
-
-  execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-
-  if (db){
-    td->current_database=database_db;
-    if (execute_use(td)){
-      m_critical("Thread %u: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
-    }
-  }
-    
   gboolean cont=TRUE;
   struct control_job *job = NULL;
 
@@ -110,38 +91,31 @@ void *worker_post_thread(struct thread_data *td) {
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring post table");
     cont=process_job(td, job, NULL);
   }
 
-//  g_message("Thread %d: Starting post import task: triggers, procedures and triggers", td->thread_id);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring post tasks");
     cont=process_job(td, job, NULL);
   }
   sync_threads(&sync_threads_remaining2,sync_mutex2);
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->view_queue);
-    execute_use_if_needs_to(td, job->use_database, "Restoring view tasks");
     cont=process_job(td, job, NULL);
   }
 
-  if (td->thrconn)
-    mysql_close(td->thrconn);
-  mysql_thread_end();
-  g_debug("Thread %u: ending", td->thread_id);
+  trace("Thread %u: ending", td->thread_id);
   return NULL;
 }
 
 void create_post_shutdown_job(struct configuration *conf){
   guint n=0;
   for (n = 0; n < max_threads_for_post_creation; n++) {
-    g_async_queue_push(conf->post_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->post_table_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(conf->view_queue, new_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->post_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->post_table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
+    g_async_queue_push(conf->view_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
   }
 }
 

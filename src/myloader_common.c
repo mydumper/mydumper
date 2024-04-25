@@ -162,6 +162,7 @@ struct database * get_db_hash(gchar *filename, gchar *name){
     g_hash_table_insert(db_hash, filename, d);
     if (g_strcmp0(filename,name))
       g_hash_table_insert(db_hash, g_strdup(name), d);
+    d=g_hash_table_lookup(db_hash, name);
   }else{
     if (filename != name){
       d->name=g_strdup(name);
@@ -213,10 +214,10 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 }
 
 */
-gboolean execute_use(struct thread_data *td){
-  gchar *query = g_strdup_printf("USE `%s`", td->current_database->real_database);
-  if (mysql_query(td->thrconn, query)) {
-//    g_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database, msg);
+gboolean execute_use(struct connection_data *cd){
+  gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
+  if (mysql_query(cd->thrconn, query)) {
+//    g_critical("Thread %d: Error switching to database `%s` %s", cd->thread_id, cd->current_database, msg);
     g_free(query);
     return TRUE;
   }
@@ -224,12 +225,12 @@ gboolean execute_use(struct thread_data *td){
   return FALSE;
 }
 
-void execute_use_if_needs_to(struct thread_data *td, struct database *database, const gchar * msg){
-  if ( database != NULL && db == NULL ){
-    if (td->current_database==NULL || g_strcmp0(database->real_database, td->current_database->real_database) != 0){
-      td->current_database=database;
-      if (execute_use(td)){
-        m_critical("Thread %d: Error switching to database `%s` %s", td->thread_id, td->current_database->real_database, msg);
+void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg){
+  if ( database != NULL && (db == NULL || cd->current_database==NULL)){
+    if (cd->current_database==NULL || g_strcmp0(database->real_database, cd->current_database->real_database) != 0){
+      cd->current_database=database;
+      if (execute_use(cd)){
+        m_critical("Thread %d: Error switching to database `%s` %s", cd->thread_id, cd->current_database->real_database, msg);
       }
     }
   }
@@ -543,3 +544,15 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
   *basename=g_strdup(filename);
   return FALSE;
 }
+
+void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt){
+  td->conf=conf;
+  td->status=status;
+  td->thread_id=thread_id;
+//  td->connection_data.current_database=NULL;
+  td->granted_connections=0;
+  td->dbt=dbt;
+//  td->use_database=NULL;
+}
+
+

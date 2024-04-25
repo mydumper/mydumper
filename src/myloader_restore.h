@@ -15,9 +15,24 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void load_restore_entries(GOptionGroup *main_group);
-int restore_data_from_file(struct thread_data *td, char *database, char *table,
-                  const char *filename, gboolean is_schema);
-int restore_data_in_gstring_by_statement(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
-int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, guint *query_counter);
+enum kind_of_statement { NOT_DEFINED, INSERT, OTHER, CLOSE};
+
+struct statement{
+  guint result;
+  guint preline;
+  GString *buffer;
+  const gchar *filename;
+  enum kind_of_statement kind_of_statement;
+  gboolean is_schema;
+  gchar *error;
+  guint error_number;
+//  struct thread_data *td;
+};
+
+void initialize_connection_pool();
+
+int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
+int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...);
+int restore_data_from_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
+
 void release_load_data_as_it_is_close( gchar * filename );

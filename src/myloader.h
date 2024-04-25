@@ -38,12 +38,32 @@ struct restore_errors {
 struct database;
 
 enum thread_states { WAITING, STARTED, COMPLETED };
-struct thread_data {
-  struct configuration *conf;
+
+struct io_restore_result{
+  GAsyncQueue *restore;
+  GAsyncQueue *result;
+};
+
+struct connection_data{
   MYSQL *thrconn;
   struct database *current_database;
+  long unsigned int thread_id;
+  struct io_restore_result *queue;
+  GAsyncQueue * ready;
+  gboolean transaction;
+};
+
+struct thread_data {
+  struct configuration *conf;
+//  MYSQL *thrconn;
+//  struct database *current_database;
   guint thread_id;
+//  struct connection_data connection_data;
   enum thread_states status;
+  guint granted_connections;
+//  GAsyncQueue *connection_pool;
+  struct db_table*dbt;
+//  struct database* use_database;
 };
 
 struct configuration {
@@ -117,6 +137,7 @@ struct db_table {
   GList * restore_job_list;
   guint current_threads;
   guint max_threads;
+  guint max_connections_per_job;
   guint retry_count;
   GMutex *mutex;
   GString *indexes;

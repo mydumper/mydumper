@@ -45,18 +45,17 @@ extern GAsyncQueue *data_queue;
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
 void *loader_thread(struct thread_data *td);
-static GMutex *init_mutex=NULL;
 
 void initialize_loader_threads(struct configuration *conf){
-  init_mutex = g_mutex_new();
   guint n=0;
   threads = g_new(GThread *, num_threads);
   loader_td = g_new(struct thread_data, num_threads);
+  max_threads_per_table=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
   for (n = 0; n < num_threads; n++) {
-    loader_td[n].conf = conf;
-    loader_td[n].thread_id = n + 1;
+    initialize_thread_data(&(loader_td[n]), conf, WAITING, n + 1, NULL);
     threads[n] =
-        g_thread_create((GThreadFunc)loader_thread, &loader_td[n], TRUE, NULL);
+      g_thread_new("myloader_loader",(GThreadFunc)loader_thread, &loader_td[n]);
+//        g_thread_create((GThreadFunc)loader_thread, &loader_td[n], TRUE, NULL);
     // Here, the ready queue is being used to serialize the connection to the database.
     // We don't want all the threads try to connect at the same time
     g_async_queue_pop(conf->ready);
@@ -67,7 +66,7 @@ gboolean create_index_job(struct configuration *conf, struct db_table * dbt, gui
   message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
   trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
-  g_async_queue_push(conf->index_queue, new_job(JOB_RESTORE,rj,dbt->database));
+  g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;
 }
@@ -121,8 +120,10 @@ void *process_loader_thread(struct thread_data * td) {
       rj = (struct restore_job *)g_async_queue_pop(data_queue);
       dbt = rj->dbt;
       trace("data_queue -> %s: %s.%s, threads %u", rjtype2str(rj->type), dbt->database->real_database, dbt->real_table, dbt->current_threads);
-      job=new_job(JOB_RESTORE,rj, dbt->database);
-      execute_use_if_needs_to(td, job->use_database, "Restoring tables (2)");
+      job=new_control_job(JOB_RESTORE,rj, dbt->database);
+      td->dbt=dbt;
+//      td->use_database=job->use_database;
+//      execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring tables (2)");
       cont=process_job(td, job, NULL);
       g_mutex_lock(dbt->mutex);
       dbt->current_threads--;
@@ -149,32 +150,12 @@ void *process_loader_thread(struct thread_data * td) {
 
 void *loader_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
-  g_mutex_lock(init_mutex);
-  td->thrconn = mysql_init(NULL);
-  g_mutex_unlock(init_mutex);
-  td->current_database=NULL;
-
-  m_connect(td->thrconn);
-
-//  mysql_query(td->thrconn, set_names_statement);
-
-  execute_gstring(td->thrconn, set_session);
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-
-  if (db){
-    td->current_database=database_db;
-    if (execute_use(td)){
-      m_critical("Thread %d: Error switching to database `%s` when initializing", td->thread_id, td->current_database);
-    }
-  }
 
   set_thread_name("T%02u", td->thread_id);
   trace("Thread %u: Starting import", td->thread_id);
   process_loader_thread(td);
 
-  if (td->thrconn)
-    mysql_close(td->thrconn);
-  mysql_thread_end();
   trace("Thread %u: ending", td->thread_id);
   return NULL;
 }
