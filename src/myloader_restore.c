@@ -139,7 +139,7 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 }
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
-  g_message("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
+  trace("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
   cd->transaction=start_transaction;
   if (use_database)
     execute_use_if_needs_to(cd, use_database, "request_another_connection");
