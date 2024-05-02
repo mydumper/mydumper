@@ -554,20 +554,67 @@ gboolean m_remove(gchar * directory, const gchar * filename){
   return TRUE;
 }
 
-gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl){
-  gchar * table_name=g_strdup_printf("%s.%s", database, table);
-  guint i = 0;
-  for (i = 0; tl[i] != NULL; i++) {
-    if (g_ascii_strcasecmp(tl[i], table_name) == 0){
-      g_free(table_name);
+gboolean matchText(const gchar *a, const gchar *b) {
+  guint ai = 0;
+  guint bi = 0;
+  while ( a[ai] != '%' && a[ai] != '\0' && b[bi] != '\0') {
+    if ((a[ai] == '_') || (a[ai] == b[bi])){
+      ai++;
+      bi++;
+    } else if (a[ai] == '\\' && a[ai+1] == '_' && b[bi] == '_') {
+      ai+=2;
+      bi++;
+    } else {
+      return FALSE;
+    }
+  }
+  if (a[ai] == '\0' ) {
+    return b[bi] == '\0';
+  }
+  for (; a[ai] == '%' || a[ai] == '\0';ai++) {
+    if (a[ai] == '\0') {
       return TRUE;
     }
   }
-  g_free(table_name);
+  for (; b[bi] != '\0'; bi++) {
+    if (matchText(a + ai, b + bi)) {
+      return TRUE;
+    }
+  }
   return FALSE;
 }
 
+gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl){
+  gchar * table_name_lower=g_ascii_strdown(g_strdup_printf("%s.%s", database, table),-1);
+  gchar* tb_lower = NULL;
+  gboolean match = FALSE;
+  for (guint i = 0; tl[i] != NULL; i++) {
+    // no need use match text
+    if (g_strrstr(tl[i], "%") == NULL && g_strrstr(tl[i], "_") == NULL) {
+       if (g_ascii_strcasecmp(tl[i], table_name_lower) == 0) {
+         match = TRUE;
+         break;
+       }
+    } else {
+      tb_lower = g_ascii_strdown(tl[i], -1);
+      if (matchText(tb_lower, table_name_lower)) {
+        match = TRUE;
+        break;
+      }
+    } 
+  }
+  g_free(table_name_lower);
+  g_free(tb_lower);
+  return match;
+}
 
+gboolean is_mysql_special_tables(gchar *database, gchar *table){
+  return g_ascii_strcasecmp(database, "mysql") == 0 &&
+        (g_ascii_strcasecmp(table, "general_log") == 0 ||
+         g_ascii_strcasecmp(table, "slow_log") == 0 ||
+         g_ascii_strcasecmp(table, "innodb_index_stats") == 0 ||
+         g_ascii_strcasecmp(table, "innodb_table_stats") == 0);
+}
 
 void m_key_file_merge(GKeyFile *b, GKeyFile *a){
   gsize  group_len = 0, key_len=0;
