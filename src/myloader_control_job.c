@@ -28,7 +28,8 @@
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
 
-gboolean intermediate_queue_ended_local=FALSE;
+gboolean control_job_ended=FALSE;
+gboolean all_jobs_are_enqueued=FALSE;
 gboolean dont_wait_for_schema_create=FALSE;
 /* refresh_db_queue is for data loads */
 GAsyncQueue *refresh_db_queue = NULL, *here_is_your_job=NULL, *data_queue=NULL;
@@ -246,7 +247,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }
 
     if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
-      if (dbt->current_threads >= 1){ //dbt->max_threads ){
+      if (dbt->current_threads >= dbt->max_threads ){
         giveup=FALSE;
         iter=iter->next;
         g_mutex_unlock(dbt->mutex);
@@ -266,7 +267,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
       trace("No remaining jobs on %s.%s", dbt->database->real_database, dbt->real_table); 
-      if (intermediate_queue_ended_local && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
+      if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
         gboolean res= enqueue_index_for_dbt_if_possible(conf,dbt);
 //          create_index_job(conf, dbt, -1);
@@ -335,7 +336,7 @@ void wake_threads_waiting(struct configuration *conf, guint *threads_waiting){
       }
     }
     if (giveup) {
-      if (intermediate_queue_ended_local){
+      if (control_job_ended){
         *threads_waiting=*threads_waiting - 1;
         trace("refresh_db_queue <- %s", ft2str(THREAD));
         g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
@@ -394,8 +395,9 @@ void *control_job_thread(struct configuration *conf){
         g_async_queue_push(here_is_your_job, GINT_TO_POINTER(DATA));
       }else{
         trace("No job available");
-        if (intermediate_queue_ended_local && giveup){
+        if (all_jobs_are_enqueued && giveup){
           trace("Giving up...");
+          control_job_ended = TRUE;
           guint i;
           for (i=0;i<num_threads;i++){
             trace("here_is_your_job <- %s", ft2str(SHUTDOWN));
@@ -412,7 +414,7 @@ void *control_job_thread(struct configuration *conf){
       break;
     case INTERMEDIATE_ENDED:
       enqueue_indexes_if_possible(conf);
-      intermediate_queue_ended_local = TRUE;
+      all_jobs_are_enqueued = TRUE;
       wake_threads_waiting(&threads_waiting);
       break;
     case SHUTDOWN:

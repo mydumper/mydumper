@@ -162,9 +162,9 @@ struct connection_data *wait_for_available_restore_thread(struct thread_data *td
   return cd;
 }
 
-
+extern gboolean control_job_ended;
 gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header){
-  if (td->granted_connections < max_threads_per_table){
+  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && g_list_length(td->dbt->restore_job_list)==0 ){
     g_assert(header);
     struct connection_data *cd=g_async_queue_try_pop(connection_pool);
     if(cd){
