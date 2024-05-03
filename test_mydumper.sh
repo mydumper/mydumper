@@ -313,7 +313,7 @@ DROP DATABASE IF EXISTS myd_test;
 DROP DATABASE IF EXISTS myd_test_no_fk;
 DROP DATABASE IF EXISTS empty_db;" | mysql
   fi
-    rm -rf /tmp/fifodir
+    rm -rf /tmp/fifodir ${myloader_stor_dir} 
     cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
     error=$?
     cat $tmp_myloader_log >> $myloader_log
@@ -321,7 +321,7 @@ DROP DATABASE IF EXISTS empty_db;" | mysql
     if (( $error > 0 ))
     then
       echo "Retrying import due error"
-      rm -rf /tmp/fifodir
+      rm -rf /tmp/fifodir ${myloader_stor_dir}
       cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
       error=$?
       cat $tmp_myloader_log >> $myloader_log
