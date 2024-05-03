@@ -142,11 +142,10 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
 }
 
 
-void show_dbt(void* key, void* dbt, void *total){
-  (void) key;
+void show_dbt(void* _key, void* dbt, void *total){
   (void) dbt;
   (void) total;
-  g_message("Table %s", (char*) key);
+  g_message("Table %s", (char*) _key);
 //  *((guint *)total)= 100;
 //  //    if (((struct db_table*)dbt)->schema_state >= CREATED)
 //  //        *((guint *)total)= *((guint *)total) + 1;
@@ -230,7 +229,6 @@ int main(int argc, char *argv[]) {
 
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
-    exit(0);
   }
 
   if (debug) {
@@ -301,7 +299,8 @@ int main(int argc, char *argv[]) {
       g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
-      m_critical("a directory needs to be specified, see --help\n");
+      if(!help)
+        m_critical("a directory needs to be specified, see --help\n");
     }
   } else {
     directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
@@ -328,6 +327,79 @@ int main(int argc, char *argv[]) {
     create_fifo_dir(fifo_directory);
   }else{
     fifo_directory=directory;
+  }
+
+  if (help){
+    print_string("host", hostname);
+    print_string("user", username);
+    print_string("password", password);
+    print_bool("ask-password",askPassword);
+    print_int("port",port);
+    print_string("socket",socket_path);
+    print_string("protocol", protocol_str);
+    print_bool("compress-protocol",compress_protocol);
+    print_bool("ssl",ssl);
+    print_string("ssl-mode",ssl_mode);
+    print_string("key",key);
+    print_string("cert", cert);
+    print_string("ca",ca);
+    print_string("capath",capath);
+    print_string("cipher",cipher);
+    print_string("tls-version",tls_version);
+    print_list("regex",regex_list);
+    print_string("source-db",source_db);
+
+    print_bool("skip-triggers",skip_triggers);
+    print_bool("skip-post",skip_post);
+    print_bool("no-data",no_data);
+
+    print_string("omit-from-file",tables_skiplist_file);
+    print_string("tables-list",tables_list);
+    print_string("pmm-path",pmm_path);
+    print_string("pmm-resolution",pmm_resolution);
+
+    print_bool("enable-binlog",enable_binlog);
+    print_string("innodb-optimize-keys",innodb_optimize_keys_str);
+    print_bool("no-schemas",no_schemas);
+
+    print_string("purge-mode",purge_mode_str);
+    print_bool("disable-redo-log",disable_redo_log);
+    print_string("checksum",checksum_str);
+    print_bool("overwrite-tables",overwrite_tables);
+    print_bool("overwrite-unsafe",overwrite_unsafe);
+    print_int("retry-count",retry_count);
+    print_bool("serialized-table-creation",serial_tbl_creation);
+    print_bool("stream",stream);
+
+    print_int("max-threads-per-table",max_threads_per_table);
+    print_int("max-threads-for-index-creation",max_threads_for_index_creation);
+    print_int("max-threads-for-post-actions",max_threads_for_post_creation);
+    print_int("max-threads-for-schema-creation",max_threads_for_schema_creation);
+    print_string("exec-per-thread",exec_per_thread);
+    print_string("exec-per-thread-extension",exec_per_thread_extension);
+
+    print_int("rows",rows);
+    print_int("queries-per-transaction",commit_count);
+    print_bool("append-if-not-exist",append_if_not_exist);
+    print_string("set-names",set_names_str);
+
+    print_bool("skip-definer",skip_definer);
+    print_bool("help",help);
+
+    print_string("directory",input_directory);
+    print_string("logfile",logfile);
+
+    print_string("database",db);
+    print_string("quote-character",identifier_quote_character_str);
+    print_bool("resume",resume);
+    print_int("threads",num_threads);
+    print_bool("version",program_version);
+    print_bool("verbose",verbose);
+    print_bool("debug",debug);
+    print_string("defaults-file",defaults_file);
+    print_string("defaults-extra-file",defaults_extra_file);
+    print_string("fifodir",fifo_directory);
+    exit(EXIT_SUCCESS);
   }
 
   g_free(current_dir);

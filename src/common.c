@@ -365,8 +365,8 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
   }
 }
 
-void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value){
-  g_hash_table_insert(set_session_hash, g_utf8_strup(key, strlen(key)), value);
+void set_session_hash_insert(GHashTable * set_session_hash, const gchar *_key, gchar *value){
+  g_hash_table_insert(set_session_hash, g_utf8_strup(key, strlen(_key)), value);
 }
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
@@ -618,14 +618,14 @@ gboolean is_mysql_special_tables(gchar *database, gchar *table){
 
 void m_key_file_merge(GKeyFile *b, GKeyFile *a){
   gsize  group_len = 0, key_len=0;
-  gchar **group = g_key_file_get_groups (a, &group_len), **key=NULL;
+  gchar **group = g_key_file_get_groups (a, &group_len), **_key=NULL;
   
   guint g=0, k=0;
   GError *error=NULL;
   for( g=0; g<group_len; g++ ){
-    key=g_key_file_get_keys(a, group[g], &key_len, &error );
+    _key=g_key_file_get_keys(a, group[g], &key_len, &error );
     for(k=0; k<key_len; k++ ){
-      g_key_file_set_value(b, group[g], key[k], g_key_file_get_value(a, group[g], key[k], &error));
+      g_key_file_set_value(b, group[g], _key[k], g_key_file_get_value(a, group[g], _key[k], &error));
     }
   }
 
@@ -1092,3 +1092,38 @@ void trace(const char *format, ...)
   va_end(args);
   g_debug("%s", msg);
 }
+
+#define WIDTH 40
+
+void print_int(const char*_key, int val){
+  printf("%s%*s= %d\n",_key, WIDTH-(int)(strlen(_key)),"", val);
+}
+
+void print_string(const char*_key, const char *val){
+  if (val)
+    printf("%s%*s= %s\n",_key, WIDTH-(int)(strlen(_key)),"", val);
+  else
+    printf("# %s%*s= ""\n",_key, WIDTH-(int)(strlen(_key)) -2,"");
+}
+
+void print_bool(const char*_key, gboolean val){
+  if (val)
+    printf("%s%*s= TRUE\n",_key, WIDTH-(int)(strlen(_key)),"");
+  else
+    printf("# %s%*s= FALSE\n",_key, WIDTH-(int)(strlen(_key)) - 2 ,"");
+}
+
+void print_list(const char*_key, GList *list){
+  if (list){
+    printf("%s%*s= \"%s\"", _key, WIDTH-(int)(strlen(_key)), "", (gchar *)(list->data));
+    list=list->next;
+    while (list){
+      printf(",\"%s\"", (gchar*)(list->data));
+      list=list->next;
+    }
+    printf("\n");
+  }else{
+    printf("# %s%*s= \"\"\n", _key, WIDTH-(int)(strlen(_key)) - 2, "");
+  }
+}
+
