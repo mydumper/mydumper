@@ -31,6 +31,18 @@ GOptionGroup * load_connection_entries(GOptionContext *context);
 
 extern char *hostname;
 extern char *username;
+extern char *password;
+extern gboolean askPassword;
 extern char *socket_path;
 extern guint port;
+extern char *tls_version; 
+extern char *capath;
+extern char *key;
+extern char *cert;
+extern char *ca;
+extern gboolean ssl;
+extern gchar *ssl_mode;
+extern char *cipher;
+extern gboolean compress_protocol;
+extern char *protocol_str;
 #endif

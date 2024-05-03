@@ -54,9 +54,9 @@ void initialize_common(){
 }
 
 
-gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key){
+gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
   GError *error=NULL;
-  gchar * val=g_key_file_get_value(kf,group,key,&error);
+  gchar * val=g_key_file_get_value(kf,group,_key,&error);
   if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
     g_error_free(error);
     return NULL;

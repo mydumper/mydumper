@@ -31,12 +31,15 @@
 
 extern gboolean enable_binlog;
 
+gchar *innodb_optimize_keys_str=NULL;
+gchar *checksum_str=NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
   if (!strcmp(option_name, "--innodb-optimize-keys")) {
     innodb_optimize_keys = TRUE;
+    innodb_optimize_keys_str=g_strdup(value);
     if (value==NULL){
       innodb_optimize_keys_per_table = TRUE;
       innodb_optimize_keys_all_tables = FALSE;
@@ -65,6 +68,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     g_critical("--quote-character accepts: backtick, bt, `, double_quote, dt, \"");
   } else if (!strcmp(option_name, "--checksum")) {
+    checksum_str=g_strdup(value);
     if (value == NULL || !strcasecmp(value, "FAIL")) {
       checksum_mode= CHECKSUM_FAIL;
       return TRUE;
