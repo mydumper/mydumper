@@ -757,12 +757,16 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
     if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
       return TRUE;
     }
-    if (g_strstr_len(value,9,"NO_DELETE")){
+    if (strlen(value)==9 && g_strstr_len(value,9,"NO_DELETE")){
       no_delete=TRUE;
       return TRUE;
     }
     if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
       no_delete=TRUE;
+      no_stream=TRUE;
+      return TRUE;
+    }
+    if (strlen(value)==9 && g_strstr_len(value,9,"NO_STREAM")){
       no_stream=TRUE;
       return TRUE;
     }

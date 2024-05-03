@@ -125,14 +125,18 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 //                g_message("Writing missing new_lines, initial_pos: %d  line_from: %d", initial_pos, line_from );
                 flush(buffer,initial_pos,line_from-1,file, &total_size);
               }
-
-              if (total_size < b){
-                g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
-                total_size=0;
-              }else if (total_size > b) {
-                m_critical("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+              if (!no_stream){
+                if (total_size < b){
+                  g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+                  total_size=0;
+                }else if (total_size > b) {
+                  m_critical("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
+                }else{
+                  total_size=0;
+                }
               }else{
-                total_size=0;
+                if (total_size>0)
+                  m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
               }
               previous_filename=g_strdup(filename);
               g_free(filename);
@@ -153,9 +157,18 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
 	      previous_filename=NULL;
 	    }
             if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
-              g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
-              file = NULL;
+              if (no_stream){
+                 if (total_size>0)
+                   m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
+                 intermediate_queue_new(filename);
+              }else{
+                g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
+                file = NULL;
+              }
             }else{
+              if (no_stream){
+                m_critical("File %s not found in backup dir when using NO_STREAM.", filename);
+              }
               file = g_fopen(real_filename, "w");
 //              m_write=(void *)&write_file;
               m_close=(void *) &fclose;
@@ -210,7 +223,7 @@ read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFE
   } while (eof == 0);
   if (file) 
     m_close(file);
-  if (filename)
+  if (!no_stream && filename)
     intermediate_queue_new(g_strdup(filename));
   g_free(filename);
   intermediate_queue_end();

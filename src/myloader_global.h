@@ -116,3 +116,4 @@ extern gchar **gzip_decompress_cmd;
 extern struct database *database_db;
 extern gchar *innodb_optimize_keys_str;
 extern gchar *checksum_str;
+extern gboolean no_stream;

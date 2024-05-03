@@ -355,7 +355,7 @@ regex_error:
   struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, "");
   struct control_job * cj = new_control_job(JOB_RESTORE,rj,dbt->database);
 //  g_async_queue_push(conf->table_queue, new_control_job(JOB_RESTORE,rj,dbt->database->real_database));
-  myl_close(filename,infile,FALSE);
+  myl_close(filename,infile,TRUE);
 
   g_string_free(data,TRUE);
 
@@ -609,6 +609,8 @@ void process_metadata_global(const char *file)
     }
     g_free(group);
   }
+
+  m_remove(directory, file);
 }
 
 

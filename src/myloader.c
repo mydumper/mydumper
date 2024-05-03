@@ -164,7 +164,7 @@ void create_database(struct thread_data *td, gchar *database) {
   } else {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);
-    if (! restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
+    if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
 	      //	    m_query(td->connection_data.thrconn, query, m_warning, "Fail to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
     g_string_free(data, TRUE);
@@ -304,14 +304,18 @@ int main(int argc, char *argv[]) {
     }
   } else {
     directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
-    if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
-      if (stream){
+    if (stream){
+      if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
         create_backup_dir(directory,fifo_directory);
       }else{
+        if (!no_stream){
+          m_critical("Backup directory (-d) must not exist when --stream / --stream=TRADITIONAL");
+        }
+      }
+    }else{
+      if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
         m_critical("the specified directory doesn't exists\n");
       }
-    }
-    if (!stream){
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
         m_critical("the specified directory %s is not a mydumper backup",directory);
@@ -562,9 +566,9 @@ int main(int argc, char *argv[]) {
   if (!checksum_ok)
     g_error("Checksum failed");
 
-  if (stream && no_delete == FALSE && input_directory == NULL){
-    m_remove(directory,"metadata");
-    m_remove(directory, "metadata.header");
+  if (stream && no_delete == FALSE ){ //&& input_directory == NULL){
+//    m_remove(directory,"metadata");
+//    m_remove(directory, "metadata.header");
     if (g_rmdir(directory) < 0)
         g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
   }

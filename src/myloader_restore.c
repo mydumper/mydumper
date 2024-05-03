@@ -126,6 +126,7 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
       if (*query_counter == commit_count) {
         *query_counter= 0;
         if (!m_query(cd->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
+          g_warning("Connection %ld: COMMIT failed: %s", cd->thread_id, mysql_error(cd->thrconn));
           errors++;
           return 2;
         }
@@ -522,7 +523,6 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
 
   myl_close(filename, infile, TRUE);
   g_free(path);
-
   return r;
 }
 
