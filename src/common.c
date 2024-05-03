@@ -366,7 +366,7 @@ void refresh_set_from_hash(GString *ss, const gchar * kind, GHashTable * set_has
 }
 
 void set_session_hash_insert(GHashTable * set_session_hash, const gchar *_key, gchar *value){
-  g_hash_table_insert(set_session_hash, g_utf8_strup(key, strlen(_key)), value);
+  g_hash_table_insert(set_session_hash, g_utf8_strup(_key, strlen(_key)), value);
 }
 
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash){
