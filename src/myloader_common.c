@@ -317,6 +317,7 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   g_strfreev(split);
 }
 
+/*
 void append_alter_table(GString * alter_table_statement, char *table){
   g_string_append(alter_table_statement,"ALTER TABLE `");
   g_string_append(alter_table_statement,table);
@@ -331,9 +332,11 @@ void finish_alter_table(GString * alter_table_statement){
   }else
     g_string_append(alter_table_statement,";\n");
 }
-
+*/
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
-  int flag=0;
+  return global_process_create_table_statement(statement, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->real_table, split_indexes);
+}
+/*  int flag=0;
   gchar** split_file= g_strsplit(statement, "\n", -1);
   gchar *autoinc_column=NULL;
   append_alter_table(alter_table_statement, dbt->real_table);
@@ -380,6 +383,7 @@ int process_create_table_statement (gchar * statement, GString *create_table_sta
   }
   return flag;
 }
+*/
 
 gchar *build_dbt_key(gchar *a, gchar *b){
   return g_strdup_printf("`%s`_`%s`", a, b);

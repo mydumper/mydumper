@@ -78,6 +78,8 @@ gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 enum checksum_modes checksum_mode= CHECKSUM_FAIL;
 gboolean skip_triggers = FALSE;
+gboolean skip_constraints = FALSE;
+gboolean skip_indexes = FALSE;
 gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
@@ -350,6 +352,8 @@ int main(int argc, char *argv[]) {
     print_string("source-db",source_db);
 
     print_bool("skip-triggers",skip_triggers);
+    print_bool("skip-constraints",skip_constraints);
+    print_bool("skip-indexes",skip_indexes);
     print_bool("skip-post",skip_post);
     print_bool("no-data",no_data);
 

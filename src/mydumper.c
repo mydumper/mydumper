@@ -57,6 +57,10 @@ gboolean daemon_mode = FALSE;
 gchar *disk_limits=NULL;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
+
+gboolean skip_constraints = FALSE;
+gboolean skip_indexes = FALSE;
+
 //gboolean no_stream = FALSE;
 // For daemon mode
 gboolean shutdown_triggered = FALSE;

@@ -20,6 +20,9 @@
 #include <pcre.h>
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
+#define IS_INNODB_TABLE 2
+#define INCLUDE_CONSTRAINT 4
+#define IS_ALTER_TABLE_PRESENT 8
 
 #define START_SLAVE "START SLAVE"
 #define START_SLAVE_SQL_THREAD "START SLAVE SQL_THREAD"
@@ -165,3 +168,5 @@ g_string_replace (GString     *string,
 #if !GLIB_CHECK_VERSION(2, 36, 0)
 extern guint g_get_num_processors (void);
 #endif
+
+int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);

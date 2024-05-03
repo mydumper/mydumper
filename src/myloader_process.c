@@ -303,7 +303,7 @@ regex_error:
             }
           }
         }
-        if (innodb_optimize_keys){
+        if (innodb_optimize_keys || skip_constraints || skip_indexes ){
           GString *alter_table_statement=g_string_sized_new(512);
           GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
@@ -312,19 +312,23 @@ regex_error:
             g_string_append(create_table_statement,data->str);
           }else{
             // Processing CREATE TABLE statement
-            GString *new_create_table_statement=g_string_sized_new(512);
-            int flag = process_create_table_statement(data->str, new_create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000));
+            int flag = process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
             if (flag & IS_INNODB_TABLE){
               if (flag & IS_ALTER_TABLE_PRESENT){
-                finish_alter_table(alter_table_statement);
+//                finish_alter_table(alter_table_statement);
                 g_message("Fast index creation will be use for table: %s.%s",dbt->database->real_database,dbt->real_table);
               }else{
                 g_string_free(alter_table_statement,TRUE);
                 alter_table_statement=NULL;
               }
-              g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
-              dbt->indexes=alter_table_statement;
-              if (flag & INCLUDE_CONSTRAINT){
+//              g_string_append(create_table_statement,g_strjoinv("\n)",g_strsplit(new_create_table_statement->str,",\n)",-1)));
+              if (!skip_indexes){
+                if (innodb_optimize_keys)
+                  dbt->indexes=alter_table_statement;
+                else if (alter_table_statement!=NULL)
+                  g_string_append(create_table_statement,alter_table_statement->str);
+              }
+              if (!skip_constraints && (flag & INCLUDE_CONSTRAINT)){
                 struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->database, alter_table_constraint_statement, CONSTRAINTS);
                 g_async_queue_push(conf->post_table_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
                 dbt->constraints=alter_table_constraint_statement;
