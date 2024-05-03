@@ -93,7 +93,9 @@ void *process_stream(void *data){
     total_size+=5;
     total_size+=strlen(used_filemame);
     free(used_filemame);
-    if (no_stream == FALSE){
+    if (no_stream){
+      write(fileno(stdout), "0\n", 2);
+    }else{
 //      g_message("Stream Opening: %s",sf->filename);
       f=open(sf->filename,O_RDONLY);
       if (f < 0){
