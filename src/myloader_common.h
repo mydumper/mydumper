@@ -17,10 +17,6 @@
 #ifndef _src_myloader_common_h
 #define _src_myloader_common_h
 
-#define IS_INNODB_TABLE 2
-#define INCLUDE_CONSTRAINT 4
-#define IS_ALTER_TABLE_PRESENT 8
-
 #include "myloader.h"
 #include <stdio.h> 
 #include "common.h"

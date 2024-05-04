@@ -249,9 +249,25 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     g_free(create_table);
   }
   g_string_append(statement, ";\n");
-  if (!write_data(outfile, statement)) {
-    g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
-    errors++;
+
+  if (skip_indexes || skip_constraints){
+    GString *alter_table_statement=g_string_sized_new(statement_size);
+    GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
+    GString *create_table_statement=g_string_sized_new(statement_size);
+    global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
+    if (!write_data(outfile, create_table_statement)) {
+      g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
+      errors++;
+    }
+    if (!skip_indexes)
+      write_data(outfile, alter_table_statement );
+    if (!skip_constraints)
+      write_data(outfile, alter_table_constraint_statement);
+  }else{
+    if (!write_data(outfile, statement)) {
+      g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
+      errors++;
+    }
   }
   g_free(query);
   m_close(0, outfile, filename, 1, dbt);

@@ -162,6 +162,10 @@ static GOptionEntry filter_entries[] ={
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Do not import constraints. By default, it imports contraints",
+     NULL },
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Do not import secondary index on InnoDB tables. By default, it import the indexes",
+     NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
