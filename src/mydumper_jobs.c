@@ -946,6 +946,21 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
+
+void create_job_to_dump_table(struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine){
+  struct job *j = g_new0(struct job, 1);
+  struct dump_table_job *dtj= g_new0(struct dump_table_job, 1);
+  dtj->is_view=is_view;
+  dtj->is_sequence=is_sequence;
+  dtj->database=database;
+  dtj->table=table;
+  dtj->collation=collation;
+  dtj->engine=engine;
+  j->job_data = dtj;
+  j->type = JOB_TABLE;
+  g_async_queue_push(conf->initial_queue, j);
+}
+
 void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;

@@ -75,7 +75,7 @@ void create_job_to_dump_database(struct database *database, struct configuration
 void create_job_to_dump_schema(struct database* database, struct configuration *conf);
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void create_job_to_dump_schema_triggers(struct database *database, struct configuration *conf);
-void create_job_to_dump_table(struct db_table *dbt, struct configuration *conf);
+void create_job_to_dump_table(struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine);
 void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
 void job_creator_to_dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
 void write_table_checksum_into_file(MYSQL *conn, char *database, char *table, char *filename);
