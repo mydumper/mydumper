@@ -253,6 +253,16 @@ void finalize_working_thread(){
   finalize_chunk();
 }
 
+
+void thd_JOB_TABLE(struct thread_data *td, struct job *job){
+  struct dump_table_job *dtj=(struct dump_table_job *)job->job_data;
+  new_table_to_dump(td->thrconn, td->conf, dtj->is_view, dtj->is_sequence, dtj->database, dtj->table,
+                      dtj->collation, dtj->engine);
+  free(dtj->collation);
+  free(dtj->engine);
+  free(dtj);
+}
+
 void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   // TODO: This should be in a job as needs to be done by a thread.
   MYSQL_RES *databases;
@@ -369,8 +379,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       if (!eval_regex(database->name, row[0]))
         continue;
 
-      new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
-                        row[collcol], row[ecol]);
+      create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -603,9 +612,9 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_DUMP_ALL_DATABASES:
       thd_JOB_DUMP_ALL_DATABASES(td,job);
       break;
-//    case JOB_TABLE:
-//      thd_JOB_TABLE(td, job);
-//      break;
+    case JOB_TABLE:
+      thd_JOB_TABLE(td, job);
+      break;
     case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
       g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
@@ -1022,9 +1031,12 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
   if (dbt){
     g_free(lkey);
     b=FALSE;
+    g_mutex_unlock(all_dbts_mutex);
   }else{
     dbt = g_new(struct db_table, 1);
     dbt->status = UNDEFINED;
+    g_hash_table_insert(all_dbts, lkey, dbt);
+    g_mutex_unlock(all_dbts_mutex);
     dbt->database = database;
     dbt->table = identifier_quote_character_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
@@ -1092,10 +1104,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->triggers_checksum=NULL;
     dbt->rows=0;
  // dbt->chunk_functions.process=NULL;
-    g_hash_table_insert(all_dbts, lkey, dbt);
     b=TRUE;
   }
-  g_mutex_unlock(all_dbts_mutex);
   *d=dbt;
   return b; 
 }
@@ -1365,10 +1375,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     if (!dump)
       continue;
-    
-    new_table_to_dump(conn, conf, is_view, is_sequence, database, row[tablecol],
-                      row[collcol], row[ecol]);
-
+    create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
   }
 
   mysql_free_result(result);

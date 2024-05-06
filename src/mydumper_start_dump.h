@@ -250,8 +250,13 @@ struct table_job {
   struct thread_data *td;
 };
 
-struct tables_job {
-  GList *table_job_list;
+struct dump_table_job{
+  gboolean is_view;
+  gboolean is_sequence;
+  struct database *database;
+  gchar *table;
+  gchar *collation;
+  gchar *engine;
 };
 
 struct dump_database_job {
