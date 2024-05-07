@@ -36,3 +36,5 @@ int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboo
 int restore_data_from_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
 
 void release_load_data_as_it_is_close( gchar * filename );
+struct connection_data *close_restore_thread(gboolean return_connection);
+void wait_restore_threads_to_close();

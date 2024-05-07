@@ -538,10 +538,12 @@ int main(int argc, char *argv[]) {
 
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
-
+  struct connection_data *cd=close_restore_thread(TRUE);
+  g_mutex_lock(cd->in_use);
   gboolean checksum_ok=TRUE;
+  tl=conf.table_list;
   while (tl != NULL){
-    checksum_ok&=checksum_dbt(tl->data, conn);
+    checksum_ok&=checksum_dbt(tl->data, cd->thrconn);
     tl=tl->next;
   }
 
@@ -566,6 +568,11 @@ int main(int argc, char *argv[]) {
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
+  guint i=0;
+  mysql_close(cd->thrconn);
+  for(i=1;i<num_threads;i++)
+    close_restore_thread(FALSE);
+  wait_restore_threads_to_close();
 
   if (!checksum_ok)
     g_error("Checksum failed");
@@ -578,9 +585,8 @@ int main(int argc, char *argv[]) {
   }
 
   if (change_master_statement != NULL ){
-    int i=0;
     gchar** line=g_strsplit(change_master_statement->str, ";\n", -1);
-    for (i=0; i < (int)g_strv_length(line);i++){
+    for (i=0; i < g_strv_length(line);i++){
        if (strlen(line[i])>2){
          GString *str=g_string_new(line[i]);
          g_string_append_c(str,';');

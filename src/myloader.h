@@ -51,6 +51,7 @@ struct connection_data{
   struct io_restore_result *queue;
   GAsyncQueue * ready;
   gboolean transaction;
+  GMutex *in_use;
 };
 
 struct thread_data {
