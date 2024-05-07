@@ -30,7 +30,7 @@
 #include <strings.h>
 
 extern gboolean enable_binlog;
-
+extern gboolean show_warnings;
 gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 
@@ -99,7 +99,8 @@ static GOptionEntry entries[] = {
       "Identifier quote character used in INSERT statements. "
       "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
       "Default: detect from dump if possible, otherwise BACKTICK", NULL},
-
+    {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
+      "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
