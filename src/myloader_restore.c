@@ -38,17 +38,21 @@ GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 
-void *restore_thread(void *data);
+void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0};
 struct io_restore_result end_restore_thread = { NULL, NULL};
 
 GThread **restore_threads=NULL;
 
-struct connection_data *new_connection_data(){
+struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
-  cd->thrconn = mysql_init(NULL);
+  if (thrconn)
+    cd->thrconn = thrconn;
+  else{
+    cd->thrconn = mysql_init(NULL);
+    m_connect(cd->thrconn);
+  }
   cd->current_database=NULL;
-  m_connect(cd->thrconn);
 /*  if (!database_db){
     cd->current_database=database_db;
     if (execute_use(cd)){
@@ -72,7 +76,7 @@ struct io_restore_result *new_io_restore_result(){
 }
 
 
-void initialize_connection_pool(){
+void initialize_connection_pool(MYSQL *thrconn){
   guint n=0;
   connection_pool=g_async_queue_new();
   restore_queues=g_async_queue_new();
@@ -80,11 +84,10 @@ void initialize_connection_pool(){
   struct io_restore_result *iors=NULL;
   restore_threads=g_new(GThread *, num_threads);
   for (n = 0; n < num_threads; n++) {
-//    cd=new_connection_data(); 
-//    g_async_queue_push(connection_pool,cd);
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
-    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, NULL);
+    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
+    thrconn=NULL;
   }
   for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
@@ -242,9 +245,8 @@ int restore_insert(struct connection_data *cd,
 
 
 
-void *restore_thread(void *data){
-  (void)data;
-  struct connection_data *cd=new_connection_data();
+void *restore_thread(MYSQL *thrconn){
+  struct connection_data *cd=new_connection_data(thrconn);
   struct statement *ir=NULL;
   guint query_counter=0;
 //  g_mutex_lock(cd->in_use);

@@ -453,7 +453,6 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-  mysql_close(conn);
 
   // To here.
   conf.database_queue = g_async_queue_new();
@@ -481,7 +480,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  initialize_connection_pool();
+  initialize_connection_pool(conn);
   struct thread_data *t=g_new(struct thread_data,1);
   initialize_thread_data(t, &conf, WAITING, 0, NULL);
 //  t.connection_data.thrconn = conn;
