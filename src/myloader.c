@@ -453,6 +453,8 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
+  mysql_close(conn);
+
   // To here.
   conf.database_queue = g_async_queue_new();
   conf.table_queue = g_async_queue_new();
@@ -532,14 +534,15 @@ int main(int argc, char *argv[]) {
   wait_control_job();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
-
-  if (disable_redo_log)
-    m_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
-
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
+
   struct connection_data *cd=close_restore_thread(TRUE);
   g_mutex_lock(cd->in_use);
+
+  if (disable_redo_log)
+    m_query(cd->thrconn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
+
   gboolean checksum_ok=TRUE;
   tl=conf.table_list;
   while (tl != NULL){
@@ -558,18 +561,17 @@ int main(int argc, char *argv[]) {
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
       if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum,  cd->thrconn,
                                   "Schema create checksum", checksum_database_defaults);
       if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum,  cd->thrconn,
                                   "Post checksum", checksum_process_structure);
       if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum,  conn,
+        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum,  cd->thrconn,
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
   guint i=0;
-  mysql_close(cd->thrconn);
   for(i=1;i<num_threads;i++)
     close_restore_thread(FALSE);
   wait_restore_threads_to_close();
@@ -590,7 +592,7 @@ int main(int argc, char *argv[]) {
        if (strlen(line[i])>2){
          GString *str=g_string_new(line[i]);
          g_string_append_c(str,';');
-         m_query(conn, str->str, m_warning, "Sending CHANGE MASTER: %s", str->str);
+         m_query(cd->thrconn, str->str, m_warning, "Sending CHANGE MASTER: %s", str->str);
          g_string_free(str,TRUE);
        }
     }
@@ -606,8 +608,8 @@ int main(int argc, char *argv[]) {
   free_hash(set_session_hash);
   g_hash_table_remove_all(set_session_hash);
   g_hash_table_unref(set_session_hash);
-  execute_gstring(conn, set_global_back);
-  mysql_close(conn);
+  execute_gstring(cd->thrconn, set_global_back);
+  mysql_close(cd->thrconn);
   mysql_thread_end();
   mysql_library_end();
   g_free(directory);
