@@ -38,15 +38,21 @@ GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 
-void *restore_thread(struct connection_data *cd);
+void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0};
+struct io_restore_result end_restore_thread = { NULL, NULL};
 
+GThread **restore_threads=NULL;
 
-struct connection_data *new_connection_data(){
+struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
-  cd->thrconn = mysql_init(NULL);
+  if (thrconn)
+    cd->thrconn = thrconn;
+  else{
+    cd->thrconn = mysql_init(NULL);
+    m_connect(cd->thrconn);
+  }
   cd->current_database=NULL;
-  m_connect(cd->thrconn);
 /*  if (!database_db){
     cd->current_database=database_db;
     if (execute_use(cd)){
@@ -57,7 +63,9 @@ struct connection_data *new_connection_data(){
   cd->thread_id=mysql_thread_id(cd->thrconn);
   cd->ready=g_async_queue_new();
   cd->queue=NULL;
+  cd->in_use=g_mutex_new();
   execute_gstring(cd->thrconn, set_session);
+  g_async_queue_push(connection_pool,cd);
   return cd;
 }
 struct io_restore_result *new_io_restore_result(){
@@ -66,23 +74,30 @@ struct io_restore_result *new_io_restore_result(){
   iors->restore=g_async_queue_new();
   return iors;
 }
-void initialize_connection_pool(){
+
+
+void initialize_connection_pool(MYSQL *thrconn){
   guint n=0;
   connection_pool=g_async_queue_new();
   restore_queues=g_async_queue_new();
   free_results_queue=g_async_queue_new();
-  struct connection_data *cd=NULL;
   struct io_restore_result *iors=NULL;
+  restore_threads=g_new(GThread *, num_threads);
   for (n = 0; n < num_threads; n++) {
-    cd=new_connection_data(); 
-    g_async_queue_push(connection_pool,cd);
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
-    g_thread_new("myloader_conn",(GThreadFunc)restore_thread, cd);
+    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
+    thrconn=NULL;
   }
   for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
   }
+}
+
+void wait_restore_threads_to_close(){
+  guint n=0;
+  for (n = 0; n < num_threads; n++)
+    g_thread_join(restore_threads[n]);
 }
 
 int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
@@ -138,6 +153,15 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
   g_string_set_size(data, 0);
   return 0;
 }
+
+struct connection_data *close_restore_thread(gboolean return_connection){
+  struct connection_data *cd=g_async_queue_pop(connection_pool);
+  g_async_queue_push(cd->ready, &end_restore_thread);
+  if (return_connection)
+    return cd;
+  return NULL;
+}
+
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
@@ -221,12 +245,15 @@ int restore_insert(struct connection_data *cd,
 
 
 
-void *restore_thread(struct connection_data *cd){
+void *restore_thread(MYSQL *thrconn){
+  struct connection_data *cd=new_connection_data(thrconn);
   struct statement *ir=NULL;
   guint query_counter=0;
-
+//  g_mutex_lock(cd->in_use);
   while (1){
     cd->queue=g_async_queue_pop(cd->ready);
+    if (cd->queue->restore == NULL)
+      break;
     while(1) {
       ir=g_async_queue_pop(cd->queue->restore);
       if (ir->kind_of_statement == CLOSE){
@@ -277,6 +304,7 @@ void *restore_thread(struct connection_data *cd){
     trace("Returning connection to pool: %ld", cd->thread_id);
     g_async_queue_push(connection_pool,cd);
   }
+//  g_mutex_unlock(cd->in_use);
   return NULL;
 }
 
