@@ -168,5 +168,5 @@ g_string_replace (GString     *string,
 #if !GLIB_CHECK_VERSION(2, 36, 0)
 extern guint g_get_num_processors (void);
 #endif
-
+char *show_warnings_if_possible(MYSQL *conn);
 int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);

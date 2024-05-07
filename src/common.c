@@ -32,6 +32,7 @@
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
+gboolean show_warnings=FALSE;
 
 /*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
@@ -143,6 +144,26 @@ void initialize_set_names(){
 void free_set_names(){
   g_free(set_names_str);
   g_free(set_names_statement);
+}
+
+
+char *show_warnings_if_possible(MYSQL *conn){
+  if (!show_warnings)
+    return NULL;
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row;
+  if (mysql_query(conn, "SHOW WARNINGS") || !(result = mysql_use_result(conn))) {
+    g_critical("Error on SHOW WARNINGS: %s", mysql_error(conn));
+    return NULL;
+  }
+  GString *_error=g_string_new("");
+  row = mysql_fetch_row(result);
+  while (row){
+    g_string_append(_error,row[2]);
+    g_string_append(_error,"\n");
+    row = mysql_fetch_row(result);
+  }
+  return g_string_free(_error, FALSE);
 }
 
 char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){
