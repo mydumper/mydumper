@@ -132,7 +132,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       return new_none_chunk_step();
     }
   /* Support just bigger INTs for now, very dumb, no verify approach */
-    guint64 abs;
+    guint64 diff_btwn_max_min;
     guint64 unmin, unmax;
     gint64 nmin, nmax;
 //    union chunk_step *cs = NULL;
@@ -142,32 +142,28 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       case MYSQL_TYPE_LONG:
       case MYSQL_TYPE_LONGLONG:
       case MYSQL_TYPE_INT24:
-
+        trace("Integer PK found on `%s`.`%s`",dbt->database->name, dbt->table);
         unmin = strtoull(row[0], NULL, 10);
         unmax = strtoull(row[1], NULL, 10);
         nmin  = strtoll (row[0], NULL, 10);
         nmax  = strtoll (row[1], NULL, 10);
 
         if (fields[0].flags & UNSIGNED_FLAG){
-          abs=gint64_abs(unmax-unmin);
-//g_message("unsign.min: %"G_GUINT64_FORMAT" | unsign.max: %"G_GUINT64_FORMAT, unmin, unmax);
-
+          diff_btwn_max_min=gint64_abs(unmax-unmin);
         }else{
-          abs=gint64_abs(nmax-nmin);
-//g_message("sign.min: %"G_GINT64_FORMAT" | sign.max: %"G_GINT64_FORMAT, nmin, nmax);
+          diff_btwn_max_min=gint64_abs(nmax-nmin);
         }
 
         gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
         mysql_free_result(minmax);
 
-
-//          g_message("Checking if %"G_GUINT64_FORMAT" > %"G_GUINT64_FORMAT, abs, dbt->min_chunk_step_size);
-        if ( abs > dbt->min_chunk_step_size){
+        // If diff_btwn_max_min > min_chunk_step_size, then there is no need to split the table.
+        if ( diff_btwn_max_min > dbt->min_chunk_step_size){
           union type type;
           guint64 min_css = /*dbt->multicolumn ? 1 :*/ dbt->min_chunk_step_size;
           guint64 max_css = /*dbt->multicolumn ? 1 :*/ dbt->max_chunk_step_size;
           guint64 starting_css = /*dbt->multicolumn ? 1 :*/ dbt->starting_chunk_step_size;
-          gboolean is_step_fixed_length = (min_css == starting_css && max_css == starting_css);
+          gboolean is_step_fixed_length = (min_css!=0 && min_css == starting_css && max_css == starting_css);
 
           if (unsign){
             type.unsign.min=unmin;
@@ -194,12 +190,12 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           }
 
 
-	  if (csi->chunk_step->integer_step.is_step_fixed_length){
+          if (csi->chunk_step->integer_step.is_step_fixed_length){
             if (csi->chunk_step->integer_step.is_unsigned){
               csi->chunk_step->integer_step.type.unsign.min=(csi->chunk_step->integer_step.type.unsign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
-	    }else{
+            }else{
               csi->chunk_step->integer_step.type.sign.min=(csi->chunk_step->integer_step.type.sign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
-	    }
+            }
           }
 
           if (dbt->min_chunk_step_size==dbt->starting_chunk_step_size && dbt->max_chunk_step_size==dbt->starting_chunk_step_size)
@@ -209,7 +205,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
 
         }else{
-//          g_message("It is NONE because %"G_GUINT64_FORMAT" < %"G_GUINT64_FORMAT, abs, dbt->min_chunk_step_size);
+          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
           return new_none_chunk_step();
         }
         break;
@@ -317,7 +313,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     if (partitions){
       csi=new_real_partition_step_item(partitions,0,0);
     }else{
-      if (dbt->starting_chunk_step_size > 0) {
+      if (split_integer_tables) {
         csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();

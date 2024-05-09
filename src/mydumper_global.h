@@ -142,4 +142,4 @@ extern guint64 min_chunk_step_size;
 extern guint64 max_chunk_step_size;
 extern gboolean compact;
 extern gchar *fifo_directory;
-
+extern gboolean split_integer_tables;
