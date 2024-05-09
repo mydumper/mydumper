@@ -90,13 +90,15 @@ struct configuration {
 };
 
 
-enum schema_status { NOT_FOUND, NOT_CREATED, CREATING, CREATED, DATA_DONE, INDEX_ENQUEUED, ALL_DONE};
+enum schema_status { NOT_FOUND, NOT_FOUND_2, NOT_CREATED, CREATING, CREATED, DATA_DONE, INDEX_ENQUEUED, ALL_DONE};
 static inline
 const char * status2str(enum schema_status status)
 {
   switch (status) {
   case NOT_FOUND:
     return "NOT_FOUND";
+  case NOT_FOUND_2:
+    return "NOT_FOUND_2";
   case NOT_CREATED:
     return "NOT_CREATED";
   case CREATING:
