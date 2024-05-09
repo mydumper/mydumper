@@ -173,7 +173,13 @@ gboolean process_schema(struct thread_data * td){
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
           g_mutex_lock(real_db_name->mutex);
           if (real_db_name->schema_state != CREATED) {
-            trace("INTERMEDIATE_ENDED waits %s created", real_db_name->name);
+            trace("INTERMEDIATE_ENDED waits %s created, current state: %s", real_db_name->name, status2str(real_db_name->schema_state));
+            if (real_db_name->schema_state == NOT_FOUND)
+              real_db_name->schema_state=NOT_FOUND_2;
+            else if (real_db_name->schema_state == NOT_FOUND_2){
+              g_warning("Schema file for `%s` not found, continue anyways",real_db_name->name);
+              real_db_name->schema_state=CREATED;
+            }
             refresh_db_and_jobs(INTERMEDIATE_ENDED);
             g_mutex_unlock(real_db_name->mutex);
             return TRUE;
