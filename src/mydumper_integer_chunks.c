@@ -48,18 +48,19 @@ guint64 gint64_abs(gint64 a){
 
 void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union type type, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, gboolean check_min, gboolean check_max){
   cs->integer_step.is_unsigned = is_unsigned;
-  cs->integer_step.step = step;
   cs->integer_step.min_chunk_step_size = min_css;
   cs->integer_step.max_chunk_step_size = max_css;
   if (cs->integer_step.is_unsigned){
     cs->integer_step.type.unsign.min = type.unsign.min;
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
+    cs->integer_step.step = step!=0?step:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads;
     cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
+    cs->integer_step.step = step!=0?step:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1;
     cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step;
   }
   cs->integer_step.is_step_fixed_length = is_step_fixed_length;
