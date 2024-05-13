@@ -32,7 +32,7 @@
 #include "myloader_restore.h"
 
 struct statement * new_statement();
-
+gboolean success_on_1266 = FALSE;
 gboolean skip_definer = FALSE;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
@@ -104,35 +104,35 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 {
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
   if (en) {
-
     if (is_schema)
       g_warning("Connection %ld: Error restoring %d: %s %s", cd->thread_id, en, data->str, mysql_error(cd->thrconn));
     else{
       g_warning("Connection %ld: Error restoring %d: %s", cd->thread_id, en, mysql_error(cd->thrconn));
     }
+    if (!success_on_1266 || mysql_errno(cd->thrconn) != 1266 ){
+      if (mysql_ping(cd->thrconn)) {
+        m_connect(cd->thrconn);
+        cd->thread_id=mysql_thread_id(cd->thrconn);
+        execute_gstring(cd->thrconn, set_session);
+        execute_use(cd);
+        if (!is_schema && commit_count > 1) {
+          g_critical("Connection %ld: Lost connection error", cd->thread_id);
+          errors++;
+          return 2;
+        }
+      }
 
-    if (mysql_ping(cd->thrconn)) {
-      m_connect(cd->thrconn);
-      cd->thread_id=mysql_thread_id(cd->thrconn);
-      execute_gstring(cd->thrconn, set_session);
-      execute_use(cd);
-      if (!is_schema && commit_count > 1) {
-        g_critical("Connection %ld: Lost connection error", cd->thread_id);
+      g_warning("Connection %ld: Retrying last failed executed statement", cd->thread_id);
+      g_atomic_int_inc(&(detailed_errors.retries));
+      if (mysql_real_query(cd->thrconn, data->str, data->len)) {
+        if (is_schema)
+          g_critical("Connection %ld: Error restoring: %s %s", cd->thread_id, data->str, mysql_error(cd->thrconn));
+        else{
+          g_critical("Connection %ld: Error restoring: %s", cd->thread_id, mysql_error(cd->thrconn));
+        }
         errors++;
-        return 2;
+        return 1;
       }
-    }
-
-    g_warning("Connection %ld: Retrying last failed executed statement", cd->thread_id);
-    g_atomic_int_inc(&(detailed_errors.retries));
-    if (mysql_real_query(cd->thrconn, data->str, data->len)) {
-      if (is_schema)
-        g_critical("Connection %ld: Error restoring: %s %s", cd->thread_id, data->str, mysql_error(cd->thrconn));
-      else{
-        g_critical("Connection %ld: Error restoring: %s", cd->thread_id, mysql_error(cd->thrconn));
-      }
-      errors++;
-      return 1;
     }
   }
   *query_counter=*query_counter+1;
