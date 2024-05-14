@@ -119,4 +119,5 @@ extern struct database *database_db;
 extern gchar *innodb_optimize_keys_str;
 extern gchar *checksum_str;
 extern gboolean no_stream;
-extern gboolean success_on_1266;
+extern gchar *ignore_errors;
+extern GList *ignore_errors_list;
