@@ -146,6 +146,11 @@ static GOptionEntry execution_entries[] = {
      "It will receive the stream from STDIN and creates the file in the disk before start processing. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
 //    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
 //      "It will not delete the files after stream has been completed", NULL},
+    {"ignore-errors", 0, 0, G_OPTION_ARG_STRING, &ignore_errors,
+     "Not increment error count and Warning instead of Critical in case of "
+     "any of the comman separated error number list",
+     NULL},
+
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry pmm_entries[] = {
