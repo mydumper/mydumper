@@ -31,6 +31,8 @@ const gchar *stop_replica=NULL;
 const gchar *start_replica_sql_thread=NULL;
 const gchar *stop_replica_sql_thread=NULL;
 const gchar *reset_replica=NULL;
+const gchar *show_replica_status=NULL;
+const gchar *show_all_replicas_status=NULL;
 
 int get_product(){
   return product;
@@ -94,6 +96,8 @@ void detect_server_version(MYSQL * conn) {
         start_replica_sql_thread=START_SLAVE_SQL_THREAD;
         stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
         reset_replica=RESET_SLAVE;
+        show_replica_status=SHOW_SLAVE_STATUS;
+        show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
       }else {
         if (get_secondary()<=5){
           start_replica=START_SLAVE;
@@ -101,13 +105,17 @@ void detect_server_version(MYSQL * conn) {
           start_replica_sql_thread=START_SLAVE_SQL_THREAD;
           stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
           reset_replica=RESET_SLAVE;
-	}else{
+          show_replica_status=SHOW_SLAVE_STATUS;
+          show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
+        }else{
           start_replica=START_REPLICA;
           stop_replica=STOP_REPLICA;
           start_replica_sql_thread=START_REPLICA_SQL_THREAD;
           stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
           reset_replica=RESET_REPLICA;
-	}
+          show_replica_status=SHOW_REPLICA_STATUS;
+          show_all_replicas_status=SHOW_ALL_REPLICAS_STATUS;
+        }
       }
     }else{
       switch (get_major()) {
@@ -117,6 +125,7 @@ void detect_server_version(MYSQL * conn) {
           start_replica_sql_thread=START_REPLICA_SQL_THREAD;
           stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
           reset_replica=RESET_REPLICA;
+          show_replica_status=SHOW_REPLICA_STATUS;
           break;
         case 5:
           start_replica=START_SLAVE;
@@ -124,6 +133,7 @@ void detect_server_version(MYSQL * conn) {
           start_replica_sql_thread=START_SLAVE_SQL_THREAD;
           stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
           reset_replica=RESET_SLAVE;
+          show_replica_status=SHOW_SLAVE_STATUS;
           break;
       }
     }

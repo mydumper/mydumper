@@ -932,11 +932,11 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   }
 
   if (isms){
-    if (mysql_query(conn, "SHOW ALL SLAVES STATUS"))
-      g_critical("Error executing SHOW ALL SLAVES STATUS: %s", mysql_error(conn));
+    if (mysql_query(conn, show_all_replicas_status ))
+      g_critical("Error executing %s: %s", show_all_replicas_status, mysql_error(conn));
   }else{
-    if (mysql_query(conn, "SHOW SLAVE STATUS"))
-      g_critical("Error executing SHOW SLAVE STATUS: %s", mysql_error(conn));
+    if (mysql_query(conn, show_replica_status))
+      g_critical("Error executing %s: %s", show_replica_status, mysql_error(conn));
   }
 
   guint slave_count=0;
@@ -952,9 +952,9 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     g_warning("Not able to stop replica: %s", mysql_error(conn));
   }
   if (isms)
-    mysql_query(conn, "SHOW ALL SLAVES STATUS");
+    mysql_query(conn, show_all_replicas_status);
   else
-    mysql_query(conn, "SHOW SLAVE STATUS");
+    mysql_query(conn, show_replica_status);
 
   slave = mysql_store_result(conn);
 
