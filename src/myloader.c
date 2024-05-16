@@ -525,12 +525,13 @@ int main(int argc, char *argv[]) {
 
   wait_schema_worker_to_finish();
   wait_loader_threads_to_finish();
+  wait_control_job();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);
   create_post_shutdown_job(&conf);
   wait_post_worker_to_finish();
-  wait_control_job();
+//  wait_control_job();
   g_async_queue_unref(conf.ready);
   conf.ready=NULL;
   g_async_queue_unref(conf.data_queue);
