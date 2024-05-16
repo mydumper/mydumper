@@ -113,8 +113,8 @@ void detect_server_version(MYSQL * conn) {
           start_replica_sql_thread=START_REPLICA_SQL_THREAD;
           stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
           reset_replica=RESET_REPLICA;
-          show_replica_status=SHOW_SLAVE_STATUS;
-          show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
+          show_replica_status=SHOW_REPLICA_STATUS;
+          show_all_replicas_status=SHOW_ALL_REPLICAS_STATUS;
         }
       }
     }else{
