@@ -151,8 +151,8 @@ list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" "boo
 
 list_build=(
   "bionic_percona80_amd64"   
-  "focal_percona80_amd64"    "focal_mariadb1011_arm64"
-  "jammy_percona80_amd64"    "jammy_mariadb1011_arm64"
+  "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
+  "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
   "el7_percona57_x86_64" 
   "el8_percona57_x86_64"     "el8_mysql80_aarch64"
   "el9_percona80_x86_64"     "el9_mysql80_aarch64"
