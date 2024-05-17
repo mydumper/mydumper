@@ -2971,7 +2971,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
@@ -2993,7 +2993,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
@@ -3015,7 +3015,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
@@ -3037,7 +3037,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
@@ -3059,7 +3059,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
@@ -3081,7 +3081,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
@@ -3103,7 +3103,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
@@ -3125,7 +3125,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
@@ -3147,7 +3147,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
@@ -3169,7 +3169,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
@@ -3191,7 +3191,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
@@ -3213,7 +3213,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
@@ -3235,7 +3235,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
@@ -3257,7 +3257,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
@@ -3279,7 +3279,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
@@ -3301,7 +3301,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
@@ -3323,7 +3323,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
@@ -3345,7 +3345,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
@@ -3367,7 +3367,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
@@ -3389,7 +3389,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
@@ -3411,7 +3411,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
@@ -3433,7 +3433,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
@@ -3455,7 +3455,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
@@ -3477,7 +3477,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
@@ -3543,7 +3543,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
@@ -3565,7 +3565,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
@@ -3631,7 +3631,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
@@ -3653,7 +3653,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
@@ -3719,7 +3719,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
@@ -3741,7 +3741,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
@@ -3807,7 +3807,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
@@ -3829,7 +3829,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
@@ -3895,7 +3895,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
@@ -3917,7 +3917,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
@@ -3983,7 +3983,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
@@ -4005,7 +4005,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
@@ -4055,9 +4055,6 @@ workflows:
     - compile_and_test_mydumper_in_bookworm_percona57
     - compile_and_test_mydumper_in_bookworm_percona80
     - compile_and_test_mydumper_in_bookworm_mariadb1011
-    - compile_and_test_mydumper_in_el7_mysql80
-    - compile_and_test_mydumper_in_el8_mysql80
-    - compile_and_test_mydumper_in_el9_mysql80
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
         e: jammy_percona57
@@ -4110,13 +4107,13 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_el9_mysql80_aarch64:
+    - build_el9_percona80_x86_64:
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_el9_percona80_x86_64:
+    - build_el9_mysql80_aarch64:
         filters:
           branches:
             ignore: /.*/
@@ -4148,8 +4145,8 @@ workflows:
           - build_el7_percona57_x86_64
           - build_el8_percona57_x86_64
           - build_el8_mysql80_aarch64
-          - build_el9_mysql80_aarch64
           - build_el9_percona80_x86_64
+          - build_el9_mysql80_aarch64
           - build_bullseye_percona80_amd64
           - build_buster_percona80_amd64
           - build_bookworm_percona80_amd64
