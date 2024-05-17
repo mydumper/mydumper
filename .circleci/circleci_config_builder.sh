@@ -14,32 +14,40 @@ declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="mysql80"
 all_vendors[${vendor}_1]="mysql:8"
+all_vendors[${vendor}_3]="mysqlclient"
 vendor=percona57
 all_vendors[${vendor}_0]="percona57"
 all_vendors[${vendor}_1]="percona:5.7"
+all_vendors[${vendor}_3]="perconaserverclient"
+
 vendor=percona80
 all_vendors[${vendor}_0]="percona80"
 all_vendors[${vendor}_1]="percona:8"
+all_vendors[${vendor}_3]="perconaserverclient"
 
 vendor=mariadb1004
 all_vendors[${vendor}_0]="mariadb1004"
 all_vendors[${vendor}_1]="mariadb:10.04-rc"
 all_vendors[${vendor}_2]="mariadb-10.04"
+all_vendors[${vendor}_3]="mariadbclient"
 
 vendor=mariadb1005
 all_vendors[${vendor}_0]="mariadb1005"
 all_vendors[${vendor}_1]="mariadb:10.05-rc"
 all_vendors[${vendor}_2]="mariadb-10.05"
+all_vendors[${vendor}_3]="mariadbclient"
 
 vendor=mariadb1006
 all_vendors[${vendor}_0]="mariadb1006"
 all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
+all_vendors[${vendor}_3]="mariadbclient"
 
 vendor=mariadb1011
 all_vendors[${vendor}_0]="mariadb1011"
 all_vendors[${vendor}_1]="mariadb:10.11-rc"
 all_vendors[${vendor}_2]="mariadb-10.11"
+all_vendors[${vendor}_3]="mariadbclient"
 
 vendor=tidb
 all_vendors[${vendor}_0]="tidb"
@@ -518,7 +526,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: \"-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a\"
+        CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_deb]}-linux-gnu/lib${all_vendors[${vendor}_3]}.a\"
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
