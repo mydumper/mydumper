@@ -120,6 +120,8 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 
     if ( mysql_errno(cd->thrconn) != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(cd->thrconn) ))){
       if (mysql_ping(cd->thrconn)) {
+        mysql_close(cd->thrconn);
+        cd->thrconn=mysql_init(NULL);
         m_connect(cd->thrconn);
         cd->thread_id=mysql_thread_id(cd->thrconn);
         execute_gstring(cd->thrconn, set_session);
@@ -172,6 +174,17 @@ struct connection_data *close_restore_thread(gboolean return_connection){
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
+  if (mysql_ping(cd->thrconn)) {
+    g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->thread_id);
+    if (mysql_thread_id(cd->thrconn) == cd->thread_id ){
+      mysql_close(cd->thrconn);
+      cd->thrconn=mysql_init(NULL);
+      m_connect(cd->thrconn);
+    }
+    cd->thread_id=mysql_thread_id(cd->thrconn);
+    g_warning("Thread %d: New connection %ld established", td->thread_id, cd->thread_id);
+    execute_gstring(cd->thrconn, set_session);
+  }
   cd->transaction=start_transaction;
   if (use_database)
     execute_use_if_needs_to(cd, use_database, "request_another_connection");

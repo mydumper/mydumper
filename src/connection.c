@@ -317,7 +317,6 @@ void m_connect(MYSQL *conn){
                           socket_path, 0)) {
     m_critical("Error connection to database: %s", mysql_error(conn));
   }
-
   print_connection_details_once();
 
   if (set_names_statement)
