@@ -73,7 +73,7 @@ gboolean overwrite_unsafe = FALSE;
 gboolean innodb_optimize_keys = FALSE;
 gboolean innodb_optimize_keys_per_table = FALSE;
 gboolean innodb_optimize_keys_all_tables = FALSE;
-
+gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 enum checksum_modes checksum_mode= CHECKSUM_FAIL;
@@ -419,10 +419,12 @@ int main(int argc, char *argv[]) {
   initialize_common();
   initialize_connection(MYLOADER);
   initialize_regex(NULL);
-  GThread *sthread =
-      g_thread_new("myloader_signal",signal_thread, &conf);
-  if (sthread == NULL) {
-    m_critical("Could not create signal thread");
+  GThread *sthread = NULL;
+  if (!kill_at_once){
+    sthread = g_thread_new("myloader_signal",signal_thread, &conf);
+    if (sthread == NULL) {
+      m_critical("Could not create signal thread");
+    }
   }
 
   MYSQL *conn;

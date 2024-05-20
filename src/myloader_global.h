@@ -121,3 +121,4 @@ extern gchar *checksum_str;
 extern gboolean no_stream;
 extern gchar *ignore_errors;
 extern GList *ignore_errors_list;
+extern gboolean kill_at_once;
