@@ -339,6 +339,7 @@ regex_error:
             }else{
               g_string_free(alter_table_statement,TRUE);
               g_string_free(alter_table_constraint_statement,TRUE);
+              g_string_set_size(create_table_statement, 0);
               g_string_append(create_table_statement,data->str);
             }
           }
