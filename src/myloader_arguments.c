@@ -132,7 +132,7 @@ static GOptionEntry execution_entries[] = {
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Treat checksums: skip, fail, warn (default).", NULL },
+     "Treat checksums: skip, fail(default), warn.", NULL },
 
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
