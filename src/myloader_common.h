@@ -38,7 +38,7 @@ void finish_alter_table(GString * alter_table_statement);
 void initialize_common();
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 void refresh_table_list(struct configuration *conf);
-void refresh_table_list_without_table_hash_lock(struct configuration *conf);
+void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force);
 void checksum_databases(struct thread_data *td);
 void checksum_table_filename(const gchar *filename, MYSQL *conn);
 //int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3);
