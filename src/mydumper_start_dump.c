@@ -302,8 +302,8 @@ void initialize_sql_mode(GHashTable * set_session_hash){
   GString *str= g_string_new(sql_mode);
   g_string_replace(str, "ORACLE", "", 0);
   g_string_replace(str, ",,", ",", 0);
-  set_session_hash_insert(set_session_hash, "SQL_MODE", str->str);
-  g_string_free(str, FALSE);
+  set_session_hash_insert(set_session_hash, "SQL_MODE",
+		  g_string_free(str, FALSE));
 }
 
 
@@ -397,9 +397,8 @@ void detect_sql_mode(MYSQL *conn){
   g_string_replace(str, ",,", ",", 0);
   g_string_replace(str, "STRICT_TRANS_TABLES", "", 0);
   g_string_replace(str, ",,", ",", 0);
-  sql_mode= str->str;
+  sql_mode= g_string_free(str, FALSE);
   g_assert(sql_mode);
-  g_string_free(str, FALSE);
   mysql_free_result(res);
 }
 
