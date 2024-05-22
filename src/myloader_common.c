@@ -43,8 +43,11 @@ GHashTable *db_hash=NULL;
 GHashTable *tbl_hash=NULL;
 int (*m_close)(void *file) = NULL;
 struct database *database_db=NULL;
+guint refresh_table_list_interval=100;
+guint refresh_table_list_counter=1;
 
 void initialize_common(){
+  refresh_table_list_counter=refresh_table_list_interval;
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
@@ -405,32 +408,35 @@ gint compare_dbt_short(gconstpointer a, gconstpointer b){
   return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
 }
 
-void refresh_table_list_without_table_hash_lock(struct configuration *conf){
-  GList * table_list=NULL;
-  GHashTableIter iter;
-  gchar * lkey;
-  g_mutex_lock(conf->table_list_mutex);
-  g_hash_table_iter_init ( &iter, conf->table_hash );
-  struct db_table *dbt=NULL;
-  while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
+void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force){
+  if (force || g_atomic_int_dec_and_test(&refresh_table_list_counter)){
+    GList * table_list=NULL;
+    GHashTableIter iter;
+    gchar * lkey;
+    g_mutex_lock(conf->table_list_mutex);
+    g_hash_table_iter_init ( &iter, conf->table_hash );
+    struct db_table *dbt=NULL;
+    while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
  //   table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
-    table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+      table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+    }
+    g_list_free(conf->table_list);
+    conf->table_list=table_list;
+//    trace("Table Order:");
+//    guint i=0;
+//    while(table_list!=NULL){
+//      i++;
+//      trace("%d: %s",i,((struct db_table *)table_list->data)->table);
+//      table_list=table_list->next;
+//    }
+    g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
+    g_mutex_unlock(conf->table_list_mutex);
   }
-  g_list_free(conf->table_list);
-  conf->table_list=table_list;
-//  g_message("Table Order:");
-//  guint i=0;
-//  while(table_list!=NULL){
-//    i++;
-//    g_message("%d: %s",i,((struct db_table *)table_list->data)->table);
-//    table_list=table_list->next;
-//  }
-  g_mutex_unlock(conf->table_list_mutex);
 }
 
 void refresh_table_list(struct configuration *conf){
   g_mutex_lock(conf->table_hash_mutex);
-  refresh_table_list_without_table_hash_lock(conf);
+  refresh_table_list_without_table_hash_lock(conf, TRUE);
   g_mutex_unlock(conf->table_hash_mutex);
 }
 

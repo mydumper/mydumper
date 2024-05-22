@@ -31,6 +31,7 @@
 
 extern gboolean enable_binlog;
 extern gboolean show_warnings;
+extern guint refresh_table_list_interval;
 gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 
@@ -132,7 +133,7 @@ static GOptionEntry execution_entries[] = {
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Treat checksums: skip, fail, warn (default).", NULL },
+     "Treat checksums: skip, fail(default), warn.", NULL },
 
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
@@ -145,6 +146,7 @@ static GOptionEntry execution_entries[] = {
       "Table recreation will be executed in series, one thread at a time. This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will receive the stream from STDIN and creates the file in the disk before start processing. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
+    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, "Every this amount of tables the internal metadata will be refreshed. If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
 //    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
 //      "It will not delete the files after stream has been completed", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_STRING, &ignore_errors,

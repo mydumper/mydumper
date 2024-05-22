@@ -131,9 +131,10 @@ enum file_type process_filename(char *filename){
       g_atomic_int_inc(&schema_counter);
       if (!process_table_filename(filename)){
         return DO_NOT_ENQUEUE;
-      }else{
+/*      }else{
         g_free(filename);
         refresh_table_list(intermediate_conf);
+*/
       }
       break;
     case SCHEMA_VIEW:
@@ -252,6 +253,7 @@ void *intermediate_thread(){
 //  if (innodb_optimize_keys_all_tables)
 //    enqueue_all_index_jobs(intermediate_conf);
   message("Intermediate thread ended");
+  refresh_table_list(intermediate_conf);
   refresh_db_and_jobs(INTERMEDIATE_ENDED);
   return NULL;
 }

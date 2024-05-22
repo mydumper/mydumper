@@ -552,10 +552,6 @@ int main(int argc, char *argv[]) {
     tl=tl->next;
   }
 
-  if (!checksum_ok)
-    g_error("Checksum failed");
-
-
   if (checksum_mode != CHECKSUM_SKIP) {
     GHashTableIter iter;
     gchar *lkey;
@@ -578,8 +574,12 @@ int main(int argc, char *argv[]) {
     close_restore_thread(FALSE);
   wait_restore_threads_to_close();
 
-  if (!checksum_ok)
-    g_error("Checksum failed");
+  if (!checksum_ok){
+    if (checksum_mode==CHECKSUM_WARN)
+      g_warning("Checksum failed");
+    else
+      g_error("Checksum failed");
+  }
 
   if (stream && no_delete == FALSE ){ //&& input_directory == NULL){
 //    m_remove(directory,"metadata");
