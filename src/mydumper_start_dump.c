@@ -1136,7 +1136,9 @@ void start_dump() {
     }
   }
 
-  write_replica_info(conn, mdfile);
+  if (detected_server != SERVER_TYPE_TIDB) {
+    write_replica_info(conn, mdfile);
+  }
 
 
   if (detected_server == SERVER_TYPE_TIDB) {
@@ -1439,7 +1441,8 @@ void start_dump() {
       g_async_queue_pop(conf.unlock_tables);
     }
     g_message("Non-InnoDB dump complete, releasing global locks");
-    release_global_lock_function(conn);
+    if (release_global_lock_function)
+      release_global_lock_function(conn);
 //    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
     g_message("Global locks released");
     if (release_binlog_function != NULL){
