@@ -76,6 +76,9 @@ void detect_server_version(MYSQL * conn) {
   if (g_strstr_len(ascii_version, -1, "mariadb") || g_strstr_len(ascii_version_comment, -1, "mariadb")){
     product = SERVER_TYPE_MARIADB;
   }else
+  if (g_strstr_len(ascii_version, -1, "tidb") || g_strstr_len(ascii_version_comment, -1, "tidb")){
+    product = SERVER_TYPE_TIDB;
+  }else
   if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
     product = SERVER_TYPE_MYSQL;    
   }

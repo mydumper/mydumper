@@ -357,6 +357,8 @@ void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
   for (i = 0; i < mysql_num_fields(result); i++) {
     if (!strcasecmp(fields[i].name, "rows"))
       *rowscol = i;
+    if (!strcasecmp(fields[i].name, "estRows")) // TiDB
+      *rowscol = i;
   }
 }
 

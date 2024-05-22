@@ -19,10 +19,6 @@
 
 #include <mysql.h>
 
-#define DETECT_MYSQL_REGEX "^([3-9]\\.[0-9]+\\.[0-9]+)"
-#define DETECT_MARIADB_REGEX "^([0-9]{1,2}\\.[0-9]+\\.[0-9]+)"
-#define DETECT_TIDB_REGEX "TiDB"
-
 enum server_type {
   SERVER_TYPE_UNKNOWN= 0,
   SERVER_TYPE_MYSQL,
