@@ -155,9 +155,9 @@ all_os[${os}_3]="true"
 # all_os[${os}_0]=""
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9")
-list_ubuntu_os=("bionic" "focal" "jammy" "noble")
+list_ubuntu_os=("bionic" "focal" "jammy" "nobel")
 list_debian_os=("buster" "bullseye" "bookworm")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
+list_all_os=("bionic" "focal" "jammy" "nobel" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
 
 list_build=(
@@ -183,7 +183,7 @@ list_compile=(
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006" "bullseye_mysql84"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84" )
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84")
 
 
 for os in ${list_all_os[@]}
