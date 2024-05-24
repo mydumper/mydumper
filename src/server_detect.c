@@ -101,7 +101,7 @@ void detect_server_version(MYSQL * conn) {
         reset_replica=RESET_SLAVE;
         show_replica_status=SHOW_SLAVE_STATUS;
         show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
-        if (get_secondary()>5)
+        if (get_secondary()>=5)
           if (get_revision()>=2)
             show_binary_log_status=SHOW_BINLOG_STATUS;
           else
