@@ -357,9 +357,9 @@ executors:
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
-  nobel_mariadb1011:
+  noble_mariadb1011:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -373,9 +373,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_mariadb1006:
+  noble_mariadb1006:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -389,9 +389,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_percona57:
+  noble_percona57:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -405,9 +405,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_percona80:
+  noble_percona80:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -421,9 +421,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_tidb:
+  noble_tidb:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -437,9 +437,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_mysql80:
+  noble_mysql80:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -450,9 +450,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel_mysql84:
+  noble_mysql84:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -463,9 +463,9 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  nobel:
+  noble:
     docker:
-    - image: mydumper/mydumper-builder-nobel
+    - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
@@ -1426,38 +1426,38 @@ commands:
     - prepare_ubuntu_mariadb1006
 
 
-  prepare_nobel_tidb:
+  prepare_noble_tidb:
     steps:
     - prepare_ubuntu_percona57
 
 
-  prepare_nobel_percona57:
+  prepare_noble_percona57:
     steps:
     - prepare_ubuntu_percona57
 
 
-  prepare_nobel_percona80:
+  prepare_noble_percona80:
     steps:
     - prepare_ubuntu_percona80
 
 
-  prepare_nobel_mysql80:
+  prepare_noble_mysql80:
     steps:
     - prepare_ubuntu_mysql80
 
 
-  prepare_nobel_mysql84:
+  prepare_noble_mysql84:
     steps:
     - prepare_ubuntu_mysql84
 
 
-  prepare_nobel_mariadb1011:
+  prepare_noble_mariadb1011:
     steps:
     - prepare_mariadb1011
     - prepare_ubuntu_mariadb1011
 
 
-  prepare_nobel_mariadb1006:
+  prepare_noble_mariadb1006:
     steps:
     - prepare_mariadb1006
     - prepare_ubuntu_mariadb1006
@@ -2071,20 +2071,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_percona57:
+  compile_and_test_mydumper_in_noble_percona57:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_percona57
+        default: noble_percona57
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_percona57
+    - prepare_noble_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2092,20 +2092,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_percona80:
+  compile_and_test_mydumper_in_noble_percona80:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_percona80
+        default: noble_percona80
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_percona80
+    - prepare_noble_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2113,20 +2113,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_mariadb1011:
+  compile_and_test_mydumper_in_noble_mariadb1011:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_mariadb1011
+        default: noble_mariadb1011
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1011
+    - prepare_noble_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2134,20 +2134,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_mariadb1006:
+  compile_and_test_mydumper_in_noble_mariadb1006:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_mariadb1006
+        default: noble_mariadb1006
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1006
+    - prepare_noble_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2155,20 +2155,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_mysql80:
+  compile_and_test_mydumper_in_noble_mysql80:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_mysql80
+        default: noble_mysql80
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_mysql80
+    - prepare_noble_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2176,20 +2176,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_mysql84:
+  compile_and_test_mydumper_in_noble_mysql84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_mysql84
+        default: noble_mysql84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_mysql84
+    - prepare_noble_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2197,20 +2197,20 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_nobel_tidb:
+  compile_and_test_mydumper_in_noble_tidb:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: nobel_tidb
+        default: noble_tidb
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
 #    - prepare_ubuntu
-    - prepare_nobel_tidb
+    - prepare_noble_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4288,133 +4288,133 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_nobel_percona57_arm64:
-#    executor: nobel_percona57
-    executor: nobel
+  build_noble_percona57_arm64:
+#    executor: noble_percona57
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_percona57
+    - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_percona57_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_percona57_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona57_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_percona80_arm64:
-#    executor: nobel_percona80
-    executor: nobel
+  build_noble_percona80_arm64:
+#    executor: noble_percona80
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_percona80
+    - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_percona80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_percona80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mariadb1011_arm64:
-#    executor: nobel_mariadb1011
-    executor: nobel
+  build_noble_mariadb1011_arm64:
+#    executor: noble_mariadb1011
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1011
+    - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mariadb1011_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mariadb1011_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mariadb1006_arm64:
-#    executor: nobel_mariadb1006
-    executor: nobel
+  build_noble_mariadb1006_arm64:
+#    executor: noble_mariadb1006
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1006
+    - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mariadb1006_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mariadb1006_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mysql80_arm64:
-#    executor: nobel_mysql80
-    executor: nobel
+  build_noble_mysql80_arm64:
+#    executor: noble_mysql80
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mysql80
+    - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mysql84_arm64:
-#    executor: nobel_mysql84
-    executor: nobel
+  build_noble_mysql84_arm64:
+#    executor: noble_mysql84
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mysql84
+    - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5212,133 +5212,133 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_nobel_percona57_amd64:
-#    executor: nobel_percona57
-    executor: nobel
+  build_noble_percona57_amd64:
+#    executor: noble_percona57
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_percona57
+    - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_percona57_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_percona57_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona57_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_percona80_amd64:
-#    executor: nobel_percona80
-    executor: nobel
+  build_noble_percona80_amd64:
+#    executor: noble_percona80
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_percona80
+    - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_percona80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_percona80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mariadb1011_amd64:
-#    executor: nobel_mariadb1011
-    executor: nobel
+  build_noble_mariadb1011_amd64:
+#    executor: noble_mariadb1011
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1011
+    - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mariadb1011_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mariadb1011_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mariadb1006_amd64:
-#    executor: nobel_mariadb1006
-    executor: nobel
+  build_noble_mariadb1006_amd64:
+#    executor: noble_mariadb1006
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mariadb1006
+    - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mariadb1006_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mariadb1006_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mysql80_amd64:
-#    executor: nobel_mysql80
-    executor: nobel
+  build_noble_mysql80_amd64:
+#    executor: noble_mysql80
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mysql80
+    - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_nobel_mysql84_amd64:
-#    executor: nobel_mysql84
-    executor: nobel
+  build_noble_mysql84_amd64:
+#    executor: noble_mysql84
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_nobel_mysql84
+    - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/nobel_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/nobel_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb nobel_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5758,11 +5758,11 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_focal_mariadb1006
-    - compile_and_test_mydumper_in_nobel_percona57
-    - compile_and_test_mydumper_in_nobel_percona80
-    - compile_and_test_mydumper_in_nobel_mariadb1011
-    - compile_and_test_mydumper_in_nobel_mariadb1006
-    - compile_and_test_mydumper_in_nobel_mysql84
+    - compile_and_test_mydumper_in_noble_percona57
+    - compile_and_test_mydumper_in_noble_percona80
+    - compile_and_test_mydumper_in_noble_mariadb1011
+    - compile_and_test_mydumper_in_noble_mariadb1006
+    - compile_and_test_mydumper_in_noble_mysql84
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
