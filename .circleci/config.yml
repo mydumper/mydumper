@@ -2672,7 +2672,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el7_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2693,7 +2693,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el7_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2714,7 +2714,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el7_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2735,7 +2735,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el7_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2756,7 +2756,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el7_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2777,7 +2777,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql84
+    - prepare_el7_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2798,7 +2798,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_tidb
+    - prepare_el7_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2819,7 +2819,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el8_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2840,7 +2840,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el8_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2861,7 +2861,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el8_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2882,7 +2882,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el8_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2903,7 +2903,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el8_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2924,7 +2924,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql84
+    - prepare_el8_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2945,7 +2945,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_tidb
+    - prepare_el8_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2966,7 +2966,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona57
+    - prepare_el9_percona57
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2987,7 +2987,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_percona80
+    - prepare_el9_percona80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3008,7 +3008,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1011
+    - prepare_el9_mariadb1011
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3029,7 +3029,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mariadb1006
+    - prepare_el9_mariadb1006
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3050,7 +3050,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql80
+    - prepare_el9_mysql80
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3071,7 +3071,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_mysql84
+    - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3092,7 +3092,7 @@ jobs:
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_tidb
+    - prepare_el9_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:

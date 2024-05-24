@@ -463,7 +463,7 @@ do
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_${all_vendors[${vendor}_0]}
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
