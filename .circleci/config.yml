@@ -4360,32 +4360,40 @@ workflows:
     jobs:
     - compile_and_test_mydumper_in_bionic_percona57
     - compile_and_test_mydumper_in_bionic_percona80
+    - compile_and_test_mydumper_in_bionic_mysql84
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_focal_mariadb1006
+    - compile_and_test_mydumper_in_focal_mysql84
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
     - compile_and_test_mydumper_in_el7_mariadb1006
+    - compile_and_test_mydumper_in_el7_mysql84
     - compile_and_test_mydumper_in_el8_percona57
     - compile_and_test_mydumper_in_el8_percona80
     - compile_and_test_mydumper_in_el8_mariadb1011
     - compile_and_test_mydumper_in_el8_mariadb1006
+    - compile_and_test_mydumper_in_el8_mysql84
     - compile_and_test_mydumper_in_el9_percona80
     - compile_and_test_mydumper_in_el9_mariadb1011
     - compile_and_test_mydumper_in_el9_mariadb1006
+    - compile_and_test_mydumper_in_el9_mysql84
     - compile_and_test_mydumper_in_buster_percona57
     - compile_and_test_mydumper_in_buster_percona80
     - compile_and_test_mydumper_in_buster_mariadb1011
     - compile_and_test_mydumper_in_buster_mariadb1006
+    - compile_and_test_mydumper_in_buster_mysql84
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011
     - compile_and_test_mydumper_in_bullseye_mariadb1006
+    - compile_and_test_mydumper_in_bullseye_mysql84
     - compile_and_test_mydumper_in_bookworm_percona57
     - compile_and_test_mydumper_in_bookworm_percona80
     - compile_and_test_mydumper_in_bookworm_mariadb1011
+    - compile_and_test_mydumper_in_bookworm_mysql84
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
         e: jammy_percona57
@@ -4401,6 +4409,10 @@ workflows:
     - compile_and_test_mydumper_in_jammy_mariadb1006:
         test: true
         e: jammy_mariadb1006
+
+    - compile_and_test_mydumper_in_jammy_mysql84:
+        test: true
+        e: jammy_mysql84
 
     - build_bionic_percona80_amd64:
         filters:

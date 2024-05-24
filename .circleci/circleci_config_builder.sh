@@ -153,8 +153,6 @@ list_debian_os=("buster" "bullseye" "bookworm")
 list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
 
-#list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
-
 list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
@@ -168,16 +166,16 @@ list_build=(
 
 
 list_compile=(
-  "bionic_percona57"   "bionic_percona80"
-  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
-  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"
-  "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"
-                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"
-  "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"
-  "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
-  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011")
+  "bionic_percona57"   "bionic_percona80"                                                 "bionic_mysql84"
+  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"    "focal_mysql84"
+  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
+  "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
+                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
+  "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"   "buster_mysql84"
+  "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006" "bullseye_mysql84"
+  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006")
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84" )
 
 
 for os in ${list_all_os[@]}
