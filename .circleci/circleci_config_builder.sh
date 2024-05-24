@@ -253,16 +253,6 @@ commands:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
-  prepare_el8_mysql80:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
-  prepare_el8_mysql84:
-    steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
-
   prepare_ubuntu_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
@@ -312,7 +302,15 @@ do
     done
 done
 
-
+for vendor in ${list_mysql_version[@]}
+do
+  echo "
+  prepare_el8_${all_vendors[${vendor}_0]}:
+    steps:
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+"
+done
 
 for os in ${list_el_os[@]}
 do
@@ -327,15 +325,17 @@ do
 done
 
 
+# On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
+    # For TIDB will be only with Percona57
     vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - prepare_ubuntu_percona57
 "
-
+    # For Percona and MySQL will be the standar apt preparation
     for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
     do
 echo "
@@ -345,6 +345,7 @@ echo "
 "
     done
 
+    # For MariaDB we need some extra steps
     for vendor in ${list_mariadb_version[@]}
     do
 echo "
