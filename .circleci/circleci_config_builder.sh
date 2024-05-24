@@ -214,7 +214,6 @@ do
     - image: ${all_vendors[${vendor}_1]}
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done

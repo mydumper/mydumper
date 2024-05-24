@@ -96,7 +96,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -110,7 +109,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -215,7 +213,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -229,7 +226,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -334,7 +330,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -348,7 +343,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -453,7 +447,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -467,7 +460,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -572,7 +564,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -586,7 +577,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -691,7 +681,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -705,7 +694,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -810,7 +798,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -824,7 +811,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -929,7 +915,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -943,7 +928,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -1048,7 +1032,6 @@ executors:
     - image: mysql:8.0
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
@@ -1062,7 +1045,6 @@ executors:
     - image: mysql:8.4
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
