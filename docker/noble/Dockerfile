@@ -1,5 +1,5 @@
 # Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
-FROM ubuntu/ubuntu:noble as builder
+FROM ubuntu:noble as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
