@@ -33,7 +33,7 @@ const gchar *stop_replica_sql_thread=NULL;
 const gchar *reset_replica=NULL;
 const gchar *show_replica_status=NULL;
 const gchar *show_all_replicas_status=NULL;
-
+const gchar *show_binary_log_status=NULL;
 int get_product(){
   return product;
 }
@@ -91,8 +91,8 @@ void detect_server_version(MYSQL * conn) {
   g_free(ascii_version);
   g_free(ascii_version_comment);
 
-  if (is_mysql_like()){
-    if (get_product() == SERVER_TYPE_MARIADB){
+  switch (get_product()){
+    case SERVER_TYPE_MARIADB:
       if (get_major()<10){
         start_replica=START_SLAVE;
         stop_replica=STOP_SLAVE;
@@ -101,6 +101,13 @@ void detect_server_version(MYSQL * conn) {
         reset_replica=RESET_SLAVE;
         show_replica_status=SHOW_SLAVE_STATUS;
         show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
+        if (get_secondary()>5)
+          if (get_revision()>=2)
+            show_binary_log_status=SHOW_BINLOG_STATUS;
+          else
+            show_binary_log_status=SHOW_MASTER_STATUS;
+        else
+          show_binary_log_status=SHOW_MASTER_STATUS;
       }else {
         if (get_secondary()<=5){
           start_replica=START_SLAVE;
@@ -110,6 +117,7 @@ void detect_server_version(MYSQL * conn) {
           reset_replica=RESET_SLAVE;
           show_replica_status=SHOW_SLAVE_STATUS;
           show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
+          show_binary_log_status=SHOW_MASTER_STATUS;
         }else{
           start_replica=START_REPLICA;
           stop_replica=STOP_REPLICA;
@@ -118,9 +126,22 @@ void detect_server_version(MYSQL * conn) {
           reset_replica=RESET_REPLICA;
           show_replica_status=SHOW_REPLICA_STATUS;
           show_all_replicas_status=SHOW_ALL_REPLICAS_STATUS;
+          show_binary_log_status=SHOW_MASTER_STATUS;
         }
       }
-    }else{
+      break;
+    case SERVER_TYPE_TIDB:
+      start_replica=START_SLAVE;
+      stop_replica=STOP_SLAVE;
+      start_replica_sql_thread=START_SLAVE_SQL_THREAD;
+      stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
+      reset_replica=RESET_SLAVE;
+      show_replica_status=SHOW_SLAVE_STATUS;
+      show_binary_log_status=SHOW_MASTER_STATUS;
+      break;
+    case SERVER_TYPE_MYSQL:
+    case SERVER_TYPE_PERCONA:
+    case SERVER_TYPE_UNKNOWN:
       switch (get_major()) {
         case 8:
           start_replica=START_REPLICA;
@@ -129,6 +150,10 @@ void detect_server_version(MYSQL * conn) {
           stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
           reset_replica=RESET_REPLICA;
           show_replica_status=SHOW_REPLICA_STATUS;
+          if (get_secondary()>2)
+            show_binary_log_status=SHOW_BINARY_LOG_STATUS;
+          else
+            show_binary_log_status=SHOW_MASTER_STATUS;
           break;
         case 5:
           start_replica=START_SLAVE;
@@ -137,9 +162,10 @@ void detect_server_version(MYSQL * conn) {
           stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
           reset_replica=RESET_SLAVE;
           show_replica_status=SHOW_SLAVE_STATUS;
+          show_binary_log_status=SHOW_MASTER_STATUS;
           break;
       }
-    }
+      break;
   }
 }
 

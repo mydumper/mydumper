@@ -563,7 +563,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   char *mastergtid = NULL;
 
   
-  if (mysql_query(conn, "SHOW MASTER STATUS"))
+  if (mysql_query(conn, show_binary_log_status))
     m_warning("Couldn't get master position: %s", mysql_error(conn));
     
   master = mysql_store_result(conn);
