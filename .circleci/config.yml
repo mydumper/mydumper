@@ -2309,48 +2309,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el7_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el7
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el7_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el7_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el7
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el7_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_el8_percona57:
     parameters:
       test:
@@ -2477,48 +2435,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el8_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el8
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el8_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el8_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el8
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el8_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_el9_percona57:
     parameters:
       test:
@@ -2638,48 +2554,6 @@ jobs:
     - checkout
 #    - prepare_el
     - prepare_el_tidb
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el9_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el9
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el9_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el9_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el9
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:

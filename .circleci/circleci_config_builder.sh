@@ -460,33 +460,6 @@ do
 
 EOF
     done
-
-    for vendor in ${list_mysql_version[@]}
-    do
-        cat <<EOF
-  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: ${all_os[${os}_0]}
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_${os}_${all_vendors[${vendor}_0]}
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-EOF
-    done
 done
 
 for arch in ${list_arch[@]}
