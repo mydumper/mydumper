@@ -108,6 +108,12 @@ all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
 all_os[${os}_3]="true"
 
+os=nobel
+all_os[${os}_0]="nobel"
+all_os[${os}_1]="cimg/base:current-24.04"
+all_os[${os}_2]="percona-release_latest.nobel_all.deb"
+all_os[${os}_3]="true"
+
 os=el7
 all_os[${os}_0]="el7"
 all_os[${os}_1]="centos:7"
@@ -149,9 +155,9 @@ all_os[${os}_3]="true"
 # all_os[${os}_0]=""
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9")
-list_ubuntu_os=("bionic" "focal" "jammy")
+list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm")
-list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
+list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
 
 list_build=(
@@ -167,8 +173,9 @@ list_build=(
 
 
 list_compile=(
-  "bionic_percona57"   "bionic_percona80"                                                 "bionic_mysql84"
+  "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
+  "nobel_percona57"    "nobel_percona80"    "nobel_mariadb1011"    "nobel_mariadb1006"    "nobel_mysql84"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"

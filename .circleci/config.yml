@@ -357,6 +357,123 @@ executors:
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
+  _mariadb1011:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11-rc
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _mariadb1006:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.6
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _percona57:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:5.7
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _percona80:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _tidb:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: mysqld
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  _mysql84:
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: mysqld
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  :
+    docker:
+    - image: mydumper/mydumper-builder-
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
   el7_mariadb1011:
     docker:
     - image: mydumper/mydumper-builder-el7
@@ -1309,6 +1426,43 @@ commands:
     - prepare_ubuntu_mariadb1006
 
 
+  prepare__tidb:
+    steps:
+    - prepare_ubuntu_percona57
+
+
+  prepare__percona57:
+    steps:
+    - prepare_ubuntu_percona57
+
+
+  prepare__percona80:
+    steps:
+    - prepare_ubuntu_percona80
+
+
+  prepare__mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare__mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
+
+
+  prepare__mariadb1011:
+    steps:
+    - prepare_mariadb1011
+    - prepare_ubuntu_mariadb1011
+
+
+  prepare__mariadb1006:
+    steps:
+    - prepare_mariadb1006
+    - prepare_ubuntu_mariadb1006
+
+
   prepare_buster_tidb:
     steps:
     - prepare_ubuntu_percona57
@@ -1910,6 +2064,153 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_jammy_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__percona57:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _percona57
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__percona57
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__percona80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _percona80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__percona80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mariadb1011:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mariadb1011
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__mariadb1011
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mariadb1006:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mariadb1006
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__mariadb1006
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in__tidb:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: _tidb
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare__tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3987,6 +4288,138 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build__percona57_arm64:
+#    executor: _percona57
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__percona57
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_percona57_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona57_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona57_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona80_arm64:
+#    executor: _percona80
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__percona80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_percona80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona80_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1011_arm64:
+#    executor: _mariadb1011
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1011_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1011_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1011_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1006_arm64:
+#    executor: _mariadb1006
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1006_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1006_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1006_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql80_arm64:
+#    executor: _mysql80
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mysql80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql80_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql84_arm64:
+#    executor: _mysql84
+    executor: 
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mysql84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql84_arm64 arm64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona57_arm64:
 #    executor: buster_percona57
     executor: buster
@@ -4779,6 +5212,138 @@ jobs:
          root: /tmp/package
          paths:
            - .
+  build__percona57_amd64:
+#    executor: _percona57
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__percona57
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_percona57_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona57_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona57_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__percona80_amd64:
+#    executor: _percona80
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__percona80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_percona80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_percona80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _percona80_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1011_amd64:
+#    executor: _mariadb1011
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mariadb1011
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1011_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1011_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1011_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mariadb1006_amd64:
+#    executor: _mariadb1006
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mariadb1006
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mariadb1006_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mariadb1006_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mariadb1006_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql80_amd64:
+#    executor: _mysql80
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mysql80
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql80_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build__mysql84_amd64:
+#    executor: _mysql84
+    executor: 
+    resource_class: large
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_ubuntu
+    - prepare__mysql84
+    - run: sudo apt install -y fakeroot
+    - run: mkdir -p /tmp/package
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb _mysql84_amd64 amd64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona57_amd64:
 #    executor: buster_percona57
     executor: buster
@@ -5189,11 +5754,15 @@ workflows:
     jobs:
     - compile_and_test_mydumper_in_bionic_percona57
     - compile_and_test_mydumper_in_bionic_percona80
-    - compile_and_test_mydumper_in_bionic_mysql84
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_focal_mariadb1006
+    - compile_and_test_mydumper_in_nobel_percona57
+    - compile_and_test_mydumper_in_nobel_percona80
+    - compile_and_test_mydumper_in_nobel_mariadb1011
+    - compile_and_test_mydumper_in_nobel_mariadb1006
+    - compile_and_test_mydumper_in_nobel_mysql84
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
