@@ -1147,7 +1147,7 @@ void start_dump() {
       // Generate a @@tidb_snapshot to use for the worker threads since
       // the tidb-snapshot argument was not specified when starting mydumper
 
-      if (mysql_query(conn, "SHOW MASTER STATUS")) {
+      if (mysql_query(conn, show_binary_log_status)) {
         m_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
       } else {
 
