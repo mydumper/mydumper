@@ -1224,6 +1224,16 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_bionic_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_bionic_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
+
+
   prepare_bionic_mariadb1011:
     steps:
     - prepare_mariadb1011
@@ -1249,6 +1259,16 @@ commands:
   prepare_focal_percona80:
     steps:
     - prepare_ubuntu_percona80
+
+
+  prepare_focal_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_focal_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
 
 
   prepare_focal_mariadb1011:
@@ -1278,6 +1298,16 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_jammy_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_jammy_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
+
+
   prepare_jammy_mariadb1011:
     steps:
     - prepare_mariadb1011
@@ -1303,6 +1333,16 @@ commands:
   prepare_buster_percona80:
     steps:
     - prepare_ubuntu_percona80
+
+
+  prepare_buster_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_buster_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
 
 
   prepare_buster_mariadb1011:
@@ -1332,6 +1372,16 @@ commands:
     - prepare_ubuntu_percona80
 
 
+  prepare_bullseye_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_bullseye_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
+
+
   prepare_bullseye_mariadb1011:
     steps:
     - prepare_mariadb1011
@@ -1357,6 +1407,16 @@ commands:
   prepare_bookworm_percona80:
     steps:
     - prepare_ubuntu_percona80
+
+
+  prepare_bookworm_mysql80:
+    steps:
+    - prepare_ubuntu_mysql80
+
+
+  prepare_bookworm_mysql84:
+    steps:
+    - prepare_ubuntu_mysql84
 
 
   prepare_bookworm_mariadb1011:

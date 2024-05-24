@@ -322,7 +322,7 @@ do
     - prepare_ubuntu_percona57
 "
 
-    for vendor in ${list_percona_version[@]}
+    for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
