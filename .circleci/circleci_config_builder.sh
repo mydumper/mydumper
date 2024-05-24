@@ -267,7 +267,7 @@ commands:
 
   prepare_ubuntu_mysql84:
     steps:
-    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
+    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
   prepare_ubuntu_mariadb1006:
     steps:
