@@ -41,7 +41,8 @@
 #define SHOW_MASTER_STATUS "SHOW MASTER STATUS"
 #define SHOW_BINLOG_STATUS "SHOW BINLOG STATUS"
 #define SHOW_BINARY_LOG_STATUS "SHOW BINARY LOG STATUS"
-
+#define CHANGE_MASTER "CHANGE MASTER"
+#define CHANGE_REPLICATION_SOURCE "CHANGE REPLICATION SOURCE"
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
 
@@ -57,6 +58,7 @@ extern const gchar *reset_replica;
 extern const gchar *show_replica_status;
 extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
+extern const gchar *change_replication_source;
 #ifndef _src_common_h
 #define _src_common_h
 void initialize_share_common();

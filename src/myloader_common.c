@@ -79,7 +79,8 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
   gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
   gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
   guint exec_change_master=0, exec_reset_slave=0, exec_start_slave=0;
-  g_string_append(s,"CHANGE MASTER TO ");
+  g_string_append(s,change_replication_source);
+  g_string_append(s," TO ");
   for (i=0; i < len; i++){
     if (!g_strcmp0(keys[i], "myloader_exec_reset_slave")){
       exec_reset_slave=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
