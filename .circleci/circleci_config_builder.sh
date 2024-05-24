@@ -70,7 +70,8 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
-list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006" )
+
+list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006" "mysql84")
 list_mysql_version=( "mysql80" "mysql84" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
@@ -180,7 +181,7 @@ list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariad
 
 for os in ${list_all_os[@]}
 do
-    for vendor in ${list_all_vendors[@]} tidb
+    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
   ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -492,7 +493,7 @@ for arch in ${list_arch[@]}
 do
     for os in ${list_el_os[@]}
     do
-        for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
+        for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
 #    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
