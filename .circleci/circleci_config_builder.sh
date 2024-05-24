@@ -247,6 +247,10 @@ commands:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
+  prepare_el_mysql84:
+    steps:
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+
   prepare_el8_mysql80:
     steps:
     - run: sudo dnf module disable mysql -y
