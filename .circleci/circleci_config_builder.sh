@@ -262,6 +262,9 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_ubuntu_mysql84:
+    steps:
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient21-dev
 
   prepare_ubuntu_mariadb1006:
     steps:
