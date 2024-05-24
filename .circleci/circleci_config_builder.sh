@@ -13,7 +13,13 @@ executors:"
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="mysql80"
-all_vendors[${vendor}_1]="mysql:8"
+all_vendors[${vendor}_1]="mysql:8.0"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+
+vendor=mysql84
+all_vendors[${vendor}_0]="mysql84"
+all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
@@ -64,8 +70,8 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
-list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
-list_mysql_version=( "mysql80" )
+list_all_vendors=( "mysql84" "percona57" "percona80" "mariadb1011" "mariadb1006" )
+list_mysql_version=( "mysql80" "mysql84" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
