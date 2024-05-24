@@ -1094,7 +1094,7 @@ commands:
 
   prepare_ubuntu_mysql84:
     steps:
-    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient21-dev
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
 
   prepare_ubuntu_mariadb1006:
     steps:
@@ -5194,7 +5194,6 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_focal_mariadb1006
-    - compile_and_test_mydumper_in_focal_mysql84
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
     - compile_and_test_mydumper_in_el7_mariadb1011
@@ -5213,7 +5212,6 @@ workflows:
     - compile_and_test_mydumper_in_buster_percona80
     - compile_and_test_mydumper_in_buster_mariadb1011
     - compile_and_test_mydumper_in_buster_mariadb1006
-    - compile_and_test_mydumper_in_buster_mysql84
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011

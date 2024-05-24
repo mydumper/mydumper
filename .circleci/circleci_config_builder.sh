@@ -168,11 +168,11 @@ list_build=(
 
 list_compile=(
   "bionic_percona57"   "bionic_percona80"                                                 "bionic_mysql84"
-  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"    "focal_mysql84"
+  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
-  "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"   "buster_mysql84"
+  "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006" "bullseye_mysql84"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
 
@@ -267,7 +267,7 @@ commands:
 
   prepare_ubuntu_mysql84:
     steps:
-    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient21-dev
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev
 
   prepare_ubuntu_mariadb1006:
     steps:
