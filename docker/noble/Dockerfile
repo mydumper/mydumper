@@ -3,6 +3,11 @@ FROM ubuntu:noble as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 
+RUN \
+  apt-get update && \
+  apt-get install -y sudo && \
+  apt-get clean
+
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
   sudo apt-get update && \
