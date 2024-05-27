@@ -269,10 +269,10 @@ commands:
 
   prepare_ubuntu_mysql84:
     steps:
-#    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
-#    - run: DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
   prepare_ubuntu_mariadb1006:
