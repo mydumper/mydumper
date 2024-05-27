@@ -171,12 +171,12 @@ list_build=(
   "buster_percona80_amd64"
   "bookworm_percona80_amd64")
 
-
+#   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
 list_compile=(
   "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"    "noble_mysql84"
-  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
+                                                                                          "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
   "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"
