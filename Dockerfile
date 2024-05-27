@@ -10,7 +10,7 @@ ARG CMAKE_ARGS
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN \
-  yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
+  yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm
 
 RUN \
   yum -y install mysql-community-libs mysql-community-devel
@@ -27,7 +27,7 @@ FROM mydumper/mydumper-builder-el9:latest
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN \
-  yum -y install https://repo.mysql.com/mysql80-community-release-el9.rpm
+  yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm
 
 RUN \
   yum -y install mysql-community-libs
