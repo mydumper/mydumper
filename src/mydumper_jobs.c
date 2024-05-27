@@ -675,7 +675,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     errors++;
     return;
   }
-
+  guint charcol=0,collcol=0;
   if (dump_routines) {
     g_assert(nroutines > 0);
     for (guint r= 0; r < nroutines; r++) {
@@ -692,9 +692,10 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         g_free(query);
         return;
       }
+      determine_charset_and_coll_columns_from_show(result, &charcol, &collcol);
 
       while ((row= mysql_fetch_row(result))) {
-        set_charset(statement, row[8], row[9]);
+        set_charset(statement, row[charcol], row[collcol]);
         g_string_append_printf(statement, "DROP %s IF EXISTS %c%s%c;\n", routine_type[r], q, row[1], q);
         if (!write_data(outfile, statement)) {
           g_critical("Could not write %s data for %s.%s", routine_type[r], database->name,
@@ -753,9 +754,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       g_free(query);
       return;
     }
-
+    determine_charset_and_coll_columns_from_show(result, &charcol, &collcol);
     while ((row = mysql_fetch_row(result))) {
-      set_charset(statement, row[12], row[13]);
+      set_charset(statement, row[charcol], row[collcol]);
       g_string_append_printf(statement, "DROP EVENT IF EXISTS %c%s%c;\n", q, row[1], q);
       if (!write_data(outfile, statement)) {
         g_critical("Could not write stored procedure data for %s.%s", database->name,

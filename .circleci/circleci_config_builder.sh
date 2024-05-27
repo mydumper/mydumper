@@ -13,7 +13,13 @@ executors:"
 declare -A all_vendors
 vendor=mysql80
 all_vendors[${vendor}_0]="mysql80"
-all_vendors[${vendor}_1]="mysql:8"
+all_vendors[${vendor}_1]="mysql:8.0"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+
+vendor=mysql84
+all_vendors[${vendor}_0]="mysql84"
+all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
@@ -64,8 +70,9 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 #list_all_vendors=( "percona57" "percona80" "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011")
-list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006")
-list_mysql_version=( "mysql80" )
+
+list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006" "mysql80" "mysql84")
+list_mysql_version=( "mysql80" "mysql84" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1004" "mariadb1005" "mariadb1006" "mariadb1011" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
@@ -99,6 +106,12 @@ os=jammy
 all_os[${os}_0]="jammy"
 all_os[${os}_1]="cimg/base:current-22.04"
 all_os[${os}_2]="percona-release_latest.jammy_all.deb"
+all_os[${os}_3]="true"
+
+os=noble
+all_os[${os}_0]="noble"
+all_os[${os}_1]="cimg/base:current-24.04"
+all_os[${os}_2]="percona-release_latest.noble_all.deb"
 all_os[${os}_3]="true"
 
 os=el7
@@ -142,17 +155,16 @@ all_os[${os}_3]="true"
 # all_os[${os}_0]=""
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9")
-list_ubuntu_os=("bionic" "focal" "jammy")
+list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm")
-list_all_os=("bionic" "focal" "jammy" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
+list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
-
-#list_build=("bionic_percona80_arm64" "bionic_percona80_amd64" "focal_percona80_arm64" "focal_percona80_amd64" "jammy_percona80_amd64" "jammy_percona80_arm64" "el7_percona57_aarch64" "el7_percona57_x86_64" "el8_percona57_aarch64" "el8_percona57_x86_64" "el9_percona80_aarch64" "el9_percona80_x86_64" "bullseye_percona80_amd64" "bullseye_percona80_arm64" "buster_percona80_arm64" "buster_percona80_amd64")
 
 list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
+  "noble_mysql84_amd64"
   "el7_percona57_x86_64" 
   "el8_percona57_x86_64"     "el8_mysql80_aarch64"
   "el9_percona80_x86_64"     "el9_mysql80_aarch64"
@@ -160,23 +172,24 @@ list_build=(
   "buster_percona80_amd64"
   "bookworm_percona80_amd64")
 
-
+#   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
 list_compile=(
   "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
-  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"
-  "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"
-                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"
+                                                                                          "noble_mysql84"
+  "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
+  "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
+                       "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
   "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
-  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011")
+  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006")
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84")
 
 
 for os in ${list_all_os[@]}
 do
-    for vendor in ${list_all_vendors[@]} tidb
+    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
   ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -209,7 +222,6 @@ do
     - image: ${all_vendors[${vendor}_1]}
       command: mysqld
       environment:
-        MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
@@ -242,10 +254,9 @@ commands:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
-  prepare_el8_mysql80:
+  prepare_el_mysql84:
     steps:
-    - run: sudo dnf module disable mysql -y
-    - prepare_el_mysql80
+    - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
   prepare_ubuntu_percona57:
     steps:
@@ -257,6 +268,14 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_ubuntu_mysql84:
+    steps:
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
   prepare_ubuntu_mariadb1006:
     steps:
@@ -293,7 +312,15 @@ do
     done
 done
 
-
+for vendor in ${list_mysql_version[@]}
+do
+  echo "
+  prepare_el8_${all_vendors[${vendor}_0]}:
+    steps:
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+"
+done
 
 for os in ${list_el_os[@]}
 do
@@ -308,16 +335,18 @@ do
 done
 
 
+# On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
 do
+    # For TIDB will be only with Percona57
     vendor=tidb
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
     - prepare_ubuntu_percona57
 "
-
-    for vendor in ${list_percona_version[@]}
+    # For Percona and MySQL will be the standar apt preparation
+    for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
     do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -326,6 +355,7 @@ echo "
 "
     done
 
+    # For MariaDB we need some extra steps
     for vendor in ${list_mariadb_version[@]}
     do
 echo "
@@ -445,34 +475,7 @@ do
     steps:
     - checkout
 #    - prepare_el
-    - prepare_el_${all_vendors[${vendor}_0]}
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-EOF
-    done
-
-    for vendor in ${list_mysql_version[@]}
-    do
-        cat <<EOF
-  compile_and_test_mydumper_in_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: ${all_os[${os}_0]}
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_${os}_${all_vendors[${vendor}_0]}
+    - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -488,7 +491,7 @@ for arch in ${list_arch[@]}
 do
     for os in ${list_el_os[@]}
     do
-        for vendor in ${list_all_vendors[@]} ${list_mysql_version[@]}
+        for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
 #    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
