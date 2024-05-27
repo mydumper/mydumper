@@ -362,6 +362,21 @@ void determine_explain_columns(MYSQL_RES *result, guint *rowscol){
   }
 }
 
+void determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *charcol, guint *collcol){
+  *charcol=0,*collcol=0;
+  MYSQL_FIELD *fields = mysql_fetch_fields(result);
+  guint i = 0;
+  for (i = 0; i < mysql_num_fields(result); i++) {
+    if (!strcasecmp(fields[i].name, "character_set_client"))
+      *charcol = i;
+    else if (!strcasecmp(fields[i].name, "collation_connection"))
+      *collcol = i;
+  }
+  g_assert(*charcol > 0);
+  g_assert(*collcol > 0);
+}
+
+
 void initialize_headers(){
   headers=g_string_sized_new(100);
   if (is_mysql_like()) {
