@@ -286,6 +286,9 @@ struct db_table {
   char *escaped_table;
   char *min;
   char *max;
+  gboolean no_data;
+  gboolean no_schema;
+  gboolean no_trigger;
 //  char *field;
   GString *select_fields;
   gboolean complete_insert;

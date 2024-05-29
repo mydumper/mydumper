@@ -1020,6 +1020,42 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
   dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
 
+gboolean str_list_has_str(gchar ** str_list, const gchar* str){
+  guint i=0;
+  for(i=0; i<g_strv_length(str_list); i++){
+    if(g_strcmp0(str_list[i],str)==0){
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+
+void parse_object_to_export(struct db_table *dbt,gchar *val){
+  if (!val){
+    dbt->no_data=FALSE;
+    dbt->no_schema=FALSE;
+    dbt->no_trigger=FALSE;
+    return;
+  }
+  gchar **split_option = g_strsplit(val, ",", 4);
+  dbt->no_data=!str_list_has_str(split_option,"DATA");
+  dbt->no_schema=!str_list_has_str(split_option,"SCHEMA");
+  dbt->no_trigger=!str_list_has_str(split_option,"TRIGGER");
+  if (str_list_has_str(split_option,"ALL")){
+    dbt->no_data=FALSE;
+    dbt->no_schema=FALSE;
+    dbt->no_trigger=FALSE;
+  }
+  if (str_list_has_str(split_option,"NONE")){
+    dbt->no_data=TRUE;
+    dbt->no_schema=TRUE;
+    dbt->no_trigger=TRUE;
+  }
+  g_strfreev(split_option);
+}
+
+
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence)
@@ -1050,6 +1086,11 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
     dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
     dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
+  //     dbt->no_data=FALSE;
+//    dbt->no_schema=FALSE;
+//    dbt->no_trigger=FALSE; 
+    parse_object_to_export(dbt,g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
+
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
     dbt->max_threads_per_table=max_threads_per_table;
     dbt->current_threads_running=0;
@@ -1147,17 +1188,17 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
   // with trx_consistency_only we dump all as innodb_table
-    if (!no_schemas) {
+    if (!no_schemas && !dbt->no_schema) {
 //      write_table_metadata_into_file(dbt);
       g_mutex_lock(table_schemas_mutex);
       table_schemas=g_list_prepend( table_schemas, dbt) ;
       g_mutex_unlock(table_schemas_mutex);
       create_job_to_dump_table_schema( dbt, conf);
     }
-    if (dump_triggers && !database->dump_triggers) {
+    if (dump_triggers && !database->dump_triggers && !dbt->no_trigger) {
       create_job_to_dump_triggers(conn, dbt, conf);
     }
-    if (!no_data) {
+    if (!no_data && !dbt->no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt, conf);
@@ -1185,11 +1226,11 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       }
     }
   } else if (is_view) {
-    if (!no_schemas) {
+    if (!no_schemas && !dbt->no_schema) {
       create_job_to_dump_view(dbt, conf);
     }
   } else { // is_sequence
-    if (!no_schemas) {
+    if (!no_schemas && !dbt->no_schema) {
       create_job_to_dump_sequence(dbt, conf);
     }
   }

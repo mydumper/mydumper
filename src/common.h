@@ -72,6 +72,7 @@ struct configuration_per_table{
   GHashTable *all_num_threads_per_table;
   GHashTable *all_columns_on_select_per_table;
   GHashTable *all_columns_on_insert_per_table;
+  GHashTable *all_object_to_export;
   GHashTable *all_partition_regex_per_table;
   GHashTable *all_rows_per_table;
 };
