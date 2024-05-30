@@ -115,7 +115,7 @@ char * (*identifier_quote_character_protect)(char *r);
 //GRecMutex *ready_database_dump_mutex = NULL;
 GRecMutex *ready_table_dump_mutex = NULL;
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 gchar *exec_command=NULL;
 
 void initialize_start_dump(){
@@ -130,6 +130,8 @@ void initialize_start_dump(){
   conf_per_table.all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   conf_per_table.all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
+  conf_per_table.all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
+  
   conf_per_table.all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   conf_per_table.all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );

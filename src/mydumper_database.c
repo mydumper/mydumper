@@ -61,7 +61,7 @@ struct database * new_database(MYSQL *conn, char *database_name, gboolean alread
   d->schema_checksum=NULL;
   d->post_checksum=NULL;
   d->triggers_checksum=NULL;
-  d->dump_triggers= !is_regex_being_used() && tables_list == NULL;
+  d->dump_triggers= !is_regex_being_used() && tables_list == NULL && g_hash_table_size(conf_per_table.all_object_to_export)==0;
   g_hash_table_insert(database_hash, d->name,d);
   return d;
 }

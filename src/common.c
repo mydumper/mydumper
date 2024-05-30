@@ -323,6 +323,10 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"object_to_export") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(cpt->all_object_to_export, g_strdup(groups[i]), g_strdup(value));
+          }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             pcre *r=NULL; 
@@ -341,7 +345,6 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
   }
   g_strfreev(groups);
 }
-
 
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str){
   GString *s=g_string_new(str);
