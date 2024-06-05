@@ -1240,37 +1240,6 @@ void start_dump() {
     if (res)
       mysql_free_result(res);
   }
-/*
-  GDateTime *datetime = g_date_time_new_now_local();
-  char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
-  fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
-  g_message("Started dump at: %s", datetimestr);
-  g_free(datetimestr);
-
-  // Write dump config into beginning of metadata, stream this first 
-  {
-    g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
-    const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
-    fprintf(mdfile, "[config]\nquote_character = %s\n", qc);
-    fprintf(mdfile, "\n[myloader_session_variables]");
-*/
-//    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
-/*    fflush(mdfile);
-  }
-
-  if (stream){
-    initialize_stream();
-    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
-    fclose(mdfile);
-    metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
-    mdfile= g_fopen(metadata_partial_filename, "w");
-    if (!mdfile) {
-      m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
-    }
-  }
-
-  write_replica_info(conn, mdfile);
-*/
 
   if (exec_command != NULL){
     initialize_exec_command();
@@ -1398,14 +1367,14 @@ void start_dump() {
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
-  }
-
-  if (replica_stopped){
-    g_message("Starting replica");
-    if (mysql_query(conn, start_replica_sql_thread)){
-      g_warning("Not able to start replica: %s", mysql_error(conn));
+    if (replica_stopped){
+      g_message("Starting replica");
+      if (mysql_query(conn, start_replica_sql_thread)){
+        g_warning("Not able to start replica: %s", mysql_error(conn));
+      }
     }
   }
+
 
   g_message("Waiting database finish");
 
@@ -1450,6 +1419,12 @@ void start_dump() {
       g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
+    }
+    if (replica_stopped){
+      g_message("Starting replica");
+      if (mysql_query(conn, start_replica_sql_thread)){
+        g_warning("Not able to start replica: %s", mysql_error(conn));
+      }
     }
   }
 
