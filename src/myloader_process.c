@@ -483,7 +483,7 @@ gboolean process_table_filename(char * filename){
 
   struct database *real_db_name=get_db_hash(db_name,db_name);
   if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
+    g_warning("Skipping table: `%s`.`%s`",real_db_name->name, table_name);
     return FALSE;
   }
 
@@ -720,7 +720,7 @@ gboolean process_data_filename(char * filename){
 
   struct database *real_db_name=get_db_hash(db_name,db_name);
   if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    g_warning("Skiping table: `%s`.`%s`",real_db_name->name, table_name);
+    g_warning("Skipping table: `%s`.`%s`",real_db_name->name, table_name);
     return FALSE;
   }
 
