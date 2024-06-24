@@ -592,7 +592,7 @@ echo '
     '
 
 echo '
-    - run: git commit -m "New version files: ${CIRCLE_TAG}"
+    - run: git commit -m "New version files ${CIRCLE_TAG}"
     - run: git push -u origin HEAD
     - run: cd ..
     - run: git clone --bare https://github.com/mydumper/mydumper.git
