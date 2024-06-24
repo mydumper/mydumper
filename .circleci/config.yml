@@ -5934,6 +5934,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+
     - publish-github-release:
         requires:
           - build_bionic_percona80_amd64
@@ -5954,7 +5955,7 @@ workflows:
           tags:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
-	    
+
     - publish-ubuntu-repository:
         requires:
           - publish-github-release
