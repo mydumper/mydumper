@@ -638,7 +638,6 @@ echo '        filters:
 done
 
 echo '    - publish-github-release:
-          - publish-ubuntu-repository:
         requires:'
 for os in ${!list_build[@]}
 do
@@ -649,4 +648,15 @@ echo '        filters:
             ignore: /.*/
           tags:
 #            only: /.*/
-            only: /^v\d+\.\d+\.\d+-\d+$/'
+            only: /^v\d+\.\d+\.\d+-\d+$/
+	    
+    - publish-ubuntu-repository:
+        requires:
+          - publish-github-release
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+#            only: /.*/
+            only: /^v\d+\.\d+\.\d+-\d+$/
+	    '
