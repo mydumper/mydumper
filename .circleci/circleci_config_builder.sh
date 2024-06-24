@@ -660,4 +660,4 @@ echo '        filters:
           tags:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
-	    '
+'
