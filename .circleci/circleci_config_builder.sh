@@ -551,13 +551,54 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     done
 done
 
-echo '  publish-github-release:
+echo '
+  publish-github-release:
     docker:
       - image: cibuilds/github:0.10
     steps:
     - attach_workspace:
         at: /tmp/package
     - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
+    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git
+    - run: cd mydumper_repo/
+    - run: git reset HEAD
+    - run: mkdir ubuntu debian'
+
+echo '
+    - run: cp /tmp/package/*.deb ubuntu/
+    - run: git add ubuntu/*.deb
+    - run: cd ubuntu
+    - run: dpkg-scanpackages --multiversion . > Packages
+    - run: gzip -k -f Packages
+    - run: apt-ftparchive release . > Release
+    - run: gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+    - run: gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+    - run: git add Packages* Release* InRelease
+    - run: cd ..
+    '
+
+
+echo '
+    - run: cp /tmp/package/*.deb debian/
+    - run: git add debian/*.deb
+    - run: cd debian
+    - run: dpkg-scanpackages --multiversion . > Packages
+    - run: gzip -k -f Packages
+    - run: apt-ftparchive release . > Release
+    - run: gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+    - run: gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+    - run: git add Packages* Release* InRelease
+    - run: cd ..
+    '
+
+echo '
+    - run: git commit -m "New version files: ${CIRCLE_TAG}"
+    - run: git push -u origin HEAD
+    - run: cd ..
+    - run: git clone --bare https://github.com/mydumper/mydumper.git
+    - run: cd mydumper
+    - run: git submodule update --remote --merge
+
 
 workflows:
   version: 2
