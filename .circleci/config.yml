@@ -5760,7 +5760,15 @@ jobs:
     - attach_workspace:
         at: /tmp/package
     - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
-    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git
+
+  publish-ubuntu-repository:
+    docker:
+      - image: mydumper/mydumper-builder-noble
+    steps:
+    - run: sudo apt install -y git dpkg-dev apt-utils
+    - attach_workspace:
+        at: /tmp/package    
+    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git mydumper_repo
     - run: cd mydumper_repo/
     - run: git reset HEAD
     - run: mkdir ubuntu debian
@@ -5926,6 +5934,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+
     - publish-github-release:
         requires:
           - build_bionic_percona80_amd64
@@ -5946,3 +5955,14 @@ workflows:
           tags:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
+
+    - publish-ubuntu-repository:
+        requires:
+          - publish-github-release
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+#            only: /.*/
+            only: /^v\d+\.\d+\.\d+-\d+$/
+

@@ -558,8 +558,17 @@ echo '
     steps:
     - attach_workspace:
         at: /tmp/package
-    - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
-    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git
+    - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
+
+echo '
+  publish-ubuntu-repository:
+    docker:
+      - image: mydumper/mydumper-builder-noble
+    steps:
+    - run: sudo apt install -y git dpkg-dev apt-utils
+    - attach_workspace:
+        at: /tmp/package    
+    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git mydumper_repo
     - run: cd mydumper_repo/
     - run: git reset HEAD
     - run: mkdir ubuntu debian'
@@ -628,7 +637,8 @@ echo '        filters:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done
 
-echo '    - publish-github-release:
+echo '
+    - publish-github-release:
         requires:'
 for os in ${!list_build[@]}
 do
@@ -639,4 +649,15 @@ echo '        filters:
             ignore: /.*/
           tags:
 #            only: /.*/
-            only: /^v\d+\.\d+\.\d+-\d+$/'
+            only: /^v\d+\.\d+\.\d+-\d+$/
+
+    - publish-ubuntu-repository:
+        requires:
+          - publish-github-release
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+#            only: /.*/
+            only: /^v\d+\.\d+\.\d+-\d+$/
+'
