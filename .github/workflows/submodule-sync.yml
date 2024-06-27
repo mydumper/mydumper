@@ -30,5 +30,5 @@ jobs:
       run: |
         git config --global user.name 'David Ducos'
         git config --global user.email 'david.ducos@gmail.com'
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+        git remote set-url origin https://x-access-token:${{ secrets.DAVIDDUCOS_TOKEN }}@github.com/${{ github.repository }}
         git commit -am "Auto updated submodule references" && git push --force || echo "No changes to commit"
