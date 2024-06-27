@@ -27,7 +27,10 @@ FROM mydumper/mydumper-builder-el9:latest
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN \
-  yum -y install zstd
+  yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm
+
+RUN \
+  yum -y install zstd mysql-community-libs mysql-community-devel
 
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /etc/mydumper.cnf /etc/
