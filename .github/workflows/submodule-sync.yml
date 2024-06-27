@@ -17,18 +17,12 @@ jobs:
     # Checkout the repository to the GitHub Actions runner
     - name: Checkout
       uses: actions/checkout@v3
-      with:
-        submodules: true
-
-    # Update references
-    - name: Git Submodule Update
-      run: |
-        git pull --recurse-submodules
-        git submodule update --remote --recursive
 
     - name: Commit update
       run: |
         git config --global user.name 'David Ducos'
         git config --global user.email 'david.ducos@gmail.com'
         git remote set-url origin https://x-access-token:${{ secrets.DAVIDDUCOS_TOKEN }}@github.com/${{ github.repository }}
-        git commit -am "Auto updated submodule references" && git push --force || echo "No changes to commit"
+        curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output latest_commit
+        git update-index --cacheinfo 160000,$(head -2 latest_commit | tail -1 | cut -b9-48),repo
+        git commit -am "Auto updated submodule references" && git push
