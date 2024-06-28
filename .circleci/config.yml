@@ -5810,8 +5810,8 @@ jobs:
           git add rpm/*.rpm
           cd rpm
           createrepo-c --update . 
-	  rm -rf repodata.old*
-	  git add repodata
+          rm -rf repodata.old*
+          git add repodata
           cd ..
 
           git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
