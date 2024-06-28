@@ -5789,6 +5789,7 @@ jobs:
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
+          cd ..
     
 
           cp /tmp/package/mydumper*buster*deb /tmp/package/mydumper*bullseye*deb /tmp/package/mydumper*bookworm*deb debian/
