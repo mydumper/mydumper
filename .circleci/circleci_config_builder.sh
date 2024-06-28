@@ -568,45 +568,58 @@ echo '
     - run: sudo apt install -y git dpkg-dev apt-utils
     - attach_workspace:
         at: /tmp/package    
-    - run: git clone --bare https://github.com/mydumper/mydumper_repo.git mydumper_repo
-    - run: cd mydumper_repo/
-    - run: git reset HEAD
-    - run: mkdir ubuntu debian'
+    - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
+    - run: git clone --no-checkout https://github.com/mydumper/mydumper_repo.git mydumper_repo
+    - run:
+        command: |
+          cd mydumper_repo/ 
+          git config --global user.name "David Ducos"
+          git config --global user.email "david.ducos@gmail.com"
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
+          git reset HEAD
+          mkdir ubuntu debian'
+echo -n '
+          cp '
+echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
+ 	  echo ' ubuntu/'
 
 echo '
-    - run: cp /tmp/package/*.deb ubuntu/
-    - run: git add ubuntu/*.deb
-    - run: cd ubuntu
-    - run: dpkg-scanpackages --multiversion . > Packages
-    - run: gzip -k -f Packages
-    - run: apt-ftparchive release . > Release
-    - run: gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-    - run: gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-    - run: git add Packages* Release* InRelease
-    - run: cd ..
+	  git add ubuntu/*.deb
+          cd ubuntu 
+	  dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
     '
 
+echo -n '
+          cp '
+echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
+          echo ' debian/'
 
 echo '
-    - run: cp /tmp/package/*.deb debian/
-    - run: git add debian/*.deb
-    - run: cd debian
-    - run: dpkg-scanpackages --multiversion . > Packages
-    - run: gzip -k -f Packages
-    - run: apt-ftparchive release . > Release
-    - run: gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-    - run: gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-    - run: git add Packages* Release* InRelease
-    - run: cd ..
+          git add debian/*.deb
+          cd debian
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+	  git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
     '
 
 echo '
-    - run: git commit -m "New version files ${CIRCLE_TAG}"
-    - run: git push -u origin HEAD
-    - run: cd ..
-    - run: git clone --bare https://github.com/mydumper/mydumper.git
-    - run: cd mydumper
-    - run: git submodule update --remote --merge
+    - run: 
+        command: |
+          git clone --no-checkout https://github.com/mydumper/mydumper.git mydumper
+	  cd mydumper
+	  git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
+          curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output ../latest_commit
+          git update-index --cacheinfo 160000,$(head -2 ../latest_commit | tail -1 | cut -b9-48),repo
+          git commit -am "Auto updated submodule references" && git push
 
 
 workflows:
