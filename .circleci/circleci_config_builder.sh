@@ -584,9 +584,9 @@ echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*de
  	  echo ' ubuntu/'
 
 echo '
-	  git add ubuntu/*.deb
+          git add ubuntu/*.deb
           cd ubuntu 
-	  dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -608,15 +608,15 @@ echo '
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-	  git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
+          git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
     '
 
 echo '
     - run: 
         command: |
           git clone --no-checkout https://github.com/mydumper/mydumper.git mydumper
-	  cd mydumper
-	  git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
+          cd mydumper
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
           curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output ../latest_commit
           git update-index --cacheinfo 160000,$(head -2 ../latest_commit | tail -1 | cut -b9-48),repo
           git commit -am "Auto updated submodule references" && git push
