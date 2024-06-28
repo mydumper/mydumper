@@ -621,8 +621,8 @@ echo '
           git add rpm/*.rpm
           cd rpm
           createrepo-c --update . 
-	  rm -rf repodata.old*
-	  git add repodata
+          rm -rf repodata.old*
+          git add repodata
           cd ..'
 
 echo '
