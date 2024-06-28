@@ -592,6 +592,7 @@ echo '
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
+	  cd ..
     '
 
 echo -n '
