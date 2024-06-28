@@ -620,7 +620,7 @@ echo '
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
           curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output ../latest_commit
           git update-index --cacheinfo 160000,$(head -2 ../latest_commit | tail -1 | cut -b9-48),repo
-          git commit -am "Auto updated submodule references" && git push
+          git commit -am "[skip ci] Auto updated submodule references" && git push
 
 
 workflows:
