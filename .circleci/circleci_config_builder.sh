@@ -615,7 +615,7 @@ echo '
 echo '
     - run: 
         command: |
-          git clone --no-checkout https://github.com/mydumper/mydumper.git mydumper
+          git clone https://github.com/mydumper/mydumper.git mydumper
           cd mydumper
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
           curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output ../latest_commit
