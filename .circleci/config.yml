@@ -5765,7 +5765,7 @@ jobs:
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt install -y git dpkg-dev apt-utils
+    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c
     - attach_workspace:
         at: /tmp/package    
     - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
@@ -5777,7 +5777,7 @@ jobs:
           git config --global user.email "david.ducos@gmail.com"
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
-          mkdir ubuntu debian
+          mkdir ubuntu debian rpm
 
           cp /tmp/package/mydumper*bionic*deb /tmp/package/mydumper*focal*deb /tmp/package/mydumper*jammy*deb /tmp/package/mydumper*noble*deb ubuntu/
 
@@ -5802,8 +5802,19 @@ jobs:
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
+	  cd ..
     
+
+          cp /tmp/package/mydumper*el7*rpm /tmp/package/mydumper*el8*rpm /tmp/package/mydumper*el9*rpm rpm/
+
+          git add rpm/*.rpm
+          cd rpm
+          createrepo-c --update . 
+	  rm -rf repodata.old*
+	  git add repodata
+          cd ..
+
+          git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push
 
     - run: 
         command: |
