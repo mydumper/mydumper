@@ -1086,9 +1086,6 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
     dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
     dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
-  //     dbt->no_data=FALSE;
-//    dbt->no_schema=FALSE;
-//    dbt->no_trigger=FALSE; 
     parse_object_to_export(dbt,g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
 
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);

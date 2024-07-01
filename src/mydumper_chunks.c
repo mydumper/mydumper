@@ -396,72 +396,68 @@ cleanup:
 }
 
 
-gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt,struct chunk_step_item **csi, struct MList *dbt_list){
+gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list){
   g_mutex_lock(dbt_list->mutex);
   GList *iter=dbt_list->list;
-  struct db_table *d;
+  struct db_table *dbt;
   gboolean are_there_jobs_defining=FALSE;
   struct chunk_step_item *lcs;
 //  struct chunk_step_item *(*get_next)(struct db_table *dbt);
   while (iter){
-    d=iter->data;
-    g_mutex_lock(d->chunks_mutex);
+    dbt=iter->data;
+    g_mutex_lock(dbt->chunks_mutex);
 //    g_message("Checking table: %s.%s", d->database->name, d->table);
-    if (d->status != DEFINING){
+    if (dbt->status != DEFINING){
 
-      if (d->status == UNDEFINED){
+      if (dbt->status == UNDEFINED){
 //        g_message("Checking table: %s.%s DEFINING NOW", d->database->name, d->table);
-        *dbt=iter->data;
-        d->status = DEFINING;
+        *dbt_pointer=iter->data;
+        dbt->status = DEFINING;
         are_there_jobs_defining=TRUE;
-        g_mutex_unlock(d->chunks_mutex);
+        g_mutex_unlock(dbt->chunks_mutex);
         break;
       }
 
       // Set by set_chunk_strategy_for_dbt() in working_thread()
-      g_assert(d->status == READY);
+      g_assert(dbt->status == READY);
 
       // Initially chunks are set by set_chunk_strategy_for_dbt() and then by
       // chunk_functions.get_next(d) (see below)
-      if (d->chunks == NULL){
-        g_mutex_unlock(d->chunks_mutex);
+      if (dbt->chunks == NULL){
+        g_mutex_unlock(dbt->chunks_mutex);
         goto next;
       }
 
-      lcs = (struct chunk_step_item *)g_list_first(d->chunks)->data;
+      lcs = (struct chunk_step_item *)g_list_first(dbt->chunks)->data;
       if (lcs->chunk_type == NONE){
-        *dbt=iter->data;
-//        *csi=d->initial_chunk_step;
+        *dbt_pointer=iter->data;
         *csi = lcs;
-        dbt_list->list=g_list_remove(dbt_list->list,d);
-        g_mutex_unlock(d->chunks_mutex);
+        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_unlock(dbt->chunks_mutex);
         break;
       }
-//      get_next=d->initial_chunk_step->chunk_functions.get_next;
 
-      if (d->max_threads_per_table <= d->current_threads_running){
-        g_mutex_unlock(d->chunks_mutex);
+      if (dbt->max_threads_per_table <= dbt->current_threads_running){
+        g_mutex_unlock(dbt->chunks_mutex);
         goto next;
       }
-      d->current_threads_running++;
-
-      lcs=lcs->chunk_functions.get_next(d);
+      dbt->current_threads_running++;
+      lcs=lcs->chunk_functions.get_next(dbt);
 
       if (lcs!=NULL){
-
-        *csi=lcs;
-        *dbt=iter->data;
-        g_mutex_unlock(d->chunks_mutex);
+        *dbt_pointer=iter->data;
+        *csi = lcs;
+        g_mutex_unlock(dbt->chunks_mutex);
         break;
       }else{
-//        g_message("Checking table: %s.%s is null", d->database->name, d->table);
         iter=iter->next;
-	dbt_list->list=g_list_remove(dbt_list->list,d);
-        g_mutex_unlock(d->chunks_mutex);
+        // Assign iter previous removing dbt from list is important as we might break the list
+        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_unlock(dbt->chunks_mutex);
         continue;
       }
     }else{
-      g_mutex_unlock(d->chunks_mutex);
+      g_mutex_unlock(dbt->chunks_mutex);
       are_there_jobs_defining=TRUE;
     }
 next:
