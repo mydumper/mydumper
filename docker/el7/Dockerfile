@@ -5,6 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
+  yum-config-manager --save --setopt=<repoid>.skip_if_unavailable=true && \
   yum -y install epel-release
 
 RUN \
