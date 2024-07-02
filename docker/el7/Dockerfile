@@ -4,13 +4,13 @@ FROM centos:7 as builder
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Package 'lsb-release' is required by 'percona-release' package.
-RUN \
-  yum-config-manager --save --setopt=<repoid>.skip_if_unavailable=true && \
-  yum -y install epel-release
+#RUN \
+#  yum-config-manager --save --setopt=<repoid>.skip_if_unavailable=true && \
+#  yum -y install epel-release
 
-RUN \
-  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-  sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+#RUN \
+#  sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
+#  sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
 
 RUN \
   yum -y install wget curl && \
