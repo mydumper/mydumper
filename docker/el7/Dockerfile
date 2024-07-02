@@ -5,9 +5,13 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # Package 'lsb-release' is required by 'percona-release' package.
 RUN \
-  yum -y install epel-release lsb-release && \
+  yum -y install epel-release
+
+RUN \
   sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-* && \
-  sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-* && \
+  sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-*
+
+RUN \
   yum -y install wget curl && \
   yum -y install cmake gcc-c++ git make glib2-devel zlib-devel pcre-devel openssl-devel libzstd-devel sudo
 
