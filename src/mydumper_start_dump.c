@@ -1372,6 +1372,7 @@ void start_dump() {
       if (mysql_query(conn, start_replica_sql_thread)){
         g_warning("Not able to start replica: %s", mysql_error(conn));
       }
+      replica_stopped=FALSE;
     }
   }
 
@@ -1420,13 +1421,14 @@ void start_dump() {
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
-    if (replica_stopped){
-      g_message("Starting replica");
-      if (mysql_query(conn, start_replica_sql_thread)){
-        g_warning("Not able to start replica: %s", mysql_error(conn));
-      }
+  }
+  if (replica_stopped){
+    g_message("Starting replica");
+    if (mysql_query(conn, start_replica_sql_thread)){
+      g_warning("Not able to start replica: %s", mysql_error(conn));
     }
   }
+  
 
   g_async_queue_unref(conf.binlog_ready);
 
