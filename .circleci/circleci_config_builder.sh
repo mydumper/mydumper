@@ -620,7 +620,7 @@ echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; 
 echo '
           git add rpm/*.rpm
           cd rpm
-          createrepo-c --update . 
+          createrepo_c --update . 
           rm -rf repodata.old*
           git add repodata
           cd ..'
