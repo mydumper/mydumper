@@ -5782,7 +5782,7 @@ jobs:
           cd apt
 
           cd ubuntu
-          cp /tmp/package/mydumper*bionic*deb /tmp/package/mydumper*focal*deb /tmp/package/mydumper*jammy*deb /tmp/package/mydumper*noble*deb ubuntu/
+          cp /tmp/package/mydumper*bionic*deb /tmp/package/mydumper*focal*deb /tmp/package/mydumper*jammy*deb /tmp/package/mydumper*noble*deb .
 
           git add *.deb
           dpkg-scanpackages --multiversion . > Packages

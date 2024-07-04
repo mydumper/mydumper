@@ -585,7 +585,7 @@ echo -n '
           cd ubuntu
           cp '
 echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
- 	  echo ' ubuntu/'
+ 	  echo ' .'
 
 echo '
           git add *.deb
