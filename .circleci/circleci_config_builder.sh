@@ -565,20 +565,24 @@ echo '
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c
+    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm
     - attach_workspace:
         at: /tmp/package    
     - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
-    - run: git clone --no-checkout https://github.com/mydumper/mydumper_repo.git mydumper_repo
+    - run: git clone --no-checkout --filter=tree:0 https://github.com/mydumper/mydumper_repo.git mydumper_repo
     - run:
         command: |
           cd mydumper_repo/ 
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
+          git checkout HEAD~ yum/rpmmacros
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
-          mkdir ubuntu debian rpm'
+          mkdir -p apt/ubuntu apt/debian yum
+          cd apt'
+	  
 echo -n '
+          cd ubuntu
           cp '
 echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
  	  echo ' ubuntu/'
@@ -596,37 +600,42 @@ echo '
     '
 
 echo -n '
+          cd debian
           cp '
 echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
-          echo ' debian/'
+          echo ' .'
 
 echo '
-          git add debian/*.deb
-          cd debian
+          git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ..
-    '
+          cd ..'
+echo '
+          cd ..'
 
 echo -n '
+          cd yum
           cp '
 echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; done )
-          echo ' rpm/'
+          echo ' .'
 
 echo '
-          git add rpm/*.rpm
-          cd rpm
+          gpg --export -a 79EA15C0E82E34BA > key.asc
+          rpm --import key.asc
+          rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
+          rpm --macros=rpmmacros --addsign  *.rpm
+          git add *.rpm
           createrepo_c --update . 
           rm -rf repodata.old*
           git add repodata
           cd ..'
 
 echo '
-          git commit -m "TEST Upload repo files ${CIRCLE_TAG}" && git push'
+          git commit -m "Upload repo files ${CIRCLE_TAG}" && git push'
 
 echo '
     - run: 
