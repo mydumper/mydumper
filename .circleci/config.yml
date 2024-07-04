@@ -5774,10 +5774,10 @@ jobs:
         command: |
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
-	  export BASE_PATH=$(pwd)
+          export BASE_PATH=$(pwd)
           export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
-	  export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
-	  export YUM_PATH="yum/${DIR_SUFFIX}"
+          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
