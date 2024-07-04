@@ -572,18 +572,23 @@ echo '
     - run: git clone --no-checkout --filter=tree:0 https://github.com/mydumper/mydumper_repo.git mydumper_repo
     - run:
         command: |
-          cd mydumper_repo/ 
+          cd mydumper_repo/
+          export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export BASE_PATH=$(pwd)
+          export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
+          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
           cp yum/rpmmacros ~/.rpmmacros
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
-          mkdir -p apt/ubuntu apt/debian yum
-          cd apt'
+          mkdir -p $UBUNTU_PATH $DEBIAN_PATH $YUM_PATH'
 	  
 echo -n '
-          cd ubuntu
+          cd ${BASE_PATH}
+          cd ${UBUNTU_PATH}
           cp '
 echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
  	  echo ' .'
@@ -595,12 +600,11 @@ echo '
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
-          cd ..
-    '
+          git add Packages* Release* InRelease'
 
 echo -n '
-          cd debian
+          cd ${BASE_PATH}
+          cd ${DEBIAN_PATH}
           cp '
 echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
           echo ' .'
@@ -612,13 +616,11 @@ echo '
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
-          cd ..'
-echo '
-          cd ..'
+          git add Packages* Release* InRelease'
 
 echo -n '
-          cd yum
+          cd ${BASE_PATH}
+          cd ${YUM_PATH}
           cp '
 echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; done )
           echo ' .'
@@ -631,10 +633,10 @@ echo '
           git add *.rpm
           createrepo_c --update . 
           rm -rf repodata.old*
-          git add repodata
-          cd ..'
+          git add repodata'
 
 echo '
+          cd ${BASE_PATH}
           git commit -m "Upload repo files ${CIRCLE_TAG}" && git push'
 
 echo '
