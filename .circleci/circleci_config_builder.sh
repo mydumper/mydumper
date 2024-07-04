@@ -576,7 +576,7 @@ echo '
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
-	  cp yum/rpmmacros ~/.rpmmacros
+          cp yum/rpmmacros ~/.rpmmacros
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
           mkdir -p apt/ubuntu apt/debian yum
