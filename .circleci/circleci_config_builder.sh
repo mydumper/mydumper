@@ -604,7 +604,7 @@ echo '
 
 echo -n '
           cd ${BASE_PATH}
-	  cd ${DEBIAN_PATH}
+          cd ${DEBIAN_PATH}
           cp '
 echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
           echo ' .'

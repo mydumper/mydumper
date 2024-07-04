@@ -5799,7 +5799,7 @@ jobs:
           git add Packages* Release* InRelease
 
           cd ${BASE_PATH}
-	  cd ${DEBIAN_PATH}
+          cd ${DEBIAN_PATH}
           cp /tmp/package/mydumper*buster*deb /tmp/package/mydumper*bullseye*deb /tmp/package/mydumper*bookworm*deb .
 
           git add *.deb
