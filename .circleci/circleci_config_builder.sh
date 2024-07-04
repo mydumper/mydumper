@@ -576,6 +576,7 @@ echo '
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
+          cp yum/rpmmacros ~/.rpmmacros
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
           mkdir -p apt/ubuntu apt/debian yum
@@ -626,7 +627,7 @@ echo '
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
-          rpm --macros=rpmmacros --addsign  *.rpm
+          rpm --addsign  *.rpm
           git add *.rpm
           createrepo_c --update . 
           rm -rf repodata.old*
