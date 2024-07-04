@@ -629,7 +629,7 @@ echo '
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
           rpm --macros=rpmmacros --addsign  *.rpm
           git add *.rpm
-          createrepo-c --update . 
+          createrepo_c --update . 
           rm -rf repodata.old*
           git add repodata
           cd ..'
