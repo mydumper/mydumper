@@ -5784,8 +5784,7 @@ jobs:
           cd ubuntu
           cp /tmp/package/mydumper*bionic*deb /tmp/package/mydumper*focal*deb /tmp/package/mydumper*jammy*deb /tmp/package/mydumper*noble*deb ubuntu/
 
-          git add ubuntu/*.deb
-          cd ubuntu 
+          git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release

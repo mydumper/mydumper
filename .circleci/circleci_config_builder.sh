@@ -588,8 +588,7 @@ echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*de
  	  echo ' ubuntu/'
 
 echo '
-          git add ubuntu/*.deb
-          cd ubuntu 
+          git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
