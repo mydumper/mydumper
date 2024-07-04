@@ -30,7 +30,7 @@ RUN \
   yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm
 
 RUN \
-  yum -y install mysql-community-libs
+  yum -y install zstd mysql-community-libs mysql-community-devel
 
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /etc/mydumper.cnf /etc/
