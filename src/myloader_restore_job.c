@@ -304,7 +304,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
           g_mutex_lock(progress_mutex);
           progress++;
           get_total_done(td->conf, &total);
-          message("Thread %d: restoring %s.%s part %d of %d from %s. Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
+          message("Thread %d: restoring %s.%s part %d of %d from %s | Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
                     dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
           g_mutex_unlock(progress_mutex);
           if (restore_data_from_file(td, rj->filename, FALSE, dbt->database) > 0){

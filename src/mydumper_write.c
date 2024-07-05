@@ -66,7 +66,34 @@ gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
 
+
+
+void message_dumping_data_short(struct table_job *tj){
+  g_message("Thread %d: %s%s%s.%s%s%s [ %"G_GINT64_FORMAT"%% ] | Tables: %u/%u",
+                    tj->td->thread_id,
+                    identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str,
+                    tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
+}
+
+void message_dumping_data_long(struct table_job *tj){
+  g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% | Remaining tables: %u / %u",
+                    tj->td->thread_id,
+                    identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str,
+                    tj->partition?" ":"",tj->partition?tj->partition:"",
+                     (tj->where->len || where_option   || tj->dbt->where) ? " WHERE " : "" , tj->where->len ? tj->where->str : "",
+                     (tj->where->len && where_option )                    ? " AND "   : "" ,   where_option ?   where_option : "",
+                    ((tj->where->len || where_option ) && tj->dbt->where) ? " AND "   : "" , tj->dbt->where ? tj->dbt->where : "",
+                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "",
+                    tj->sql_filename, tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
+}
+
+void (*message_dumping_data)(struct table_job *tj);
+
 void initialize_write(){
+  if (verbose > 3)
+    message_dumping_data=&message_dumping_data_long;
+  else
+    message_dumping_data=&message_dumping_data_short;
 
   // rows chunks have precedence over chunk_filesize
   if (rows_per_file > 0 && chunk_filesize > 0) {
@@ -381,20 +408,6 @@ guint64 get_estimated_remaining_of_all_chunks(){
   return get_estimated_remaining_of(non_innodb_table) + get_estimated_remaining_of(innodb_table);
 }
 
-
-
-void message_dumping_data(struct table_job *tj){
-  g_message("Thread %d: dumping data for %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s into %s| Remaining jobs in this table: %"G_GINT64_FORMAT" All remaining jobs: %"G_GINT64_FORMAT,
-                    tj->td->thread_id,
-                    identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
-                     (tj->where->len || where_option   || tj->dbt->where) ? "WHERE" : "" , tj->where->len ? tj->where->str : "",
-                     (tj->where->len && where_option )                    ? "AND"   : "" ,   where_option ?   where_option : "",
-                    ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"   : "" , tj->dbt->where ? tj->dbt->where : "",
-                    tj->order_by ? "ORDER BY" : "", tj->order_by ? tj->order_by : "",
-                    tj->sql_filename, tj->dbt->estimated_remaining_steps, get_estimated_remaining_of_all_chunks()); // get_estimated_remaining_chunks_on_dbt(tj->dbt)); //, get_estimated_remaining_of_all_chunks());
-//                    g_async_queue_length(td->conf->innodb_queue) + g_async_queue_length(td->conf->non_innodb_queue) + g_async_queue_length(td->conf->schema_queue));
-}
-
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
     if (*column)
       fun_ptr_i->function(column,&length,fun_ptr_i);
@@ -498,7 +511,7 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
     write_header(tj);
   }
   message_dumping_data(tj);
-
+  GDateTime *from = g_date_time_new_now_local();
   while ((row = mysql_fetch_row(result))) {
     gulong *lengths = mysql_fetch_lengths(result);
     num_rows++;
@@ -541,6 +554,15 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
         update_dbt_rows(dbt, num_rows);
         num_rows=0;
         return;
+      }
+      update_dbt_rows(dbt, num_rows);
+      num_rows=0;      
+      GDateTime *to = g_date_time_new_now_local();
+      GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+      if (diff > 4){
+        g_date_time_unref(from);
+        from=to;
+        message_dumping_data(tj);
       }
       check_pause_resume(tj->td);
       if (shutdown_triggered) {
@@ -589,6 +611,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
       build_insert_statement(dbt, fields, num_fields);
     g_mutex_unlock(dbt->chunks_mutex);
   }
+  GDateTime *from = g_date_time_new_now_local();
   while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     num_rows++;
@@ -621,8 +644,16 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
     if (statement->len + statement_row->len + 1 > statement_size || (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize)) {
-
       update_dbt_rows(dbt, num_rows);
+
+      GDateTime *to = g_date_time_new_now_local();
+      GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+      if (diff > 2){
+        g_date_time_unref(from);
+        from=to;
+        message_dumping_data(tj);
+      }
+
       // We need to flush the statement into disk
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
