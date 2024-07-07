@@ -26,6 +26,7 @@
 #include "mydumper_stream.h"
 #include <sys/file.h>
 #include <errno.h>
+#include <fcntl.h>
 
 extern GAsyncQueue *stream_queue;
 

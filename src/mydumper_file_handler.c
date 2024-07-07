@@ -40,6 +40,7 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 #include <sys/file.h>
+#include <fcntl.h>
 
 GAsyncQueue *close_file_queue=NULL;
 GAsyncQueue *available_pids=NULL;
