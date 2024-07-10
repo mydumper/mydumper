@@ -323,7 +323,8 @@ struct db_table {
   gchar *schema_checksum;
   gchar *indexes_checksum;
   gchar *triggers_checksum;
-  guint chunk_filesize;  
+  guint chunk_filesize;
+  gboolean split_integer_tables;
   guint64 min_chunk_step_size;
   guint64 starting_chunk_step_size;
   guint64 max_chunk_step_size;

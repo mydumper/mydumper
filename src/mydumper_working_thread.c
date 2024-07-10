@@ -118,45 +118,16 @@ gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
 int build_empty_files = 0;
 gchar *where_option=NULL;
-gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 
 guint64 min_chunk_step_size = 0;
-guint64 rows_per_file = 0;
+guint64 starting_chunk_step_size = 0;
 guint64 max_chunk_step_size = 0;
 static const guint tablecol= 0;
 
-void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
-  gchar **split=g_strsplit(rows_p_chunk, ":", 0);
-  guint len = g_strv_length(split);
-  switch (len){
-   case 0:
-     g_critical("This should not happend");
-     break;
-   case 1:
-     *start= strtol(split[0],NULL, 10);
-     *min  = *start;
-     *max  = *start;
-     break;
-   case 2:
-     *min  = strtol(split[0],NULL, 10);
-     *start= strtol(split[1],NULL, 10);
-     *max  = *start;
-     break;
-   default:
-     *min  = strtol(split[0],NULL, 10);
-     *start= strtol(split[1],NULL, 10);
-     *max  = strtol(split[2],NULL, 10);
-     break;
-  }
-  g_strfreev(split);
-}
-
 void initialize_working_thread(){
   database_counter = 0;
-  if (rows_per_chunk)
-    parse_rows_per_chunk(rows_per_chunk, &min_chunk_step_size, &rows_per_file, &max_chunk_step_size);
 
   if (max_chunk_step_size > G_MAXUINT64 / num_threads){
     max_chunk_step_size= G_MAXUINT64 / num_threads;
@@ -187,7 +158,7 @@ void initialize_working_thread(){
 
      UPDATE: this is not true anymore
    */
-/*  if (rows_per_file && use_savepoints) {
+/*  if (starting_chunk_step_size && use_savepoints) {
     use_savepoints = FALSE;
     g_warning("--use-savepoints disabled by --rows");
   }
@@ -1093,10 +1064,11 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->current_threads_running=0;
     gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
     if (rows_p_chunk )
-      parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));
+      dbt->split_integer_tables=parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));
     else{
+      dbt->split_integer_tables=split_integer_tables;
       dbt->min_chunk_step_size=min_chunk_step_size;
-      dbt->starting_chunk_step_size=rows_per_file;
+      dbt->starting_chunk_step_size=starting_chunk_step_size;
       dbt->max_chunk_step_size=max_chunk_step_size;
     }
     if (dbt->min_chunk_step_size == 1 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size != dbt->max_chunk_step_size ){
