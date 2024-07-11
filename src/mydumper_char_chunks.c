@@ -45,7 +45,7 @@ guint char_deep=0;
 
 void initialize_char_chunk(){
 
-  if (rows_per_file>0){
+  if (starting_chunk_step_size>0){
     char_chunk=char_chunk==0?num_threads:char_chunk;
     char_deep=char_deep==0?num_threads:char_deep;
   }
@@ -64,7 +64,7 @@ guint i = 0;
 union chunk_step *new_char_step(MYSQL *conn, MYSQL_ROW row, gulong *lengths, GMutex *mutex){
   union chunk_step * cs = g_new0(union chunk_step, 1);
 
-  cs->char_step.step=rows_per_file;
+  cs->char_step.step=starting_chunk_step_size;
 
   cs->char_step.mutex=mutex;
 
@@ -132,7 +132,7 @@ struct chunk_step_item *split_char_step( guint deep, guint number, struct chunk_
   cs->char_step.deep = deep;
   csi->mutex=g_mutex_new();
   csi->number=number;
-  cs->char_step.step=rows_per_file;
+  cs->char_step.step=starting_chunk_step_size;
   csi->field = g_strdup(previous_csi->field);
 //  cs->char_step.previous=previous_csi->chunk_step;
   cs->char_step.previous = NULL;  

@@ -96,7 +96,7 @@ void initialize_write(){
     message_dumping_data=&message_dumping_data_short;
 
   // rows chunks have precedence over chunk_filesize
-  if (rows_per_file > 0 && chunk_filesize > 0) {
+  if (starting_chunk_step_size > 0 && chunk_filesize > 0) {
 //    chunk_filesize = 0;
 //    g_warning("--chunk-filesize disabled by --rows option");
     g_warning("We are going to chunk by row and by filesize when possible");
