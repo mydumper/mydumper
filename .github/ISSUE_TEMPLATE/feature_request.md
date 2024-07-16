@@ -10,7 +10,7 @@ assignees: ''
 **Describe the Feature Request**
 A clear and concise description of what is the use case.
 
-**Current behaviour**
+**Current behavior**
 Explain what mydumper/myloader is doing. Add parameters if needed.
 
 **Expected behavior**
