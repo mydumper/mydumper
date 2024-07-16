@@ -1,4 +1,4 @@
-Mydumper Usage
+mydumper Usage
 ==============
 
 Synopsis
