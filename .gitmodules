@@ -1,3 +1,6 @@
 [submodule "repo"]
 	path = repo
 	url = https://github.com/mydumper/mydumper_repo.git
+[submodule "docs"]
+	path = docs
+	url = https://github.com/mydumper/mydumper_docs.git
