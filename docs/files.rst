@@ -78,6 +78,16 @@ need to set::
   --exec-per-thread
   --exec-per-thread-extension
 
+For example::
+
+  mydumper -o data --clear -T sakila.film --exec-per-thread="/usr/bin/bzip2" --exec-per-thread-extension=".bz2"
+  -rw-r--r-- 1 circleci circleci   520 Jul 16 13:59 metadata
+  -rw-r----- 1 circleci circleci 11500 Jul 16 13:59 sakila.film.00000.sql.bz2
+  -rw-r----- 1 circleci circleci 11360 Jul 16 13:59 sakila.film.00001.sql.bz2
+  -rw-r----- 1 circleci circleci   758 Jul 16 13:59 sakila.film-schema.sql.bz2
+  -rw-r----- 1 circleci circleci   322 Jul 16 13:59 sakila-schema-create.sql.bz2
+  myloader -d data -o --exec-per-thread="/usr/bin/bzip2 -d" --exec-per-thread-extension=".bz2"
+
 Binary Logs
 -----------
 Binary logs are retrieved when :option:`--enable-binlog <myloader --enable-binlog>` option
