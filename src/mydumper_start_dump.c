@@ -920,7 +920,6 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   char *slavegtid = NULL;
 
   char *channel_name = NULL;
-
   const char *gtid_title = NULL;
   guint i;
   guint isms = 0;
@@ -971,17 +970,17 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     channel_name=NULL;
     gtid_title=NULL;
     for (i = 0; i < mysql_num_fields(slave); i++) {
-      if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
+      if (!strcasecmp("exec_master_log_pos", fields[i].name)          || !strcasecmp("exec_source_log_pos", fields[i].name)) {
         slavepos = row[i];
-      } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
+      } else if (!strcasecmp("relay_master_log_file", fields[i].name) || !strcasecmp("relay_source_log_file", fields[i].name)) {
         slavelog = row[i];
-      } else if (!strcasecmp("master_host", fields[i].name)) {
+      } else if (!strcasecmp("master_host", fields[i].name)           || !strcasecmp("source_host", fields[i].name)) {
         slavehost = row[i];
       } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name)){
         gtid_title="Executed_Gtid_Set";
         slavegtid = remove_new_line(row[i]);
-      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
-        gtid_title="Gtid_Slave_Pos";
+      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)        || !strcasecmp("Gtid_source_Pos", fields[i].name)) {
+        gtid_title=g_strdup(fields[i].name);
         slavegtid = remove_new_line(row[i]);
       } else if ( ( !strcasecmp("connection_name", fields[i].name) || !strcasecmp("Channel_Name", fields[i].name) ) && strlen(row[i]) > 1) {
         channel_name = row[i];
