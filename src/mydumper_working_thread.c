@@ -558,8 +558,11 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   if (masterlog) {
-    fprintf(file, "[master]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\nFile = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n\n",
+    fprintf(file, "[master]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\nFile = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n",
             masterlog, masterpos, mastergtid);
+    if (source_data > 0){
+			fprintf(file, "myloader_exec_reset_slave = %d\nmyloader_exec_change_master = %d\nmyloader_exec_start_slave = %d\n",source_data==1?1:0,source_data==1?1:0,source_data==1?1:0);
+    }
     g_message("Written master status");
   }
 
