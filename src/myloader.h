@@ -20,7 +20,7 @@
 #ifndef _src_myloader_h
 #define _src_myloader_h
 #include <mysql.h>
-
+#include "common.h"
 #define MYLOADER "myloader"
 
 struct restore_errors {
@@ -135,7 +135,8 @@ struct db_table {
   struct database * database;
   char *table;
   char *real_table;
-  guint64 rows;
+  struct object_to_export object_to_export;
+	guint64 rows;
 //  GAsyncQueue * queue;
   GList * restore_job_list;
   guint current_threads;

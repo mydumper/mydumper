@@ -23,6 +23,8 @@ struct MList;
 #define MAX_START_TRANSACTION_RETRIES 5
 #define MYDUMPER "mydumper"
 
+#include "common.h"
+
 enum job_type {
   JOB_SHUTDOWN,
   JOB_RESTORE,
@@ -280,15 +282,17 @@ struct binlog_job {
 };
 
 struct db_table {
-  struct database *database;
+  gchar *key;
+	struct database *database;
   char *table;
   char *table_filename;
   char *escaped_table;
   char *min;
   char *max;
-  gboolean no_data;
-  gboolean no_schema;
-  gboolean no_trigger;
+	struct object_to_export object_to_export;
+//  gboolean no_data;
+//  gboolean no_schema;
+//  gboolean no_trigger;
 //  char *field;
   GString *select_fields;
   gboolean complete_insert;

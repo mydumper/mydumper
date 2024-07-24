@@ -283,6 +283,7 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   g_strfreev(keys);
 }
 
+//struct function_pointer * init_function_pointer(gchar *value);
 void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * cpt, struct function_pointer * init_function_pointer(gchar*))
 {
   gsize len=0,len2=0;
@@ -298,10 +299,11 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
         if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
-
-          value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-          struct function_pointer *fp = init_function_pointer(value);
-          g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
+          if (init_function_pointer){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            struct function_pointer *fp = init_function_pointer(value);
+            g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
+					}
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
@@ -1220,4 +1222,58 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
   finish_alter_table(alter_table_statement);
   finish_alter_table(alter_table_constraint_statement);
   return flag;
+}
+
+void initialize_conf_per_table(struct configuration_per_table *cpt){
+  cpt->all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  cpt->all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  cpt->all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  cpt->all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+
+  cpt->all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+}
+
+gboolean str_list_has_str(gchar ** str_list, const gchar* str){
+  guint i=0;
+  for(i=0; i<g_strv_length(str_list); i++){
+    if(g_strcmp0(str_list[i],str)==0){
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+
+void parse_object_to_export(struct object_to_export *object_to_export,gchar *val){
+  if (!val){
+    object_to_export->no_data=FALSE;
+    object_to_export->no_schema=FALSE;
+    object_to_export->no_trigger=FALSE;
+    return;
+  }
+  gchar **split_option = g_strsplit(val, ",", 4);
+  object_to_export->no_data=!str_list_has_str(split_option,"DATA");
+  object_to_export->no_schema=!str_list_has_str(split_option,"SCHEMA");
+  object_to_export->no_trigger=!str_list_has_str(split_option,"TRIGGER");
+  if (str_list_has_str(split_option,"ALL")){
+    object_to_export->no_data=FALSE;
+    object_to_export->no_schema=FALSE;
+    object_to_export->no_trigger=FALSE;
+  }
+  if (str_list_has_str(split_option,"NONE")){
+    object_to_export->no_data=TRUE;
+    object_to_export->no_schema=TRUE;
+    object_to_export->no_trigger=TRUE;
+  }
+  g_strfreev(split_option);
+}
+
+gchar *build_dbt_key(gchar *a, gchar *b){
+  return g_strdup_printf("%c%s%c.%c%s%c", identifier_quote_character, a, identifier_quote_character, identifier_quote_character, b, identifier_quote_character);
 }

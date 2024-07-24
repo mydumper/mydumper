@@ -259,7 +259,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       break;
     case JOB_TO_CREATE_TABLE:
       dbt->schema_state=CREATING;
-      if ((!source_db || g_strcmp0(dbt->database->name,source_db)==0) && !no_schemas){
+      if ((!source_db || g_strcmp0(dbt->database->name,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
         message("Thread %d: restoring table %s.%s from %s", td->thread_id,
                 dbt->database->real_database, dbt->real_table, rj->filename);
