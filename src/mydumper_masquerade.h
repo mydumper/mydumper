@@ -44,5 +44,5 @@ struct format_item{
 void initialize_masquerade();
 gchar * identity_function(gchar ** r, gulong* length, struct function_pointer *fp);
 //fun_ptr get_function_pointer_for (gchar *function_char);
-struct function_pointer * init_function_pointer(gchar *value);
 void finalize_masquerade();
+struct function_pointer * init_function_pointer(gchar *value);

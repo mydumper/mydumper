@@ -123,19 +123,8 @@ void initialize_start_dump(){
   all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
   initialize_set_names();
   initialize_working_thread();
-  conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+	initialize_conf_per_table(&conf_per_table);
 
-  conf_per_table.all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-
-  conf_per_table.all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
-  
-  conf_per_table.all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-
-  conf_per_table.all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   // until we have an unique option on lock types we need to ensure this
   if (no_locks || trx_consistency_only)
     less_locking = 0;
@@ -758,9 +747,8 @@ void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->name);
   char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
-  const char q= identifier_quote_character;
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[%c%s%c.%c%s%c]\n", q, name, q, q, table_filename, q);
+  g_string_append_printf(data,"\n[%s]\n", dbt->key);
   g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
   g_free(table_filename);
