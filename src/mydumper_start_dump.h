@@ -226,6 +226,11 @@ struct chunk_step_item{
 };
 
 
+struct table_job_file{
+  gchar *filename;
+  int file;
+};
+
 // directory / database . table . first number . second number . extension
 // first number : used when rows is used
 // second number : when load data is used
@@ -238,10 +243,12 @@ struct table_job {
   struct chunk_step_item *chunk_step_item;
   char *order_by;
   struct db_table *dbt;
-  gchar *sql_filename;
-  int sql_file;
-  gchar *dat_filename;
-  int dat_file;
+//  gchar *sql_filename;
+//  int sql_file;
+//  gchar *dat_filename;
+//  int dat_file;
+  struct table_job_file *sql;
+  struct table_job_file *rows;
   gchar *exec_out_filename;
   float filesize;
   guint st_in_file;

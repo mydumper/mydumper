@@ -26,8 +26,10 @@
 #include "connection.h"
 #include "regex.h"
 #include "mydumper_arguments.h"
+
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=FALSE;
+const gchar *rows_file_extension=SQL;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
@@ -49,6 +51,28 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     rows_per_chunk=g_strdup(value);
     return TRUE;
+  }
+  if (g_strstr_len(option_name,8,"--format")){
+    if (value==NULL)
+      return FALSE;
+    if (!g_ascii_strcasecmp(value,INSERT)){
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,LOAD_DATA)){
+      load_data=TRUE;
+      rows_file_extension=DAT;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,CSV)){
+      csv=TRUE;
+      rows_file_extension=DAT;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,CLICKHOUSE)){
+      clickhouse=TRUE;
+      rows_file_extension=DAT;
+      return TRUE;
+    }
   }
   return FALSE;
 }
@@ -230,10 +254,11 @@ static GOptionEntry objects_entries[] = {
 
 static GOptionEntry statement_entries[] = {
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files", NULL },
-    { "csv", 0, 0, G_OPTION_ARG_NONE, &csv,
-      "Automatically enables --load-data and set variables to export in CSV format.", NULL },
-    { "include-header", 0, 0, G_OPTION_ARG_NONE, &include_header, "When --load-data or --csv is used, it will include the header with the column name", NULL},
+     "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files. This option will be deprecated on future releases use --format", NULL },
+    {"csv", 0, 0, G_OPTION_ARG_NONE, &csv,
+      "Automatically enables --load-data and set variables to export in CSV format. This option will be deprecated on future releases use --format", NULL },
+    {"format", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, "Set the output format which can be INSERT, LOAD_DATA, CSV or CLICKHOUSE. Default: INSERT", NULL },
+    {"include-header", 0, 0, G_OPTION_ARG_NONE, &include_header, "When --load-data or --csv is used, it will include the header with the column name", NULL},
     {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"Defines the character that is written between fields", NULL },
     {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"Defines the character to enclose fields. Default: \"", NULL },
     {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,

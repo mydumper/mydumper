@@ -207,6 +207,7 @@ int main(int argc, char *argv[]) {
     print_bool("no-views",no_dump_views);
     print_bool("load-data",load_data);
     print_bool("csv",csv);
+    print_bool("clickhouse",clickhouse);
     print_bool("include-header",include_header);
     print_string("fields-terminated-by",fields_terminated_by_ld);
     print_string("fields-enclosed-by",fields_enclosed_by_ld);
