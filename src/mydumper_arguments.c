@@ -26,10 +26,11 @@
 #include "connection.h"
 #include "regex.h"
 #include "mydumper_arguments.h"
-
+#include "mydumper_common.h"
 const gchar *compress_method=NULL;
-gboolean split_integer_tables=FALSE;
+gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
+
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
@@ -44,12 +45,8 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
   }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
-    split_integer_tables=TRUE;
-    if (value==NULL){
-      rows_per_chunk=g_strdup("0:0:0");
-      return TRUE;
-    }
-    rows_per_chunk=g_strdup(value);
+    if (value!=NULL)
+      split_integer_tables=parse_rows_per_chunk(value, &min_chunk_step_size, &starting_chunk_step_size, &max_chunk_step_size);
     return TRUE;
   }
   if (g_strstr_len(option_name,8,"--format")){
@@ -123,6 +120,7 @@ static GOptionEntry extra_entries[] = {
      "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
     {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
      "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
+    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {
@@ -196,7 +194,7 @@ static GOptionEntry chunks_entries[] = {
      "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
      "Defines in how many pieces should split the table. By default we use the amount of threads",NULL},
-    {"rows", 'r', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+    {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
      NULL},
     { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,

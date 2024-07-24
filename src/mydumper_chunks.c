@@ -313,7 +313,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     if (partitions){
       csi=new_real_partition_step_item(partitions,0,0);
     }else{
-      if (split_integer_tables) {
+      if (dbt->split_integer_tables) {
         csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
       }else{
         csi = new_none_chunk_step();

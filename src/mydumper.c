@@ -191,7 +191,7 @@ int main(int argc, char *argv[]) {
     print_int("max-threads-per-table",max_threads_per_table);
 //    print_string("char-deep",);
 //    print_string("char-chunk",);
-    print_string("rows",rows_per_chunk);
+    print_string("rows",g_strdup_printf("%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT,min_chunk_step_size, starting_chunk_step_size, max_chunk_step_size));
     print_bool("split-partitions",split_partitions);
     print_bool("checksum-all",dump_checksums);
     print_bool("data-checksums",data_checksums);

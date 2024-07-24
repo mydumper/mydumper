@@ -9,8 +9,11 @@ docs/_build/conf.py
 docs/_build/sources.cmake
 docs/_doctrees/
 docs/_sources/
+docs/html/.buildinfo
+docs/html/_sources/
+docs/html/objects.inv
+docs/html/searchindex.js
 docs/cmake_install.cmake
-docs/html/
 docs/man/
 export-*
 mydumper

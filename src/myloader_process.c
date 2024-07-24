@@ -72,7 +72,8 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
       dbt->rows=number_rows;
       dbt->restore_job_list = NULL;
 //      dbt->queue=g_async_queue_new();
-      dbt->current_threads=0;
+      parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
+			dbt->current_threads=0;
       dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
       dbt->max_connections_per_job=0;
       dbt->retry_count= retry_count;
@@ -567,10 +568,10 @@ void process_metadata_global(const char *file)
 	if (!source_db || g_strcmp0(database_table[1],source_db)==0){
           struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
           dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
-          dbt->data_checksum=get_value(kf,group,"data_checksum");
-          dbt->schema_checksum=get_value(kf,group,"schema_checksum");
-          dbt->indexes_checksum= get_value(kf,group,"indexes_checksum");
-          dbt->triggers_checksum=get_value(kf,group,"triggers_checksum");
+          dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,group,"data_checksum");
+          dbt->schema_checksum=  dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"schema_checksum");
+          dbt->indexes_checksum= dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"indexes_checksum");
+          dbt->triggers_checksum=dbt->object_to_export.no_trigger?NULL:get_value(kf,group,"triggers_checksum");
           value=get_value(kf,group,"is_view");
           if (value != NULL && g_strcmp0(value,"1")==0){
             dbt->is_view=TRUE;
@@ -604,7 +605,7 @@ void process_metadata_global(const char *file)
       }
     }else if (g_str_has_prefix(group,"replication")){
       change_master(kf, group, change_master_statement);
-    }else if (g_strstr_len(group,6,"master")){
+    }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
       change_master(kf, group, change_master_statement);
     }else if (g_strstr_len(group, 26,"myloader_session_variables")){
       load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
@@ -682,17 +683,23 @@ gboolean process_schema_sequence_filename(gchar *filename) {
 gboolean process_schema_filename(gchar *filename, const char * object) {
   gchar *database=NULL, *table_name=NULL;
   struct database *real_db_name=NULL;
+	struct db_table *dbt=NULL;
   get_database_table_from_file(filename,"-schema",&database,&table_name);
   if (database == NULL){
     g_critical("Database is null on: %s",filename);
   }
   real_db_name=get_db_hash(database,database);
-  if (table_name != NULL && !eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
-    g_warning("File %s has been filter out(1)",filename);
-    return FALSE; 
+  if (table_name != NULL){ 
+	  if (!eval_table(real_db_name->name, table_name, conf->table_list_mutex)){
+      g_warning("File %s has been filter out(1)",filename);
+      return FALSE; 
+    }
+		dbt= append_new_db_table(real_db_name, table_name, 0, NULL);
   }
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
-  g_async_queue_push(conf->post_queue, new_control_job(JOB_RESTORE,rj,real_db_name));
+	if ( g_strcmp0(object,TRIGGER) || dbt==NULL || !dbt->object_to_export.no_trigger){
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
+    g_async_queue_push(conf->post_queue, new_control_job(JOB_RESTORE,rj,real_db_name));
+	}
   return TRUE; // SCHEMA_VIEW
 }
 
@@ -725,13 +732,17 @@ gboolean process_data_filename(char * filename){
   }
 
   struct db_table *dbt=append_new_db_table(real_db_name, table_name,0,NULL);
-  struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
-  g_mutex_lock(dbt->mutex);
-  g_atomic_int_add(&(dbt->remaining_jobs), 1);
-  dbt->count++; 
-  dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&cmp_restore_job);
+	if (!dbt->object_to_export.no_data){
+    struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
+    g_mutex_lock(dbt->mutex);
+    g_atomic_int_add(&(dbt->remaining_jobs), 1);
+    dbt->count++; 
+    dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&cmp_restore_job);
 //  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
-  g_mutex_unlock(dbt->mutex);
+    g_mutex_unlock(dbt->mutex);
+	}else{
+    g_warning("Ignoring file %s on `%s`.`%s`",filename, dbt->database->name, dbt->table);
+	}
   return TRUE;
 }
 

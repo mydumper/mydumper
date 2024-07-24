@@ -24,11 +24,11 @@ if (NOT MYSQL_FOUND)
     MESSAGE(FATAL_ERROR "Could not find MySQL or MariaDB client libraries")
 endif ()
 
-option(BUILD_DOCS "Build the documentation" ON)
+#option(BUILD_DOCS "Build the documentation" ON)
 
-if (BUILD_DOCS)
-  add_subdirectory(docs)
-endif (BUILD_DOCS)
+#if (BUILD_DOCS)
+#  add_subdirectory(docs)
+#endif (BUILD_DOCS)
 
 if (PC_GLIB2_VERSION VERSION_GREATER "2.51")
   option(WITH_GLIB_uuid_string_random "uuid_string_random not available" ON)

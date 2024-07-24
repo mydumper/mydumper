@@ -118,45 +118,16 @@ gboolean exit_if_broken_table_found = FALSE;
 // For daemon mode
 int build_empty_files = 0;
 gchar *where_option=NULL;
-gchar *rows_per_chunk=NULL;
 
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 
 guint64 min_chunk_step_size = 0;
-guint64 rows_per_file = 0;
+guint64 starting_chunk_step_size = 0;
 guint64 max_chunk_step_size = 0;
 static const guint tablecol= 0;
 
-void parse_rows_per_chunk(gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
-  gchar **split=g_strsplit(rows_p_chunk, ":", 0);
-  guint len = g_strv_length(split);
-  switch (len){
-   case 0:
-     g_critical("This should not happend");
-     break;
-   case 1:
-     *start= strtol(split[0],NULL, 10);
-     *min  = *start;
-     *max  = *start;
-     break;
-   case 2:
-     *min  = strtol(split[0],NULL, 10);
-     *start= strtol(split[1],NULL, 10);
-     *max  = *start;
-     break;
-   default:
-     *min  = strtol(split[0],NULL, 10);
-     *start= strtol(split[1],NULL, 10);
-     *max  = strtol(split[2],NULL, 10);
-     break;
-  }
-  g_strfreev(split);
-}
-
 void initialize_working_thread(){
   database_counter = 0;
-  if (rows_per_chunk)
-    parse_rows_per_chunk(rows_per_chunk, &min_chunk_step_size, &rows_per_file, &max_chunk_step_size);
 
   if (max_chunk_step_size > G_MAXUINT64 / num_threads){
     max_chunk_step_size= G_MAXUINT64 / num_threads;
@@ -187,7 +158,7 @@ void initialize_working_thread(){
 
      UPDATE: this is not true anymore
    */
-/*  if (rows_per_file && use_savepoints) {
+/*  if (starting_chunk_step_size && use_savepoints) {
     use_savepoints = FALSE;
     g_warning("--use-savepoints disabled by --rows");
   }
@@ -587,8 +558,16 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   if (masterlog) {
-    fprintf(file, "[master]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\nFile = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n\n",
-            masterlog, masterpos, mastergtid);
+    fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    if (source_data > 0){
+      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\nSOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n",
+          hostname,masterlog, masterpos);
+			fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
+					((source_data) & (1<<(0))) , ((source_data) & (1<<(1)))>0?1:0, ((source_data) & (1<<(2)))>0?1:0);
+    }else{
+      fprintf(file, "File = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n",
+					masterlog, masterpos, mastergtid);
+		}
     g_message("Written master status");
   }
 
@@ -1020,48 +999,12 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
   dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
 
-gboolean str_list_has_str(gchar ** str_list, const gchar* str){
-  guint i=0;
-  for(i=0; i<g_strv_length(str_list); i++){
-    if(g_strcmp0(str_list[i],str)==0){
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
-
-void parse_object_to_export(struct db_table *dbt,gchar *val){
-  if (!val){
-    dbt->no_data=FALSE;
-    dbt->no_schema=FALSE;
-    dbt->no_trigger=FALSE;
-    return;
-  }
-  gchar **split_option = g_strsplit(val, ",", 4);
-  dbt->no_data=!str_list_has_str(split_option,"DATA");
-  dbt->no_schema=!str_list_has_str(split_option,"SCHEMA");
-  dbt->no_trigger=!str_list_has_str(split_option,"TRIGGER");
-  if (str_list_has_str(split_option,"ALL")){
-    dbt->no_data=FALSE;
-    dbt->no_schema=FALSE;
-    dbt->no_trigger=FALSE;
-  }
-  if (str_list_has_str(split_option,"NONE")){
-    dbt->no_data=TRUE;
-    dbt->no_schema=TRUE;
-    dbt->no_trigger=TRUE;
-  }
-  g_strfreev(split_option);
-}
-
-
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence)
 {
-  gchar * lkey = g_strdup_printf("`%s`.`%s`",database->name,table);
-  g_mutex_lock(all_dbts_mutex);
+  gchar * lkey = build_dbt_key(database->name,table);
+	g_mutex_lock(all_dbts_mutex);
   struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
   gboolean b;
   if (dbt){
@@ -1070,6 +1013,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     g_mutex_unlock(all_dbts_mutex);
   }else{
     dbt = g_new(struct db_table, 1);
+		dbt->key=lkey;
     dbt->status = UNDEFINED;
     g_hash_table_insert(all_dbts, lkey, dbt);
     g_mutex_unlock(all_dbts_mutex);
@@ -1086,17 +1030,18 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
     dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
     dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
-    parse_object_to_export(dbt,g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
+    parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
 
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
     dbt->max_threads_per_table=max_threads_per_table;
     dbt->current_threads_running=0;
     gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
     if (rows_p_chunk )
-      parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));
+      dbt->split_integer_tables=parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size));
     else{
+      dbt->split_integer_tables=split_integer_tables;
       dbt->min_chunk_step_size=min_chunk_step_size;
-      dbt->starting_chunk_step_size=rows_per_file;
+      dbt->starting_chunk_step_size=starting_chunk_step_size;
       dbt->max_chunk_step_size=max_chunk_step_size;
     }
     if (dbt->min_chunk_step_size == 1 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size != dbt->max_chunk_step_size ){
@@ -1185,17 +1130,17 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
   // with trx_consistency_only we dump all as innodb_table
-    if (!no_schemas && !dbt->no_schema) {
+    if (!no_schemas && !dbt->object_to_export.no_schema) {
 //      write_table_metadata_into_file(dbt);
       g_mutex_lock(table_schemas_mutex);
       table_schemas=g_list_prepend( table_schemas, dbt) ;
       g_mutex_unlock(table_schemas_mutex);
       create_job_to_dump_table_schema( dbt, conf);
     }
-    if (dump_triggers && !database->dump_triggers && !dbt->no_trigger) {
+    if (dump_triggers && !database->dump_triggers && !dbt->object_to_export.no_trigger) {
       create_job_to_dump_triggers(conn, dbt, conf);
     }
-    if (!no_data && !dbt->no_data) {
+    if (!no_data && !dbt->object_to_export.no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt, conf);
@@ -1223,11 +1168,11 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       }
     }
   } else if (is_view) {
-    if (!no_schemas && !dbt->no_schema) {
+    if (!no_schemas && !dbt->object_to_export.no_schema) {
       create_job_to_dump_view(dbt, conf);
     }
   } else { // is_sequence
-    if (!no_schemas && !dbt->no_schema) {
+    if (!no_schemas && !dbt->object_to_export.no_schema) {
       create_job_to_dump_sequence(dbt, conf);
     }
   }

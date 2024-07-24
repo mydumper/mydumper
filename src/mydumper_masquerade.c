@@ -23,6 +23,7 @@
 #include <mysql.h>
 #include "mydumper_masquerade.h"
 #include "mydumper_common.h"
+#include "common.h"
 struct function_pointer pp = {&identity_function, NULL, NULL, NULL, NULL};
 
 GHashTable *file_hash = NULL;
@@ -386,7 +387,6 @@ void parse_value(struct function_pointer * fp, gchar *val){
   }
 }
 
-
 struct function_pointer * init_function_pointer(gchar *value){
   struct function_pointer * fp= g_new0(struct function_pointer, 1);
   fp->function=get_function_pointer_for(value);
@@ -401,8 +401,3 @@ struct function_pointer * init_function_pointer(gchar *value){
   }
   return fp;
 }
-
-
-
-
-

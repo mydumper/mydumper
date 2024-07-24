@@ -55,13 +55,13 @@ void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union t
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
     cs->integer_step.step = step!=0?step:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads;
-    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
+    cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step:1;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
     cs->integer_step.step = step!=0?step:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1;
-    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step;
+    cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step:1;
   }
   cs->integer_step.is_step_fixed_length = is_step_fixed_length;
   cs->integer_step.check_max=check_max;
@@ -477,7 +477,7 @@ if (cs->integer_step.is_unsigned){
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.max;
   else
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + cs->integer_step.step -1;
-  cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor) / cs->integer_step.step;
+  cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor) / cs->integer_step.step:1;
 
 }else{
 
@@ -488,7 +488,7 @@ if (cs->integer_step.is_unsigned){
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + cs->integer_step.step - 1;
 //g_message("cs->integer_step.type.sign.min: %"G_GINT64_FORMAT" | cs->integer_step.type.sign.cursor: %"G_GINT64_FORMAT "| cs->integer_step.type.sign.max: %"G_GINT64_FORMAT, cs->integer_step.type.sign.min,cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.max);
 
-  cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) / cs->integer_step.step;
+  cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) / cs->integer_step.step:1;
 }
 
   g_mutex_unlock(csi->mutex);

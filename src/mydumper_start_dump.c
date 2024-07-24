@@ -110,6 +110,7 @@ gboolean pmm = FALSE;
 guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
+guint source_data=0;
 //GThread *wait_pid_thread=NULL;
 char * (*identifier_quote_character_protect)(char *r);
 //GRecMutex *ready_database_dump_mutex = NULL;
@@ -122,19 +123,8 @@ void initialize_start_dump(){
   all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
   initialize_set_names();
   initialize_working_thread();
-  conf_per_table.all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_limit_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+	initialize_conf_per_table(&conf_per_table);
 
-  conf_per_table.all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-  conf_per_table.all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-
-  conf_per_table.all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
-  
-  conf_per_table.all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
-
-  conf_per_table.all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   // until we have an unique option on lock types we need to ensure this
   if (no_locks || trx_consistency_only)
     less_locking = 0;
@@ -757,9 +747,8 @@ void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->name);
   char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
-  const char q= identifier_quote_character;
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[%c%s%c.%c%s%c]\n", q, name, q, q, table_filename, q);
+  g_string_append_printf(data,"\n[%s]\n", dbt->key);
   g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
   g_free(table_filename);
@@ -920,7 +909,6 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   char *slavegtid = NULL;
 
   char *channel_name = NULL;
-
   const char *gtid_title = NULL;
   guint i;
   guint isms = 0;
@@ -971,17 +959,17 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     channel_name=NULL;
     gtid_title=NULL;
     for (i = 0; i < mysql_num_fields(slave); i++) {
-      if (!strcasecmp("exec_master_log_pos", fields[i].name)) {
+      if (!strcasecmp("exec_master_log_pos", fields[i].name)          || !strcasecmp("exec_source_log_pos", fields[i].name)) {
         slavepos = row[i];
-      } else if (!strcasecmp("relay_master_log_file", fields[i].name)) {
+      } else if (!strcasecmp("relay_master_log_file", fields[i].name) || !strcasecmp("relay_source_log_file", fields[i].name)) {
         slavelog = row[i];
-      } else if (!strcasecmp("master_host", fields[i].name)) {
+      } else if (!strcasecmp("master_host", fields[i].name)           || !strcasecmp("source_host", fields[i].name)) {
         slavehost = row[i];
       } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name)){
         gtid_title="Executed_Gtid_Set";
         slavegtid = remove_new_line(row[i]);
-      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)) {
-        gtid_title="Gtid_Slave_Pos";
+      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)        || !strcasecmp("Gtid_source_Pos", fields[i].name)) {
+        gtid_title=g_strdup(fields[i].name);
         slavegtid = remove_new_line(row[i]);
       } else if ( ( !strcasecmp("connection_name", fields[i].name) || !strcasecmp("Channel_Name", fields[i].name) ) && strlen(row[i]) > 1) {
         channel_name = row[i];

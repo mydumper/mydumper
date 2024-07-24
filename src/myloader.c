@@ -110,7 +110,7 @@ extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 const char DIRECTORY[] = "import";
 
-
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable * set_session_hash=NULL;
 
 gchar *pmm_resolution = NULL;
@@ -446,6 +446,8 @@ int main(int argc, char *argv[]) {
   refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
+	initialize_conf_per_table(&conf_per_table);
+  load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
 
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){

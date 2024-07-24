@@ -419,3 +419,34 @@ guint64 my_pow_two_plus_prev(guint64 prev, guint max){
   return r+prev;
 }
 
+gboolean parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
+  gchar **split=g_strsplit(rows_p_chunk, ":", 0);
+  guint len = g_strv_length(split);
+  if ( split[0][0]=='-' ){
+    g_strfreev(split);
+    return FALSE;
+  }
+  switch (len){
+   case 0:
+     g_critical("This should not happend");
+     break;
+   case 1:
+     *start= strtol(split[0],NULL, 10);
+     *min  = *start;
+     *max  = *start;
+     break;
+   case 2:
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = *start;
+     break;
+   default:
+     *min  = strtol(split[0],NULL, 10);
+     *start= strtol(split[1],NULL, 10);
+     *max  = strtol(split[2],NULL, 10);
+     break;
+  }
+  g_strfreev(split);
+  return TRUE;
+}
+
