@@ -558,12 +558,12 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   if (masterlog) {
-    fprintf(file, "[master]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
     if (source_data > 0){
-      fprintf(file, "#MASTER_HOST = \"%s\"\n#MASTER_USER = \"\"\n#MASTER_PASSWORD = \"\"\nMASTER_LOG_FILE = \"%s\"\nMASTER_LOG_POS = %s\n",
+      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\nSOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n",
           hostname,masterlog, masterpos);
-			fprintf(file, "myloader_exec_reset_slave = %d\nmyloader_exec_change_master = %d\nmyloader_exec_start_slave = %d\n",
-					source_data==1?1:0,source_data==1?1:0,source_data==1?1:0);
+			fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
+					((source_data) & (1<<(0))) , ((source_data) & (1<<(1)))>0?1:0, ((source_data) & (1<<(2)))>0?1:0);
     }else{
       fprintf(file, "File = %s\nPosition = %s\nExecuted_Gtid_Set = %s\n",
 					masterlog, masterpos, mastergtid);
