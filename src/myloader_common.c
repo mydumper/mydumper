@@ -82,12 +82,12 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
   g_string_append(s,change_replication_source);
   g_string_append(s," TO ");
   for (i=0; i < len; i++){
-    if (!g_strcmp0(keys[i], "myloader_exec_reset_slave")){
+    if (!(g_strcmp0(keys[i], "myloader_exec_reset_slave") && g_strcmp0(keys[i], "myloader_exec_reset_replica") )){
       exec_reset_slave=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
-    } else if (!g_strcmp0(keys[i], "myloader_exec_change_master")){
+    } else if (!(g_strcmp0(keys[i], "myloader_exec_change_master") && g_strcmp0(keys[i], "myloader_exec_change_source"))){
       if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
         exec_change_master=1;
-    } else if (!g_strcmp0(keys[i], "myloader_exec_start_slave")){
+    } else if (!(g_strcmp0(keys[i], "myloader_exec_start_slave") && g_strcmp0(keys[i], "myloader_exec_start_replica"))){
       if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
         exec_start_slave=1;
     } else if(!g_ascii_strcasecmp(keys[i], "channel_name")){
