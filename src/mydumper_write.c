@@ -578,6 +578,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       }
 			update_dbt_rows(dbt, num_rows);
 			num_rows=0;
+			num_rows_st=0;
 			tj->st_in_file++;
     // initilize buffer if needed (INSERT INTO)
       if (!load_data){
