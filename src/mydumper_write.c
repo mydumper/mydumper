@@ -618,7 +618,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
       if (!tj->st_in_file) {
         // File Header
         initialize_sql_statement(statement);
-        if (!real_write_data(tj->sql->file, &(tj->filesize), statement)) {
+        if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
           g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
           return;
         }
@@ -659,7 +659,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
       }
       g_string_append(statement, statement_terminated_by);
 
-      if (!real_write_data(tj->sql->file, &(tj->filesize), statement)) {
+      if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
         g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
         return;
       }
@@ -668,8 +668,8 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
           (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize) {
         tj->sub_part++;
-        m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, 1, dbt);
-        tj->sql->file=0;
+        m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
+        tj->rows->file=0;
         update_files_on_table_job(tj);
         tj->st_in_file = 0;
         tj->filesize = 0;
@@ -697,7 +697,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
   update_dbt_rows(dbt, num_rows);
   if (statement->len > 0) {
     g_string_append(statement, statement_terminated_by);
-    if (!real_write_data(tj->sql->file, &(tj->filesize), statement)) {
+    if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
       g_critical(
           "Could not write out closing newline for %s.%s, now this is sad!",
           dbt->database->name, dbt->table);
@@ -774,7 +774,7 @@ void write_table_job_into_file(struct table_job * tj){
     write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
-    g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->sql->filename, tj->filesize,
+    g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,
                mysql_error(conn));
     errors++;
     if (mysql_ping(tj->td->thrconn)) {
