@@ -489,36 +489,52 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
   g_mutex_unlock(dbt->rows_lock);
 }
 
-void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
-  struct db_table * dbt = tj->dbt;
-  guint64 num_rows=0;
-  GString *escaped = g_string_sized_new(3000);
-  guint num_fields = mysql_num_fields(result);
+void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
+	struct db_table * dbt = tj->dbt;
+	guint num_fields = mysql_num_fields(result);
+	GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
-  GString *statement_row = g_string_sized_new(0);
   GString *statement = g_string_sized_new(2*statement_size);
-
-  if (dbt->load_data_suffix==NULL){
-    g_mutex_lock(dbt->chunks_mutex);
-    if (dbt->load_data_suffix==NULL){
-      initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
+	GString *statement_row = g_string_sized_new(0);
+  gulong *lengths = NULL;
+  guint64 num_rows=0;
+  guint64 num_rows_st = 0;
+  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * );
+  if (load_data){
+		write_column_into_string=write_load_data_column_into_string;
+  	if (dbt->load_data_suffix==NULL){
+      g_mutex_lock(dbt->chunks_mutex);
+      if (dbt->load_data_suffix==NULL){
+        initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
       if (include_header)
-  	initialize_load_data_header(tj->dbt, fields, num_fields);
+        initialize_load_data_header(tj->dbt, fields, num_fields);
+      }
+      g_mutex_unlock(dbt->chunks_mutex);
     }
-    g_mutex_unlock(dbt->chunks_mutex);
-  }
+    if (update_files_on_table_job(tj)){
+      write_load_data_statement(tj);
+      write_header(tj);
+    }
+	}else{
+		write_column_into_string=write_sql_column_into_string;
+    if (tj->rows->file == 0)
+      update_files_on_table_job(tj);
+    if (dbt->insert_statement==NULL){
+      g_mutex_lock(dbt->chunks_mutex);
+      if (dbt->insert_statement==NULL)
+        build_insert_statement(dbt, fields, num_fields);
+      g_mutex_unlock(dbt->chunks_mutex);
+    }
+	}
 
-
-  if (update_files_on_table_job(tj)){
-    write_load_data_statement(tj);
-    write_header(tj);
-  }
   message_dumping_data(tj);
+
   GDateTime *from = g_date_time_new_now_local();
   while ((row = mysql_fetch_row(result))) {
-    gulong *lengths = mysql_fetch_lengths(result);
+    lengths = mysql_fetch_lengths(result);
     num_rows++;
+
     if (dbt->chunk_filesize &&
         (guint)ceil((float)tj->filesize / 1024 / 1024) >
             dbt->chunk_filesize ) {
@@ -549,39 +565,103 @@ void write_row_into_file_in_load_data_mode(MYSQL *conn, MYSQL_RES *result, struc
     }
     g_string_set_size(statement_row, 0);
 
-    write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_load_data_column_into_string);
-    tj->filesize+=statement_row->len+1;
-    g_string_append(statement, statement_row->str);
-    /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
-    if (statement->len > statement_size) {
-      if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
+    write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
+		if (load_data){
+      tj->filesize+=statement_row->len+1;
+      g_string_append(statement, statement_row->str);
+      /* INSERT statement is closed before over limit but this is load data, so we only need to flush the data to disk*/
+      if (statement->len > statement_size) {
+        if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
+          update_dbt_rows(dbt, num_rows);
+          num_rows=0;
+          return;
+        }
         update_dbt_rows(dbt, num_rows);
+        num_rows=0;      
+        GDateTime *to = g_date_time_new_now_local();
+        GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+        if (diff > 4){
+          g_date_time_unref(from);
+          from=to;
+          message_dumping_data(tj);
+        }
+        check_pause_resume(tj->td);
+        if (shutdown_triggered) {
+          update_dbt_rows(dbt, num_rows);
+          return;
+        }
+      }
+		}else{
+      if (statement->len + statement_row->len + 1 > statement_size || (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              dbt->chunk_filesize)) {
+        update_dbt_rows(dbt, num_rows);
+
+        GDateTime *to = g_date_time_new_now_local();
+        GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+        if (diff > 2){
+          g_date_time_unref(from);
+          from=to;
+          message_dumping_data(tj);
+        }
+
+        // We need to flush the statement into disk
+        if (num_rows_st == 0) {
+          g_string_append(statement, statement_row->str);
+          g_string_set_size(statement_row, 0);
+          g_warning("Row bigger than statement_size for %s.%s", dbt->database->name,
+                  dbt->table);
+        }
+        g_string_append(statement, statement_terminated_by);
+
+        if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
+          g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+          return;
+        }
+        tj->st_in_file++;
+        if (dbt->chunk_filesize &&
+          (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              dbt->chunk_filesize) {
+          tj->sub_part++;
+          m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
+          tj->rows->file=0;
+          update_files_on_table_job(tj);
+          tj->st_in_file = 0;
+          tj->filesize = 0;
+        }
         num_rows=0;
-        return;
+        check_pause_resume(tj->td);
+        if (shutdown_triggered) {
+          return;
+        }
+        g_string_set_size(statement, 0);
+      } else {
+        if (num_rows_st)
+          g_string_append_c(statement, ',');
+        g_string_append(statement, statement_row->str);
+        num_rows_st++;
+        g_string_set_size(statement_row, 0);
       }
-      update_dbt_rows(dbt, num_rows);
-      num_rows=0;      
-      GDateTime *to = g_date_time_new_now_local();
-      GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-      if (diff > 4){
-        g_date_time_unref(from);
-        from=to;
-        message_dumping_data(tj);
-      }
-      check_pause_resume(tj->td);
-      if (shutdown_triggered) {
-        update_dbt_rows(dbt, num_rows);
-        return;
-      }
-    }
+		}
   }
+	if (!load_data && statement_row->len > 0) {
+    /* this last row has not been written out */
+    if (!statement->len)
+        g_string_append(statement, dbt->insert_statement->str);
+    g_string_append(statement, statement_row->str);
+	}
   update_dbt_rows(dbt, num_rows);
   if (statement->len > 0){
-    if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
+    if (!load_data)
+			g_string_append(statement, statement_terminated_by);
+		if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
       g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
       return;
     }
+		tj->st_in_file++;
   }
+  g_string_free(statement, TRUE);
+  g_string_free(escaped, TRUE);
+  g_string_free(statement_row, TRUE);	
   return;
 }
 
@@ -773,10 +853,10 @@ void write_table_job_into_file(struct table_job * tj){
   }
 
   /* Poor man's data dump code */
-  if (load_data)
-    write_row_into_file_in_load_data_mode(conn, result, tj);
-  else
-    write_row_into_file_in_sql_mode(conn, result, tj);
+//  if (load_data)
+    write_result_into_file(conn, result, tj);
+//  else
+//    write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,
