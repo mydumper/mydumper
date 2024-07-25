@@ -1110,7 +1110,7 @@ void initialize_load_data_fn(struct table_job * tj){
 gboolean update_files_on_table_job(struct table_job *tj)
 {
   struct chunk_step_item *csi= tj->chunk_step_item;
-  if (tj->sql->file == 0){
+  if (tj->rows->file == 0){
     if (csi->chunk_type == INTEGER) {
       struct integer_step *s= &csi->chunk_step->integer_step;
       if (s->is_step_fixed_length) {
@@ -1120,7 +1120,7 @@ gboolean update_files_on_table_job(struct table_job *tj)
 
 
     tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-    tj->rows->file = m_open(&(tj->sql->filename),"w");
+    tj->rows->file = m_open(&(tj->rows->filename),"w");
 
     if (tj->sql){
       tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);

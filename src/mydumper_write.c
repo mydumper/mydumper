@@ -85,7 +85,7 @@ void message_dumping_data_long(struct table_job *tj){
                      (tj->where->len && where_option )                    ? " AND "   : "" ,   where_option ?   where_option : "",
                     ((tj->where->len || where_option ) && tj->dbt->where) ? " AND "   : "" , tj->dbt->where ? tj->dbt->where : "",
                     tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "",
-                    tj->sql->filename, tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
+                    tj->rows->filename, tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
 }
 
 void (*message_dumping_data)(struct table_job *tj);
@@ -598,7 +598,7 @@ void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct tabl
   gulong *lengths = NULL;
   guint64 num_rows = 0;
   guint64 num_rows_st = 0;
-  if (tj->sql->file == 0)
+	if (tj->rows->file == 0)
     update_files_on_table_job(tj);
   message_dumping_data(tj);
   if (dbt->insert_statement==NULL){
