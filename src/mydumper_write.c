@@ -274,6 +274,7 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
     }
   } 
   g_string_append(dbt->insert_statement, " VALUES");
+	g_message("build_insert_statement: %s", dbt->insert_statement->str);
 }
 
 gboolean real_write_data(int file, float *filesize, GString *data) {
@@ -534,36 +535,62 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     num_rows++;
+    if (load_data){
+      if (dbt->chunk_filesize &&
+          (guint)ceil((float)tj->filesize / 1024 / 1024) >
+              dbt->chunk_filesize ) {
+       update_dbt_rows(dbt, num_rows); 
+       if (!write_statement(tj->rows->file, &(tj->filesize), statement_row, dbt)) {
+          return;
+        }
 
-    if (dbt->chunk_filesize &&
-        (guint)ceil((float)tj->filesize / 1024 / 1024) >
-            dbt->chunk_filesize ) {
-     update_dbt_rows(dbt, num_rows); 
-     if (!write_statement(tj->rows->file, &(tj->filesize), statement_row, dbt)) {
-        return;
+        m_close(tj->td->thread_id, tj->sql->file, g_strdup(tj->sql->filename), 1, dbt);
+        m_close(tj->td->thread_id, tj->rows->file, g_strdup(tj->rows->filename), 1, dbt);
+        tj->sql->file=0;
+        tj->rows->file=0;
+
+        g_free(tj->sql->filename);
+        g_free(tj->rows->filename);
+
+        tj->sql->filename=NULL;
+        tj->rows->filename=NULL;
+        tj->sub_part++;
+
+        if (update_files_on_table_job(tj)){
+          write_load_data_statement(tj);
+          write_header(tj);
+        }
+        tj->st_in_file = 0;
+        tj->filesize = 0;
+        num_rows=0; 
+      }
+      g_string_set_size(statement_row, 0);
+		}else{
+      if (!statement->len) {
+        // if statement->len is 0 we consider that new statement needs to be written
+        // A file can be chunked by amount of rows or file size.
+        if (!tj->st_in_file) {
+          // File Header
+          initialize_sql_statement(statement);
+          if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
+            g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+            return;
+          }
+          g_string_set_size(statement, 0);
+        }
+        g_mutex_lock(dbt->chunks_mutex); // FIXME: why this mutex needed? Only to get INSERT ... beginning?
+        g_string_append(statement, dbt->insert_statement->str);
+        g_mutex_unlock(dbt->chunks_mutex);
+        num_rows_st = 0;
       }
 
-      m_close(tj->td->thread_id, tj->sql->file, g_strdup(tj->sql->filename), 1, dbt);
-      m_close(tj->td->thread_id, tj->rows->file, g_strdup(tj->rows->filename), 1, dbt);
-      tj->sql->file=0;
-      tj->rows->file=0;
-
-      g_free(tj->sql->filename);
-      g_free(tj->rows->filename);
-
-      tj->sql->filename=NULL;
-      tj->rows->filename=NULL;
-      tj->sub_part++;
-
-      if (update_files_on_table_job(tj)){
-        write_load_data_statement(tj);
-        write_header(tj);
+      if (statement_row->len) {
+        // previous row needs to be written
+        g_string_append(statement, statement_row->str);
+        g_string_set_size(statement_row, 0);
+        num_rows_st++;
       }
-      tj->st_in_file = 0;
-      tj->filesize = 0;
-      num_rows=0; 
-    }
-    g_string_set_size(statement_row, 0);
+		}
 
     write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
 		if (load_data){
@@ -662,137 +689,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   g_string_free(statement, TRUE);
   g_string_free(escaped, TRUE);
   g_string_free(statement_row, TRUE);	
-  return;
-}
-
-
-void write_row_into_file_in_sql_mode(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
-  // There are 2 possible options to chunk the files:
-  // - no chunk: this means that will be just 1 data file
-  // - chunk_filesize: this function will be spliting the per filesize, this means that multiple files will be created
-  // Split by row is before this step
-  // It could write multiple INSERT statments in a data file if statement_size is reached
-  struct db_table * dbt = tj->dbt;
-//  guint sections = tj->where==NULL?1:2;
-  guint num_fields = mysql_num_fields(result);
-  GString *escaped = g_string_sized_new(3000);
-  MYSQL_FIELD *fields = mysql_fetch_fields(result);
-  MYSQL_ROW row;
-  GString *statement = g_string_sized_new(statement_size);
-  GString *statement_row = g_string_sized_new(0);
-  gulong *lengths = NULL;
-  guint64 num_rows = 0;
-  guint64 num_rows_st = 0;
-	if (tj->rows->file == 0)
-    update_files_on_table_job(tj);
-  message_dumping_data(tj);
-  if (dbt->insert_statement==NULL){
-    g_mutex_lock(dbt->chunks_mutex);
-    if (dbt->insert_statement==NULL)
-      build_insert_statement(dbt, fields, num_fields);
-    g_mutex_unlock(dbt->chunks_mutex);
-  }
-  GDateTime *from = g_date_time_new_now_local();
-  while ((row = mysql_fetch_row(result))) {
-    lengths = mysql_fetch_lengths(result);
-    num_rows++;
-
-    if (!statement->len) {
-      // if statement->len is 0 we consider that new statement needs to be written
-      // A file can be chunked by amount of rows or file size.
-      if (!tj->st_in_file) {
-        // File Header
-        initialize_sql_statement(statement);
-        if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
-          g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-          return;
-        }
-        g_string_set_size(statement, 0);
-      }
-      g_mutex_lock(dbt->chunks_mutex); // FIXME: why this mutex needed? Only to get INSERT ... beginning?
-      g_string_append(statement, dbt->insert_statement->str);
-      g_mutex_unlock(dbt->chunks_mutex);
-      num_rows_st = 0;
-    }
-
-    if (statement_row->len) {
-      // previous row needs to be written
-      g_string_append(statement, statement_row->str);
-      g_string_set_size(statement_row, 0);
-      num_rows_st++;
-    }
-
-    write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_sql_column_into_string);
-    if (statement->len + statement_row->len + 1 > statement_size || (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
-              dbt->chunk_filesize)) {
-      update_dbt_rows(dbt, num_rows);
-
-      GDateTime *to = g_date_time_new_now_local();
-      GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-      if (diff > 2){
-        g_date_time_unref(from);
-        from=to;
-        message_dumping_data(tj);
-      }
-
-      // We need to flush the statement into disk
-      if (num_rows_st == 0) {
-        g_string_append(statement, statement_row->str);
-        g_string_set_size(statement_row, 0);
-        g_warning("Row bigger than statement_size for %s.%s", dbt->database->name,
-                  dbt->table);
-      }
-      g_string_append(statement, statement_terminated_by);
-
-      if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
-        g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
-        return;
-      }
-      tj->st_in_file++;
-      if (dbt->chunk_filesize &&
-          (guint)ceil((float)tj->filesize / 1024 / 1024) >
-              dbt->chunk_filesize) {
-        tj->sub_part++;
-        m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
-        tj->rows->file=0;
-        update_files_on_table_job(tj);
-        tj->st_in_file = 0;
-        tj->filesize = 0;
-      }
-      num_rows=0;
-      check_pause_resume(tj->td);
-      if (shutdown_triggered) {
-        return;
-      }
-      g_string_set_size(statement, 0);
-    } else {
-      if (num_rows_st)
-        g_string_append_c(statement, ',');
-      g_string_append(statement, statement_row->str);
-      num_rows_st++;
-      g_string_set_size(statement_row, 0);
-    }
-  }
-  if (statement_row->len > 0) {
-    /* this last row has not been written out */
-    if (!statement->len)
-        g_string_append(statement, dbt->insert_statement->str);
-    g_string_append(statement, statement_row->str);
-  }
-  update_dbt_rows(dbt, num_rows);
-  if (statement->len > 0) {
-    g_string_append(statement, statement_terminated_by);
-    if (!real_write_data(tj->rows->file, &(tj->filesize), statement)) {
-      g_critical(
-          "Could not write out closing newline for %s.%s, now this is sad!",
-          dbt->database->name, dbt->table);
-      return;
-    }
-    tj->st_in_file++;
-  }
-  g_string_free(statement, TRUE);
-  g_string_free(escaped, TRUE);
-  g_string_free(statement_row, TRUE);
   return;
 }
 
