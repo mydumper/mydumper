@@ -42,7 +42,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
 #include "connection.h"
-
+#include "mydumper_arguments.h"
 
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
@@ -112,6 +112,11 @@ void initialize_write(){
     if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
     if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\\n");
   }
+
+  if (load_data){
+		// TODO: This must be removed when --csv and --load-data are deprecated
+    rows_file_extension=DAT;
+	}
 
   if (!fields_enclosed_by_ld){
     if (load_data){
