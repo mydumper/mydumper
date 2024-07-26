@@ -105,14 +105,6 @@ void initialize_write(){
 
   g_assert(fields_enclosed_by); // initialized in detect_quote_character()
 
-	// TODO: This must be removed when --csv and --load-data are deprecated
-	if (load_data){
-    output_format=LOAD_DATA;
-  }
-  if (csv){
-    output_format=CSV;
-  }
-
   if(fields_enclosed_by_ld && strlen(fields_enclosed_by_ld)>1)
     m_critical("--fields-enclosed-by must be a single character");
   if(fields_escaped_by && strlen(fields_escaped_by)>1)
@@ -579,7 +571,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
   void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * );
-  if (load_data){
+  if (output_format == LOAD_DATA || output_format == CSV){
 		write_column_into_string=write_load_data_column_into_string;
   	if (dbt->load_data_suffix==NULL){
       g_mutex_lock(dbt->chunks_mutex);
@@ -637,7 +629,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 			num_rows_st=0;
 			tj->st_in_file++;
     // initilize buffer if needed (INSERT INTO)
-      if (!load_data){
+      if (output_format == SQL_INSERT){
 				g_string_append(statement, dbt->insert_statement->str);
 			}
       GDateTime *to = g_date_time_new_now_local();
@@ -657,7 +649,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		if (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize){
 			tj->sub_part++;
-			if (load_data){
+			if (output_format != LOAD_DATA && output_format != CSV){
 				initiliaze_load_data_files(tj, dbt);
 			}else{
         m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
@@ -670,7 +662,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		}
 		//
 		// write row to buffer
-    if (num_rows_st && !load_data)
+    if (num_rows_st && output_format == SQL_INSERT)
       g_string_append_c(statement, ',');
     g_string_append(statement, statement_row->str);
 		if (statement_row->len>0)
@@ -679,7 +671,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   }
   update_dbt_rows(dbt, num_rows);
   if (num_rows_st > 0 && statement->len > 0){
-    if (!load_data)
+    if (output_format == SQL_INSERT)
 			g_string_append(statement, statement_terminated_by);
     if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
       return;
@@ -749,10 +741,7 @@ void write_table_job_into_file(struct table_job * tj){
   }
 
   /* Poor man's data dump code */
-//  if (load_data)
     write_result_into_file(conn, result, tj);
-//  else
-//    write_row_into_file_in_sql_mode(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,

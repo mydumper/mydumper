@@ -38,6 +38,7 @@
 #include "mydumper_write.h"
 #include "mydumper_chunks.h"
 #include "mydumper_global.h"
+#include "mydumper_arguments.h"
 #include <sys/wait.h>
 #include <fcntl.h>
 
@@ -1087,25 +1088,6 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   g_async_queue_push(conf->post_data_queue, j);
   return;
 }
-/*
-int initialize_fn(gchar ** sql_filename, struct db_table * dbt, int * sql_file, guint64 fn, guint sub_part, gchar **stdout_fn){
-(void)stdout_fn;
-  int r=0;
-  if (*sql_filename)
-    g_free(*sql_filename);
-  *sql_filename = build_fn(dbt->database->filename, dbt->table_filename, fn, sub_part);
-  *sql_file = m_open(sql_filename,"w");
-  return r;
-}
-
-void initialize_sql_fn(struct table_job * tj){
-  tj->child_process=initialize_fn(&(tj->sql_filename),tj->dbt,&(tj->sql_file), tj->nchunk, tj->sub_part, &(tj->exec_out_filename));
-}
-
-void initialize_load_data_fn(struct table_job * tj){
-  tj->child_process=initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part, &(tj->exec_out_filename));
-}
-*/
 
 gboolean update_files_on_table_job(struct table_job *tj)
 {
@@ -1146,19 +1128,15 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->order_by=g_strdup(order_by);
   tj->nchunk=nchunk;
   tj->sub_part = 0;
-//  tj->dat_file = 0;
-//  tj->dat_filename = NULL;
-//  tj->sql_file = 0;
-//  tj->sql_filename = NULL;
   tj->rows=g_new0(struct table_job_file, 1);
   tj->rows->file = 0;
   tj->rows->filename = NULL;
-  if (load_data){
-    tj->sql=g_new0(struct table_job_file, 1);
+  if (output_format==SQL_INSERT)
+		tj->sql=NULL;
+	else{
+		tj->sql=g_new0(struct table_job_file, 1);
     tj->sql->file = 0;
     tj->sql->filename = NULL;
-  }else{
-    tj->sql=NULL; //tj->rows;
   }
   tj->exec_out_filename = NULL;
   tj->dbt=dbt;

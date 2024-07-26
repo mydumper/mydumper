@@ -91,6 +91,16 @@ int main(int argc, char *argv[]) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
   }
 
+	// TODO: This must be removed when --csv and --load-data are deprecated
+  if (load_data){
+    output_format=LOAD_DATA;
+		rows_file_extension=DAT;
+  }
+  if (csv){
+    output_format=CSV;
+		rows_file_extension=DAT;
+  }
+
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
 //    exit(EXIT_SUCCESS);
