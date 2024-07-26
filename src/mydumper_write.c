@@ -105,78 +105,134 @@ void initialize_write(){
 
   g_assert(fields_enclosed_by); // initialized in detect_quote_character()
 
+	// TODO: This must be removed when --csv and --load-data are deprecated
+	if (load_data){
+    output_format=LOAD_DATA;
+  }
   if (csv){
-    load_data=TRUE;
-    if (!fields_terminated_by_ld) fields_terminated_by_ld=g_strdup(",");
-    if (!fields_enclosed_by_ld) fields_enclosed_by_ld= "\"";
-    if (!fields_escaped_by) fields_escaped_by=g_strdup("\\");
-    if (!lines_terminated_by_ld) lines_terminated_by_ld=g_strdup("\\n");
+    output_format=CSV;
   }
 
-  if (load_data){
-		// TODO: This must be removed when --csv and --load-data are deprecated
-    rows_file_extension=DAT;
+  if(strlen(fields_enclosed_by_ld)>1)
+    m_critical("--fields-enclosed-by must be a single character");
+  if(strlen(fields_escaped_by)>1)
+    m_critical("--fields-escaped-by must be a single character");
+
+
+  switch (output_format){
+		case SQL_INSERT:
+      if (fields_enclosed_by_ld)
+				fields_enclosed_by= fields_enclosed_by_ld;
+
+      if (fields_terminated_by_ld==NULL)
+        fields_terminated_by=g_strdup(",");
+      else if (g_strcmp0(fields_terminated_by_ld, "\\t")==0)
+        fields_terminated_by=g_strdup("\t");
+      else
+        fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+
+      if (!lines_starting_by_ld)
+        lines_starting_by=g_strdup("(");
+      else
+        lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+
+      if (!lines_terminated_by_ld)
+        lines_terminated_by=g_strdup(")\n");
+      else
+        lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+
+      if (!statement_terminated_by_ld)
+        statement_terminated_by=g_strdup(";\n");
+      else
+        statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
+
+			break;
+		case LOAD_DATA:
+      if (!fields_enclosed_by_ld){
+				fields_enclosed_by= "";
+        fields_enclosed_by_ld= fields_enclosed_by;
+			}else
+        fields_enclosed_by= fields_enclosed_by_ld;
+
+      if (fields_escaped_by){
+        if (strcmp(fields_escaped_by,"\\")==0)
+          fields_escaped_by=g_strdup("\\\\");
+      }else
+        fields_escaped_by=g_strdup("\\\\");
+
+      if (fields_terminated_by_ld==NULL){
+        fields_terminated_by=g_strdup("\t");
+        fields_terminated_by_ld=g_strdup("\\t");
+      }else if (g_strcmp0(fields_terminated_by_ld, "\\t")==0){
+        fields_terminated_by=g_strdup("\t");
+        fields_terminated_by_ld=g_strdup("\\t");
+      }else
+        fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+
+			if (!lines_starting_by_ld){
+        lines_starting_by=g_strdup("");
+        lines_starting_by_ld=lines_starting_by;
+      }else
+        lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+
+      if (!lines_terminated_by_ld){
+        lines_terminated_by=g_strdup("\n");
+        lines_terminated_by_ld=g_strdup("\\n");
+      }else
+        lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+
+      if (!statement_terminated_by_ld){
+        statement_terminated_by=g_strdup("");
+        statement_terminated_by_ld=statement_terminated_by;
+      }else
+        statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
+
+			break;
+		case CSV:
+			if (!fields_enclosed_by_ld){
+        fields_enclosed_by= "\"";
+        fields_enclosed_by_ld= fields_enclosed_by;
+      }else
+        fields_enclosed_by= fields_enclosed_by_ld;
+
+			if (fields_escaped_by){
+        if (strcmp(fields_escaped_by,"\\")==0)
+          fields_escaped_by=g_strdup("\\\\");
+      }else
+        fields_escaped_by=g_strdup("\\\\");
+
+      if (fields_terminated_by_ld==NULL){
+        fields_terminated_by=g_strdup(",");
+        fields_terminated_by_ld=fields_terminated_by;
+      }else if (g_strcmp0(fields_terminated_by_ld, "\\t")==0){
+        fields_terminated_by=g_strdup("\t");
+        fields_terminated_by_ld=g_strdup("\\t");
+      }else
+        fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
+
+      if (!lines_starting_by_ld){
+        lines_starting_by=g_strdup("");
+        lines_starting_by_ld=lines_starting_by;
+      }else
+        lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
+
+      if (!lines_terminated_by_ld){
+        lines_terminated_by=g_strdup("\n");
+        lines_terminated_by_ld=g_strdup("\\n");
+      }else
+        lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
+
+      if (!statement_terminated_by_ld){
+        statement_terminated_by=g_strdup("");
+        statement_terminated_by_ld=statement_terminated_by;
+      }else
+        statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
+
+			break;
+		case CLICKHOUSE:
+			break;
 	}
 
-  if (!fields_enclosed_by_ld){
-    if (load_data){
-      fields_enclosed_by= "";
-    }
-    fields_enclosed_by_ld= fields_enclosed_by;
-  }else if(strlen(fields_enclosed_by_ld)>1){
-    m_critical("--fields-enclosed-by must be a single character");
-  }else{
-    fields_enclosed_by= fields_enclosed_by_ld;
-  }
-
-  if (load_data){
-    if (fields_escaped_by){
-      if(strlen(fields_escaped_by)>1){
-        m_critical("--fields-escaped-by must be a single character");
-      }else if (strcmp(fields_escaped_by,"\\")==0){
-        fields_escaped_by=g_strdup("\\\\");
-      }
-    }else{
-      fields_escaped_by=g_strdup("\\\\");
-    }
-  }
-
-
-  if (fields_terminated_by_ld==NULL){
-    if (load_data){
-      fields_terminated_by=g_strdup("\t");
-      fields_terminated_by_ld=g_strdup("\\t");
-    }else
-      fields_terminated_by=g_strdup(",");
-  }else if (g_strcmp0(fields_terminated_by_ld, "\\t")==0){
-      fields_terminated_by=g_strdup("\t");
-      fields_terminated_by_ld=g_strdup("\\t");
-  }else
-    fields_terminated_by=replace_escaped_strings(g_strdup(fields_terminated_by_ld));
-  if (!lines_starting_by_ld){
-    if (load_data){
-      lines_starting_by=g_strdup("");
-      lines_starting_by_ld=lines_starting_by;
-    }else
-      lines_starting_by=g_strdup("(");
-  }else
-    lines_starting_by=replace_escaped_strings(g_strdup(lines_starting_by_ld));
-  if (!lines_terminated_by_ld){
-    if (load_data){
-      lines_terminated_by=g_strdup("\n");
-      lines_terminated_by_ld=g_strdup("\\n");
-    }else
-      lines_terminated_by=g_strdup(")\n");
-  }else
-    lines_terminated_by=replace_escaped_strings(g_strdup(lines_terminated_by_ld));
-  if (!statement_terminated_by_ld){
-    if (load_data){
-      statement_terminated_by=g_strdup("");
-      statement_terminated_by_ld=statement_terminated_by;
-    }else
-      statement_terminated_by=g_strdup(";\n");
-  }else
-    statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
   if ( insert_ignore && replace ){
     m_error("You can't use --insert-ignore and --replace at the same time");

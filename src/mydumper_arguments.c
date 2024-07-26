@@ -30,6 +30,7 @@
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
+guint output_format=SQL_INSERT;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -52,22 +53,26 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
   if (g_strstr_len(option_name,8,"--format")){
     if (value==NULL)
       return FALSE;
-    if (!g_ascii_strcasecmp(value,INSERT)){
+    if (!g_ascii_strcasecmp(value,INSERT_ARG)){
+			output_format=SQL_INSERT;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value,LOAD_DATA)){
+    if (!g_ascii_strcasecmp(value,LOAD_DATA_ARG)){
       load_data=TRUE;
       rows_file_extension=DAT;
+			output_format=LOAD_DATA;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value,CSV)){
+    if (!g_ascii_strcasecmp(value,CSV_ARG)){
       csv=TRUE;
       rows_file_extension=DAT;
+			output_format=CSV;
       return TRUE;
     }
-    if (!g_ascii_strcasecmp(value,CLICKHOUSE)){
+    if (!g_ascii_strcasecmp(value,CLICKHOUSE_ARG)){
       clickhouse=TRUE;
       rows_file_extension=DAT;
+			output_format=CLICKHOUSE;
       return TRUE;
     }
   }
