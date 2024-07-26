@@ -322,7 +322,6 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
     }
   } 
   g_string_append(dbt->insert_statement, " VALUES");
-	g_message("build_insert_statement: %s", dbt->insert_statement->str);
 }
 
 gboolean real_write_data(int file, float *filesize, GString *data) {
@@ -391,6 +390,39 @@ void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * f
   g_string_append(dbt->load_data_suffix,";\n");
 }
 
+void initialize_clickhouse_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
+  gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
+  dbt->load_data_suffix=g_string_sized_new(statement_size);
+  g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+  if (character_set && strlen(character_set)!=0)
+    g_string_append_printf(dbt->load_data_suffix, "CHARACTER SET %s ",character_set);
+  if (fields_terminated_by_ld)
+    g_string_append_printf(dbt->load_data_suffix, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+  if (fields_enclosed_by_ld)
+    g_string_append_printf(dbt->load_data_suffix, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+  if (fields_escaped_by)
+    g_string_append_printf(dbt->load_data_suffix, "ESCAPED BY '%s' ",fields_escaped_by);
+  g_string_append(dbt->load_data_suffix, "LINES ");
+  if (lines_starting_by_ld)
+    g_string_append_printf(dbt->load_data_suffix, "STARTING BY '%s' ",lines_starting_by_ld);
+  g_string_append_printf(dbt->load_data_suffix, "TERMINATED BY '%s' ", lines_terminated_by_ld);
+  if (include_header)
+    g_string_append(dbt->load_data_suffix, "IGNORE 1 LINES ");
+  g_string_append_printf(dbt->load_data_suffix, "(");
+  if (dbt->columns_on_insert){
+    g_string_append(dbt->load_data_suffix,dbt->columns_on_insert);
+    g_string_append(dbt->load_data_suffix,")");
+  }else{
+    GString * set_statement=append_load_data_columns(dbt->load_data_suffix,fields,num_fields);
+    g_string_append(dbt->load_data_suffix,")");
+    if (set_statement != NULL){
+      g_string_append(dbt->load_data_suffix,set_statement->str);
+      g_string_free(set_statement,TRUE);
+    }
+  }
+  g_string_append(dbt->load_data_suffix,";\n");
+}
+
 void initialize_load_data_header(struct db_table *dbt, MYSQL_FIELD *fields, guint num_fields){
   dbt->load_data_header = g_string_sized_new(statement_size);
   guint i = 0;
@@ -420,6 +452,16 @@ void write_load_data_statement(struct table_job * tj){
   char * basename=g_path_get_basename(tj->rows->filename);
   initialize_sql_statement(statement);
   g_string_append_printf(statement, "%s%s%s", LOAD_DATA_PREFIX, basename, tj->dbt->load_data_suffix->str);
+  if (!write_data(tj->sql->file, statement)) {
+    g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
+  }
+}
+
+void write_clickhouse_statement(struct table_job * tj){
+  GString *statement = g_string_sized_new(statement_size);
+  char * basename=g_path_get_basename(tj->rows->filename);
+  initialize_sql_statement(statement);
+  g_string_append_printf(statement, "%s %s%s%s FROM INFILE  %s FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
   }
@@ -559,6 +601,26 @@ void initiliaze_load_data_files(struct table_job * tj, struct db_table * dbt){
 }
 
 
+void initiliaze_clickhouse_files(struct table_job * tj, struct db_table * dbt){
+
+  m_close(tj->td->thread_id, tj->sql->file, g_strdup(tj->sql->filename), 1, dbt);
+  m_close(tj->td->thread_id, tj->rows->file, g_strdup(tj->rows->filename), 1, dbt);
+  tj->sql->file=0;
+  tj->rows->file=0;
+
+  g_free(tj->sql->filename);
+  g_free(tj->rows->filename);
+
+  tj->sql->filename=NULL;
+  tj->rows->filename=NULL;
+
+  if (update_files_on_table_job(tj)){
+    write_clickhouse_statement(tj);
+    write_header(tj);
+  }
+}
+
+
 void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
 	struct db_table * dbt = tj->dbt;
 	guint num_fields = mysql_num_fields(result);
@@ -571,49 +633,76 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
   void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * );
-  if (output_format == LOAD_DATA || output_format == CSV){
-		write_column_into_string=write_load_data_column_into_string;
-  	if (dbt->load_data_suffix==NULL){
-      g_mutex_lock(dbt->chunks_mutex);
-      if (dbt->load_data_suffix==NULL){
-        initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
-      if (include_header)
-        initialize_load_data_header(tj->dbt, fields, num_fields);
+  switch (output_format){
+    case LOAD_DATA:
+    case CSV:
+  		write_column_into_string=write_load_data_column_into_string;
+    	if (dbt->load_data_suffix==NULL){
+        g_mutex_lock(dbt->chunks_mutex);
+        if (dbt->load_data_suffix==NULL){
+          initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
+        if (include_header)
+          initialize_load_data_header(tj->dbt, fields, num_fields);
+        }
+        g_mutex_unlock(dbt->chunks_mutex);
       }
-      g_mutex_unlock(dbt->chunks_mutex);
-    }
-    if (update_files_on_table_job(tj)){
-      write_load_data_statement(tj);
-      write_header(tj);
-    }
-	}else{
-		write_column_into_string=write_sql_column_into_string;
-    if (tj->rows->file == 0){
-      update_files_on_table_job(tj);
-		}
-    if (dbt->insert_statement==NULL){
-      g_mutex_lock(dbt->chunks_mutex);
-      if (dbt->insert_statement==NULL)
-        build_insert_statement(dbt, fields, num_fields);
-      g_mutex_unlock(dbt->chunks_mutex);
-    }
-		if (!tj->st_in_file)
-  		initialize_sql_statement(statement);
-		g_string_append(statement, dbt->insert_statement->str);
+      if (update_files_on_table_job(tj)){
+        write_load_data_statement(tj);
+        write_header(tj);
+      }
+	  	break;
+    case CLICKHOUSE:
+      write_column_into_string=write_sql_column_into_string;
+      if (tj->rows->file == 0){
+        update_files_on_table_job(tj);
+      }
+			if (dbt->load_data_suffix==NULL){
+        g_mutex_lock(dbt->chunks_mutex);
+        if (dbt->load_data_suffix==NULL)
+          initialize_clickhouse_statement_suffix(tj->dbt, fields, num_fields);
+  			g_mutex_unlock(dbt->chunks_mutex);
+      }
+			if (dbt->insert_statement==NULL){
+        g_mutex_lock(dbt->chunks_mutex);
+        if (dbt->insert_statement==NULL)
+          build_insert_statement(dbt, fields, num_fields);
+        g_mutex_unlock(dbt->chunks_mutex);
+      }
+      if (!tj->st_in_file){
+        initialize_sql_statement(statement);
+				write_clickhouse_statement(tj);
+			}
+      g_string_append(statement, dbt->insert_statement->str);
+      break;
+		case SQL_INSERT:
+  		write_column_into_string=write_sql_column_into_string;
+      if (tj->rows->file == 0){
+        update_files_on_table_job(tj);
+  		}
+      if (dbt->insert_statement==NULL){
+        g_mutex_lock(dbt->chunks_mutex);
+        if (dbt->insert_statement==NULL)
+          build_insert_statement(dbt, fields, num_fields);
+        g_mutex_unlock(dbt->chunks_mutex);
+      }
+	  	if (!tj->st_in_file)
+  	  	initialize_sql_statement(statement);
+  		g_string_append(statement, dbt->insert_statement->str);
+	  	break;
 	}
 
   message_dumping_data(tj);
 
   GDateTime *from = g_date_time_new_now_local();
-  while ((row = mysql_fetch_row(result))) {
+	while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     num_rows++;
     // prepare row into statement_row
-    write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
-
+    g_message("statement_row: %s",statement_row->str);
+		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
+    g_message("statement_row: %s",statement_row->str);
 		// if row exceeded statement_size then FLUSH buffer to disk
 		if (statement->len + statement_row->len + 1 > statement_size){
-			g_message("Limit reached: %ld + %ld > %d", statement->len, statement_row->len,statement_size );
       if (num_rows_st == 0) {
         g_string_append(statement, statement_row->str);
         g_string_set_size(statement_row, 0);
@@ -629,7 +718,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 			num_rows_st=0;
 			tj->st_in_file++;
     // initilize buffer if needed (INSERT INTO)
-      if (output_format == SQL_INSERT){
+      if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
 				g_string_append(statement, dbt->insert_statement->str);
 			}
       GDateTime *to = g_date_time_new_now_local();
@@ -649,20 +738,27 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		if (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize){
 			tj->sub_part++;
-			if (output_format != LOAD_DATA && output_format != CSV){
-				initiliaze_load_data_files(tj, dbt);
-			}else{
-        m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
-        tj->rows->file=0;
-        update_files_on_table_job(tj);
-				initialize_sql_statement(statement);
+			switch (output_format){
+			  case LOAD_DATA:
+				case CSV:
+					initiliaze_load_data_files(tj, dbt);
+          break;
+				case CLICKHOUSE:
+  				initiliaze_clickhouse_files(tj, dbt);
+					break;
+				case SQL_INSERT:
+          m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
+          tj->rows->file=0;
+          update_files_on_table_job(tj);
+			  	initialize_sql_statement(statement);
+				  break;
       }
       tj->st_in_file = 0;
       tj->filesize = 0;			
 		}
 		//
 		// write row to buffer
-    if (num_rows_st && output_format == SQL_INSERT)
+    if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
       g_string_append_c(statement, ',');
     g_string_append(statement, statement_row->str);
 		if (statement_row->len>0)
@@ -671,7 +767,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   }
   update_dbt_rows(dbt, num_rows);
   if (num_rows_st > 0 && statement->len > 0){
-    if (output_format == SQL_INSERT)
+    if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
 			g_string_append(statement, statement_terminated_by);
     if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
       return;
