@@ -325,7 +325,11 @@ void detect_quote_character(MYSQL *conn)
 
   if (mysql_query(conn, query)){
     g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
-    return ;
+    identifier_quote_character= BACKTICK;
+    identifier_quote_character_str= "`";
+    fields_enclosed_by= "\"";
+    identifier_quote_character_protect = &backtick_protect;
+		return ;
   }
 
   if (!(res = mysql_store_result(conn))){
@@ -443,7 +447,10 @@ MYSQL *create_main_connection() {
   case SERVER_TYPE_UNKNOWN:
     set_transaction_isolation_level_repeatable_read(conn);
     break;
-  default:
+  case SERVER_TYPE_CLICKHOUSE:
+    data_checksums=FALSE;
+    break;
+	default:
     m_critical("Cannot detect server type");
     break;
   }
@@ -1091,7 +1098,7 @@ void start_dump() {
     get_not_updated(conn, nufile);
   }
 
-  if (!no_locks) {
+  if (!no_locks && is_mysql_like()) {
   // We check SHOW PROCESSLIST, and if there're queries
   // larger than preset value, we terminate the process.
   // This avoids stalling whole server with flush.
