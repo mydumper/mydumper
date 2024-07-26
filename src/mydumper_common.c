@@ -397,8 +397,7 @@ void initialize_headers(){
 }
 
 void initialize_sql_statement(GString *statement){
-  if (!compact)
-  	g_string_printf(statement,"%s",headers->str);
+  g_string_printf(statement,"%s",headers->str);
 }
 
 
