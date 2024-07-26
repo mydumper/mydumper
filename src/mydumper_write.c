@@ -113,9 +113,9 @@ void initialize_write(){
     output_format=CSV;
   }
 
-  if(strlen(fields_enclosed_by_ld)>1)
+  if(fields_enclosed_by_ld && strlen(fields_enclosed_by_ld)>1)
     m_critical("--fields-enclosed-by must be a single character");
-  if(strlen(fields_escaped_by)>1)
+  if(fields_escaped_by && strlen(fields_escaped_by)>1)
     m_critical("--fields-escaped-by must be a single character");
 
 
