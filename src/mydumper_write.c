@@ -112,6 +112,7 @@ void initialize_write(){
 
 
   switch (output_format){
+		case CLICKHOUSE:
 		case SQL_INSERT:
       if (fields_enclosed_by_ld)
 				fields_enclosed_by= fields_enclosed_by_ld;
@@ -220,8 +221,6 @@ void initialize_write(){
       }else
         statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
-			break;
-		case CLICKHOUSE:
 			break;
 	}
 
@@ -461,7 +460,7 @@ void write_clickhouse_statement(struct table_job * tj){
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->rows->filename);
   initialize_sql_statement(statement);
-  g_string_append_printf(statement, "%s %s%s%s FROM INFILE  %s FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
+  g_string_append_printf(statement, "%s %s%s%s FROM INFILE '%s' FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
   }
@@ -698,9 +697,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     lengths = mysql_fetch_lengths(result);
     num_rows++;
     // prepare row into statement_row
-    g_message("statement_row: %s",statement_row->str);
 		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
-    g_message("statement_row: %s",statement_row->str);
+
 		// if row exceeded statement_size then FLUSH buffer to disk
 		if (statement->len + statement_row->len + 1 > statement_size){
       if (num_rows_st == 0) {
