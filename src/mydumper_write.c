@@ -460,7 +460,7 @@ void write_clickhouse_statement(struct table_job * tj){
   GString *statement = g_string_sized_new(statement_size);
   char * basename=g_path_get_basename(tj->rows->filename);
   initialize_sql_statement(statement);
-  g_string_append_printf(statement, "%s %s%s%s FROM INFILE '%s' FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
+  g_string_append_printf(statement, "%s INTO %s%s%s FROM INFILE '%s' FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
     g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
   }
