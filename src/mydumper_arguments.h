@@ -20,5 +20,15 @@
 */
 #define GZIP "GZIP"
 #define ZSTD "ZSTD"
+#define INSERT_ARG "INSERT"
+#define LOAD_DATA_ARG "LOAD_DATA"
+#define CSV_ARG "CSV"
+#define CLICKHOUSE_ARG "CLICKHOUSE"
+#define SQL_INSERT 0
+#define LOAD_DATA 1
+#define CSV 2
+#define CLICKHOUSE 3
+#define SQL "sql"
+#define DAT "dat"
 GOptionContext * load_contex_entries();
 

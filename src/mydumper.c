@@ -91,6 +91,16 @@ int main(int argc, char *argv[]) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
   }
 
+	// TODO: This must be removed when --csv and --load-data are deprecated
+  if (load_data){
+    output_format=LOAD_DATA;
+		rows_file_extension=DAT;
+  }
+  if (csv){
+    output_format=CSV;
+		rows_file_extension=DAT;
+  }
+
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
 //    exit(EXIT_SUCCESS);
@@ -207,6 +217,7 @@ int main(int argc, char *argv[]) {
     print_bool("no-views",no_dump_views);
     print_bool("load-data",load_data);
     print_bool("csv",csv);
+    print_bool("clickhouse",clickhouse);
     print_bool("include-header",include_header);
     print_string("fields-terminated-by",fields_terminated_by_ld);
     print_string("fields-enclosed-by",fields_enclosed_by_ld);

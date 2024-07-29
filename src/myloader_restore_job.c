@@ -248,7 +248,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_RESTORE_STRING:
       if (!source_db || g_strcmp0(dbt->database->name,source_db)==0){
           get_total_done(td->conf, &total);
-          message("Thread %d: restoring %s %s.%s from %s. Tables %d of %d completed", td->thread_id, 
+          message("Thread %d: restoring %s %s.%s from %s. Tables %d of %d completed", td->thread_id,
                     rj->data.srj->object, dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
           if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, rj->data.srj->database)){
             increse_object_error(rj->data.srj->object);

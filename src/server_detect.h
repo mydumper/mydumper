@@ -24,7 +24,8 @@ enum server_type {
   SERVER_TYPE_MYSQL,
   SERVER_TYPE_TIDB,
   SERVER_TYPE_MARIADB,
-  SERVER_TYPE_PERCONA
+  SERVER_TYPE_PERCONA,
+	SERVER_TYPE_CLICKHOUSE
 };
 void detect_server_version(MYSQL * conn);
 int get_product();

@@ -36,6 +36,7 @@
 //#include <sys/wait.h>
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
+#include "mydumper_arguments.h"
 #include <sys/wait.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -215,16 +216,12 @@ gchar * build_filename(char *database, char *table, guint64 part, guint sub_part
   return r;
 }
 
-gchar * build_data_filename(char *database, char *table, guint64 part, guint sub_part){
-  return build_filename(database,table,part,sub_part,"sql",NULL);
+gchar * build_sql_filename(char *database, char *table, guint64 part, guint sub_part){
+  return build_filename(database,table,part,sub_part,SQL,NULL);
 }
 
-gchar * build_stdout_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, gchar *second_extension){
-  return build_filename(database,table,part,sub_part, extension, second_extension);
-}
-
-gchar * build_load_data_filename(char *database, char *table, guint64 part, guint sub_part){
-  return build_filename(database, table, part, sub_part, "dat", NULL);
+gchar * build_rows_filename(char *database, char *table, guint64 part, guint sub_part){
+  return build_filename(database, table, part, sub_part, rows_file_extension, NULL);
 }
 
 unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, unsigned long length){

@@ -38,6 +38,7 @@
 #include "mydumper_write.h"
 #include "mydumper_chunks.h"
 #include "mydumper_global.h"
+#include "mydumper_arguments.h"
 #include <sys/wait.h>
 #include <fcntl.h>
 
@@ -49,6 +50,7 @@ gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
 gboolean skip_definer = FALSE;
+gchar *(*build_fn)()=NULL;
 
 void initialize_jobs(){
   initialize_database();
@@ -1087,28 +1089,10 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-int initialize_fn(gchar ** sql_filename, struct db_table * dbt, int * sql_file, guint64 fn, guint sub_part, gchar * f(), gchar **stdout_fn){
-(void)stdout_fn;
-  int r=0;
-  if (*sql_filename)
-    g_free(*sql_filename);
-  *sql_filename = f(dbt->database->filename, dbt->table_filename, fn, sub_part);
-  *sql_file = m_open(sql_filename,"w");
-  return r;
-}
-
-void initialize_sql_fn(struct table_job * tj){
-  tj->child_process=initialize_fn(&(tj->sql_filename),tj->dbt,&(tj->sql_file), tj->nchunk, tj->sub_part, &build_data_filename, &(tj->exec_out_filename));
-}
-
-void initialize_load_data_fn(struct table_job * tj){
-  tj->child_process=initialize_fn(&(tj->dat_filename),tj->dbt,&(tj->dat_file), tj->nchunk, tj->sub_part, &build_load_data_filename, &(tj->exec_out_filename));
-}
-
 gboolean update_files_on_table_job(struct table_job *tj)
 {
   struct chunk_step_item *csi= tj->chunk_step_item;
-  if (tj->sql_file == 0){
+  if (tj->rows->file == 0){
     if (csi->chunk_type == INTEGER) {
       struct integer_step *s= &csi->chunk_step->integer_step;
       if (s->is_step_fixed_length) {
@@ -1116,13 +1100,14 @@ gboolean update_files_on_table_job(struct table_job *tj)
       }
     }
 
-    if (load_data){
-      initialize_load_data_fn(tj);
-      tj->sql_filename = build_data_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql_file = m_open(&(tj->sql_filename),"w");
+
+    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+    tj->rows->file = m_open(&(tj->rows->filename),"w");
+
+    if (tj->sql){
+      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+      tj->sql->file = m_open(&(tj->sql->filename),"w");
       return TRUE;
-    }else{
-      initialize_sql_fn(tj);
     }
   }
   return FALSE;
@@ -1143,10 +1128,16 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->order_by=g_strdup(order_by);
   tj->nchunk=nchunk;
   tj->sub_part = 0;
-  tj->dat_file = 0;
-  tj->dat_filename = NULL;
-  tj->sql_file = 0;
-  tj->sql_filename = NULL;
+  tj->rows=g_new0(struct table_job_file, 1);
+  tj->rows->file = 0;
+  tj->rows->filename = NULL;
+  if (output_format==SQL_INSERT)
+		tj->sql=NULL;
+	else{
+		tj->sql=g_new0(struct table_job_file, 1);
+    tj->sql->file = 0;
+    tj->sql->filename = NULL;
+  }
   tj->exec_out_filename = NULL;
   tj->dbt=dbt;
   tj->st_in_file=0;
@@ -1163,22 +1154,22 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
 void free_table_job(struct table_job *tj){
 //  g_message("free_table_job");
 
-  if (tj->sql_file){
-    m_close(tj->td->thread_id, tj->sql_file, tj->sql_filename, tj->filesize, tj->dbt);
-    tj->sql_file=0;
+  if (tj->sql){
+    m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, tj->filesize, tj->dbt);
+    tj->sql->file=0;
+    tj->sql=NULL;
   }
-  if (tj->dat_file){
-    m_close(tj->td->thread_id, tj->dat_file, tj->dat_filename, tj->filesize, tj->dbt);
-    tj->dat_file=0;
+  if (tj->rows){
+    m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, tj->filesize, tj->dbt);
+    tj->rows->file=0;
+    tj->rows=NULL;
   }
 
   if (tj->where!=NULL)
     g_string_free(tj->where,TRUE);
   if (tj->order_by)
     g_free(tj->order_by);
-  if (tj->sql_filename){
-    g_free(tj->sql_filename);
-  }
+
   g_free(tj);
 }
 

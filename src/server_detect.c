@@ -84,7 +84,25 @@ void detect_server_version(MYSQL * conn) {
   if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
     product = SERVER_TYPE_MYSQL;    
   }
-  gchar ** sver=g_strsplit(ver[1],".",3);
+	gchar ** sver=g_strsplit(ver[1],".",3);
+
+  if (product == SERVER_TYPE_UNKNOWN){
+		mysql_free_result(res);
+		mysql_query(conn, "SELECT value FROM system.build_options where name='VERSION_FULL'");
+		res = mysql_store_result(conn);
+		if (res){
+			ver = mysql_fetch_row(res);
+			ascii_version=g_ascii_strdown(ver[0],-1);
+			gchar ** psver=g_strsplit(ascii_version," ",2);
+	    if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
+        product = SERVER_TYPE_CLICKHOUSE;
+				sver=g_strsplit(psver[1],".",4);
+      }
+			g_strfreev(psver);
+		}
+	}
+
+
   major=strtol(sver[0], NULL, 10);
   secondary=strtol(sver[1], NULL, 10);
   revision=strtol(sver[2], NULL, 10);
@@ -145,11 +163,12 @@ void detect_server_version(MYSQL * conn) {
 
 const gchar * get_product_name(){
   switch (get_product()){
-  case SERVER_TYPE_PERCONA: return "Percona"; break;
-  case SERVER_TYPE_MYSQL:   return "MySQL";   break;
-  case SERVER_TYPE_MARIADB: return "MariaDB"; break;
-  case SERVER_TYPE_TIDB:    return "TiDB"; break;
-  case SERVER_TYPE_UNKNOWN: return "unknown"; break;
+  case SERVER_TYPE_PERCONA:   return "Percona"; break;
+  case SERVER_TYPE_MYSQL:     return "MySQL";   break;
+  case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
+  case SERVER_TYPE_TIDB:      return "TiDB"; break;
+  case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
+	case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
   default: return "";
 }
 
