@@ -34,6 +34,8 @@ extern gboolean show_warnings;
 extern guint refresh_table_list_interval;
 gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
+guint source_control_command = TRADITIONAL;
+gboolean set_gtid_purge = FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -88,6 +90,15 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
     g_critical("--checksum accepts: fail (default), warn, skip");
+  } else if (!strcmp(option_name, "--source-control-command")){
+    if (!strcasecmp(value, "TRADITIONAL")) {
+      source_control_command=TRADITIONAL;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "AWS")) {
+      source_control_command=AWS;
+      return TRUE;
+    }
   }
 
   return FALSE;
@@ -162,7 +173,10 @@ static GOptionEntry execution_entries[] = {
      "Not increment error count and Warning instead of Critical in case of "
      "any of the comman separated error number list",
      NULL},
-
+    {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
+    {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
+      "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry pmm_entries[] = {
