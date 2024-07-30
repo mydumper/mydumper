@@ -70,8 +70,8 @@ gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean overwrite_unsafe = FALSE;
 
-gboolean innodb_optimize_keys = FALSE;
-gboolean innodb_optimize_keys_per_table = FALSE;
+gboolean innodb_optimize_keys = TRUE;
+gboolean innodb_optimize_keys_per_table = TRUE;
 gboolean innodb_optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
@@ -367,7 +367,15 @@ int main(int argc, char *argv[]) {
     print_string("pmm-resolution",pmm_resolution);
 
     print_bool("enable-binlog",enable_binlog);
-    print_string("innodb-optimize-keys",innodb_optimize_keys_str);
+    if (!innodb_optimize_keys){
+      print_string("innodb-optimize-keys",SKIP);
+    }else if(innodb_optimize_keys_per_table){
+      print_string("innodb-optimize-keys",AFTER_IMPORT_PER_TABLE);
+    }else if(innodb_optimize_keys_all_tables){
+      print_string("innodb-optimize-keys",AFTER_IMPORT_ALL_TABLES);
+    }else
+      print_string("innodb-optimize-keys",NULL);
+
     print_bool("no-schemas",no_schemas);
 
     print_string("purge-mode",purge_mode_str);
