@@ -36,6 +36,7 @@ gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 guint source_control_command = TRADITIONAL;
 gboolean set_gtid_purge = FALSE;
+gchar *ignore_set=NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -213,6 +214,7 @@ static GOptionEntry statement_entries[] ={
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+    { "ignore-set", 0, 0, G_OPTION_ARG_STRING, &ignore_set, "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 

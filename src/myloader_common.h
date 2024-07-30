@@ -54,4 +54,5 @@ void change_master(GKeyFile * kf,gchar *group, GString *s);
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt);
+gboolean is_in_ignore_set_list(gchar *haystack);
 #endif

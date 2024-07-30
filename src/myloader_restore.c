@@ -532,7 +532,18 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
             m_remove(NULL, load_data_filename);
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){
-            g_string_append(header,data->str);
+            gchar *from_equal=g_strstr_len(data->str, strlen(data->str),"=");
+            if (from_equal && ignore_set ){
+            *from_equal='\0';
+            if (!is_in_ignore_set_list(data->str)) {
+              *from_equal='=';
+              g_string_append(header,data->str);
+            }else{
+              *from_equal='=';
+            }
+            }else{
+              g_string_append(header,data->str);
+            }
           }else{
             header=NULL;
           }
