@@ -20,5 +20,6 @@
 */
 #define AFTER_IMPORT_PER_TABLE "AFTER_IMPORT_PER_TABLE"
 #define AFTER_IMPORT_ALL_TABLES "AFTER_IMPORT_ALL_TABLES"
-
+#define TRADITIONAL 0
+#define AWS 1
 GOptionContext * load_contex_entries();
