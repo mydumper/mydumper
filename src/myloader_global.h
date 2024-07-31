@@ -125,4 +125,4 @@ extern gboolean kill_at_once;
 extern struct configuration_per_table conf_per_table;
 extern guint source_control_command;
 extern gboolean set_gtid_purge;
-
+extern gchar *ignore_set;

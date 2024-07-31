@@ -46,8 +46,18 @@ struct database *database_db=NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gchar *source_gtid=NULL;
+GList *ignore_set_list=NULL;
 
 void initialize_common(){
+  if (ignore_set){
+    gchar** ignore_set_items= g_strsplit(ignore_set, ",", 0);
+    guint i=0;
+    for (i=0; g_strv_length(ignore_set_items)>i; i++){
+      ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf(" %s",ignore_set_items[i]));
+    }
+    g_strfreev(ignore_set_items);
+  }
+  
   refresh_table_list_counter=refresh_table_list_interval;
   db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -55,6 +65,21 @@ void initialize_common(){
   if (db){
     database_db=get_db_hash(g_strdup(db), g_strdup(db));
   }
+}
+
+gboolean is_in_list(gchar *haystack, GList *list){
+  GList *l=list;
+  while(l){
+    if (g_strrstr(haystack, l->data)){
+      return TRUE;
+    }
+    l=l->next;
+  }
+  return FALSE;
+}
+
+gboolean is_in_ignore_set_list(gchar *haystack){
+  return is_in_list(haystack,ignore_set_list);
 }
 
 
