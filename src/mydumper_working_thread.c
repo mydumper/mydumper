@@ -560,7 +560,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   if (masterlog) {
     fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
     if (source_data > 0){
-      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname);
+      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname);
       fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\nexecuted_gtid_set = \"%s\"\n", masterlog, masterpos, mastergtid);
       if (((source_data) & (1<<(3)))>0)
         fprintf(file, "SOURCE_SSL = 1\n");
