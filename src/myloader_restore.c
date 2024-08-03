@@ -256,13 +256,14 @@ int restore_insert(struct connection_data *cd,
 //        show_warnings_if_possible(cd->thrconn);
           
       }
-      cd=NULL;
+//      cd=NULL;
     }else
       tr=0;
     r+=tr;
     offset_line=current_offset_line+1;
     current_line++; // remove trailing ,
   } while (next_line != NULL);
+  cd=NULL;
   g_string_free(new_insert,TRUE);
   g_free(insert_statement_prefix);
   return r;
