@@ -304,8 +304,7 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
-void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to){
-  unsigned long length = strlen(to);
+void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long length){
   gchar *from=g_new(char, length);
   memcpy(from, to, length);
   gchar *ffrom=from;
@@ -321,8 +320,7 @@ void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to){
   g_free(ffrom);
 }
 
-void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from){
-  unsigned long length = strlen(from);
+void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned long length){
   const char *end = from + length;
   for (end = from + length; from < end; from++) {
     if ( *from == neddle ){
