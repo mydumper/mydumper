@@ -358,35 +358,36 @@ gboolean write_data(int file, GString *data) {
 
 void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
   gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
-  dbt->load_data_suffix=g_string_sized_new(statement_size);
-  g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+  GString *load_data_suffix=g_string_sized_new(statement_size);
+  g_string_append_printf(load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   if (character_set && strlen(character_set)!=0)
-    g_string_append_printf(dbt->load_data_suffix, "CHARACTER SET %s ",character_set);
+    g_string_append_printf(load_data_suffix, "CHARACTER SET %s ",character_set);
   if (fields_terminated_by_ld)
-    g_string_append_printf(dbt->load_data_suffix, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
+    g_string_append_printf(load_data_suffix, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
   if (fields_enclosed_by_ld)
-    g_string_append_printf(dbt->load_data_suffix, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
+    g_string_append_printf(load_data_suffix, "ENCLOSED BY '%s' ",fields_enclosed_by_ld);
   if (fields_escaped_by)
-    g_string_append_printf(dbt->load_data_suffix, "ESCAPED BY '%s' ",fields_escaped_by);
-  g_string_append(dbt->load_data_suffix, "LINES ");
+    g_string_append_printf(load_data_suffix, "ESCAPED BY '%s' ",fields_escaped_by);
+  g_string_append(load_data_suffix, "LINES ");
   if (lines_starting_by_ld)
-    g_string_append_printf(dbt->load_data_suffix, "STARTING BY '%s' ",lines_starting_by_ld);
-  g_string_append_printf(dbt->load_data_suffix, "TERMINATED BY '%s' ", lines_terminated_by_ld);
+    g_string_append_printf(load_data_suffix, "STARTING BY '%s' ",lines_starting_by_ld);
+  g_string_append_printf(load_data_suffix, "TERMINATED BY '%s' ", lines_terminated_by_ld);
   if (include_header)
-    g_string_append(dbt->load_data_suffix, "IGNORE 1 LINES ");
-  g_string_append_printf(dbt->load_data_suffix, "(");
+    g_string_append(load_data_suffix, "IGNORE 1 LINES ");
+  g_string_append_printf(load_data_suffix, "(");
   if (dbt->columns_on_insert){
-    g_string_append(dbt->load_data_suffix,dbt->columns_on_insert);
-    g_string_append(dbt->load_data_suffix,")");
+    g_string_append(load_data_suffix,dbt->columns_on_insert);
+    g_string_append(load_data_suffix,")");
   }else{
-    GString * set_statement=append_load_data_columns(dbt->load_data_suffix,fields,num_fields);
-    g_string_append(dbt->load_data_suffix,")");
+    GString * set_statement=append_load_data_columns(load_data_suffix,fields,num_fields);
+    g_string_append(load_data_suffix,")");
     if (set_statement != NULL){
-      g_string_append(dbt->load_data_suffix,set_statement->str);
+      g_string_append(load_data_suffix,set_statement->str);
       g_string_free(set_statement,TRUE);
     }
   }
-  g_string_append(dbt->load_data_suffix,";\n");
+  g_string_append(load_data_suffix,";\n");
+  dbt->load_data_suffix=load_data_suffix;
 }
 
 void initialize_clickhouse_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
@@ -513,12 +514,13 @@ void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIEL
       g_string_append(statement_row,escaped->str);
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
       g_string_append(statement_row,fields_enclosed_by);
+      // this will reserve the memory needed if the current size is not enough.
       g_string_set_size(escaped, length * 2 + 1);
-//      unsigned long new_length = 
-      mysql_real_escape_string(conn, escaped->str, *column, length);
-//      g_string_set_size(escaped, new_length);
-      m_replace_char_with_char('\\',*fields_escaped_by,escaped->str,escaped->len);
-      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str,escaped->len);
+      unsigned long new_length = mysql_real_escape_string(conn, escaped->str, *column, length);
+      new_length++;      
+      //g_string_set_size(escaped, new_length);
+      m_replace_char_with_char('\\',*fields_escaped_by,escaped->str, new_length);
+      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str, new_length);
       g_string_append(statement_row,escaped->str);
       g_string_append(statement_row,fields_enclosed_by);
     }else
