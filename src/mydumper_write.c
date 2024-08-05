@@ -358,7 +358,7 @@ gboolean write_data(int file, GString *data) {
 
 void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
   gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
-  dbt->load_data_suffix=g_string_sized_new(statement_size);
+  GString *load_data_suffix=g_string_sized_new(statement_size);
   g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   if (character_set && strlen(character_set)!=0)
     g_string_append_printf(dbt->load_data_suffix, "CHARACTER SET %s ",character_set);
@@ -387,6 +387,7 @@ void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * f
     }
   }
   g_string_append(dbt->load_data_suffix,";\n");
+  dbt->load_data_suffix=load_data_suffix;
 }
 
 void initialize_clickhouse_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
