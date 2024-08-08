@@ -108,6 +108,15 @@ void wait_restore_threads_to_close(){
     g_thread_join(restore_threads[n]);
 }
 
+void reconnect_connection_data(struct connection_data *cd){
+  mysql_close(cd->thrconn);
+  cd->thrconn=mysql_init(NULL);
+  m_connect(cd->thrconn);
+  cd->thread_id=mysql_thread_id(cd->thrconn);
+  execute_use(cd);
+  execute_gstring(cd->thrconn, set_session);
+}
+
 int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
 {
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
@@ -120,14 +129,16 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 
     if ( mysql_errno(cd->thrconn) != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(cd->thrconn) ))){
       if (mysql_ping(cd->thrconn)) {
-        mysql_close(cd->thrconn);
+        reconnect_connection_data(cd);
+/*        mysql_close(cd->thrconn);
         cd->thrconn=mysql_init(NULL);
         m_connect(cd->thrconn);
         cd->thread_id=mysql_thread_id(cd->thrconn);
-        execute_gstring(cd->thrconn, set_session);
         execute_use(cd);
+        execute_gstring(cd->thrconn, set_session);
+        */
         if (!is_schema && commit_count > 1) {
-          g_critical("Connection %ld - ERROR %d: Lost connection error", cd->thread_id,  mysql_errno(cd->thrconn));
+          g_critical("Connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id,  mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
           errors++;
           return 2;
         }
@@ -176,14 +187,18 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
   if (mysql_ping(cd->thrconn)) {
     g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->thread_id);
-    if (mysql_thread_id(cd->thrconn) == cd->thread_id ){
+    reconnect_connection_data(cd);
+/*    if (mysql_thread_id(cd->thrconn) == cd->thread_id ){
       mysql_close(cd->thrconn);
       cd->thrconn=mysql_init(NULL);
       m_connect(cd->thrconn);
+      execute_use(cd);
     }
     cd->thread_id=mysql_thread_id(cd->thrconn);
     g_warning("Thread %d: New connection %ld established", td->thread_id, cd->thread_id);
     execute_gstring(cd->thrconn, set_session);
+    */
+    g_warning("Thread %d: New connection %ld established", td->thread_id, cd->thread_id);
   }
   cd->transaction=start_transaction;
   if (use_database)
