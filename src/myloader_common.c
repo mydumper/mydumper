@@ -181,7 +181,7 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
   if (!auto_position)
     g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", ", source_log_file, source_log_pos);
 
-  g_string_append_printf(aws_change_source,"%d );", source_ssl);
+  g_string_append_printf(aws_change_source,"%d );\n", source_ssl);
 
   g_strfreev(keys);
   g_string_append_c(traditional_change_source,' ');
