@@ -147,7 +147,7 @@ Keep in mind that the main purpose the Dockerfile addresses is development and b
 
 # How to use MyDumper
 
-See [Usage](docs/mydumper_usage.rst)
+See [Usage](https://github.com/mydumper/mydumper_docs/blob/main/mydumper_usage.rst)
 
 ## How does consistent snapshot work?
 
