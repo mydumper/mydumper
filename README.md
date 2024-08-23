@@ -14,9 +14,12 @@ Both tools use multithreading capabilities.
 * Consistency - maintains snapshot across all threads, provides accurate master and slave log positions, etc
 * Manageability - supports PCRE for specifying database and tables inclusions and exclusions
 
+# Documentation
+[Official Documentation](https://mydumper.github.io/mydumper/) (work in progress)
+
 ## How to install mydumper/myloader?
 
-First get the correct url from the [releases section](https://github.com/maxbube/mydumper/releases) then:
+First get the correct url from the [releases section](https://github.com/mydumper/mydumper/releases) then:
 
 ### RedHat / Centos
 
@@ -147,7 +150,7 @@ Keep in mind that the main purpose the Dockerfile addresses is development and b
 
 # How to use MyDumper
 
-See [Usage](docs/mydumper_usage.rst)
+See [Usage](https://mydumper.github.io/mydumper/docs/html/mydumper_usage.html)
 
 ## How does consistent snapshot work?
 
