@@ -19,7 +19,7 @@ Both tools use multithreading capabilities.
 
 ## How to install mydumper/myloader?
 
-[This sections has been migrated to ](https://mydumper.github.io/mydumper/docs/html/installing.html) 
+[This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/installing.html) 
 
 
 First get the correct url from the [releases section](https://github.com/mydumper/mydumper/releases) then:
