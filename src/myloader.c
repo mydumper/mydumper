@@ -498,7 +498,8 @@ int main(int argc, char *argv[]) {
 //  t.connection_data.thrconn = conn;
 
   if (database_db){
-    create_database(t, database_db->real_database);
+    if (!no_schemas)
+      create_database(t, database_db->real_database);
     database_db->schema_state=CREATED;
   }
 
