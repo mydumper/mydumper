@@ -475,7 +475,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "%c%s%c int", q, row[0], q);
   }
-  g_string_append(statement, "\n) ENGINE=MEMORY;\n");
+  g_string_append(statement, "\n) ENGINE=MEMORY ENCRYPTION='N';\n");
 
   if (result)
     mysql_free_result(result);
