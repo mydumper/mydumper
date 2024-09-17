@@ -145,7 +145,7 @@ void detect_server_version(MYSQL * conn) {
     case SERVER_TYPE_MYSQL:
     case SERVER_TYPE_PERCONA:
     case SERVER_TYPE_UNKNOWN:
-      if (get_major()>=8) {
+      if (get_major()>=8 && (get_secondary()>0 || (get_secondary()==0 && get_revision()>=22))) {
           start_replica=START_REPLICA;
           stop_replica=STOP_REPLICA;
           start_replica_sql_thread=START_REPLICA_SQL_THREAD;
@@ -154,8 +154,7 @@ void detect_server_version(MYSQL * conn) {
           show_replica_status=SHOW_REPLICA_STATUS;
           if (get_secondary()>=2)
             show_binary_log_status=SHOW_BINARY_LOG_STATUS;
-          if(!(get_secondary()==0 && get_revision()<23))
-            change_replication_source=CHANGE_REPLICATION_SOURCE;
+          change_replication_source=CHANGE_REPLICATION_SOURCE;
       }
       break;
   }
