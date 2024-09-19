@@ -20,6 +20,9 @@
 
 #define BACKTICK '`'
 #define DOUBLE_QUOTE '"'
+#define TRADITIONAL 0
+#define AWS 1
+
 extern char identifier_quote_character;
 extern const char *identifier_quote_character_str;
 extern guint max_threads_per_table;

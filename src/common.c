@@ -1277,3 +1277,20 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
 gchar *build_dbt_key(gchar *a, gchar *b){
   return g_strdup_printf("%c%s%c.%c%s%c", identifier_quote_character, a, identifier_quote_character, identifier_quote_character, b, identifier_quote_character);
 }
+
+gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (!strcmp(option_name, "--source-control-command")){
+    if (!strcasecmp(value, "TRADITIONAL")) {
+      source_control_command=TRADITIONAL;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "AWS")) {
+      source_control_command=AWS;
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+

@@ -34,7 +34,6 @@ guint output_format=SQL_INSERT;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  (void) data;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
     if (value==NULL || g_strstr_len(value,4,GZIP)){
       compress_method=GZIP;
@@ -76,7 +75,8 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  return FALSE;
+
+  return common_arguments_callback(option_name, value, data, error);
 }
 
 static GOptionEntry entries[] = {

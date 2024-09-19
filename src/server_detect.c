@@ -111,52 +111,57 @@ void detect_server_version(MYSQL * conn) {
   g_free(ascii_version);
   g_free(ascii_version_comment);
 
-
-  start_replica=START_SLAVE;
-  stop_replica=STOP_SLAVE;
-  start_replica_sql_thread=START_SLAVE_SQL_THREAD;
-  stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
-  reset_replica=RESET_SLAVE;
   show_replica_status=SHOW_SLAVE_STATUS;
-  change_replication_source=CHANGE_MASTER;
   show_binary_log_status=SHOW_MASTER_STATUS;
 
-  switch (get_product()){
-    case SERVER_TYPE_MARIADB:
-      if (get_major()<10){
-        show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
-        if (get_secondary()>=5)
-          if (get_revision()>=2)
-            show_binary_log_status=SHOW_BINLOG_STATUS;
-      }else {
-        if (get_secondary()<=5){
+  if (source_control_command==TRADITIONAL){
+    start_replica=START_SLAVE;
+    stop_replica=STOP_SLAVE;
+    start_replica_sql_thread=START_SLAVE_SQL_THREAD;
+    stop_replica_sql_thread=STOP_SLAVE_SQL_THREAD;
+    reset_replica=RESET_SLAVE;
+    change_replication_source=CHANGE_MASTER;
+    switch (get_product()){
+      case SERVER_TYPE_MARIADB:
+        if (get_major()<10){
           show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
-        }else{
-          start_replica=START_REPLICA;
-          stop_replica=STOP_REPLICA;
-          start_replica_sql_thread=START_REPLICA_SQL_THREAD;
-          stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
-          reset_replica=RESET_REPLICA;
-          show_replica_status=SHOW_REPLICA_STATUS;
-          show_all_replicas_status=SHOW_ALL_REPLICAS_STATUS;
+          if (get_secondary()>=5)
+            if (get_revision()>=2)
+              show_binary_log_status=SHOW_BINLOG_STATUS;
+        }else {
+          if (get_secondary()<=5){
+            show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
+          }else{
+            start_replica=START_REPLICA;
+            stop_replica=STOP_REPLICA;
+            start_replica_sql_thread=START_REPLICA_SQL_THREAD;
+            stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
+            reset_replica=RESET_REPLICA;
+            show_replica_status=SHOW_REPLICA_STATUS;
+            show_all_replicas_status=SHOW_ALL_REPLICAS_STATUS;
+          }
+        } 
+        break;
+      case SERVER_TYPE_MYSQL:
+      case SERVER_TYPE_PERCONA:
+      case SERVER_TYPE_UNKNOWN:
+        if (get_major()>=8 && (get_secondary()>0 || (get_secondary()==0 && get_revision()>=22))) {
+            start_replica=START_REPLICA;
+            stop_replica=STOP_REPLICA;
+            start_replica_sql_thread=START_REPLICA_SQL_THREAD;
+            stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
+            reset_replica=RESET_REPLICA;
+            show_replica_status=SHOW_REPLICA_STATUS;
+            if (get_secondary()>=2)
+              show_binary_log_status=SHOW_BINARY_LOG_STATUS;
+            change_replication_source=CHANGE_REPLICATION_SOURCE;
         }
-      }
-      break;
-    case SERVER_TYPE_MYSQL:
-    case SERVER_TYPE_PERCONA:
-    case SERVER_TYPE_UNKNOWN:
-      if (get_major()>=8 && (get_secondary()>0 || (get_secondary()==0 && get_revision()>=22))) {
-          start_replica=START_REPLICA;
-          stop_replica=STOP_REPLICA;
-          start_replica_sql_thread=START_REPLICA_SQL_THREAD;
-          stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
-          reset_replica=RESET_REPLICA;
-          show_replica_status=SHOW_REPLICA_STATUS;
-          if (get_secondary()>=2)
-            show_binary_log_status=SHOW_BINARY_LOG_STATUS;
-          change_replication_source=CHANGE_REPLICATION_SOURCE;
-      }
-      break;
+        break;
+    }
+  }else{
+    start_replica=CALL_START_REPLICATION;
+    stop_replica=CALL_STOP_REPLICATION;
+    reset_replica=CALL_RESET_EXTERNAL_MASTER;
   }
 }
 

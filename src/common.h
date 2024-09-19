@@ -23,12 +23,14 @@
 #define IS_INNODB_TABLE 2
 #define INCLUDE_CONSTRAINT 4
 #define IS_ALTER_TABLE_PRESENT 8
-
 #define START_SLAVE "START SLAVE"
 #define START_SLAVE_SQL_THREAD "START SLAVE SQL_THREAD"
+#define CALL_START_REPLICATION "CALL mysql.rds_start_replication();"
 #define STOP_SLAVE_SQL_THREAD "STOP SLAVE SQL_THREAD"
 #define STOP_SLAVE "STOP SLAVE"
+#define CALL_STOP_REPLICATION "CALL mysql.rds_stop_replication();"
 #define RESET_SLAVE "RESET SLAVE"
+#define CALL_RESET_EXTERNAL_MASTER "CALL mysql.rds_reset_external_master()"
 #define SHOW_SLAVE_STATUS "SHOW SLAVE STATUS"
 #define SHOW_ALL_SLAVES_STATUS "SHOW ALL SLAVES STATUS"
 #define START_REPLICA "START REPLICA"
@@ -59,6 +61,7 @@ extern const gchar *show_replica_status;
 extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
 extern const gchar *change_replication_source;
+extern guint source_control_command;
 #ifndef _src_common_h
 #define _src_common_h
 void initialize_share_common();
@@ -191,3 +194,5 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
 void initialize_conf_per_table(struct configuration_per_table *cpt);
 void parse_object_to_export(struct object_to_export *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
+
+gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
