@@ -34,13 +34,11 @@ extern gboolean show_warnings;
 extern guint refresh_table_list_interval;
 gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
-guint source_control_command = TRADITIONAL;
 gboolean set_gtid_purge = FALSE;
 gchar *ignore_set=NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  (void) data;
   if (!strcmp(option_name, "--innodb-optimize-keys")) {
     innodb_optimize_keys_str=g_strdup(value);
     if (value==NULL){
@@ -91,18 +89,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
     g_critical("--checksum accepts: fail (default), warn, skip");
-  } else if (!strcmp(option_name, "--source-control-command")){
-    if (!strcasecmp(value, "TRADITIONAL")) {
-      source_control_command=TRADITIONAL;
-      return TRUE;
-    }
-    if (!strcasecmp(value, "AWS")) {
-      source_control_command=AWS;
-      return TRUE;
-    }
-  }
-
-  return FALSE;
+  } 
+  
+  return common_arguments_callback(option_name, value, data, error);
 }
 
 static GOptionEntry entries[] = {

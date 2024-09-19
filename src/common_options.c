@@ -69,6 +69,8 @@ const char *identifier_quote_character_str= "`";
 gboolean schema_sequence_fix = FALSE;
 guint max_threads_per_table= G_MAXUINT;
 
+guint source_control_command = TRADITIONAL;
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
