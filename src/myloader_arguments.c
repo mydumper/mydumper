@@ -163,8 +163,6 @@ static GOptionEntry execution_entries[] = {
      "Not increment error count and Warning instead of Critical in case of "
      "any of the comman separated error number list",
      NULL},
-    {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
