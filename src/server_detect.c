@@ -161,6 +161,7 @@ void detect_server_version(MYSQL * conn) {
   }else{
     start_replica=CALL_START_REPLICATION;
     stop_replica=CALL_STOP_REPLICATION;
+    stop_replica_sql_thread=CALL_STOP_REPLICATION;
     reset_replica=CALL_RESET_EXTERNAL_MASTER;
   }
 }
