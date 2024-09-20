@@ -1364,6 +1364,9 @@ void start_dump() {
       if (mysql_query(conn, start_replica_sql_thread)){
         g_warning("Not able to start replica: %s", mysql_error(conn));
       }
+      if (source_control_command==AWS){
+        discard_mysql_output(conn);
+      }
       replica_stopped=FALSE;
     }
   }
@@ -1418,6 +1421,9 @@ void start_dump() {
     g_message("Starting replica");
     if (mysql_query(conn, start_replica_sql_thread)){
       g_warning("Not able to start replica: %s", mysql_error(conn));
+    }
+    if (source_control_command==AWS){
+      discard_mysql_output(conn);
     }
   }
   
