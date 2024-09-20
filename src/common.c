@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include "mydumper_global.h"
 
+GList *ignore_errors_list=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
@@ -1292,5 +1293,35 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
     }
   }
   return FALSE;
+}
+
+
+void discard_mysql_output(MYSQL *conn){
+  MYSQL_RES *result = NULL;
+  MYSQL_ROW row = NULL;
+  while( mysql_next_result(conn)){
+    result = mysql_use_result(conn);
+    if (!result)
+      return;
+    row = mysql_fetch_row(result);
+    while (row){
+      row = mysql_fetch_row(result);
+    }
+    mysql_free_result(result);
+  }
+}
+
+gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  if (mysql_query(conn, query)){
+    if(!g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) ))){
+      va_list    args;
+      va_start(args, fmt);
+      gchar *c=g_strdup_vprintf(fmt,args);
+      log_fun("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+      g_free(c);
+      return FALSE;
+    }
+  }
+  return TRUE;
 }
 

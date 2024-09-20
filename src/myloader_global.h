@@ -120,7 +120,6 @@ extern gchar *innodb_optimize_keys_str;
 extern gchar *checksum_str;
 extern gboolean no_stream;
 extern gchar *ignore_errors;
-extern GList *ignore_errors_list;
 extern gboolean kill_at_once;
 extern struct configuration_per_table conf_per_table;
 extern guint source_control_command;

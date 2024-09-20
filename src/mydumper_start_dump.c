@@ -888,7 +888,7 @@ void send_lock_all_tables(MYSQL *conn){
         g_free(tmp_fail);
         g_free(failed_table);
       } else {
-        g_message("LOCK TABLES: %s", query->str);
+//        g_message("LOCK TABLES: %s", query->str);
         success = 1;
       }
       retry += 1;
@@ -927,13 +927,10 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     isms = 1;
   }
 
-  if (isms){
-    if (mysql_query(conn, show_all_replicas_status ))
-      g_critical("Error executing %s: %s", show_all_replicas_status, mysql_error(conn));
-  }else{
-    if (mysql_query(conn, show_replica_status))
-      g_critical("Error executing %s: %s", show_replica_status, mysql_error(conn));
-  }
+  if (isms)
+    m_query(conn, show_all_replicas_status , m_critical, "Error executing %s", show_all_replicas_status);
+  else
+    m_query(conn, show_replica_status, m_critical, "Error executing %s", show_replica_status);
 
   guint slave_count=0;
   slave = mysql_store_result(conn);
@@ -947,10 +944,15 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   if (!replica_stopped){
     g_warning("Not able to stop replica: %s", mysql_error(conn));
   }
-  if (isms)
-    mysql_query(conn, show_all_replicas_status);
+  if (source_control_command==AWS){
+    discard_mysql_output(conn);
+  } 
+
+
+  if (isms)  
+    m_query(conn, show_all_replicas_status, m_critical, "Error executing %s", show_all_replicas_status);
   else
-    mysql_query(conn, show_replica_status);
+    m_query(conn, show_replica_status, m_critical, "Error executing %s", show_replica_status);
 
   slave = mysql_store_result(conn);
 
@@ -1144,16 +1146,11 @@ void start_dump() {
       // Generate a @@tidb_snapshot to use for the worker threads since
       // the tidb-snapshot argument was not specified when starting mydumper
 
-      if (mysql_query(conn, show_binary_log_status)) {
-        m_critical("Couldn't generate @@tidb_snapshot: %s", mysql_error(conn));
-      } else {
-
-        MYSQL_RES *result = mysql_store_result(conn);
-        MYSQL_ROW row = mysql_fetch_row(
-            result); /* There should never be more than one row */
-        tidb_snapshot = g_strdup(row[1]);
-        mysql_free_result(result);
-      }
+      m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+      MYSQL_RES *result = mysql_store_result(conn);
+      MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
+      tidb_snapshot = g_strdup(row[1]);
+      mysql_free_result(result);
     }
 
     // Need to set the @@tidb_snapshot for the master thread
@@ -1367,6 +1364,9 @@ void start_dump() {
       if (mysql_query(conn, start_replica_sql_thread)){
         g_warning("Not able to start replica: %s", mysql_error(conn));
       }
+      if (source_control_command==AWS){
+        discard_mysql_output(conn);
+      }
       replica_stopped=FALSE;
     }
   }
@@ -1421,6 +1421,9 @@ void start_dump() {
     g_message("Starting replica");
     if (mysql_query(conn, start_replica_sql_thread)){
       g_warning("Not able to start replica: %s", mysql_error(conn));
+    }
+    if (source_control_command==AWS){
+      discard_mysql_output(conn);
     }
   }
   
