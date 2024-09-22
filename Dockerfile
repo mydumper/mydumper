@@ -1,5 +1,5 @@
 # Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
-FROM mydumper/mydumper-builder-el9:latest as builder
+FROM mydumper/mydumper-builder-el9:latest AS builder
 
 # Docker build arguments. Use to customize build.
 # Example to enable ZSTD:
