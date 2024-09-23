@@ -752,6 +752,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
           tj->rows->file=0;
           update_files_on_table_job(tj);
 			  	initialize_sql_statement(statement);
+          g_string_append(statement, dbt->insert_statement->str);
 				  break;
       }
       tj->st_in_file = 0;
