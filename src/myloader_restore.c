@@ -74,7 +74,6 @@ struct io_restore_result *new_io_restore_result(){
   return iors;
 }
 
-GList *ignore_errors_list=NULL;
 gchar *ignore_errors=NULL;
 
 void initialize_connection_pool(MYSQL *thrconn){

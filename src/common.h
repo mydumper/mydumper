@@ -48,6 +48,7 @@
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
 
+extern GList *ignore_errors_list;
 extern gchar zstd_paths[2][15];
 extern gchar gzip_paths[2][15];
 extern gchar **zstd_cmd;
@@ -196,3 +197,5 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
 gchar *build_dbt_key(gchar *a, gchar *b);
 
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+void discard_mysql_output(MYSQL *conn);
+gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);

@@ -343,23 +343,6 @@ void execute_use_if_needs_to(struct connection_data *cd, struct database *databa
   }
 }
 
-
-gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
-  if (mysql_query(conn, query)){
-    if(!g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) ))){
-      va_list    args;
-      va_start(args, fmt);
-      gchar *c=g_strdup_vprintf(fmt,args);
-      log_fun("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-      g_free(c);
-      return FALSE;
-    }
-  }
-  return TRUE;
-}
-
-
-
 enum file_type get_file_type (const char * filename){
 
   if (!strcmp(filename, "metadata") || !strcmp(filename, "metadata.header") ||
