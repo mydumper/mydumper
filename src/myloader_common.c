@@ -86,7 +86,6 @@ gboolean is_in_ignore_set_list(gchar *haystack){
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
   GError *error=NULL;
   gchar * val=g_key_file_get_value(kf,group,_key,&error);
-  g_message("Group %s Key %s -> val: %s", group, _key, val);
   if (error != NULL && error->code == G_KEY_FILE_ERROR_KEY_NOT_FOUND){
     g_error_free(error);
     return NULL;
