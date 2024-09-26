@@ -565,7 +565,7 @@ void process_metadata_global(const char *file)
       database_table= g_strsplit(group+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
-	if (!source_db || g_strcmp0(database_table[1],source_db)==0){
+        if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *real_db_name=get_db_hash(database_table[0],database_table[0]);
           dbt=append_new_db_table(real_db_name, database_table[1],0,NULL);
           dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,group,"data_checksum");
@@ -595,13 +595,15 @@ void process_metadata_global(const char *file)
             else
               g_free(real_table_name);
           }
-	}
+        }
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
-        struct database *database=get_db_hash(database_table[0],database_table[0]);
-        database->schema_checksum=get_value(kf,group,"schema_checksum");
-        database->post_checksum=get_value(kf,group,"post_checksum");
-        database->triggers_checksum=get_value(kf,group,"triggers_checksum");
+        if (!source_db || g_strcmp0(database_table[0],source_db)==0){
+          struct database *database=get_db_hash(database_table[0],database_table[0]);
+          database->schema_checksum=g_strdup(get_value(kf,group,"schema_checksum"));
+          database->post_checksum=get_value(kf,group,"post_checksum");
+          database->triggers_checksum=get_value(kf,group,"triggers_checksum");
+        }
       }
     }else if (g_str_has_prefix(group,"replication")){
       change_master(kf, group, change_master_statement);
