@@ -634,7 +634,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   gulong *lengths = NULL;
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
-  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * );
+  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer *) = write_sql_column_into_string;
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -654,7 +654,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       }
 	  	break;
     case CLICKHOUSE:
-      write_column_into_string=write_sql_column_into_string;
       if (tj->rows->file == 0){
         update_files_on_table_job(tj);
       }
@@ -677,7 +676,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       g_string_append(statement, dbt->insert_statement->str);
       break;
 		case SQL_INSERT:
-  		write_column_into_string=write_sql_column_into_string;
       if (tj->rows->file == 0){
         update_files_on_table_job(tj);
   		}
