@@ -300,7 +300,20 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 EOF
 
-for os in el7 el9
+for os in el7
+do
+    for vendor in ${list_mysql_version[@]}
+    do
+        echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+    - run: yum-config-manager --disable mariadb-maxscale
+"
+    done
+done
+
+for os in el9
 do
     for vendor in ${list_mysql_version[@]}
     do
