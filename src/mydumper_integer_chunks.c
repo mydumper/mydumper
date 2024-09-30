@@ -553,9 +553,18 @@ if (cs->integer_step.is_unsigned){
   if (csi->status != COMPLETED)
     csi->status = ASSIGNED;
   if (cs->integer_step.is_unsigned){
-    cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.cursor+1;
+    if ( cs->integer_step.type.unsign.cursor+1 < cs->integer_step.type.unsign.min){
+      // Overflow
+      cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max;
+      cs->integer_step.type.unsign.max--;
+    }else
+      cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.cursor+1;
   }else{
-    cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
+    if ( cs->integer_step.type.sign.cursor+1 < cs->integer_step.type.sign.min){
+      cs->integer_step.type.sign.min=cs->integer_step.type.sign.max;
+      cs->integer_step.type.sign.max--;
+    }else
+      cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
   }
   g_mutex_unlock(csi->mutex);
 
