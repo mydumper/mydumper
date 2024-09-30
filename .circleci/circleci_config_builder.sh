@@ -351,8 +351,8 @@ do
   echo "
   prepare_el7_${all_vendors[${vendor}_0]}:
     steps:
-    - run: yum-config-manager --disable mariadb-maxscale
     - prepare_el_${all_vendors[${vendor}_0]}
+    - run: yum-config-manager --disable mariadb-maxscale
 "
 done
 

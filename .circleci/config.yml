@@ -1319,14 +1319,14 @@ commands:
 
   prepare_el7_mariadb1011:
     steps:
-    - run: yum-config-manager --disable mariadb-maxscale
     - prepare_el_mariadb1011
+    - run: yum-config-manager --disable mariadb-maxscale
 
 
   prepare_el7_mariadb1006:
     steps:
-    - run: yum-config-manager --disable mariadb-maxscale
     - prepare_el_mariadb1006
+    - run: yum-config-manager --disable mariadb-maxscale
 
 
   prepare_bionic_tidb:
