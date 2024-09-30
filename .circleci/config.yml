@@ -1237,13 +1237,11 @@ commands:
 
   prepare_el7_mysql80:
     steps:
-    - prepare_el_mysql80
     - run: yum-config-manager --disable mariadb-maxscale
 
 
   prepare_el7_mysql84:
     steps:
-    - prepare_el_mysql84
     - run: yum-config-manager --disable mariadb-maxscale
 
 
