@@ -1237,12 +1237,12 @@ commands:
 
   prepare_el7_mysql80:
     steps:
-    - run: yum-config-manager --disable mariadb-maxscale
+    - prepare_el_mysql80
 
 
   prepare_el7_mysql84:
     steps:
-    - run: yum-config-manager --disable mariadb-maxscale
+    - prepare_el_mysql84
 
 
   prepare_el9_mysql80:
@@ -1265,26 +1265,6 @@ commands:
     steps:
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
-
-
-  prepare_el7_mariadb1011:
-    steps:
-    - prepare_el_mariadb1011
-
-
-  prepare_el7_mariadb1006:
-    steps:
-    - prepare_el_mariadb1006
-
-
-  prepare_el7_percona57:
-    steps:
-    - prepare_el_percona57
-
-
-  prepare_el7_percona80:
-    steps:
-    - prepare_el_percona80
 
 
   prepare_el8_mariadb1011:
@@ -1325,6 +1305,18 @@ commands:
   prepare_el9_percona80:
     steps:
     - prepare_el_percona80
+
+
+  prepare_el7_mariadb1011:
+    steps:
+    - run: yum-config-manager --disable mariadb-maxscale
+    - prepare_el_mariadb1011
+
+
+  prepare_el7_mariadb1006:
+    steps:
+    - run: yum-config-manager --disable mariadb-maxscale
+    - prepare_el_mariadb1006
 
 
   prepare_bionic_tidb:
