@@ -1307,6 +1307,16 @@ commands:
     - prepare_el_percona80
 
 
+  prepare_el7_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el7_percona80:
+    steps:
+    - prepare_el_percona80
+
+
   prepare_el7_mariadb1011:
     steps:
     - run: yum-config-manager --disable mariadb-maxscale

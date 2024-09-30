@@ -334,7 +334,19 @@ do
     done
 done
 
-for vendor in ${list_mariadb_version[@]}
+for os in el7
+do
+    for vendor in ${list_percona_version[@]}
+    do
+        echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+    done
+done
+
+for vendor in ${list_mariadb_version[@]} 
 do
   echo "
   prepare_el7_${all_vendors[${vendor}_0]}:
