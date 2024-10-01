@@ -1181,10 +1181,12 @@ commands:
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6"
+    - run: yum-config-manager --disable mariadb-maxscale
 
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+    - run: yum-config-manager --disable mariadb-maxscale
 
   prepare_el_mysql80:
     steps:
@@ -1307,6 +1309,16 @@ commands:
     - prepare_el_percona80
 
 
+  prepare_el7_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el7_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
   prepare_el7_percona57:
     steps:
     - prepare_el_percona57
@@ -1317,16 +1329,44 @@ commands:
     - prepare_el_percona80
 
 
-  prepare_el7_mariadb1011:
+  prepare_el8_mariadb1011:
     steps:
     - prepare_el_mariadb1011
-    - run: yum-config-manager --disable mariadb-maxscale
 
 
-  prepare_el7_mariadb1006:
+  prepare_el8_mariadb1006:
     steps:
     - prepare_el_mariadb1006
-    - run: yum-config-manager --disable mariadb-maxscale
+
+
+  prepare_el8_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el8_percona80:
+    steps:
+    - prepare_el_percona80
+
+
+  prepare_el9_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el9_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el9_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el9_percona80:
+    steps:
+    - prepare_el_percona80
 
 
   prepare_bionic_tidb:

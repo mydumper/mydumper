@@ -245,10 +245,12 @@ commands:
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6"
+    - run: yum-config-manager --disable mariadb-maxscale
 
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+    - run: yum-config-manager --disable mariadb-maxscale
 
   prepare_el_mysql80:
     steps:
@@ -334,9 +336,9 @@ do
     done
 done
 
-for os in el7
+for os in ${list_el_os[@]}
 do
-    for vendor in ${list_percona_version[@]}
+    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -345,17 +347,6 @@ do
 "
     done
 done
-
-for vendor in ${list_mariadb_version[@]} 
-do
-  echo "
-  prepare_el7_${all_vendors[${vendor}_0]}:
-    steps:
-    - prepare_el_${all_vendors[${vendor}_0]}
-    - run: yum-config-manager --disable mariadb-maxscale
-"
-done
-
 
 # On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
