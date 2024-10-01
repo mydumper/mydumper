@@ -478,8 +478,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append(statement, "\n) ENGINE=MEMORY");
   if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL)
     g_string_append(statement," ENCRYPTION='N'");
-  else if (get_product() == SERVER_TYPE_MARIADB)
-    g_string_append(statement," ENCRYPTED='N'");
+//  else if (get_product() == SERVER_TYPE_MARIADB)
+//    g_string_append(statement," ENCRYPTED=NO");
   g_string_append(statement,";\n");
 
   if (result)
