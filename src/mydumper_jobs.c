@@ -475,7 +475,10 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "%c%s%c int", q, row[0], q);
   }
-  g_string_append(statement, "\n) ENGINE=MEMORY ENCRYPTION='N';\n");
+  g_string_append(statement, "\n) ENGINE=MEMORY");
+  if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL)
+    g_string_append(statement," ENCRYPTION='N'");
+  g_string_append(statement,";\n");
 
   if (result)
     mysql_free_result(result);
