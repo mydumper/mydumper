@@ -142,12 +142,12 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
                   (((( ics->type.unsign.max /          ics->step )  -
                       (     type.unsign.min /          ics->step )) / 2 ) + 1);
 
-      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step)){
+      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step))
         return NULL;
 
       if (new_minmax_unsigned == type.unsign.min)
         return NULL;
-      }
+      
       type.unsign.min = new_minmax_unsigned;
     }else{
       new_minmax_signed   =   (type.sign.min/ics->step)*ics->step + (signed) ics->step    *
