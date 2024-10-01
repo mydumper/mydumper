@@ -61,7 +61,7 @@ fi
 
 if [ -z "$MYSQLX_UNIX_PORT" -a -z "$MYSQL_UNIX_PORT" ]
 then
-  export MYSQL_HOST=127.0.0.1
+#  export MYSQL_HOST=127.0.0.1
   export MYSQL_TCP_PORT=3306
   echo "Using TCP connection to $MYSQL_HOST:$MYSQL_TCP_PORT"
 fi

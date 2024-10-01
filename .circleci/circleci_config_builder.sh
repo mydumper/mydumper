@@ -245,10 +245,12 @@ commands:
   prepare_mariadb1006:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6"
+    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_mariadb1011:
     steps:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
+    - run: yum-config-manager --disable mariadb-maxscale || true
 
   prepare_el_mysql80:
     steps:
@@ -333,7 +335,6 @@ do
 "
     done
 done
-
 
 # On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
