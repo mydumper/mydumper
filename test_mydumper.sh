@@ -61,8 +61,14 @@ fi
 
 if [ -z "$MYSQLX_UNIX_PORT" -a -z "$MYSQL_UNIX_PORT" ]
 then
-#  export MYSQL_HOST=127.0.0.1
-  export MYSQL_TCP_PORT=3306
+  if [ -z "${MYSQL_HOST}" ];
+  then
+    export MYSQL_HOST=127.0.0.1
+  fi
+  if [ -z "${MYSQL_TCP_PORT}" ];
+  then
+    export MYSQL_TCP_PORT=3306
+  fi
   echo "Using TCP connection to $MYSQL_HOST:$MYSQL_TCP_PORT"
 fi
 
@@ -199,6 +205,7 @@ test_case_dir (){
     echo "Exporting database: ${mydumper_parameters}"
     rm -rf /tmp/fifodir
     "${time2[@]}" $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
+exit
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
@@ -384,7 +391,7 @@ prepare_full_test()
   if [[ -n "$prepare_only"  ]]; then
     exit
   fi
-  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" --fifodir=/tmp/fifodir $log_level $MYDUMPER_ARGS"
+  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" $log_level $MYDUMPER_ARGS"
   myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }
 

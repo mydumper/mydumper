@@ -55,7 +55,7 @@ void initialize_daemon_thread(){
     char *d_d;
     for (dump_number = 0; dump_number < snapshot_count; dump_number++) {
         d_d= g_strdup_printf("%s/%d", output_directory, dump_number);
-        create_backup_dir(d_d,NULL);
+        create_dir(d_d);
         g_free(d_d);
     }
 

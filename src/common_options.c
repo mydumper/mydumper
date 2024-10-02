@@ -35,7 +35,6 @@ char *defaults_extra_file = NULL;
 //gchar *ssl_mode = NULL;
 #endif
 
-gchar *fifo_directory = NULL;
 gboolean help =FALSE;
 int detected_server = 0;
 GString *set_session = NULL;
@@ -86,8 +85,6 @@ GOptionEntry common_entries[] = {
      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
     {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
      "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
-    {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
-     "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

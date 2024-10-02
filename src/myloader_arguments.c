@@ -36,6 +36,7 @@ gchar *innodb_optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 gboolean set_gtid_purge = FALSE;
 gchar *ignore_set=NULL;
+gchar *fifo_directory = NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -100,6 +101,8 @@ static GOptionEntry entries[] = {
      "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
+    {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
+     "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
     {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
