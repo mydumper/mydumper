@@ -110,8 +110,6 @@ char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *er
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn);
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn);
 int write_file(FILE * file, char * buff, int len);
-void create_backup_dir(char *new_directory, char *new_fifo_directory);
-void create_fifo_dir(char *new_fifo_directory);
 guint strcount(gchar *text);
 void m_remove0(gchar * directory, const gchar * filename);
 gboolean m_remove(gchar * directory, const gchar * filename);
@@ -199,3 +197,5 @@ gchar *build_dbt_key(gchar *a, gchar *b);
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+gboolean create_dir(gchar *directory);
+gchar *build_tmp_dir_name();

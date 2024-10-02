@@ -297,7 +297,7 @@ int main(int argc, char *argv[]) {
       datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
 
       directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
-      create_backup_dir(directory,fifo_directory);
+      create_dir(directory);
       g_date_time_unref(datetime);
       g_free(datetimestr); 
     }else{
@@ -308,7 +308,7 @@ int main(int argc, char *argv[]) {
     directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
     if (stream){
       if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
-        create_backup_dir(directory,fifo_directory);
+        create_dir(directory);
       }else{
         if (!no_stream){
           m_critical("Backup directory (-d) must not exist when --stream / --stream=TRADITIONAL");
@@ -330,10 +330,12 @@ int main(int argc, char *argv[]) {
       gchar *tmp_fifo_directory=fifo_directory;
       fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
     }
-    create_fifo_dir(fifo_directory);
   }else{
-    fifo_directory=directory;
+    // Create temporary director
+    fifo_directory=build_tmp_dir_name();
   }
+  create_dir(fifo_directory);
+  g_message("Using %s as FIFO directory, please remove it if restoration fails", fifo_directory);
 
   if (help){
     print_string("host", hostname);
@@ -662,7 +664,7 @@ int main(int argc, char *argv[]) {
 */
 
   if (key_file)  g_key_file_free(key_file);
-
+  g_remove(fifo_directory);
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 
