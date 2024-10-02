@@ -110,7 +110,7 @@ gboolean pmm = FALSE;
 guint pause_at=0;
 guint resume_at=0;
 gchar **db_items=NULL;
-guint source_data=0;
+gint source_data=0;
 //GThread *wait_pid_thread=NULL;
 char * (*identifier_quote_character_protect)(char *r);
 //GRecMutex *ready_database_dump_mutex = NULL;
@@ -1135,7 +1135,8 @@ void start_dump() {
   }
 
   if (detected_server != SERVER_TYPE_TIDB) {
-    write_replica_info(conn, mdfile);
+    if (source_data >=0 )
+      write_replica_info(conn, mdfile);
   }
 
 

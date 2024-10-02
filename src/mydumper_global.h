@@ -143,5 +143,5 @@ extern guint64 max_chunk_step_size;
 extern gboolean compact;
 extern gboolean split_integer_tables;
 extern const gchar *rows_file_extension;
-extern guint source_data;
+extern gint source_data;
 extern guint output_format;
