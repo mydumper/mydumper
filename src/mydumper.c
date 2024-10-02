@@ -260,11 +260,10 @@ int main(int argc, char *argv[]) {
     print_bool("debug",debug);
     print_string("defaults-file",defaults_file);
     print_string("defaults-extra-file",defaults_extra_file);
-    print_string("fifodir",fifo_directory);
     exit(EXIT_SUCCESS);
   }
   
-  create_backup_dir(output_directory, NULL);
+  create_dir(output_directory);
 
   if (disk_limits!=NULL){
     parse_disk_limits();

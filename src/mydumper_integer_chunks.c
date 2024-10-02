@@ -142,12 +142,12 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
                   (((( ics->type.unsign.max /          ics->step )  -
                       (     type.unsign.min /          ics->step )) / 2 ) + 1);
 
-      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step)){
+      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step))
         return NULL;
 
       if (new_minmax_unsigned == type.unsign.min)
         return NULL;
-      }
+      
       type.unsign.min = new_minmax_unsigned;
     }else{
       new_minmax_signed   =   (type.sign.min/ics->step)*ics->step + (signed) ics->step    *
@@ -553,9 +553,18 @@ if (cs->integer_step.is_unsigned){
   if (csi->status != COMPLETED)
     csi->status = ASSIGNED;
   if (cs->integer_step.is_unsigned){
-    cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.cursor+1;
+    if ( cs->integer_step.type.unsign.cursor+1 < cs->integer_step.type.unsign.min){
+      // Overflow
+      cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max;
+      cs->integer_step.type.unsign.max--;
+    }else
+      cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.cursor+1;
   }else{
-    cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
+    if ( cs->integer_step.type.sign.cursor+1 < cs->integer_step.type.sign.min){
+      cs->integer_step.type.sign.min=cs->integer_step.type.sign.max;
+      cs->integer_step.type.sign.max--;
+    }else
+      cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
   }
   g_mutex_unlock(csi->mutex);
 

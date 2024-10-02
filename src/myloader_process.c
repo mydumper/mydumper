@@ -161,14 +161,17 @@ FILE * myl_open(char *filename, const char *type){
       fifoname=g_strdup_printf("%s/%s", fifo_directory, basefilename);
       g_free(basename);
     }
-
-
-    lstat(fifoname, &a);
-    if ((a.st_mode & S_IFMT) == S_IFIFO){
-      g_warning("FIFO file found %s, removing and continuing", fifoname);
-      remove(fifoname);
+// This 2 lines simulates if a common file or a fifo file is present in the fifo dir:
+//    g_file_set_contents(fifoname, "   ",2,NULL );
+//    mkfifo(fifoname,0666);
+    if (g_file_test(fifoname, G_FILE_TEST_EXISTS)){
+      lstat(fifoname, &a);
+      g_message("FIFO file: %s", filename);
+      if ((a.st_mode & S_IFMT) == S_IFIFO){
+        g_warning("FIFO file found %s, removing and continuing", fifoname);
+        remove(fifoname);
+      }
     }
-
     if (mkfifo(fifoname,0666)){
       g_critical("cannot create named pipe %s (%d)", fifoname, errno); 
     }
