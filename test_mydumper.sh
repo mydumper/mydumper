@@ -205,7 +205,6 @@ test_case_dir (){
     echo "Exporting database: ${mydumper_parameters}"
     rm -rf /tmp/fifodir
     "${time2[@]}" $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
-exit
     error=$?
     cat $tmp_mydumper_log >> $mydumper_log
     if (( $error > 0 ))
