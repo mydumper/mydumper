@@ -559,7 +559,9 @@ echo '
     steps:
     - attach_workspace:
         at: /tmp/package
-        - run: ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( md5sum * ; sha1sum * ; sha256sum * )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
+        - run:
+            command: |
+              ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( md5sum * ; sha1sum * ; sha256sum * )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
 echo '
   publish-ubuntu-repository:
