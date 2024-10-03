@@ -116,6 +116,13 @@ IF(RUN_CPPCHECK)
   add_cppcheck(myloader)
 ENDIF(RUN_CPPCHECK)
 
+set(CIRCLECI_CONFIG_FILE "config.yml")
+
+add_custom_target( circleci_config_file_build ALL
+    COMMAND ./circleci_config_builder.sh > ${CIRCLECI_CONFIG_FILE}
+    WORKING_DIRECTORY .circleci
+    COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
+)
 
 MESSAGE(STATUS "------------------------------------------------")
 MESSAGE(STATUS "MYSQL_CONFIG = ${MYSQL_CONFIG}")
