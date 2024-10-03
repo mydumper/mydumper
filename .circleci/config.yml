@@ -5763,7 +5763,7 @@ jobs:
         at: /tmp/package
     - run:
         command: |
-          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( md5sum * ; sha1sum * ; sha256sum * )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
+          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\n\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\n\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
 
   publish-ubuntu-repository:
     docker:
