@@ -504,9 +504,7 @@ guint64 get_estimated_remaining_of_all_chunks(){
   return get_estimated_remaining_of(non_innodb_table) + get_estimated_remaining_of(innodb_table);
 }
 
-void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-    if (*column)
-      fun_ptr_i->function(column,&length,fun_ptr_i);
+void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row){
     if (!*column) {
       g_string_append(statement_row, "\\N");
     } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
@@ -528,11 +526,7 @@ void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIEL
       g_string_append(statement_row, *column);
 }
 
-void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-    /* Don't escape safe formats, saves some time */
-    if (*column)
-      fun_ptr_i->function(column,&length, fun_ptr_i);
-
+void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row){
     if (!*column) {
       g_string_append(statement_row, "NULL");
     } else if (field.flags & NUM_FLAG) {
@@ -560,19 +554,53 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     }
 }
 
-void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, GString *escaped, GString *statement_row, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * )){
+
+
+void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL_FIELD field, gulong length, GString *escaped, GString *statement_row, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *), struct function_pointer ** f, gchar * terminated_by){
+  gchar *column;
+  gulong rlength=length;
+  if (row){
+    column=row;
+    if (f)
+      (*f)->function(&(column), &rlength, *f);
+  }else{
+    column=NULL;
+  }
+  write_column_into_string( conn, &(column), field, rlength, escaped, statement_row);
+  g_string_append(statement_row, terminated_by);
+}
+
+void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, GString *escaped, GString *statement_row, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *)){
   guint i = 0;
   g_string_append(statement_row, lines_starting_by);
-  (void) dbt;
   struct function_pointer ** f = dbt->anonymized_function;
 
   for (i = 0; i < num_fields-1; i++) {
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
+    /*
+    if (row[i]){
+      column=row[i];
+      if (f)
+        (*f)->function(&(column), &(lengths[i]), *f);
+    }else{
+      column=NULL;
+    }
+    write_column_into_string( conn, &(column), fields[i], lengths[i], escaped, statement_row);
     g_string_append(statement_row, fields_terminated_by);
+*/
+    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], escaped, statement_row, write_column_into_string, f, fields_terminated_by);
   }
-  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
 
+/*  if (row[i]){
+    column=row[i];
+    if (f)
+      (*f)->function(&(column), &(lengths[i]), *f);
+  }else{
+    column=NULL;
+  }
+  write_column_into_string( conn, &(column), fields[i], lengths[i], escaped, statement_row);
   g_string_append(statement_row, lines_terminated_by);
+  */
+  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], escaped, statement_row, write_column_into_string, f, lines_terminated_by);
 
 }
 
@@ -634,7 +662,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   gulong *lengths = NULL;
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
-  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer *) = write_sql_column_into_string;
+  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *) = write_sql_column_into_string;
   switch (output_format){
     case LOAD_DATA:
     case CSV:

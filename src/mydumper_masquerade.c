@@ -24,7 +24,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_common.h"
 #include "common.h"
-struct function_pointer pp = {&identity_function, NULL, NULL, NULL, NULL};
+struct function_pointer identity_function_pointer = {&identity_function, NULL, NULL, NULL, NULL};
 
 GHashTable *file_hash = NULL;
 

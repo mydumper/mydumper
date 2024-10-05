@@ -931,7 +931,7 @@ struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *datab
         g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, row[0]);
         anonymized_function_list[i]=fp;
       }else{
-        anonymized_function_list[i]=&pp;
+        anonymized_function_list[i]=&identity_function_pointer;
       }
       i++;
     }
