@@ -504,76 +504,92 @@ guint64 get_estimated_remaining_of_all_chunks(){
   return get_estimated_remaining_of(non_innodb_table) + get_estimated_remaining_of(innodb_table);
 }
 
-void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-    if (*column)
-      fun_ptr_i->function(column,&length,fun_ptr_i);
+void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
     if (!*column) {
-      g_string_append(statement_row, "\\N");
+      g_string_append(buffers.column, "\\N");
     } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
-      g_string_set_size(escaped, length * 2 + 1);
-      mysql_hex_string(escaped->str,*column,length);
-      g_string_append(statement_row,escaped->str);
+      g_string_set_size(buffers.escaped, length * 2 + 1);
+      mysql_hex_string(buffers.escaped->str,*column,length);
+      g_string_append(buffers.column,buffers.escaped->str);
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
-      g_string_append(statement_row,fields_enclosed_by);
+      g_string_append(buffers.column,fields_enclosed_by);
       // this will reserve the memory needed if the current size is not enough.
-      g_string_set_size(escaped, length * 2 + 1);
-      unsigned long new_length = mysql_real_escape_string(conn, escaped->str, *column, length);
-      new_length++;      
+      g_string_set_size(buffers.escaped, length * 2 + 1);
+      unsigned long new_length = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
+      new_length++;
       //g_string_set_size(escaped, new_length);
-      m_replace_char_with_char('\\',*fields_escaped_by,escaped->str, new_length);
-      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, escaped->str, new_length);
-      g_string_append(statement_row,escaped->str);
-      g_string_append(statement_row,fields_enclosed_by);
+      m_replace_char_with_char('\\',*fields_escaped_by,buffers.escaped->str, new_length);
+      m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, buffers.escaped->str, new_length);
+      g_string_append(buffers.column,buffers.escaped->str);
+      g_string_append(buffers.column,fields_enclosed_by);
     }else
-      g_string_append(statement_row, *column);
+      g_string_append(buffers.column, *column);
 }
 
-void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length,GString *escaped, GString *statement_row, struct function_pointer *fun_ptr_i){
-    /* Don't escape safe formats, saves some time */
-    if (*column)
-      fun_ptr_i->function(column,&length, fun_ptr_i);
-
+void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
     if (!*column) {
-      g_string_append(statement_row, "NULL");
+      g_string_append(buffers.column, "NULL");
     } else if (field.flags & NUM_FLAG) {
-      g_string_append(statement_row, *column);
+      g_string_append(buffers.column, *column);
     } else if ( length == 0){
-      g_string_append_c(statement_row,*fields_enclosed_by);
-      g_string_append_c(statement_row,*fields_enclosed_by);
+      g_string_append_c(buffers.column,*fields_enclosed_by);
+      g_string_append_c(buffers.column,*fields_enclosed_by);
     } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
-      g_string_set_size(escaped, length * 2 + 1);
-      g_string_append(statement_row,"0x");
-      mysql_hex_string(escaped->str,*column,length);
-      g_string_append(statement_row,escaped->str);
+      g_string_set_size(buffers.escaped, length * 2 + 1);
+      g_string_append(buffers.column,"0x");
+      mysql_hex_string(buffers.escaped->str,*column,length);
+      g_string_append(buffers.column,buffers.escaped->str);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
  *        * the beginning */
-      g_string_set_size(escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, escaped->str, *column, length);
+      g_string_set_size(buffers.escaped, length * 2 + 1);
+      mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
       if (field.type == MYSQL_TYPE_JSON)
-        g_string_append(statement_row, "CONVERT(");
-      g_string_append_c(statement_row, *fields_enclosed_by);
-      g_string_append(statement_row, escaped->str);
-      g_string_append_c(statement_row, *fields_enclosed_by);
+        g_string_append(buffers.column, "CONVERT(");
+      g_string_append_c(buffers.column, *fields_enclosed_by);
+      g_string_append(buffers.column, buffers.escaped->str);
+      g_string_append_c(buffers.column, *fields_enclosed_by);
       if (field.type == MYSQL_TYPE_JSON)
-        g_string_append(statement_row, " USING UTF8MB4)");
+        g_string_append(buffers.column, " USING UTF8MB4)");
     }
 }
 
-void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, GString *escaped, GString *statement_row, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer * )){
+
+
+void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,struct thread_data_buffers), struct function_pointer * f, gchar * terminated_by){
+  gchar *column=NULL;
+  gulong rlength=length;
+  g_string_set_size(buffers.column,0);
+  if (row)
+    column=row;
+  if (f){
+   if (f->is_pre){
+     write_column_into_string( conn, &(column), field, rlength, buffers);
+     column=f->function(&(buffers.column->str), &rlength, f);
+     g_string_printf(buffers.column,"%s",column);
+   }else{
+     column=f->function(&(column), &rlength, f);
+     write_column_into_string( conn, &(column), field, rlength, buffers);
+   }
+  }else{
+    write_column_into_string( conn, &(column), field, rlength, buffers);
+  }
+  g_string_append(buffers.row, buffers.column->str);
+  g_string_append(buffers.row, terminated_by);
+
+  if (!column && column != row)
+    g_free(column);
+}
+
+void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers)){
   guint i = 0;
-  g_string_append(statement_row, lines_starting_by);
-  (void) dbt;
+  g_string_append(buffers.row, lines_starting_by);
   struct function_pointer ** f = dbt->anonymized_function;
 
   for (i = 0; i < num_fields-1; i++) {
-    write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
-    g_string_append(statement_row, fields_terminated_by);
+    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], fields_terminated_by);
   }
-  write_column_into_string( conn, &(row[i]), fields[i], lengths[i], escaped, statement_row,f==NULL?&pp:f[i]);
-
-  g_string_append(statement_row, lines_terminated_by);
-
+  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], lines_terminated_by);
 }
 
 void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
@@ -626,15 +642,15 @@ void initiliaze_clickhouse_files(struct table_job * tj, struct db_table * dbt){
 void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
 	struct db_table * dbt = tj->dbt;
 	guint num_fields = mysql_num_fields(result);
-	GString *escaped = g_string_sized_new(3000);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
-  GString *statement = g_string_sized_new(2*statement_size);
-	GString *statement_row = g_string_sized_new(0);
+  g_string_set_size(tj->td->thread_data_buffers.statement,0);
+  g_string_set_size(tj->td->thread_data_buffers.row,0);
+  g_string_set_size(tj->td->thread_data_buffers.escaped,0);
   gulong *lengths = NULL;
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
-  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong ,GString *, GString *, struct function_pointer *) = write_sql_column_into_string;
+  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers) = write_sql_column_into_string;
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -670,10 +686,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         g_mutex_unlock(dbt->chunks_mutex);
       }
       if (!tj->st_in_file){
-        initialize_sql_statement(statement);
+        initialize_sql_statement(tj->td->thread_data_buffers.statement);
 				write_clickhouse_statement(tj);
 			}
-      g_string_append(statement, dbt->insert_statement->str);
+      g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       break;
 		case SQL_INSERT:
       if (tj->rows->file == 0){
@@ -686,8 +702,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         g_mutex_unlock(dbt->chunks_mutex);
       }
 	  	if (!tj->st_in_file)
-  	  	initialize_sql_statement(statement);
-  		g_string_append(statement, dbt->insert_statement->str);
+  	  	initialize_sql_statement(tj->td->thread_data_buffers.statement);
+  		g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 	  	break;
 	}
 
@@ -698,18 +714,18 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     lengths = mysql_fetch_lengths(result);
     num_rows++;
     // prepare row into statement_row
-		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, escaped, statement_row, write_column_into_string);
+		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, tj->td->thread_data_buffers, write_column_into_string);
 
 		// if row exceeded statement_size then FLUSH buffer to disk
-		if (statement->len + statement_row->len + 1 > statement_size){
+		if (tj->td->thread_data_buffers.statement->len + tj->td->thread_data_buffers.row->len + 1 > statement_size){
       if (num_rows_st == 0) {
-        g_string_append(statement, statement_row->str);
-        g_string_set_size(statement_row, 0);
+        g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
+        g_string_set_size(tj->td->thread_data_buffers.row, 0);
         g_warning("Row bigger than statement_size for %s.%s", dbt->database->name,
                 dbt->table);
       }
-      g_string_append(statement, statement_terminated_by);
-      if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
+      g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
+      if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
         return;
       }
 			update_dbt_rows(dbt, num_rows);
@@ -718,7 +734,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 			tj->st_in_file++;
     // initilize buffer if needed (INSERT INTO)
       if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
-				g_string_append(statement, dbt->insert_statement->str);
+				g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 			}
       GDateTime *to = g_date_time_new_now_local();
       GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
@@ -749,8 +765,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
           m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
           tj->rows->file=0;
           update_files_on_table_job(tj);
-			  	initialize_sql_statement(statement);
-          g_string_append(statement, dbt->insert_statement->str);
+			  	initialize_sql_statement(tj->td->thread_data_buffers.statement);
+          g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 				  break;
       }
       tj->st_in_file = 0;
@@ -759,24 +775,24 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		//
 		// write row to buffer
     if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
-      g_string_append_c(statement, ',');
-    g_string_append(statement, statement_row->str);
-		if (statement_row->len>0)
+      g_string_append_c(tj->td->thread_data_buffers.statement, ',');
+    g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
+		if (tj->td->thread_data_buffers.row->len>0)
       num_rows_st++;
-    g_string_set_size(statement_row, 0);
+    g_string_set_size(tj->td->thread_data_buffers.row, 0);
   }
   update_dbt_rows(dbt, num_rows);
-  if (num_rows_st > 0 && statement->len > 0){
+  if (num_rows_st > 0 && tj->td->thread_data_buffers.statement->len > 0){
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
-			g_string_append(statement, statement_terminated_by);
-    if (!write_statement(tj->rows->file, &(tj->filesize), statement, dbt)) {
+			g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
+    if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
       return;
     }
 		tj->st_in_file++;
   }
-  g_string_free(statement, TRUE);
-  g_string_free(escaped, TRUE);
-  g_string_free(statement_row, TRUE);	
+//  g_string_free(statement, TRUE);
+//  g_string_free(escaped, TRUE);
+//  g_string_free(statement_row, TRUE);	
   return;
 }
 

@@ -1320,6 +1320,10 @@ void start_dump() {
     td[n].binlog_snapshot_gtid_executed = NULL;
     td[n].pause_resume_mutex=NULL;
     td[n].table_name=NULL;
+    td[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
+    td[n].thread_data_buffers.row = g_string_sized_new(statement_size);
+    td[n].thread_data_buffers.column = g_string_sized_new(statement_size);
+    td[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);

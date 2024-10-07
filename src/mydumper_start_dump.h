@@ -105,6 +105,13 @@ struct configuration {
   int done;
 };
 
+struct thread_data_buffers {
+  GString *statement;
+  GString *row;
+  GString *escaped;
+  GString *column;
+};
+
 struct thread_data {
   struct configuration *conf;
   guint thread_id;
@@ -113,6 +120,7 @@ struct thread_data {
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
   GMutex *pause_resume_mutex;
+  struct thread_data_buffers thread_data_buffers;
 };
 
 struct job {

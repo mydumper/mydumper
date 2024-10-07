@@ -98,6 +98,7 @@ struct function_pointer{
   gchar *value;
   GList *parse;
   GList *delimiters;
+  gboolean is_pre;
 };
 
 gchar * remove_new_line(gchar *to);

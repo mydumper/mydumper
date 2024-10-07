@@ -24,7 +24,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_common.h"
 #include "common.h"
-struct function_pointer pp = {&identity_function, NULL, NULL, NULL, NULL};
+struct function_pointer identity_function_pointer = {&identity_function, NULL, NULL, NULL, NULL, FALSE};
 
 GHashTable *file_hash = NULL;
 
@@ -263,6 +263,16 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
   return *r;
 }
 
+gchar *apply_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
+  gchar *new_r=NULL;
+  if (g_list_length(fp->parse)==2){
+    new_r=g_strdup_printf("%s%s%s",(gchar *) fp->parse->data, *r, (gchar *) fp->parse->next->data);
+  }else
+    new_r=g_strdup_printf("%s%s", (gchar *) fp->parse->data, *r);
+  *max_len=strlen(new_r);
+  return new_r;
+}
+
 
 fun_ptr get_function_pointer_for (gchar *function_char){
   if (g_str_has_prefix(function_char,"random_format")){
@@ -285,6 +295,10 @@ fun_ptr get_function_pointer_for (gchar *function_char){
   if (!g_strcmp0(function_char,"random_uuid_with_mem"))
     return &random_uuid_function_with_mem;
 
+  if (g_str_has_prefix(function_char,"apply")){
+    return &apply_function;
+  }
+
   // TODO: more functions needs to be added.
   if (!g_strcmp0(function_char,""))
     return &identity_function;
@@ -298,6 +312,34 @@ gint comp(gconstpointer a, gconstpointer b){
   return GPOINTER_TO_INT(a) >= GPOINTER_TO_INT(b);
 }
 
+
+void parse_apply_function_value(struct function_pointer * fp, gchar *val){
+  char buffer[256];
+  guint i=0;
+  while (*val != '\0'){
+    if (*val == '\''){
+      val++;
+      i=0;
+      while (*val != '\0' && *val!='\''){
+        buffer[i]=*val;
+        i++;
+        val++;
+      }
+      if (*val!='\''){
+        g_error("Parsing format failed missing quote (')");
+      }
+      buffer[i]='\0';
+      fp->parse=g_list_append(fp->parse,g_strdup(buffer));
+    }
+    val++;
+    while(*val == ' ')
+      val++;
+  }
+
+  if (g_list_length(fp->parse)>2 || g_list_length(fp->parse)==0)
+    g_error("Parsing apply function failed. Elements found: %d but only 1 or 2 are allowed", g_list_length(fp->parse));
+
+}
 
 void parse_value(struct function_pointer * fp, gchar *val){
   char buffer[256];
@@ -394,10 +436,14 @@ struct function_pointer * init_function_pointer(gchar *value){
   fp->value=value;
   fp->parse=NULL;
   fp->delimiters=NULL;
-  g_message("init_function_pointer: %s", value);
+  fp->is_pre=FALSE;
+  g_debug("init_function_pointer: %s", value);
   if (g_str_has_prefix(value,"random_format")){
-    g_message("random_format_function");
     parse_value(fp, g_strdup(&(fp->value[14])));
+  }
+  if (g_str_has_prefix(value,"apply")){
+    fp->is_pre=TRUE;
+    parse_apply_function_value(fp, g_strdup(&(fp->value[6])));
   }
   return fp;
 }
