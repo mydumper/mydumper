@@ -251,7 +251,6 @@ struct table_job {
   GString *where;
 //  union chunk_step *chunk_step;  
   struct chunk_step_item *chunk_step_item;
-  char *order_by;
   struct db_table *dbt;
 //  gchar *sql_filename;
 //  int sql_file;

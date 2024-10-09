@@ -513,22 +513,22 @@ void table_job_enqueue(struct table_queuing *q)
         switch (csi->chunk_type) {
         case INTEGER:
           if (use_defer) {
-            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+            create_job_to_dump_chunk(dbt, NULL, csi->number,
                                      csi, g_async_queue_push, q->defer);
             create_job_defer(dbt, q->queue);
           } else {
-            create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma,
+            create_job_to_dump_chunk(dbt, NULL, csi->number,
                                      csi, g_async_queue_push, q->queue);
           }
           break;
         case CHAR:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
           break;
         case NONE:
-          create_job_to_dump_chunk(dbt, NULL, 0, dbt->primary_key_separated_by_comma, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, 0, csi, g_async_queue_push, q->queue);
           break;
         default:
           m_error("This should not happen %s", csi->chunk_type);
