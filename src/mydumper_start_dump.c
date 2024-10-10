@@ -1256,13 +1256,13 @@ void start_dump() {
            non_innodb_table);
   conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
   conf.innodb.table_list= innodb_table;
-  conf.innodb.descr= "InnoDB";
+  conf.innodb.descr= "transactional";
   conf.ready = g_async_queue_new();
   conf.non_innodb.queue= g_async_queue_new();
   conf.non_innodb.defer= g_async_queue_new();
   conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
   conf.non_innodb.table_list= non_innodb_table;
-  conf.non_innodb.descr= "Non-InnoDB";
+  conf.non_innodb.descr= "non-transactional";
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
   conf.gtid_pos_checked = g_async_queue_new();

@@ -491,7 +491,7 @@ void table_job_enqueue(struct table_queuing *q)
   struct db_table *dbt;
   struct chunk_step_item *csi;
   gboolean are_there_jobs_defining=FALSE;
-  g_message("Starting %s tables", q->descr);
+  g_message("Starting to enqueue %s tables", q->descr);
   for (;;) {
     g_async_queue_pop(q->request_chunk);
     if (shutdown_triggered) {
@@ -546,7 +546,7 @@ void table_job_enqueue(struct table_queuing *q)
       break;
     }
   } // for (;;)
-  g_message("%s tables completed", q->descr);
+  g_message("Enqueuing of %s tables completed", q->descr);
   enqueue_shutdown(q);
 }
 
