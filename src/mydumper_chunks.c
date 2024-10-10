@@ -546,7 +546,7 @@ void table_job_enqueue(struct table_queuing *q)
       break;
     }
   } // for (;;)
-  g_message("%s tables completed", q->descr);
+  g_message("No more %s tables available", q->descr);
   enqueue_shutdown(q);
 }
 
