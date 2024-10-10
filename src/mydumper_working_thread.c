@@ -76,7 +76,7 @@
 #endif
 
 
-
+gboolean order_by_primary_key = FALSE;
 GMutex *init_mutex = NULL;
 /* Program options */
 gboolean use_savepoints = FALSE;
@@ -1007,7 +1007,8 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
     g_string_append(field_list, tb);
     list=list->next;
   }
-  dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
+  if (field_list->len>0)
+    dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,

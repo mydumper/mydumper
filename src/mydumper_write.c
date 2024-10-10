@@ -84,7 +84,7 @@ void message_dumping_data_long(struct table_job *tj){
                      (tj->where->len || where_option   || tj->dbt->where) ? " WHERE " : "" , tj->where->len ? tj->where->str : "",
                      (tj->where->len && where_option )                    ? " AND "   : "" ,   where_option ?   where_option : "",
                     ((tj->where->len || where_option ) && tj->dbt->where) ? " AND "   : "" , tj->dbt->where ? tj->dbt->where : "",
-                    tj->order_by ? " ORDER BY " : "", tj->order_by ? tj->order_by : "",
+                    order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
                     tj->rows->filename, tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
 }
 
@@ -813,7 +813,7 @@ void write_table_job_into_file(struct table_job * tj){
        (tj->where->len || where_option   || tj->dbt->where) ? "WHERE"  : "" , tj->where->len ? tj->where->str : "",
        (tj->where->len && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
       ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
-      tj->order_by ? "ORDER BY" : "", tj->order_by   ? tj->order_by   : "",
+      order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
   );
   if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
