@@ -70,13 +70,19 @@ gboolean hex_blob = FALSE;
 
 
 void message_dumping_data_short(struct table_job *tj){
+  g_mutex_lock(innodb_table->mutex);
+  g_mutex_lock(non_innodb_table->mutex);
   g_message("Thread %d: %s%s%s.%s%s%s [ %"G_GINT64_FORMAT"%% ] | Tables: %u/%u",
                     tj->td->thread_id,
                     identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str,
                     tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
+  g_mutex_unlock(innodb_table->mutex);
+  g_mutex_unlock(non_innodb_table->mutex);
 }
 
 void message_dumping_data_long(struct table_job *tj){
+  g_mutex_lock(innodb_table->mutex);
+  g_mutex_lock(non_innodb_table->mutex);
   g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% | Remaining tables: %u / %u",
                     tj->td->thread_id,
                     identifier_quote_character_str, tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str,
@@ -86,6 +92,8 @@ void message_dumping_data_long(struct table_job *tj){
                     ((tj->where->len || where_option ) && tj->dbt->where) ? " AND "   : "" , tj->dbt->where ? tj->dbt->where : "",
                     order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
                     tj->rows->filename, tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, g_list_length(innodb_table->list)+g_list_length(non_innodb_table->list),g_hash_table_size(all_dbts));
+  g_mutex_unlock(innodb_table->mutex);
+  g_mutex_unlock(non_innodb_table->mutex);
 }
 
 void (*message_dumping_data)(struct table_job *tj);
