@@ -157,13 +157,9 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
         mysql_free_result(minmax);
 
-        // If diff_btwn_max_min > min_chunk_step_size, then there is no need to split the table.
+        // If !(diff_btwn_max_min > min_chunk_step_size), then there is no need to split the table.
         if ( diff_btwn_max_min > dbt->min_chunk_step_size){
           union type type;
-          guint64 min_css = /*dbt->multicolumn ? 1 :*/ dbt->min_chunk_step_size;
-          guint64 max_css = /*dbt->multicolumn ? 1 :*/ dbt->max_chunk_step_size;
-          guint64 starting_css = /*dbt->multicolumn ? 1 :*/ dbt->starting_chunk_step_size;
-          gboolean is_step_fixed_length = (min_css!=0 && min_css == starting_css && max_css == starting_css);
 
           if (unsign){
             type.unsign.min=unmin;
@@ -173,7 +169,8 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
             type.sign.max=nmax;
           }
 
-          csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, starting_css, min_css, max_css, 0, FALSE, FALSE, NULL, position);
+          gboolean is_step_fixed_length = dbt->min_chunk_step_size!=0 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->max_chunk_step_size == dbt->starting_chunk_step_size;
+          csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position);
 
           if (dbt->multicolumn && csi->position == 0){
             if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > (dbt->min_chunk_step_size==0?1000:dbt->min_chunk_step_size))
