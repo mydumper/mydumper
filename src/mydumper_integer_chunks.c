@@ -456,14 +456,14 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
 //    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
   csi->status = DUMPING_CHUNK;
 
-  if (cs->integer_step.check_max){
-//    g_message("Thread %d: Updating MAX", td->thread_id);
-//    update_integer_max(td->thrconn, tj->dbt, csi);
+  if (cs->integer_step.check_max && tj->dbt->max_chunk_step_size!=0){
+    g_debug("Thread %d: Updating MAX", td->thread_id);
+    update_integer_max(td->thrconn, tj->dbt, csi);
     cs->integer_step.check_max=FALSE;
   }
-  if (cs->integer_step.check_min){
-//    g_message("Thread %d: Updating MIN", td->thread_id);
-//    update_integer_min(td->thrconn, tj->dbt, csi);
+  if (cs->integer_step.check_min && tj->dbt->max_chunk_step_size!=0){
+    g_debug("Thread %d: Updating MIN", td->thread_id);
+    update_integer_min(td->thrconn, tj->dbt, csi);
 //    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
     cs->integer_step.check_min=FALSE;
   }
