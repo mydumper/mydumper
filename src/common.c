@@ -123,7 +123,7 @@ gchar *get_gzip_cmd(){
 
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  if (detected_server == SERVER_TYPE_MYSQL || detected_server == SERVER_TYPE_MARIADB){
+  if (is_mysql_like()){
     set_session_hash_insert(set_session_hash, "WAIT_TIMEOUT", g_strdup("2147483"));
     set_session_hash_insert(set_session_hash, "NET_WRITE_TIMEOUT", g_strdup("2147483"));
   }
