@@ -182,7 +182,7 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
       type.sign.min = new_minmax_signed;
     }
   }
-  print_type(&type, ics->is_unsigned);
+  // print_type(&type, ics->is_unsigned);
   new_csi = new_integer_step_item(FALSE, NULL, csi->field, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, number, TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position);
   new_csi->status=ASSIGNED;
 
