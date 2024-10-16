@@ -73,6 +73,7 @@ enum chunk_states{
   UNASSIGNED,
   ASSIGNED,
   DUMPING_CHUNK,
+  UNSPLITTABLE,
   COMPLETED
 };
 
