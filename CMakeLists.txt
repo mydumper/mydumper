@@ -49,6 +49,7 @@ include_directories(${MYDUMPER_SOURCE_DIR} ${MYSQL_INCLUDE_DIR} ${GLIB2_INCLUDE_
 
 OPTION(WITH_ASAN "Build with ASAN" OFF)
 OPTION(WITH_TSAN "Build with TSAN" OFF)
+OPTION(WITH_TSAN "Build with CircleCI" OFF)
 
 IF(WITH_ASAN AND WITH_TSAN)
     MESSAGE(FATAL_ERROR "Cannot use ASAN and TSAN at the same time")
@@ -118,10 +119,12 @@ ENDIF(RUN_CPPCHECK)
 
 set(CIRCLECI_CONFIG_FILE "config.yml")
 
-add_custom_target( circleci_config_file_build ALL
-  COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
-  COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
-)
+IF(WITH_CIRCLECI)
+  add_custom_target( circleci_config_file_build ALL
+    COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
+    COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
+  )
+ENDIF(WITH_CIRCLECI)
 
 MESSAGE(STATUS "------------------------------------------------")
 MESSAGE(STATUS "MYSQL_CONFIG = ${MYSQL_CONFIG}")
@@ -131,6 +134,7 @@ MESSAGE(STATUS "WITH_SSL = ${WITH_SSL}")
 MESSAGE(STATUS "RUN_CPPCHECK = ${RUN_CPPCHECK}")
 MESSAGE(STATUS "WITH_ASAN = ${WITH_ASAN}")
 MESSAGE(STATUS "WITH_TSAN = ${WITH_TSAN}")
+MESSAGE(STATUS "WITH_CIRCLECI = ${WITH_CIRCLECI}")
 MESSAGE(STATUS "Change a values with: cmake -D<Variable>=<Value>")
 MESSAGE(STATUS "------------------------------------------------")
 MESSAGE(STATUS)
