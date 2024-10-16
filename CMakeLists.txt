@@ -119,9 +119,8 @@ ENDIF(RUN_CPPCHECK)
 set(CIRCLECI_CONFIG_FILE "config.yml")
 
 add_custom_target( circleci_config_file_build ALL
-    COMMAND ./circleci_config_builder.sh > ${CIRCLECI_CONFIG_FILE}
-    WORKING_DIRECTORY .circleci
-    COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
+  COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
+  COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
 )
 
 MESSAGE(STATUS "------------------------------------------------")
