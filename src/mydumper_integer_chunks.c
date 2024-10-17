@@ -115,6 +115,13 @@ void free_integer_step_item(struct chunk_step_item * csi){
   // g_free(csi);
 }
 
+void print_type(union type * type, gboolean is_unsigned){
+  if (is_unsigned)
+    g_message("new_integer_step_item: min: %"G_GUINT64_FORMAT "| max: %"G_GINT64_FORMAT, type->sign.min,type->sign.max);
+  else
+    g_message("new_integer_step_item: min: %"G_GINT64_FORMAT "| max: %"G_GINT64_FORMAT, type->sign.min,type->sign.max);
+}
+
 struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
   struct chunk_step_item * new_csi = NULL;
   guint number=csi->number;
@@ -175,7 +182,7 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
       type.sign.min = new_minmax_signed;
     }
   }
-
+  // print_type(&type, ics->is_unsigned);
   new_csi = new_integer_step_item(FALSE, NULL, csi->field, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, number, TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position);
   new_csi->status=ASSIGNED;
 
@@ -243,7 +250,7 @@ struct chunk_step_item *clone_chunk_step_item(struct chunk_step_item *csi){
 
 // dbt->chunks_mutex is LOCKED
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
-  struct chunk_step_item *csi=NULL, *new_csi=NULL;
+  struct chunk_step_item *csi=NULL, *new_csi=NULL, *new_csi_next=NULL;
   if (dbt->chunks!=NULL){
     csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);      
     while (csi!=NULL){
@@ -254,53 +261,104 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         g_mutex_unlock(csi->mutex);
         return csi;
       }
-      if (csi->status!=COMPLETED){
-        if (is_splitable(csi)){
-
-          new_csi = split_chunk_step(csi);
-          if (new_csi){
-            dbt->chunks=g_list_append(dbt->chunks,new_csi);
-            g_async_queue_push(dbt->chunks_queue, csi);
-            g_async_queue_push(dbt->chunks_queue, new_csi);
-            g_mutex_unlock(csi->mutex);
-            return new_csi;
+      if (csi->status==UNSPLITTABLE || csi->status==COMPLETED){
+        goto end;
+      }
+      if (!is_splitable(csi)){
+        if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
+          g_mutex_lock(csi->next->mutex);
+          if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){
+            csi->status=UNSPLITTABLE;
+            g_mutex_unlock(csi->next->mutex);
+            goto end;
           }
-        }else{
-          if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
-            g_mutex_lock(csi->next->mutex);
-            if (csi->next->status!=COMPLETED && has_only_one_level(csi)  && is_splitable(csi->next)){
+          if (!is_splitable(csi->next)){
+            csi->next->status=UNSPLITTABLE;
+            g_mutex_unlock(csi->next->mutex);
+            goto end;
+          }
+
+          if (has_only_one_level(csi)){
+            new_csi_next=split_chunk_step(csi->next);
+
+            if (new_csi_next){
               csi->deep=csi->deep+1;
               new_csi=clone_chunk_step_item(csi);
               if ( csi->chunk_step->integer_step.is_step_fixed_length ){
                 new_csi->number+=pow(2,csi->deep);
               }
               update_where_on_integer_step(new_csi);
-              new_csi->next=split_chunk_step(csi->next);
-              if (new_csi->next){
-                new_csi->next->prefix = new_csi->where;
-//              new_csi->next->chunk_step->integer_step.min_chunk_step_size = dbt->min_chunk_step_size;
-//              new_csi->next->chunk_step->integer_step.max_chunk_step_size = dbt->max_chunk_step_size;
-//              new_csi->next->chunk_step->integer_step.step = dbt->starting_chunk_step_size;
-//              new_csi->next->chunk_step->integer_step.is_step_fixed_length=FALSE;
-                dbt->chunks=g_list_append(dbt->chunks,new_csi);
+ 
+              new_csi->next=new_csi_next;
 
-
-                g_async_queue_push(dbt->chunks_queue, csi);
-                g_async_queue_push(dbt->chunks_queue, new_csi);
-                g_mutex_unlock(csi->next->mutex);
-                g_mutex_unlock(csi->mutex);
-                return new_csi;
-              }else{
-                free_integer_step_item(new_csi);
-              }
+              new_csi->next->prefix = new_csi->where;
+              dbt->chunks=g_list_append(dbt->chunks,new_csi);
+              g_async_queue_push(dbt->chunks_queue, csi);
+              g_async_queue_push(dbt->chunks_queue, new_csi);
+              g_mutex_unlock(csi->next->mutex);
+              g_mutex_unlock(csi->mutex);
+              return new_csi;
             }
+          }
+          g_mutex_unlock(csi->next->mutex);
+        }
+
+        csi->status=UNSPLITTABLE;
+        goto end;
+      }
+
+      // it should be splittable, let's do it
+      new_csi = split_chunk_step(csi);
+      if (new_csi){
+        dbt->chunks=g_list_append(dbt->chunks,new_csi);
+        g_async_queue_push(dbt->chunks_queue, csi);
+        g_async_queue_push(dbt->chunks_queue, new_csi);
+        g_mutex_unlock(csi->mutex);
+        return new_csi;
+      }
+      /*
+      // look's like it is not, but...
+      if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
+        g_mutex_lock(csi->next->mutex);
+        if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){
+          g_mutex_unlock(csi->next->mutex);
+          goto end;
+        }
+        if (!is_splitable(csi->next)){
+          csi->next->status=UNSPLITTABLE;
+          goto end;
+        }
+
+        if (has_only_one_level(csi)){
+          new_csi_next=split_chunk_step(csi->next);
+
+          if (new_csi_next){
+            csi->deep=csi->deep+1;
+            new_csi=clone_chunk_step_item(csi);
+            if ( csi->chunk_step->integer_step.is_step_fixed_length ){
+              new_csi->number+=pow(2,csi->deep);
+            }
+            update_where_on_integer_step(new_csi);
+
+            new_csi->next=new_csi_next;
+
+            new_csi->next->prefix = new_csi->where;
+            dbt->chunks=g_list_append(dbt->chunks,new_csi);
+            g_async_queue_push(dbt->chunks_queue, csi);
+            g_async_queue_push(dbt->chunks_queue, new_csi);
             g_mutex_unlock(csi->next->mutex);
-            //split_unsigned_chunk_step
+            g_mutex_unlock(csi->mutex);
+            return new_csi;
           }
         }
+        g_mutex_unlock(csi->next->mutex);
+        //split_unsigned_chunk_step
       }else{
-        free_integer_step_item(csi);
+        csi->status=UNSPLITTABLE;
       }
+      */
+  
+end:
       g_mutex_unlock(csi->mutex);
       csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);
     }
@@ -548,7 +606,6 @@ if (cs->integer_step.is_unsigned){
   }
 
 // Step 5: Updating min
-
   g_mutex_lock(csi->mutex);
   if (csi->status != COMPLETED)
     csi->status = ASSIGNED;
@@ -567,7 +624,6 @@ if (cs->integer_step.is_unsigned){
       cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
   }
   g_mutex_unlock(csi->mutex);
-
   return 0;
 }
 
