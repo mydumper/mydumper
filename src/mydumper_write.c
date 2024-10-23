@@ -749,6 +749,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(1));
 //      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(1));
 //      tj->filesize+=thread_data_buffer->statement->len;
+      tj->statement_flushed++;
       tj->st_in_file++;
       data_buffer_pos++;
       if (data_buffer_pos == MAX_WRITE_BUFFER_PER_THREAD)
@@ -756,10 +757,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       gpointer p=g_async_queue_try_pop(tj->write_buffer_response_queue);
       if (p){
         st_responded++;
-      }
-      if (tj->st_in_file - st_responded >= MAX_WRITE_BUFFER_PER_THREAD){
-        p=g_async_queue_pop(tj->write_buffer_response_queue);
-        st_responded++;
+      }else{
+        if (tj->statement_flushed - st_responded >= MAX_WRITE_BUFFER_PER_THREAD){
+          p=g_async_queue_pop(tj->write_buffer_response_queue);
+          st_responded++;
+        }
       }
 
       thread_data_buffer = &tj->td->thread_data_buffers[data_buffer_pos];
@@ -810,7 +812,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 	  			  break;
         }
         tj->st_in_file = 0;
-        st_responded=0;
+        //st_responded=0;
         tj->filesize = 0;			
       }
     }
@@ -832,13 +834,14 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 //      return;
 //    }
 		tj->st_in_file++;
+    tj->statement_flushed++;
     g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(1));
   }
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
 //  g_string_free(statement_row, TRUE);	
   g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(2));
-  while (tj->st_in_file > st_responded){
+  while (tj->statement_flushed > tj->statement_written){
     g_async_queue_pop(tj->write_buffer_response_queue);
     st_responded++;
   }
@@ -903,7 +906,7 @@ void write_table_job_into_file(struct table_job * tj){
   }
 
   /* Poor man's data dump code */
-    write_result_into_file(conn, result, tj);
+  write_result_into_file(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,
@@ -932,12 +935,16 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
   while (TRUE){
     // init job only
     tj = (struct table_job *) g_async_queue_pop(write_buffer_queue);
+    tj->statement_written=0;
+    tj->statement_flushed=0;
+    tj->write_buffer_pos=0;
     cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     while ( cont ){
       if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[tj->write_buffer_pos].statement, tj->dbt)) {
         return NULL;
       }
       // buffers to write
+      tj->statement_written++;
       g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(tj->write_buffer_pos + 1) );
       if (tj->write_buffer_pos < MAX_WRITE_BUFFER_PER_THREAD - 1)
         tj->write_buffer_pos++;
@@ -945,7 +952,6 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
         tj->write_buffer_pos=0;
       cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     }
-
   }
   return NULL;
 }

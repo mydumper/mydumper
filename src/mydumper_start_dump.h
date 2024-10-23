@@ -262,6 +262,8 @@ struct table_job {
   gchar *exec_out_filename;
   float filesize;
   guint st_in_file;
+  guint statement_flushed;
+  guint statement_written;
   int child_process;
   int char_chunk_part;
   GAsyncQueue *write_buffer_response_queue;
