@@ -935,24 +935,25 @@ cleanup:
 void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
   gboolean cont;
   struct table_job * tj=NULL;
+  guint write_buffer_pos=0;
   while (TRUE){
     // init job only
     tj = (struct table_job *) g_async_queue_pop(write_buffer_queue);
     tj->statement_written=0;
     tj->statement_flushed=0;
-    tj->write_buffer_pos=0;
+    write_buffer_pos=0;
     cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     while ( cont ){
-      if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[tj->write_buffer_pos].statement, tj->dbt)) {
+      if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
         return NULL;
       }
       // buffers to write
       tj->statement_written++;
-      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(tj->write_buffer_pos + 1) );
-      if (tj->write_buffer_pos < MAX_WRITE_BUFFER_PER_THREAD - 1)
-        tj->write_buffer_pos++;
+      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(write_buffer_pos + 1) );
+      if (write_buffer_pos < MAX_WRITE_BUFFER_PER_THREAD - 1)
+        write_buffer_pos++;
       else
-        tj->write_buffer_pos=0;
+        write_buffer_pos=0;
       cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     }
   }
