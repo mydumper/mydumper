@@ -391,27 +391,30 @@ cleanup:
     mysql_free_result(indexes);
 //  return field;
 }
+struct db_table empty_dbt = {NULL, NULL, NULL,NULL,NULL,NULL,NULL,{ FALSE, FALSE, FALSE},NULL, FALSE, NULL,NULL,NULL, FALSE, FALSE, FALSE, NULL,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,FALSE,NULL,NULL,NULL,NULL,NULL,0,FALSE,0,0,0,NO_MORE,0,0};
 
-
-gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list){
-  g_mutex_lock(dbt_list->mutex);
-  GList *iter=dbt_list->list;
-  struct db_table *dbt;
+gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, GAsyncQueue *table_queue ){// struct MList *dbt_list){
+//  g_mutex_lock(dbt_list->mutex);
+//  GList *iter=dbt_list->list;
+  if (g_async_queue_length(table_queue) == 0){
+    return FALSE;
+  }
+  struct db_table *initial_dbt=g_async_queue_pop(table_queue), *dbt=initial_dbt;
   gboolean are_there_jobs_defining=FALSE;
   struct chunk_step_item *lcs;
 //  struct chunk_step_item *(*get_next)(struct db_table *dbt);
-  while (iter){
-    dbt=iter->data;
+  while (dbt->status != NO_MORE ){
     g_mutex_lock(dbt->chunks_mutex);
 //    g_message("Checking table: %s.%s", d->database->name, d->table);
     if (dbt->status != DEFINING){
 
       if (dbt->status == UNDEFINED){
 //        g_message("Checking table: %s.%s DEFINING NOW", d->database->name, d->table);
-        *dbt_pointer=iter->data;
+        *dbt_pointer=dbt;
         dbt->status = DEFINING;
         are_there_jobs_defining=TRUE;
         g_mutex_unlock(dbt->chunks_mutex);
+        g_async_queue_push(table_queue, dbt);
         break;
       }
 
@@ -427,40 +430,47 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
 
       lcs = (struct chunk_step_item *)g_list_first(dbt->chunks)->data;
       if (lcs->chunk_type == NONE){
-        *dbt_pointer=iter->data;
+        *dbt_pointer=dbt;
         *csi = lcs;
-        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+//        dbt_list->list=g_list_remove(dbt_list->list,dbt);
         g_mutex_unlock(dbt->chunks_mutex);
         break;
       }
 
       if (dbt->max_threads_per_table <= dbt->current_threads_running){
         g_mutex_unlock(dbt->chunks_mutex);
+        g_async_queue_push(table_queue, dbt);
         goto next;
       }
       dbt->current_threads_running++;
       lcs=lcs->chunk_functions.get_next(dbt);
 
       if (lcs!=NULL){
-        *dbt_pointer=iter->data;
+        *dbt_pointer=dbt;
         *csi = lcs;
         g_mutex_unlock(dbt->chunks_mutex);
+        g_async_queue_push(table_queue, dbt);
         break;
       }else{
-        iter=iter->next;
-        // Assign iter previous removing dbt from list is important as we might break the list
-        dbt_list->list=g_list_remove(dbt_list->list,dbt);
         g_mutex_unlock(dbt->chunks_mutex);
-        continue;
+        goto next;
       }
     }else{
       g_mutex_unlock(dbt->chunks_mutex);
       are_there_jobs_defining=TRUE;
     }
 next:
-    iter=iter->next;
+    if (g_async_queue_length(table_queue) == 0){
+      break;
+    }
+    dbt=g_async_queue_pop(table_queue);
+    if (dbt==initial_dbt){
+      g_async_queue_push(table_queue, dbt);
+      break;
+    }
+//    iter=iter->next;
   }
-  g_mutex_unlock(dbt_list->mutex);
+  //g_mutex_unlock(dbt_list->mutex);
   return are_there_jobs_defining;
 }
 
@@ -497,7 +507,7 @@ void table_job_enqueue(struct table_queuing *q)
     dbt=NULL;
     csi=NULL;
     are_there_jobs_defining=FALSE;
-    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_list);
+    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_queue);
 
     if (dbt!=NULL){
 
