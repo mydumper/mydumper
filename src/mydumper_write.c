@@ -58,6 +58,7 @@ gchar *fields_terminated_by=NULL;
 gchar *lines_starting_by=NULL;
 gchar *lines_terminated_by=NULL;
 gchar *statement_terminated_by=NULL;
+gchar *row_delimiter=NULL;
 const gchar *fields_enclosed_by_ld=NULL;
 gchar *lines_starting_by_ld=NULL;
 gchar *lines_terminated_by_ld=NULL;
@@ -147,6 +148,7 @@ void initialize_write(){
       else
         statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
+      row_delimiter=g_strdup(",");
 			break;
 		case LOAD_DATA:
       if (!fields_enclosed_by_ld){
@@ -188,6 +190,7 @@ void initialize_write(){
       }else
         statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
 
+      row_delimiter=g_strdup("");
 			break;
 		case CSV:
 			if (!fields_enclosed_by_ld){
@@ -228,7 +231,7 @@ void initialize_write(){
         statement_terminated_by_ld=statement_terminated_by;
       }else
         statement_terminated_by=replace_escaped_strings(g_strdup(statement_terminated_by_ld));
-
+      row_delimiter=g_strdup("");
 			break;
 	}
 
@@ -726,8 +729,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint st_responded=0;
 	while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
-    if (num_rows>0 && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
-      g_string_append_c(thread_data_buffer->statement, ',');
+    if (num_rows>0)
+      g_string_append(thread_data_buffer->statement, row_delimiter);
     num_rows++;
     // prepare row into statement_row
 		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, thread_data_buffer, write_column_into_string);
