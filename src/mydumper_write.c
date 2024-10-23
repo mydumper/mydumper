@@ -726,6 +726,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint st_responded=0;
 	while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
+    if (num_rows>0 && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
+      g_string_append_c(thread_data_buffer->statement, ',');
     num_rows++;
     // prepare row into statement_row
 		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, thread_data_buffer, write_column_into_string);
