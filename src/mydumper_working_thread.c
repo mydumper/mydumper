@@ -1162,12 +1162,14 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           dbt->is_innodb=TRUE;
           g_mutex_lock(innodb_table->mutex);
           innodb_table->list=g_list_prepend(innodb_table->list,dbt);
+          g_async_queue_push(conf->innodb.table_queue, dbt);
           g_mutex_unlock(innodb_table->mutex);
 
         } else {
           dbt->is_innodb=FALSE;
           g_mutex_lock(non_innodb_table->mutex);
           non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
+          g_async_queue_push(conf->non_innodb.table_queue, dbt);
           g_mutex_unlock(non_innodb_table->mutex);
         }
       }else{
@@ -1175,6 +1177,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           dbt->is_innodb=FALSE;
           g_mutex_lock(non_innodb_table->mutex);
           non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
+          g_async_queue_push(conf->non_innodb.table_queue, dbt);
           g_mutex_unlock(non_innodb_table->mutex);
         }
       }

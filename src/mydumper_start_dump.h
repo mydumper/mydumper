@@ -63,6 +63,7 @@ enum chunk_type{
 };
 
 enum db_table_states{
+  NO_MORE,
   UNDEFINED,
   DEFINING,
   READY
@@ -81,7 +82,8 @@ struct table_queuing {
   GAsyncQueue *queue;
   GAsyncQueue *defer;
   GAsyncQueue *request_chunk;
-  struct MList *table_list;
+//  struct MList *table_list;
+  GAsyncQueue *table_queue;
   const char *descr;
 };
 
@@ -108,11 +110,12 @@ struct configuration {
 
 struct thread_data_buffers {
   GString *statement;
-  GString *row;
+//  GString *row;
   GString *escaped;
-  GString *column;
+//  GString *column;
 };
 
+#define MAX_WRITE_BUFFER_PER_THREAD 10
 struct thread_data {
   struct configuration *conf;
   guint thread_id;
@@ -121,7 +124,9 @@ struct thread_data {
   gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
   GMutex *pause_resume_mutex;
-  struct thread_data_buffers thread_data_buffers;
+  struct thread_data_buffers thread_data_buffers[MAX_WRITE_BUFFER_PER_THREAD];
+  GAsyncQueue *write_buffer_queue;
+  GThread *writer_thread;
 };
 
 struct job {
@@ -250,13 +255,8 @@ struct table_job {
   guint64 nchunk;
   guint sub_part;
   GString *where;
-//  union chunk_step *chunk_step;  
   struct chunk_step_item *chunk_step_item;
   struct db_table *dbt;
-//  gchar *sql_filename;
-//  int sql_file;
-//  gchar *dat_filename;
-//  int dat_file;
   struct table_job_file *sql;
   struct table_job_file *rows;
   gchar *exec_out_filename;
@@ -264,6 +264,8 @@ struct table_job {
   guint st_in_file;
   int child_process;
   int char_chunk_part;
+  GAsyncQueue *write_buffer_response_queue;
+  int write_buffer_pos;
   struct thread_data *td;
 };
 
@@ -305,10 +307,6 @@ struct db_table {
   char *min;
   char *max;
 	struct object_to_export object_to_export;
-//  gboolean no_data;
-//  gboolean no_schema;
-//  gboolean no_trigger;
-//  char *field;
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;
@@ -329,9 +327,7 @@ struct db_table {
   gchar *columns_on_insert;
   pcre *partition_regex;
   guint num_threads;
-//  enum chunk_type chunk_type;
   GList *chunks;
-//  struct chunk_step_item * initial_chunk_step;
   GMutex *chunks_mutex;
   GAsyncQueue *chunks_queue;
   GList *primary_key;
@@ -352,7 +348,6 @@ struct db_table {
   guint max_threads_per_table;
   guint current_threads_running;
 };
-
 
 struct stream_queue_element{
   struct db_table *dbt;

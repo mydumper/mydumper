@@ -1147,6 +1147,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->filesize=0;
   tj->char_chunk_part=char_chunk;
   tj->child_process=0;
+  tj->write_buffer_response_queue=g_async_queue_new();
   tj->where=g_string_new("");
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
   return tj;

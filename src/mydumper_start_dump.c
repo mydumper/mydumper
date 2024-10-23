@@ -1255,13 +1255,17 @@ void start_dump() {
            innodb_table &&
            non_innodb_table);
   conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
-  conf.innodb.table_list= innodb_table;
+
+/*  conf.innodb.table_list= innodb_table;
+  conf.non_innodb.table_list= non_innodb_table;
+*/
+  conf.innodb.table_queue=g_async_queue_new();
+  conf.non_innodb.table_queue=g_async_queue_new();
   conf.innodb.descr= "transactional";
   conf.ready = g_async_queue_new();
   conf.non_innodb.queue= g_async_queue_new();
   conf.non_innodb.defer= g_async_queue_new();
   conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
-  conf.non_innodb.table_list= non_innodb_table;
   conf.non_innodb.descr= "non-transactional";
   conf.ready_non_innodb_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
@@ -1313,6 +1317,7 @@ void start_dump() {
   struct thread_data *td =
       g_new(struct thread_data, num_threads * (less_locking + 1));
   g_message("Creating workers");
+  int i=0;
   for (n = 0; n < num_threads; n++) {
     td[n].conf = &conf;
     td[n].thread_id = n + 1;
@@ -1320,10 +1325,14 @@ void start_dump() {
     td[n].binlog_snapshot_gtid_executed = NULL;
     td[n].pause_resume_mutex=NULL;
     td[n].table_name=NULL;
-    td[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
-    td[n].thread_data_buffers.row = g_string_sized_new(statement_size);
-    td[n].thread_data_buffers.column = g_string_sized_new(statement_size);
-    td[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
+    for(i=0; i< MAX_WRITE_BUFFER_PER_THREAD; i++){
+      td[n].thread_data_buffers[i].statement = g_string_sized_new(2*statement_size);
+//      td[n].thread_data_buffers[i].row = g_string_sized_new(statement_size);
+//      td[n].thread_data_buffers[i].column = g_string_sized_new(statement_size);
+      td[n].thread_data_buffers[i].escaped = g_string_sized_new(statement_size);
+    }
+    td[n].write_buffer_queue=g_async_queue_new();
+    td[n].writer_thread = g_thread_create((GThreadFunc)write_buffer_thread, td[n].write_buffer_queue, TRUE, NULL);
     threads[n] =
         g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
  //   g_async_queue_pop(conf.ready);
