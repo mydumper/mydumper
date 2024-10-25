@@ -1308,10 +1308,6 @@ void start_dump() {
   }
   g_message("End job creation");
   // End Job Creation
-  GThread *chunk_builder=NULL;
-  if (!no_data){
-    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
-  }
 
   GThread **threads = g_new(GThread *, num_threads );
   struct thread_data *td =
@@ -1390,6 +1386,11 @@ void start_dump() {
 
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
+
+  GThread *chunk_builder=NULL;
+  if (!no_data){
+    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
+  }
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);

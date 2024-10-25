@@ -339,8 +339,9 @@ gboolean real_write_data(int file, float *filesize, GString *data) {
   size_t written = 0;
   ssize_t r = 0;
   gboolean second_write_zero = FALSE;
+  guint len = data->len;
   while (written < data->len) {
-    r=write(file, data->str + written, data->len);
+    r=write(file, data->str + written, len);
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
       errors++;
@@ -357,6 +358,7 @@ gboolean real_write_data(int file, float *filesize, GString *data) {
       second_write_zero=FALSE;
     }
     written += r;
+    len -= r;
   }
   *filesize+=written;
   return TRUE;
@@ -664,7 +666,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
   void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers*) = write_sql_column_into_string;
-  tj->st_in_file=0;
+  //tj->st_in_file=0;
   g_async_queue_push(tj->td->write_buffer_queue, tj);
 
   switch (output_format){
@@ -761,7 +763,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (p){
         st_responded++;
       }else{
-        if (tj->statement_flushed - st_responded >= MAX_WRITE_BUFFER_PER_THREAD){
+        if (tj->statement_flushed - st_responded >= MAX_WRITE_BUFFER_PER_THREAD-2){
           p=g_async_queue_pop(tj->write_buffer_response_queue);
           st_responded++;
         }
@@ -944,16 +946,16 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
     write_buffer_pos=0;
     cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     while ( cont ){
+//      tj->td->thread_data_buffers[write_buffer_pos].statement->str[tj->td->thread_data_buffers[write_buffer_pos].statement->len]='\0';
       if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
         return NULL;
       }
       // buffers to write
       tj->statement_written++;
-      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(write_buffer_pos + 1) );
-      if (write_buffer_pos < MAX_WRITE_BUFFER_PER_THREAD - 1)
-        write_buffer_pos++;
-      else
+      write_buffer_pos++;
+      if (write_buffer_pos == MAX_WRITE_BUFFER_PER_THREAD)
         write_buffer_pos=0;
+      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(write_buffer_pos) );
       cont=GPOINTER_TO_INT(g_async_queue_pop(write_buffer_queue))==1;
     }
   }
