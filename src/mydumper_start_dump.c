@@ -1256,9 +1256,9 @@ void start_dump() {
            non_innodb_table);
   conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
 
-/*  conf.innodb.table_list= innodb_table;
+  conf.innodb.table_list= innodb_table;
   conf.non_innodb.table_list= non_innodb_table;
-*/
+
   conf.innodb.table_queue=g_async_queue_new();
   conf.non_innodb.table_queue=g_async_queue_new();
   conf.innodb.descr= "transactional";
@@ -1334,6 +1334,10 @@ void start_dump() {
  //   g_async_queue_pop(conf.ready);
   }
 
+  GThread *chunk_builder=NULL;
+  if (!no_data){
+    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
+  }
 
 // are all in the same gtid pos?
   gchar *binlog_snapshot_gtid_executed = NULL; 
@@ -1386,11 +1390,6 @@ void start_dump() {
 
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
-
-  GThread *chunk_builder=NULL;
-  if (!no_data){
-    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, &conf, TRUE, NULL);
-  }
 
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);

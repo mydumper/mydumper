@@ -82,7 +82,7 @@ struct table_queuing {
   GAsyncQueue *queue;
   GAsyncQueue *defer;
   GAsyncQueue *request_chunk;
-//  struct MList *table_list;
+  struct MList *table_list;
   GAsyncQueue *table_queue;
   const char *descr;
 };

@@ -393,10 +393,10 @@ cleanup:
 }
 struct db_table empty_dbt = {NULL, NULL, NULL,NULL,NULL,NULL,NULL,{ FALSE, FALSE, FALSE},NULL, FALSE, NULL,NULL,NULL, FALSE, FALSE, FALSE, NULL,0,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,NULL,NULL,NULL,FALSE,NULL,NULL,NULL,NULL,NULL,0,FALSE,0,0,0,NO_MORE,0,0};
 
-gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, GAsyncQueue *table_queue ){// struct MList *dbt_list){
+gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, GAsyncQueue *table_queue, struct MList *dbt_list){
 //  g_mutex_lock(dbt_list->mutex);
 //  GList *iter=dbt_list->list;
-  if (g_async_queue_length(table_queue) == 0){
+  if (g_list_length(dbt_list->list) == 0){
     return FALSE;
   }
   struct db_table *initial_dbt=g_async_queue_pop(table_queue), *dbt=initial_dbt;
@@ -425,6 +425,9 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
       // chunk_functions.get_next(d) (see below)
       if (dbt->chunks == NULL){
         g_mutex_unlock(dbt->chunks_mutex);
+        g_mutex_lock(dbt_list->mutex);
+        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_unlock(dbt_list->mutex);
         goto next;
       }
 
@@ -432,7 +435,9 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
       if (lcs->chunk_type == NONE){
         *dbt_pointer=dbt;
         *csi = lcs;
-//        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_lock(dbt_list->mutex);
+        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_unlock(dbt_list->mutex);
         g_mutex_unlock(dbt->chunks_mutex);
         break;
       }
@@ -452,6 +457,9 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
         g_async_queue_push(table_queue, dbt);
         break;
       }else{
+        g_mutex_lock(dbt_list->mutex);
+        dbt_list->list=g_list_remove(dbt_list->list,dbt);
+        g_mutex_unlock(dbt_list->mutex);
         g_mutex_unlock(dbt->chunks_mutex);
         goto next;
       }
@@ -507,7 +515,7 @@ void table_job_enqueue(struct table_queuing *q)
     dbt=NULL;
     csi=NULL;
     are_there_jobs_defining=FALSE;
-    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_queue);
+    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_queue, q->table_list);
 
     if (dbt!=NULL){
 
