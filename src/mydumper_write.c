@@ -594,7 +594,7 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL
     g_free(column);
 }
 
-void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers * buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers*)){
+void write_row_into_statement(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers * buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers*)){
   guint i = 0;
   g_string_append(buffers->statement, lines_starting_by);
   struct function_pointer ** f = dbt->anonymized_function;
@@ -660,13 +660,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   int data_buffer_pos=0;
   struct thread_data_buffers *thread_data_buffer = &tj->td->thread_data_buffers[data_buffer_pos];
   g_string_set_size(thread_data_buffer->statement,0);
-  //g_string_set_size(thread_data_buffer->row,0);
   g_string_set_size(thread_data_buffer->escaped,0);
   gulong *lengths = NULL;
-  guint64 num_rows=0;
-  guint64 num_rows_st = 0;
+  guint64 num_rows_in_statement = 0;
   void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers*) = write_sql_column_into_string;
-  //tj->st_in_file=0;
   g_async_queue_push(tj->td->write_buffer_queue, tj);
 
   switch (output_format){
@@ -731,29 +728,21 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   guint st_responded=0;
 	while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
-    if (num_rows>0)
+    if (num_rows_in_statement>0)
       g_string_append(thread_data_buffer->statement, row_delimiter);
-    num_rows++;
+    num_rows_in_statement++;
     // prepare row into statement_row
-		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, thread_data_buffer, write_column_into_string);
+		write_row_into_statement(conn, dbt, row, fields, lengths, num_fields, thread_data_buffer, write_column_into_string);
 
 		// if row exceeded statement_size then FLUSH buffer to disk
 		if (thread_data_buffer->statement->len > statement_size){
-      if (num_rows_st == 0) {
-//        g_string_append(thread_data_buffer->statement, thread_data_buffer->row->str);
-//        g_string_set_size(thread_data_buffer->row, 0);
+      if (num_rows_in_statement == 0) {
         g_warning("Row bigger than statement_size for %s.%s", dbt->database->name,
                 dbt->table);
       }
       g_string_append(thread_data_buffer->statement, statement_terminated_by);
-//      if (!write_statement(tj->rows->file, &(tj->filesize), thread_data_buffer->statement, dbt)) {
-//        return;
-//      }
 
-//      enqueue_statement_to_write(tj,thread_data_buffer);
       g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(1));
-//      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(1));
-//      tj->filesize+=thread_data_buffer->statement->len;
       tj->statement_flushed++;
       tj->st_in_file++;
       data_buffer_pos++;
@@ -771,9 +760,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 
       thread_data_buffer = &tj->td->thread_data_buffers[data_buffer_pos];
       g_string_set_size(thread_data_buffer->statement, 0);
-      update_dbt_rows(dbt, num_rows);
-			num_rows=0;
-			num_rows_st=0;
+      update_dbt_rows(dbt, num_rows_in_statement);
+			num_rows_in_statement=0;
     // initilize buffer if needed (INSERT INTO)
       if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
 				g_string_append(thread_data_buffer->statement, dbt->insert_statement->str);
@@ -817,40 +805,23 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 	  			  break;
         }
         tj->st_in_file = 0;
-        //st_responded=0;
         tj->filesize = 0;			
       }
     }
-		//
-		// write row to buffer
-//    if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
-//      g_string_append_c(thread_data_buffer->statement, ',');
-//    g_string_append(thread_data_buffer->statement, thread_data_buffer->row->str);
-//		if (thread_data_buffer->row->len>0){
-      num_rows_st++;
-//    }
-//    g_string_set_size(thread_data_buffer->row, 0);
   }
-  update_dbt_rows(dbt, num_rows);
-  if (num_rows_st > 0 && thread_data_buffer->statement->len > 0){
+  update_dbt_rows(dbt, num_rows_in_statement);
+  if (num_rows_in_statement > 0 && thread_data_buffer->statement->len > 0){
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
 			g_string_append(thread_data_buffer->statement, statement_terminated_by);
-//    if (!write_statement(tj->rows->file, &(tj->filesize), thread_data_buffer->statement, dbt)) {
-//      return;
-//    }
 		tj->st_in_file++;
     tj->statement_flushed++;
     g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(1));
   }
-//  g_string_free(statement, TRUE);
-//  g_string_free(escaped, TRUE);
-//  g_string_free(statement_row, TRUE);	
   g_async_queue_push(tj->td->write_buffer_queue, GINT_TO_POINTER(2));
   while (tj->statement_flushed > tj->statement_written){
     g_async_queue_pop(tj->write_buffer_response_queue);
     st_responded++;
   }
-
   return;
 }
 
