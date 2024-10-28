@@ -1251,16 +1251,17 @@ void start_dump() {
   conf.innodb.defer= g_async_queue_new();
   // These are initialized in the guts of initialize_start_dump() above
   g_assert(give_me_another_innodb_chunk_step_queue &&
-           give_me_another_non_innodb_chunk_step_queue &&
-           innodb_table &&
-           non_innodb_table);
+           give_me_another_non_innodb_chunk_step_queue);
   conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
 
-  conf.innodb.table_list= innodb_table;
-  conf.non_innodb.table_list= non_innodb_table;
 
-  conf.innodb.table_queue=g_async_queue_new();
+  conf.non_innodb.table_list=NULL;
+  conf.non_innodb.table_mutex = g_mutex_new();
   conf.non_innodb.table_queue=g_async_queue_new();
+  conf.innodb.table_list=NULL;
+  conf.innodb.table_mutex = g_mutex_new();
+  conf.innodb.table_queue=g_async_queue_new();
+
   conf.innodb.descr= "transactional";
   conf.ready = g_async_queue_new();
   conf.non_innodb.queue= g_async_queue_new();
@@ -1328,9 +1329,9 @@ void start_dump() {
       td[n].thread_data_buffers[i].escaped = g_string_sized_new(statement_size);
     }
     td[n].write_buffer_queue=g_async_queue_new();
-    td[n].writer_thread = g_thread_create((GThreadFunc)write_buffer_thread, td[n].write_buffer_queue, TRUE, NULL);
+    td[n].writer_thread = g_thread_new("mydumper_writeb",(GThreadFunc)write_buffer_thread, td[n].write_buffer_queue);
     threads[n] =
-        g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
+        g_thread_new("mydumper_worker",(GThreadFunc)working_thread, &td[n]);
  //   g_async_queue_pop(conf.ready);
   }
 
@@ -1387,7 +1388,6 @@ void start_dump() {
 
 
   g_message("Waiting database finish");
-
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
 

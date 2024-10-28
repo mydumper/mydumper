@@ -98,10 +98,6 @@ gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
 gboolean success_on_1146 = FALSE;
 
-struct MList  *innodb_table = NULL;
-//GMutex *innodb_table_mutex = NULL;
-struct MList  *non_innodb_table = NULL;
-//GMutex *non_innodb_table_mutex = NULL;
 GMutex *table_schemas_mutex = NULL;
 GMutex *all_dbts_mutex=NULL;
 GMutex *trigger_schemas_mutex = NULL;
@@ -136,12 +132,7 @@ void initialize_working_thread(){
 
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
-  innodb_table=g_new(struct MList, 1);
-  non_innodb_table=g_new(struct MList, 1);
-  innodb_table->list=NULL;
-  non_innodb_table->list=NULL;
-  non_innodb_table->mutex = g_mutex_new();
-  innodb_table->mutex = g_mutex_new();
+
 
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
@@ -713,8 +704,8 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_buil
 }
 
 void build_lock_tables_statement(struct configuration *conf){
-  g_mutex_lock(non_innodb_table->mutex);
-  GList *iter = non_innodb_table->list;
+  g_mutex_lock(conf->non_innodb.table_mutex);
+  GList *iter = conf->non_innodb.table_list;
   struct db_table *dbt;
   if ( iter != NULL){
     dbt = (struct db_table *)iter->data;
@@ -728,7 +719,7 @@ void build_lock_tables_statement(struct configuration *conf){
                              identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     }
   }
-  g_mutex_unlock(non_innodb_table->mutex);
+  g_mutex_unlock(conf->non_innodb.table_mutex);
 }
 
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
@@ -1160,25 +1151,25 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           dbt->is_innodb=TRUE;
-          g_mutex_lock(innodb_table->mutex);
-          innodb_table->list=g_list_prepend(innodb_table->list,dbt);
+          g_mutex_lock(conf->innodb.table_mutex);
+          conf->innodb.table_list=g_list_prepend(conf->innodb.table_list,dbt);
           g_async_queue_push(conf->innodb.table_queue, dbt);
-          g_mutex_unlock(innodb_table->mutex);
+          g_mutex_unlock(conf->innodb.table_mutex);
 
         } else {
           dbt->is_innodb=FALSE;
-          g_mutex_lock(non_innodb_table->mutex);
-          non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
+          g_mutex_lock(conf->non_innodb.table_mutex);
+          conf->non_innodb.table_list = g_list_prepend(conf->non_innodb.table_list, dbt);
           g_async_queue_push(conf->non_innodb.table_queue, dbt);
-          g_mutex_unlock(non_innodb_table->mutex);
+          g_mutex_unlock(conf->non_innodb.table_mutex);
         }
       }else{
         if (is_view){
           dbt->is_innodb=FALSE;
-          g_mutex_lock(non_innodb_table->mutex);
-          non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
+          g_mutex_lock(conf->non_innodb.table_mutex);
+          conf->non_innodb.table_list = g_list_prepend(conf->non_innodb.table_list, dbt);
           g_async_queue_push(conf->non_innodb.table_queue, dbt);
-          g_mutex_unlock(non_innodb_table->mutex);
+          g_mutex_unlock(conf->non_innodb.table_mutex);
         }
       }
     }

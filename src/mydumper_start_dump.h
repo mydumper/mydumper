@@ -49,11 +49,6 @@ enum job_type {
   JOB_WRITE_MASTER_STATUS
 };
 
-struct MList{
-  GList *list;
-  GMutex *mutex;
-};
-
 enum chunk_type{
   NONE,
   INTEGER,
@@ -82,7 +77,8 @@ struct table_queuing {
   GAsyncQueue *queue;
   GAsyncQueue *defer;
   GAsyncQueue *request_chunk;
-  struct MList *table_list;
+  GList *table_list;
+  GMutex *table_mutex;
   GAsyncQueue *table_queue;
   const char *descr;
 };
@@ -264,9 +260,13 @@ struct table_job {
   guint st_in_file;
   guint statement_flushed;
   guint statement_written;
+  GMutex *write_send_mutex;
+  GMutex *write_response_mutex;
   int child_process;
   int char_chunk_part;
+  GAsyncQueue *write_buffer_send_queue;
   GAsyncQueue *write_buffer_response_queue;
+  GAsyncQueue * write_buffer_ended;
   int write_buffer_pos;
   struct thread_data *td;
 };
