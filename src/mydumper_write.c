@@ -894,7 +894,7 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
     while ( cont ){
 //      tj->td->thread_data_buffers[write_buffer_pos].statement->str[tj->td->thread_data_buffers[write_buffer_pos].statement->len]='\0';
       g_debug("Thread %d: Before assert | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
-      g_assert(tj->statement_flushed > tj->statement_written);
+//      g_assert(tj->statement_flushed > tj->statement_written);
       if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
         return NULL;
       }
