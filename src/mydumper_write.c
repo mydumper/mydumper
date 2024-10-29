@@ -702,6 +702,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   g_async_queue_pop(tj->write_buffer_response_queue);
 //  g_mutex_lock(tj->write_response_mutex);
   g_debug("Thread %d: sync! | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
+  guint local_statement_flushed=0;
 	while ((row = mysql_fetch_row(result))) {
     lengths = mysql_fetch_lengths(result);
     if (num_rows_in_statement>0)
@@ -725,8 +726,12 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (data_buffer_pos == MAX_WRITE_BUFFER_PER_THREAD)
         data_buffer_pos=0;
       gpointer p=g_async_queue_try_pop(tj->write_buffer_response_queue);
-      if (!p && (tj->statement_flushed - tj->statement_written >= MAX_WRITE_BUFFER_PER_THREAD-2)){
+      if (p)
+        local_statement_flushed++;
+      else if (tj->statement_flushed - tj->statement_written == MAX_WRITE_BUFFER_PER_THREAD){
+        g_warning("MAX_WRITE_BUFFER_PER_THREAD reached");
         g_async_queue_pop(tj->write_buffer_response_queue);
+        local_statement_flushed++;
       }
 
       thread_data_buffer = &tj->td->thread_data_buffers[data_buffer_pos];
@@ -755,6 +760,13 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   			tj->sub_part++;
 // sync this with write buffer thread to be safe to close and open files
         //tj->write_buffer_pos
+        g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(3));
+        while (tj->statement_flushed > tj->statement_written){
+          g_async_queue_pop(tj->write_buffer_response_queue);
+          local_statement_flushed++;
+        }
+        data_buffer_pos=0;
+        thread_data_buffer = &tj->td->thread_data_buffers[data_buffer_pos];
         switch (output_format){
   			  case LOAD_DATA:
 	  			case CSV:
@@ -764,6 +776,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     				initiliaze_clickhouse_files(tj, dbt);
 		  			break;
 			  	case SQL_INSERT:
+            g_debug("Closing %s", tj->rows->filename);
             m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
             tj->rows->file=0;
             update_files_on_table_job(tj);
@@ -785,8 +798,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     g_debug("Thread %d: Last statement -> tj->write_buffer_send_queue | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
     g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(1));
   }
-  while (tj->statement_flushed > tj->statement_written){
+  g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(3));
+  while (local_statement_flushed < tj->statement_written){
     g_async_queue_pop(tj->write_buffer_response_queue);
+    local_statement_flushed++;
   }
   g_debug("Thread %d: End -> tj->write_buffer_send_queue | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
   g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(2));
@@ -875,9 +890,10 @@ cleanup:
 }
 
 void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
-  gboolean cont;
   struct table_job * tj=NULL;
   guint write_buffer_pos=0;
+  guint i=0;
+  guint val=0;
   while (TRUE){
     // init job only
     tj = (struct table_job *) g_async_queue_pop(write_buffer_queue);
@@ -889,23 +905,33 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
     // pop to sync
     g_debug("Thread %d: Sending to sync | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
     g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(1));
-    write_buffer_pos=0;
-    cont=GPOINTER_TO_INT(g_async_queue_pop(tj->write_buffer_send_queue))!=2;
-    while ( cont ){
-//      tj->td->thread_data_buffers[write_buffer_pos].statement->str[tj->td->thread_data_buffers[write_buffer_pos].statement->len]='\0';
-      g_debug("Thread %d: Before assert | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
-//      g_assert(tj->statement_flushed > tj->statement_written);
-      if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
-        return NULL;
+    val=0;
+    while ( val!=2 ){
+      i=0;
+      while (val!=2 && val != 3 && i<MAX_WRITE_BUFFER_PER_THREAD){
+        val=GPOINTER_TO_INT(g_async_queue_pop(tj->write_buffer_send_queue));
+        i++;
       }
+      if (val==3){
+        if (i>0)
+          i--;
+        val=0;
+      }
+      for (write_buffer_pos=0; write_buffer_pos < i; write_buffer_pos++){
+//      g_debug("Thread %d: Before assert | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
+//      g_assert(tj->statement_flushed > tj->statement_written);
+        if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
+          g_error("Thread %d: writing on %s", tj->td->thread_id, tj->rows->filename);
+          return NULL;
+        }
+      
       // buffers to write
-      g_atomic_int_inc(&(tj->statement_written));
-      write_buffer_pos++;
-      if (write_buffer_pos == MAX_WRITE_BUFFER_PER_THREAD)
-        write_buffer_pos=0;
-      g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(write_buffer_pos) );
-      g_debug("Thread %d: Written -> write_buffer_response_queue | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
-      cont=GPOINTER_TO_INT(g_async_queue_pop(tj->write_buffer_send_queue))!=2;
+        g_atomic_int_inc(&(tj->statement_written));
+//      if (write_buffer_pos == MAX_WRITE_BUFFER_PER_THREAD)
+//        write_buffer_pos=0;
+        g_async_queue_push(tj->write_buffer_response_queue, GINT_TO_POINTER(1) );
+        g_debug("Thread %d: Written -> write_buffer_response_queue | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
+      }
     }
     g_async_queue_push(tj->write_buffer_ended, GINT_TO_POINTER(1) );
     //g_debug("Thread %d: write_buffer_thread released | Flush: %d | Written: %d | cont: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written, cont);

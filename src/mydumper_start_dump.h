@@ -111,7 +111,8 @@ struct thread_data_buffers {
 //  GString *column;
 };
 
-#define MAX_WRITE_BUFFER_PER_THREAD 10
+#define MAX_WRITE_BUFFER_PER_THREAD 50
+
 struct thread_data {
   struct configuration *conf;
   guint thread_id;

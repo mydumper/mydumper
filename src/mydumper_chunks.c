@@ -396,6 +396,7 @@ struct db_table empty_dbt = {NULL, NULL, NULL,NULL,NULL,NULL,NULL,{ FALSE, FALSE
 gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct table_queuing *q){
 //  g_mutex_lock(q->table_mutex);
 //  GList *iter=q->table_list;
+  g_debug("get_next_dbt_and_chunk_step_item");
   g_mutex_lock(q->table_mutex);
   if (g_list_length(q->table_list) == 0){
     g_mutex_unlock(q->table_mutex);

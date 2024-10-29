@@ -583,28 +583,31 @@ if (cs->integer_step.is_unsigned){
       write_table_job_into_file(tj);
     }else{
  
-      GDateTime *from = g_date_time_new_now_local();
+//      GDateTime *from = g_date_time_new_now_local();
       write_table_job_into_file(tj);
-      GDateTime *to = g_date_time_new_now_local();
+//      GDateTime *to = g_date_time_new_now_local();
 
 // Step 3.1: Updating Step length
-
+/*
       GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
       g_date_time_unref(from);
       g_date_time_unref(to);
-      if (diff > 2){
+      if (diff > MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  / 2;
         cs->integer_step.step=cs->integer_step.step<csi->chunk_step->integer_step.min_chunk_step_size?csi->chunk_step->integer_step.min_chunk_step_size:cs->integer_step.step;
-//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-      }else if (diff < 1){
+    g_message("Decreasing time: %ld | %ld", diff, cs->integer_step.step);
+      }else if (diff < MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
         if (max_chunk_step_size!=0)
           cs->integer_step.step=cs->integer_step.step>csi->chunk_step->integer_step.max_chunk_step_size?csi->chunk_step->integer_step.max_chunk_step_size:cs->integer_step.step;
         if (cs->integer_step.step > MAX_CHUNK_STEP_SIZE )
           cs->integer_step.step=MAX_CHUNK_STEP_SIZE;        
-//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-      }
-    }
+    g_message("Increasing time: %ld | %ld", diff, cs->integer_step.step);
+
+}
+*/
+}
+    
   }
 
 // Step 5: Updating min
