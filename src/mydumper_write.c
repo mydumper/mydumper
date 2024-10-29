@@ -844,7 +844,7 @@ void * write_buffer_thread(GAsyncQueue *write_buffer_queue){
       for (write_buffer_pos=0; write_buffer_pos < i; write_buffer_pos++){
 //      g_debug("Thread %d: Before assert | Flush: %d | Written: %d", tj->td->thread_id, tj->statement_flushed, tj->statement_written);
 //      g_assert(tj->statement_flushed > tj->statement_written);
-        g_message("Writing on %s: %s", tj->rows->filename, tj->td->thread_data_buffers[write_buffer_pos].statement->str);
+//        g_message("Writing on %s: %s", tj->rows->filename, tj->td->thread_data_buffers[write_buffer_pos].statement->str);
         if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers[write_buffer_pos].statement, tj->dbt)) {
           g_error("Thread %d: writing on %s", tj->td->thread_id, tj->rows->filename);
           return NULL;
