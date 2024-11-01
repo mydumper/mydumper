@@ -779,7 +779,7 @@ message_dumping_data(tj);
     				initiliaze_clickhouse_files(tj, dbt);
 		  			break;
 			  	case SQL_INSERT:
-            g_debug("Closing %s", tj->rows->filename);
+            g_debug("Thread %d: Closing %s", tj->td->thread_id, tj->rows->filename);
             m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
             tj->rows->file=0;
             update_files_on_table_job(tj);
@@ -803,7 +803,7 @@ message_dumping_data(tj);
     g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(1));
   }
   g_async_queue_push(tj->write_buffer_send_queue, GINT_TO_POINTER(3));
-  while (local_statement_flushed < tj->statement_written){
+  while (local_statement_flushed < tj->statement_flushed){
     g_async_queue_pop(tj->write_buffer_response_queue);
     local_statement_flushed++;
   }
