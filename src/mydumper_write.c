@@ -786,7 +786,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		//
 		// write row to buffer
     if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
-      g_string_append(tj->td->thread_data_buffers.row, row_delimiter);
+      g_string_append(tj->td->thread_data_buffers.statement, row_delimiter);
     g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
 		if (tj->td->thread_data_buffers.row->len>0)
       num_rows_st++;
