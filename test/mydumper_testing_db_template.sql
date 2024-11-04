@@ -31,7 +31,7 @@ INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from
 -- INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
 -- INSERT INTO char_hex_test SELECT unhex(replace(uuid(),'-','')), rand()*1000 from char_hex_test;
 
-INSERT INTO `char_hex_test` VALUES("�CY	e1퍴\0\'_�M",539);
+INSERT INTO `char_hex_test` VALUES("ÈCY	e1í´\0\'_÷M",539);
 
 CREATE TABLE t (qty INT, price INT);
 INSERT INTO t VALUES(3, 50);
@@ -48,7 +48,7 @@ CREATE TABLE `table_varchar_pk` (
 INSERT INTO `table_varchar_pk` VALUES(binary "csdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("bsdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("asdfg",3);
-INSERT INTO `table_varchar_pk` VALUES("Öasdf",3);
+INSERT INTO `table_varchar_pk` VALUES("Ã–asdf",3);
 INSERT INTO `table_varchar_pk` VALUES(binary "Asdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("Btdfg",3);
 INSERT INTO `table_varchar_pk` VALUES("Csdfg",3);
@@ -157,3 +157,6 @@ CREATE VIEW `table_view_function` AS SELECT
  1 AS `id`,
  1 AS `val`,
  count_perftest_higher_than(2) FROM table_view_2_b LIMIT 1;
+
+CREATE TABLE tb(id int) COMMENT='VIEW';
+
