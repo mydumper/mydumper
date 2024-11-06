@@ -33,7 +33,8 @@ void initialize_masquerade(){
 }
 
 void finalize_masquerade(){
-  g_hash_table_destroy(file_hash); 
+//  if (file_hash)
+//    g_hash_table_unref(file_hash); 
 }
 
 
@@ -218,7 +219,7 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
         case FORMAT_ITEM_FILE:
           fid = fi->data;
           if (fid->min < *max_len - i){
-            val=g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max );
+            val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max ): fid->min;
             fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
             g_strlcpy(p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (i+val > *max_len ? *max_len - i : val)+1);
             i+=val ;
