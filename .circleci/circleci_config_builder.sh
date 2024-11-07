@@ -599,13 +599,12 @@ echo -n "
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
           cd ${i}/"
 echo -n '
-          git add *.deb
           dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
+          git add Packages* Release* InRelease ${APT_REPO}/mydumper*${i}*deb
           cd ..'
 done
 echo -n '
@@ -618,13 +617,12 @@ echo -n "
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
           cd ${i}/"
 echo -n '
-          git add *.deb
           dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
+          git add Packages* Release* InRelease ${APT_REPO}/mydumper*${i}*deb
           cd ..'
 done
 echo -n '
