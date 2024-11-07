@@ -599,7 +599,8 @@ echo -n "
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
           cd ${i}/"
 echo -n '
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -617,7 +618,8 @@ echo -n "
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
           cd ${i}/"
 echo -n '
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg

@@ -5795,7 +5795,8 @@ jobs:
           mkdir -p bionic/${APT_REPO}
           cp /tmp/package/mydumper*bionic*deb bionic/${APT_REPO}
           cd bionic/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5805,7 +5806,8 @@ jobs:
           mkdir -p focal/${APT_REPO}
           cp /tmp/package/mydumper*focal*deb focal/${APT_REPO}
           cd focal/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5815,7 +5817,8 @@ jobs:
           mkdir -p jammy/${APT_REPO}
           cp /tmp/package/mydumper*jammy*deb jammy/${APT_REPO}
           cd jammy/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5825,7 +5828,8 @@ jobs:
           mkdir -p noble/${APT_REPO}
           cp /tmp/package/mydumper*noble*deb noble/${APT_REPO}
           cd noble/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5837,7 +5841,8 @@ jobs:
           mkdir -p buster/${APT_REPO}
           cp /tmp/package/mydumper*buster*deb buster/${APT_REPO}
           cd buster/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5847,7 +5852,8 @@ jobs:
           mkdir -p bullseye/${APT_REPO}
           cp /tmp/package/mydumper*bullseye*deb bullseye/${APT_REPO}
           cd bullseye/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
@@ -5857,7 +5863,8 @@ jobs:
           mkdir -p bookworm/${APT_REPO}
           cp /tmp/package/mydumper*bookworm*deb bookworm/${APT_REPO}
           cd bookworm/
-          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          git checkout Packages || true
+          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
