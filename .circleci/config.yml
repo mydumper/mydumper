@@ -5794,63 +5794,83 @@ jobs:
           cd ${UBUNTU_PATH}
           mkdir -p bionic/${APT_REPO}
           cp /tmp/package/mydumper*bionic*deb bionic/${APT_REPO}
-          cd bionic/${APT_REPO}
+          cd bionic/
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ../..
+          cd ..
           mkdir -p focal/${APT_REPO}
           cp /tmp/package/mydumper*focal*deb focal/${APT_REPO}
-          cd focal/${APT_REPO}
+          cd focal/
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ../..
+          cd ..
           mkdir -p jammy/${APT_REPO}
           cp /tmp/package/mydumper*jammy*deb jammy/${APT_REPO}
-          cd jammy/${APT_REPO}
+          cd jammy/
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ../..
+          cd ..
           mkdir -p noble/${APT_REPO}
           cp /tmp/package/mydumper*noble*deb noble/${APT_REPO}
-          cd noble/${APT_REPO}
+          cd noble/
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ../..
+          cd ..
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
           mkdir buster
-          cp /tmp/package/mydumper*buster*deb buster
-          mkdir bullseye
-          cp /tmp/package/mydumper*bullseye*deb bullseye
-          mkdir bookworm
-          cp /tmp/package/mydumper*bookworm*deb bookworm
+          cp /tmp/package/mydumper*buster*deb buster/${APT_REPO}
+          cd buster/
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
+          cd ..
+          mkdir bullseye
+          cp /tmp/package/mydumper*bullseye*deb bullseye/${APT_REPO}
+          cd bullseye/
+          git add *.deb
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+          cd ..
+          mkdir bookworm
+          cp /tmp/package/mydumper*bookworm*deb bookworm/${APT_REPO}
+          cd bookworm/
+          git add *.deb
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+          cd ..
           cd ${BASE_PATH}
           cd ${YUM_PATH}
           cp /tmp/package/mydumper*el7*rpm /tmp/package/mydumper*el8*rpm /tmp/package/mydumper*el9*rpm .
