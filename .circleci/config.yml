@@ -5778,9 +5778,10 @@ jobs:
         command: |
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export APT_REPO="testing"
           export BASE_PATH=$(pwd)
-          export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
-          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export UBUNTU_PATH="apt/ubuntu"
+          export DEBIAN_PATH="apt/debian"
           export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
@@ -5791,14 +5792,9 @@ jobs:
           mkdir -p $UBUNTU_PATH $DEBIAN_PATH $YUM_PATH
           cd ${BASE_PATH}
           cd ${UBUNTU_PATH}
-          mkdir bionic
-          cp /tmp/package/mydumper*bionic*deb bionic
-          mkdir focal
-          cp /tmp/package/mydumper*focal*deb focal
-          mkdir jammy
-          cp /tmp/package/mydumper*jammy*deb jammy
-          mkdir noble
-          cp /tmp/package/mydumper*noble*deb noble
+          mkdir -p bionic/${APT_REPO}
+          cp /tmp/package/mydumper*bionic*deb bionic/${APT_REPO}
+          cd bionic/${APT_REPO}
           git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
@@ -5806,6 +5802,40 @@ jobs:
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
+          cd ../..
+          mkdir -p focal/${APT_REPO}
+          cp /tmp/package/mydumper*focal*deb focal/${APT_REPO}
+          cd focal/${APT_REPO}
+          git add *.deb
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+          cd ../..
+          mkdir -p jammy/${APT_REPO}
+          cp /tmp/package/mydumper*jammy*deb jammy/${APT_REPO}
+          cd jammy/${APT_REPO}
+          git add *.deb
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+          cd ../..
+          mkdir -p noble/${APT_REPO}
+          cp /tmp/package/mydumper*noble*deb noble/${APT_REPO}
+          cd noble/${APT_REPO}
+          git add *.deb
+          dpkg-scanpackages --multiversion . > Packages
+          gzip -k -f Packages
+          apt-ftparchive release . > Release
+          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
+          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
+          git add Packages* Release* InRelease
+          cd ../..
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
           mkdir buster

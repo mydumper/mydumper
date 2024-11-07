@@ -577,9 +577,10 @@ echo -n '
         command: |
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export APT_REPO="testing"
           export BASE_PATH=$(pwd)
-          export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
-          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export UBUNTU_PATH="apt/ubuntu"
+          export DEBIAN_PATH="apt/debian"
           export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
@@ -594,9 +595,9 @@ echo -n '
           cd ${UBUNTU_PATH}'
 for i in ${list_ubuntu_os[@]} ; do
 echo -n "
-          mkdir ${i}
-          cp /tmp/package/mydumper*${i}*deb ${i}"
-done
+          mkdir -p ${i}/"'${APT_REPO}'"
+          cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
+          cd ${i}/"'${APT_REPO}'
 echo -n '
           git add *.deb
           dpkg-scanpackages --multiversion . > Packages
@@ -604,8 +605,9 @@ echo -n '
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease'
-
+          git add Packages* Release* InRelease
+          cd ../..'
+done
 echo -n '
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}'
