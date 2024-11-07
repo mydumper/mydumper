@@ -5838,7 +5838,7 @@ jobs:
           cd ..
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
-          mkdir buster/${APT_REPO}
+          mkdir -p buster/${APT_REPO}
           cp /tmp/package/mydumper*buster*deb buster/${APT_REPO}
           cd buster/
           git add *.deb
@@ -5849,7 +5849,7 @@ jobs:
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
           cd ..
-          mkdir bullseye/${APT_REPO}
+          mkdir -p bullseye/${APT_REPO}
           cp /tmp/package/mydumper*bullseye*deb bullseye/${APT_REPO}
           cd bullseye/
           git add *.deb
@@ -5860,7 +5860,7 @@ jobs:
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
           cd ..
-          mkdir bookworm/${APT_REPO}
+          mkdir -p bookworm/${APT_REPO}
           cp /tmp/package/mydumper*bookworm*deb bookworm/${APT_REPO}
           cd bookworm/
           git add *.deb

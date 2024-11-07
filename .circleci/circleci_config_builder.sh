@@ -614,7 +614,7 @@ echo -n '
 for i in ${list_debian_os[@]} ; 
 do
 echo -n "
-          mkdir ${i}/"'${APT_REPO}'"
+          mkdir -p ${i}/"'${APT_REPO}'"
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
           cd ${i}/"
 echo -n '
