@@ -597,16 +597,16 @@ for i in ${list_ubuntu_os[@]} ; do
 echo -n "
           mkdir -p ${i}/"'${APT_REPO}'"
           cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
-          cd ${i}/"'${APT_REPO}'
+          cd ${i}/"
 echo -n '
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
           git add Packages* Release* InRelease
-          cd ../..'
+          cd ..'
 done
 echo -n '
           cd ${BASE_PATH}
@@ -615,18 +615,18 @@ for i in ${list_debian_os[@]} ;
 do
 echo -n "
           mkdir ${i}
-          cp /tmp/package/mydumper*${i}*deb ${i}"
-done
-
+          cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
+          cd ${i}/"
 echo -n '
           git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
+          dpkg-scanpackages --multiversion ${APT_REPO} > Packages
           gzip -k -f Packages
           apt-ftparchive release . > Release
           gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
           gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease'
-
+          git add Packages* Release* InRelease
+          cd ..'
+done
 echo -n '
           cd ${BASE_PATH}
           cd ${YUM_PATH}
