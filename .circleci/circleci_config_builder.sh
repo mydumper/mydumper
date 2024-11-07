@@ -563,7 +563,7 @@ echo '
         command: |
           ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\n\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\n\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
-echo '
+echo -n '
   publish-ubuntu-repository:
     docker:
       - image: mydumper/mydumper-builder-noble
@@ -591,12 +591,13 @@ echo '
 	  
 echo -n '
           cd ${BASE_PATH}
-          cd ${UBUNTU_PATH}
-          cp '
-echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
- 	  echo ' .'
-
-echo '
+          cd ${UBUNTU_PATH}'
+for i in ${list_ubuntu_os[@]} ; do
+echo -n "
+          mkdir ${i}
+          cp /tmp/package/mydumper*${i}*deb ${i}"
+done
+echo -n '
           git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
@@ -607,12 +608,15 @@ echo '
 
 echo -n '
           cd ${BASE_PATH}
-          cd ${DEBIAN_PATH}
-          cp '
-echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
-          echo ' .'
+          cd ${DEBIAN_PATH}'
+for i in ${list_debian_os[@]} ; 
+do
+echo -n "
+          mkdir ${i}
+          cp /tmp/package/mydumper*${i}*deb ${i}"
+done
 
-echo '
+echo -n '
           git add *.deb
           dpkg-scanpackages --multiversion . > Packages
           gzip -k -f Packages
@@ -626,9 +630,9 @@ echo -n '
           cd ${YUM_PATH}
           cp '
 echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; done )
-          echo ' .'
+          echo -n ' .'
 
-echo '
+echo -n '
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
