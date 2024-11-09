@@ -568,7 +568,7 @@ echo -n '
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm
+    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm reprepro
     - attach_workspace:
         at: /tmp/package    
     - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
