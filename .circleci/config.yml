@@ -5798,12 +5798,14 @@ jobs:
           reprepro  includedeb focal /tmp/package/mydumper*focal*deb
           reprepro  includedeb jammy /tmp/package/mydumper*jammy*deb
           reprepro  includedeb noble /tmp/package/mydumper*noble*deb
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
           git checkout conf/distributions
           reprepro  includedeb buster /tmp/package/mydumper*buster*deb
           reprepro  includedeb bullseye /tmp/package/mydumper*bullseye*deb
           reprepro  includedeb bookworm /tmp/package/mydumper*bookworm*deb
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}
           cp /tmp/package/mydumper*el7*rpm /tmp/package/mydumper*el8*rpm /tmp/package/mydumper*el9*rpm .

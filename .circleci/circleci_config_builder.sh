@@ -600,6 +600,7 @@ echo -n "
           reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
           git checkout conf/distributions'
@@ -609,6 +610,7 @@ echo -n "
           reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}
           cp '
