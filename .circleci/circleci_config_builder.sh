@@ -578,6 +578,7 @@ echo -n '
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
           export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export APT_REPO="testing"
+          export REPREPRO_OPTIONS="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export REPREPRO_OPTIONS=" -C testing "
           export BASE_PATH=$(pwd)
           export UBUNTU_PATH="apt/ubuntu"
           export DEBIAN_PATH="apt/debian"
@@ -595,18 +596,7 @@ echo -n '
           cd ${UBUNTU_PATH}'
 for i in ${list_ubuntu_os[@]} ; do
 echo -n "
-          mkdir -p ${i}/"'${APT_REPO}'"
-          cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
-          cd ${i}/"
-echo -n '
-          git checkout Packages || true
-          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease ${APT_REPO}/mydumper*${i}*deb
-          cd ..'
+          reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
           cd ${BASE_PATH}
@@ -614,18 +604,7 @@ echo -n '
 for i in ${list_debian_os[@]} ; 
 do
 echo -n "
-          mkdir -p ${i}/"'${APT_REPO}'"
-          cp /tmp/package/mydumper*${i}*deb ${i}/"'${APT_REPO}'"
-          cd ${i}/"
-echo -n '
-          git checkout Packages || true
-          dpkg-scanpackages --multiversion ${APT_REPO} >> Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease ${APT_REPO}/mydumper*${i}*deb
-          cd ..'
+          reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
           cd ${BASE_PATH}
