@@ -5793,12 +5793,14 @@ jobs:
           mkdir -p $UBUNTU_PATH $DEBIAN_PATH $YUM_PATH
           cd ${BASE_PATH}
           cd ${UBUNTU_PATH}
+          git checkout conf/distributions
           reprepro  includedeb bionic /tmp/package/mydumper*bionic*deb
           reprepro  includedeb focal /tmp/package/mydumper*focal*deb
           reprepro  includedeb jammy /tmp/package/mydumper*jammy*deb
           reprepro  includedeb noble /tmp/package/mydumper*noble*deb
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
+          git checkout conf/distributions
           reprepro  includedeb buster /tmp/package/mydumper*buster*deb
           reprepro  includedeb bullseye /tmp/package/mydumper*bullseye*deb
           reprepro  includedeb bookworm /tmp/package/mydumper*bookworm*deb

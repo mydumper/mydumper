@@ -593,14 +593,16 @@ echo -n '
 	  
 echo -n '
           cd ${BASE_PATH}
-          cd ${UBUNTU_PATH}'
+          cd ${UBUNTU_PATH}
+          git checkout conf/distributions'
 for i in ${list_ubuntu_os[@]} ; do
 echo -n "
           reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
           cd ${BASE_PATH}
-          cd ${DEBIAN_PATH}'
+          cd ${DEBIAN_PATH}
+          git checkout conf/distributions'
 for i in ${list_debian_os[@]} ; 
 do
 echo -n "
