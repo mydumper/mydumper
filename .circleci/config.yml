@@ -5794,17 +5794,17 @@ jobs:
           cd ${BASE_PATH}
           cd ${UBUNTU_PATH}
           git checkout conf/distributions
-          reprepro  includedeb bionic /tmp/package/mydumper*bionic*deb
-          reprepro  includedeb focal /tmp/package/mydumper*focal*deb
-          reprepro  includedeb jammy /tmp/package/mydumper*jammy*deb
-          reprepro  includedeb noble /tmp/package/mydumper*noble*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb bionic /tmp/package/mydumper*bionic*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb focal /tmp/package/mydumper*focal*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb jammy /tmp/package/mydumper*jammy*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb noble /tmp/package/mydumper*noble*deb
           git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
-          git checkout conf/distributions
-          reprepro  includedeb buster /tmp/package/mydumper*buster*deb
-          reprepro  includedeb bullseye /tmp/package/mydumper*bullseye*deb
-          reprepro  includedeb bookworm /tmp/package/mydumper*bookworm*deb
+          git checkout conf/distributions 
+          reprepro ${REPREPRO_OPTIONS} includedeb buster /tmp/package/mydumper*buster*deb 
+          reprepro ${REPREPRO_OPTIONS} includedeb bullseye /tmp/package/mydumper*bullseye*deb 
+          reprepro ${REPREPRO_OPTIONS} includedeb bookworm /tmp/package/mydumper*bookworm*deb
           git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}

@@ -596,8 +596,8 @@ echo -n '
           cd ${UBUNTU_PATH}
           git checkout conf/distributions'
 for i in ${list_ubuntu_os[@]} ; do
-echo -n "
-          reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
+echo -n '
+          reprepro ${REPREPRO_OPTIONS}'" includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
           git add $(find -type f)
@@ -606,8 +606,8 @@ echo -n '
           git checkout conf/distributions'
 for i in ${list_debian_os[@]} ; 
 do
-echo -n "
-          reprepro ${REPREPRO_OPTIONS} includedeb ${i} /tmp/package/mydumper*${i}*deb"
+echo -n ' 
+          reprepro ${REPREPRO_OPTIONS}'" includedeb ${i} /tmp/package/mydumper*${i}*deb"
 done
 echo -n '
           git add $(find -type f)
