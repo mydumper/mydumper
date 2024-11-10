@@ -564,7 +564,7 @@ echo '
           ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\n\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\n\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
 echo -n '
-  publish-ubuntu-repository:
+  publish-repository:
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
@@ -684,7 +684,7 @@ echo '        filters:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
 
-    - publish-ubuntu-repository:
+    - publish-repository:
         requires:
           - publish-github-release
         filters:
