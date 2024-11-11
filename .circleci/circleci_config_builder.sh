@@ -304,7 +304,7 @@ EOF
 
 for os in el7 el9
 do
-    for vendor in ${list_mysql_version[@]}
+    for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -314,7 +314,7 @@ do
     done
 done
 
-for vendor in ${list_mysql_version[@]}
+for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
 do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
@@ -322,18 +322,6 @@ do
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
 "
-done
-
-for os in ${list_el_os[@]}
-do
-    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
-    do
-        echo "
-  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    steps:
-    - prepare_el_${all_vendors[${vendor}_0]}
-"
-    done
 done
 
 # On apt repositories OS the preparation
