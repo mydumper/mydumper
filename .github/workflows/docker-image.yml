@@ -28,8 +28,7 @@ jobs:
       - name: Build and push Docker image el7
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/el7/Dockerfile
+          context: docker/el7
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el7:latest
@@ -38,8 +37,7 @@ jobs:
       - name: Build and push Docker image el8
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/el8/Dockerfile
+          context: docker/el8
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el8:latest
@@ -48,8 +46,7 @@ jobs:
       - name: Build and push Docker image el9
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/el9/Dockerfile
+          context: docker/el9
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-el9:latest
@@ -58,8 +55,7 @@ jobs:
       - name: Build and push Docker image bionic
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/bionic/Dockerfile
+          context: docker/bionic
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-bionic:latest
@@ -68,8 +64,7 @@ jobs:
       - name: Build and push Docker image bullseye
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/bullseye/Dockerfile
+          context: docker/bullseye
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-bullseye:latest
@@ -78,8 +73,7 @@ jobs:
       - name: Build and push Docker image buster
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/buster/Dockerfile
+          context: docker/buster
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-buster:latest
@@ -88,8 +82,7 @@ jobs:
       - name: Build and push Docker image focal
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/focal/Dockerfile
+          context: docker/focal
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-focal:latest
@@ -98,11 +91,8 @@ jobs:
       - name: Build and push Docker image jammy
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/jammy/Dockerfile
+          context: docker/jammy
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-jammy:latest
           labels: mydumper/mydumper-builder-jammy:latest
-
-          

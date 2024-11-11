@@ -304,7 +304,7 @@ EOF
 
 for os in el7 el9
 do
-    for vendor in ${list_mysql_version[@]}
+    for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -314,7 +314,7 @@ do
     done
 done
 
-for vendor in ${list_mysql_version[@]}
+for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
 do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
@@ -326,7 +326,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
+    for vendor in ${list_mariadb_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -335,6 +335,7 @@ do
 "
     done
 done
+
 
 # On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
