@@ -1301,6 +1301,36 @@ commands:
     - prepare_el_mysql80
 
 
+  prepare_el7_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el7_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el8_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el8_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
+  prepare_el9_mariadb1011:
+    steps:
+    - prepare_el_mariadb1011
+
+
+  prepare_el9_mariadb1006:
+    steps:
+    - prepare_el_mariadb1006
+
+
   prepare_bionic_tidb:
     steps:
     - prepare_ubuntu_percona57
