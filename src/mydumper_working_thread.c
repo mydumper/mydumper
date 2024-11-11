@@ -330,6 +330,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
       if ((detected_server == SERVER_TYPE_MYSQL ||
            detected_server == SERVER_TYPE_MARIADB) &&
+          (row[ecol] == NULL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
 
@@ -1299,6 +1300,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     */
     if ((is_mysql_like() || 
          detected_server == SERVER_TYPE_TIDB ) &&
+        (row[ecol] == NULL ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 
