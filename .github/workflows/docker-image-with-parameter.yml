@@ -33,8 +33,7 @@ jobs:
       - name: Build and push Docker image ${{ github.event.inputs.os }}
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: docker/${{ github.event.inputs.os }}/Dockerfile
+          context: docker/${{ github.event.inputs.os }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: mydumper/mydumper-builder-${{ github.event.inputs.os }}:latest

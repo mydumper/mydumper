@@ -1247,6 +1247,16 @@ commands:
     - prepare_el_mysql84
 
 
+  prepare_el7_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el7_percona80:
+    steps:
+    - prepare_el_percona80
+
+
   prepare_el9_mysql80:
     steps:
     - prepare_el_mysql80
@@ -1257,6 +1267,16 @@ commands:
     - prepare_el_mysql84
 
 
+  prepare_el9_percona57:
+    steps:
+    - prepare_el_percona57
+
+
+  prepare_el9_percona80:
+    steps:
+    - prepare_el_percona80
+
+
   prepare_el8_mysql80:
     steps:
     - run: sudo dnf module disable mysql -y
@@ -1264,6 +1284,18 @@ commands:
 
 
   prepare_el8_mysql84:
+    steps:
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_percona57:
+    steps:
+    - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el8_percona80:
     steps:
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
@@ -1279,16 +1311,6 @@ commands:
     - prepare_el_mariadb1006
 
 
-  prepare_el7_percona57:
-    steps:
-    - prepare_el_percona57
-
-
-  prepare_el7_percona80:
-    steps:
-    - prepare_el_percona80
-
-
   prepare_el8_mariadb1011:
     steps:
     - prepare_el_mariadb1011
@@ -1299,16 +1321,6 @@ commands:
     - prepare_el_mariadb1006
 
 
-  prepare_el8_percona57:
-    steps:
-    - prepare_el_percona57
-
-
-  prepare_el8_percona80:
-    steps:
-    - prepare_el_percona80
-
-
   prepare_el9_mariadb1011:
     steps:
     - prepare_el_mariadb1011
@@ -1317,16 +1329,6 @@ commands:
   prepare_el9_mariadb1006:
     steps:
     - prepare_el_mariadb1006
-
-
-  prepare_el9_percona57:
-    steps:
-    - prepare_el_percona57
-
-
-  prepare_el9_percona80:
-    steps:
-    - prepare_el_percona80
 
 
   prepare_bionic_tidb:
@@ -5765,11 +5767,11 @@ jobs:
         command: |
           ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\n\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\n\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
 
-  publish-ubuntu-repository:
+  publish-repository:
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm
+    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm reprepro
     - attach_workspace:
         at: /tmp/package    
     - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
@@ -5778,9 +5780,11 @@ jobs:
         command: |
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export APT_REPO="testing"
+          export REPREPRO_OPTIONS="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export REPREPRO_OPTIONS=" -C testing "
           export BASE_PATH=$(pwd)
-          export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
-          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export UBUNTU_PATH="apt/ubuntu"
+          export DEBIAN_PATH="apt/debian"
           export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
@@ -5789,35 +5793,24 @@ jobs:
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper_repo.git
           git reset HEAD
           mkdir -p $UBUNTU_PATH $DEBIAN_PATH $YUM_PATH
-
           cd ${BASE_PATH}
           cd ${UBUNTU_PATH}
-          cp /tmp/package/mydumper*bionic*deb /tmp/package/mydumper*focal*deb /tmp/package/mydumper*jammy*deb /tmp/package/mydumper*noble*deb .
-
-          git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
-
+          git checkout conf dists db
+          reprepro ${REPREPRO_OPTIONS} includedeb bionic /tmp/package/mydumper*bionic*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb focal /tmp/package/mydumper*focal*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb jammy /tmp/package/mydumper*jammy*deb
+          reprepro ${REPREPRO_OPTIONS} includedeb noble /tmp/package/mydumper*noble*deb
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
-          cp /tmp/package/mydumper*buster*deb /tmp/package/mydumper*bullseye*deb /tmp/package/mydumper*bookworm*deb .
-
-          git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease
-
+          git checkout conf dists db 
+          reprepro ${REPREPRO_OPTIONS} includedeb buster /tmp/package/mydumper*buster*deb 
+          reprepro ${REPREPRO_OPTIONS} includedeb bullseye /tmp/package/mydumper*bullseye*deb 
+          reprepro ${REPREPRO_OPTIONS} includedeb bookworm /tmp/package/mydumper*bookworm*deb
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}
           cp /tmp/package/mydumper*el7*rpm /tmp/package/mydumper*el8*rpm /tmp/package/mydumper*el9*rpm .
-
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
@@ -5826,7 +5819,6 @@ jobs:
           createrepo_c --update . 
           rm -rf repodata.old*
           git add repodata
-
           cd ${BASE_PATH}
           git commit -m "Upload repo files ${CIRCLE_TAG}" && git push
 
@@ -5867,8 +5859,6 @@ workflows:
     - compile_and_test_mydumper_in_el9_mysql84
     - compile_and_test_mydumper_in_buster_percona57
     - compile_and_test_mydumper_in_buster_percona80
-    - compile_and_test_mydumper_in_buster_mariadb1011
-    - compile_and_test_mydumper_in_buster_mariadb1006
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011
@@ -5991,7 +5981,7 @@ workflows:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
 
-    - publish-ubuntu-repository:
+    - publish-repository:
         requires:
           - publish-github-release
         filters:

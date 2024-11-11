@@ -180,7 +180,7 @@ list_compile=(
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
-  "buster_percona57"   "buster_percona80"   "buster_mariadb1011"   "buster_mariadb1006"
+  "buster_percona57"   "buster_percona80"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
 
@@ -304,7 +304,7 @@ EOF
 
 for os in el7 el9
 do
-    for vendor in ${list_mysql_version[@]}
+    for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -314,7 +314,7 @@ do
     done
 done
 
-for vendor in ${list_mysql_version[@]}
+for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
 do
   echo "
   prepare_el8_${all_vendors[${vendor}_0]}:
@@ -326,7 +326,7 @@ done
 
 for os in ${list_el_os[@]}
 do
-    for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]}
+    for vendor in ${list_mariadb_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
@@ -335,6 +335,7 @@ do
 "
     done
 done
+
 
 # On apt repositories OS the preparation
 for os in ${list_ubuntu_os[@]} ${list_debian_os[@]}
@@ -563,12 +564,12 @@ echo '
         command: |
           ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\n\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\n\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
-echo '
-  publish-ubuntu-repository:
+echo -n '
+  publish-repository:
     docker:
       - image: mydumper/mydumper-builder-noble
     steps:
-    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm
+    - run: sudo apt install -y git dpkg-dev apt-utils createrepo-c rpm reprepro
     - attach_workspace:
         at: /tmp/package    
     - run: echo ${MYDUMPER_REPO_PK} | base64 -d | gpg --import
@@ -577,9 +578,11 @@ echo '
         command: |
           cd mydumper_repo/
           export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export APT_REPO="testing"
+          export REPREPRO_OPTIONS="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export REPREPRO_OPTIONS=" -C testing "
           export BASE_PATH=$(pwd)
-          export UBUNTU_PATH="apt/ubuntu/${DIR_SUFFIX}"
-          export DEBIAN_PATH="apt/debian/${DIR_SUFFIX}"
+          export UBUNTU_PATH="apt/ubuntu"
+          export DEBIAN_PATH="apt/debian"
           export YUM_PATH="yum/${DIR_SUFFIX}"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
@@ -592,43 +595,30 @@ echo '
 echo -n '
           cd ${BASE_PATH}
           cd ${UBUNTU_PATH}
-          cp '
-echo -n $(for i in ${list_ubuntu_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
- 	  echo ' .'
-
-echo '
-          git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease'
-
+          git checkout conf dists db'
+for i in ${list_ubuntu_os[@]} ; do
 echo -n '
+          reprepro ${REPREPRO_OPTIONS}'" includedeb ${i} /tmp/package/mydumper*${i}*deb"
+done
+echo -n '
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
-          cp '
-echo -n $(for i in ${list_debian_os[@]} ; do echo "/tmp/package/mydumper*${i}*deb"; done )
-          echo ' .'
-
-echo '
-          git add *.deb
-          dpkg-scanpackages --multiversion . > Packages
-          gzip -k -f Packages
-          apt-ftparchive release . > Release
-          gpg --default-key "david.ducos@gmail.com" -abs -o - Release > Release.gpg
-          gpg --default-key "david.ducos@gmail.com" --clearsign -o - Release > InRelease
-          git add Packages* Release* InRelease'
-
+          git checkout conf dists db'
+for i in ${list_debian_os[@]} ; 
+do
+echo -n ' 
+          reprepro ${REPREPRO_OPTIONS}'" includedeb ${i} /tmp/package/mydumper*${i}*deb"
+done
 echo -n '
+          git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}
           cp '
 echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; done )
-          echo ' .'
+          echo -n ' .'
 
-echo '
+echo -n '
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
@@ -695,7 +685,7 @@ echo '        filters:
 #            only: /.*/
             only: /^v\d+\.\d+\.\d+-\d+$/
 
-    - publish-ubuntu-repository:
+    - publish-repository:
         requires:
           - publish-github-release
         filters:

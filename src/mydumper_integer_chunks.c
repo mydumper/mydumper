@@ -54,13 +54,13 @@ void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union t
     cs->integer_step.type.unsign.min = type.unsign.min;
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
-    cs->integer_step.step = step!=0?step:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads;
+    cs->integer_step.step = step!=0?step:((cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads>MAX_CHUNK_STEP_SIZE?MAX_CHUNK_STEP_SIZE:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads);
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step:1;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
-    cs->integer_step.step = step!=0?step:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1;
+    cs->integer_step.step = step!=0?step:(gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1 > MAX_CHUNK_STEP_SIZE?MAX_CHUNK_STEP_SIZE:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1);
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step:1;
   }
   cs->integer_step.is_step_fixed_length = is_step_fixed_length;
@@ -592,14 +592,16 @@ if (cs->integer_step.is_unsigned){
       GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
       g_date_time_unref(from);
       g_date_time_unref(to);
-      if (diff > 2){
+      if (diff > MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  / 2;
         cs->integer_step.step=cs->integer_step.step<csi->chunk_step->integer_step.min_chunk_step_size?csi->chunk_step->integer_step.min_chunk_step_size:cs->integer_step.step;
 //    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
-      }else if (diff < 1){
+      }else if (diff < MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
         if (max_chunk_step_size!=0)
           cs->integer_step.step=cs->integer_step.step>csi->chunk_step->integer_step.max_chunk_step_size?csi->chunk_step->integer_step.max_chunk_step_size:cs->integer_step.step;
+        if (cs->integer_step.step > MAX_CHUNK_STEP_SIZE )
+          cs->integer_step.step=MAX_CHUNK_STEP_SIZE;        
 //    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
       }
     }
