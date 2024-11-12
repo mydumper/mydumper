@@ -19,7 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#define MIN_CHUNK_STEP_SIZE 10
+#define MIN_CHUNK_STEP_SIZE 1000
 
 guint64 gint64_abs(gint64 a);
 void load_chunks_entries(GOptionContext *context);
