@@ -27,6 +27,7 @@
 
 #include <glib/gstdio.h>
 #include <locale.h>
+#include <errno.h>
 
 #include "myloader_stream.h"
 #include "myloader_process.h"
