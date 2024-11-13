@@ -53,7 +53,8 @@ void initialize_common(){
     gchar** ignore_set_items= g_strsplit(ignore_set, ",", 0);
     guint i=0;
     for (i=0; g_strv_length(ignore_set_items)>i; i++){
-      ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf(" %s",ignore_set_items[i]));
+      g_message("Adding to ignore_st_list: %s", ignore_set_items[i]);
+      ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     }
     g_strfreev(ignore_set_items);
   }
@@ -70,7 +71,8 @@ void initialize_common(){
 gboolean is_in_list(gchar *haystack, GList *list){
   GList *l=list;
   while(l){
-    if (g_strrstr(haystack, l->data)){
+    g_message("comparing: %s  %s", haystack, (gchar *)(l->data));
+    if (!g_ascii_strcasecmp(haystack, l->data)){
       return TRUE;
     }
     l=l->next;

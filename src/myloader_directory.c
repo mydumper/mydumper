@@ -26,9 +26,30 @@
 #include <string.h>
 #include "myloader_global.h"
 
+GAsyncQueue *metadata_sync_queue=NULL;
+
+void initialize_directory(){
+  metadata_sync_queue=g_async_queue_new();
+}
+
+void wait_directory_to_process_metadata(){
+  g_async_queue_pop(metadata_sync_queue);
+  g_async_queue_unref(metadata_sync_queue);
+}
+
 void *process_directory(struct configuration *conf){
   GError *error = NULL;
   const gchar *filename = NULL;
+  /*
+    set_db_schema_created() depends on sequences variable. It will not be
+    updated until metadata is read. If DB schema is processed before metadata
+    we will get wrong condition (sequences == sequences_processed == 0).
+  */
+  if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
+    process_metadata_global("metadata");
+    g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
+  }else
+    g_error("metadata file was not found");
   if (resume){
     g_message("Using resume file");
     FILE *file = g_fopen("resume", "r");
@@ -51,15 +72,6 @@ void *process_directory(struct configuration *conf){
     } 
     fclose(file);
   }else{
-    /*
-      set_db_schema_created() depends on sequences variable. It will not be
-      updated until metadata is read. If DB schema is processed before metadata
-      we will get wrong condition (sequences == sequences_processed == 0).
-    */
-    if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR))
-    {
-      process_metadata_global("metadata");
-    }
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
       if (strcmp(filename, "metadata"))

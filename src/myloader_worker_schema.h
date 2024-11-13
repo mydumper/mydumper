@@ -17,5 +17,6 @@
 #include "myloader.h"
 
 void initialize_worker_schema(struct configuration *conf);
+void start_worker_schema();
 void wait_schema_worker_to_finish();
 void schema_queue_push(enum file_type current_ft);

@@ -29,7 +29,8 @@ struct statement{
 //  struct thread_data *td;
 };
 
-void initialize_connection_pool(MYSQL *thrconn);
+void initialize_connection_pool();
+void start_connection_pool(MYSQL *thrconn);
 
 int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
 int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...);

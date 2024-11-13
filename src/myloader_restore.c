@@ -52,17 +52,11 @@ struct connection_data *new_connection_data(MYSQL *thrconn){
     m_connect(cd->thrconn);
   }
   cd->current_database=NULL;
-/*  if (!database_db){
-    cd->current_database=database_db;
-    if (execute_use(cd)){
-      m_critical("S-Thread %d: Error switching to database `%s` when initializing", cd->thread_id, cd->current_database->real_database);
-    }
-  }
-  */
   cd->thread_id=mysql_thread_id(cd->thrconn);
   cd->ready=g_async_queue_new();
   cd->queue=NULL;
   cd->in_use=g_mutex_new();
+  g_message("Executing set session");
   execute_gstring(cd->thrconn, set_session);
   g_async_queue_push(connection_pool,cd);
   return cd;
@@ -76,7 +70,7 @@ struct io_restore_result *new_io_restore_result(){
 
 gchar *ignore_errors=NULL;
 
-void initialize_connection_pool(MYSQL *thrconn){
+void initialize_connection_pool(){
   guint n=0;
   if (ignore_errors){
     gchar **tmp_ignore_errors_list = g_strsplit(ignore_errors, ",", 0);
@@ -93,11 +87,19 @@ void initialize_connection_pool(MYSQL *thrconn){
   for (n = 0; n < num_threads; n++) {
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
-    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
-    thrconn=NULL;
+//    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
+//    thrconn=NULL;
   }
   for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
+  }
+}
+
+void start_connection_pool(MYSQL *thrconn){
+  guint n=0;
+  for (n = 0; n < num_threads; n++) {
+    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
+    thrconn=NULL;
   }
 }
 
@@ -167,16 +169,6 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
   if (mysql_ping(cd->thrconn)) {
     g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->thread_id);
     reconnect_connection_data(cd);
-/*    if (mysql_thread_id(cd->thrconn) == cd->thread_id ){
-      mysql_close(cd->thrconn);
-      cd->thrconn=mysql_init(NULL);
-      m_connect(cd->thrconn);
-      execute_use(cd);
-    }
-    cd->thread_id=mysql_thread_id(cd->thrconn);
-    g_warning("Thread %d: New connection %ld established", td->thread_id, cd->thread_id);
-    execute_gstring(cd->thrconn, set_session);
-    */
     g_warning("Thread %d: New connection %ld established", td->thread_id, cd->thread_id);
   }
   cd->transaction=start_transaction;

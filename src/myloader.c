@@ -320,7 +320,7 @@ int main(int argc, char *argv[]) {
       }
       char *p = g_strdup_printf("%s/metadata", directory);
       if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
-        m_critical("the specified directory %s is not a mydumper backup",directory);
+        m_critical("the specified directory %s is not a mydumper backup as metadata file was not found in it",directory);
       }
 //      initialize_directory();
     }
@@ -452,21 +452,8 @@ int main(int argc, char *argv[]) {
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
   }
-  refresh_set_session_from_hash(set_session,set_session_hash);
-  refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
-  execute_gstring(conn, set_session);
-  execute_gstring(conn, set_global);
 	initialize_conf_per_table(&conf_per_table);
   load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
-
-  if (disable_redo_log){
-    if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
-      g_message("Disabling redologs");
-      m_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", m_critical, "DISABLE INNODB REDO LOG failed");
-    }else{
-      m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
-    }
-  }
 
   // To here.
   conf.database_queue = g_async_queue_new();
@@ -494,16 +481,9 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  initialize_connection_pool(conn);
+  initialize_connection_pool();
   struct thread_data *t=g_new(struct thread_data,1);
   initialize_thread_data(t, &conf, WAITING, 0, NULL);
-//  t.connection_data.thrconn = conn;
-
-  if (database_db){
-    if (!no_schemas)
-      create_database(t, database_db->real_database);
-    database_db->schema_state=CREATED;
-  }
 
   if (tables_list)
     tables = get_table_list(tables_list);
@@ -521,15 +501,49 @@ int main(int argc, char *argv[]) {
       m_critical("We don't expect to find resume files in a stream scenario");
     }
     initialize_stream(&conf);
+  }else{
+    initialize_directory();
+    g_thread_new("myloader_directory",(GThreadFunc)process_directory, &conf);
   }
 
+  if (!stream){
+    wait_directory_to_process_metadata();
+  }
+
+  refresh_set_session_from_hash(set_session,set_session_hash);
+  refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
+  execute_gstring(conn, set_session);
+  execute_gstring(conn, set_global);
+
+  if (!stream){
+    wait_directory_to_process_metadata();
+  }
+
+  start_connection_pool(conn);
+  if (disable_redo_log){
+    if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
+      g_message("Disabling redologs");
+      m_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", m_critical, "DISABLE INNODB REDO LOG failed");
+    }else{
+      m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
+    }
+  }
+
+  start_connection_pool(conn);
+
+  if (database_db){
+    if (!no_schemas)
+      create_database(t, database_db->real_database);
+    database_db->schema_state=CREATED;
+  }
+  start_worker_schema();
   initialize_loader_threads(&conf);
 
   if (stream){
     wait_stream_to_finish();
-  }else{
-    process_directory(&conf);
   }
+
+
   GList * tl=conf.table_list;
   while (tl != NULL){
     if(((struct db_table *)(tl->data))->max_connections_per_job==1){

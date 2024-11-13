@@ -72,7 +72,7 @@ void set_db_schema_created(struct database * real_db_name, struct configuration 
   }
 }
 
-
+static
 void set_table_schema_state_to_created (struct configuration *conf){
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
@@ -91,8 +91,6 @@ void set_table_schema_state_to_created (struct configuration *conf){
 gboolean second_round=FALSE;
 /* @return TRUE: continue worker_schema_thread() loop */
 gboolean process_schema(struct thread_data * td){
-
-
   enum file_type ft;
   GHashTableIter iter;
   gchar * lkey=NULL;
@@ -215,8 +213,6 @@ gboolean process_schema(struct thread_data * td){
   return ret;
 }
 
-static GMutex *init_connection_mutex=NULL;
-
 void *worker_schema_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
 
@@ -236,17 +232,21 @@ GThread **schema_threads = NULL;
 
 void initialize_worker_schema(struct configuration *conf){
   guint n=0;
-  init_connection_mutex = g_mutex_new();
   refresh_db_queue2 = g_async_queue_new();
   schema_threads = g_new(GThread *, max_threads_for_schema_creation);
   schema_td = g_new(struct thread_data, max_threads_for_schema_creation);
   g_message("Initializing initialize_worker_schema");
-  for (n = 0; n < max_threads_for_schema_creation; n++) {
+  for (n = 0; n < max_threads_for_schema_creation; n++) 
     initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
+}
+
+void start_worker_schema(){
+  guint n=0;
+  for (n = 0; n < max_threads_for_schema_creation; n++)
     schema_threads[n] =
         g_thread_new("myloader_schema",(GThreadFunc)worker_schema_thread, &schema_td[n]);
-  }
 }
+
 
 void wait_schema_worker_to_finish(){
   guint n=0;

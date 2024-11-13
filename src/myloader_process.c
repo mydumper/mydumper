@@ -613,6 +613,7 @@ void process_metadata_global(const char *file)
     }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
       change_master(kf, group, change_master_statement);
     }else if (g_strstr_len(group, 26,"myloader_session_variables")){
+      g_message("myloader_session_variables found on metadata");
       load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
       refresh_set_session_from_hash(set_session,set_session_hash);
     } else {
