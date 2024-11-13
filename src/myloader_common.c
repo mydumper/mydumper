@@ -324,13 +324,17 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 
 */
 gboolean execute_use(struct connection_data *cd){
-  gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
-  if (mysql_query(cd->thrconn, query)) {
+  if (cd->current_database){
+    gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
+    if (mysql_query(cd->thrconn, query)) {
 //    g_critical("Thread %d: Error switching to database `%s` %s", cd->thread_id, cd->current_database, msg);
+      g_free(query);
+      return TRUE;
+    }
     g_free(query);
-    return TRUE;
+  }else{
+    g_warning("Thread %ld: Not able to switch database", cd->thread_id);
   }
-  g_free(query);
   return FALSE;
 }
 
