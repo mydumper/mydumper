@@ -510,14 +510,11 @@ int main(int argc, char *argv[]) {
     wait_directory_to_process_metadata();
   }
 
+  remove_ignore_set_session_from_hash();
   refresh_set_session_from_hash(set_session,set_session_hash);
   refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
-
-  if (!stream){
-    wait_directory_to_process_metadata();
-  }
 
   start_connection_pool(conn);
   if (disable_redo_log){

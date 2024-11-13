@@ -48,6 +48,7 @@ void *process_directory(struct configuration *conf){
   if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
     process_metadata_global("metadata");
     g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
+    g_message("metadata pushed");
   }else
     g_error("metadata file was not found");
   if (resume){
