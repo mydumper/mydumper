@@ -529,7 +529,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  start_connection_pool(conn);
+//  start_connection_pool(conn);
 
   if (database_db){
     if (!no_schemas)
