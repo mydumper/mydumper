@@ -31,7 +31,6 @@ void start_working_thread(struct configuration *conf );
 void finalize_working_thread();
 
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
-void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_transactional);
 void build_lock_tables_statement(struct configuration *conf);
 void check_pause_resume( struct thread_data *td );

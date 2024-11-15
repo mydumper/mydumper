@@ -42,18 +42,15 @@ gboolean clear_dumpdir= FALSE;
 gboolean dirty_dumpdir= FALSE;
 gchar *ignore_engines_str = NULL;
 int skip_tz = 0;
-
 gboolean dump_events = FALSE;
 gboolean dump_routines = FALSE;
 gboolean no_dump_views = FALSE;
 gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
-
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
-
 gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
 
@@ -78,8 +75,13 @@ static guint less_locking_threads = 0;
 static GHashTable *character_set_hash=NULL;
 static GMutex *character_set_hash_mutex = NULL;
 static const guint tablecol= 0;
+static GThread **threads=NULL;
+static struct thread_data *thread_data;
 
+static
 void dump_database_thread(MYSQL *, struct configuration*, struct database *);
+static
+void *working_thread(struct thread_data *td);
 
 void initialize_working_thread(){
   database_counter = 0;
@@ -159,12 +161,8 @@ void initialize_working_thread(){
     schema_checksums = TRUE;
     routine_checksums = TRUE;
   }
-
 }
 
-
-GThread **threads=NULL;
-struct thread_data *thread_data;
 void start_working_thread(struct configuration *conf ){
   guint n;
   threads = g_new(GThread *, num_threads );
@@ -812,6 +810,7 @@ void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
   dbt->estimated_remaining_steps=total;
 }
 
+static
 void *working_thread(struct thread_data *td) {
   // mysql_init is not thread safe, especially in Connector/C
   g_mutex_lock(init_mutex);
@@ -898,6 +897,7 @@ void *working_thread(struct thread_data *td) {
   return NULL;
 }
 
+static
 GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
@@ -933,7 +933,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   return field_list;
 }
 
-
+static
 gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
@@ -961,7 +961,7 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   return FALSE;
 }
 
-
+static
 struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
   // TODO #364: this is the place where we need to link the column between file loaded and dbt.
   // Currently, we are using identity_function, which return the same data.
@@ -1002,6 +1002,7 @@ struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *datab
   return anonymized_function_list;
 }
 
+static
 gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
@@ -1031,6 +1032,7 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   return result;
 }
 
+static
 gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   g_mutex_lock(character_set_hash_mutex);
   gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
@@ -1255,6 +1257,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   }
 }
 
+static
 gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct database *database){
   char *query;
   MYSQL_RES *result = mysql_store_result(conn);
@@ -1323,6 +1326,7 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   return FALSE;
 }
 
+static
 void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
 
   const char *query= "SHOW TABLE STATUS";
