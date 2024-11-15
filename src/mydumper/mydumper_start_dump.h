@@ -14,7 +14,6 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include <pcre.h>
 
 struct MList;
 
@@ -381,11 +380,10 @@ struct fifo{
 #endif
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
-void initialize_start_dump();
 void start_dump();
 void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
 void set_disk_limits(guint p_at, guint r_at);
-void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
+//void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt);
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data);

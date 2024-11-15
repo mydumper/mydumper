@@ -18,29 +18,24 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include <mysql.h>
-#include <glib.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <errno.h>
-#include <glib/gstdio.h>
+
 #include <gio/gio.h>
-#include <math.h>
+
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
-#include "mydumper_chunks.h"
 #include "mydumper_database.h"
 #include "mydumper_jobs.h"
 #include "mydumper_global.h"
 #include "mydumper_write.h"
 #include "mydumper_common.h"
+#include "mydumper_chunks.h"
 #include "mydumper_integer_chunks.h"
 #include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
 
 GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
+GThread *chunk_builder=NULL;
 
 void initialize_chunk(){
   give_me_another_innodb_chunk_step_queue=g_async_queue_new();
@@ -48,38 +43,25 @@ void initialize_chunk(){
   initialize_char_chunk();
 }
 
+void start_chunk_builder(struct configuration *conf){
+  if (!no_data){
+    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, conf, TRUE, NULL);
+  }
+}
+
 void finalize_chunk(){
   g_async_queue_unref(give_me_another_innodb_chunk_step_queue); 
   g_async_queue_unref(give_me_another_non_innodb_chunk_step_queue);
+  if (!no_data){
+    g_thread_join(chunk_builder);
+  }
+
 }
 
 void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
   (void)csi;
   write_table_job_into_file(tj);
 }
-
-/*
-union chunk_step *get_next_chunk(struct db_table *dbt){
-  switch (dbt->chunk_type){
-    case CHAR: 
-      return get_next_char_chunk(dbt);
-      break;
-    case INTEGER:
-      return get_next_integer_chunk(dbt);
-      break;
-    case PARTITION:
-      return get_next_partition_chunk(dbt);
-      break;
-    case MULTICOLUMN_INTEGER:
-      return get_next_multicolumn_integer_chunk(dbt);
-      break;
-    default:
-      break;
-  }
-  return NULL;
-}
-*/
-
 
 void initialize_chunk_step_as_none(struct chunk_step_item * csi){
   csi->chunk_type=NONE;
@@ -297,13 +279,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   if (rows > (dbt->min_chunk_step_size!=0?dbt->min_chunk_step_size:MIN_CHUNK_STEP_SIZE)){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
-//      csi = g_new0(struct chunk_step_item, 1);
-//      csi->chunk_step=NULL;
       partitions = get_partitions_for_table(conn, dbt);
-//      csi->chunk_type=PARTITION;
-//      csi->chunk_functions.process = &process_partition_chunk;
-//      csi->chunk_functions.get_next = &get_next_partition_chunk;
-//      csi->chunk_step=new_real_partition_step(partitions,0,0);
     }
     if (partitions){
       csi=new_real_partition_step_item(partitions,0,0);
@@ -323,73 +299,6 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   dbt->status=READY;
   g_mutex_unlock(dbt->chunks_mutex);
 }
-
-void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
-  MYSQL_RES *indexes = NULL;
-  MYSQL_ROW row;
-//  char *field = NULL;
-  dbt->primary_key=NULL;
-  /* first have to pick index, in future should be able to preset in
- *    * configuration too */
-  gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  mysql_query(conn, query);
-  g_free(query);
-  indexes = mysql_store_result(conn);
-
-  if (indexes){
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[2], "PRIMARY") ) {
-        /* Pick first column in PK, cardinality doesn't matter */
-        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
-//        field = g_strdup(row[4]);
-//        break;
-      }
-    }
-    if (dbt->primary_key)
-      goto cleanup;
-
-    /* If no PK found, try using first UNIQUE index */
-    mysql_data_seek(indexes, 0);
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[1], "0")) {
-        /* Again, first column of any unique index */
-        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
-//          field = g_strdup(row[4]);
-//          break;
-      }
-    }
-    
-    if (dbt->primary_key)
-      goto cleanup;
-
-    /* Still unlucky? Pick any high-cardinality index */
-    if (!dbt->primary_key && conf->use_any_index) {
-      guint64 max_cardinality = 0;
-      guint64 cardinality = 0;
-      gchar *field=NULL;
-      mysql_data_seek(indexes, 0);
-      while ((row = mysql_fetch_row(indexes))) {
-        if (!strcmp(row[3], "1")) {
-          if (row[6])
-            cardinality = strtoul(row[6], NULL, 10);
-          if (cardinality > max_cardinality) {
-            field = g_strdup(row[4]);
-            max_cardinality = cardinality;
-          }
-        }
-      }
-      if (field)
-        dbt->primary_key=g_list_append(dbt->primary_key,field);
-    }
-  }
-
-cleanup:
-  if (indexes)
-    mysql_free_result(indexes);
-//  return field;
-}
-
 
 gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list){
   g_mutex_lock(dbt_list->mutex);

@@ -21,18 +21,21 @@
 
 #define MIN_CHUNK_STEP_SIZE 1000
 
+
+void initialize_chunk();
+void start_chunk_builder(struct configuration *conf);
+
+
 guint64 gint64_abs(gint64 a);
 void load_chunks_entries(GOptionContext *context);
 GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
-void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf);
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt);
 void free_char_step(union chunk_step * cs);
 void free_integer_step(union chunk_step * cs);
 union chunk_step *get_next_chunk(struct db_table *dbt);
 gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min);
 void *chunk_builder_thread(struct configuration *conf);
-void initialize_chunk();
 void finalize_chunk();
 extern GAsyncQueue *give_me_another_innodb_chunk_step_queue;
 extern GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;

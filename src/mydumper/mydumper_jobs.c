@@ -920,10 +920,6 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   write_table_definition_into_file(td->thrconn, sj->dbt, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
   free_schema_job(sj);
   g_free(job);
-//  if (g_atomic_int_dec_and_test(&table_counter)) {
-//    g_message("Unlocing ready_table_dump_mutex");
-//    g_mutex_unlock(ready_table_dump_mutex);
-//  }
 }
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){

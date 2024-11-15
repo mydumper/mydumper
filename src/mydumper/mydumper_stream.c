@@ -14,21 +14,14 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-//#include "string.h"
-#include <mysql.h>
+
 #include <glib/gstdio.h>
-#include <stdlib.h>
-#include <glib.h>
-#include <stdio.h>
 #include <sys/file.h>
 #include <errno.h>
-#include <fcntl.h>
+
 #include "mydumper.h"
 #include "mydumper_global.h"
-#include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
-
-extern GAsyncQueue *stream_queue;
 
 GThread *stream_thread = NULL;
 GThread *metadata_partial_writer_thread = NULL;
@@ -36,6 +29,7 @@ gboolean metadata_partial_writer_alive = TRUE;
 GAsyncQueue *metadata_partial_queue = NULL;
 GAsyncQueue * initial_metadata_lock_queue = NULL;
 GAsyncQueue * initial_metadata_queue = NULL;
+
 void metadata_partial_queue_push (struct db_table *dbt){
   if (dbt)
     g_async_queue_push(metadata_partial_queue, dbt);

@@ -30,21 +30,17 @@
 #include <gio/gio.h>
 #include <glib-unix.h>
 #include <locale.h>
+
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_daemon_thread.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
-const char DIRECTORY[] = "export";
 
-/* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
-#ifndef MYSQL_TYPE_JSON
-#define MYSQL_TYPE_JSON 245
-#endif
+const char DIRECTORY[] = "export";
 
 /* Program options */
 gchar *output_directory = NULL;
-gchar *output_directory_param = NULL;
 gchar *dump_directory = NULL;
 gboolean daemon_mode = FALSE;
 gchar *disk_limits=NULL;
@@ -137,7 +133,7 @@ int main(int argc, char *argv[]) {
   hide_password(argc, argv);
   ask_password();
 
-  if (!output_directory_param){
+  if (!output_directory_str){
     GDateTime * datetime = g_date_time_new_now_local();
     char *datetimestr;
     datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
@@ -145,7 +141,7 @@ int main(int argc, char *argv[]) {
     g_free(datetimestr);
     g_date_time_unref(datetime);
   }else{
-    output_directory=output_directory_param;
+    output_directory=output_directory_str;
   }
 
   if (help){

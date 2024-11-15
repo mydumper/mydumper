@@ -19,52 +19,22 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#define _LARGEFILE64_SOURCE
-#define _FILE_OFFSET_BITS 64
-
 #include <mysql.h>
 
-#if defined MARIADB_CLIENT_VERSION_STR && !defined MYSQL_SERVER_VERSION
-#define MYSQL_SERVER_VERSION MARIADB_CLIENT_VERSION_STR
-#endif
-
-#include <unistd.h>
-#include <stdio.h>
-#include <string.h>
-#include <glib.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <errno.h>
-#include <time.h>
-#include <pcre.h>
-#include <signal.h>
 #include <glib/gstdio.h>
-#include <glib/gerror.h>
-#include <gio/gio.h>
-#include <glib-unix.h>
-#include <math.h>
-#include <sys/statvfs.h>
 
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
-#include "mydumper_jobs.h"
 #include "mydumper_common.h"
 #include "mydumper_stream.h"
 #include "mydumper_database.h"
-#include "mydumper_working_thread.h"
-#include "mydumper_masquerade.h"
 #include "mydumper_jobs.h"
 #include "mydumper_chunks.h"
-#include "mydumper_write.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_file_handler.h"
 
-/* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
-#ifndef MYSQL_TYPE_JSON
-#define MYSQL_TYPE_JSON 245
-#endif
-
+#include "mydumper_working_thread.h"
 
 gboolean order_by_primary_key = FALSE;
 GMutex *init_mutex = NULL;
@@ -197,7 +167,6 @@ void initialize_working_thread(){
 
 }
 
-
 void finalize_working_thread(){
   g_hash_table_destroy(character_set_hash);
   g_mutex_free(character_set_hash_mutex);
@@ -214,6 +183,65 @@ void finalize_working_thread(){
   finalize_chunk();
 }
 
+void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
+  MYSQL_RES *indexes = NULL;
+  MYSQL_ROW row;
+  dbt->primary_key=NULL;
+  // first have to pick index, in future should be able to preset in
+  //    * configuration too 
+  gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+  mysql_query(conn, query);
+  g_free(query);
+  indexes = mysql_store_result(conn);
+
+  if (indexes){
+    while ((row = mysql_fetch_row(indexes))) {
+      if (!strcmp(row[2], "PRIMARY") ) {
+        // Pick first column in PK, cardinality doesn't matter
+        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
+      }
+    }
+    if (dbt->primary_key)
+      goto cleanup;
+
+    // If no PK found, try using first UNIQUE index
+    mysql_data_seek(indexes, 0);
+    while ((row = mysql_fetch_row(indexes))) {
+      if (!strcmp(row[1], "0")) {
+        // Again, first column of any unique index 
+        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
+      }
+    }
+
+    if (dbt->primary_key)
+      goto cleanup;
+
+    // Still unlucky? Pick any high-cardinality index 
+    if (!dbt->primary_key && conf->use_any_index) {
+      guint64 max_cardinality = 0;
+      guint64 cardinality = 0;
+      gchar *field=NULL;
+      mysql_data_seek(indexes, 0);
+      while ((row = mysql_fetch_row(indexes))) {
+        if (!strcmp(row[3], "1")) {
+          if (row[6])
+            cardinality = strtoul(row[6], NULL, 10);
+          if (cardinality > max_cardinality) {
+            field = g_strdup(row[4]);
+            max_cardinality = cardinality;
+          }
+        }
+      }
+      if (field)
+        dbt->primary_key=g_list_append(dbt->primary_key,field);
+    }
+  }
+
+cleanup:
+  if (indexes)
+    mysql_free_result(indexes);
+}
 
 void thd_JOB_TABLE(struct thread_data *td, struct job *job){
   struct dump_table_job *dtj=(struct dump_table_job *)job->job_data;
@@ -487,6 +515,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
   }
 }
 
+static
 void check_connection_status(struct thread_data *td){
   if (detected_server == SERVER_TYPE_TIDB) {
     // Worker threads must set their tidb_snapshot in order to be safe

@@ -15,26 +15,58 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <stddef.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <glib.h>
 #include <glib/gstdio.h>
-#include <glib/gerror.h>
-#include <gio/gio.h>
-#include <mysql.h>
-#include "mydumper_start_dump.h"
+
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
+
+
+gchar *pmm_resolution = NULL;
+gchar *pmm_path = NULL;
+
 gint kill_pmm = 0;
 GMutex *pmm_mutex=NULL;
 const gchar* filename=NULL;
+GThread *pmm_thread = NULL;
 
-void kill_pmm_thread(){
-  g_mutex_lock(pmm_mutex);
-  kill_pmm=1;
-  remove(filename);
-  g_mutex_unlock(pmm_mutex);
+gboolean pmm=FALSE;
+
+
+void *worker_pmm_thread(void *conf);
+
+void initialize_pmm(){
+  if (pmm_path){
+    pmm=TRUE;
+    if (!pmm_resolution){
+      pmm_resolution=g_strdup("high");
+    }
+  }else if (pmm_resolution){
+    pmm=TRUE;
+    pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
+  }
+}
+
+void start_pmm_thread(struct configuration *conf){
+  if (pmm){
+    g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
+    GError *serror;
+    pmm_thread =
+        g_thread_create(worker_pmm_thread, conf, FALSE, &serror);
+    if (pmm_thread == NULL) {
+      m_critical("Could not create pmm thread: %s", serror->message);
+      g_error_free(serror);
+    }
+  }
+}
+
+void stop_pmm_thread(){
+  if (pmm){
+    g_mutex_lock(pmm_mutex);
+    kill_pmm=1;
+    remove(filename);
+    g_mutex_unlock(pmm_mutex);
+    g_thread_join(pmm_thread);
+  }
 }
 
 void append_pmm_entry(GString *content, const gchar *metric, const gchar *_key, guint64 value){
@@ -75,7 +107,7 @@ void write_pmm_entries(GString *content, struct configuration* conf){
   g_file_set_contents( filename , content->str, content->len, NULL);
 }
 
-void *pmm_thread(void *conf){
+void *worker_pmm_thread(void *conf){
   pmm_mutex = g_mutex_new();
   g_mutex_lock(pmm_mutex);
   filename=g_strdup_printf("%s/mydumper.prom",pmm_path);

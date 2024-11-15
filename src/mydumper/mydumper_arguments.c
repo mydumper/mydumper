@@ -18,16 +18,20 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
+
 #include <glib/gstdio.h>
 #include <gio/gio.h>
+
 #include "mydumper.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_common.h"
+
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
 guint output_format=SQL_INSERT;
+gchar *output_directory_str = NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -78,7 +82,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
 
 static GOptionEntry entries[] = {
     {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
-    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_param,
+    {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_str,
      "Directory to output files to", NULL},
     {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
      "Clear output directory before dumping", NULL},
@@ -86,8 +90,6 @@ static GOptionEntry entries[] = {
      "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
-//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-//      "It will not delete the files after stream has been completed. It will be depercated and removed after v0.12.7-1. Used --stream", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
@@ -128,7 +130,6 @@ static GOptionEntry extra_entries[] = {
 static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
-
     {"no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks,
      "Do not execute the temporary shared read lock.  WARNING: This will cause "
      "inconsistent backups",
@@ -146,7 +147,6 @@ static GOptionEntry lock_entries[] = {
      "Transactional consistency only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 static GOptionEntry query_running_entries[] = {
     {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
@@ -177,7 +177,6 @@ static GOptionEntry pmm_entries[] = {
       "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-
 static GOptionEntry daemon_entries[] = {
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
      NULL},
@@ -187,7 +186,6 @@ static GOptionEntry daemon_entries[] = {
      NULL},
     {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 static GOptionEntry chunks_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
@@ -201,9 +199,7 @@ static GOptionEntry chunks_entries[] = {
      NULL},
     { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
       "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}
-};
-
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
@@ -297,7 +293,6 @@ static GOptionEntry statement_entries[] = {
       "Sets the names, use it at your own risk, default binary", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-
 GOptionContext * load_contex_entries(){
 
   GOptionContext *context = g_option_context_new("multi-threaded MySQL dumping");
@@ -308,7 +303,6 @@ GOptionContext * load_contex_entries(){
   g_option_group_add_entries(main_group, common_entries);
 
   load_connection_entries(context);
-//  g_option_group_add_entries(connection_group, common_connection_entries);
 
   GOptionGroup *filter_group = load_regex_entries(context);
   g_option_group_add_entries(filter_group, filter_entries);
@@ -359,8 +353,5 @@ GOptionContext * load_contex_entries(){
   g_option_context_set_main_group(context, main_group);
 
 return context;
-
 }
-
-
 

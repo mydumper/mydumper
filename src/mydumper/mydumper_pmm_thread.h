@@ -15,5 +15,6 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void *pmm_thread(void *data);
-void kill_pmm_thread();
+void initialize_pmm();
+void start_pmm_thread(struct configuration *conf);
+void stop_pmm_thread();

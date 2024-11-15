@@ -30,5 +30,5 @@
 #define CLICKHOUSE 3
 #define SQL "sql"
 #define DAT "dat"
-GOptionContext * load_contex_entries();
 
+GOptionContext * load_contex_entries();
