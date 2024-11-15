@@ -87,12 +87,13 @@ struct table_queuing {
 struct configuration {
   char use_any_index;
   GAsyncQueue *initial_queue;
+  GAsyncQueue *initial_completed_queue;
   GAsyncQueue *schema_queue;
-  struct table_queuing non_innodb;
-  struct table_queuing innodb;
+  struct table_queuing non_transactional;
+  struct table_queuing transactional;
   GAsyncQueue *post_data_queue;
   GAsyncQueue *ready;
-  GAsyncQueue *ready_non_innodb_queue;
+  GAsyncQueue *ready_non_transactional_queue;
   GAsyncQueue *db_ready;
   GAsyncQueue *binlog_ready;
   GAsyncQueue *unlock_tables;
@@ -313,7 +314,7 @@ struct db_table {
   GString *insert_statement;
   GString *load_data_header;
   GString *load_data_suffix;
-  gboolean is_innodb;
+  gboolean is_transactional;
   gboolean is_sequence;
   gboolean has_json_fields;
   char *character_set;

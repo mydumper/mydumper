@@ -1089,6 +1089,7 @@ void start_dump() {
   }
 
   // Determine the locking mechanisim that is going to be used
+  // and send locks to database if needed
 
   if (detected_server == SERVER_TYPE_TIDB) {
     g_message("Skipping locks because of TiDB");
@@ -1186,25 +1187,27 @@ void start_dump() {
   // Initilizing the configuration
 
   conf.initial_queue = g_async_queue_new();
+  conf.initial_completed_queue = g_async_queue_new();
+
   conf.schema_queue = g_async_queue_new();
   conf.post_data_queue = g_async_queue_new();
-  conf.innodb.queue= g_async_queue_new();
-  conf.innodb.defer= g_async_queue_new();
+  conf.transactional.queue= g_async_queue_new();
+  conf.transactional.defer= g_async_queue_new();
   // These are initialized in the guts of initialize_start_dump() above
-  g_assert(give_me_another_innodb_chunk_step_queue &&
-           give_me_another_non_innodb_chunk_step_queue &&
-           innodb_table &&
-           non_innodb_table);
-  conf.innodb.request_chunk= give_me_another_innodb_chunk_step_queue;
-  conf.innodb.table_list= innodb_table;
-  conf.innodb.descr= "transactional";
+  g_assert(give_me_another_transactional_chunk_step_queue &&
+           give_me_another_non_transactional_chunk_step_queue &&
+           transactional_table &&
+           non_transactional_table);
+  conf.transactional.request_chunk= give_me_another_transactional_chunk_step_queue;
+  conf.transactional.table_list= transactional_table;
+  conf.transactional.descr= "transactional";
   conf.ready = g_async_queue_new();
-  conf.non_innodb.queue= g_async_queue_new();
-  conf.non_innodb.defer= g_async_queue_new();
-  conf.non_innodb.request_chunk= give_me_another_non_innodb_chunk_step_queue;
-  conf.non_innodb.table_list= non_innodb_table;
-  conf.non_innodb.descr= "non-transactional";
-  conf.ready_non_innodb_queue = g_async_queue_new();
+  conf.non_transactional.queue= g_async_queue_new();
+  conf.non_transactional.defer= g_async_queue_new();
+  conf.non_transactional.request_chunk= give_me_another_non_transactional_chunk_step_queue;
+  conf.non_transactional.table_list= non_transactional_table;
+  conf.non_transactional.descr= "non-transactional";
+  conf.ready_non_transactional_queue = g_async_queue_new();
   conf.unlock_tables = g_async_queue_new();
   conf.gtid_pos_checked = g_async_queue_new();
   conf.are_all_threads_in_same_pos = g_async_queue_new();
@@ -1257,7 +1260,7 @@ void start_dump() {
   // IMPORTANT: At this point, all the threads are in sync
 
   if (trx_consistency_only) {
-    // Releasing locks as all are transactional tables
+    // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
     if (release_global_lock_function)
       release_global_lock_function(conn);
@@ -1278,17 +1281,30 @@ void start_dump() {
     }
   }
 
-  //
+  // Every time a schema job is created a counter increases
+  // Every time that a schema jobs is completed, the counter decreases
+  // When the counter reaches to 0, it releases conf.db_ready 
   g_message("Waiting database finish");
   g_async_queue_pop(conf.db_ready);
+
+  // At this point all schema jobs are completed
+
   g_list_free(no_updated_tables);
 
+  // We let working threads know that initial_queue has been completed
+  // sending them a JOB_SHUTDOWN job.
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.initial_queue, j);
   }
 
+  for (n = 0; n < num_threads; n++) {
+    g_async_queue_pop(conf.initial_completed_queue);
+  }
+
+
+  // 
   for (n = 0; n < num_threads; n++) {
     g_async_queue_pop(conf.ready);
   }
@@ -1305,7 +1321,7 @@ void start_dump() {
   }
 
   for (n = 0; n < num_threads; n++) {
-    g_async_queue_push(conf.ready_non_innodb_queue, GINT_TO_POINTER(1));
+    g_async_queue_push(conf.ready_non_transactional_queue, GINT_TO_POINTER(1));
   }
 
   if (!no_locks && !trx_consistency_only) {
@@ -1353,8 +1369,8 @@ void start_dump() {
   }
   g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
             g_async_queue_length(conf.schema_queue),
-            g_async_queue_length(conf.non_innodb.queue) + g_async_queue_length(conf.non_innodb.defer),
-            g_async_queue_length(conf.innodb.queue) + g_async_queue_length(conf.innodb.defer),
+            g_async_queue_length(conf.non_transactional.queue) + g_async_queue_length(conf.non_transactional.defer),
+            g_async_queue_length(conf.transactional.queue) + g_async_queue_length(conf.transactional.defer),
             g_async_queue_length(conf.post_data_queue));
   // close main connection
   if (conn != second_conn)
@@ -1377,14 +1393,14 @@ void start_dump() {
   g_list_free(table_schemas);
   table_schemas=NULL;
   stop_pmm_thread();
-  g_async_queue_unref(conf.innodb.defer);
-  conf.innodb.defer= NULL;
-  g_async_queue_unref(conf.innodb.queue);
-  conf.innodb.queue= NULL;
-  g_async_queue_unref(conf.non_innodb.defer);
-  conf.non_innodb.defer= NULL;
-  g_async_queue_unref(conf.non_innodb.queue);
-  conf.non_innodb.queue= NULL;
+  g_async_queue_unref(conf.transactional.defer);
+  conf.transactional.defer= NULL;
+  g_async_queue_unref(conf.transactional.queue);
+  conf.transactional.queue= NULL;
+  g_async_queue_unref(conf.non_transactional.defer);
+  conf.non_transactional.defer= NULL;
+  g_async_queue_unref(conf.non_transactional.queue);
+  conf.non_transactional.queue= NULL;
   g_async_queue_unref(conf.unlock_tables);
   conf.unlock_tables=NULL;
   g_async_queue_unref(conf.ready);
@@ -1396,8 +1412,8 @@ void start_dump() {
   g_async_queue_unref(conf.post_data_queue);
   conf.post_data_queue=NULL;
 
-  g_async_queue_unref(conf.ready_non_innodb_queue);
-  conf.ready_non_innodb_queue=NULL;
+  g_async_queue_unref(conf.ready_non_transactional_queue);
+  conf.ready_non_transactional_queue=NULL;
 
   g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();

@@ -58,10 +58,10 @@ gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
 gboolean success_on_1146 = FALSE;
 
-struct MList  *innodb_table = NULL;
-//GMutex *innodb_table_mutex = NULL;
-struct MList  *non_innodb_table = NULL;
-//GMutex *non_innodb_table_mutex = NULL;
+struct MList  *transactional_table = NULL;
+//GMutex *transactional_table_mutex = NULL;
+struct MList  *non_transactional_table = NULL;
+//GMutex *non_transactional_table_mutex = NULL;
 GMutex *table_schemas_mutex = NULL;
 GMutex *all_dbts_mutex=NULL;
 GMutex *trigger_schemas_mutex = NULL;
@@ -96,12 +96,12 @@ void initialize_working_thread(){
 
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
   character_set_hash_mutex = g_mutex_new();
-  innodb_table=g_new(struct MList, 1);
-  non_innodb_table=g_new(struct MList, 1);
-  innodb_table->list=NULL;
-  non_innodb_table->list=NULL;
-  non_innodb_table->mutex = g_mutex_new();
-  innodb_table->mutex = g_mutex_new();
+  transactional_table=g_new(struct MList, 1);
+  non_transactional_table=g_new(struct MList, 1);
+  transactional_table->list=NULL;
+  non_transactional_table->list=NULL;
+  non_transactional_table->mutex = g_mutex_new();
+  transactional_table->mutex = g_mutex_new();
 
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
@@ -788,8 +788,8 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_buil
 }
 
 void build_lock_tables_statement(struct configuration *conf){
-  g_mutex_lock(non_innodb_table->mutex);
-  GList *iter = non_innodb_table->list;
+  g_mutex_lock(non_transactional_table->mutex);
+  GList *iter = non_transactional_table->list;
   struct db_table *dbt;
   if ( iter != NULL){
     dbt = (struct db_table *)iter->data;
@@ -803,7 +803,7 @@ void build_lock_tables_statement(struct configuration *conf){
                              identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     }
   }
-  g_mutex_unlock(non_innodb_table->mutex);
+  g_mutex_unlock(non_transactional_table->mutex);
 }
 
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
@@ -856,6 +856,7 @@ void *working_thread(struct thread_data *td) {
   
   g_message("Thread %d: Creating Jobs", td->thread_id);
   process_queue(td->conf->initial_queue,td, TRUE, NULL);
+  g_async_queue_push(td->conf->initial_completed_queue, GINT_TO_POINTER(1));
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
@@ -867,28 +868,28 @@ void *working_thread(struct thread_data *td) {
     g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
 
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
-    g_async_queue_pop(td->conf->ready_non_innodb_queue);
+    g_async_queue_pop(td->conf->ready_non_transactional_queue);
     if (less_locking){
-      // Sending LOCK TABLE over all non-innodb tables
+      // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
-        m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+        m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
-      process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
-      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
+      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
+      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
-        m_error("Error locking non-innodb tables %s", mysql_error(td->thrconn));
+        m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
     }else{
-      process_queue(td->conf->non_innodb.queue, td, FALSE, td->conf->non_innodb.request_chunk);
-      process_queue(td->conf->non_innodb.defer, td, FALSE, NULL);
+      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
+      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
-    process_queue(td->conf->innodb.queue, td, FALSE, td->conf->innodb.request_chunk);
-    process_queue(td->conf->innodb.defer, td, FALSE, NULL);
+    process_queue(td->conf->transactional.queue, td, FALSE, td->conf->transactional.request_chunk);
+    process_queue(td->conf->transactional.defer, td, FALSE, NULL);
   //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
@@ -1216,7 +1217,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
-  // with trx_consistency_only we dump all as innodb_table
+  // with trx_consistency_only we dump all as transactional_table
     if (!no_schemas && !dbt->object_to_export.no_schema) {
 //      write_table_metadata_into_file(dbt);
       g_mutex_lock(table_schemas_mutex);
@@ -1234,23 +1235,23 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         }
         if (trx_consistency_only ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
-          dbt->is_innodb=TRUE;
-          g_mutex_lock(innodb_table->mutex);
-          innodb_table->list=g_list_prepend(innodb_table->list,dbt);
-          g_mutex_unlock(innodb_table->mutex);
+          dbt->is_transactional=TRUE;
+          g_mutex_lock(transactional_table->mutex);
+          transactional_table->list=g_list_prepend(transactional_table->list,dbt);
+          g_mutex_unlock(transactional_table->mutex);
 
         } else {
-          dbt->is_innodb=FALSE;
-          g_mutex_lock(non_innodb_table->mutex);
-          non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
-          g_mutex_unlock(non_innodb_table->mutex);
+          dbt->is_transactional=FALSE;
+          g_mutex_lock(non_transactional_table->mutex);
+          non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          g_mutex_unlock(non_transactional_table->mutex);
         }
       }else{
         if (is_view){
-          dbt->is_innodb=FALSE;
-          g_mutex_lock(non_innodb_table->mutex);
-          non_innodb_table->list = g_list_prepend(non_innodb_table->list, dbt);
-          g_mutex_unlock(non_innodb_table->mutex);
+          dbt->is_transactional=FALSE;
+          g_mutex_lock(non_transactional_table->mutex);
+          non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          g_mutex_unlock(non_transactional_table->mutex);
         }
       }
     }

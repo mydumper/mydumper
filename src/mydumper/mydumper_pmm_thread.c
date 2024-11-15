@@ -91,18 +91,18 @@ void append_pmm_entry_all_tables(GString *content){
 void write_pmm_entries(GString *content, struct configuration* conf){
   g_string_set_size(content,0);
   append_pmm_entry_queue(content,"schema_queue",      conf->schema_queue);
-  append_pmm_entry_queue(content,"non_innodb_queue",  conf->non_innodb.queue);
-  append_pmm_entry_queue(content,"non_innodb_defer_queue", conf->non_innodb.defer);
-  append_pmm_entry_queue(content,"innodb_queue",      conf->innodb.queue);
-  append_pmm_entry_queue(content,"integer_queue",     conf->innodb.defer);
+  append_pmm_entry_queue(content,"non_transactional_queue",  conf->non_transactional.queue);
+  append_pmm_entry_queue(content,"non_transactional_defer_queue", conf->non_transactional.defer);
+  append_pmm_entry_queue(content,"transactional_queue",      conf->transactional.queue);
+  append_pmm_entry_queue(content,"integer_queue",     conf->transactional.defer);
   append_pmm_entry_queue(content,"post_data_queue",   conf->post_data_queue);
   append_pmm_entry_queue(content,"ready",             conf->ready);
   append_pmm_entry_queue(content,"unlock_tables",     conf->unlock_tables);
   append_pmm_entry_queue(content,"pause_resume",      conf->pause_resume);
   append_pmm_entry(content,"queueu", "stream",            get_stream_queue_length());
   append_pmm_entry(content,"object", "all_tables",        g_hash_table_size(all_dbts));
-  append_pmm_entry(content,"object", "innodb_tables",     g_list_length(innodb_table->list));
-  append_pmm_entry(content,"object", "non_innodb_tables", g_list_length(non_innodb_table->list));
+  append_pmm_entry(content,"object", "transactional_tables",     g_list_length(transactional_table->list));
+  append_pmm_entry(content,"object", "non_transactional_tables", g_list_length(non_transactional_table->list));
   append_pmm_entry_all_tables(content);
   g_file_set_contents( filename , content->str, content->len, NULL);
 }

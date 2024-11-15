@@ -33,13 +33,13 @@
 #include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
 
-GAsyncQueue *give_me_another_innodb_chunk_step_queue;
-GAsyncQueue *give_me_another_non_innodb_chunk_step_queue;
+GAsyncQueue *give_me_another_transactional_chunk_step_queue;
+GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 GThread *chunk_builder=NULL;
 
 void initialize_chunk(){
-  give_me_another_innodb_chunk_step_queue=g_async_queue_new();
-  give_me_another_non_innodb_chunk_step_queue=g_async_queue_new();
+  give_me_another_transactional_chunk_step_queue=g_async_queue_new();
+  give_me_another_non_transactional_chunk_step_queue=g_async_queue_new();
   initialize_char_chunk();
 }
 
@@ -50,12 +50,11 @@ void start_chunk_builder(struct configuration *conf){
 }
 
 void finalize_chunk(){
-  g_async_queue_unref(give_me_another_innodb_chunk_step_queue); 
-  g_async_queue_unref(give_me_another_non_innodb_chunk_step_queue);
+  g_async_queue_unref(give_me_another_transactional_chunk_step_queue); 
+  g_async_queue_unref(give_me_another_non_transactional_chunk_step_queue);
   if (!no_data){
     g_thread_join(chunk_builder);
   }
-
 }
 
 void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
@@ -66,7 +65,6 @@ void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
 void initialize_chunk_step_as_none(struct chunk_step_item * csi){
   csi->chunk_type=NONE;
   csi->chunk_functions.process=&process_none_chunk;
-//  csi->chunk_functions.update_where=NULL;
   csi->chunk_step = NULL;
 }
 
@@ -456,21 +454,8 @@ void table_job_enqueue(struct table_queuing *q)
 
 void *chunk_builder_thread(struct configuration *conf)
 {
-  table_job_enqueue(&conf->non_innodb);
-  table_job_enqueue(&conf->innodb);
+  table_job_enqueue(&conf->non_transactional);
+  table_job_enqueue(&conf->transactional);
   return NULL;
 }
 
-/*
-void build_where_clause_on_table_job(struct table_job *tj){
-  struct chunk_step_item *csi = tj->chunk_step_item;
-  g_string_set_size(tj->where,0);
-  g_string_append(tj->where, csi->where->str);
-  csi=csi->next;
-  while (csi != NULL && csi->chunk_type != NONE){
-    g_string_append(tj->where, " AND ");
-    g_string_append(tj->where, csi->where->str);
-    csi=csi->next;
-  }
-}
-*/

@@ -1189,7 +1189,7 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nch
   struct job *j = g_new0(struct job,1);
   struct table_job *tj = new_table_job(dbt, partition, nchunk, chunk_step_item);
   j->job_data=(void*) tj;
-  j->type= dbt->is_innodb ? JOB_DUMP : JOB_DUMP_NON_INNODB;
+  j->type= dbt->is_transactional ? JOB_DUMP : JOB_DUMP_NON_INNODB;
   f(queue,j);
 }
 
