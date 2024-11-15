@@ -39,6 +39,12 @@
 #define MYSQL_TYPE_JSON 245
 #endif
 
+/* Program options */
+gchar *where_option=NULL;
+
+
+
+
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
 guint complete_insert = 0;

@@ -215,7 +215,7 @@ static GOptionEntry checksum_entries[] = {
 static GOptionEntry filter_entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
       "Comma delimited list of databases to dump", NULL},
-    {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines,
+    {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines_str,
      "Comma delimited list of storage engines to ignore", NULL},
     { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },

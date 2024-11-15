@@ -36,6 +36,7 @@
 #include "mydumper_chunks.h"
 #include "mydumper_write.h"
 #include "mydumper_global.h"
+#include "mydumper_create_jobs.h"
 
 /* Program options */
 gchar *tidb_snapshot = NULL;
@@ -1302,12 +1303,8 @@ void start_dump() {
   for (n = 0; n < num_threads; n++) {
     g_async_queue_pop(conf.initial_completed_queue);
   }
+  // at this point initial jobs has been completed
 
-
-  // 
-  for (n = 0; n < num_threads; n++) {
-    g_async_queue_pop(conf.ready);
-  }
 
   g_message("Shutdown jobs for less locking enqueued");
   for (n = 0; n < num_threads; n++) {

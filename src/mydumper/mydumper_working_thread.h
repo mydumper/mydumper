@@ -33,10 +33,7 @@ void finalize_working_thread();
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
 void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_transactional);
-void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
-                       gboolean is_sequence, struct database * database, char *table,
-                       char *collation, gchar *ecol);
-void free_db_table(struct db_table * dbt);
 void build_lock_tables_statement(struct configuration *conf);
 void check_pause_resume( struct thread_data *td );
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
+void free_db_table(struct db_table * dbt);

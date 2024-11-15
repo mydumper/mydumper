@@ -20,7 +20,6 @@
 */
 
 #include <mysql.h>
-
 #include <glib/gstdio.h>
 
 #include "mydumper.h"
@@ -33,58 +32,54 @@
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_file_handler.h"
-
+#include "mydumper_create_jobs.h"
 #include "mydumper_working_thread.h"
 
-gboolean order_by_primary_key = FALSE;
-GMutex *init_mutex = NULL;
 /* Program options */
+gboolean order_by_primary_key = FALSE;
 gboolean use_savepoints = FALSE;
 gboolean clear_dumpdir= FALSE;
 gboolean dirty_dumpdir= FALSE;
-gint database_counter = 0;
-//gint table_counter = 0;
-gchar *ignore_engines = NULL;
-gchar *binlog_snapshot_gtid_executed = NULL;
-gboolean binlog_snapshot_gtid_executed_status = FALSE;
-guint binlog_snapshot_gtid_executed_count = 0;
-char **ignore = NULL;
+gchar *ignore_engines_str = NULL;
 int skip_tz = 0;
-int sync_wait = -1;
+
 gboolean dump_events = FALSE;
 gboolean dump_routines = FALSE;
 gboolean no_dump_views = FALSE;
 gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
-gboolean success_on_1146 = FALSE;
-
-struct MList  *transactional_table = NULL;
-//GMutex *transactional_table_mutex = NULL;
-struct MList  *non_transactional_table = NULL;
-//GMutex *non_transactional_table_mutex = NULL;
-GMutex *table_schemas_mutex = NULL;
-GMutex *all_dbts_mutex=NULL;
-GMutex *trigger_schemas_mutex = NULL;
-GMutex *view_schemas_mutex = NULL;
-guint less_locking_threads = 0;
-GHashTable *character_set_hash=NULL;
-GMutex *character_set_hash_mutex = NULL;
 
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
 gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
+
 gboolean exit_if_broken_table_found = FALSE;
-// For daemon mode
 int build_empty_files = 0;
-gchar *where_option=NULL;
 
-void dump_database_thread(MYSQL *, struct configuration*, struct database *);
-
+// Shared variables
+gint database_counter = 0;
+struct MList  *transactional_table = NULL;
+struct MList  *non_transactional_table = NULL;
 guint64 min_chunk_step_size = 0;
 guint64 starting_chunk_step_size = 0;
 guint64 max_chunk_step_size = 0;
+
+// Static
+static GMutex *init_mutex = NULL;
+static gchar *binlog_snapshot_gtid_executed = NULL; 
+static char **ignore_engines = NULL;
+static int sync_wait = -1;
+static GMutex *table_schemas_mutex = NULL;
+static GMutex *all_dbts_mutex=NULL;
+static GMutex *trigger_schemas_mutex = NULL;
+static GMutex *view_schemas_mutex = NULL;
+static guint less_locking_threads = 0;
+static GHashTable *character_set_hash=NULL;
+static GMutex *character_set_hash_mutex = NULL;
 static const guint tablecol= 0;
+
+void dump_database_thread(MYSQL *, struct configuration*, struct database *);
 
 void initialize_working_thread(){
   database_counter = 0;
@@ -125,8 +120,8 @@ void initialize_working_thread(){
 */
 
   /* Give ourselves an array of engines to ignore */
-  if (ignore_engines)
-    ignore = g_strsplit(ignore_engines, ",", 0);
+  if (ignore_engines_str)
+    ignore_engines = g_strsplit(ignore_engines_str, ",", 0);
 
 
 // TODO: We need to cleanup this
@@ -212,9 +207,7 @@ void start_working_thread(struct configuration *conf ){
   for (n = 0; n < num_threads; n++) {
     g_async_queue_pop(conf->ready);
   }
-
 }
-
 
 void finalize_working_thread(){
   guint n;
@@ -238,6 +231,7 @@ void finalize_working_thread(){
   g_free(threads);
 }
 
+static
 void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
   MYSQL_RES *indexes = NULL;
   MYSQL_ROW row;
@@ -296,15 +290,6 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
 cleanup:
   if (indexes)
     mysql_free_result(indexes);
-}
-
-void thd_JOB_TABLE(struct thread_data *td, struct job *job){
-  struct dump_table_job *dtj=(struct dump_table_job *)job->job_data;
-  new_table_to_dump(td->thrconn, td->conf, dtj->is_view, dtj->is_sequence, dtj->database, dtj->table,
-                      dtj->collation, dtj->engine);
-  free(dtj->collation);
-  free(dtj->engine);
-  free(dtj);
 }
 
 void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
@@ -666,6 +651,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
 
 }
 
+static void thd_JOB_TABLE(struct thread_data *td, struct job *job);
 gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     switch (job->type) {
     case JOB_DUMP_TABLE_LIST:
@@ -858,7 +844,6 @@ void *working_thread(struct thread_data *td) {
   process_queue(td->conf->initial_queue,td, TRUE, NULL);
   g_async_queue_push(td->conf->initial_completed_queue, GINT_TO_POINTER(1));
 
-  g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   g_message("Thread %d: Schema queue", td->thread_id);
   process_queue(td->conf->schema_queue,td, FALSE, NULL);
 
@@ -1067,6 +1052,7 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   return character_set;
 }
 
+static
 void get_primary_key_separated_by_comma(struct db_table * dbt) {
   GString *field_list = g_string_new(""); 
   GList *list=dbt->primary_key;
@@ -1087,6 +1073,7 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
     dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
 }
 
+static
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence)
@@ -1200,6 +1187,7 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt);
 }
 
+static
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
                        gboolean is_sequence, struct database * database, char *table,
                        char *collation, gchar *ecol)
@@ -1394,9 +1382,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
-    if (dump && ignore && !is_view && !is_sequence) {
-      for (i = 0; ignore[i] != NULL; i++) {
-        if (g_ascii_strcasecmp(ignore[i], row[ecol]) == 0) {
+    if (dump && ignore_engines && !is_view && !is_sequence) {
+      for (i = 0; ignore_engines[i] != NULL; i++) {
+        if (g_ascii_strcasecmp(ignore_engines[i], row[ecol]) == 0) {
           dump = 0;
           break;
         }
@@ -1464,4 +1452,14 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     create_job_to_dump_schema_triggers(database, conf);
 
   return;
+}
+
+static
+void thd_JOB_TABLE(struct thread_data *td, struct job *job){
+  struct dump_table_job *dtj=(struct dump_table_job *)job->job_data;
+  new_table_to_dump(td->thrconn, td->conf, dtj->is_view, dtj->is_sequence, dtj->database, dtj->table,
+                      dtj->collation, dtj->engine);
+  free(dtj->collation);
+  free(dtj->engine);
+  free(dtj);
 }

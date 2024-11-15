@@ -32,6 +32,7 @@
 #include "mydumper_integer_chunks.h"
 #include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
+#include "mydumper_create_jobs.h"
 
 GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;

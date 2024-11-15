@@ -163,7 +163,7 @@ int main(int argc, char *argv[]) {
     print_string("tls-version",tls_version);
     print_list("regex",regex_list);
     print_string("database",db);
-    print_string("ignore-engines",ignore_engines);
+    print_string("ignore-engines",ignore_engines_str);
     print_string("where",where_option);
     print_int("updated-since",updated_since);
     print_string("partition-regex",partition_regex);

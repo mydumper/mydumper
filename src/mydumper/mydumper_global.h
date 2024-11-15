@@ -26,7 +26,7 @@ extern gboolean clickhouse;
 extern gboolean include_header;
 extern gboolean replace;
 extern guint chunk_filesize;
-extern gchar *ignore_engines;
+extern gchar *ignore_engines_str;
 extern int build_empty_files;
 extern gboolean exit_if_broken_table_found;
 extern gboolean data_checksums;
