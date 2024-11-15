@@ -26,14 +26,16 @@
 #define EMPTY_STRING ""
 typedef gchar * (*fun_ptr2)(gchar **);
 
+void initialize_working_thread();
+void start_working_thread(struct configuration *conf );
+void finalize_working_thread();
+
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
 void *working_thread(struct thread_data *td);
 void dump_table(MYSQL *conn, struct db_table *dbt, struct configuration *conf, gboolean is_innodb);
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
                        gboolean is_sequence, struct database * database, char *table,
                        char *collation, gchar *ecol);
-void initialize_working_thread();
-void finalize_working_thread();
 void free_db_table(struct db_table * dbt);
 void build_lock_tables_statement(struct configuration *conf);
 void check_pause_resume( struct thread_data *td );

@@ -52,12 +52,9 @@ void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi){
     }
     g_mutex_lock(csi->mutex);
     partition=g_strdup_printf(" PARTITION (%s) ",(char*)(cs->partition_step.list->data));
-//    g_message("Partition text: %s", partition);
     cs->partition_step.list= cs->partition_step.list->next;
     g_mutex_unlock(csi->mutex);
     tj->partition = partition;
-// = new_table_job(dbt, partition ,  cs->partition_step.number, dbt->primary_key, cs);
-//    message_dumping_data(td,tj);
     write_table_job_into_file(tj);
     g_free(partition);
   }

@@ -1247,55 +1247,17 @@ void start_dump() {
   }
 
   // End Job Creation
+
+  // Starting the chunk builder
   start_chunk_builder(&conf);
 
-  GThread **threads = g_new(GThread *, num_threads );
-  struct thread_data *td =
-      g_new(struct thread_data, num_threads * (less_locking + 1));
-  g_message("Creating workers");
-  for (n = 0; n < num_threads; n++) {
-    td[n].conf = &conf;
-    td[n].thread_id = n + 1;
-    td[n].less_locking_stage = FALSE;
-    td[n].binlog_snapshot_gtid_executed = NULL;
-    td[n].pause_resume_mutex=NULL;
-    td[n].table_name=NULL;
-    td[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
-    td[n].thread_data_buffers.row = g_string_sized_new(statement_size);
-    td[n].thread_data_buffers.column = g_string_sized_new(statement_size);
-    td[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
-    threads[n] =
-        g_thread_create((GThreadFunc)working_thread, &td[n], TRUE, NULL);
- //   g_async_queue_pop(conf.ready);
-  }
-
-
-// are all in the same gtid pos?
-  gchar *binlog_snapshot_gtid_executed = NULL; 
-  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
-  guint start_transaction_retry=0;
-  while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
-    binlog_snapshot_gtid_executed_status_local=TRUE;
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_pop(conf.gtid_pos_checked);
-    }
-    binlog_snapshot_gtid_executed=g_strdup(td[0].binlog_snapshot_gtid_executed);
-    for (n = 1; n < num_threads; n++) {
-      binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(td[n].binlog_snapshot_gtid_executed,binlog_snapshot_gtid_executed)==0;
-    }
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_push(conf.are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
-    }
-    start_transaction_retry++;
-  }
-
-  for (n = 0; n < num_threads; n++) {
-    g_async_queue_pop(conf.ready);
-  }
+  // Starting the workers threads
+  start_working_thread(&conf);
 
   // IMPORTANT: At this point, all the threads are in sync
 
   if (trx_consistency_only) {
+    // Releasing locks as all are transactional tables
     g_message("Transactions started, unlocking tables");
     if (release_global_lock_function)
       release_global_lock_function(conn);
@@ -1316,9 +1278,8 @@ void start_dump() {
     }
   }
 
-
+  //
   g_message("Waiting database finish");
-
   g_async_queue_pop(conf.db_ready);
   g_list_free(no_updated_tables);
 
@@ -1362,6 +1323,8 @@ void start_dump() {
       release_binlog_function(second_conn);
     }
   }
+
+  // At this poing we can start the replica if it was stopped
   if (replica_stopped){
     g_message("Starting replica");
     if (mysql_query(conn, start_replica_sql_thread)){
@@ -1372,7 +1335,6 @@ void start_dump() {
     }
   }
   
-
   g_async_queue_unref(conf.binlog_ready);
 
   for (n = 0; n < num_threads; n++) {
@@ -1381,13 +1343,10 @@ void start_dump() {
     g_async_queue_push(conf.post_data_queue, j);
   }
 
-  g_message("Waiting threads to complete");
-  for (n = 0; n < num_threads; n++) {
-    g_thread_join(threads[n]);
-  }
   finalize_working_thread();
   finalize_chunk();
   finalize_write();
+
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
@@ -1475,8 +1434,6 @@ void start_dump() {
   g_message("Finished dump at: %s", datetimestr);
   g_free(datetimestr);
 
-  g_free(td);
-  g_free(threads);
   if (sthread!=NULL)
     g_thread_unref(sthread);
   free_databases();

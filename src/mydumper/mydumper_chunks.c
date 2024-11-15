@@ -449,7 +449,7 @@ void table_job_enqueue(struct table_queuing *q)
 //      g_debug("chunk_builder_thread: There were not job defined");
       break;
     }
-  } // for (;;)
+  }
   g_message("Enqueuing of %s tables completed", q->descr);
   enqueue_shutdown(q);
 }
@@ -461,6 +461,7 @@ void *chunk_builder_thread(struct configuration *conf)
   return NULL;
 }
 
+/*
 void build_where_clause_on_table_job(struct table_job *tj){
   struct chunk_step_item *csi = tj->chunk_step_item;
   g_string_set_size(tj->where,0);
@@ -472,4 +473,4 @@ void build_where_clause_on_table_job(struct table_job *tj){
     csi=csi->next;
   }
 }
-
+*/

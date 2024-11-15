@@ -167,11 +167,64 @@ void initialize_working_thread(){
 
 }
 
+
+GThread **threads=NULL;
+struct thread_data *thread_data;
+void start_working_thread(struct configuration *conf ){
+  guint n;
+  threads = g_new(GThread *, num_threads );
+  thread_data =
+      g_new(struct thread_data, num_threads * (less_locking + 1));
+  g_message("Creating workers");
+  for (n = 0; n < num_threads; n++) {
+    thread_data[n].conf = conf;
+    thread_data[n].thread_id = n + 1;
+    thread_data[n].less_locking_stage = FALSE;
+    thread_data[n].binlog_snapshot_gtid_executed = NULL;
+    thread_data[n].pause_resume_mutex=NULL;
+    thread_data[n].table_name=NULL;
+    thread_data[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
+    thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
+    thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
+    thread_data[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
+    threads[n] =
+        g_thread_create((GThreadFunc)working_thread, &thread_data[n], TRUE, NULL);
+  }
+
+  gchar *_binlog_snapshot_gtid_executed = NULL;
+  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
+  guint start_transaction_retry=0;
+  while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
+    binlog_snapshot_gtid_executed_status_local=TRUE;
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_pop(conf->gtid_pos_checked);
+    }
+    _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
+    for (n = 1; n < num_threads; n++) {
+      binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
+    }
+    for (n = 0; n < num_threads; n++) {
+      g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
+    }
+    start_transaction_retry++;
+  }
+
+  for (n = 0; n < num_threads; n++) {
+    g_async_queue_pop(conf->ready);
+  }
+
+}
+
+
 void finalize_working_thread(){
+  guint n;
+  g_message("Waiting threads to complete");
+  for (n = 0; n < num_threads; n++) {
+    g_thread_join(threads[n]);
+  }
+
   g_hash_table_destroy(character_set_hash);
   g_mutex_free(character_set_hash_mutex);
-//  g_mutex_free(innodb_table_mutex);
-//  g_mutex_free(non_innodb_table_mutex);
   g_mutex_free(view_schemas_mutex);
   g_mutex_free(table_schemas_mutex);
   g_mutex_free(trigger_schemas_mutex);
@@ -181,6 +234,8 @@ void finalize_working_thread(){
     g_free(binlog_snapshot_gtid_executed);
 
   finalize_chunk();
+  g_free(thread_data);
+  g_free(threads);
 }
 
 void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){

@@ -64,6 +64,29 @@ gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
 
 
+gboolean update_files_on_table_job(struct table_job *tj)
+{
+  struct chunk_step_item *csi= tj->chunk_step_item;
+  if (tj->rows->file == 0){
+    if (csi->chunk_type == INTEGER) {
+      struct integer_step *s= &csi->chunk_step->integer_step;
+      if (s->is_step_fixed_length) {
+        tj->sub_part= (s->is_unsigned ? s->type.unsign.min : (guint64) s->type.sign.min) / s->step + 1;
+      }
+    }
+
+
+    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+    tj->rows->file = m_open(&(tj->rows->filename),"w");
+
+    if (tj->sql){
+      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+      tj->sql->file = m_open(&(tj->sql->filename),"w");
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
 
 void message_dumping_data_short(struct table_job *tj){
   g_mutex_lock(innodb_table->mutex);

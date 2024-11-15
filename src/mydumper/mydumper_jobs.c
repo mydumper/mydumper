@@ -947,6 +947,9 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   g_free(job);
 }
 
+//
+// Enqueueing in initial_queue
+//
 
 void create_job_to_dump_table(struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine){
   struct job *j = g_new0(struct job, 1);
@@ -969,6 +972,41 @@ void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
   g_async_queue_push(conf->initial_queue, j);
 }
 
+void create_job_to_dump_all_databases(struct configuration *conf) {
+  g_atomic_int_inc(&database_counter);
+  struct job *j = g_new0(struct job, 1);
+  j->job_data = NULL;
+  j->type = JOB_DUMP_ALL_DATABASES;
+  g_async_queue_push(conf->initial_queue, j);
+  return;
+}
+
+void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf) {
+  g_atomic_int_inc(&database_counter);
+  struct job *j = g_new0(struct job, 1);
+  struct dump_table_list_job *dtlj = g_new0(struct dump_table_list_job, 1);
+  j->job_data = (void *)dtlj;
+  dtlj->table_list = table_list;
+  j->type = JOB_DUMP_TABLE_LIST;
+  g_async_queue_push(conf->initial_queue, j);
+  return;
+}
+
+void create_job_to_dump_database(struct database *database, struct configuration *conf) {
+  g_atomic_int_inc(&database_counter);
+  struct job *j = g_new0(struct job, 1);
+  struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
+  j->job_data = (void *)ddj;
+  ddj->database = database;
+  j->type = JOB_DUMP_DATABASE;
+  g_async_queue_push(conf->initial_queue, j);
+  return;
+}
+
+//
+// Enqueueing in schema_queue
+//
+
 void create_job_to_dump_tablespaces(struct configuration *conf){
   struct job *j = g_new0(struct job, 1);
   struct create_tablespace_job *ctj = g_new0(struct create_tablespace_job, 1);
@@ -990,6 +1028,18 @@ void create_database_related_job(struct database *database, struct configuration
   return;
 }
 
+void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
+  struct job *j = g_new0(struct job, 1);
+  struct schema_job *sj = g_new0(struct schema_job, 1);
+  j->job_data = (void *)sj;
+  sj->dbt = dbt;
+  j->type = JOB_SCHEMA;
+  sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
+  sj->checksum_filename=schema_checksums;
+  sj->checksum_index_filename=schema_checksums;
+  g_async_queue_push(conf->schema_queue, j);
+}
+
 void create_job_to_dump_schema(struct database *database, struct configuration *conf) {
   create_database_related_job(database, conf, JOB_CREATE_DATABASE, "schema-create");
 }
@@ -997,6 +1047,10 @@ void create_job_to_dump_schema(struct database *database, struct configuration *
 void create_job_to_dump_post(struct database *database, struct configuration *conf) {
   create_database_related_job(database, conf, JOB_SCHEMA_POST, "schema-post");
 }
+
+//
+// Enqueueing in post_data_queue
+//
 
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf) {
   char *query = NULL;
@@ -1038,18 +1092,6 @@ void create_job_to_dump_schema_triggers(struct database *database, struct config
   g_async_queue_push(conf->post_data_queue, t);
 }
 
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf) {
-  struct job *j = g_new0(struct job, 1);
-  struct schema_job *sj = g_new0(struct schema_job, 1);
-  j->job_data = (void *)sj;
-  sj->dbt = dbt;
-  j->type = JOB_SCHEMA;
-  sj->filename = build_schema_table_filename(dbt->database->filename, dbt->table_filename, "schema");
-  sj->checksum_filename=schema_checksums;
-  sj->checksum_index_filename=schema_checksums;
-  g_async_queue_push(conf->schema_queue, j);
-}
-
 void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf) {
   struct job *j = g_new0(struct job, 1);
   struct view_job *vj = g_new0(struct view_job, 1);
@@ -1087,30 +1129,9 @@ void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *co
   return;
 }
 
-gboolean update_files_on_table_job(struct table_job *tj)
-{
-  struct chunk_step_item *csi= tj->chunk_step_item;
-  if (tj->rows->file == 0){
-    if (csi->chunk_type == INTEGER) {
-      struct integer_step *s= &csi->chunk_step->integer_step;
-      if (s->is_step_fixed_length) {
-        tj->sub_part= (s->is_unsigned ? s->type.unsign.min : (guint64) s->type.sign.min) / s->step + 1;
-      }
-    }
-
-
-    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-    tj->rows->file = m_open(&(tj->rows->filename),"w");
-
-    if (tj->sql){
-      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
-      tj->sql->file = m_open(&(tj->sql->filename),"w");
-      return TRUE;
-    }
-  }
-  return FALSE;
-}
-
+//
+// Enqueueing in data tables queue
+//
 
 struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, struct chunk_step_item *chunk_step_item){
   struct table_job *tj = g_new0(struct table_job, 1);
@@ -1146,11 +1167,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   return tj;
 }
 
-
-// Free structures
 void free_table_job(struct table_job *tj){
-//  g_message("free_table_job");
-
   if (tj->sql){
     m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, tj->filesize, tj->dbt);
     tj->sql->file=0;
@@ -1176,8 +1193,7 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nch
   f(queue,j);
 }
 
-void create_job_defer(struct db_table *dbt, GAsyncQueue *queue)
-{
+void create_job_defer(struct db_table *dbt, GAsyncQueue *queue){
   struct job *j = g_new0(struct job,1);
   j->type = JOB_DEFER;
   j->job_data=(void*) dbt;
@@ -1189,36 +1205,5 @@ void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQu
   j->type = JOB_DETERMINE_CHUNK_TYPE;
   j->job_data=(void*) dbt;
   f(queue,j);
-}
-
-void create_job_to_dump_all_databases(struct configuration *conf) {
-  g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
-  j->job_data = NULL;
-  j->type = JOB_DUMP_ALL_DATABASES;
-  g_async_queue_push(conf->initial_queue, j);
-  return;
-}
-
-void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf) {
-  g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
-  struct dump_table_list_job *dtlj = g_new0(struct dump_table_list_job, 1);
-  j->job_data = (void *)dtlj;
-  dtlj->table_list = table_list;
-  j->type = JOB_DUMP_TABLE_LIST;
-  g_async_queue_push(conf->initial_queue, j);
-  return;
-}
-
-void create_job_to_dump_database(struct database *database, struct configuration *conf) {
-  g_atomic_int_inc(&database_counter);
-  struct job *j = g_new0(struct job, 1);
-  struct dump_database_job *ddj = g_new0(struct dump_database_job, 1);
-  j->job_data = (void *)ddj;
-  ddj->database = database;
-  j->type = JOB_DUMP_DATABASE;
-  g_async_queue_push(conf->initial_queue, j);
-  return;
 }
 
