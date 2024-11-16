@@ -18,40 +18,28 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#include <stdlib.h>
-#include <mysql.h>
-#include <glib.h>
-#include <glib/gstdio.h>
+
 #include <gio/gio.h>
-#include <pcre.h>
 #include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <sys/wait.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <sys/file.h>
 #include <fcntl.h>
 
-#include "mydumper.h"
 #include "mydumper_global.h"
-#include "mydumper_common.h"
-#include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
 
-GAsyncQueue *close_file_queue=NULL;
-GAsyncQueue *available_pids=NULL;
-GHashTable *fifo_hash=NULL;
-//GHashTable *fifo_hash_by_pid=NULL;
-GMutex *fifo_table_mutex=NULL;
-GMutex *pipe_creation=NULL;
-GThread * cft = NULL;
-guint open_pipe=0;
-
+// Shared variables
 int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 
-// FILE open/close
-
+// Static
+static GAsyncQueue *close_file_queue=NULL;
+static GAsyncQueue *available_pids=NULL;
+static GHashTable *fifo_hash=NULL;
+static GMutex *fifo_table_mutex=NULL;
+static GMutex *pipe_creation=NULL;
+static GThread * cft = NULL;
+static guint open_pipe=0;
+static gboolean is_pipe=FALSE;
+// FILE open/close without pipe
 int m_open_file(char **filename, const char *type ){
   (void) type;
   return open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
@@ -71,7 +59,7 @@ int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struc
   return r;
 }
 
-// 
+// PIPE related functions 
 
 void close_file_queue_push(struct fifo *f){
   g_async_queue_push(close_file_queue, f);
@@ -97,15 +85,6 @@ void close_file_queue_push(struct fifo *f){
     f->error_number=errno;
     g_mutex_unlock(f->out_mutex);
   }
-}
-
-void wait_close_files(){
-  struct fifo f;
-  f.gpid=-10;
-  f.child_pid=-10;
-  f.filename=NULL;
-  close_file_queue_push(&f);
-  g_thread_join(cft);
 }
 
 void release_pid(){
@@ -228,23 +207,35 @@ void * close_file_thread(void *data){
   return NULL;
 }
 
-void initialize_file_handler(gboolean is_pipe){
+void wait_close_files(){
   if (is_pipe){
-    m_open  = &m_open_pipe;
-    m_close = &m_close_pipe;
-  }else{
+    struct fifo f;
+    f.gpid=-10;
+    f.child_pid=-10;
+    f.filename=NULL;
+    close_file_queue_push(&f);
+    g_thread_join(cft);
+  }
+}
+
+void initialize_file_handler(gboolean _is_pipe){
+  is_pipe=_is_pipe;
+  if (!is_pipe){
     m_open  = &m_open_file;
     m_close = &m_close_file;
-  }
-  available_pids = g_async_queue_new();
-  close_file_queue=g_async_queue_new();
-  guint i=0;
-  for (i=0; i < (num_threads * 2); i++){
-    release_pid();
-  }
-  pipe_creation = g_mutex_new();
-  fifo_hash=g_hash_table_new(g_str_hash, g_str_equal);
-  fifo_table_mutex = g_mutex_new();
+  }else{
+    m_open  = &m_open_pipe;
+    m_close = &m_close_pipe;
+    available_pids = g_async_queue_new();
+    close_file_queue=g_async_queue_new();
+    guint i=0;
+    for (i=0; i < (num_threads * 2); i++){
+      release_pid();
+    }
+    pipe_creation = g_mutex_new();
+    fifo_hash=g_hash_table_new(g_str_hash, g_str_equal);
+    fifo_table_mutex = g_mutex_new();
 
-  cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
+    cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
+  }
 }

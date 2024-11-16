@@ -37,6 +37,7 @@
 #include "mydumper_write.h"
 #include "mydumper_global.h"
 #include "mydumper_create_jobs.h"
+#include "mydumper_file_handler.h"
 
 /* Program options */
 gchar *tidb_snapshot = NULL;
@@ -1304,23 +1305,26 @@ void start_dump() {
     g_async_queue_pop(conf.initial_completed_queue);
   }
   // at this point initial jobs has been completed
-
-
+  // which means that all schema jobs has been created 
+  // we are able to send the JOB_SHUTDOWN to schema_queue
   g_message("Shutdown jobs for less locking enqueued");
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.schema_queue, j);
   }
-
+  // In case that we are using less_locking, we need to 
+  // build the lock table statement, at this stage, before
+  // let workers to start dumping data
   if (less_locking){
     build_lock_tables_statement(&conf);
   }
-
+  // Allowing workers to start dumping Non-Transactional tables
   for (n = 0; n < num_threads; n++) {
     g_async_queue_push(conf.ready_non_transactional_queue, GINT_TO_POINTER(1));
   }
 
+  // Releasing locks if possible
   if (!no_locks && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
@@ -1347,36 +1351,44 @@ void start_dump() {
       discard_mysql_output(conn);
     }
   }
-  
   g_async_queue_unref(conf.binlog_ready);
 
+  // All the jobs related to post data has been created and enquequed
+  // so, we can send the JOB_SHUTDOWN
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.post_data_queue, j);
   }
+  // At this point the main process, needs to wait the working threads to finish 
+  wait_working_thread_to_finish();
 
+  // Backup is done
+  // Starting to finalize it
   finalize_working_thread();
   finalize_chunk();
   finalize_write();
 
+  // Releasing DDL lock if possible
   if (release_ddl_lock_function != NULL) {
     g_message("Releasing DDL lock");
     release_ddl_lock_function(second_conn);
   }
+
   g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
             g_async_queue_length(conf.schema_queue),
             g_async_queue_length(conf.non_transactional.queue) + g_async_queue_length(conf.non_transactional.defer),
             g_async_queue_length(conf.transactional.queue) + g_async_queue_length(conf.transactional.defer),
             g_async_queue_length(conf.post_data_queue));
-  // close main connection
+
+  // Closing main connection
   if (conn != second_conn)
     mysql_close(second_conn);
   execute_gstring(main_connection, set_global_back);
   mysql_close(conn);
   g_message("Main connection closed");  
 
-
+  // There are scenarios where we need to wait files to flush to disk  
   wait_close_files();
 
   GList *keys= g_hash_table_get_keys(all_dbts);

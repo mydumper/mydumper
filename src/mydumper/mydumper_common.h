@@ -49,10 +49,8 @@ void m_escape_char_with_char(gchar neddle, gchar replace, gchar *to, unsigned lo
 void free_common();
 void initialize_sql_statement(GString *statement);
 void set_tidb_snapshot(MYSQL *conn);
-int m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
-void wait_close_files();
 guint64 my_pow_two_plus_prev(guint64 prev, guint max);
 gboolean parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max);
 

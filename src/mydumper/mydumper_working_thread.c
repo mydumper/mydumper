@@ -207,13 +207,15 @@ void start_working_thread(struct configuration *conf ){
   }
 }
 
-void finalize_working_thread(){
+void wait_working_thread_to_finish(){
   guint n;
   g_message("Waiting threads to complete");
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
+}
 
+void finalize_working_thread(){
   g_hash_table_destroy(character_set_hash);
   g_mutex_free(character_set_hash_mutex);
   g_mutex_free(view_schemas_mutex);
@@ -843,13 +845,13 @@ void *working_thread(struct thread_data *td) {
   process_queue(td->conf->initial_queue,td, TRUE, NULL);
   g_async_queue_push(td->conf->initial_completed_queue, GINT_TO_POINTER(1));
 
-  g_message("Thread %d: Schema queue", td->thread_id);
+  g_message("Thread %d: Processing Schema jobs", td->thread_id);
   process_queue(td->conf->schema_queue,td, FALSE, NULL);
 
   if (stream) send_initial_metadata();
 
   if (!no_data){
-    g_message("Thread %d: Schema Done, Starting Non-Innodb", td->thread_id);
+    g_message("Thread %d: Schema jobs are done, Starting exporting data for Non-Transactional tables", td->thread_id);
 
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
     g_async_queue_pop(td->conf->ready_non_transactional_queue);
@@ -871,7 +873,7 @@ void *working_thread(struct thread_data *td) {
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
-    g_message("Thread %d: Non-Innodb Done, Starting Innodb", td->thread_id);
+    g_message("Thread %d: Non-Transactional tables are done, Starting exporting data for Transactional tables", td->thread_id);
     process_queue(td->conf->transactional.queue, td, FALSE, td->conf->transactional.request_chunk);
     process_queue(td->conf->transactional.defer, td, FALSE, NULL);
   //  start_processing(td, resume_mutex);
@@ -884,9 +886,10 @@ void *working_thread(struct thread_data *td) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
 
+  g_message("Thread %d: Processing remaining objects jobs", td->thread_id);
   process_queue(td->conf->post_data_queue, td, FALSE, NULL);
 
-  g_message("Thread %d: shutting down", td->thread_id);
+  g_message("Thread %d: Shutting down", td->thread_id);
 
   if (td->binlog_snapshot_gtid_executed!=NULL)
     g_free(td->binlog_snapshot_gtid_executed);

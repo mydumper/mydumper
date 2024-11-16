@@ -28,6 +28,7 @@ typedef gchar * (*fun_ptr2)(gchar **);
 
 void initialize_working_thread();
 void start_working_thread(struct configuration *conf );
+void wait_working_thread_to_finish();
 void finalize_working_thread();
 
 void load_working_thread_entries(GOptionContext *context, GOptionGroup *extra_group, GOptionGroup * filter_group);
