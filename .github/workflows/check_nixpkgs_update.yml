@@ -1,0 +1,40 @@
+name: Check Nixpkgs Update Logs
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Run every Sunday at midnight
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  check_nixpkgs_update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch logs from nixpkgs-update bot
+        run: |
+          # Fetch the index page of the logs
+          LOG_PAGE=$(curl -sSL https://r.ryantm.com/log/mydumper/)
+
+          # Extract the last log file's href (the last .log line)
+          LAST_LOG=$(echo "$LOG_PAGE" | grep -oP '(?<=href=").*\.log(?=")' | tail -n 1)
+          LOG_URL="https://r.ryantm.com/log/mydumper/$LAST_LOG"
+
+          echo "Last log file detected: $LAST_LOG"
+          echo "Log URL: $LOG_URL"
+
+          # export log url to GITHUB_ENV for the next step future steps
+          echo "LOG_URL=$LOG_URL" >> $GITHUB_ENV
+
+          # Fetch the content of the last log file
+          curl -sSL "$LOG_URL" --output last_log.log
+
+      - name: Check for errors in last log
+        run: |
+          # Grep the log file for occurrences of 'Error'
+          if grep -qi 'Error' last_log.log; then
+            echo "::error::Error found in the log file! Nixpkgs failed to update."
+            echo "Link to log file: $LOG_URL"
+            exit 1
+          else
+            echo "No errors found in the log file."
+          fi
