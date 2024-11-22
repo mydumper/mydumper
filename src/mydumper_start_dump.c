@@ -1569,7 +1569,8 @@ void start_dump() {
 //  g_source_remove(SIGINT);
 //  g_source_remove(SIGTERM);
 //  g_main_loop_quit(conf.loop);
-  g_main_loop_unref(conf.loop);
+  if (!daemon_mode)
+    g_main_loop_unref(conf.loop);
 
   if (tables_list)
     g_strfreev(tables);
