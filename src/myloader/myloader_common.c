@@ -303,20 +303,6 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
   return eval_regex(db_name, table_name);
 }
 
-/*struct restore_job * new_restore_job( char * filename, char * database, struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object){
-  struct restore_job *rj = g_new(struct restore_job, 1);
-  rj->filename  = filename;
-  rj->database  = database;
-  rj->dbt       = dbt;
-  rj->statement = statement;
-  rj->part      = part;
-  rj->sub_part  = sub_part;
-  rj->type      = type;
-  rj->object    = object;
-  return rj;
-}
-
-*/
 gboolean execute_use(struct connection_data *cd){
   if (cd->current_database){
     gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);

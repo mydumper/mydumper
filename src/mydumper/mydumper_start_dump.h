@@ -118,7 +118,6 @@ struct thread_data {
   guint thread_id;
   char *table_name;
   MYSQL *thrconn;
-  gboolean less_locking_stage;
   gchar *binlog_snapshot_gtid_executed;
   GMutex *pause_resume_mutex;
   struct thread_data_buffers thread_data_buffers;

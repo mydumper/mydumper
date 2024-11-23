@@ -71,7 +71,6 @@ static GMutex *table_schemas_mutex = NULL;
 static GMutex *all_dbts_mutex=NULL;
 static GMutex *trigger_schemas_mutex = NULL;
 static GMutex *view_schemas_mutex = NULL;
-static guint less_locking_threads = 0;
 static GHashTable *character_set_hash=NULL;
 static GMutex *character_set_hash_mutex = NULL;
 static const guint tablecol= 0;
@@ -106,8 +105,6 @@ void initialize_working_thread(){
   all_dbts_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
   binlog_snapshot_gtid_executed = NULL;
-  if (less_locking)
-    less_locking_threads = num_threads;
 
 
   /* savepoints workaround to avoid metadata locking issues
@@ -167,12 +164,11 @@ void start_working_thread(struct configuration *conf ){
   guint n;
   threads = g_new(GThread *, num_threads );
   thread_data =
-      g_new(struct thread_data, num_threads * (less_locking + 1));
+      g_new(struct thread_data, num_threads);
   g_message("Creating workers");
   for (n = 0; n < num_threads; n++) {
     thread_data[n].conf = conf;
     thread_data[n].thread_id = n + 1;
-    thread_data[n].less_locking_stage = FALSE;
     thread_data[n].binlog_snapshot_gtid_executed = NULL;
     thread_data[n].pause_resume_mutex=NULL;
     thread_data[n].table_name=NULL;
@@ -826,17 +822,12 @@ void *working_thread(struct thread_data *td) {
   if (!skip_tz && mysql_query(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
     g_critical("Failed to set time zone: %s", mysql_error(td->thrconn));
   }
-  if (!td->less_locking_stage){
-    if (use_savepoints && mysql_query(td->thrconn, "SET SQL_LOG_BIN = 0")) {
-      m_critical("Failed to disable binlog for the thread: %s",
-                 mysql_error(td->thrconn));
-    }
-    initialize_consistent_snapshot(td);
-    check_connection_status(td);
+  if (use_savepoints && mysql_query(td->thrconn, "SET SQL_LOG_BIN = 0")) {
+    m_critical("Failed to disable binlog for the thread: %s",
+               mysql_error(td->thrconn));
   }
-/*  if (set_names_statement){
-    mysql_query(td->thrconn, set_names_statement);
-  }*/
+  initialize_consistent_snapshot(td);
+  check_connection_status(td);
 
   g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
   // Thread Ready to process jobs
@@ -855,6 +846,7 @@ void *working_thread(struct thread_data *td) {
 
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
     g_async_queue_pop(td->conf->ready_non_transactional_queue);
+
     if (less_locking){
       // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
@@ -862,21 +854,28 @@ void *working_thread(struct thread_data *td) {
       }
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+
+      // Processing non-transactional tables
       process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
       process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
+
+      // At this point, this thread is able to unlock the non-transactional tables
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
     }else{
+      // Processing non-transactional tables
       process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
       process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
+
+      // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
+    // Processing Transactional tables
     g_message("Thread %d: Non-Transactional tables are done, Starting exporting data for Transactional tables", td->thread_id);
     process_queue(td->conf->transactional.queue, td, FALSE, td->conf->transactional.request_chunk);
     process_queue(td->conf->transactional.defer, td, FALSE, NULL);
-  //  start_processing(td, resume_mutex);
   }else{
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }

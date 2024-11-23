@@ -1341,7 +1341,7 @@ void start_dump() {
     }
   }
 
-  // At this poing we can start the replica if it was stopped
+  // At this point, we can start the replica if it was stopped
   if (replica_stopped){
     g_message("Starting replica");
     if (mysql_query(conn, start_replica_sql_thread)){
