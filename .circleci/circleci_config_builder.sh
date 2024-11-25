@@ -35,13 +35,6 @@ all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
-vendor=mariadb1005
-all_vendors[${vendor}_0]="mariadb1005"
-all_vendors[${vendor}_1]="mariadb:10.05-rc"
-all_vendors[${vendor}_2]="mariadb-10.05"
-all_vendors[${vendor}_3]="mariadb"
-all_vendors[${vendor}_4]="mariadbclient"
-
 vendor=mariadb1006
 all_vendors[${vendor}_0]="mariadb1006"
 all_vendors[${vendor}_1]="mariadb:10.6"
