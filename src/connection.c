@@ -107,8 +107,6 @@ GOptionEntry connection_entries[] = {
 
 
 
-extern gchar *set_names_statement;
-
 gchar *connection_defaults_file=NULL;
 const gchar *connection_default_file_group=NULL;
 const gchar *program_name=NULL;

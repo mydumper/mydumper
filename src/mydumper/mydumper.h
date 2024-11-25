@@ -12,31 +12,19 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-    Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
+        Authors:    Domas Mituzas, Facebook ( domas at fb dot com )
+                    Mark Leith, Oracle Corporation (mark dot leith at oracle dot com)
+                    Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
+                    Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
+                    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-
-
-
-#define BACKTICK '`'
-#define DOUBLE_QUOTE '"'
-#define TRADITIONAL 0
-#define AWS 1
-
-extern char identifier_quote_character;
-extern const char *identifier_quote_character_str;
-extern guint max_threads_per_table;
-extern gchar *set_names_str;
-extern gchar *set_names_statement;
-extern gboolean no_stream;
-extern gboolean stream;
-extern gboolean no_delete;
-extern gchar *defaults_file;
-extern char *defaults_extra_file;
-extern GKeyFile * key_file;
-extern guint num_threads;
-extern MYSQL *main_connection;
-extern GString *set_global_back;
-
-
-
+#include "../config.h"
+#include "../connection.h"
+#include "../common_options.h"
+#include "../common.h"
+#include "../logging.h"
+#include "../set_verbose.h"
+#include "../tables_skiplist.h"
+#include "../regex.h"
+#include "../server_detect.h"
