@@ -62,10 +62,10 @@ all_vendors[${vendor}_1]="pingcap/tidb"
 
 
 
-list_all_vendors=( "percona57" "percona80" "mariadb1011" "mariadb1006" "mysql80" "mysql84")
 list_mysql_version=( "mysql80" "mysql84" )
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
+list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
 list_arch=( "arm" "amd" )
 # list_arch=( "amd" )
 declare -A all_arch
