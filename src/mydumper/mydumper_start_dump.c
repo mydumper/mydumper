@@ -343,7 +343,6 @@ MYSQL *create_main_connection() {
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   detect_server_version(conn);
-  detected_server = get_product(); 
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -366,7 +365,7 @@ MYSQL *create_main_connection() {
   initialize_headers();
   initialize_write();
 
-  switch (detected_server) {
+  switch (get_product()) {
   case SERVER_TYPE_MYSQL:
     set_transaction_isolation_level_repeatable_read(conn);
     break;
@@ -1085,7 +1084,7 @@ void start_dump() {
   }
 
   // Write replica information
-  if (detected_server != SERVER_TYPE_TIDB) {
+  if (get_product() != SERVER_TYPE_TIDB) {
     if (source_data >=0 )
       write_replica_info(conn, mdfile);
   }
@@ -1093,7 +1092,7 @@ void start_dump() {
   // Determine the locking mechanisim that is going to be used
   // and send locks to database if needed
 
-  if (detected_server == SERVER_TYPE_TIDB) {
+  if (get_product() == SERVER_TYPE_TIDB) {
     g_message("Skipping locks because of TiDB");
     if (!tidb_snapshot) {
 

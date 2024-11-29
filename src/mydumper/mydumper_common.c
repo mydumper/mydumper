@@ -381,7 +381,7 @@ void initialize_headers(){
     if (!skip_tz) {
       g_string_append(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
-  } else if (detected_server == SERVER_TYPE_TIDB) {
+  } else if (get_product() == SERVER_TYPE_TIDB) {
     if (!skip_tz) {
       g_string_printf(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }

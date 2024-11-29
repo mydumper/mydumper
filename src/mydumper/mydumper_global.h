@@ -122,7 +122,6 @@ extern guint snapshot_count;
 extern guint statement_size;
 extern guint trx_consistency_only;
 extern guint updated_since;
-extern int detected_server;
 extern int errno;
 extern int need_dummy_read;
 extern int need_dummy_toku_read;

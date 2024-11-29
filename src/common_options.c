@@ -36,7 +36,6 @@ char *defaults_extra_file = NULL;
 #endif
 
 gboolean help =FALSE;
-int detected_server = 0;
 GString *set_session = NULL;
 GString *set_global = NULL;
 GString *set_global_back = NULL;
