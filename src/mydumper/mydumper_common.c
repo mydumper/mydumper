@@ -205,8 +205,8 @@ void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
 gchar * build_filename(char *database, char *table, guint64 part, guint sub_part, const gchar *extension, const gchar *second_extension){
   GString *filename = g_string_sized_new(20);
   sub_part == 0 ?
-    g_string_append_printf(filename, "%s.%s.%05lu.%s%s%s", database, table, part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
-    g_string_append_printf(filename, "%s.%s.%05lu.%05u.%s%s%s", database, table, part, sub_part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"");
+    g_string_append_printf(filename, "%s.%s.%05"G_GINT64_FORMAT".%s%s%s", database, table, part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"" ):
+    g_string_append_printf(filename, "%s.%s.%05"G_GINT64_FORMAT".%05u.%s%s%s", database, table, part, sub_part, extension, second_extension!=NULL ?".":"",second_extension!=NULL ?second_extension:"");
   gchar *r = g_build_filename(dump_directory, filename->str, NULL);
   g_string_free(filename,TRUE);
   return r;
