@@ -272,7 +272,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     rows= get_rows_from_count(conn, dbt);
   } else
     rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
-  g_message("%s.%s has %s%lu rows", dbt->database->name, dbt->table,
+  g_message("%s.%s has %s%llu rows", dbt->database->name, dbt->table,
             (check_row_count ? "": "~"), rows);
   dbt->rows_total= rows;
   if (rows > (dbt->min_chunk_step_size!=0?dbt->min_chunk_step_size:MIN_CHUNK_STEP_SIZE)){
