@@ -256,7 +256,7 @@ int restore_insert(struct connection_data *cd,
       }
 
       if (tr > 0){
-        g_critical("Connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s",cd->thread_id, offset_line,current_offset_line,mysql_error(cd->thrconn));
+        g_error("Connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s",cd->thread_id, offset_line,current_offset_line,mysql_error(cd->thrconn));
       }
       if (mysql_warning_count(cd->thrconn)){
         g_warning("Connection %ld: Warnings found during INSERT between lines: %d and %d: %s",cd->thread_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
@@ -301,7 +301,7 @@ void *restore_thread(MYSQL *thrconn){
           ir->error=g_strdup(mysql_error(cd->thrconn));
           ir->error_number=mysql_errno(cd->thrconn);
           // FIXME: CLI option for max_errors (and AUTO for --identifier-quote-character), test
-
+          // TODO: max_errrors is not being used at the moment
     	    if (max_errors && errors > max_errors) {
             if (ir->filename==NULL){
               m_critical("Error occurs processing statement: %s",mysql_error(cd->thrconn));
