@@ -25,7 +25,7 @@ enum server_type {
   SERVER_TYPE_TIDB,
   SERVER_TYPE_MARIADB,
   SERVER_TYPE_PERCONA,
-	SERVER_TYPE_CLICKHOUSE,
+  SERVER_TYPE_CLICKHOUSE,
   SERVER_TYPE_DOLT
 };
 void detect_server_version(MYSQL * conn);
