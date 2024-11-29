@@ -266,7 +266,7 @@ void free_table_job(struct table_job *tj){
   g_free(tj);
 }
 
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue){
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, struct chunk_step_item *chunk_step_item, void f(GAsyncQueue *,struct job *), GAsyncQueue *queue){
   struct job *j = g_new0(struct job,1);
   struct table_job *tj = new_table_job(dbt, partition, nchunk, chunk_step_item);
   j->job_data=(void*) tj;
@@ -281,7 +281,7 @@ void create_job_defer(struct db_table *dbt, GAsyncQueue *queue){
   g_async_queue_push(queue,j);
 }
 
-void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue){
+void create_job_to_determine_chunk_type(struct db_table *dbt, void f(GAsyncQueue *,struct job *), GAsyncQueue *queue){
   struct job *j = g_new0(struct job,1);
   j->type = JOB_DETERMINE_CHUNK_TYPE;
   j->job_data=(void*) dbt;

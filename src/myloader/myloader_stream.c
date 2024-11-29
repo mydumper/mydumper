@@ -25,7 +25,7 @@
 #include "myloader_global.h"
 
 GThread *stream_thread = NULL;
-void *process_stream();
+void *process_stream(struct configuration *stream_conf);
 
 void initialize_stream (struct configuration *c){
   stream_thread = g_thread_new("myloader_stream",(GThreadFunc)process_stream, c);
