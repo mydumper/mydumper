@@ -382,13 +382,13 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       int is_view = 0;
       int is_sequence = 0;
 
-      if ((detected_server == SERVER_TYPE_MYSQL ||
-           detected_server == SERVER_TYPE_MARIADB) &&
+      if ((get_product() == SERVER_TYPE_MYSQL ||
+           get_product() == SERVER_TYPE_MARIADB) &&
           (row[ecol] == NULL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
 
-      if ((detected_server == SERVER_TYPE_MARIADB) &&
+      if ((get_product() == SERVER_TYPE_MARIADB) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE")))
         is_sequence = 1;
 
@@ -553,7 +553,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
 
 static
 void check_connection_status(struct thread_data *td){
-  if (detected_server == SERVER_TYPE_TIDB) {
+  if (get_product() == SERVER_TYPE_TIDB) {
     // Worker threads must set their tidb_snapshot in order to be safe
     // Because no locking has been used.
     set_tidb_snapshot(td->thrconn);
@@ -1368,12 +1368,12 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
             row[1] == "VIEW" if it is a view in 5.0 'SHOW FULL TABLES'
     */
     if ((is_mysql_like() || 
-         detected_server == SERVER_TYPE_TIDB ) &&
+         get_product() == SERVER_TYPE_TIDB ) &&
         (row[ecol] == NULL ) &&
         (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
       is_view = 1;
 
-    if ((detected_server == SERVER_TYPE_MARIADB) &&
+    if ((get_product() == SERVER_TYPE_MARIADB) &&
         !strcmp(row[ccol], "SEQUENCE"))
       is_sequence = 1;
 

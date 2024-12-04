@@ -50,7 +50,11 @@ int get_revision(){
 }
 
 gboolean is_mysql_like(){
-  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN;
+}
+
+gboolean server_support_tablespaces(){ 
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
 }
 
 void detect_server_version(MYSQL * conn) {
@@ -83,6 +87,9 @@ void detect_server_version(MYSQL * conn) {
   }else
   if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
     product = SERVER_TYPE_MYSQL;    
+  }else
+  if (g_strstr_len(ascii_version, -1, "dolt") || g_strstr_len(ascii_version_comment, -1, "dolt")){
+    product = SERVER_TYPE_DOLT;
   }
 	gchar ** sver=g_strsplit(ver[1],".",3);
 
@@ -157,6 +164,19 @@ void detect_server_version(MYSQL * conn) {
             change_replication_source=CHANGE_REPLICATION_SOURCE;
         }
         break;
+      case SERVER_TYPE_DOLT:
+        if (get_major()>=8 && get_secondary()>=0) {
+            start_replica=START_REPLICA;
+            stop_replica=STOP_REPLICA;
+            start_replica_sql_thread=START_REPLICA_SQL_THREAD;
+            stop_replica_sql_thread=STOP_REPLICA_SQL_THREAD;
+            reset_replica=RESET_REPLICA;
+            show_replica_status=SHOW_REPLICA_STATUS;
+            if (get_secondary()>=2)
+              show_binary_log_status=SHOW_BINARY_LOG_STATUS;
+            change_replication_source=CHANGE_REPLICATION_SOURCE;
+        }
+        break;
     }
   }else{
     start_replica=CALL_START_REPLICATION;
@@ -174,7 +194,8 @@ const gchar * get_product_name(){
   case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
   case SERVER_TYPE_TIDB:      return "TiDB"; break;
   case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
-	case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
+  case SERVER_TYPE_DOLT:      return "Dolt"; break;
+  case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
   default: return "";
 }
 

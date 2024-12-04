@@ -75,7 +75,7 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
 
 static
 gchar * get_tablespace_query(){
-  if ( get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN){
+  if ( server_support_tablespaces()){
     if ( get_major() == 5 && get_secondary() == 7)
       return g_strdup("select NAME, PATH, FS_BLOCK_SIZE from information_schema.INNODB_SYS_TABLESPACES join information_schema.INNODB_SYS_DATAFILES using (space) where SPACE_TYPE='General' and NAME != 'mysql';");
     if ( get_major() == 8 )
@@ -475,8 +475,6 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append(statement, "\n) ENGINE=MEMORY");
   if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL)
     g_string_append(statement," ENCRYPTION='N'");
-//  else if (get_product() == SERVER_TYPE_MARIADB)
-//    g_string_append(statement," ENCRYPTED=NO");
   g_string_append(statement,";\n");
 
   if (result)
