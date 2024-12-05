@@ -35,18 +35,8 @@ void wait_stream_to_finish(){
   g_thread_join(stream_thread);
 }
 
-size_t read_stream_line(char *buffer, gboolean *eof,FILE *file,int c_to_read){
-(void) file;
-(void) eof;
+size_t read_stream_line(char *buffer, int c_to_read){
     size_t bytes = fread(buffer, sizeof(char), c_to_read, stdin);
-/*    if (file != NULL && feof(stdin)){
-      g_message("EOF!!");
-      *eof = TRUE;
-      buffer[0] = '\0';
-//      m_close(file);
-      return 0;
-    }
-*/
     return bytes;
 }
 
@@ -55,7 +45,7 @@ void flush(char *buffer, int from, int to, FILE *file, guint *total_size){
 //  g_message("Flushing data %d: %s",to-from, tmp);
   if (file){ 
     if (write_file(file,&(buffer[from]),to-from+1) != to-from+1) 
-      g_critical("error on writing");
+      g_critical("Error on writing");
     *total_size=*total_size+(to-from)+1;
   }
 }
@@ -78,149 +68,170 @@ void *process_stream(struct configuration *stream_conf){
   int diff=0, i=0, line_from=0, line_end=0; 
   int initial_pos=0;
   guint total_size=0;
-  guint b=0;
+  guint file_size_from_stream=0;
   for(i=0;i<STREAM_BUFFER_SIZE;i++){
     buffer[i]='\0';
   }
   do {
-read_more:    buffer_len=read_stream_line(&(buffer[diff]),&eof,file,STREAM_BUFFER_SIZE-1-diff)+diff;
-//    g_message("Reading more byte(%d) with diff %d : |%s|\nWith buffer: |%s|", buffer_len, diff, &(buffer[diff]), buffer);
+    // Reads from stdin and fills the buffer from last position
+read_more:
+    buffer_len=fread(&(buffer[diff]), sizeof(char), STREAM_BUFFER_SIZE-1-diff, stdin)+diff;
+
     if (buffer_len==diff){
-//      g_message("Char in byte1 = %d %d == %d", buffer[0], buffer_len, diff);
-//      g_message("ENDING Writing missing data ");
+      // This menas that there is nothing else to read from stdin
+      // so, we need to flush and EXIT.
       flush(buffer,0,buffer_len-1,file, &total_size);
       break;
     }
+  
+    if (!buffer_len)
+      // We read nothing, we have to EXIT
+      break;
+
+    // We have data to process
+    // we always start reading from the begining of the buffer
     pos=0;
     diff=0;
-    if (!buffer_len){ 
-      break;
-    }else{
-      while (pos < buffer_len && !eof ){
-        initial_pos=pos;
-        while (buffer[pos] == '\n')
-          pos++;
-//        g_message("POS: %d", pos);
-        if (initial_pos != pos) {
-          line_from=pos-1;
-        }else{
-          line_from=pos;
-        }
+    while (pos < buffer_len && !eof ){
+      initial_pos=pos;
+      while (buffer[pos] == '\n')
+        // local new lines are ignored at this point, it will be written
+        pos++;
 
-        // Reading line
-//        g_message("Reading line initial_pos=%d pos=%d of buffer_len=%d is \\0? %d eof=%d", initial_pos, pos, buffer_len, buffer[pos]=='\0', eof);
-        while (pos < buffer_len && buffer[pos] !='\n' ){
-          pos++;
-        }
-//	g_message("DATA: %d %d  %s",line_from, pos, &(buffer[line_from]));
-        line_end=pos;
+      // we need to determine the right line_from
+      if (initial_pos != pos) {
+        line_from=pos-1;
+      }else{
+        line_from=pos;
+      }
 
+      // We process by line to correctly detect the header
+      while (pos < buffer_len && buffer[pos] !='\n' ){
+        pos++;
+      }
 
+      line_end=pos;
 
-        // is it a line?
-        if (buffer[line_end] == '\n'){
-//          g_message("Processing line from: %d to: %d", line_from, line_end);
-          if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
-//            g_message("FOUND -- at: %d", line_from);
-            if (file != NULL ){
-              if (initial_pos < line_from ){
-//                g_message("Writing missing new_lines, initial_pos: %d  line_from: %d", initial_pos, line_from );
-                flush(buffer,initial_pos,line_from-1,file, &total_size);
-              }
-              if (!no_stream){
-                if (total_size < b){
-                  g_message("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
-                  total_size=0;
-                }else if (total_size > b) {
-                  m_critical("Different file size in %s. Should be: %d | Written: %d", filename, b, total_size);
-                }else{
-                  total_size=0;
-                }
-              }else{
-                if (total_size>0)
-                  m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
-              }
-              previous_filename=g_strdup(filename);
-              g_free(filename);
+      // At this point we know:
+      // - line_from
+      // - line_end
+
+      // is it a line?
+       if (buffer[line_end] == '\n'){
+        // As it is a line we need to detect if it is a header
+        if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
+          // header tag detected 
+          if (file != NULL ){
+            // Another file was being written, we might need to flush from initial_pos to line_from
+            if (initial_pos < line_from ){
+              // flushing from initial_pos to line_from - 1
+              flush(buffer,initial_pos,line_from-1,file, &total_size);
             }
-//g_message("Pos: %d Line_end: %d line_from %d last_pos: %d next_line_from: %d filename_sapce: %d", pos,line_end, line_from, last_pos, next_line_from, GPOINTER_TO_INT(filename_space->next->data));
-            gchar ** sp=g_strsplit(&(buffer[line_from]), " ", 3);
-            filename=g_strdup(sp[1]);
-            b = g_ascii_strtoull(sp[2], NULL, 10);
-            g_strfreev(sp);
-//          g_message("Raaded Size from file is %d", b);
-            real_filename = g_build_filename(directory,filename,NULL);
-//            g_message("FILENAME: %s", filename);
-            if (file){
-              m_close(file);
-            }
-            if (previous_filename){
-              intermediate_queue_new(previous_filename);
-	      previous_filename=NULL;
-	    }
-            if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
-              if (no_stream){
-                 if (total_size>0)
-                   m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
-                 intermediate_queue_new(filename);
+            if (!no_stream){
+              // Content of the file are comming from stdin, it is not sharing the backup dir
+              if (total_size < file_size_from_stream){
+                // The file size reported in the header is not the same that the amount of data written
+                // this means that the content of the file has the header tag
+                // we need to flush and continue 
+                flush(buffer,line_from,line_end-1,file, &total_size);
+                g_message("Different file size in %s. Should be: %d | Written: %d. But continuing", filename, file_size_from_stream, total_size);
+                continue;
+              }else if (total_size > file_size_from_stream) {
+                // we wrote on the file more data than the file size reported in the header
+                m_critical("Different file size in %s. Should be: %d | Written: %d", filename, file_size_from_stream, total_size);
               }else{
-                g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
-                file = NULL;
+                // The amount of data written and the file size reported in the header match!
+                total_size=0;
               }
             }else{
-              if (no_stream){
-                m_critical("File %s not found in backup dir when using NO_STREAM.", filename);
-              }
-              file = g_fopen(real_filename, "w");
-//              m_write=(void *)&write_file;
-              m_close=(void *) &fclose;
+              // we do not expect file size reported on the header in this case
+              if (total_size>0)
+                m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
             }
-            if (!has_mydumper_suffix(filename)){
-              g_debug("Not a mydumper file: %s", filename);
-            }
-            pos++;
-//            g_message("Seting next_line_from=%d and pos=%d",next_line_from, pos);
-            continue;
+            previous_filename=g_strdup(filename);
+            g_free(filename);
           }
-          flush(buffer,initial_pos,line_end-1,file, &total_size);
-          continue;
-        }else{
-          // It reached end of buffer
-          //
-          // this data doesn't end with new line
-          // but we need to check if starts with --
+          // processing header
+          gchar ** sp=g_strsplit(&(buffer[line_from]), " ", 3);
+          filename=g_strdup(sp[1]);
+          // detecting file size reported on the header
+          file_size_from_stream = g_ascii_strtoull(sp[2], NULL, 10);
+          g_strfreev(sp);
 
-          if (line_end-line_from >= 4){
-            if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
-              diff=buffer_len-initial_pos ;
-              g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
+          // sending previous file for processing
+          real_filename = g_build_filename(directory,filename,NULL);
+          if (file)
+            m_close(file);
+          if (previous_filename){
+            intermediate_queue_new(previous_filename);
+            previous_filename=NULL;
+          }
+          if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
+            if (no_stream){
+               if (total_size>0)
+                 m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
+               intermediate_queue_new(filename);
             }else{
-              flush(buffer,initial_pos,line_end-1,file, &total_size);
-              diff=0;
+              g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
+              file = NULL;
             }
           }else{
-            gchar *tmp=g_strndup(&(buffer[line_from]),line_end-line_from >= 4 ? 4:line_end-line_from);
+            if (no_stream){
+              m_critical("File %s not found in backup dir when using NO_STREAM.", filename);
+            }
+            file = g_fopen(real_filename, "w");
+            m_close=(void *) &fclose;
+          }
+          if (!has_mydumper_suffix(filename)){
+            g_debug("Not a mydumper file: %s", filename);
+          }
+          pos++;
+          continue;
+        }
+        // this was a common line, flushing to disk
+        flush(buffer,initial_pos,line_end-1,file, &total_size);
+        continue;
+      }else{
+        // It reached end of buffer
+        //
+        // this data doesn't end with new line
+        // but we need to check if starts with --
+
+        if (line_end-line_from >= 4){
+          // In the buffer remains more than 4 chars
+          if (g_str_has_prefix(&(buffer[line_from]),"\n-- ")){
+            // It could be a header, so we copied to the begining of the buffer
+            diff=buffer_len-initial_pos ;
+            g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
+            // diff remains set to do not overwrite the buffer
+          }else{
+            // it is safe to flush it all the content of the buffer
+            flush(buffer,initial_pos,line_end-1,file, &total_size);
+            diff=0;
+            // the buffer will start empty
+          }
+        }else{
+
+          gchar *tmp=g_strndup(&(buffer[line_from]),line_end-line_from >= 4 ? 4:line_end-line_from);
 //          g_message("TMP: |%s| %c", tmp, tmp[0]);
-            if  (strlen(tmp)>=1 && g_strstr_len("\n-- ", -1 ,tmp) != NULL ){
+          if  (strlen(tmp)>=1 && g_strstr_len("\n-- ", -1 ,tmp) != NULL ){
               // we need to move to the begining of the buffer and reprocess 
 //              g_message("Coping data %d %d: %s", initial_pos,  buffer_len, &(buffer[initial_pos])  );
-              diff=buffer_len-initial_pos ;
-              g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
+            diff=buffer_len-initial_pos ;
+            g_strlcpy(buffer,&(buffer[initial_pos]), diff + 1);
 //              g_message("After copy data: %s | new len should be: %d", buffer , diff);
-            }else{
-              flush(buffer,initial_pos,line_end-1,file, &total_size);
-              diff=0;
-//  g_message("Checking for partial filename failed");
-            }
-            g_free(tmp);
+          }else{
+            flush(buffer,initial_pos,line_end-1,file, &total_size);
+            diff=0;
           }
-          goto read_more;
-
+          g_free(tmp);
         }
+        goto read_more;
 
-
-        g_error("This should not happen");
       }
+
+
+      g_error("This should not happen");
     }
   } while (eof == 0);
   if (file) 
