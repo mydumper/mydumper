@@ -25,15 +25,6 @@
 char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
-#ifdef WITH_SSL
-//char *key = NULL;
-//char *cert = NULL;
-//char *ca = NULL;
-//char *capath = NULL;
-//char *cipher = NULL;
-//char *tls_version = NULL;
-//gchar *ssl_mode = NULL;
-#endif
 
 gboolean help =FALSE;
 int detected_server = 0;
