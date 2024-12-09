@@ -25,9 +25,11 @@ enum server_type {
   SERVER_TYPE_TIDB,
   SERVER_TYPE_MARIADB,
   SERVER_TYPE_PERCONA,
-	SERVER_TYPE_CLICKHOUSE
+  SERVER_TYPE_CLICKHOUSE,
+  SERVER_TYPE_DOLT
 };
 void detect_server_version(MYSQL * conn);
+gboolean server_support_tablespaces();
 int get_product();
 int get_major();
 int get_secondary();
