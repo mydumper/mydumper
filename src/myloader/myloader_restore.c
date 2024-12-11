@@ -590,6 +590,7 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
   return r;
 }
 
+// return 0 means everything was ok
 int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list    args;
   va_start(args, fmt);

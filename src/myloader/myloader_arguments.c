@@ -91,6 +91,25 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
+  } else if (!strcmp(option_name, "--purge-mode")){
+    if (value){
+      purge_mode_str=g_strdup(value);
+      if (!strcmp(value,"TRUNCATE")){
+        purge_mode=TRUNCATE;
+      } else if (!strcmp(value,"DROP")){
+        purge_mode=DROP;
+      } else if (!strcmp(value,"DELETE")){
+        purge_mode=DELETE;
+      } else if (!strcmp(value,"NONE")){
+        purge_mode=NONE;
+      } else if (!strcmp(value,"FAIL")){
+        purge_mode=FAIL;
+      } else {
+        m_error("Purge mode unknown");
+        return FALSE;
+      }
+      return TRUE;
+    }
   }
   
   return common_arguments_callback(option_name, value, data, error);
@@ -140,7 +159,7 @@ static GOptionEntry execution_entries[] = {
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     { "no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, "Do not import table schemas and triggers ", NULL},
-    { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str,
+    { "purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },

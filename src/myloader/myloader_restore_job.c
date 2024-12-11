@@ -41,28 +41,18 @@ GMutex *shutdown_triggered_mutex=NULL;
 unsigned long long int progress = 0;
 enum purge_mode purge_mode = FAIL;
 
-void initialize_restore_job(gchar * pm_str){
+void initialize_restore_job(){
   file_list_to_do = g_async_queue_new();
   single_threaded_create_table = g_mutex_new();
   progress_mutex = g_mutex_new();
   shutdown_triggered_mutex = g_mutex_new();
-  if (pm_str){
-    if (!strcmp(pm_str,"TRUNCATE")){
-      purge_mode=TRUNCATE;
-    } else if (!strcmp(pm_str,"DROP")){
-      purge_mode=DROP;
-    } else if (!strcmp(pm_str,"DELETE")){
-      purge_mode=DELETE;
-    } else if (!strcmp(pm_str,"NONE")){
-      purge_mode=NONE;
-    } else if (!strcmp(pm_str,"FAIL")){
-      purge_mode=FAIL;
-    } else {
-      m_error("Purge mode unknown");
-    }
-  } else if (overwrite_tables)
-    purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
-  else purge_mode=FAIL; // This means that if -o is not set and CREATE TABLE statement fails, myloader will stop. 
+  if (!purge_mode_str){
+    if (overwrite_tables)
+      purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
+    else
+      purge_mode=FAIL; // This means that if -o is not set and CREATE TABLE statement fails, myloader will stop.
+  }
+
 }
 
 struct data_restore_job * new_data_restore_job_internal( guint index, guint part, guint sub_part){
@@ -141,35 +131,28 @@ int overwrite_table(struct thread_data *td, struct db_table *dbt){
         dbt->database->real_database, dbt->real_table);
     g_string_printf(data,"DROP TABLE IF EXISTS %c%s%c.%c%s%c",
         q, dbt->database->real_database, q, q, dbt->real_table, q);
-    if (restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->real_database, dbt->real_table)){
-      //mysql_query(conn, query)) {
-//      unsigned int err= mysql_errno(conn);
-//      if (overwrite_unsafe || (err != ER_LOCK_WAIT_TIMEOUT && err != ER_LOCK_DEADLOCK)) {
-//        m_critical("Drop table %s.%s failed: %s", database, table, mysql_error(conn));
-//      } else {
-//        m_warning("Drop table %s.%s failed: %s", database, table, mysql_error(conn));
-//      }
-      truncate_or_delete_failed= 1;
-    }
+    truncate_or_delete_failed = restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->real_database, dbt->real_table);
     g_string_printf(data,"DROP VIEW IF EXISTS %c%s%c.%c%s%c",
         q, dbt->database->real_database, q, q, dbt->real_table, q);
-    if ( restore_data_in_gstring(td, data, TRUE, dbt->database)){
+    if (restore_data_in_gstring(td, data, TRUE, dbt->database)){
+      truncate_or_delete_failed = 1;
       g_critical("Drop view failed");
     }
   } else if (purge_mode == TRUNCATE) {
     message("Truncating table %s.%s", dbt->database->real_database, dbt->real_table);
     g_string_printf(data,"TRUNCATE TABLE %c%s%c.%c%s%c",
         q, dbt->database->real_database, q, q, dbt->real_table, q);
-    truncate_or_delete_failed=  restore_data_in_gstring(td, data, TRUE, dbt->database)? 0 : 1;
+    truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
     if (truncate_or_delete_failed)
       g_warning("Truncate failed, we are going to try to create table or view");
   } else if (purge_mode == DELETE) {
     message("Deleting content of table %s.%s", dbt->database->real_database, dbt->real_table);
-    g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c",
+    g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
         q, dbt->database->real_database, q, q, dbt->real_table, q);
-    truncate_or_delete_failed=  restore_data_in_gstring(td, data, TRUE, dbt->database)? 0 : 1;
+    truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
     if (truncate_or_delete_failed)
       g_warning("Delete failed, we are going to try to create table or view");
+    restore_data_in_gstring(td, data, TRUE, dbt->database);
   }
   return truncate_or_delete_failed;
 }
@@ -278,7 +261,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               m_warning("Drop table %s.%s succeeded!", dbt->database->real_database, dbt->real_table);
           }
         }
-        if ((purge_mode == TRUNCATE || purge_mode == DELETE) && overwrite_error) {
+        if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !overwrite_error) {
           message("Skipping table creation %s.%s from %s", dbt->database->real_database, dbt->real_table, rj->filename);
         }else{
           message("Thread %d: Creating table %s.%s from content in %s. On db: %s", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename, dbt->database->name);
