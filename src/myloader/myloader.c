@@ -270,7 +270,7 @@ int main(int argc, char *argv[]) {
     }
   }
 //  initialize_job(purge_mode_str);
-  initialize_restore_job(purge_mode_str);
+  initialize_restore_job();
   char *current_dir=g_get_current_dir();
   if (!input_directory) {
     if (stream){

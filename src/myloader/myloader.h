@@ -30,6 +30,8 @@
 #include <mysql.h>
 #define MYLOADER "myloader"
 
+enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE };
+
 struct restore_errors {
   guint data_errors;
   guint index_errors;
