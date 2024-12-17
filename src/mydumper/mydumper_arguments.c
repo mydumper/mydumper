@@ -32,6 +32,7 @@ gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
 guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
+gboolean masquerade_filename=FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -97,6 +98,7 @@ static GOptionEntry entries[] = {
       "Accepts values like: '<resume>:<pause>' in MB."
       "For instance: 100:500 will pause when there is only 100MB free and will"
       "resume if 500MB are available", NULL },
+    { "masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename, "Masquerades the filenames", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry extra_entries[] = {

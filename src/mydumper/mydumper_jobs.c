@@ -842,11 +842,11 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
 }
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
-  struct database_job * dj = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping schema create for `%s`", td->thread_id,
-            dj->database->name);
-  write_schema_definition_into_file(td->thrconn, dj->database, dj->filename);
-  free_database_job(dj);
+  struct database_job * tj = (struct database_job *)job->job_data;
+  g_message("Thread %d: dumping schema create for %s%s%s", td->thread_id,
+            identifier_quote_character_str, masquerade_filename?tj->database->filename:tj->database->name, identifier_quote_character_str);
+  write_schema_definition_into_file(td->thrconn, tj->database, tj->filename);
+  free_database_job(tj);
   g_free(job);
 }
 
@@ -859,75 +859,80 @@ void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
 }
 
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
-  struct database_job * sp = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping SP and VIEWs for `%s`", td->thread_id,
-            sp->database->name);
-  write_routines_definition_into_file(td->thrconn, sp->database, sp->filename, sp->checksum_filename);
-  free_database_job(sp);
+  struct database_job * tj = (struct database_job *)job->job_data;
+  g_message("Thread %d: dumping SP and VIEWs for %s%s%s", td->thread_id,
+            identifier_quote_character_str, masquerade_filename?tj->database->filename:tj->database->name, identifier_quote_character_str);
+  write_routines_definition_into_file(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  free_database_job(tj);
   g_free(job);
 }
 
 
 void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job){
-  struct database_job * sj = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping triggers for `%s`", td->thread_id,
-            sj->database->name);
-  write_triggers_definition_into_file_from_database(td->thrconn, sj->database, sj->filename, sj->checksum_filename);
-  free_database_job(sj);
+  struct database_job * tj = (struct database_job *)job->job_data;
+  g_message("Thread %d: dumping triggers for %s%s%s", td->thread_id,
+            identifier_quote_character_str, masquerade_filename?tj->database->filename:tj->database->name, identifier_quote_character_str);
+  write_triggers_definition_into_file_from_database(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  free_database_job(tj);
   g_free(job);
 }
 
 void do_JOB_VIEW(struct thread_data *td, struct job *job){
-  struct view_job * vj = (struct view_job *)job->job_data;
-  g_message("Thread %d: dumping view for `%s`.`%s`", td->thread_id,
-            vj->dbt->database->name, vj->dbt->table);
-  write_view_definition_into_file(td->thrconn, vj->dbt, vj->tmp_table_filename,
-                 vj->view_filename, vj->checksum_filename);
-//  free_view_job(vj);
+  struct view_job * tj = (struct view_job *)job->job_data;
+  g_message("Thread %d: dumping view for %s%s%s.%s%s%s", td->thread_id,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+
+  write_view_definition_into_file(td->thrconn, tj->dbt, tj->tmp_table_filename,
+                 tj->view_filename, tj->checksum_filename);
   g_free(job);
 }
 
 void do_JOB_SEQUENCE(struct thread_data *td, struct job *job){
-  struct sequence_job * sj = (struct sequence_job *)job->job_data;
-  g_message("Thread %d dumping sequence for `%s`.`%s`", td->thread_id,
-            sj->dbt->database->name, sj->dbt->table);
-  write_sequence_definition_into_file(td->thrconn, sj->dbt, sj->filename,
-                 sj->checksum_filename);
+  struct sequence_job * tj = (struct sequence_job *)job->job_data;
+  g_message("Thread %d dumping sequence for %s%s%s.%s%s%s", td->thread_id,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  write_sequence_definition_into_file(td->thrconn, tj->dbt, tj->filename,
+                 tj->checksum_filename);
 //  free_sequence_job(sj);
   g_free(job);
 }
 
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
-  struct schema_job *sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d: dumping schema for `%s`.`%s`", td->thread_id,
-            sj->dbt->database->name, sj->dbt->table);
-  write_table_definition_into_file(td->thrconn, sj->dbt, sj->filename, sj->checksum_filename, sj->checksum_index_filename);
-  free_schema_job(sj);
+  struct schema_job *tj = (struct schema_job *)job->job_data;
+  g_message("Thread %d: dumping schema for %s%s%s.%s%s%s", td->thread_id,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  write_table_definition_into_file(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename, tj->checksum_index_filename);
+  free_schema_job(tj);
   g_free(job);
 }
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
-  struct schema_job * sj = (struct schema_job *)job->job_data;
-  g_message("Thread %d: dumping triggers for `%s`.`%s`", td->thread_id,
-            sj->dbt->database->name, sj->dbt->table);
-  write_triggers_definition_into_file_from_dbt(td->thrconn, sj->dbt, sj->filename, sj->checksum_filename);
-  free_schema_job(sj);
+  struct schema_job * tj = (struct schema_job *)job->job_data;
+  g_message("Thread %d: dumping triggers for %s%s%s.%s%s%s", td->thread_id,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  write_triggers_definition_into_file_from_dbt(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename);
+  free_schema_job(tj);
   g_free(job);
 }
 
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
-  struct table_checksum_job *tcj = (struct table_checksum_job *)job->job_data;
-  g_message("Thread %d: dumping checksum for `%s`.`%s`", td->thread_id,
-            tcj->dbt->database->name, tcj->dbt->table);
+  struct table_checksum_job *tj = (struct table_checksum_job *)job->job_data;
+  g_message("Thread %d: dumping checksum for %s%s%s.%s%s%s", td->thread_id,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
   if (use_savepoints && mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
     g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
   }
-  tcj->dbt->data_checksum=write_checksum_into_file(td->thrconn, tcj->dbt->database, tcj->dbt->table, checksum_table);
+  tj->dbt->data_checksum=write_checksum_into_file(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
   if (use_savepoints &&
       mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
     g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
   }
-  free_table_checksum_job(tcj);
+  free_table_checksum_job(tj);
   g_free(job);
 }
 
