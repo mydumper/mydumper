@@ -756,9 +756,17 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   if (g_strstr_len(option_name,8,"--stream")){
     stream = TRUE;
     use_defer= FALSE;
-    if (value==NULL || !g_ascii_strcasecmp(value,"TRADITIONAL")){
+
+    if (value==NULL || !g_ascii_strcasecmp(value,"TRADITIONAL") || !g_ascii_strcasecmp(value,"0")){
       return TRUE;
     }
+
+    guint64 val= strtol(value, NULL, 10);
+    if (errno == ERANGE || val > 7 ){
+      g_error("Value out of range on --stream");
+      return FALSE;
+    }
+
     if (!g_ascii_strcasecmp(value,"NO_DELETE")){
       no_delete=TRUE;
       return TRUE;
@@ -772,6 +780,16 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
       no_stream=TRUE;
       return TRUE;
     }
+
+    if (!val){
+      return FALSE;
+    }
+
+    if ((val) & (1<<(2))) no_stream=TRUE;
+    if ((val) & (1<<(1))) no_delete=TRUE;
+    if ((val) & (1<<(0))) no_sync=TRUE;
+    return TRUE;
+
   }
   return FALSE;
 }
