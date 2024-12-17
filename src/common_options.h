@@ -37,6 +37,6 @@ extern GKeyFile * key_file;
 extern guint num_threads;
 extern MYSQL *main_connection;
 extern GString *set_global_back;
-
+extern gboolean no_sync;
 
 
