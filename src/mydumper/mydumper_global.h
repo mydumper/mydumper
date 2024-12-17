@@ -143,3 +143,4 @@ extern gint source_data;
 extern guint output_format;
 extern struct function_pointer identity_function_pointer;
 extern GAsyncQueue *stream_queue;
+extern gboolean masquerade_filename;
