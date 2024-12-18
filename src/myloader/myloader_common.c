@@ -42,6 +42,7 @@ struct database *database_db=NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gchar *source_gtid=NULL;
+gboolean skip_table_sorting = FALSE;
 
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
@@ -486,18 +487,13 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
- //   table_list=g_list_insert_sorted_with_data (table_list,dbt,&compare_dbt,conf->table_hash);
-      table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+      if (skip_table_sorting)
+        table_list=g_list_prepend(table_list,dbt);
+      else
+        table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
     }
     g_list_free(conf->table_list);
     conf->table_list=table_list;
-//    trace("Table Order:");
-//    guint i=0;
-//    while(table_list!=NULL){
-//      i++;
-//      trace("%d: %s",i,((struct db_table *)table_list->data)->table);
-//      table_list=table_list->next;
-//    }
     g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
     g_mutex_unlock(conf->table_list_mutex);
   }
