@@ -180,8 +180,7 @@ static GOptionEntry execution_entries[] = {
      "It will receive the stream from STDIN and creates the file in the disk before start processing. "
        "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, "Every this amount of tables the internal metadata will be refreshed. If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
-//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-//      "It will not delete the files after stream has been completed", NULL},
+    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_STRING, &ignore_errors,
      "Not increment error count and Warning instead of Critical in case of "
      "any of the comman separated error number list",
