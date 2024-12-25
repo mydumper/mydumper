@@ -619,6 +619,7 @@ echo -n '${DIR_SUFFIX}/
 echo -n '
           createrepo_c --update . 
           git add repodata
+          cd ${BASE_PATH}
           cd ${YUM_PATH}'
 done
 
