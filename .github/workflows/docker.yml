@@ -42,3 +42,4 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          url: https://mydumper.github.io/mydumper/repo/yum/
