@@ -1,5 +1,8 @@
 FROM almalinux:9
 
+ARG repo_url
+ENV repo_url ${repo_url}
+
 RUN \
   yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm
 
@@ -9,7 +12,7 @@ RUN \
 RUN \
   curl -o GPG-KEY-MyDumper "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x79EA15C0E82E34BA" && \
   rpm --import GPG-KEY-MyDumper &&\
-  echo -e "[mydumper]\nname=MyDumper\nbaseurl=https://mydumper.github.io/mydumper/repo/yum/\nenabled=1\ngpgcheck=1" > /etc/yum.repos.d/mydumper.repo &&\
+  echo -e "[mydumper]\nname=MyDumper\nbaseurl=${repo_url}\nenabled=1\ngpgcheck=1" > /etc/yum.repos.d/mydumper.repo &&\
   yum -y install mydumper
 
 # Compilation outputs both mydumper and myloader binaries.
