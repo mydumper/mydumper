@@ -5820,6 +5820,7 @@ jobs:
           git add *.rpm
           createrepo_c --update . 
           git add repodata
+          cd ${BASE_PATH}
           cd ${YUM_PATH}
           mkdir -p 8/${DIR_SUFFIX}/
           cp /tmp/package/mydumper*el8*rpm 8/${DIR_SUFFIX}/
@@ -5828,6 +5829,7 @@ jobs:
           git add *.rpm
           createrepo_c --update . 
           git add repodata
+          cd ${BASE_PATH}
           cd ${YUM_PATH}
           mkdir -p 9/${DIR_SUFFIX}/
           cp /tmp/package/mydumper*el9*rpm 9/${DIR_SUFFIX}/
@@ -5836,6 +5838,7 @@ jobs:
           git add *.rpm
           createrepo_c --update . 
           git add repodata
+          cd ${BASE_PATH}
           cd ${YUM_PATH}
           cd ${BASE_PATH}
           git commit -m "Upload repo files ${CIRCLE_TAG}" && git push
