@@ -43,4 +43,5 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            "repo_url=https://mydumper.github.io/mydumper/repo/yum/"
+            "repo_url=https://mydumper.github.io/mydumper/repo/yum/$releasever/"
+            "tags=${{ steps.meta.outputs.tags }}"
