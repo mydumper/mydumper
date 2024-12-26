@@ -11,6 +11,7 @@ RUN \
 
 RUN \
   curl -o GPG-KEY-MyDumper "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x79EA15C0E82E34BA" && \
+  echo "TAGS: ${tags}" && \
   rpm --import GPG-KEY-MyDumper &&\
   echo -e "[mydumper]\nname=MyDumper\nbaseurl=https://mydumper.github.io/mydumper/repo/yum/$releasever/$(if [ $(($(echo "${tags}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ]; then echo 'testing'; fi)\nenabled=1\ngpgcheck=1" > /etc/yum.repos.d/mydumper.repo &&\
   yum -y install mydumper
