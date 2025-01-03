@@ -61,19 +61,15 @@ struct connection_data{
   GAsyncQueue * ready;
   gboolean transaction;
   GMutex *in_use;
+  
 };
 
 struct thread_data {
   struct configuration *conf;
-//  MYSQL *thrconn;
-//  struct database *current_database;
   guint thread_id;
-//  struct connection_data connection_data;
   enum thread_states status;
   guint granted_connections;
-//  GAsyncQueue *connection_pool;
   struct db_table*dbt;
-//  struct database* use_database;
 };
 
 struct configuration {

@@ -35,6 +35,7 @@ gboolean skip_definer = FALSE;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
+int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
 
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0};
@@ -69,7 +70,14 @@ struct io_restore_result *new_io_restore_result(){
 
 gchar *ignore_errors=NULL;
 
+int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
+
 void initialize_connection_pool(){
+  if (mysqldump)
+    restore_data_from_file=&restore_data_from_mysqldump_file;
+  else
+    restore_data_from_file=&restore_data_from_mydumper_file;
+
   guint n=0;
   if (ignore_errors){
     gchar **tmp_ignore_errors_list = g_strsplit(ignore_errors, ",", 0);
@@ -420,7 +428,84 @@ guint process_result_statement(GAsyncQueue * get_insert_result_queue, struct sta
   return r;
 }
 
-int restore_data_from_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database){
+int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database){
+
+  FILE *infile=NULL;
+  gboolean eof = FALSE;
+  GString *data = g_string_sized_new(256);
+  guint line=0,preline=0;
+  gchar *path = g_build_filename(directory, filename, NULL);
+  infile=myl_open(path,"r");
+
+  g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
+
+  if (!infile) {
+    g_critical("cannot open file %s (%d)", filename, errno);
+    errors++;
+    return 1;
+  }
+  guint r=0;
+  struct connection_data *cd=wait_for_available_restore_thread(td, !is_schema && (commit_count > 1), use_database );
+  g_assert(g_async_queue_length(cd->queue->restore)<=0);
+  g_assert(g_async_queue_length(cd->queue->result)<=0);
+  guint i=0;
+  struct statement *ir=g_async_queue_pop(free_results_queue);
+  gboolean results_added=FALSE;
+  gchar *delimiter=g_strdup(DEFAULT_DELIMITER);
+  while (eof == FALSE) {
+    if (read_data(infile, data, &eof, &line)) {
+      if (g_str_has_prefix(data->str,"DELIMITER")){
+        g_free(delimiter);
+        delimiter=g_strdup(&(data->str[10]));
+        preline=line+1;
+        g_string_set_size(data, 0);
+      }else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter)) {
+        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
+          remove_definer(data);
+        }
+        assing_statement(ir,data->str, preline, is_schema, OTHER);
+        g_async_queue_push(cd->queue->restore,ir);
+        ir=NULL;
+        process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
+        r|= ir->result;
+
+        g_string_set_size(data, 0);
+        preline=line+1;
+        if (ir->result>0){
+          g_critical("(1)Error occurs processing file %s",filename);
+        }
+      }
+    } else {
+      g_critical("error reading file %s (%d)", filename, errno);
+      errors++;
+      return errno;
+    }
+  }
+  struct io_restore_result *queue= cd->queue;
+  g_async_queue_push(free_results_queue,ir);
+  if (results_added){
+    for(i=0;i<7;i++){
+      process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
+      g_assert(ir->kind_of_statement!=CLOSE);
+      g_async_queue_push(free_results_queue,ir);
+    }
+  }
+  for(;td->granted_connections>0;td->granted_connections--){
+    g_async_queue_push(queue->restore,&release_connection_statement);
+    process_result_statement(queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
+    g_assert(ir->kind_of_statement==CLOSE);
+  }
+  g_async_queue_push(restore_queues, queue);
+
+  g_string_free(data, TRUE);
+
+  myl_close(filename, infile, TRUE);
+  g_free(path);
+  return r;
+}
+
+
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database){
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
@@ -444,12 +529,8 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
   g_assert(g_async_queue_length(cd->queue->restore)<=0);
   g_assert(g_async_queue_length(cd->queue->result)<=0);
   guint i=0;
-//  GAsyncQueue *local_result_statement_queue=g_async_queue_new();
-
-//  g_async_queue_push(local_result_statement_queue,ir);
   struct statement *ir=g_async_queue_pop(free_results_queue);
   gboolean results_added=FALSE;
-  //  g_assert(ir->kind_of_statement!=CLOSE);
   GString *header=g_string_sized_new(256);
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
@@ -468,19 +549,10 @@ int restore_data_from_file(struct thread_data *td, const char *filename, gboolea
             }
           } 
           assing_statement(ir, data->str, preline, FALSE, INSERT);
-/*          initialize_statement(ir);
-          GString *tmp=data;
-          data=ir->buffer;
-          ir->buffer=tmp;
-          ir->preline=preline;
-          ir->is_schema=FALSE;
-          ir->kind_of_statement=INSERT;
-*/
           g_async_queue_push(cd->queue->restore, ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
-//          ir=g_async_queue_pop(local_result_statement_queue);
           GString *new_data = NULL;
           gchar *from = g_strstr_len(data->str, -1, "'");
           from++;

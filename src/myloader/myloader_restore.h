@@ -14,6 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
+#define DEFAULT_DELIMITER ";\n"
 
 enum kind_of_statement { NOT_DEFINED, INSERT, OTHER, CLOSE};
 
@@ -34,8 +35,7 @@ void start_connection_pool(MYSQL *thrconn);
 
 int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
 int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...);
-int restore_data_from_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
-
+int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
 void release_load_data_as_it_is_close( gchar * filename );
 struct connection_data *close_restore_thread(gboolean return_connection);
 void wait_restore_threads_to_close();
