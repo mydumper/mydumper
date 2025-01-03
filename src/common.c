@@ -259,7 +259,6 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error){
-      g_message("Appending %s  = %s", keys[i], value);
       set_session_hash_insert(set_session_hash, keys[i], g_strdup(value));
     }
   }

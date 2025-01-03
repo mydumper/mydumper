@@ -144,7 +144,7 @@ void create_database(struct thread_data *td, gchar *database) {
                                             directory, database, exec_per_thread_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, filename, TRUE, NULL));
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
   } else {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);

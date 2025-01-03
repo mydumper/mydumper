@@ -129,3 +129,5 @@ extern gboolean enable_binlog;
 extern guint refresh_table_list_interval;
 extern GList *ignore_set_list;
 extern gboolean skip_table_sorting;
+extern gboolean mysqldump;
+extern int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *);
