@@ -31,6 +31,7 @@ gboolean set_gtid_purge = FALSE;
 gchar *fifo_directory = NULL;
 gboolean show_warnings=FALSE;
 GList *ignore_set_list=NULL;
+gboolean mysqldump = FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -134,6 +135,7 @@ static GOptionEntry entries[] = {
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, "When Ctrl+c is pressed it immediately terminates the process", NULL},
+    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, "It expect a mysqldump format when stream is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry threads_entries[] = {
