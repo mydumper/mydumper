@@ -909,7 +909,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
-                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%'",
+                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%' ORDER BY ORDINAL_POSITION ASC",
                       database, table);
   mysql_query(conn, query);
   g_free(query);
