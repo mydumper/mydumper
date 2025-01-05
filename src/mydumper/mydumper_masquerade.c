@@ -132,13 +132,13 @@ char *rand_uuid(char *str, size_t size)
 {
     const char charset[] = "0123456789abcdef";
     if (size) {
-        --size;
+//        --size;
         size_t n;
         for (n = 0; n < size; n++) {
-            int _key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[_key];
+          if (str[n]!='-')
+            str[n] = charset[rand() % (int) (sizeof charset - 1)];
         }
-        str[size] = '\0';
+//        str[size] = '\0';
     }
     return str;
 }
