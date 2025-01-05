@@ -909,7 +909,7 @@ GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
-                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%'",
+                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%' ORDER BY ORDINAL_POSITION ASC",
                       database, table);
   mysql_query(conn, query);
   g_free(query);
@@ -1049,7 +1049,8 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
     g_free(query);
     res = mysql_store_result(conn);
     row = mysql_fetch_row(res);
-    g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
+    if (row)
+      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
     mysql_free_result(res);
   }
   g_mutex_unlock(character_set_hash_mutex);
@@ -1100,7 +1101,13 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->table = identifier_quote_character_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->is_sequence= is_sequence;
-    dbt->character_set = table_collation==NULL? NULL:get_character_set_from_collation(conn, table_collation);
+    if (table_collation==NULL)
+      dbt->character_set = NULL;
+    else{
+      dbt->character_set=get_character_set_from_collation(conn, table_collation);
+      if ( dbt->character_set == NULL)
+        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->name,table);
+    }
     dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->escaped_table = escape_string(conn,dbt->table);
