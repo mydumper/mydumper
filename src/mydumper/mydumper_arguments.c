@@ -126,7 +126,6 @@ static GOptionEntry extra_entries[] = {
      "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
     {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
      "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
-    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {

@@ -138,10 +138,10 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
       }
       if (!g_ascii_strcasecmp(keys[i], "SOURCE_AUTO_POSITION")){
         auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
-        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
+//        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_SSL")){
         source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
-        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], source_ssl);
+//        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], source_ssl);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_HOST")){
         source_host=g_key_file_get_value(kf,group,keys[i],&error);
         g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], source_host);
@@ -168,9 +168,22 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
     }
   }
 
-  if (auto_position)
+
+  if (source_data>=0){
+    exec_reset_replica=((source_data) & (1<<(0)))>0;
+    exec_change_source=((source_data) & (1<<(1)))>0;
+    exec_start_replica=((source_data) & (1<<(2)))>0;
+    source_ssl        =((source_data) & (1<<(3)))>0;
+    auto_position     =((source_data) & (1<<(4)))>0;
+  }
+
+  if (source_ssl)
+    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", source_ssl);
+
+  if (auto_position){
+    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", auto_position);
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
-  else
+  }else
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master");
   
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
@@ -181,8 +194,7 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
   g_string_append_printf(aws_change_source,"%d );\n", source_ssl);
 
   g_strfreev(keys);
-  g_string_append_c(traditional_change_source,' ');
-  g_string_append(traditional_change_source,"FOR CHANNEL ");
+  g_string_append(traditional_change_source," FOR CHANNEL ");
   if (channel_name==NULL){
     g_string_append(traditional_change_source,"''");
   }else{
@@ -198,36 +210,37 @@ void change_master(GKeyFile * kf,gchar *group, GString *output_statement){
   
   }
 
-  if (exec_change_source){
-    if (exec_reset_replica){
-      g_string_append(output_statement,stop_replica);
-      g_string_append(output_statement,";\n");
+  if (exec_reset_replica){
+    g_string_append(output_statement,stop_replica);
+    g_string_append(output_statement,";\n");
 
-      g_string_append(output_statement,reset_replica);
-      if (source_control_command == TRADITIONAL){
-        g_string_append(output_statement," ");
-        if (exec_reset_replica>1)
-          g_string_append(output_statement,"ALL ");
-        if (channel_name!=NULL)
-          g_string_append_printf(output_statement,"FOR CHANNEL %s ", channel_name);
-      }
-      g_string_append(output_statement,";\n");
+    g_string_append(output_statement,reset_replica);
+    if (source_control_command == TRADITIONAL){
+      g_string_append(output_statement," ");
+      if (exec_reset_replica>1)
+        g_string_append(output_statement,"ALL ");
+      if (channel_name!=NULL)
+        g_string_append_printf(output_statement,"FOR CHANNEL %s ", channel_name);
     }
+    g_string_append(output_statement,";\n");
+  }
 
+  if (exec_change_source){
     if (source_control_command == TRADITIONAL){
       g_string_append(output_statement,traditional_change_source->str);
     }else{
       g_string_append(output_statement,aws_change_source->str);
     }
- 
-    if (exec_start_replica){
-      g_string_append(output_statement,start_replica);
-      g_string_append(output_statement,";\n");
-    }
-
-    if (source_control_command == TRADITIONAL)
-      g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
   }
+
+  if (exec_start_replica){
+    g_string_append(output_statement,start_replica);
+    g_string_append(output_statement,";\n");
+  }
+
+  if (source_control_command == TRADITIONAL)
+    g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
+  
 
   g_string_free(traditional_change_source,TRUE);
 }

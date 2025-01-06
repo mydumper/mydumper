@@ -53,7 +53,6 @@ gboolean no_backup_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
 guint updated_since = 0;
 guint trx_consistency_only = 0;
-gint source_data=0;
 gchar *exec_command=NULL;
 
 // Shared variables
