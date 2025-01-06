@@ -123,6 +123,7 @@ extern gchar *ignore_errors;
 extern gboolean kill_at_once;
 extern struct configuration_per_table conf_per_table;
 extern guint source_control_command;
+extern gint source_data;
 extern gboolean set_gtid_purge;
 extern gboolean show_warnings;
 extern gboolean enable_binlog;

@@ -191,6 +191,7 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
+  source_data=-1;
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
   set_thread_name("MNT");
@@ -594,6 +595,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (change_master_statement != NULL ){
+    g_message("Executing replication commands");
     gchar** line=g_strsplit(change_master_statement->str, ";\n", -1);
     for (i=0; i < g_strv_length(line);i++){
        if (strlen(line[i])>2){
