@@ -144,7 +144,7 @@ void create_database(struct thread_data *td, gchar *database) {
                                             directory, database, exec_per_thread_extension);
 
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_file(td, filename, TRUE, NULL));
+    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
   } else {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);
@@ -191,6 +191,7 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
+  source_data=-1;
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
   set_thread_name("MNT");
@@ -270,7 +271,7 @@ int main(int argc, char *argv[]) {
     }
   }
 //  initialize_job(purge_mode_str);
-  initialize_restore_job(purge_mode_str);
+  initialize_restore_job();
   char *current_dir=g_get_current_dir();
   if (!input_directory) {
     if (stream){
@@ -427,7 +428,6 @@ int main(int argc, char *argv[]) {
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   detect_server_version(conn);
-  detected_server = get_product();
   set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -595,6 +595,7 @@ int main(int argc, char *argv[]) {
   }
 
   if (change_master_statement != NULL ){
+    g_message("Executing replication commands");
     gchar** line=g_strsplit(change_master_statement->str, ";\n", -1);
     for (i=0; i < g_strv_length(line);i++){
        if (strlen(line[i])>2){

@@ -18,6 +18,8 @@
 #include <glib/gstdio.h>
 #include <sys/file.h>
 #include <errno.h>
+// We need header fcntl.h for open function to build on Alpine. More info in: https://github.com/mydumper/mydumper/issues/1721
+#include <fcntl.h>
 
 #include "mydumper.h"
 #include "mydumper_global.h"
@@ -53,10 +55,12 @@ void stream_queue_push(struct db_table *dbt,gchar *filename){
   else
     g_message("New stream file: %s with null dbt: ", filename);
 */
-  GAsyncQueue *done = g_async_queue_new();
+  GAsyncQueue *done = no_sync?NULL:g_async_queue_new();
   g_async_queue_push(stream_queue, new_stream_queue_element(dbt,filename,done));
-  g_async_queue_pop(done);
-  g_async_queue_unref(done);
+  if (done){
+    g_async_queue_pop(done);
+    g_async_queue_unref(done);
+  }
   metadata_partial_queue_push(dbt);
 }
 

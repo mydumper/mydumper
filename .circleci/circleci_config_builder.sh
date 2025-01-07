@@ -138,6 +138,7 @@ all_os[${os}_3]="true"
 # all_os[${os}_0]=""
 # all_os[${os}_1]=""
 list_el_os=("el7" "el8" "el9")
+list_el_os_without_el=( "7" "8" "9" )
 list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
@@ -560,13 +561,13 @@ echo -n '
     - run:
         command: |
           cd mydumper_repo/
-          export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export DIR_SUFFIX="." && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
           export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export APT_REPO="testing"
           export REPREPRO_OPTIONS="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d'.' -f3 | cut -d'-' -f1)%2)) -eq 0 ] && export REPREPRO_OPTIONS=" -C testing "
           export BASE_PATH=$(pwd)
           export UBUNTU_PATH="apt/ubuntu"
           export DEBIAN_PATH="apt/debian"
-          export YUM_PATH="yum/${DIR_SUFFIX}"
+          export YUM_PATH="yum"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
@@ -596,20 +597,31 @@ done
 echo -n '
           git add $(find -type f)
           cd ${BASE_PATH}
-          cd ${YUM_PATH}
-          cp '
-echo -n $(for i in ${list_el_os[@]} ; do echo "/tmp/package/mydumper*${i}*rpm"; done )
-          echo -n ' .'
-
+          cd ${YUM_PATH}'
 echo -n '
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
-          rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
+          rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"'
+
+for i in ${list_el_os_without_el[@]} ; do
+echo -n "
+          mkdir -p ${i}/"
+echo -n '${DIR_SUFFIX}/'
+echo -n '
+          cp '
+echo -n "/tmp/package/mydumper*el${i}*rpm ${i}/"
+echo -n '${DIR_SUFFIX}/'
+echo -n "
+          cd ${i}/"
+echo -n '${DIR_SUFFIX}/
           rpm --addsign  *.rpm
-          git add *.rpm
+          git add *.rpm'
+echo -n '
           createrepo_c --update . 
-          rm -rf repodata.old*
-          git add repodata'
+          git add repodata
+          cd ${BASE_PATH}
+          cd ${YUM_PATH}'
+done
 
 echo '
           cd ${BASE_PATH}

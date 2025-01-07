@@ -29,6 +29,8 @@ struct function_pointer identity_function_pointer = {&identity_function, NULL, N
 GHashTable *file_hash = NULL;
 
 void initialize_masquerade(){
+  srand(clock());
+
   file_hash = g_hash_table_new_full( g_str_hash, g_str_equal,  &g_free, &g_free );
 }
 
@@ -130,13 +132,13 @@ char *rand_uuid(char *str, size_t size)
 {
     const char charset[] = "0123456789abcdef";
     if (size) {
-        --size;
+//        --size;
         size_t n;
         for (n = 0; n < size; n++) {
-            int _key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[_key];
+          if (str[n]!='-')
+            str[n] = charset[rand() % (int) (sizeof charset - 1)];
         }
-        str[size] = '\0';
+//        str[size] = '\0';
     }
     return str;
 }
@@ -274,6 +276,13 @@ gchar *apply_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
   return new_r;
 }
 
+gchar *constant_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
+  (void)r;
+  gchar *new_r=NULL;
+  new_r=g_strdup(fp->parse->data);
+  *max_len=strlen(new_r);
+  return new_r;
+}
 
 fun_ptr get_function_pointer_for (gchar *function_char){
   if (g_str_has_prefix(function_char,"random_format")){
@@ -298,6 +307,10 @@ fun_ptr get_function_pointer_for (gchar *function_char){
 
   if (g_str_has_prefix(function_char,"apply")){
     return &apply_function;
+  }
+
+  if (g_str_has_prefix(function_char,"constant")){
+    return &constant_function;
   }
 
   // TODO: more functions needs to be added.
@@ -341,6 +354,11 @@ void parse_apply_function_value(struct function_pointer * fp, gchar *val){
     g_error("Parsing apply function failed. Elements found: %d but only 1 or 2 are allowed", g_list_length(fp->parse));
 
 }
+
+void parse_constant_function_value(struct function_pointer * fp, gchar *val){
+  fp->parse=g_list_append(fp->parse,g_strdup(val));
+}
+
 
 void parse_value(struct function_pointer * fp, gchar *val){
   char buffer[256];
@@ -441,10 +459,14 @@ struct function_pointer * init_function_pointer(gchar *value){
   g_debug("init_function_pointer: %s", value);
   if (g_str_has_prefix(value,"random_format")){
     parse_value(fp, g_strdup(&(fp->value[14])));
-  }
+  }else
   if (g_str_has_prefix(value,"apply")){
     fp->is_pre=TRUE;
     parse_apply_function_value(fp, g_strdup(&(fp->value[6])));
+  }else
+  if (g_str_has_prefix(value,"constant")){
+    fp->is_pre=TRUE;
+    parse_constant_function_value(fp, g_strdup(&(fp->value[9])));
   }
   return fp;
 }

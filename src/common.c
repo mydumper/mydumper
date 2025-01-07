@@ -259,7 +259,6 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
   for (i=0; i < len; i++){
     value=g_key_file_get_value(kf,group_variables,keys[i],&error);
     if (!error){
-      g_message("Appending %s  = %s", keys[i], value);
       set_session_hash_insert(set_session_hash, keys[i], g_strdup(value));
     }
   }
@@ -756,22 +755,40 @@ gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, 
   if (g_strstr_len(option_name,8,"--stream")){
     stream = TRUE;
     use_defer= FALSE;
-    if (value==NULL || g_strstr_len(value,11,"TRADITIONAL")){
+
+    if (value==NULL || !g_ascii_strcasecmp(value,"TRADITIONAL") || !g_ascii_strcasecmp(value,"0")){
       return TRUE;
     }
-    if (strlen(value)==9 && g_strstr_len(value,9,"NO_DELETE")){
+
+    guint64 val= strtol(value, NULL, 10);
+    if (errno == ERANGE || val > 7 ){
+      g_error("Value out of range on --stream");
+      return FALSE;
+    }
+
+    if (!g_ascii_strcasecmp(value,"NO_DELETE")){
       no_delete=TRUE;
       return TRUE;
     }
-    if (g_strstr_len(value,23,"NO_STREAM_AND_NO_DELETE")){
+    if (!g_ascii_strcasecmp(value,"NO_STREAM_AND_NO_DELETE")){
       no_delete=TRUE;
       no_stream=TRUE;
       return TRUE;
     }
-    if (strlen(value)==9 && g_strstr_len(value,9,"NO_STREAM")){
+    if (!g_ascii_strcasecmp(value,"NO_STREAM")){
       no_stream=TRUE;
       return TRUE;
     }
+
+    if (!val){
+      return FALSE;
+    }
+
+    if ((val) & (1<<(2))) no_stream=TRUE;
+    if ((val) & (1<<(1))) no_delete=TRUE;
+    if ((val) & (1<<(0))) no_sync=TRUE;
+    return TRUE;
+
   }
   return FALSE;
 }

@@ -25,18 +25,8 @@
 char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
-#ifdef WITH_SSL
-//char *key = NULL;
-//char *cert = NULL;
-//char *ca = NULL;
-//char *capath = NULL;
-//char *cipher = NULL;
-//char *tls_version = NULL;
-//gchar *ssl_mode = NULL;
-#endif
 
 gboolean help =FALSE;
-int detected_server = 0;
 GString *set_session = NULL;
 GString *set_global = NULL;
 GString *set_global_back = NULL;
@@ -58,6 +48,7 @@ gchar *tables_skiplist_file = NULL;
 char **tables = NULL;
 
 gboolean no_stream = FALSE;
+gboolean no_sync=FALSE;
 
 gchar *set_names_str=NULL;
 gchar *set_names_statement=NULL;
@@ -69,6 +60,7 @@ gboolean schema_sequence_fix = FALSE;
 guint max_threads_per_table= G_MAXUINT;
 
 guint source_control_command = TRADITIONAL;
+gint source_data=0;
 
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
@@ -87,6 +79,7 @@ GOptionEntry common_entries[] = {
      "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
+    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 

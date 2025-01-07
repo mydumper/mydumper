@@ -15,7 +15,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -132,7 +132,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -249,7 +249,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -366,7 +366,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -483,7 +483,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -600,7 +600,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -717,7 +717,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -834,7 +834,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -951,7 +951,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1068,7 +1068,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: mariadb:10.11-rc
+    - image: mariadb:10.11
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1646,6 +1646,48 @@ commands:
 
 jobs:
 
+  compile_and_test_mydumper_in_bionic_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bionic_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bionic_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bionic_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bionic_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bionic_mysql84
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
   compile_and_test_mydumper_in_bionic_percona57:
     parameters:
       test:
@@ -1730,48 +1772,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bionic_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bionic_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bionic_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_bionic_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bionic_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bionic_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_bionic_tidb:
     parameters:
       test:
@@ -1786,6 +1786,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_bionic_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_focal_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: focal_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_focal_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_focal_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: focal_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_focal_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -1877,48 +1919,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_focal_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: focal_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_focal_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_focal_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: focal_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_focal_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_focal_tidb:
     parameters:
       test:
@@ -1933,6 +1933,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_focal_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_jammy_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: jammy_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_jammy_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_jammy_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: jammy_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_jammy_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2024,48 +2066,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_jammy_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: jammy_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_jammy_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_jammy_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: jammy_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_jammy_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_jammy_tidb:
     parameters:
       test:
@@ -2080,6 +2080,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_jammy_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_noble_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: noble_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_noble_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_noble_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: noble_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_noble_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2171,48 +2213,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: noble_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_noble_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_noble_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: noble_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_noble_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_noble_tidb:
     parameters:
       test:
@@ -2227,6 +2227,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_noble_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_buster_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: buster_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_buster_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_buster_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: buster_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_buster_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2318,48 +2360,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_buster_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_buster_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_buster_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_buster_tidb:
     parameters:
       test:
@@ -2374,6 +2374,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_buster_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bullseye_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bullseye_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bullseye_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bullseye_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bullseye_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bullseye_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2465,48 +2507,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bullseye_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bullseye_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bullseye_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_bullseye_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bullseye_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bullseye_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_bullseye_tidb:
     parameters:
       test:
@@ -2521,6 +2521,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_bullseye_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bookworm_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bookworm_mysql80
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bookworm_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_bookworm_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: bookworm_mysql84
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_ubuntu
+    - prepare_bookworm_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2612,48 +2654,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bookworm_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bookworm_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bookworm_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_bookworm_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: bookworm_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_ubuntu
-    - prepare_bookworm_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_bookworm_tidb:
     parameters:
       test:
@@ -2668,6 +2668,48 @@ jobs:
     - checkout
 #    - prepare_ubuntu
     - prepare_bookworm_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el7_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el7
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el7_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el7_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el7
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el7_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2759,48 +2801,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el7_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el7
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el7_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el7_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el7
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el7_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_el7_tidb:
     parameters:
       test:
@@ -2815,6 +2815,48 @@ jobs:
     - checkout
 #    - prepare_el
     - prepare_el7_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el8_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el8
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el8_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el8_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el8
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el8_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2906,48 +2948,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el8_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el8
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el8_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el8_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el8
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el8_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_el8_tidb:
     parameters:
       test:
@@ -2962,6 +2962,48 @@ jobs:
     - checkout
 #    - prepare_el
     - prepare_el8_tidb
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el9_mysql80:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el9
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el9_mysql80
+    - compile_and_test_mydumper:
+        test: << parameters.test >>
+    - persist_to_workspace:
+         root: /tmp/src/mydumper
+         paths:
+           - .
+
+  compile_and_test_mydumper_in_el9_mysql84:
+    parameters:
+      test:
+        type: boolean
+        default: false
+      e:
+        type: string
+        default: el9
+    executor: << parameters.e >>
+    resource_class: large
+    steps:
+    - checkout
+#    - prepare_el
+    - prepare_el9_mysql84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3053,48 +3095,6 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el9_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el9
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el9_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_el9_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: el9
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-#    - prepare_el
-    - prepare_el9_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
   compile_and_test_mydumper_in_el9_tidb:
     parameters:
       test:
@@ -3116,6 +3116,50 @@ jobs:
          paths:
            - .
 
+  build_el7_mysql80_aarch64:
+#    executor: el7_mysql80
+    executor: el7
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_el
+    - prepare_el7_mysql80
+    - run: mkdir -p /tmp/package
+    - run: yum -y install rpmdevtools
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
+  build_el7_mysql84_aarch64:
+#    executor: el7_mysql84
+    executor: el7
+    resource_class: arm.medium
+    steps:
+    - checkout
+    - set_env_vars
+#    - prepare_el
+    - prepare_el7_mysql84
+    - run: mkdir -p /tmp/package
+    - run: yum -y install rpmdevtools
+    - compile:
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
+
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_percona57_aarch64:
 #    executor: el7_percona57
     executor: el7
@@ -3204,45 +3248,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7_mysql80_aarch64:
-#    executor: el7_mysql80
-    executor: el7
+  build_el8_mysql80_aarch64:
+#    executor: el8_mysql80
+    executor: el8
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el7_mysql80
+    - prepare_el8_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el7_mysql84_aarch64:
-#    executor: el7_mysql84
-    executor: el7
+  build_el8_mysql84_aarch64:
+#    executor: el8_mysql84
+    executor: el8
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el7_mysql84
+    - prepare_el8_mysql84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3336,45 +3380,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8_mysql80_aarch64:
-#    executor: el8_mysql80
-    executor: el8
+  build_el9_mysql80_aarch64:
+#    executor: el9_mysql80
+    executor: el9
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el8_mysql80
+    - prepare_el9_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el8_mysql84_aarch64:
-#    executor: el8_mysql84
-    executor: el8
+  build_el9_mysql84_aarch64:
+#    executor: el9_mysql84
+    executor: el9
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el8_mysql84
+    - prepare_el9_mysql84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3468,45 +3512,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9_mysql80_aarch64:
-#    executor: el9_mysql80
-    executor: el9
-    resource_class: arm.medium
+  build_el7_mysql80_x86_64:
+#    executor: el7_mysql80
+    executor: el7
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el9_mysql80
+    - prepare_el7_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el9_mysql84_aarch64:
-#    executor: el9_mysql84
-    executor: el9
-    resource_class: arm.medium
+  build_el7_mysql84_x86_64:
+#    executor: el7_mysql84
+    executor: el7
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el9_mysql84
+    - prepare_el7_mysql84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3600,45 +3644,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7_mysql80_x86_64:
-#    executor: el7_mysql80
-    executor: el7
+  build_el8_mysql80_x86_64:
+#    executor: el8_mysql80
+    executor: el8
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el7_mysql80
+    - prepare_el8_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el7_mysql84_x86_64:
-#    executor: el7_mysql84
-    executor: el7
+  build_el8_mysql84_x86_64:
+#    executor: el8_mysql84
+    executor: el8
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el7_mysql84
+    - prepare_el8_mysql84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3732,45 +3776,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8_mysql80_x86_64:
-#    executor: el8_mysql80
-    executor: el8
+  build_el9_mysql80_x86_64:
+#    executor: el9_mysql80
+    executor: el9
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el8_mysql80
+    - prepare_el9_mysql80
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el8_mysql84_x86_64:
-#    executor: el8_mysql84
-    executor: el8
+  build_el9_mysql84_x86_64:
+#    executor: el9_mysql84
+    executor: el9
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_el
-    - prepare_el8_mysql84
+    - prepare_el9_mysql84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3864,45 +3908,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9_mysql80_x86_64:
-#    executor: el9_mysql80
-    executor: el9
-    resource_class: large
+  build_bionic_mysql80_arm64:
+#    executor: bionic_mysql80
+    executor: bionic
+    resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
-#    - prepare_el
-    - prepare_el9_mysql80
+#    - prepare_ubuntu
+    - prepare_bionic_mysql80
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_el9_mysql84_x86_64:
-#    executor: el9_mysql84
-    executor: el9
-    resource_class: large
+  build_bionic_mysql84_arm64:
+#    executor: bionic_mysql84
+    executor: bionic
+    resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
-#    - prepare_el
-    - prepare_el9_mysql84
+#    - prepare_ubuntu
+    - prepare_bionic_mysql84
+    - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
-    - run: yum -y install rpmdevtools
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -3996,45 +4040,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic_mysql80_arm64:
-#    executor: bionic_mysql80
-    executor: bionic
+  build_focal_mysql80_arm64:
+#    executor: focal_mysql80
+    executor: focal
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bionic_mysql80
+    - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/focal_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_bionic_mysql84_arm64:
-#    executor: bionic_mysql84
-    executor: bionic
+  build_focal_mysql84_arm64:
+#    executor: focal_mysql84
+    executor: focal
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bionic_mysql84
+    - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/focal_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4128,45 +4172,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal_mysql80_arm64:
-#    executor: focal_mysql80
-    executor: focal
+  build_jammy_mysql80_arm64:
+#    executor: jammy_mysql80
+    executor: jammy
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_focal_mysql80
+    - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/focal_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_focal_mysql84_arm64:
-#    executor: focal_mysql84
-    executor: focal
+  build_jammy_mysql84_arm64:
+#    executor: jammy_mysql84
+    executor: jammy
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_focal_mysql84
+    - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/focal_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4260,45 +4304,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy_mysql80_arm64:
-#    executor: jammy_mysql80
-    executor: jammy
+  build_noble_mysql80_arm64:
+#    executor: noble_mysql80
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_jammy_mysql80
+    - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_jammy_mysql84_arm64:
-#    executor: jammy_mysql84
-    executor: jammy
+  build_noble_mysql84_arm64:
+#    executor: noble_mysql84
+    executor: noble
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_jammy_mysql84
+    - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4392,45 +4436,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql80_arm64:
-#    executor: noble_mysql80
-    executor: noble
+  build_buster_mysql80_arm64:
+#    executor: buster_mysql80
+    executor: buster
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_noble_mysql80
+    - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql84_arm64:
-#    executor: noble_mysql84
-    executor: noble
+  build_buster_mysql84_arm64:
+#    executor: buster_mysql84
+    executor: buster
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_noble_mysql84
+    - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4524,45 +4568,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql80_arm64:
-#    executor: buster_mysql80
-    executor: buster
+  build_bullseye_mysql80_arm64:
+#    executor: bullseye_mysql80
+    executor: bullseye
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_buster_mysql80
+    - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql84_arm64:
-#    executor: buster_mysql84
-    executor: buster
+  build_bullseye_mysql84_arm64:
+#    executor: bullseye_mysql84
+    executor: bullseye
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_buster_mysql84
+    - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4656,45 +4700,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye_mysql80_arm64:
-#    executor: bullseye_mysql80
-    executor: bullseye
+  build_bookworm_mysql80_arm64:
+#    executor: bookworm_mysql80
+    executor: bookworm
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bullseye_mysql80
+    - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_bullseye_mysql84_arm64:
-#    executor: bullseye_mysql84
-    executor: bullseye
+  build_bookworm_mysql84_arm64:
+#    executor: bookworm_mysql84
+    executor: bookworm
     resource_class: arm.medium
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bullseye_mysql84
+    - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_arm64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4788,45 +4832,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm_mysql80_arm64:
-#    executor: bookworm_mysql80
-    executor: bookworm
-    resource_class: arm.medium
+  build_bionic_mysql80_amd64:
+#    executor: bionic_mysql80
+    executor: bionic
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bookworm_mysql80
+    - prepare_bionic_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_bookworm_mysql84_arm64:
-#    executor: bookworm_mysql84
-    executor: bookworm
-    resource_class: arm.medium
+  build_bionic_mysql84_amd64:
+#    executor: bionic_mysql84
+    executor: bionic
+    resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bookworm_mysql84
+    - prepare_bionic_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -4920,45 +4964,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic_mysql80_amd64:
-#    executor: bionic_mysql80
-    executor: bionic
+  build_focal_mysql80_amd64:
+#    executor: focal_mysql80
+    executor: focal
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bionic_mysql80
+    - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/focal_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_bionic_mysql84_amd64:
-#    executor: bionic_mysql84
-    executor: bionic
+  build_focal_mysql84_amd64:
+#    executor: focal_mysql84
+    executor: focal
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bionic_mysql84
+    - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/focal_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5052,45 +5096,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal_mysql80_amd64:
-#    executor: focal_mysql80
-    executor: focal
+  build_jammy_mysql80_amd64:
+#    executor: jammy_mysql80
+    executor: jammy
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_focal_mysql80
+    - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/focal_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_focal_mysql84_amd64:
-#    executor: focal_mysql84
-    executor: focal
+  build_jammy_mysql84_amd64:
+#    executor: jammy_mysql84
+    executor: jammy
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_focal_mysql84
+    - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/focal_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5184,45 +5228,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy_mysql80_amd64:
-#    executor: jammy_mysql80
-    executor: jammy
+  build_noble_mysql80_amd64:
+#    executor: noble_mysql80
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_jammy_mysql80
+    - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_jammy_mysql84_amd64:
-#    executor: jammy_mysql84
-    executor: jammy
+  build_noble_mysql84_amd64:
+#    executor: noble_mysql84
+    executor: noble
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_jammy_mysql84
+    - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5316,45 +5360,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql80_amd64:
-#    executor: noble_mysql80
-    executor: noble
+  build_buster_mysql80_amd64:
+#    executor: buster_mysql80
+    executor: buster
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_noble_mysql80
+    - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_noble_mysql84_amd64:
-#    executor: noble_mysql84
-    executor: noble
+  build_buster_mysql84_amd64:
+#    executor: buster_mysql84
+    executor: buster
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_noble_mysql84
+    - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5448,45 +5492,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql80_amd64:
-#    executor: buster_mysql80
-    executor: buster
+  build_bullseye_mysql80_amd64:
+#    executor: bullseye_mysql80
+    executor: bullseye
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_buster_mysql80
+    - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql84_amd64:
-#    executor: buster_mysql84
-    executor: buster
+  build_bullseye_mysql84_amd64:
+#    executor: bullseye_mysql84
+    executor: bullseye
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_buster_mysql84
+    - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5580,45 +5624,45 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye_mysql80_amd64:
-#    executor: bullseye_mysql80
-    executor: bullseye
+  build_bookworm_mysql80_amd64:
+#    executor: bookworm_mysql80
+    executor: bookworm
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bullseye_mysql80
+    - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
          paths:
            - .
-  build_bullseye_mysql84_amd64:
-#    executor: bullseye_mysql84
-    executor: bullseye
+  build_bookworm_mysql84_amd64:
+#    executor: bookworm_mysql84
+    executor: bookworm
     resource_class: large
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
-    - prepare_bullseye_mysql84
+    - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/package
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_amd64/etc
+    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
 
     - persist_to_workspace:
          root: /tmp/package
@@ -5712,50 +5756,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm_mysql80_amd64:
-#    executor: bookworm_mysql80
-    executor: bookworm
-    resource_class: large
-    steps:
-    - checkout
-    - set_env_vars
-#    - prepare_ubuntu
-    - prepare_bookworm_mysql80
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_bookworm_mysql84_amd64:
-#    executor: bookworm_mysql84
-    executor: bookworm
-    resource_class: large
-    steps:
-    - checkout
-    - set_env_vars
-#    - prepare_ubuntu
-    - prepare_bookworm_mysql84
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
 
   publish-github-release:
     docker:
@@ -5779,13 +5779,13 @@ jobs:
     - run:
         command: |
           cd mydumper_repo/
-          export DIR_SUFFIX="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
+          export DIR_SUFFIX="." && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export DIR_SUFFIX="testing"
           export APT_REPO="main" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export APT_REPO="testing"
           export REPREPRO_OPTIONS="" && [ $(($(echo "${CIRCLE_TAG}" | cut -d. -f3 | cut -d- -f1)%2)) -eq 0 ] && export REPREPRO_OPTIONS=" -C testing "
           export BASE_PATH=$(pwd)
           export UBUNTU_PATH="apt/ubuntu"
           export DEBIAN_PATH="apt/debian"
-          export YUM_PATH="yum/${DIR_SUFFIX}"
+          export YUM_PATH="yum"
           git config --global user.name "David Ducos"
           git config --global user.email "david.ducos@gmail.com"
           git checkout HEAD~ yum/rpmmacros
@@ -5810,15 +5810,36 @@ jobs:
           git add $(find -type f)
           cd ${BASE_PATH}
           cd ${YUM_PATH}
-          cp /tmp/package/mydumper*el7*rpm /tmp/package/mydumper*el8*rpm /tmp/package/mydumper*el9*rpm .
           gpg --export -a 79EA15C0E82E34BA > key.asc
           rpm --import key.asc
           rpm -q gpg-pubkey --qf "%{name}-%{version}-%{release} --> %{summary}\n"
+          mkdir -p 7/${DIR_SUFFIX}/
+          cp /tmp/package/mydumper*el7*rpm 7/${DIR_SUFFIX}/
+          cd 7/${DIR_SUFFIX}/
           rpm --addsign  *.rpm
           git add *.rpm
           createrepo_c --update . 
-          rm -rf repodata.old*
           git add repodata
+          cd ${BASE_PATH}
+          cd ${YUM_PATH}
+          mkdir -p 8/${DIR_SUFFIX}/
+          cp /tmp/package/mydumper*el8*rpm 8/${DIR_SUFFIX}/
+          cd 8/${DIR_SUFFIX}/
+          rpm --addsign  *.rpm
+          git add *.rpm
+          createrepo_c --update . 
+          git add repodata
+          cd ${BASE_PATH}
+          cd ${YUM_PATH}
+          mkdir -p 9/${DIR_SUFFIX}/
+          cp /tmp/package/mydumper*el9*rpm 9/${DIR_SUFFIX}/
+          cd 9/${DIR_SUFFIX}/
+          rpm --addsign  *.rpm
+          git add *.rpm
+          createrepo_c --update . 
+          git add repodata
+          cd ${BASE_PATH}
+          cd ${YUM_PATH}
           cd ${BASE_PATH}
           git commit -m "Upload repo files ${CIRCLE_TAG}" && git push
 

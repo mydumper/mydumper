@@ -31,6 +31,7 @@ gboolean set_gtid_purge = FALSE;
 gchar *fifo_directory = NULL;
 gboolean show_warnings=FALSE;
 GList *ignore_set_list=NULL;
+gboolean mysqldump = FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -91,6 +92,25 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
+  } else if (!strcmp(option_name, "--purge-mode")){
+    if (value){
+      purge_mode_str=g_strdup(value);
+      if (!strcmp(value,"TRUNCATE")){
+        purge_mode=TRUNCATE;
+      } else if (!strcmp(value,"DROP")){
+        purge_mode=DROP;
+      } else if (!strcmp(value,"DELETE")){
+        purge_mode=DELETE;
+      } else if (!strcmp(value,"NONE")){
+        purge_mode=NONE;
+      } else if (!strcmp(value,"FAIL")){
+        purge_mode=FAIL;
+      } else {
+        m_error("Purge mode unknown");
+        return FALSE;
+      }
+      return TRUE;
+    }
   }
   
   return common_arguments_callback(option_name, value, data, error);
@@ -115,6 +135,7 @@ static GOptionEntry entries[] = {
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, "When Ctrl+c is pressed it immediately terminates the process", NULL},
+    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, "It expect a mysqldump format when stream is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry threads_entries[] = {
@@ -140,7 +161,7 @@ static GOptionEntry execution_entries[] = {
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     { "no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, "Do not import table schemas and triggers ", NULL},
-    { "purge-mode", 0, 0, G_OPTION_ARG_STRING, &purge_mode_str,
+    { "purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
@@ -159,10 +180,9 @@ static GOptionEntry execution_entries[] = {
         "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will receive the stream from STDIN and creates the file in the disk before start processing. "
-       "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given", NULL},
+       "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, "Every this amount of tables the internal metadata will be refreshed. If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
-//    {"no-delete", 0, 0, G_OPTION_ARG_NONE, &no_delete,
-//      "It will not delete the files after stream has been completed", NULL},
+    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_STRING, &ignore_errors,
      "Not increment error count and Warning instead of Critical in case of "
      "any of the comman separated error number list",
