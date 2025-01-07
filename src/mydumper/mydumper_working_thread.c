@@ -383,7 +383,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
       int is_sequence = 0;
 
       if ((get_product() == SERVER_TYPE_MYSQL ||
-           get_product() == SERVER_TYPE_MARIADB) &&
+           get_product() == SERVER_TYPE_MARIADB ||
+           get_product() == SERVER_TYPE_DOLT) &&
           (row[ecol] == NULL) &&
           (row[ccol] == NULL || !strcmp(row[ccol], "VIEW")))
         is_view = 1;
