@@ -383,7 +383,10 @@ MYSQL *create_main_connection() {
   case SERVER_TYPE_CLICKHOUSE:
     data_checksums=FALSE;
     break;
-	default:
+  case SERVER_TYPE_DOLT:
+    set_transaction_isolation_level_repeatable_read(conn);
+    break;
+  default:
     m_critical("Cannot detect server type");
     break;
   }
