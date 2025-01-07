@@ -18,6 +18,7 @@
 #include <glib/gstdio.h>
 #include <sys/file.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "mydumper.h"
 #include "mydumper_global.h"
