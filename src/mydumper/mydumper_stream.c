@@ -18,6 +18,8 @@
 #include <glib/gstdio.h>
 #include <sys/file.h>
 #include <errno.h>
+// We need header fcntl.h for open function to build on Alpine. More info in: https://github.com/mydumper/mydumper/issues/1721
+#include <fcntl.h>
 
 #include "mydumper.h"
 #include "mydumper_global.h"
