@@ -21,54 +21,6 @@ Both tools use multithreading capabilities.
 
 [This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/installing.html) 
 
-
-First get the correct url from the [releases section](https://github.com/mydumper/mydumper/releases) then:
-
-### RedHat / Centos
-
-```bash
-release=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/mydumper/mydumper/releases/latest | cut -d'/' -f8)
-yum install https://github.com/mydumper/mydumper/releases/download/${release}/mydumper-${release:1}.el7.x86_64.rpm
-yum install https://github.com/mydumper/mydumper/releases/download/${release}/mydumper-${release:1}.el8.x86_64.rpm
-```
-
-### Ubuntu / Debian
-For ubuntu, you need to install the dependencies:
-```bash
-apt-get install libatomic1
-```
-Then you can download and install the package:
-```bash
-release=$(curl -Ls -o /dev/null -w %{url_effective} https://github.com/mydumper/mydumper/releases/latest | cut -d'/' -f8)
-wget https://github.com/mydumper/mydumper/releases/download/${release}/mydumper_${release:1}.$(lsb_release -cs)_amd64.deb
-dpkg -i mydumper_${release:1}.$(lsb_release -cs)_amd64.deb
-```
-
-### FreeBSD
-By using pkg
-
-```bash
-pkg install mydumper
-```
-or from ports
-
-```bash
-cd /usr/ports/databases/mydumper && make install
-```
-
-### MacOS
-By using [Homebrew](https://brew.sh/)
-
-```bash
-brew install mydumper
-```
-Take into account that the mydumper.cnf file is going to be located on /usr/local/etc or /opt/homebrew/etc.
-So, you might need to run mydumper/myloader with:
-```bash
-mydumper --defaults-file=/opt/homebrew/etc/mydumper.cnf
-myloader --defaults-file=/opt/homebrew/etc/mydumper.cnf
-```
-
 ## Dependencies for building MyDumper
 
 ### Install development tools:
