@@ -3920,8 +3920,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
@@ -3958,8 +3956,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
@@ -3996,8 +3992,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
@@ -4034,8 +4028,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
@@ -4072,8 +4064,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
@@ -4110,8 +4100,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
@@ -4148,8 +4136,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
@@ -4186,8 +4172,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
@@ -4224,8 +4208,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
@@ -4262,8 +4244,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
@@ -4300,8 +4280,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
@@ -4338,8 +4316,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
@@ -4376,8 +4352,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
@@ -4414,8 +4388,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
@@ -4452,8 +4424,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
@@ -4490,8 +4460,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
@@ -4528,8 +4496,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
@@ -4566,8 +4532,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
@@ -4604,8 +4568,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
@@ -4642,8 +4604,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
@@ -4680,8 +4640,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
@@ -4718,8 +4676,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
@@ -4756,8 +4712,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
@@ -4794,8 +4748,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
@@ -4832,8 +4784,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
@@ -4870,8 +4820,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
@@ -4908,8 +4856,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
@@ -4946,8 +4892,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
@@ -4984,8 +4928,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
@@ -5022,8 +4964,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
@@ -5060,8 +5000,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
@@ -5098,8 +5036,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
@@ -5136,8 +5072,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
@@ -5174,8 +5108,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
@@ -5212,8 +5144,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
@@ -5250,8 +5180,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
@@ -5288,8 +5216,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
@@ -5326,8 +5252,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
@@ -5364,8 +5288,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
@@ -5402,8 +5324,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
@@ -5440,8 +5360,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
@@ -5478,8 +5396,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006
@@ -5516,8 +5432,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
@@ -5554,8 +5468,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
@@ -5592,8 +5504,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
@@ -5630,8 +5540,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
@@ -5668,8 +5576,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
@@ -5706,8 +5612,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
@@ -5744,8 +5648,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
@@ -5782,8 +5684,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
@@ -5820,8 +5720,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
@@ -5858,8 +5756,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
@@ -5896,8 +5792,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
@@ -5934,8 +5828,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
@@ -5972,8 +5864,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
@@ -6010,8 +5900,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
@@ -6048,8 +5936,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
@@ -6086,8 +5972,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
@@ -6124,8 +6008,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
@@ -6162,8 +6044,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
@@ -6200,8 +6080,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
@@ -6238,8 +6116,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
@@ -6276,8 +6152,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
@@ -6314,8 +6188,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
@@ -6352,8 +6224,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
@@ -6390,8 +6260,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
@@ -6428,8 +6296,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
@@ -6466,8 +6332,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
@@ -6504,8 +6368,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
@@ -6542,8 +6404,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
@@ -6580,8 +6440,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
@@ -6618,8 +6476,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
@@ -6656,8 +6512,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
@@ -6694,8 +6548,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
@@ -6732,8 +6584,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
@@ -6770,8 +6620,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
@@ -6808,8 +6656,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
@@ -6846,8 +6692,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
@@ -6884,8 +6728,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
@@ -6922,8 +6764,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
@@ -6960,8 +6800,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
@@ -6998,8 +6836,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
@@ -7036,8 +6872,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
@@ -7074,8 +6908,6 @@ jobs:
 
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006

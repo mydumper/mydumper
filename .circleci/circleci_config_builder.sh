@@ -523,10 +523,13 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     
 
     steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/package
-    - set_env_vars
+    - checkout"
+if [ "${os}" = "${build_man_os}" ]
+then
+echo '    - attach_workspace:
+        at: /tmp/package'
+fi
+echo "    - set_env_vars
 #    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
