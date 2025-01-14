@@ -3122,6 +3122,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql80
@@ -3133,17 +3135,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mysql84_aarch64:
 #    executor: el7_mysql84
     executor: el7
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql84
@@ -3155,17 +3154,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_percona57_aarch64:
 #    executor: el7_percona57
     executor: el7
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona57
@@ -3177,17 +3173,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_percona80_aarch64:
 #    executor: el7_percona80
     executor: el7
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona80
@@ -3199,17 +3192,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mariadb1011_aarch64:
 #    executor: el7_mariadb1011
     executor: el7
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1011
@@ -3221,17 +3211,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mariadb1006_aarch64:
 #    executor: el7_mariadb1006
     executor: el7
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1006
@@ -3243,17 +3230,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mysql80_aarch64:
 #    executor: el8_mysql80
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql80
@@ -3265,17 +3249,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mysql84_aarch64:
 #    executor: el8_mysql84
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql84
@@ -3287,17 +3268,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_percona57_aarch64:
 #    executor: el8_percona57
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona57
@@ -3309,17 +3287,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_percona80_aarch64:
 #    executor: el8_percona80
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona80
@@ -3331,17 +3306,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mariadb1011_aarch64:
 #    executor: el8_mariadb1011
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1011
@@ -3353,17 +3325,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mariadb1006_aarch64:
 #    executor: el8_mariadb1006
     executor: el8
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1006
@@ -3375,17 +3344,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mysql80_aarch64:
 #    executor: el9_mysql80
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql80
@@ -3397,17 +3363,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mysql84_aarch64:
 #    executor: el9_mysql84
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql84
@@ -3419,17 +3382,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_percona57_aarch64:
 #    executor: el9_percona57
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona57
@@ -3441,17 +3401,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_percona80_aarch64:
 #    executor: el9_percona80
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona80
@@ -3463,17 +3420,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mariadb1011_aarch64:
 #    executor: el9_mariadb1011
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1011
@@ -3485,17 +3439,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mariadb1006_aarch64:
 #    executor: el9_mariadb1006
     executor: el9
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1006
@@ -3507,17 +3458,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_aarch64 aarch64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mysql80_x86_64:
 #    executor: el7_mysql80
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql80
@@ -3529,17 +3477,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mysql84_x86_64:
 #    executor: el7_mysql84
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql84
@@ -3551,17 +3496,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_percona57_x86_64:
 #    executor: el7_percona57
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona57
@@ -3573,17 +3515,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_percona80_x86_64:
 #    executor: el7_percona80
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona80
@@ -3595,17 +3534,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mariadb1011_x86_64:
 #    executor: el7_mariadb1011
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1011
@@ -3617,17 +3553,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el7_mariadb1006_x86_64:
 #    executor: el7_mariadb1006
     executor: el7
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1006
@@ -3639,17 +3572,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mysql80_x86_64:
 #    executor: el8_mysql80
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql80
@@ -3661,17 +3591,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mysql84_x86_64:
 #    executor: el8_mysql84
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql84
@@ -3683,17 +3610,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_percona57_x86_64:
 #    executor: el8_percona57
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona57
@@ -3705,17 +3629,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_percona80_x86_64:
 #    executor: el8_percona80
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona80
@@ -3727,17 +3648,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mariadb1011_x86_64:
 #    executor: el8_mariadb1011
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1011
@@ -3749,17 +3667,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el8_mariadb1006_x86_64:
 #    executor: el8_mariadb1006
     executor: el8
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1006
@@ -3771,17 +3686,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mysql80_x86_64:
 #    executor: el9_mysql80
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql80
@@ -3793,17 +3705,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mysql84_x86_64:
 #    executor: el9_mysql84
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql84
@@ -3815,17 +3724,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_percona57_x86_64:
 #    executor: el9_percona57
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona57
@@ -3837,17 +3743,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_percona80_x86_64:
 #    executor: el9_percona80
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona80
@@ -3859,17 +3762,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mariadb1011_x86_64:
 #    executor: el9_mariadb1011
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1011
@@ -3881,17 +3781,14 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_el9_mariadb1006_x86_64:
 #    executor: el9_mariadb1006
     executor: el9
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1006
@@ -3903,11 +3800,6 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_x86_64 x86_64
-
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_bionic_mysql80_arm64:
 #    executor: bionic_mysql80
     executor: bionic

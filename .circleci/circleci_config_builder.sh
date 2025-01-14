@@ -485,8 +485,13 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
-    - checkout
-    - set_env_vars
+    - checkout"
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" != "${build_man_os}" ]
+then
+echo '    - attach_workspace:
+        at: /tmp/package'
+fi
+echo "    - set_env_vars
 #    - prepare_el
     - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
@@ -496,12 +501,14 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}
-
-    - persist_to_workspace:
+    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" = "${build_man_os}" ]
+then
+echo "    - persist_to_workspace:
          root: /tmp/package
          paths:
            - ."
+fi
         done
     done
 done
