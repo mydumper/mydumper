@@ -143,6 +143,7 @@ list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
+build_man_os="jammy_percona80_amd64"
 
 list_build=(
   "bionic_percona80_amd64"   
@@ -516,19 +517,35 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
+    - when:
+        condition:
+        - not: << parameters.build_man >>
+        steps:
+        - attach_workspace:
+            at: /tmp/package
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/package/man
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_rpm]}-linux-gnu/lib${all_vendors[${vendor}_4]}.a\"
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install sphinx-common
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              cp man/mydumper.1  man/myloader.1 /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -659,6 +676,11 @@ done
 for os in ${list_build[@]}
 do
 echo "    - build_${os}:"
+if [ "${list_build[${os}]}" != "${build_man_os}" ]
+then
+echo "        requires:
+          - build_${build_man_os}"
+fi
 echo '        filters:
           branches:
             ignore: /.*/
@@ -672,6 +694,11 @@ echo '
 for os in ${!list_build[@]}
 do
 echo "          - build_${list_build[${os}]}"
+if [ "${list_build[${os}]}" == "${build_man_os}" ]
+then
+echo "              build_man: true"
+fi
+
 done
 echo '        filters:
           branches:
