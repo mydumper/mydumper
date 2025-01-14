@@ -489,7 +489,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
 if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" != "${build_man_os}" ]
 then
 echo '    - attach_workspace:
-        at: /tmp/package'
+        at: /tmp/man'
 fi
 echo "    - set_env_vars
 #    - prepare_el
@@ -506,6 +506,13 @@ echo "    - persist_to_workspace:
          root: /tmp/package
          paths:
            - ."
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" = "${build_man_os}" ]
+then
+echo "    - persist_to_workspace:
+         root: /tmp/man
+         paths:
+           - ."
+fi
         done
     done
 done
@@ -531,7 +538,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
 if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
 then
 echo '    - attach_workspace:
-        at: /tmp/package'
+        at: /tmp/man'
 fi
 echo "    - set_env_vars
 #    - prepare_ubuntu
@@ -561,6 +568,13 @@ echo '    - persist_to_workspace:
          root: /tmp/package
          paths:
            - .'
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" = "${build_man_os}" ]
+then
+echo '    - persist_to_workspace:
+         root: /tmp/man
+         paths:
+           - .'
+fi
         done
     done
 done
