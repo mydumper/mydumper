@@ -3122,6 +3122,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql80
@@ -3131,9 +3133,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3144,6 +3145,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql84
@@ -3153,9 +3156,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3166,6 +3168,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona57
@@ -3175,9 +3179,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3188,6 +3191,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona80
@@ -3197,9 +3202,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3210,6 +3214,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1011
@@ -3219,9 +3225,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3232,6 +3237,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1006
@@ -3241,9 +3248,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3254,6 +3260,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql80
@@ -3263,9 +3271,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3276,6 +3283,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql84
@@ -3285,9 +3294,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3298,6 +3306,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona57
@@ -3307,9 +3317,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3320,6 +3329,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona80
@@ -3329,9 +3340,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3342,6 +3352,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1011
@@ -3351,9 +3363,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3364,6 +3375,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1006
@@ -3373,9 +3386,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3386,6 +3398,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql80
@@ -3395,9 +3409,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3408,6 +3421,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql84
@@ -3417,9 +3432,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3430,6 +3444,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona57
@@ -3439,9 +3455,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3452,6 +3467,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona80
@@ -3461,9 +3478,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3474,6 +3490,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1011
@@ -3483,9 +3501,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3496,6 +3513,8 @@ jobs:
     resource_class: arm.medium
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1006
@@ -3505,9 +3524,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_aarch64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_aarch64 aarch64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3518,6 +3536,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql80
@@ -3527,9 +3547,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3540,6 +3559,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mysql84
@@ -3549,9 +3570,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3562,6 +3582,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona57
@@ -3571,9 +3593,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3584,6 +3605,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_percona80
@@ -3593,9 +3616,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3606,6 +3628,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1011
@@ -3615,9 +3639,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3628,6 +3651,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el7_mariadb1006
@@ -3637,9 +3662,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3650,6 +3674,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql80
@@ -3659,9 +3685,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3672,6 +3697,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mysql84
@@ -3681,9 +3708,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3694,6 +3720,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona57
@@ -3703,9 +3731,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3716,6 +3743,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_percona80
@@ -3725,9 +3754,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3738,6 +3766,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1011
@@ -3747,9 +3777,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3760,6 +3789,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el8_mariadb1006
@@ -3769,9 +3800,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3782,6 +3812,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql80
@@ -3791,9 +3823,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3804,6 +3835,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mysql84
@@ -3813,9 +3846,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3826,6 +3858,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona57
@@ -3835,9 +3869,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3848,6 +3881,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_percona80
@@ -3857,9 +3892,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3870,6 +3904,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1011
@@ -3879,9 +3915,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3892,6 +3927,8 @@ jobs:
     resource_class: large
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_el
     - prepare_el9_mariadb1006
@@ -3901,9 +3938,8 @@ jobs:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_x86_64
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_x86_64 x86_64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3912,20 +3948,40 @@ jobs:
 #    executor: bionic_mysql80
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3934,20 +3990,40 @@ jobs:
 #    executor: bionic_mysql84
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3956,20 +4032,40 @@ jobs:
 #    executor: bionic_percona57
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -3978,20 +4074,40 @@ jobs:
 #    executor: bionic_percona80
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4000,20 +4116,40 @@ jobs:
 #    executor: bionic_mariadb1011
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4022,20 +4158,40 @@ jobs:
 #    executor: bionic_mariadb1006
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4044,20 +4200,40 @@ jobs:
 #    executor: focal_mysql80
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4066,20 +4242,40 @@ jobs:
 #    executor: focal_mysql84
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4088,20 +4284,40 @@ jobs:
 #    executor: focal_percona57
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4110,20 +4326,40 @@ jobs:
 #    executor: focal_percona80
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4132,20 +4368,40 @@ jobs:
 #    executor: focal_mariadb1011
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4154,20 +4410,40 @@ jobs:
 #    executor: focal_mariadb1006
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4176,20 +4452,40 @@ jobs:
 #    executor: jammy_mysql80
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4198,20 +4494,40 @@ jobs:
 #    executor: jammy_mysql84
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4220,20 +4536,40 @@ jobs:
 #    executor: jammy_percona57
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4242,20 +4578,40 @@ jobs:
 #    executor: jammy_percona80
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4264,20 +4620,40 @@ jobs:
 #    executor: jammy_mariadb1011
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4286,20 +4662,40 @@ jobs:
 #    executor: jammy_mariadb1006
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4308,20 +4704,40 @@ jobs:
 #    executor: noble_mysql80
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4330,20 +4746,40 @@ jobs:
 #    executor: noble_mysql84
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4352,20 +4788,40 @@ jobs:
 #    executor: noble_percona57
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4374,20 +4830,40 @@ jobs:
 #    executor: noble_percona80
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4396,20 +4872,40 @@ jobs:
 #    executor: noble_mariadb1011
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4418,20 +4914,40 @@ jobs:
 #    executor: noble_mariadb1006
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4440,20 +4956,40 @@ jobs:
 #    executor: buster_mysql80
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4462,20 +4998,40 @@ jobs:
 #    executor: buster_mysql84
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4484,20 +5040,40 @@ jobs:
 #    executor: buster_percona57
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4506,20 +5082,40 @@ jobs:
 #    executor: buster_percona80
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4528,20 +5124,40 @@ jobs:
 #    executor: buster_mariadb1011
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4550,20 +5166,40 @@ jobs:
 #    executor: buster_mariadb1006
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4572,20 +5208,40 @@ jobs:
 #    executor: bullseye_mysql80
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4594,20 +5250,40 @@ jobs:
 #    executor: bullseye_mysql84
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4616,20 +5292,40 @@ jobs:
 #    executor: bullseye_percona57
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4638,20 +5334,40 @@ jobs:
 #    executor: bullseye_percona80
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4660,20 +5376,40 @@ jobs:
 #    executor: bullseye_mariadb1011
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4682,20 +5418,40 @@ jobs:
 #    executor: bullseye_mariadb1006
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4704,20 +5460,40 @@ jobs:
 #    executor: bookworm_mysql80
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4726,20 +5502,40 @@ jobs:
 #    executor: bookworm_mysql84
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4748,20 +5544,40 @@ jobs:
 #    executor: bookworm_percona57
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4770,20 +5586,40 @@ jobs:
 #    executor: bookworm_percona80
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4792,20 +5628,40 @@ jobs:
 #    executor: bookworm_mariadb1011
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4814,20 +5670,40 @@ jobs:
 #    executor: bookworm_mariadb1006
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_arm64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_arm64 arm64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4836,20 +5712,40 @@ jobs:
 #    executor: bionic_mysql80
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4858,20 +5754,40 @@ jobs:
 #    executor: bionic_mysql84
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4880,20 +5796,40 @@ jobs:
 #    executor: bionic_percona57
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4902,20 +5838,40 @@ jobs:
 #    executor: bionic_percona80
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4924,20 +5880,40 @@ jobs:
 #    executor: bionic_mariadb1011
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4946,20 +5922,40 @@ jobs:
 #    executor: bionic_mariadb1006
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4968,20 +5964,40 @@ jobs:
 #    executor: focal_mysql80
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4990,20 +6006,40 @@ jobs:
 #    executor: focal_mysql84
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5012,20 +6048,40 @@ jobs:
 #    executor: focal_percona57
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5034,20 +6090,40 @@ jobs:
 #    executor: focal_percona80
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5056,20 +6132,40 @@ jobs:
 #    executor: focal_mariadb1011
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5078,20 +6174,40 @@ jobs:
 #    executor: focal_mariadb1006
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5100,20 +6216,40 @@ jobs:
 #    executor: jammy_mysql80
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5122,20 +6258,40 @@ jobs:
 #    executor: jammy_mysql84
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5144,20 +6300,40 @@ jobs:
 #    executor: jammy_percona57
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5166,42 +6342,84 @@ jobs:
 #    executor: jammy_percona80
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
+         paths:
+           - .
+    - persist_to_workspace:
+         root: /tmp/man
          paths:
            - .
   build_jammy_mariadb1011_amd64:
 #    executor: jammy_mariadb1011
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5210,20 +6428,40 @@ jobs:
 #    executor: jammy_mariadb1006
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5232,20 +6470,40 @@ jobs:
 #    executor: noble_mysql80
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5254,20 +6512,40 @@ jobs:
 #    executor: noble_mysql84
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5276,20 +6554,40 @@ jobs:
 #    executor: noble_percona57
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5298,20 +6596,40 @@ jobs:
 #    executor: noble_percona80
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5320,20 +6638,40 @@ jobs:
 #    executor: noble_mariadb1011
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5342,20 +6680,40 @@ jobs:
 #    executor: noble_mariadb1006
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5364,20 +6722,40 @@ jobs:
 #    executor: buster_mysql80
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5386,20 +6764,40 @@ jobs:
 #    executor: buster_mysql84
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5408,20 +6806,40 @@ jobs:
 #    executor: buster_percona57
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5430,20 +6848,40 @@ jobs:
 #    executor: buster_percona80
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5452,20 +6890,40 @@ jobs:
 #    executor: buster_mariadb1011
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5474,20 +6932,40 @@ jobs:
 #    executor: buster_mariadb1006
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5496,20 +6974,40 @@ jobs:
 #    executor: bullseye_mysql80
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5518,20 +7016,40 @@ jobs:
 #    executor: bullseye_mysql84
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5540,20 +7058,40 @@ jobs:
 #    executor: bullseye_percona57
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5562,20 +7100,40 @@ jobs:
 #    executor: bullseye_percona80
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5584,20 +7142,40 @@ jobs:
 #    executor: bullseye_mariadb1011
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5606,20 +7184,40 @@ jobs:
 #    executor: bullseye_mariadb1006
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5628,20 +7226,40 @@ jobs:
 #    executor: bookworm_mysql80
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5650,20 +7268,40 @@ jobs:
 #    executor: bookworm_mysql84
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5672,20 +7310,40 @@ jobs:
 #    executor: bookworm_percona57
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5694,20 +7352,40 @@ jobs:
 #    executor: bookworm_percona80
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5716,20 +7394,40 @@ jobs:
 #    executor: bookworm_mariadb1011
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5738,20 +7436,40 @@ jobs:
 #    executor: bookworm_mariadb1006
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_amd64/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_amd64 amd64
-
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5909,72 +7627,95 @@ workflows:
         e: jammy_mysql84
 
     - build_bionic_percona80_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_focal_percona80_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_jammy_percona80_amd64:
+        build_man: true
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_mysql84_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_percona80_x86_64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql80_aarch64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_percona80_x86_64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql80_aarch64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bullseye_percona80_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_buster_percona80_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_percona80_amd64:
+        requires:
+          - build_jammy_percona80_amd64
         filters:
           branches:
             ignore: /.*/

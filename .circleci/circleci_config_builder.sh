@@ -143,6 +143,7 @@ list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
+build_man_os="jammy_percona80_amd64"
 
 list_build=(
   "bionic_percona80_amd64"   
@@ -484,8 +485,13 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
-    - checkout
-    - set_env_vars
+    - checkout"
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" != "${build_man_os}" ]
+then
+echo '    - attach_workspace:
+        at: /tmp/man'
+fi
+echo "    - set_env_vars
 #    - prepare_el
     - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
@@ -494,13 +500,19 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
         CMAKED: \"-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a\"
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}
-
-    - persist_to_workspace:
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
+    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
+echo "    - persist_to_workspace:
          root: /tmp/package
          paths:
            - ."
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}" = "${build_man_os}" ]
+then
+echo "    - persist_to_workspace:
+         root: /tmp/man
+         paths:
+           - ."
+fi
         done
     done
 done
@@ -515,24 +527,54 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
 #    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
-    - checkout
-    - set_env_vars
+    - checkout"
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
+then
+echo '    - attach_workspace:
+        at: /tmp/man'
+fi
+echo "    - set_env_vars
 #    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/package
+    - run: mkdir -p /tmp/man/
     - compile:
         CMAKED: \"-DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}:FILEPATH=/usr/lib/${all_arch[${arch}_rpm]}-linux-gnu/lib${all_vendors[${vendor}_4]}.a\"
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
+    - when:
+        condition: << parameters.build_man >>
+        steps:
+        - run: git submodule update --init docs/
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
+        - run: 
+            command: |
+              cd docs
+              cmake . -DWITH_HTML=OFF
+              make
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
-    - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}
-
-    - persist_to_workspace:
+    - run: cp /tmp/man//mydumper.1.gz /tmp/man//myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
+    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
+echo '    - persist_to_workspace:
          root: /tmp/package
          paths:
-           - ."
+           - .'
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" = "${build_man_os}" ]
+then
+echo '    - persist_to_workspace:
+         root: /tmp/man
+         paths:
+           - .'
+fi
         done
     done
 done
@@ -659,6 +701,13 @@ done
 for os in ${list_build[@]}
 do
 echo "    - build_${os}:"
+if [ "${os}" = "${build_man_os}" ]
+then
+echo "        build_man: true"
+else
+echo "        requires:
+          - build_${build_man_os}"
+fi
 echo '        filters:
           branches:
             ignore: /.*/

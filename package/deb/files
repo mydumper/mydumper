@@ -4,6 +4,9 @@ BUILD_ROOT=$2
 cd $SOURCE
 install -m 0755 -d ${BUILD_ROOT}/usr/bin/
 install -m 0755 -d ${BUILD_ROOT}/etc/
+install -m 0755 -d ${BUILD_ROOT}/usr/share/man/man1/
 install -m 0555 mydumper ${BUILD_ROOT}/usr/bin/
 install -m 0555 myloader ${BUILD_ROOT}/usr/bin/
 install -m 0664 mydumper.cnf ${BUILD_ROOT}/etc/
+install -m 0644 mydumper.1.gz ${BUILD_ROOT}/usr/share/man/man1/
+install -m 0644 myloader.1.gz ${BUILD_ROOT}/usr/share/man/man1/
