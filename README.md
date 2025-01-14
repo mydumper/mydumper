@@ -241,4 +241,5 @@ Will NOT export the data as no-data is being specified.
 
 mydumper is versioned MAJOR.MINOR.PATCH-revision.
 
-Even patch versions indicate a pre-release.
+Even patch versions indicate a pre-release. [More info](https://github.com/mydumper/mydumper/wiki/Versioning).
+
