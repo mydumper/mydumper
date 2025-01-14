@@ -538,7 +538,8 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
         condition: << parameters.build_man >>
         steps:
         - run: git submodule update --init docs/
-        - run: sudo apt-get install sphinx-common
+        - run: sudo apt-get install pip sphinx-common
+        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
         - run: 
             command: |
               cd docs
