@@ -676,8 +676,10 @@ done
 for os in ${list_build[@]}
 do
 echo "    - build_${os}:"
-if [ "${list_build[${os}]}" != "${build_man_os}" ]
+if [ "${os}" = "${build_man_os}" ]
 then
+echo "        build_man: true"
+else
 echo "        requires:
           - build_${build_man_os}"
 fi
@@ -694,11 +696,6 @@ echo '
 for os in ${!list_build[@]}
 do
 echo "          - build_${list_build[${os}]}"
-if [ "${list_build[${os}]}" == "${build_man_os}" ]
-then
-echo "              build_man: true"
-fi
-
 done
 echo '        filters:
           branches:

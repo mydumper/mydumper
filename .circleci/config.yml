@@ -7269,8 +7269,7 @@ workflows:
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_jammy_percona80_amd64:
-        requires:
-          - build_jammy_percona80_amd64
+        build_man: true
         filters:
           branches:
             ignore: /.*/
@@ -7354,7 +7353,6 @@ workflows:
           - build_bionic_percona80_amd64
           - build_focal_percona80_amd64
           - build_jammy_percona80_amd64
-              build_man: true
           - build_noble_mysql84_amd64
           - build_el7_percona57_x86_64
           - build_el8_percona80_x86_64
