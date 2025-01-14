@@ -524,7 +524,7 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
 
     steps:
     - checkout"
-if [ "${os}" = "${build_man_os}" ]
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
 then
 echo '    - attach_workspace:
         at: /tmp/package'
@@ -553,7 +553,7 @@ echo "    - set_env_vars
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
     - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
-if [ "${os}" = "${build_man_os}" ]
+if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" = "${build_man_os}" ]
 then
 echo '    - persist_to_workspace:
          root: /tmp/package
