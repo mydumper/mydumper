@@ -3135,6 +3135,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mysql84_aarch64:
 #    executor: el7_mysql84
     executor: el7
@@ -3154,6 +3158,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_percona57_aarch64:
 #    executor: el7_percona57
     executor: el7
@@ -3173,6 +3181,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_percona80_aarch64:
 #    executor: el7_percona80
     executor: el7
@@ -3192,6 +3204,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mariadb1011_aarch64:
 #    executor: el7_mariadb1011
     executor: el7
@@ -3211,6 +3227,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mariadb1006_aarch64:
 #    executor: el7_mariadb1006
     executor: el7
@@ -3230,6 +3250,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mysql80_aarch64:
 #    executor: el8_mysql80
     executor: el8
@@ -3249,6 +3273,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mysql84_aarch64:
 #    executor: el8_mysql84
     executor: el8
@@ -3268,6 +3296,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_percona57_aarch64:
 #    executor: el8_percona57
     executor: el8
@@ -3287,6 +3319,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_percona80_aarch64:
 #    executor: el8_percona80
     executor: el8
@@ -3306,6 +3342,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mariadb1011_aarch64:
 #    executor: el8_mariadb1011
     executor: el8
@@ -3325,6 +3365,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mariadb1006_aarch64:
 #    executor: el8_mariadb1006
     executor: el8
@@ -3344,6 +3388,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mysql80_aarch64:
 #    executor: el9_mysql80
     executor: el9
@@ -3363,6 +3411,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mysql84_aarch64:
 #    executor: el9_mysql84
     executor: el9
@@ -3382,6 +3434,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_percona57_aarch64:
 #    executor: el9_percona57
     executor: el9
@@ -3401,6 +3457,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_percona80_aarch64:
 #    executor: el9_percona80
     executor: el9
@@ -3420,6 +3480,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mariadb1011_aarch64:
 #    executor: el9_mariadb1011
     executor: el9
@@ -3439,6 +3503,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mariadb1006_aarch64:
 #    executor: el9_mariadb1006
     executor: el9
@@ -3458,6 +3526,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_aarch64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_aarch64 aarch64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mysql80_x86_64:
 #    executor: el7_mysql80
     executor: el7
@@ -3477,6 +3549,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mysql84_x86_64:
 #    executor: el7_mysql84
     executor: el7
@@ -3496,6 +3572,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_percona57_x86_64:
 #    executor: el7_percona57
     executor: el7
@@ -3515,6 +3595,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_percona80_x86_64:
 #    executor: el7_percona80
     executor: el7
@@ -3534,6 +3618,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mariadb1011_x86_64:
 #    executor: el7_mariadb1011
     executor: el7
@@ -3553,6 +3641,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el7_mariadb1006_x86_64:
 #    executor: el7_mariadb1006
     executor: el7
@@ -3572,6 +3664,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el7_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mysql80_x86_64:
 #    executor: el8_mysql80
     executor: el8
@@ -3591,6 +3687,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mysql84_x86_64:
 #    executor: el8_mysql84
     executor: el8
@@ -3610,6 +3710,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_percona57_x86_64:
 #    executor: el8_percona57
     executor: el8
@@ -3629,6 +3733,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_percona80_x86_64:
 #    executor: el8_percona80
     executor: el8
@@ -3648,6 +3756,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mariadb1011_x86_64:
 #    executor: el8_mariadb1011
     executor: el8
@@ -3667,6 +3779,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el8_mariadb1006_x86_64:
 #    executor: el8_mariadb1006
     executor: el8
@@ -3686,6 +3802,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el8_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mysql80_x86_64:
 #    executor: el9_mysql80
     executor: el9
@@ -3705,6 +3825,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mysql84_x86_64:
 #    executor: el9_mysql84
     executor: el9
@@ -3724,6 +3848,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mysql84_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_percona57_x86_64:
 #    executor: el9_percona57
     executor: el9
@@ -3743,6 +3871,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona57_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_percona80_x86_64:
 #    executor: el9_percona80
     executor: el9
@@ -3762,6 +3894,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_percona80_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mariadb1011_x86_64:
 #    executor: el9_mariadb1011
     executor: el9
@@ -3781,6 +3917,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1011_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_el9_mariadb1006_x86_64:
 #    executor: el9_mariadb1006
     executor: el9
@@ -3800,6 +3940,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/el9_mariadb1006_x86_64
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_x86_64 x86_64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mysql80_arm64:
 #    executor: bionic_mysql80
     executor: bionic
@@ -3838,6 +3982,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mysql84_arm64:
 #    executor: bionic_mysql84
     executor: bionic
@@ -3876,6 +4024,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona57_arm64:
 #    executor: bionic_percona57
     executor: bionic
@@ -3914,6 +4066,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona80_arm64:
 #    executor: bionic_percona80
     executor: bionic
@@ -3952,6 +4108,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mariadb1011_arm64:
 #    executor: bionic_mariadb1011
     executor: bionic
@@ -3990,6 +4150,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mariadb1006_arm64:
 #    executor: bionic_mariadb1006
     executor: bionic
@@ -4028,6 +4192,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mysql80_arm64:
 #    executor: focal_mysql80
     executor: focal
@@ -4066,6 +4234,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mysql84_arm64:
 #    executor: focal_mysql84
     executor: focal
@@ -4104,6 +4276,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_percona57_arm64:
 #    executor: focal_percona57
     executor: focal
@@ -4142,6 +4318,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_percona80_arm64:
 #    executor: focal_percona80
     executor: focal
@@ -4180,6 +4360,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mariadb1011_arm64:
 #    executor: focal_mariadb1011
     executor: focal
@@ -4218,6 +4402,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mariadb1006_arm64:
 #    executor: focal_mariadb1006
     executor: focal
@@ -4256,6 +4444,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mysql80_arm64:
 #    executor: jammy_mysql80
     executor: jammy
@@ -4294,6 +4486,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mysql84_arm64:
 #    executor: jammy_mysql84
     executor: jammy
@@ -4332,6 +4528,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_percona57_arm64:
 #    executor: jammy_percona57
     executor: jammy
@@ -4370,6 +4570,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_percona80_arm64:
 #    executor: jammy_percona80
     executor: jammy
@@ -4408,6 +4612,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mariadb1011_arm64:
 #    executor: jammy_mariadb1011
     executor: jammy
@@ -4446,6 +4654,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mariadb1006_arm64:
 #    executor: jammy_mariadb1006
     executor: jammy
@@ -4484,6 +4696,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mysql80_arm64:
 #    executor: noble_mysql80
     executor: noble
@@ -4522,6 +4738,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mysql84_arm64:
 #    executor: noble_mysql84
     executor: noble
@@ -4560,6 +4780,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_percona57_arm64:
 #    executor: noble_percona57
     executor: noble
@@ -4598,6 +4822,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_percona80_arm64:
 #    executor: noble_percona80
     executor: noble
@@ -4636,6 +4864,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mariadb1011_arm64:
 #    executor: noble_mariadb1011
     executor: noble
@@ -4674,6 +4906,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mariadb1006_arm64:
 #    executor: noble_mariadb1006
     executor: noble
@@ -4712,6 +4948,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mysql80_arm64:
 #    executor: buster_mysql80
     executor: buster
@@ -4750,6 +4990,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mysql84_arm64:
 #    executor: buster_mysql84
     executor: buster
@@ -4788,6 +5032,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona57_arm64:
 #    executor: buster_percona57
     executor: buster
@@ -4826,6 +5074,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona80_arm64:
 #    executor: buster_percona80
     executor: buster
@@ -4864,6 +5116,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mariadb1011_arm64:
 #    executor: buster_mariadb1011
     executor: buster
@@ -4902,6 +5158,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mariadb1006_arm64:
 #    executor: buster_mariadb1006
     executor: buster
@@ -4940,6 +5200,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mysql80_arm64:
 #    executor: bullseye_mysql80
     executor: bullseye
@@ -4978,6 +5242,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mysql84_arm64:
 #    executor: bullseye_mysql84
     executor: bullseye
@@ -5016,6 +5284,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_percona57_arm64:
 #    executor: bullseye_percona57
     executor: bullseye
@@ -5054,6 +5326,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_percona80_arm64:
 #    executor: bullseye_percona80
     executor: bullseye
@@ -5092,6 +5368,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mariadb1011_arm64:
 #    executor: bullseye_mariadb1011
     executor: bullseye
@@ -5130,6 +5410,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mariadb1006_arm64:
 #    executor: bullseye_mariadb1006
     executor: bullseye
@@ -5168,6 +5452,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mysql80_arm64:
 #    executor: bookworm_mysql80
     executor: bookworm
@@ -5206,6 +5494,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mysql84_arm64:
 #    executor: bookworm_mysql84
     executor: bookworm
@@ -5244,6 +5536,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_percona57_arm64:
 #    executor: bookworm_percona57
     executor: bookworm
@@ -5282,6 +5578,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_percona80_arm64:
 #    executor: bookworm_percona80
     executor: bookworm
@@ -5320,6 +5620,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mariadb1011_arm64:
 #    executor: bookworm_mariadb1011
     executor: bookworm
@@ -5358,6 +5662,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mariadb1006_arm64:
 #    executor: bookworm_mariadb1006
     executor: bookworm
@@ -5396,6 +5704,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_arm64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_arm64 arm64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mysql80_amd64:
 #    executor: bionic_mysql80
     executor: bionic
@@ -5434,6 +5746,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mysql84_amd64:
 #    executor: bionic_mysql84
     executor: bionic
@@ -5472,6 +5788,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona57_amd64:
 #    executor: bionic_percona57
     executor: bionic
@@ -5510,6 +5830,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_percona80_amd64:
 #    executor: bionic_percona80
     executor: bionic
@@ -5548,6 +5872,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mariadb1011_amd64:
 #    executor: bionic_mariadb1011
     executor: bionic
@@ -5586,6 +5914,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bionic_mariadb1006_amd64:
 #    executor: bionic_mariadb1006
     executor: bionic
@@ -5624,6 +5956,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mysql80_amd64:
 #    executor: focal_mysql80
     executor: focal
@@ -5662,6 +5998,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mysql84_amd64:
 #    executor: focal_mysql84
     executor: focal
@@ -5700,6 +6040,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_percona57_amd64:
 #    executor: focal_percona57
     executor: focal
@@ -5738,6 +6082,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_percona80_amd64:
 #    executor: focal_percona80
     executor: focal
@@ -5776,6 +6124,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mariadb1011_amd64:
 #    executor: focal_mariadb1011
     executor: focal
@@ -5814,6 +6166,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_focal_mariadb1006_amd64:
 #    executor: focal_mariadb1006
     executor: focal
@@ -5852,6 +6208,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mysql80_amd64:
 #    executor: jammy_mysql80
     executor: jammy
@@ -5890,6 +6250,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mysql84_amd64:
 #    executor: jammy_mysql84
     executor: jammy
@@ -5928,6 +6292,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_percona57_amd64:
 #    executor: jammy_percona57
     executor: jammy
@@ -5966,6 +6334,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_percona80_amd64:
 #    executor: jammy_percona80
     executor: jammy
@@ -6044,6 +6416,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_jammy_mariadb1006_amd64:
 #    executor: jammy_mariadb1006
     executor: jammy
@@ -6082,6 +6458,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mysql80_amd64:
 #    executor: noble_mysql80
     executor: noble
@@ -6120,6 +6500,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mysql84_amd64:
 #    executor: noble_mysql84
     executor: noble
@@ -6158,6 +6542,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_percona57_amd64:
 #    executor: noble_percona57
     executor: noble
@@ -6196,6 +6584,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_percona80_amd64:
 #    executor: noble_percona80
     executor: noble
@@ -6234,6 +6626,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mariadb1011_amd64:
 #    executor: noble_mariadb1011
     executor: noble
@@ -6272,6 +6668,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_noble_mariadb1006_amd64:
 #    executor: noble_mariadb1006
     executor: noble
@@ -6310,6 +6710,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mysql80_amd64:
 #    executor: buster_mysql80
     executor: buster
@@ -6348,6 +6752,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mysql84_amd64:
 #    executor: buster_mysql84
     executor: buster
@@ -6386,6 +6794,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona57_amd64:
 #    executor: buster_percona57
     executor: buster
@@ -6424,6 +6836,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_percona80_amd64:
 #    executor: buster_percona80
     executor: buster
@@ -6462,6 +6878,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mariadb1011_amd64:
 #    executor: buster_mariadb1011
     executor: buster
@@ -6500,6 +6920,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_buster_mariadb1006_amd64:
 #    executor: buster_mariadb1006
     executor: buster
@@ -6538,6 +6962,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mysql80_amd64:
 #    executor: bullseye_mysql80
     executor: bullseye
@@ -6576,6 +7004,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mysql84_amd64:
 #    executor: bullseye_mysql84
     executor: bullseye
@@ -6614,6 +7046,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_percona57_amd64:
 #    executor: bullseye_percona57
     executor: bullseye
@@ -6652,6 +7088,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_percona80_amd64:
 #    executor: bullseye_percona80
     executor: bullseye
@@ -6690,6 +7130,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mariadb1011_amd64:
 #    executor: bullseye_mariadb1011
     executor: bullseye
@@ -6728,6 +7172,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bullseye_mariadb1006_amd64:
 #    executor: bullseye_mariadb1006
     executor: bullseye
@@ -6766,6 +7214,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mysql80_amd64:
 #    executor: bookworm_mysql80
     executor: bookworm
@@ -6804,6 +7256,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mysql84_amd64:
 #    executor: bookworm_mysql84
     executor: bookworm
@@ -6842,6 +7298,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_percona57_amd64:
 #    executor: bookworm_percona57
     executor: bookworm
@@ -6880,6 +7340,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_percona80_amd64:
 #    executor: bookworm_percona80
     executor: bookworm
@@ -6918,6 +7382,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mariadb1011_amd64:
 #    executor: bookworm_mariadb1011
     executor: bookworm
@@ -6956,6 +7424,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
   build_bookworm_mariadb1006_amd64:
 #    executor: bookworm_mariadb1006
     executor: bookworm
@@ -6994,6 +7466,10 @@ jobs:
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_amd64/etc
     - run: cp /tmp/package/man/mydumper.1.gz /tmp/package/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_amd64 amd64
+    - persist_to_workspace:
+         root: /tmp/package
+         paths:
+           - .
 
   publish-github-release:
     docker:
