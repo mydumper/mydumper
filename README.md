@@ -233,3 +233,12 @@ IMPORTANT: when using options that don't require an argument like: --no-data or 
 no-data=0
 ```
 Will NOT export the data as no-data is being specified.
+
+
+# Misc
+
+## Versioning
+
+mydumper is versioned MAJOR.MINOR.PATCH-revision.
+
+Even patch versions indicate a pre-release.
