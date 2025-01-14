@@ -516,6 +516,12 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
 #    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:

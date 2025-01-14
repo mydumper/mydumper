@@ -3912,6 +3912,12 @@ jobs:
 #    executor: bionic_mysql80
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -3946,6 +3952,12 @@ jobs:
 #    executor: bionic_mysql84
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -3980,6 +3992,12 @@ jobs:
 #    executor: bionic_percona57
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4014,6 +4032,12 @@ jobs:
 #    executor: bionic_percona80
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4048,6 +4072,12 @@ jobs:
 #    executor: bionic_mariadb1011
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4082,6 +4112,12 @@ jobs:
 #    executor: bionic_mariadb1006
     executor: bionic
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4116,6 +4152,12 @@ jobs:
 #    executor: focal_mysql80
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4150,6 +4192,12 @@ jobs:
 #    executor: focal_mysql84
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4184,6 +4232,12 @@ jobs:
 #    executor: focal_percona57
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4218,6 +4272,12 @@ jobs:
 #    executor: focal_percona80
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4252,6 +4312,12 @@ jobs:
 #    executor: focal_mariadb1011
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4286,6 +4352,12 @@ jobs:
 #    executor: focal_mariadb1006
     executor: focal
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4320,6 +4392,12 @@ jobs:
 #    executor: jammy_mysql80
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4354,6 +4432,12 @@ jobs:
 #    executor: jammy_mysql84
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4388,6 +4472,12 @@ jobs:
 #    executor: jammy_percona57
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4422,6 +4512,12 @@ jobs:
 #    executor: jammy_percona80
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4456,6 +4552,12 @@ jobs:
 #    executor: jammy_mariadb1011
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4490,6 +4592,12 @@ jobs:
 #    executor: jammy_mariadb1006
     executor: jammy
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4524,6 +4632,12 @@ jobs:
 #    executor: noble_mysql80
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4558,6 +4672,12 @@ jobs:
 #    executor: noble_mysql84
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4592,6 +4712,12 @@ jobs:
 #    executor: noble_percona57
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4626,6 +4752,12 @@ jobs:
 #    executor: noble_percona80
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4660,6 +4792,12 @@ jobs:
 #    executor: noble_mariadb1011
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4694,6 +4832,12 @@ jobs:
 #    executor: noble_mariadb1006
     executor: noble
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4728,6 +4872,12 @@ jobs:
 #    executor: buster_mysql80
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4762,6 +4912,12 @@ jobs:
 #    executor: buster_mysql84
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4796,6 +4952,12 @@ jobs:
 #    executor: buster_percona57
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4830,6 +4992,12 @@ jobs:
 #    executor: buster_percona80
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4864,6 +5032,12 @@ jobs:
 #    executor: buster_mariadb1011
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4898,6 +5072,12 @@ jobs:
 #    executor: buster_mariadb1006
     executor: buster
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4932,6 +5112,12 @@ jobs:
 #    executor: bullseye_mysql80
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -4966,6 +5152,12 @@ jobs:
 #    executor: bullseye_mysql84
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5000,6 +5192,12 @@ jobs:
 #    executor: bullseye_percona57
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5034,6 +5232,12 @@ jobs:
 #    executor: bullseye_percona80
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5068,6 +5272,12 @@ jobs:
 #    executor: bullseye_mariadb1011
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5102,6 +5312,12 @@ jobs:
 #    executor: bullseye_mariadb1006
     executor: bullseye
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5136,6 +5352,12 @@ jobs:
 #    executor: bookworm_mysql80
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5170,6 +5392,12 @@ jobs:
 #    executor: bookworm_mysql84
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5204,6 +5432,12 @@ jobs:
 #    executor: bookworm_percona57
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5238,6 +5472,12 @@ jobs:
 #    executor: bookworm_percona80
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5272,6 +5512,12 @@ jobs:
 #    executor: bookworm_mariadb1011
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5306,6 +5552,12 @@ jobs:
 #    executor: bookworm_mariadb1006
     executor: bookworm
     resource_class: arm.medium
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5340,6 +5592,12 @@ jobs:
 #    executor: bionic_mysql80
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5374,6 +5632,12 @@ jobs:
 #    executor: bionic_mysql84
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5408,6 +5672,12 @@ jobs:
 #    executor: bionic_percona57
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5442,6 +5712,12 @@ jobs:
 #    executor: bionic_percona80
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5476,6 +5752,12 @@ jobs:
 #    executor: bionic_mariadb1011
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5510,6 +5792,12 @@ jobs:
 #    executor: bionic_mariadb1006
     executor: bionic
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5544,6 +5832,12 @@ jobs:
 #    executor: focal_mysql80
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5578,6 +5872,12 @@ jobs:
 #    executor: focal_mysql84
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5612,6 +5912,12 @@ jobs:
 #    executor: focal_percona57
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5646,6 +5952,12 @@ jobs:
 #    executor: focal_percona80
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5680,6 +5992,12 @@ jobs:
 #    executor: focal_mariadb1011
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5714,6 +6032,12 @@ jobs:
 #    executor: focal_mariadb1006
     executor: focal
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5748,6 +6072,12 @@ jobs:
 #    executor: jammy_mysql80
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5782,6 +6112,12 @@ jobs:
 #    executor: jammy_mysql84
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5816,6 +6152,12 @@ jobs:
 #    executor: jammy_percona57
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5850,6 +6192,12 @@ jobs:
 #    executor: jammy_percona80
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5884,6 +6232,12 @@ jobs:
 #    executor: jammy_mariadb1011
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5918,6 +6272,12 @@ jobs:
 #    executor: jammy_mariadb1006
     executor: jammy
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5952,6 +6312,12 @@ jobs:
 #    executor: noble_mysql80
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -5986,6 +6352,12 @@ jobs:
 #    executor: noble_mysql84
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6020,6 +6392,12 @@ jobs:
 #    executor: noble_percona57
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6054,6 +6432,12 @@ jobs:
 #    executor: noble_percona80
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6088,6 +6472,12 @@ jobs:
 #    executor: noble_mariadb1011
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6122,6 +6512,12 @@ jobs:
 #    executor: noble_mariadb1006
     executor: noble
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6156,6 +6552,12 @@ jobs:
 #    executor: buster_mysql80
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6190,6 +6592,12 @@ jobs:
 #    executor: buster_mysql84
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6224,6 +6632,12 @@ jobs:
 #    executor: buster_percona57
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6258,6 +6672,12 @@ jobs:
 #    executor: buster_percona80
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6292,6 +6712,12 @@ jobs:
 #    executor: buster_mariadb1011
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6326,6 +6752,12 @@ jobs:
 #    executor: buster_mariadb1006
     executor: buster
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6360,6 +6792,12 @@ jobs:
 #    executor: bullseye_mysql80
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6394,6 +6832,12 @@ jobs:
 #    executor: bullseye_mysql84
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6428,6 +6872,12 @@ jobs:
 #    executor: bullseye_percona57
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6462,6 +6912,12 @@ jobs:
 #    executor: bullseye_percona80
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6496,6 +6952,12 @@ jobs:
 #    executor: bullseye_mariadb1011
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6530,6 +6992,12 @@ jobs:
 #    executor: bullseye_mariadb1006
     executor: bullseye
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6564,6 +7032,12 @@ jobs:
 #    executor: bookworm_mysql80
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6598,6 +7072,12 @@ jobs:
 #    executor: bookworm_mysql84
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6632,6 +7112,12 @@ jobs:
 #    executor: bookworm_percona57
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6666,6 +7152,12 @@ jobs:
 #    executor: bookworm_percona80
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6700,6 +7192,12 @@ jobs:
 #    executor: bookworm_mariadb1011
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
@@ -6734,6 +7232,12 @@ jobs:
 #    executor: bookworm_mariadb1006
     executor: bookworm
     resource_class: large
+    parameters:
+      build_man:
+        type: boolean
+        default: false
+    
+
     steps:
     - checkout
     - attach_workspace:
