@@ -3941,7 +3941,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
@@ -3978,7 +3979,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
@@ -4015,7 +4017,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_arm64 arm64
@@ -4052,7 +4055,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_arm64 arm64
@@ -4089,7 +4093,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_arm64 arm64
@@ -4126,7 +4131,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_arm64 arm64
@@ -4163,7 +4169,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
@@ -4200,7 +4207,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
@@ -4237,7 +4245,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_arm64 arm64
@@ -4274,7 +4283,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_arm64 arm64
@@ -4311,7 +4321,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_arm64 arm64
@@ -4348,7 +4359,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_arm64 arm64
@@ -4385,7 +4397,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
@@ -4422,7 +4435,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
@@ -4459,7 +4473,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_arm64 arm64
@@ -4496,7 +4511,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_arm64 arm64
@@ -4533,7 +4549,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_arm64 arm64
@@ -4570,7 +4587,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_arm64 arm64
@@ -4607,7 +4625,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
@@ -4644,7 +4663,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
@@ -4681,7 +4701,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
@@ -4718,7 +4739,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
@@ -4755,7 +4777,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
@@ -4792,7 +4815,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
@@ -4829,7 +4853,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
@@ -4866,7 +4891,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
@@ -4903,7 +4929,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_arm64 arm64
@@ -4940,7 +4967,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_arm64 arm64
@@ -4977,7 +5005,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_arm64 arm64
@@ -5014,7 +5043,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_arm64 arm64
@@ -5051,7 +5081,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
@@ -5088,7 +5119,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
@@ -5125,7 +5157,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_arm64 arm64
@@ -5162,7 +5195,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_arm64 arm64
@@ -5199,7 +5233,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_arm64 arm64
@@ -5236,7 +5271,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_arm64 arm64
@@ -5273,7 +5309,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
@@ -5310,7 +5347,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
@@ -5347,7 +5385,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_arm64 arm64
@@ -5384,7 +5423,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_arm64 arm64
@@ -5421,7 +5461,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_arm64 arm64
@@ -5458,7 +5499,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_arm64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_arm64 arm64
@@ -5495,7 +5537,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
@@ -5532,7 +5575,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
@@ -5569,7 +5613,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_amd64 amd64
@@ -5606,7 +5651,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_amd64 amd64
@@ -5643,7 +5689,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_amd64 amd64
@@ -5680,7 +5727,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bionic_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_amd64 amd64
@@ -5717,7 +5765,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
@@ -5754,7 +5803,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
@@ -5791,7 +5841,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_amd64 amd64
@@ -5828,7 +5879,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_amd64 amd64
@@ -5865,7 +5917,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_amd64 amd64
@@ -5902,7 +5955,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/focal_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_amd64 amd64
@@ -5939,7 +5993,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
@@ -5976,7 +6031,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
@@ -6013,7 +6069,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_amd64 amd64
@@ -6050,7 +6107,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_amd64 amd64
@@ -6087,7 +6145,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_amd64 amd64
@@ -6124,7 +6183,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/jammy_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_amd64 amd64
@@ -6161,7 +6221,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
@@ -6198,7 +6259,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
@@ -6235,7 +6297,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
@@ -6272,7 +6335,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
@@ -6309,7 +6373,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
@@ -6346,7 +6411,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/noble_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
@@ -6383,7 +6449,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
@@ -6420,7 +6487,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
@@ -6457,7 +6525,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
@@ -6494,7 +6563,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
@@ -6531,7 +6601,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
@@ -6568,7 +6639,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
@@ -6605,7 +6677,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
@@ -6642,7 +6715,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
@@ -6679,7 +6753,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_amd64 amd64
@@ -6716,7 +6791,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_amd64 amd64
@@ -6753,7 +6829,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_amd64 amd64
@@ -6790,7 +6867,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bullseye_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
@@ -6827,7 +6905,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
@@ -6864,7 +6943,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mysql84_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
@@ -6901,7 +6981,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona57_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_amd64 amd64
@@ -6938,7 +7019,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_percona80_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_amd64 amd64
@@ -6975,7 +7057,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1011_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_amd64 amd64
@@ -7012,7 +7095,8 @@ jobs:
               cd docs
               cmake . -DWITH_HTML=OFF
               make
-              cp man/mydumper.1  man/myloader.1 /tmp/package/man
+              gzip man/mydumper.1 man/myloader.1
+              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/package/man
     - run: mkdir -p /tmp/src/mydumper/bookworm_mariadb1006_amd64/etc
     - run: cp mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_amd64 amd64
