@@ -3913,13 +3913,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
@@ -3951,13 +3947,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
@@ -3989,13 +3981,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
@@ -4027,13 +4015,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
@@ -4065,13 +4049,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
@@ -4103,13 +4083,9 @@ jobs:
     executor: bionic
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
@@ -4141,13 +4117,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
@@ -4179,13 +4151,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
@@ -4217,13 +4185,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
@@ -4255,13 +4219,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
@@ -4293,13 +4253,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
@@ -4331,13 +4287,9 @@ jobs:
     executor: focal
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
@@ -4369,13 +4321,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
@@ -4407,13 +4355,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
@@ -4445,13 +4389,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
@@ -4483,13 +4423,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
@@ -4521,13 +4457,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
@@ -4559,13 +4491,9 @@ jobs:
     executor: jammy
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
@@ -4597,13 +4525,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
@@ -4635,13 +4559,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
@@ -4673,13 +4593,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
@@ -4711,13 +4627,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
@@ -4749,13 +4661,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
@@ -4787,13 +4695,9 @@ jobs:
     executor: noble
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
@@ -4825,13 +4729,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
@@ -4863,13 +4763,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
@@ -4901,13 +4797,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
@@ -4939,13 +4831,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
@@ -4977,13 +4865,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
@@ -5015,13 +4899,9 @@ jobs:
     executor: buster
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
@@ -5053,13 +4933,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
@@ -5091,13 +4967,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
@@ -5129,13 +5001,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
@@ -5167,13 +5035,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
@@ -5205,13 +5069,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
@@ -5243,13 +5103,9 @@ jobs:
     executor: bullseye
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
@@ -5281,13 +5137,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
@@ -5319,13 +5171,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
@@ -5357,13 +5205,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
@@ -5395,13 +5239,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
@@ -5433,13 +5273,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
@@ -5471,13 +5307,9 @@ jobs:
     executor: bookworm
     resource_class: arm.medium
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006
@@ -5509,13 +5341,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql80
@@ -5547,13 +5375,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mysql84
@@ -5585,13 +5409,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona57
@@ -5623,13 +5443,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_percona80
@@ -5661,13 +5477,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1011
@@ -5699,13 +5511,9 @@ jobs:
     executor: bionic
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bionic_mariadb1006
@@ -5737,13 +5545,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql80
@@ -5775,13 +5579,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mysql84
@@ -5813,13 +5613,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona57
@@ -5851,13 +5647,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_percona80
@@ -5889,13 +5681,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1011
@@ -5927,13 +5715,9 @@ jobs:
     executor: focal
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_focal_mariadb1006
@@ -5965,13 +5749,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql80
@@ -6003,13 +5783,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mysql84
@@ -6041,13 +5817,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona57
@@ -6079,13 +5851,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_percona80
@@ -6117,13 +5885,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1011
@@ -6155,13 +5919,9 @@ jobs:
     executor: jammy
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_jammy_mariadb1006
@@ -6193,13 +5953,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql80
@@ -6231,13 +5987,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mysql84
@@ -6269,13 +6021,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona57
@@ -6307,13 +6055,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_percona80
@@ -6345,13 +6089,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1011
@@ -6383,13 +6123,9 @@ jobs:
     executor: noble
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_noble_mariadb1006
@@ -6421,13 +6157,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql80
@@ -6459,13 +6191,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mysql84
@@ -6497,13 +6225,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona57
@@ -6535,13 +6259,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_percona80
@@ -6573,13 +6293,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1011
@@ -6611,13 +6327,9 @@ jobs:
     executor: buster
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_buster_mariadb1006
@@ -6649,13 +6361,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql80
@@ -6687,13 +6395,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mysql84
@@ -6725,13 +6429,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona57
@@ -6763,13 +6463,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_percona80
@@ -6801,13 +6497,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1011
@@ -6839,13 +6531,9 @@ jobs:
     executor: bullseye
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bullseye_mariadb1006
@@ -6877,13 +6565,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql80
@@ -6915,13 +6599,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mysql84
@@ -6953,13 +6633,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona57
@@ -6991,13 +6667,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_percona80
@@ -7029,13 +6701,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1011
@@ -7067,13 +6735,9 @@ jobs:
     executor: bookworm
     resource_class: large
     steps:
-    - when:
-        condition:
-        - not: << parameters.build_man >>
-        steps:
-        - attach_workspace:
-            at: /tmp/package
     - checkout
+    - attach_workspace:
+        at: /tmp/package
     - set_env_vars
 #    - prepare_ubuntu
     - prepare_bookworm_mariadb1006
