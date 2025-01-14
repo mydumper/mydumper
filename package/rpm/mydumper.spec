@@ -34,6 +34,8 @@ install -m 0755 -d ${RPM_BUILD_ROOT}%{_sysconfdir}
 install -m 0755 mydumper ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0755 myloader ${RPM_BUILD_ROOT}%{_bindir}
 install -m 0664 mydumper.cnf ${RPM_BUILD_ROOT}%{_sysconfdir}
+install -m 0644 mydumper.1.gz ${RPM_BUILD_ROOT}%{_mandir}/man1/
+install -m 0644 myloader.1.gz ${RPM_BUILD_ROOT}%{_mandir}/man1/
 %define install_include %(test -f SOURCES/install.inc && echo $_)
 %if "%{install_include}"
     %include %{install_include}
