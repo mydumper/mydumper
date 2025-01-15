@@ -175,7 +175,8 @@ gchar * random_uuid_function_with_mem(gchar ** r, gulong* length, struct functio
 gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length; 
   (void) fp;
-  rand_string(*r, strlen(*r)+1);
+  if (* r)
+    rand_string(*r, strlen(*r)+1);
   return *r;
 }
 
