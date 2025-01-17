@@ -498,6 +498,11 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
 
+  if (replication_statements->start_replica_until){
+    g_message("Sending start replica until");
+    execute_replication_commands(conn,replication_statements->start_replica_until->str);
+  }
+
   start_connection_pool(conn);
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
@@ -594,19 +599,21 @@ int main(int argc, char *argv[]) {
         g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
   }
 
-  if (change_master_statement != NULL ){
-    g_message("Executing replication commands");
-    gchar** line=g_strsplit(change_master_statement->str, ";\n", -1);
-    for (i=0; i < g_strv_length(line);i++){
-       if (strlen(line[i])>2){
-         GString *str=g_string_new(line[i]);
-         g_string_append_c(str,';');
-         m_query(cd->thrconn, str->str, m_warning, "Sending CHANGE MASTER: %s", str->str);
-         g_string_free(str,TRUE);
-       }
-    }
+
+  if (replication_statements->reset_replica){
+    g_message("Sending reset replica");
+    execute_replication_commands(cd->thrconn,replication_statements->reset_replica->str);
   }
 
+  if (replication_statements->change_replication_source){
+    g_message("Sending change replication source");
+    execute_replication_commands(cd->thrconn,replication_statements->change_replication_source->str);
+  }
+
+  if (replication_statements->start_replica){
+    g_message("Sending start replica");
+    execute_replication_commands(cd->thrconn,replication_statements->start_replica->str);
+  }
 
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);

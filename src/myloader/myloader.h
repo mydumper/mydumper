@@ -64,6 +64,15 @@ struct connection_data{
   
 };
 
+struct replication_statements {
+  GString *gtid_purge;
+  GString *stop_replica;
+  GString *reset_replica;
+  GString *start_replica_until;
+  GString *change_replication_source;
+  GString *start_replica;
+};
+
 struct thread_data {
   struct configuration *conf;
   guint thread_id;

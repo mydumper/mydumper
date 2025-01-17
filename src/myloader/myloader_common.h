@@ -49,10 +49,11 @@ gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
                                 const gchar *message, gchar* fun());
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *key);
-void change_master(GKeyFile * kf,gchar *group, GString *s);
+void change_master(GKeyFile * kf,gchar *group, struct replication_statements *replication_statements);
 gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **basename);
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt);
 gboolean is_in_ignore_set_list(gchar *haystack);
 void remove_ignore_set_session_from_hash();
+void execute_replication_commands(MYSQL *conn, gchar *statement);
 #endif
