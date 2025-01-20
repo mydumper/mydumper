@@ -244,7 +244,7 @@ int restore_insert(struct connection_data *cd,
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
-    g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows_inserted*100/dbt->rows);
+    g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows>0?dbt->rows_inserted*100/dbt->rows:0);
     new_insert=g_string_append(new_insert,insert_statement_prefix);
     guint line_len=0;
     do {
