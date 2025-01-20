@@ -38,7 +38,7 @@ GAsyncQueue *free_results_queue=NULL;
 int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
 
 void *restore_thread(MYSQL *thrconn);
-struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0};
+struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL};
 struct io_restore_result end_restore_thread = { NULL, NULL};
 
 GThread **restore_threads=NULL;
@@ -231,7 +231,7 @@ int m_commit_and_start_transaction(struct connection_data *cd, guint* query_coun
 }
 
 int restore_insert(struct connection_data *cd,
-                  GString *data, guint *query_counter, guint offset_line)
+                  GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
   char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
   char *insert_statement_prefix=g_strndup(data->str,next_line - data->str);
@@ -244,6 +244,7 @@ int restore_insert(struct connection_data *cd,
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
+    g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows>0?dbt->rows_inserted*100/dbt->rows:0);
     new_insert=g_string_append(new_insert,insert_statement_prefix);
     guint line_len=0;
     do {
@@ -258,7 +259,9 @@ int restore_insert(struct connection_data *cd,
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
-
+      g_mutex_lock(dbt->mutex);
+      dbt->rows_inserted+=current_rows;
+      g_mutex_unlock(dbt->mutex);
       if (cd->transaction && *query_counter == commit_count) {
         tr+=m_commit_and_start_transaction(cd,query_counter);
       }
@@ -304,7 +307,7 @@ void *restore_thread(MYSQL *thrconn){
         break;
       }
       if (ir->kind_of_statement==INSERT){
-        ir->result=restore_insert(cd, ir->buffer, &query_counter,ir->preline);
+        ir->result=restore_insert(cd, ir->buffer, &query_counter,ir->preline, ir->dbt);
         if (ir->result>0){
           ir->error=g_strdup(mysql_error(cd->thrconn));
           ir->error_number=mysql_errno(cd->thrconn);
@@ -394,13 +397,14 @@ struct statement * new_statement(){
   return stmt;
 }
 
-void assing_statement(struct statement *ir, gchar *stmt, guint preline, gboolean is_schema, enum kind_of_statement kind_of_statement){
+void assing_statement(struct statement *ir, struct db_table * dbt, gchar *stmt, guint preline, gboolean is_schema, enum kind_of_statement kind_of_statement){
   initialize_statement(ir);
   g_assert(stmt); 
   g_string_assign(ir->buffer,stmt);
   ir->preline=preline;
   ir->is_schema=is_schema;
   ir->kind_of_statement=kind_of_statement;
+  ir->dbt=dbt;
 }
 
 
@@ -463,7 +467,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
         if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
           remove_definer(data);
         }
-        assing_statement(ir,data->str, preline, is_schema, OTHER);
+        assing_statement(ir,td->dbt,data->str, preline, is_schema, OTHER);
         g_async_queue_push(cd->queue->restore,ir);
         ir=NULL;
         process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
@@ -548,7 +552,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
               g_async_queue_push(cd->queue->result,initialize_statement(other_ir));
             }
           } 
-          assing_statement(ir, data->str, preline, FALSE, INSERT);
+          assing_statement(ir, td->dbt, data->str, preline, FALSE, INSERT);
           g_async_queue_push(cd->queue->restore, ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
@@ -594,7 +598,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 //              g_free(fifo_name);
           }
 
-          assing_statement(ir, data->str, preline, FALSE, OTHER);
+          assing_statement(ir, td->dbt, data->str, preline, FALSE, OTHER);
           g_async_queue_push(cd->queue->restore,ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
@@ -619,7 +623,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           }else{
             header=NULL;
           }
-          assing_statement(ir,data->str, preline, is_schema, OTHER);
+          assing_statement(ir, td->dbt, data->str, preline, is_schema, OTHER);
           g_async_queue_push(cd->queue->restore,ir);
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
@@ -676,7 +680,7 @@ int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboo
     gchar** line=g_strsplit(data->str, ";\n", -1);
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i])>2){
-          assing_statement(ir, line[i], 0, is_schema, OTHER);
+          assing_statement(ir, td->dbt, line[i], 0, is_schema, OTHER);
           if(ir->error)
             g_free(ir->error);
           ir->error=NULL;
