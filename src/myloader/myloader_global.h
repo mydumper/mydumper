@@ -104,7 +104,6 @@ extern guint sequences_processed;
 extern GMutex sequences_mutex;
 extern unsigned long long int total_data_sql_files;
 extern int (*m_close)(void *file);
-extern GString *change_master_statement;
 extern GHashTable * set_session_hash;
 
 extern gchar *exec_per_thread;
@@ -132,3 +131,4 @@ extern GList *ignore_set_list;
 extern gboolean skip_table_sorting;
 extern gboolean mysqldump;
 extern int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *);
+extern struct replication_statements *replication_statements;

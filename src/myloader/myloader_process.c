@@ -33,7 +33,8 @@
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
 
-GString *change_master_statement=NULL;
+//GString *change_master_statement=NULL;
+struct replication_statements *replication_statements=NULL;
 gboolean append_if_not_exist=FALSE;
 GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
@@ -41,6 +42,12 @@ GMutex *fifo_table_mutex=NULL;
 struct configuration *conf;
 extern gboolean schema_sequence_fix;
 void initialize_process(struct configuration *c){
+  replication_statements=g_new(struct replication_statements,1);
+  replication_statements->reset_replica=NULL;
+  replication_statements->start_replica=NULL;
+  replication_statements->change_replication_source=NULL;
+  replication_statements->gtid_purge=NULL;
+  replication_statements->start_replica_until=NULL;
   conf=c;
   fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
   fifo_table_mutex = g_mutex_new();
@@ -535,7 +542,7 @@ void process_metadata_global(const char *file)
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
-  change_master_statement=g_string_new("");
+  //change_master_statement=g_string_new("");
   const char *delim_bt= "`.`";
   const char *delim_dq= "\".\"";
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
@@ -608,10 +615,8 @@ void process_metadata_global(const char *file)
           database->triggers_checksum=get_value(kf,group,"triggers_checksum");
         }
       }
-    }else if (g_str_has_prefix(group,"replication")){
-      change_master(kf, group, change_master_statement);
-    }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
-      change_master(kf, group, change_master_statement);
+    }else if (g_str_has_prefix(group,"replication") || g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
+      change_master(kf, group, replication_statements);
     }else if (g_strstr_len(group, 26,"myloader_session_variables")){
       g_message("myloader_session_variables found on metadata");
       load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
