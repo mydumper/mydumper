@@ -142,6 +142,7 @@ struct db_table {
   char *real_table;
   struct object_to_export object_to_export;
 	guint64 rows;
+  guint64 rows_inserted;
 //  GAsyncQueue * queue;
   GList * restore_job_list;
   guint current_threads;

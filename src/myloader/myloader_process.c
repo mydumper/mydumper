@@ -70,6 +70,7 @@ struct db_table* append_new_db_table( struct database *real_db_name, gchar *tabl
       dbt->table=table;
       dbt->real_table=dbt->table;
       dbt->rows=number_rows;
+      dbt->rows_inserted=0;
       dbt->restore_job_list = NULL;
 //      dbt->queue=g_async_queue_new();
       parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
