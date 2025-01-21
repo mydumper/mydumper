@@ -29,6 +29,8 @@
 SQL_MODE='NO_AUTO_VALUE_ON_ZERO' /*!40101
 UNIQUE_CHECKS=0 /*!40114
 FOREIGN_KEY_CHECKS=0 /*!40114
+# SQL_LOG_BIN will be added by default in next release and -e will be deprecated
+# SQL_LOG_BIN=0 
 
 # sync_binlog = 0
 # innodb_flush_log_at_trx_commit = 0
