@@ -415,16 +415,15 @@ guint64 my_pow_two_plus_prev(guint64 prev, guint max){
   return r+prev;
 }
 
-gboolean parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max){
+guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max, const gchar* message){
+  if(rows_p_chunk[0]=='-'){
+    return 0;
+  }
   gchar **split=g_strsplit(rows_p_chunk, ":", 0);
   guint len = g_strv_length(split);
-  if ( split[0][0]=='-' ){
-    g_strfreev(split);
-    return FALSE;
-  }
   switch (len){
    case 0:
-     g_critical("This should not happend");
+     g_critical("%s",message);
      break;
    case 1:
      *start= strtol(split[0],NULL, 10);
@@ -443,6 +442,6 @@ gboolean parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *
      break;
   }
   g_strfreev(split);
-  return TRUE;
+  return len;
 }
 

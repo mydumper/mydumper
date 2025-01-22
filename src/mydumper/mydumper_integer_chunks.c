@@ -38,6 +38,10 @@
 #include "mydumper_integer_chunks.h"
 #include "mydumper_common.h"
 
+
+guint64 min_integer_chunk_step_size=1000;
+guint64 max_integer_chunk_step_size=0;
+
 guint64 gint64_abs(gint64 a){
   if (a >= 0)
     return a;
@@ -52,13 +56,13 @@ void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union t
     cs->integer_step.type.unsign.min = type.unsign.min;
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
-    cs->integer_step.step = step!=0?step:((cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads>MAX_CHUNK_STEP_SIZE?MAX_CHUNK_STEP_SIZE:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads);
+    cs->integer_step.step = step!=0?step:(max_integer_chunk_step_size!=0?((cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads>max_integer_chunk_step_size?max_integer_chunk_step_size:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads):(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads);
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step:1;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
-    cs->integer_step.step = step!=0?step:(gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1 > MAX_CHUNK_STEP_SIZE?MAX_CHUNK_STEP_SIZE:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1);
+    cs->integer_step.step = step!=0?step:(gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1 > max_integer_chunk_step_size?max_integer_chunk_step_size:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads+1);
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step:1;
   }
   cs->integer_step.is_step_fixed_length = is_step_fixed_length;
@@ -590,10 +594,10 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       cs->integer_step.step = cs->integer_step.step > csi->chunk_step->integer_step.max_chunk_step_size ? 
                               csi->chunk_step->integer_step.max_chunk_step_size :
                               cs->integer_step.step;
-      if (cs->integer_step.step > MAX_CHUNK_STEP_SIZE )
-        cs->integer_step.step=MAX_CHUNK_STEP_SIZE;        
-      if (cs->integer_step.step < MIN_CHUNK_STEP_SIZE)
-        cs->integer_step.step=MIN_CHUNK_STEP_SIZE;
+      if (cs->integer_step.step > max_integer_chunk_step_size )
+        cs->integer_step.step=max_integer_chunk_step_size;        
+      if (cs->integer_step.step < min_integer_chunk_step_size)
+        cs->integer_step.step=min_integer_chunk_step_size;
     }
   }
 
@@ -756,4 +760,20 @@ void update_where_on_integer_step(struct chunk_step_item * csi){
   struct integer_step *chunk_step=&(csi->chunk_step->integer_step);
   g_string_set_size(csi->where,0);
   update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, chunk_step->is_unsigned, chunk_step->type, TRUE);
+}
+
+void determine_if_we_can_go_deeper(struct db_table *dbt, struct chunk_step_item * csi, guint64 rows){
+  if (dbt->multicolumn && csi->position == 0){
+    if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > (dbt->min_chunk_step_size==0?min_integer_chunk_step_size:dbt->min_chunk_step_size))
+        )||(
+        (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > (dbt->min_chunk_step_size==0?min_integer_chunk_step_size:dbt->min_chunk_step_size))
+       )
+        )){
+      csi->chunk_step->integer_step.min_chunk_step_size=1;
+      csi->chunk_step->integer_step.is_step_fixed_length=TRUE;
+      csi->chunk_step->integer_step.max_chunk_step_size=1;
+      csi->chunk_step->integer_step.step=1;
+    }else
+      dbt->multicolumn=FALSE;
+  }
 }

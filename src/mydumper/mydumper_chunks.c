@@ -34,6 +34,8 @@
 #include "mydumper_partition_chunks.h"
 #include "mydumper_create_jobs.h"
 
+extern guint64 min_integer_chunk_step_size;
+
 GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 GThread *chunk_builder=NULL;
@@ -150,21 +152,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
           gboolean is_step_fixed_length = dbt->min_chunk_step_size!=0 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->max_chunk_step_size == dbt->starting_chunk_step_size;
           csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, is_step_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position);
-
-          if (dbt->multicolumn && csi->position == 0){
-            if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > (dbt->min_chunk_step_size==0?MIN_CHUNK_STEP_SIZE:dbt->min_chunk_step_size))
-                )||(
-               (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > (dbt->min_chunk_step_size==0?MIN_CHUNK_STEP_SIZE:dbt->min_chunk_step_size))
-              )
-              )){
-              csi->chunk_step->integer_step.min_chunk_step_size=1;
-              csi->chunk_step->integer_step.is_step_fixed_length=TRUE;
-              csi->chunk_step->integer_step.max_chunk_step_size=1;
-              csi->chunk_step->integer_step.step=1;
-            }else
-              dbt->multicolumn=FALSE;
-          }
-
+          determine_if_we_can_go_deeper(dbt,csi, rows);
 
           if (csi->chunk_step->integer_step.is_step_fixed_length){
             if (csi->chunk_step->integer_step.is_unsigned){
@@ -275,7 +263,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_message("%s.%s has %s%"G_GINT64_FORMAT" rows", dbt->database->name, dbt->table,
             (check_row_count ? "": "~"), rows);
   dbt->rows_total= rows;
-  if (rows > (dbt->min_chunk_step_size!=0?dbt->min_chunk_step_size:MIN_CHUNK_STEP_SIZE)){
+  if (rows > (dbt->min_chunk_step_size!=0?dbt->min_chunk_step_size:(min_integer_chunk_step_size>0?min_integer_chunk_step_size:MIN_CHUNK_STEP_SIZE))){
     GList *partitions=NULL;
     if (split_partitions || dbt->partition_regex){
       partitions = get_partitions_for_table(conn, dbt);
