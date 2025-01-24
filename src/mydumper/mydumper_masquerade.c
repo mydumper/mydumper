@@ -40,6 +40,8 @@ void finalize_masquerade(){
 }
 
 
+// Masquerade Utils
+
 GHashTable * load_file_content(gchar *filename){
   GHashTable * file_content=g_hash_table_new ( g_direct_hash, g_direct_equal );
   FILE *file = g_fopen(filename, "r");
@@ -76,40 +78,9 @@ GHashTable * load_file_into_file_hash(gchar *filename){
   return file_content;
 }
 
-
-gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *fp){
-  (void) fp;
-  (void) length;
-  return *r;
+gint comp(gconstpointer a, gconstpointer b){
+  return GPOINTER_TO_INT(a) >= GPOINTER_TO_INT(b);
 }
-
-gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) fp;
-  gulong l;
-  if (*length > 10)
-    l=g_snprintf(*r, *length + 1, "%u%u", g_random_int(), g_random_int());
-  else
-    l=g_snprintf(*r, *length + 1, "%u", g_random_int());
-  if (l<*length)
-    *length=l;
-  return *r;
-}
-
-gchar * random_int(gchar * r, gulong *length){
-  return random_int_function(&r, length, NULL);
-}
-
-gchar * random_int_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length;
-  gchar *value=g_hash_table_lookup(fp->memory,*r);
-  if (value==NULL){
-    value=g_strdup_printf("%u", g_random_int());
-    g_hash_table_insert(fp->memory,g_strdup(*r),value);
-  }
-  g_strlcpy(*r, value, strlen(*r)+1);
-  return *r;
-}
-
 
 char *rand_string(char *str, size_t size)
 {
@@ -125,7 +96,6 @@ char *rand_string(char *str, size_t size)
     }
     return str;
 }
-
 
 #ifndef WITH_GLIB_uuid_string_random
 char *rand_uuid(char *str, size_t size)
@@ -144,30 +114,73 @@ char *rand_uuid(char *str, size_t size)
 }
 #endif
 
+// Functions that will be executed
+
+gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *fp){
+  (void) fp;
+  (void) length;
+  return *r;
+}
+
+gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) fp;
+  if (*r){
+    gulong l;
+    if (*length > 10)
+      l=g_snprintf(*r, *length + 1, "%u%u", g_random_int(), g_random_int());
+    else
+      l=g_snprintf(*r, *length + 1, "%u", g_random_int());
+    if (l<*length)
+      *length=l;
+  }
+  return *r;
+}
+
+gchar * random_int(gchar * r, gulong *length){
+  return random_int_function(&r, length, NULL);
+}
+
+gchar * random_int_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
+  (void) length;
+  if (*r){
+    gchar *value=g_hash_table_lookup(fp->memory,*r);
+    if (value==NULL){
+      value=g_strdup_printf("%u", g_random_int());
+      g_hash_table_insert(fp->memory,g_strdup(*r),value);
+    }
+    g_strlcpy(*r, value, strlen(*r)+1);
+  }
+  return *r;
+}
+
 gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer *fp){
- (void) length;
- (void) fp;
+  (void) length;
+  (void) fp;
+  if (*r){
 #ifdef WITH_GLIB_uuid_string_random
-  g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
+    g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
 #else
-  rand_uuid(*r,strlen(*r));
+    rand_uuid(*r,strlen(*r));
 #endif
+  }
   return *r;
 }
 
 gchar * random_uuid_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length;
-  gchar *value=g_hash_table_lookup(fp->memory,*r);
-  if (value==NULL){
-    gchar *k=g_strdup(*r);
+  if (*r){
+    gchar *value=g_hash_table_lookup(fp->memory,*r);
+    if (value==NULL){
+      gchar *k=g_strdup(*r);
 #ifdef WITH_GLIB_uuid_string_random
-    value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
+      value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
 #else
-    rand_uuid(*r,strlen(*r));
+      rand_uuid(*r,strlen(*r));
 #endif
-    g_hash_table_insert(fp->memory,k,g_strdup(value));
+      g_hash_table_insert(fp->memory,k,g_strdup(value));
+    }
+    g_strlcpy(*r, value, strlen(*r)+1);
   }
-  g_strlcpy(*r, value, strlen(*r)+1);
   return *r;
 }
 
@@ -182,18 +195,17 @@ gchar * random_string_function(gchar ** r, gulong* length, struct function_point
 
 gchar * random_string_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length;
-  gchar *value=g_hash_table_lookup(fp->memory,*r);
-  if (value==NULL){
-    gchar *k=g_strdup(*r);
-    value=rand_string(*r,strlen(*r)+1);
-    g_hash_table_insert(fp->memory,k,g_strdup(value));
+  if (*r){
+    gchar *value=g_hash_table_lookup(fp->memory,*r);
+    if (value==NULL){
+      gchar *k=g_strdup(*r);
+      value=rand_string(*r,strlen(*r)+1);
+      g_hash_table_insert(fp->memory,k,g_strdup(value));
+    }
+    g_strlcpy(*r, value, strlen(*r)+1);
   }
-  g_strlcpy(*r, value, strlen(*r)+1);
-
   return *r;
 }
-
-
 
 gchar *random_format_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
   guint i=0;
@@ -285,48 +297,7 @@ gchar *constant_function(gchar ** r, gulong* max_len, struct function_pointer *f
   return new_r;
 }
 
-fun_ptr get_function_pointer_for (gchar *function_char){
-  if (g_str_has_prefix(function_char,"random_format")){
-    return &random_format_function;
-  }
-
-  if (!g_strcmp0(function_char,"random_string"))
-    return &random_string_function;
-  if (!g_strcmp0(function_char,"random_string_with_mem"))
-    return &random_string_function_with_mem;
-
-
-  if (!g_strcmp0(function_char,"random_int"))
-    return &random_int_function;
-  if (!g_strcmp0(function_char,"random_int_with_mem"))
-    return &random_int_function_with_mem;
-
-  if (!g_strcmp0(function_char,"random_uuid"))
-    return &random_uuid_function;
-  if (!g_strcmp0(function_char,"random_uuid_with_mem"))
-    return &random_uuid_function_with_mem;
-
-  if (g_str_has_prefix(function_char,"apply")){
-    return &apply_function;
-  }
-
-  if (g_str_has_prefix(function_char,"constant")){
-    return &constant_function;
-  }
-
-  // TODO: more functions needs to be added.
-  if (!g_strcmp0(function_char,""))
-    return &identity_function;
-  if (!g_strcmp0(function_char,""))
-    return &identity_function;
-  g_message("Function not found: Using default");
-  return &identity_function;
-}
-
-gint comp(gconstpointer a, gconstpointer b){
-  return GPOINTER_TO_INT(a) >= GPOINTER_TO_INT(b);
-}
-
+// Function parsers
 
 void parse_apply_function_value(struct function_pointer * fp, gchar *val){
   char buffer[256];
@@ -359,7 +330,6 @@ void parse_apply_function_value(struct function_pointer * fp, gchar *val){
 void parse_constant_function_value(struct function_pointer * fp, gchar *val){
   fp->parse=g_list_append(fp->parse,g_strdup(val));
 }
-
 
 void parse_value(struct function_pointer * fp, gchar *val){
   char buffer[256];
@@ -447,6 +417,47 @@ void parse_value(struct function_pointer * fp, gchar *val){
 
     }
   }
+}
+
+// Function initializer
+
+
+fun_ptr get_function_pointer_for (gchar *function_char){
+  if (g_str_has_prefix(function_char,"random_format")){
+    return &random_format_function;
+  }
+
+  if (!g_strcmp0(function_char,"random_string"))
+    return &random_string_function;
+  if (!g_strcmp0(function_char,"random_string_with_mem"))
+    return &random_string_function_with_mem;
+
+
+  if (!g_strcmp0(function_char,"random_int"))
+    return &random_int_function;
+  if (!g_strcmp0(function_char,"random_int_with_mem"))
+    return &random_int_function_with_mem;
+
+  if (!g_strcmp0(function_char,"random_uuid"))
+    return &random_uuid_function;
+  if (!g_strcmp0(function_char,"random_uuid_with_mem"))
+    return &random_uuid_function_with_mem;
+
+  if (g_str_has_prefix(function_char,"apply")){
+    return &apply_function;
+  }
+
+  if (g_str_has_prefix(function_char,"constant")){
+    return &constant_function;
+  }
+
+  // TODO: more functions needs to be added.
+  if (!g_strcmp0(function_char,""))
+    return &identity_function;
+  if (!g_strcmp0(function_char,""))
+    return &identity_function;
+  g_message("Function not found: Using default");
+  return &identity_function;
 }
 
 struct function_pointer * init_function_pointer(gchar *value){

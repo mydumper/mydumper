@@ -27,6 +27,9 @@
 #include "mydumper_arguments.h"
 #include "mydumper_common.h"
 
+extern guint64 min_integer_chunk_step_size;
+extern guint64 max_integer_chunk_step_size;
+
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
@@ -47,9 +50,17 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
+  if (g_strstr_len(option_name,11,"--rows-hard")){
+    if (value!=NULL){
+      if (!parse_rows_per_chunk(value, &min_integer_chunk_step_size,  &max_integer_chunk_step_size, &max_integer_chunk_step_size, "Invalid option on --rows-hard")){
+      }
+      return TRUE;
+    }
+    return FALSE;
+  }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
     if (value!=NULL)
-      split_integer_tables=parse_rows_per_chunk(value, &min_chunk_step_size, &starting_chunk_step_size, &max_chunk_step_size);
+      split_integer_tables=parse_rows_per_chunk(value, &min_chunk_step_size, &starting_chunk_step_size, &max_chunk_step_size, "Invalid option on --rows");
     return TRUE;
   }
   if (g_strstr_len(option_name,8,"--format")){
@@ -230,6 +241,7 @@ static GOptionEntry chunks_entries[] = {
     {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
      NULL},
+    {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, "This set the MIN and MAX limit when even if --rows is 0", NULL},
     { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
       "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

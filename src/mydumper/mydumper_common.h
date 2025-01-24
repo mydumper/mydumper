@@ -52,8 +52,7 @@ void set_tidb_snapshot(MYSQL *conn);
 void release_pid();
 void child_process_ended(int child_pid);
 guint64 my_pow_two_plus_prev(guint64 prev, guint max);
-gboolean parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max);
-
+guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *start, guint64 *max, const gchar* messsage);
 extern guint nroutines;
 extern guint server_version;
 extern const char *routine_type[];

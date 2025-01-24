@@ -18,7 +18,6 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#define MAX_CHUNK_STEP_SIZE 3000000
 #define MAX_TIME_PER_QUERY 2
 
 guint64 gint64_abs(gint64 a);
@@ -28,3 +27,4 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt);
 void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
 gchar * get_integer_chunk_where(union chunk_step * chunk_step);
 void update_integer_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gboolean is_unsigned, union type type, gboolean use_cursor);
+void determine_if_we_can_go_deeper(struct db_table *dbt, struct chunk_step_item * csi, guint64 rows);
