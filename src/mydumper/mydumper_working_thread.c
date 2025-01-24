@@ -844,11 +844,20 @@ void *working_thread(struct thread_data *td) {
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
     g_async_queue_pop(td->conf->ready_non_transactional_queue);
 
-    if (less_locking){
+    if (trx_tables){
+      // Processing non-transactional tables
+      // This queue should be empty, but we are processing just in case.
+      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
+      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
+
+      // This push will unlock the FTWRL on the Main Connection
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+    }else{
       // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
         m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
+
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
 
@@ -860,13 +869,6 @@ void *working_thread(struct thread_data *td) {
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
-    }else{
-      // Processing non-transactional tables
-      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
-      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
-
-      // This push will unlock the FTWRL on the Main Connection
-      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     // Processing Transactional tables
@@ -1213,7 +1215,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
-  // with trx_consistency_only we dump all as transactional_table
+  // with --trx-tables we dump all as transactional tables
     if (!no_schemas && !dbt->object_to_export.no_schema) {
 //      write_table_metadata_into_file(dbt);
       g_mutex_lock(table_schemas_mutex);
@@ -1229,7 +1231,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt, conf);
         }
-        if (trx_consistency_only ||
+        if (trx_tables ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           dbt->is_transactional=TRUE;
           g_mutex_lock(transactional_table->mutex);

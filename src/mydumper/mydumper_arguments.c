@@ -37,6 +37,7 @@ const gchar *rows_file_extension=SQL;
 guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
+gboolean trx_tables=FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -185,10 +186,8 @@ static GOptionEntry lock_entries[] = {
      NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
-    {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
-     "Minimize locking time on InnoDB tables.", NULL},
-    {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,
-     "Transactional consistency only", NULL},
+    {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
+     "The backup process change if we known that we are exporitng transactional tables only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

@@ -46,11 +46,9 @@ int longquery_retries = 0;
 int longquery_retry_interval = 60;
 int killqueries = 0;
 gboolean skip_ddl_locks= FALSE;
-gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
 guint updated_since = 0;
-guint trx_consistency_only = 0;
 gchar *exec_command=NULL;
 
 // Shared variables
@@ -82,12 +80,12 @@ void initialize_start_dump(){
 	initialize_conf_per_table(&conf_per_table);
 
   // until we have an unique option on lock types we need to ensure this
-  if (sync_thread_lock_mode==NO_LOCK || trx_consistency_only)
-    less_locking = 0;
+  if (sync_thread_lock_mode==NO_LOCK)
+    trx_tables=TRUE;
 
-  // clarify binlog coordinates with trx_consistency_only
-  if (trx_consistency_only)
-    g_warning("Using trx_consistency_only, binlog coordinates will not be "
+  // clarify binlog coordinates with --trx-tables
+  if (trx_tables)
+    g_warning("Using --trx-tables options, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
   if (db){
@@ -1267,7 +1265,7 @@ void start_dump() {
 
   // IMPORTANT: At this point, all the threads are in sync
 
-  if (trx_consistency_only) {
+  if (trx_tables) {
     // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
     if (release_global_lock_function)
@@ -1313,16 +1311,16 @@ void start_dump() {
   // at this point initial jobs has been completed
   // which means that all schema jobs has been created 
   // we are able to send the JOB_SHUTDOWN to schema_queue
-  g_message("Shutdown jobs for less locking enqueued");
+  g_message("Shutdown schema jobs");
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.schema_queue, j);
   }
-  // In case that we are using less_locking, we need to 
+  // In case that we are NOT exporting transactional table, we need to 
   // build the lock table statement, at this stage, before
   // let workers to start dumping data
-  if (less_locking){
+  if (!trx_tables){
     build_lock_tables_statement(&conf);
   }
   // Allowing workers to start dumping Non-Transactional tables
@@ -1331,7 +1329,7 @@ void start_dump() {
   }
 
   // Releasing locks if possible
-  if (sync_thread_lock_mode!=NO_LOCK && !trx_consistency_only) {
+  if (sync_thread_lock_mode!=NO_LOCK && !trx_tables) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
