@@ -27,6 +27,7 @@
 #include "mydumper_arguments.h"
 #include "mydumper_common.h"
 
+enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
@@ -77,6 +78,35 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
+  if (!strcmp(option_name,"--lock-all-tables")){
+    m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
+  }
+  if (!strcmp(option_name,"--no-locks")){
+    m_critical("--no-locks is deprecated use --sync-thread-lock-mode instead");
+  }
+  if (!strcmp(option_name,"--sync-thread-lock-mode")){
+    if (!g_ascii_strcasecmp(value,"AUTO")){
+      sync_thread_lock_mode=AUTO;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,"FTWRL")){
+      sync_thread_lock_mode=FTWRL;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,"LOCK_ALL")){
+      sync_thread_lock_mode=LOCK_ALL;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,"GTID")){
+      sync_thread_lock_mode=GTID;
+      return TRUE;
+    }
+    if (!g_ascii_strcasecmp(value,"NO_LOCK")){
+      sync_thread_lock_mode=NO_LOCK;
+      return TRUE;
+    }
+  }
+
 
   return common_arguments_callback(option_name, value, data, error);
 }
@@ -131,17 +161,19 @@ static GOptionEntry extra_entries[] = {
 static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
      "Snapshot to use for TiDB", NULL},
-    {"no-locks", 'k', 0, G_OPTION_ARG_NONE, &no_locks,
-     "Do not execute the temporary shared read lock.  WARNING: This will cause "
-     "inconsistent backups",
+    {"no-locks", 'k', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "This option is deprecated use --sync-thread-lock-mode instead",
+     NULL},
+    {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "This option is deprecated use --sync-thread-lock-mode instead", NULL},
+    {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "There are 3 modes that mydumper can use to keep the threads in sync and one to disable: FTWRL, LOCK_ALL, GTID and NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. Default: FTWRL",
      NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
      "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
      NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
-    {"lock-all-tables", 0, 0, G_OPTION_ARG_NONE, &lock_all_tables,
-     "Use LOCK TABLE for all, instead of FTWRL", NULL},
     {"less-locking", 0, 0, G_OPTION_ARG_NONE, &less_locking,
      "Minimize locking time on InnoDB tables.", NULL},
     {"trx-consistency-only", 0, 0, G_OPTION_ARG_NONE, &trx_consistency_only,

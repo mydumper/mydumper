@@ -45,9 +45,7 @@ int longquery = 60;
 int longquery_retries = 0;
 int longquery_retry_interval = 60;
 int killqueries = 0;
-int lock_all_tables = 0;
 gboolean skip_ddl_locks= FALSE;
-gboolean no_locks = FALSE;
 gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
@@ -84,7 +82,7 @@ void initialize_start_dump(){
 	initialize_conf_per_table(&conf_per_table);
 
   // until we have an unique option on lock types we need to ensure this
-  if (no_locks || trx_consistency_only)
+  if (sync_thread_lock_mode==NO_LOCK || trx_consistency_only)
     less_locking = 0;
 
   // clarify binlog coordinates with trx_consistency_only
@@ -1049,7 +1047,7 @@ void start_dump() {
   }
 
   // If we are locking, we need to be sure there is no long running queries
-  if (!no_locks && is_mysql_like()) {
+  if (sync_thread_lock_mode!=NO_LOCK && is_mysql_like()) {
   // We check SHOW PROCESSLIST, and if there're queries
   // larger than preset value, we terminate the process.
   // This avoids stalling whole server with flush.
@@ -1113,31 +1111,38 @@ void start_dump() {
     g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
 
   }else{
-
-    if (!no_locks) {
-      // This backup will lock the database
-      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
-      if (skip_ddl_locks){
-        acquire_ddl_lock_function=NULL;
-        release_ddl_lock_function=NULL;
-      }
-
-      if (lock_all_tables) {
+    switch (sync_thread_lock_mode){
+      case NO_LOCK:
+        g_warning("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
+        break;
+      case LOCK_ALL:
         send_lock_all_tables(conn);
-      } else {
+        break;
+      case AUTO:
+        determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+        break;
+      case FTWRL:
+        determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+        acquire_global_lock_function = &send_flush_table_with_read_lock;
+        release_global_lock_function = &send_unlock_tables;
+        break;
+      case GTID:
+        g_warning("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
+        break;
+    }
+    if (skip_ddl_locks){
+      acquire_ddl_lock_function=NULL;
+      release_ddl_lock_function=NULL;
+    }
 
-        if (acquire_ddl_lock_function != NULL) {
-          g_message("Acquiring DDL lock");
-          acquire_ddl_lock_function(second_conn);
-        }
+    if (acquire_ddl_lock_function != NULL) {
+      g_message("Acquiring DDL lock");
+      acquire_ddl_lock_function(second_conn);
+    }
 
-        if (acquire_global_lock_function != NULL) {
-          g_message("Acquiring Global lock");
-          acquire_global_lock_function(conn);
-        }
-      }
-    } else {
-      g_warning("Executing in no-locks mode, snapshot might not be consistent");
+    if (acquire_global_lock_function != NULL) {
+      g_message("Acquiring Global lock");
+      acquire_global_lock_function(conn);
     }
   }
 
@@ -1326,14 +1331,13 @@ void start_dump() {
   }
 
   // Releasing locks if possible
-  if (!no_locks && !trx_consistency_only) {
+  if (sync_thread_lock_mode!=NO_LOCK && !trx_consistency_only) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
     g_message("Non-InnoDB dump complete, releasing global locks");
     if (release_global_lock_function)
       release_global_lock_function(conn);
-//    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
     g_message("Global locks released");
     if (release_binlog_function != NULL){
       g_async_queue_pop(conf.binlog_ready);
@@ -1496,11 +1500,5 @@ void start_dump() {
   free_regex();
   free_common();
   free_set_names();
-  if (no_locks){
-    if (it_is_a_consistent_backup)
-      g_message("This is a consistent backup.");
-    else
-      g_message("This is NOT a consistent backup.");
-  }
 }
 

@@ -180,22 +180,24 @@ void start_working_thread(struct configuration *conf ){
         g_thread_create((GThreadFunc)working_thread, &thread_data[n], TRUE, NULL);
   }
 
-  gchar *_binlog_snapshot_gtid_executed = NULL;
-  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
-  guint start_transaction_retry=0;
-  while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
-    binlog_snapshot_gtid_executed_status_local=TRUE;
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_pop(conf->gtid_pos_checked);
+  if (sync_thread_lock_mode==GTID){
+    gchar *_binlog_snapshot_gtid_executed = NULL;
+    gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
+    guint start_transaction_retry=0;
+    while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
+      binlog_snapshot_gtid_executed_status_local=TRUE;
+      for (n = 0; n < num_threads; n++) {
+        g_async_queue_pop(conf->gtid_pos_checked);
+      }
+      _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
+      for (n = 1; n < num_threads; n++) {
+        binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
+      }
+      for (n = 0; n < num_threads; n++) {
+        g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
+      }
+      start_transaction_retry++;
     }
-    _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
-    for (n = 1; n < num_threads; n++) {
-      binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
-    }
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
-    }
-    start_transaction_retry++;
   }
 
   for (n = 0; n < num_threads; n++) {
@@ -501,54 +503,48 @@ void initialize_consistent_snapshot(struct thread_data *td){
   }
   set_transaction_isolation_level_repeatable_read(td->thrconn);
   guint start_transaction_retry=0;
-  gboolean cont = FALSE; 
-  while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
-//  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
-//    sleep(td->thread_id);
-    g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
-    if (mysql_query(td->thrconn,
-                  "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
-      m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-    }
-    if (mysql_query(td->thrconn,
-                  "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
-      g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-    }else{
-      MYSQL_RES *res = mysql_store_result(td->thrconn);
-      if (res){
-        MYSQL_ROW row = mysql_fetch_row(res);
-        if (row!=NULL)
-          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-        else
-          td->binlog_snapshot_gtid_executed=g_strdup("");
-        mysql_free_result(res);
-      }else{
-        g_warning("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-        td->binlog_snapshot_gtid_executed=g_strdup("");
-      }
-    }
-    start_transaction_retry++;
-    g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
-    cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
-  } 
+  gboolean cont = FALSE;
 
-  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){
-    if (no_locks){
-      g_warning("We are not able to determine if the backup will be consistent.");
-    }else{
+  if (sync_thread_lock_mode==GTID){ 
+    while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
+//    Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
+//      sleep(td->thread_id);
+      g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
+      if (mysql_query(td->thrconn,
+                    "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
+        m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
+      }
+      if (mysql_query(td->thrconn,
+                    "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
+        m_critical("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+      }else{
+        MYSQL_RES *res = mysql_store_result(td->thrconn);
+        if (res){
+          MYSQL_ROW row = mysql_fetch_row(res);
+          if (row!=NULL)
+            td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+          else
+            m_critical("Failed to get content of binlog_snapshot_gtid_executed");
+          mysql_free_result(res);
+        }else{
+          m_critical("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+        }
+      }
+      start_transaction_retry++;
+      g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
+      cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
+    }
+
+    if (cont){
+      g_message("All threads in the same position. This will be a consistent backup.");
       it_is_a_consistent_backup=TRUE;
+    }else{
+      m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }else{
-    if (cont){
-        g_message("All threads in the same position. This will be a consistent backup.");
-        it_is_a_consistent_backup=TRUE;
-    }else{
-      if (no_locks){ 
-        g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
-      }else{
-        m_critical("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
-      }
-    }
+    if (mysql_query(td->thrconn,
+                  "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */"))
+      m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
   }
 }
 
