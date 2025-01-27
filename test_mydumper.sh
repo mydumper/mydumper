@@ -414,7 +414,7 @@ full_test_global(){
             # statement size to 2MB -- overriting database
             do_case $test $backup_mode $compress_mode $rows_and_filesize_mode -s 2000000                      ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
             # compress and rows
-            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints --less-locking ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
+            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints                ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
  
     # ANSI_QUOTES
 #    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
@@ -434,7 +434,7 @@ full_test_per_table(){
   for test in test_case_dir test_case_stream
   do
     echo "Executing tests: $test"
-    do_case $test -G --lock-all-tables -B empty_db ${mydumper_general_options}                           -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
+    do_case $test -G --sync-thread-lock-mode LOCK_ALL -B empty_db ${mydumper_general_options}                           -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
     # exporting specific database -- overriting database
     do_case $test -B myd_test_no_fk ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
     # exporting specific table -- overriting database

@@ -170,12 +170,9 @@ int main(int argc, char *argv[]) {
     print_string("omit-from-file",tables_skiplist_file);
     print_string("tables-list",tables_list);
     print_string("tidb-snapshot",tidb_snapshot);
-    print_bool("no-locks",no_locks);
     print_bool("use-savepoints",use_savepoints);
     print_bool("no-backup-locks",no_backup_locks);
-    print_bool("lock-all-tables",lock_all_tables);
-    print_bool("less-locking",less_locking);
-    print_bool("trx-consistency-only",trx_consistency_only);
+    print_bool("trx-tables",trx_tables);
     print_bool("skip-ddl-locks",skip_ddl_locks);
     print_string("pmm-path",pmm_path);
     print_string("pmm-resolution",pmm_resolution);
