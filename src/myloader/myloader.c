@@ -159,7 +159,17 @@ void create_database(struct thread_data *td, gchar *database) {
 
 
 void print_errors(){
-  g_message(
+  if (detailed_errors.tablespace_errors ||
+    detailed_errors.schema_errors ||
+    detailed_errors.data_errors ||
+    detailed_errors.view_errors ||
+    detailed_errors.sequence_errors ||
+    detailed_errors.index_errors ||
+    detailed_errors.trigger_errors ||
+    detailed_errors.constraints_errors ||
+    detailed_errors.post_errors ||
+    detailed_errors.retries)
+    g_message(
     "Errors found:\n"
     "- Tablespace:\t%d\n"
     "- Schema:    \t%d\n"
