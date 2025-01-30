@@ -614,7 +614,7 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL
   g_string_append(buffers.row, buffers.column->str);
   g_string_append(buffers.row, terminated_by);
 
-  if (!column && column != row)
+  if (column && column != row)
     g_free(column);
 }
 
