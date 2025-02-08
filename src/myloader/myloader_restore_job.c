@@ -413,7 +413,8 @@ void *signal_thread(void *data) {
 void stop_signal_thread(){
   g_mutex_lock(shutdown_triggered_mutex);
   g_mutex_unlock(shutdown_triggered_mutex);
-  g_main_loop_unref(loop);
+  if (loop)
+    g_main_loop_unref(loop);
 //  g_main_loop_quit(loop);
 }
 
