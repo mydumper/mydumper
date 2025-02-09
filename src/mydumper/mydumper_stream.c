@@ -24,6 +24,7 @@
 #include "mydumper.h"
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
+#include "mydumper_file_handler.h"
 
 GThread *stream_thread = NULL;
 GThread *metadata_partial_writer_thread = NULL;
@@ -37,26 +38,13 @@ void metadata_partial_queue_push (struct db_table *dbt){
     g_async_queue_push(metadata_partial_queue, dbt);
 }
 
-struct stream_queue_element * new_stream_queue_element(struct db_table *dbt,gchar *filename,GAsyncQueue *done){
-  struct stream_queue_element *sf=g_new0(struct stream_queue_element, 1);
-  sf->dbt=dbt;
-  sf->filename=filename;
-  sf->done=done;
-  return sf;
-}
-
 guint get_stream_queue_length(){
   return g_async_queue_length(stream_queue);
 }
 
 void stream_queue_push(struct db_table *dbt,gchar *filename){
-/*  if (dbt)
-    g_message("New stream file: %s for dbt: %s ", filename, dbt->table);
-  else
-    g_message("New stream file: %s with null dbt: ", filename);
-*/
   GAsyncQueue *done = no_sync?NULL:g_async_queue_new();
-  g_async_queue_push(stream_queue, new_stream_queue_element(dbt,filename,done));
+  g_async_queue_push(stream_queue, new_filename_queue_element(dbt,filename,done));
   if (done){
     g_async_queue_pop(done);
     g_async_queue_unref(done);
@@ -76,7 +64,7 @@ void *process_stream(void *data){
 //  guint sz=0;
   ssize_t len=0;
   GDateTime *datetime;
-  struct stream_queue_element *sf = NULL;
+  struct filename_queue_element *sf = NULL;
   for(;;){
     sf = g_async_queue_pop(stream_queue);
 

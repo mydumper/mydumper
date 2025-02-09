@@ -26,3 +26,4 @@ int m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
 void wait_close_files();
+struct filename_queue_element * new_filename_queue_element(struct db_table *dbt,gchar *filename,GAsyncQueue *done);
