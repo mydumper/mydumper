@@ -180,22 +180,24 @@ void start_working_thread(struct configuration *conf ){
         g_thread_create((GThreadFunc)working_thread, &thread_data[n], TRUE, NULL);
   }
 
-  gchar *_binlog_snapshot_gtid_executed = NULL;
-  gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
-  guint start_transaction_retry=0;
-  while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
-    binlog_snapshot_gtid_executed_status_local=TRUE;
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_pop(conf->gtid_pos_checked);
+  if (sync_thread_lock_mode==GTID){
+    gchar *_binlog_snapshot_gtid_executed = NULL;
+    gboolean binlog_snapshot_gtid_executed_status_local=FALSE;
+    guint start_transaction_retry=0;
+    while (!binlog_snapshot_gtid_executed_status_local && start_transaction_retry < MAX_START_TRANSACTION_RETRIES ){
+      binlog_snapshot_gtid_executed_status_local=TRUE;
+      for (n = 0; n < num_threads; n++) {
+        g_async_queue_pop(conf->gtid_pos_checked);
+      }
+      _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
+      for (n = 1; n < num_threads; n++) {
+        binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
+      }
+      for (n = 0; n < num_threads; n++) {
+        g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
+      }
+      start_transaction_retry++;
     }
-    _binlog_snapshot_gtid_executed=g_strdup(thread_data[0].binlog_snapshot_gtid_executed);
-    for (n = 1; n < num_threads; n++) {
-      binlog_snapshot_gtid_executed_status_local=binlog_snapshot_gtid_executed_status_local && g_strcmp0(thread_data[n].binlog_snapshot_gtid_executed,_binlog_snapshot_gtid_executed)==0;
-    }
-    for (n = 0; n < num_threads; n++) {
-      g_async_queue_push(conf->are_all_threads_in_same_pos,binlog_snapshot_gtid_executed_status_local?GINT_TO_POINTER(1):GINT_TO_POINTER(2));
-    }
-    start_transaction_retry++;
   }
 
   for (n = 0; n < num_threads; n++) {
@@ -501,54 +503,48 @@ void initialize_consistent_snapshot(struct thread_data *td){
   }
   set_transaction_isolation_level_repeatable_read(td->thrconn);
   guint start_transaction_retry=0;
-  gboolean cont = FALSE; 
-  while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
-//  Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
-//    sleep(td->thread_id);
-    g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
-    if (mysql_query(td->thrconn,
-                  "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
-      m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-    }
-    if (mysql_query(td->thrconn,
-                  "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
-      g_warning("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-    }else{
-      MYSQL_RES *res = mysql_store_result(td->thrconn);
-      if (res){
-        MYSQL_ROW row = mysql_fetch_row(res);
-        if (row!=NULL)
-          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-        else
-          td->binlog_snapshot_gtid_executed=g_strdup("");
-        mysql_free_result(res);
-      }else{
-        g_warning("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-        td->binlog_snapshot_gtid_executed=g_strdup("");
-      }
-    }
-    start_transaction_retry++;
-    g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
-    cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
-  } 
+  gboolean cont = FALSE;
 
-  if (g_strcmp0(td->binlog_snapshot_gtid_executed,"")==0){
-    if (no_locks){
-      g_warning("We are not able to determine if the backup will be consistent.");
-    }else{
+  if (sync_thread_lock_mode==GTID){ 
+    while ( !cont && (start_transaction_retry < MAX_START_TRANSACTION_RETRIES )){
+//    Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
+//      sleep(td->thread_id);
+      g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
+      if (mysql_query(td->thrconn,
+                    "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
+        m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
+      }
+      if (mysql_query(td->thrconn,
+                    "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
+        m_critical("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+      }else{
+        MYSQL_RES *res = mysql_store_result(td->thrconn);
+        if (res){
+          MYSQL_ROW row = mysql_fetch_row(res);
+          if (row!=NULL)
+            td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+          else
+            m_critical("Failed to get content of binlog_snapshot_gtid_executed");
+          mysql_free_result(res);
+        }else{
+          m_critical("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
+        }
+      }
+      start_transaction_retry++;
+      g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
+      cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
+    }
+
+    if (cont){
+      g_message("All threads in the same position. This will be a consistent backup.");
       it_is_a_consistent_backup=TRUE;
+    }else{
+      m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }else{
-    if (cont){
-        g_message("All threads in the same position. This will be a consistent backup.");
-        it_is_a_consistent_backup=TRUE;
-    }else{
-      if (no_locks){ 
-        g_warning("Backup will not be consistent, but we are continuing because you use --no-locks.");
-      }else{
-        m_critical("Backup will not be consistent. Threads are in different points in time. Use --no-locks if you expect inconsistent backups.");
-      }
-    }
+    if (mysql_query(td->thrconn,
+                  "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */"))
+      m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
   }
 }
 
@@ -848,11 +844,20 @@ void *working_thread(struct thread_data *td) {
     g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1)); 
     g_async_queue_pop(td->conf->ready_non_transactional_queue);
 
-    if (less_locking){
+    if (trx_tables){
+      // Processing non-transactional tables
+      // This queue should be empty, but we are processing just in case.
+      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
+      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
+
+      // This push will unlock the FTWRL on the Main Connection
+      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
+    }else{
       // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
         m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
+
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
 
@@ -864,13 +869,6 @@ void *working_thread(struct thread_data *td) {
       if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
         m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
       }
-    }else{
-      // Processing non-transactional tables
-      process_queue(td->conf->non_transactional.queue, td, FALSE, td->conf->non_transactional.request_chunk);
-      process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
-
-      // This push will unlock the FTWRL on the Main Connection
-      g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }
 
     // Processing Transactional tables
@@ -1217,7 +1215,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
-  // with trx_consistency_only we dump all as transactional_table
+  // with --trx-tables we dump all as transactional tables
     if (!no_schemas && !dbt->object_to_export.no_schema) {
 //      write_table_metadata_into_file(dbt);
       g_mutex_lock(table_schemas_mutex);
@@ -1233,7 +1231,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt, conf);
         }
-        if (trx_consistency_only ||
+        if (trx_tables ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           dbt->is_transactional=TRUE;
           g_mutex_lock(transactional_table->mutex);

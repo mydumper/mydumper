@@ -45,14 +45,10 @@ int longquery = 60;
 int longquery_retries = 0;
 int longquery_retry_interval = 60;
 int killqueries = 0;
-int lock_all_tables = 0;
 gboolean skip_ddl_locks= FALSE;
-gboolean no_locks = FALSE;
-gboolean less_locking = FALSE;
 gboolean no_backup_locks = FALSE;
 gboolean dump_tablespaces = FALSE;
 guint updated_since = 0;
-guint trx_consistency_only = 0;
 gchar *exec_command=NULL;
 
 // Shared variables
@@ -84,12 +80,12 @@ void initialize_start_dump(){
 	initialize_conf_per_table(&conf_per_table);
 
   // until we have an unique option on lock types we need to ensure this
-  if (no_locks || trx_consistency_only)
-    less_locking = 0;
+  if (sync_thread_lock_mode==NO_LOCK)
+    trx_tables=TRUE;
 
-  // clarify binlog coordinates with trx_consistency_only
-  if (trx_consistency_only)
-    g_warning("Using trx_consistency_only, binlog coordinates will not be "
+  // clarify binlog coordinates with --trx-tables
+  if (trx_tables)
+    g_warning("Using --trx-tables options, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
   if (db){
@@ -611,6 +607,23 @@ void send_flush_table_with_read_lock(MYSQL *conn){
         }
 }
 
+
+static
+void initialize_tidb_snapshot(MYSQL *conn){
+  if (!tidb_snapshot){
+    // Generate a @@tidb_snapshot to use for the worker threads since
+    // the tidb-snapshot argument was not specified when starting mydumper
+    m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+    MYSQL_RES *result = mysql_store_result(conn);
+    MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
+    tidb_snapshot = g_strdup(row[1]);
+    mysql_free_result(result);
+  }
+  // Need to set the @@tidb_snapshot for the master thread
+  set_tidb_snapshot(conn);
+  g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+}
+
 static
 void default_locking(void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
   *acquire_ddl_lock_function = NULL;
@@ -685,6 +698,9 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
       }else{
         default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
+      break;
+    case SERVER_TYPE_TIDB:
+      *acquire_global_lock_function=&initialize_tidb_snapshot;
       break;
     default:
       default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
@@ -1049,7 +1065,7 @@ void start_dump() {
   }
 
   // If we are locking, we need to be sure there is no long running queries
-  if (!no_locks && is_mysql_like()) {
+  if (sync_thread_lock_mode!=NO_LOCK && is_mysql_like()) {
   // We check SHOW PROCESSLIST, and if there're queries
   // larger than preset value, we terminate the process.
   // This avoids stalling whole server with flush.
@@ -1093,52 +1109,38 @@ void start_dump() {
 
   // Determine the locking mechanisim that is going to be used
   // and send locks to database if needed
-
-  if (get_product() == SERVER_TYPE_TIDB) {
-    g_message("Skipping locks because of TiDB");
-    if (!tidb_snapshot) {
-
-      // Generate a @@tidb_snapshot to use for the worker threads since
-      // the tidb-snapshot argument was not specified when starting mydumper
-
-      m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
-      MYSQL_RES *result = mysql_store_result(conn);
-      MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
-      tidb_snapshot = g_strdup(row[1]);
-      mysql_free_result(result);
-    }
-
-    // Need to set the @@tidb_snapshot for the master thread
-    set_tidb_snapshot(conn);
-    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
-
-  }else{
-
-    if (!no_locks) {
-      // This backup will lock the database
+  switch (sync_thread_lock_mode){
+    case NO_LOCK:
+      g_warning("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
+      break;
+    case LOCK_ALL:
+      send_lock_all_tables(conn);
+      break;
+    case AUTO:
       determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
-      if (skip_ddl_locks){
-        acquire_ddl_lock_function=NULL;
-        release_ddl_lock_function=NULL;
-      }
+      break;
+    case FTWRL:
+      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+      acquire_global_lock_function = &send_flush_table_with_read_lock;
+      release_global_lock_function = &send_unlock_tables;
+      break;
+    case GTID:
+      g_warning("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
+      break;
+  }
+  if (skip_ddl_locks){
+    acquire_ddl_lock_function=NULL;
+    release_ddl_lock_function=NULL;
+  }
 
-      if (lock_all_tables) {
-        send_lock_all_tables(conn);
-      } else {
+  if (acquire_ddl_lock_function != NULL) {
+    g_message("Acquiring DDL lock");
+    acquire_ddl_lock_function(second_conn);
+  }
 
-        if (acquire_ddl_lock_function != NULL) {
-          g_message("Acquiring DDL lock");
-          acquire_ddl_lock_function(second_conn);
-        }
-
-        if (acquire_global_lock_function != NULL) {
-          g_message("Acquiring Global lock");
-          acquire_global_lock_function(conn);
-        }
-      }
-    } else {
-      g_warning("Executing in no-locks mode, snapshot might not be consistent");
-    }
+  if (acquire_global_lock_function != NULL) {
+    g_message("Acquiring Global lock");
+    acquire_global_lock_function(conn);
   }
 
   // TODO: this should be deleted on future releases. 
@@ -1262,7 +1264,7 @@ void start_dump() {
 
   // IMPORTANT: At this point, all the threads are in sync
 
-  if (trx_consistency_only) {
+  if (trx_tables) {
     // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
     if (release_global_lock_function)
@@ -1308,16 +1310,16 @@ void start_dump() {
   // at this point initial jobs has been completed
   // which means that all schema jobs has been created 
   // we are able to send the JOB_SHUTDOWN to schema_queue
-  g_message("Shutdown jobs for less locking enqueued");
+  g_message("Shutdown schema jobs");
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
     g_async_queue_push(conf.schema_queue, j);
   }
-  // In case that we are using less_locking, we need to 
+  // In case that we are NOT exporting transactional table, we need to 
   // build the lock table statement, at this stage, before
   // let workers to start dumping data
-  if (less_locking){
+  if (!trx_tables){
     build_lock_tables_statement(&conf);
   }
   // Allowing workers to start dumping Non-Transactional tables
@@ -1326,14 +1328,13 @@ void start_dump() {
   }
 
   // Releasing locks if possible
-  if (!no_locks && !trx_consistency_only) {
+  if (sync_thread_lock_mode!=NO_LOCK && !trx_tables) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
     g_message("Non-InnoDB dump complete, releasing global locks");
     if (release_global_lock_function)
       release_global_lock_function(conn);
-//    mysql_query(conn, "UNLOCK TABLES /* FTWRL */");
     g_message("Global locks released");
     if (release_binlog_function != NULL){
       g_async_queue_pop(conf.binlog_ready);
@@ -1496,11 +1497,5 @@ void start_dump() {
   free_regex();
   free_common();
   free_set_names();
-  if (no_locks){
-    if (it_is_a_consistent_backup)
-      g_message("This is a consistent backup.");
-    else
-      g_message("This is NOT a consistent backup.");
-  }
 }
 
