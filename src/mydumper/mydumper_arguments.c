@@ -90,6 +90,12 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
+  if (!strcmp(option_name,"--trx-consistency-only")){
+    m_critical("--lock-all-tables is deprecated use --trx-tables instead");
+  }
+  if (!strcmp(option_name,"--less-locking")){
+    m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
+  }
   if (!strcmp(option_name,"--lock-all-tables")){
     m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
   }
@@ -179,13 +185,17 @@ static GOptionEntry lock_entries[] = {
     {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "There are 3 modes that mydumper can use to keep the threads in sync and one to disable: FTWRL, LOCK_ALL, GTID and NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. Default: FTWRL",
+     "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. Default: AUTO which uses the best option depending on the database vendor",
      NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
      "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
      NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
      "Do not use Percona backup locks", NULL},
+    {"less-locking", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
+    {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
      "The backup process change if we known that we are exporitng transactional tables only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},

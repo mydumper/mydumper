@@ -607,6 +607,23 @@ void send_flush_table_with_read_lock(MYSQL *conn){
         }
 }
 
+
+static
+void initialize_tidb_snapshot(MYSQL *conn){
+  if (!tidb_snapshot){
+    // Generate a @@tidb_snapshot to use for the worker threads since
+    // the tidb-snapshot argument was not specified when starting mydumper
+    m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+    MYSQL_RES *result = mysql_store_result(conn);
+    MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
+    tidb_snapshot = g_strdup(row[1]);
+    mysql_free_result(result);
+  }
+  // Need to set the @@tidb_snapshot for the master thread
+  set_tidb_snapshot(conn);
+  g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
+}
+
 static
 void default_locking(void(**acquire_global_lock_function)(MYSQL *), void (**release_global_lock_function)(MYSQL *), void (**acquire_ddl_lock_function)(MYSQL *), void (** release_ddl_lock_function)(MYSQL *), void (** release_binlog_function)(MYSQL *)) {
   *acquire_ddl_lock_function = NULL;
@@ -681,6 +698,9 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
       }else{
         default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
+      break;
+    case SERVER_TYPE_TIDB:
+      *acquire_global_lock_function=&initialize_tidb_snapshot;
       break;
     default:
       default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
@@ -1089,59 +1109,38 @@ void start_dump() {
 
   // Determine the locking mechanisim that is going to be used
   // and send locks to database if needed
+  switch (sync_thread_lock_mode){
+    case NO_LOCK:
+      g_warning("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
+      break;
+    case LOCK_ALL:
+      send_lock_all_tables(conn);
+      break;
+    case AUTO:
+      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+      break;
+    case FTWRL:
+      determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
+      acquire_global_lock_function = &send_flush_table_with_read_lock;
+      release_global_lock_function = &send_unlock_tables;
+      break;
+    case GTID:
+      g_warning("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
+      break;
+  }
+  if (skip_ddl_locks){
+    acquire_ddl_lock_function=NULL;
+    release_ddl_lock_function=NULL;
+  }
 
-  if (get_product() == SERVER_TYPE_TIDB) {
-    g_message("Skipping locks because of TiDB");
-    if (!tidb_snapshot) {
+  if (acquire_ddl_lock_function != NULL) {
+    g_message("Acquiring DDL lock");
+    acquire_ddl_lock_function(second_conn);
+  }
 
-      // Generate a @@tidb_snapshot to use for the worker threads since
-      // the tidb-snapshot argument was not specified when starting mydumper
-
-      m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
-      MYSQL_RES *result = mysql_store_result(conn);
-      MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
-      tidb_snapshot = g_strdup(row[1]);
-      mysql_free_result(result);
-    }
-
-    // Need to set the @@tidb_snapshot for the master thread
-    set_tidb_snapshot(conn);
-    g_message("Set to tidb_snapshot '%s'", tidb_snapshot);
-
-  }else{
-    switch (sync_thread_lock_mode){
-      case NO_LOCK:
-        g_warning("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
-        break;
-      case LOCK_ALL:
-        send_lock_all_tables(conn);
-        break;
-      case AUTO:
-        determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
-        break;
-      case FTWRL:
-        determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
-        acquire_global_lock_function = &send_flush_table_with_read_lock;
-        release_global_lock_function = &send_unlock_tables;
-        break;
-      case GTID:
-        g_warning("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
-        break;
-    }
-    if (skip_ddl_locks){
-      acquire_ddl_lock_function=NULL;
-      release_ddl_lock_function=NULL;
-    }
-
-    if (acquire_ddl_lock_function != NULL) {
-      g_message("Acquiring DDL lock");
-      acquire_ddl_lock_function(second_conn);
-    }
-
-    if (acquire_global_lock_function != NULL) {
-      g_message("Acquiring Global lock");
-      acquire_global_lock_function(conn);
-    }
+  if (acquire_global_lock_function != NULL) {
+    g_message("Acquiring Global lock");
+    acquire_global_lock_function(conn);
   }
 
   // TODO: this should be deleted on future releases. 
