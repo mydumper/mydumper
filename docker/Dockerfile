@@ -7,7 +7,7 @@ RUN \
   yum -y install https://repo.mysql.com/mysql84-community-release-el9.rpm && yum clean all
 
 RUN \
-  yum -y install mysql-community-libs openssl compat-openssl11 && yum clean all
+  yum -y install zstd mysql-community-libs openssl compat-openssl11 && yum clean all
 
 RUN \
   curl -o GPG-KEY-MyDumper "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x79EA15C0E82E34BA" && \
