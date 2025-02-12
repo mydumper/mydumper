@@ -1,6 +1,6 @@
 # https://github.com/marketplace/actions/build-and-push-docker-images
 # https://docs.docker.com/build/ci/github-actions/multi-platform/
-name: Publish Docker image
+name: Publish Docker image with parameter
 
 on:
   workflow_dispatch:
