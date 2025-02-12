@@ -27,45 +27,70 @@
 #include "mydumper_global.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_stream.h"
+#include "mydumper_file_handler.h"
 
 extern GAsyncQueue *stream_queue;
 
+GAsyncQueue *exec_queue;
 GThread **exec_command_thread = NULL;
 guint num_exec_threads = 4;
-
+gchar * global_bin = NULL;
 GHashTable* pid_file_table=NULL;
-
-void exec_this_command(gchar * bin,gchar **c_arg,gchar *filename){
+GMutex *exec_mutex=NULL;
+void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
   int childpid=vfork();
   if(!childpid){
-    g_hash_table_insert(pid_file_table,g_strdup_printf("%d",getpid()),g_strdup(filename));
-    execv(bin,c_arg);
+    int fd=0;
+    for (fd=3; fd<256; fd++) (void) close(fd);
+    execv(global_bin,c_arg);
   }else{
+    gchar *_key=NULL;
+    g_mutex_lock(exec_mutex);
+    _key=g_strdup_printf("%d",childpid);
+    g_hash_table_insert(pid_file_table,g_strdup(_key),sqe);
+    g_mutex_unlock(exec_mutex);
+    g_free(_key);
     int wstatus;
     int waitchildpid=wait(&wstatus);
     // TODO: do we want to keep the file depending og the wstatus ??
     if (no_delete == FALSE){
-      gchar *_key=g_strdup_printf("%d",waitchildpid);
-      filename=g_hash_table_lookup(pid_file_table, _key);
-      remove(filename);
-      g_hash_table_remove(pid_file_table, _key);
+      _key=g_strdup_printf("%d",waitchildpid);
+      g_mutex_lock(exec_mutex);
+      struct filename_queue_element *sqe2=g_hash_table_lookup(pid_file_table, g_strdup(_key));
+      g_mutex_unlock(exec_mutex);
+      if (sqe2!=NULL){
+        remove(sqe2->filename);
+        g_hash_table_remove(pid_file_table, _key);
+        if (sqe2->done)
+          g_async_queue_push(sqe2->done, GINT_TO_POINTER(1));
+      }else{
+        g_error("pid not found: %s", _key);
+      }
+      g_free(_key);
     }
   }
 }
 
 
+void exec_queue_push(struct db_table *dbt, gchar *filename){
+  GAsyncQueue *done = g_async_queue_new();
+  g_async_queue_push(exec_queue, new_filename_queue_element(dbt,filename,done));
+  g_async_queue_pop(done);
+  g_async_queue_unref(done);
+}
+
 void *process_exec_command(void *data){
   (void)data;
-  gchar *space=g_strstr_len(exec_command,-1," ");
-  guint len = strlen(exec_command) - strlen(space);
   char * filename=NULL;
-  char * bin=g_strndup(exec_command,len);
+  gchar *space=g_strstr_len(exec_command,-1," ");
   gchar ** arguments=g_strsplit(space," ", 0);
   gchar ** volatile c_arg=NULL;
   guint i=0;
   GList *filename_pos=NULL;
   GList *iter;
   c_arg=g_strdupv(arguments);
+  if (strlen(c_arg[g_strv_length(c_arg)-1])==0)
+    c_arg[g_strv_length(c_arg)-1]=NULL;
   for(i=0; i<g_strv_length(c_arg); i++){
     if (g_strcmp0(c_arg[i],"FILENAME") == 0){
       int *c=g_new(int, 1);
@@ -74,37 +99,40 @@ void *process_exec_command(void *data){
     }
   }
 
+  if (!filename_pos)
+    g_warning("Common use case requires FILENAME on --exec.");
+
   for(;;){
-    filename=(char *)g_async_queue_pop(stream_queue);
+    struct filename_queue_element * sqe=g_async_queue_pop(exec_queue);
+    filename=sqe->filename;
     if (strlen(filename) == 0){
       break;
     }
-//    char *used_filemame=g_path_get_basename(filename);
     iter=filename_pos;
     while (iter!=NULL){
       c_arg[(*((guint *)(iter->data)))]=filename;
       iter=iter->next;
-    } 
-    exec_this_command(bin,c_arg,filename);
+    }
+    exec_this_command(c_arg,sqe);
   }
   return NULL;
 }
 
-/*
-static GOptionEntry exec_entries[] = {
-    {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
-     "Amount of threads to use with --exec", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-void load_exec_entries(GOptionGroup *main_group){
-  g_option_group_add_entries(main_group, exec_entries);
-}
-*/
-
 void initialize_exec_command(){
-  g_warning("initialize_exec_command: Started");
-  stream_queue = g_async_queue_new();
+  exec_queue = g_async_queue_new();
+  exec_mutex=g_mutex_new();
   exec_command_thread=g_new(GThread * , num_exec_threads) ;
+  gchar *space=g_strstr_len(exec_command,-1," ");
+  guint len = strlen(exec_command) - strlen(space);
+  while (len==0){
+    exec_command++;
+    space=g_strstr_len(exec_command,-1," ");
+    len = strlen(exec_command) - strlen(space);
+  }
+  global_bin=g_strndup(exec_command,len);
+  if (!g_file_test(global_bin, G_FILE_TEST_EXISTS)){
+    g_error("Command not found: %s", global_bin);
+  }
   guint i;
   pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
   for(i=0;i<num_exec_threads;i++){

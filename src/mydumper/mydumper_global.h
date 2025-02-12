@@ -55,7 +55,6 @@ extern char * (*identifier_quote_character_protect)(char *r);
 struct db_table;
 extern int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt);
 extern GAsyncQueue *start_scheduled_dump;
-//extern GAsyncQueue *stream_queue;
 extern gboolean daemon_mode;
 extern gboolean dump_events;
 extern gboolean dump_routines;

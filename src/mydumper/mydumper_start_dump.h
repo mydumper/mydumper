@@ -361,7 +361,7 @@ struct db_table {
 };
 
 
-struct stream_queue_element{
+struct filename_queue_element{
   struct db_table *dbt;
   gchar *filename;
   GAsyncQueue *done;

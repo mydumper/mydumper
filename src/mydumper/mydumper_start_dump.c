@@ -1091,6 +1091,8 @@ void start_dump() {
 
   // Initilizing stream backup
   if (stream){
+    if (exec_command)
+      g_error("--exec and --stream are not comptabile, use --exec-per-thread instead as file extension is needed to stream the out file");
     initialize_stream();
     stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     fclose(mdfile);
@@ -1100,6 +1102,10 @@ void start_dump() {
       m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
     }
   }
+
+  // Initilizing exec_command
+  if (exec_command != NULL)
+    initialize_exec_command();
 
   // Write replica information
   if (get_product() != SERVER_TYPE_TIDB) {
@@ -1181,13 +1187,6 @@ void start_dump() {
     if (res)
       mysql_free_result(res);
   }
-
-  // Initilizing exec_command
-  if (exec_command != NULL){
-    initialize_exec_command();
-    stream=TRUE;
-  }
-
 
   // Initilizing the configuration
 
