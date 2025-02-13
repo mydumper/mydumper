@@ -48,7 +48,7 @@ void initialize_chunk(){
 
 void start_chunk_builder(struct configuration *conf){
   if (!no_data){
-    chunk_builder=g_thread_create((GThreadFunc)chunk_builder_thread, conf, TRUE, NULL);
+    chunk_builder=m_thread_new("chunk_builder", (GThreadFunc)chunk_builder_thread, conf, "Chunk builder thread could not be created");
   }
 }
 

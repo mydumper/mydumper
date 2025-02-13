@@ -61,7 +61,7 @@ void initialize_control_job (struct configuration *conf){
   cjt_mutex= g_mutex_new();
   cjt_cond= g_cond_new();
 //  give_me_another_job_queue = g_async_queue_new();
-  control_job_t = g_thread_new("myloader_ctr",(GThreadFunc)control_job_thread, conf);
+  control_job_t = m_thread_new("myloader_ctr",(GThreadFunc)control_job_thread, conf, "Control job thread could not be created");
 
 //  index_threads_counter = 0;
 }

@@ -177,7 +177,7 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
     threads[n] =
-        g_thread_create((GThreadFunc)working_thread, &thread_data[n], TRUE, NULL);
+        m_thread_new("data", (GThreadFunc)working_thread, &thread_data[n], "Data thread could not be created");
   }
 
   if (sync_thread_lock_mode==GTID){

@@ -136,7 +136,7 @@ void initialize_exec_command(){
   guint i;
   pid_file_table=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free ); 
   for(i=0;i<num_exec_threads;i++){
-    exec_command_thread[i]=g_thread_create((GThreadFunc)process_exec_command, stream_queue, TRUE, NULL);
+    exec_command_thread[i]=m_thread_new("exec_command", (GThreadFunc)process_exec_command, stream_queue, "Exec command thread could not be created");
   }
 }
 

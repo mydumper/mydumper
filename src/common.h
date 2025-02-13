@@ -200,3 +200,4 @@ void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
+GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);

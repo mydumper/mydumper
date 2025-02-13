@@ -39,7 +39,7 @@ void initialize_worker_index(struct configuration *conf){
   for (n = 0; n < max_threads_for_index_creation; n++) {
     initialize_thread_data(&(index_td[n]), conf, WAITING, n + 1 + num_threads + max_threads_for_schema_creation, NULL);
     index_threads[n] =
-        g_thread_new("myloader_index",(GThreadFunc)worker_index_thread, &index_td[n]);
+        m_thread_new("myloader_index",(GThreadFunc)worker_index_thread, &index_td[n], "Index thread could not be created");
   }
 }
 

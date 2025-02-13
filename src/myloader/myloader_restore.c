@@ -94,8 +94,6 @@ void initialize_connection_pool(){
   for (n = 0; n < num_threads; n++) {
     iors=new_io_restore_result();
     g_async_queue_push(restore_queues, iors);
-//    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
-//    thrconn=NULL;
   }
   for (n = 0; n < 8*num_threads; n++) {
     g_async_queue_push(free_results_queue, new_statement());
@@ -105,7 +103,7 @@ void initialize_connection_pool(){
 void start_connection_pool(MYSQL *thrconn){
   guint n=0;
   for (n = 0; n < num_threads; n++) {
-    restore_threads[n]=g_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn);
+    restore_threads[n]=m_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn, "Restore thread could not be created");
     thrconn=NULL;
   }
 }
