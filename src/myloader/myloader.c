@@ -275,7 +275,7 @@ int main(int argc, char *argv[]) {
 
     g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
     pmmthread =
-        g_thread_new("myloader_pmm",pmm_thread, &conf);
+        m_thread_new("myloader_pmm",pmm_thread, &conf, "PMM thread could not be created");
     if (pmmthread == NULL) {
       m_critical("Could not create pmm thread");
     }
@@ -422,12 +422,8 @@ int main(int argc, char *argv[]) {
   initialize_common();
   initialize_connection(MYLOADER);
   initialize_regex(NULL);
-  GThread *sthread = NULL;
   if (!kill_at_once){
-    sthread = g_thread_new("myloader_signal",signal_thread, &conf);
-    if (sthread == NULL) {
-      m_critical("Could not create signal thread");
-    }
+    m_thread_new("myloader_signal",signal_thread, &conf, "Signal thread could not be created");
   }
 
   MYSQL *conn;
@@ -495,7 +491,7 @@ int main(int argc, char *argv[]) {
     initialize_stream(&conf);
   }else{
     initialize_directory();
-    g_thread_new("myloader_directory",(GThreadFunc)process_directory, &conf);
+    m_thread_new("myloader_directory",(GThreadFunc)process_directory, &conf, "Directory thread could not be created");
   }
 
   if (!stream){

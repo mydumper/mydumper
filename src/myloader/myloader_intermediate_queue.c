@@ -54,7 +54,7 @@ void initialize_intermediate_queue (struct configuration *c){
   if (stream)
     g_mutex_unlock(start_intermediate_thread);
   intermediate_queue_ended=FALSE;
-  stream_intermediate_thread = g_thread_new("myloader_intermediate",(GThreadFunc)intermediate_thread, NULL);
+  stream_intermediate_thread = m_thread_new("myloader_intermediate",(GThreadFunc)intermediate_thread, NULL, "Intermediate thread could not be created");
   if (exec_per_thread_extension != NULL){
     if(exec_per_thread == NULL)
       m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");

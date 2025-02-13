@@ -1317,3 +1317,11 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
   return TRUE;
 }
 
+GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text){
+  GThread * thread=g_thread_new(title, func, data);
+  if (thread == NULL) {
+    m_critical(error_text);
+  }
+  return thread;
+}
+

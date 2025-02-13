@@ -39,8 +39,7 @@ void initialize_loader_threads(struct configuration *conf){
   for (n = 0; n < num_threads; n++) {
     initialize_thread_data(&(loader_td[n]), conf, WAITING, n + 1, NULL);
     threads[n] =
-      g_thread_new("myloader_loader",(GThreadFunc)loader_thread, &loader_td[n]);
-//        g_thread_create((GThreadFunc)loader_thread, &loader_td[n], TRUE, NULL);
+      m_thread_new("myloader_loader",(GThreadFunc)loader_thread, &loader_td[n], "Loader thread could not be created");
     // Here, the ready queue is being used to serialize the connection to the database.
     // We don't want all the threads try to connect at the same time
     g_async_queue_pop(conf->ready);

@@ -230,7 +230,7 @@ void start_worker_schema(){
   guint n=0;
   for (n = 0; n < max_threads_for_schema_creation; n++)
     schema_threads[n] =
-        g_thread_new("myloader_schema",(GThreadFunc)worker_schema_thread, &schema_td[n]);
+        m_thread_new("myloader_schema",(GThreadFunc)worker_schema_thread, &schema_td[n], "Schema thread could not be created");
 }
 
 

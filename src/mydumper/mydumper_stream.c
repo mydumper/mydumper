@@ -238,8 +238,8 @@ void initialize_stream(){
   initial_metadata_lock_queue = g_async_queue_new();
   stream_queue = g_async_queue_new();
   metadata_partial_queue = g_async_queue_new();
-  stream_thread = g_thread_create((GThreadFunc)process_stream, stream_queue, TRUE, NULL);
-  metadata_partial_writer_thread = g_thread_create((GThreadFunc)metadata_partial_writer, NULL, TRUE, NULL);
+  stream_thread = m_thread_new("stream", (GThreadFunc)process_stream, stream_queue, "Stream thread could not be created");
+  metadata_partial_writer_thread = m_thread_new("metadata_writer", (GThreadFunc)metadata_partial_writer, NULL, "Metadata partial writer thread could not be created");
 }
 
 void wait_stream_to_finish(){

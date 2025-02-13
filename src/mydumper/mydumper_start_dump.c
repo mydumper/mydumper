@@ -1025,19 +1025,12 @@ void start_dump() {
 
   if (disk_limits!=NULL){
     conf.pause_resume = g_async_queue_new();
-    disk_check_thread = g_thread_create(monitor_disk_space_thread, conf.pause_resume, FALSE, NULL);
+    disk_check_thread = m_thread_new("monitor",monitor_disk_space_thread, conf.pause_resume, "Monitor thread could not be created");
   }
 
   // signal_thread is disable if daemon mode
-  if (!daemon_mode){
-    GError *serror;
-    sthread =
-        g_thread_create(signal_thread, &conf, FALSE, &serror);
-    if (sthread == NULL) {
-      m_critical("Could not create signal thread: %s", serror->message);
-      g_error_free(serror);
-    }
-  }
+  if (!daemon_mode)
+    sthread = m_thread_new("signal", signal_thread, &conf, "Signal thread could not be created");
 
   start_pmm_thread(&conf);
 

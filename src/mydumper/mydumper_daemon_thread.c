@@ -126,14 +126,8 @@ void *exec_thread(void *data) {
 
 
 void run_daemon(){
-    GError *terror;
     start_scheduled_dump = g_async_queue_new();
-    GThread *ethread =
-        g_thread_create(exec_thread, GINT_TO_POINTER(1), FALSE, &terror);
-    if (ethread == NULL) {
-      m_critical("Could not create exec thread: %s", terror->message);
-      g_error_free(terror);
-    }
+    m_thread_new("daemon", exec_thread, GINT_TO_POINTER(1), "Daemon thread could not be created");
     // Run initial snapshot
     run_snapshot(NULL);
 #if GLIB_MINOR_VERSION < 14

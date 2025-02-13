@@ -237,7 +237,7 @@ void initialize_file_handler(gboolean _is_pipe){
     fifo_hash=g_hash_table_new(g_str_hash, g_str_equal);
     fifo_table_mutex = g_mutex_new();
 
-    cft=g_thread_create((GThreadFunc)close_file_thread, NULL, TRUE, NULL);
+    cft=m_thread_new("close_file", (GThreadFunc)close_file_thread, NULL, "Close file thread could not be created");
   }
 }
 

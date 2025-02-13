@@ -49,13 +49,7 @@ void initialize_pmm(){
 void start_pmm_thread(struct configuration *conf){
   if (pmm){
     g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
-    GError *serror;
-    pmm_thread =
-        g_thread_create(worker_pmm_thread, conf, FALSE, &serror);
-    if (pmm_thread == NULL) {
-      m_critical("Could not create pmm thread: %s", serror->message);
-      g_error_free(serror);
-    }
+    pmm_thread = m_thread_new("pmm", worker_pmm_thread, conf,"PMM thread could not be created");
   }
 }
 
