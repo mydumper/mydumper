@@ -20,7 +20,8 @@
 #include <errno.h>
 #include <glib.h>
 #include <glib/gstdio.h>
-#include <pcre.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #include <stdarg.h>
 #include "regex.h"
 #include "server_detect.h"
@@ -313,7 +314,7 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
           }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            pcre *r=NULL; 
+            pcre2_code *r=NULL; 
             init_regex( &r, value);
             g_hash_table_insert(cpt->all_partition_regex_per_table, g_strdup(groups[i]), r);
           }
@@ -838,29 +839,41 @@ void m_warning(const char *fmt, ...){
  */
 gchar *filter_sequence_schemas(const gchar *create_table)
 {
-  pcre *re = NULL;
-  const char *error;
-  int erroroffset;
-  int ovector[12] = {0};
+  pcre2_code *re = NULL;
+  int error;
+  PCRE2_SIZE erroroffset;
+//  int ovector[12] = {0};
   gchar *out = g_strdup(create_table);
 
-  re = pcre_compile("(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)",
-                    PCRE_CASELESS | PCRE_MULTILINE, &error, &erroroffset,
-                    NULL);
+//  re = pcre_compile("(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)",
+//                    PCRE_CASELESS | PCRE_MULTILINE, &error, &erroroffset,
+//                    NULL);
+
+  re = pcre2_compile((PCRE2_SPTR)"(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)", PCRE_CASELESS | PCRE_MULTILINE,0, &error,
+                      &erroroffset, NULL);
+
+
   if (!re) {
-    g_critical("Regular expression fail: %s", error);
+    g_critical("Regular expression fail: %d", error);
     // We can safely continue here
   } else {
     int offset = 0;
-    while ((pcre_exec(re, NULL, out, strlen(out), offset, 0, ovector, 12)) > 0) {
-      gchar* tmp = g_new(gchar, strlen(out));
-      size_t tmp_pos = 0;
+
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+
+    while ((
+          pcre2_match(re, (PCRE2_SPTR)out, strlen(out), offset, 0, match_data, NULL)
+          //pcre_exec(re, NULL, out, strlen(out), offset, 0, ovector, 12)
+          
+          ) > 0) {
+//      gchar* tmp = g_new(gchar, strlen(out));
+//      size_t tmp_pos = 0;
       /* Positions generated:
        * ovector 0 - 1: nextval(`test`.`s`)
        * ovector 2 - 3: `test`.`s`
        * ovector 4 - 5: `s`
        */
-      size_t write_len = ovector[2];
+/*      size_t write_len = ovector[2];
 
       memcpy(tmp, out, write_len);
       tmp_pos += write_len;
@@ -872,6 +885,7 @@ gchar *filter_sequence_schemas(const gchar *create_table)
       tmp[tmp_pos + write_len] = '\0';
       g_free(out);
       out = tmp;
+      */
     }
   }
   return out;

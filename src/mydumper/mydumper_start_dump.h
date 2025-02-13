@@ -334,7 +334,7 @@ struct db_table {
   gchar *limit;
   gchar *columns_on_select;
   gchar *columns_on_insert;
-  pcre *partition_regex;
+  pcre2_code *partition_regex;
   guint num_threads;
 //  enum chunk_type chunk_type;
   GList *chunks;

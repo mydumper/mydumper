@@ -17,15 +17,16 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pcre.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
 #include <glib.h>
 #include "regex.h"
 #include "common.h"
 const char * filename_regex="^[\\w\\-_ ]+$";
 
 GList *re_list = NULL;
-static pcre *filename_re = NULL;
-static pcre *partition_re = NULL;
+static pcre2_code *filename_re = NULL;
+static pcre2_code *partition_re = NULL;
 GList *regex_list=NULL;
 
 gboolean regex_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -56,16 +57,21 @@ GOptionGroup * load_regex_entries(GOptionContext *context){
 
 gboolean check_filename_regex(char *word) {
   /* This is not going to be used in threads */
-  int ovector[9] = {0};
-  int rc = pcre_exec(filename_re, NULL, word, strlen(word), 0, 0, ovector, 9);
+//  int ovector[9] = {0};
+  if (filename_re){
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(filename_re, NULL);
+  int rc =pcre2_match(filename_re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
+//  int rc = pcre2_exec(filename_re, NULL, word, strlen(word), 0, 0, ovector, 9);
   return (rc > 0) ? TRUE : FALSE;
+  }
+  return TRUE;
 }
 
-void init_regex(pcre **r, const char *str){
-  const char *error;
-  int erroroffset;
+void init_regex(pcre2_code **r, const char *str){
+  int error;
+  PCRE2_SIZE erroroffset;
   if (!*r) {
-    *r = pcre_compile(str, PCRE_CASELESS | PCRE_MULTILINE, &error,
+    *r = pcre2_compile((PCRE2_SPTR)str, PCRE_CASELESS | PCRE_MULTILINE,0, &error,
                       &erroroffset, NULL);
     if (!*r) {
       m_critical("Regular expression fail: %s", error);
@@ -75,7 +81,7 @@ void init_regex(pcre **r, const char *str){
 
 void initialize_regex(gchar * partition_regex){
   GList *l=NULL;
-  pcre *_re=NULL;
+  pcre2_code *_re=NULL;
   l=regex_list;
   while (l){
     init_regex(&_re,l->data);
@@ -89,16 +95,19 @@ void initialize_regex(gchar * partition_regex){
 }
 
 /* Check database.table string against regular expression */
-gboolean check_regex(pcre *tre, char *_database_name, char * _table_name) {
+gboolean check_regex(pcre2_code *tre, char *_database_name, char * _table_name) {
   /* This is not going to be used in threads */
-  int rc;
-  int ovector[9] = {0};
-
+//  int ovector[9] = {0};
+  if (tre){
   char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
-  rc = pcre_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(tre, NULL);
+  int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
+//  rc = pcre2_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
+  g_message("%s | %s", p, (gchar *)match_data);
   g_free(p);
 
   return (rc > 0) ? TRUE : FALSE;
+} return TRUE;
 }
 
 gboolean eval_regex(char * _database_name,char * _table_name){
@@ -114,10 +123,15 @@ gboolean eval_regex(char * _database_name,char * _table_name){
   return TRUE;
 }
 
-gboolean eval_pcre_regex(pcre * p, char * word){
-  int ovector[9] = {0};
-  int rc = pcre_exec(p, NULL, word, strlen(word), 0, 0, ovector, 9);
+gboolean eval_pcre_regex(pcre2_code * re, char * word){
+//  int ovector[9] = {0};
+  if (re){
+  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+//  int rc = pcre2_exec(p, NULL, word, strlen(word), 0, 0, ovector, 9);
+  int rc = pcre2_match(re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
   return (rc > 0) ? TRUE : FALSE;
+  }
+  return TRUE;
 }
 
 gboolean eval_partition_regex(char * word){
