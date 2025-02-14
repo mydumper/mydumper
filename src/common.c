@@ -849,7 +849,7 @@ gchar *filter_sequence_schemas(const gchar *create_table)
 //                    PCRE_CASELESS | PCRE_MULTILINE, &error, &erroroffset,
 //                    NULL);
 
-  re = pcre2_compile((PCRE2_SPTR)"(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)", PCRE_CASELESS | PCRE_MULTILINE,0, &error,
+  re = pcre2_compile((PCRE2_SPTR)"(?:nextval|lastval)\\((`.*`\\.(`.*`))\\)", PCRE2_ZERO_TERMINATED, PCRE2_CASELESS | PCRE2_MULTILINE, &error,
                       &erroroffset, NULL);
 
 

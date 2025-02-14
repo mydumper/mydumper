@@ -71,15 +71,18 @@ void init_regex(pcre2_code **r, const char *str){
   int error;
   PCRE2_SIZE erroroffset;
   if (!*r) {
-    *r = pcre2_compile((PCRE2_SPTR)str, PCRE_CASELESS | PCRE_MULTILINE,0, &error,
+    *r = pcre2_compile((PCRE2_SPTR)str, PCRE2_ZERO_TERMINATED, PCRE2_CASELESS | PCRE2_MULTILINE, &error,
                       &erroroffset, NULL);
     if (!*r) {
-      m_critical("Regular expression fail: %s", error);
+      PCRE2_UCHAR buffer[1024];
+      pcre2_get_error_message(error,buffer,1024);
+      m_critical("Regular expression fail: %s (%d) %s", str, error, (gchar *)buffer);
     }
   }
 }
 
 void initialize_regex(gchar * partition_regex){
+  init_regex(&filename_re,filename_regex);
   GList *l=NULL;
   pcre2_code *_re=NULL;
   l=regex_list;
@@ -89,7 +92,6 @@ void initialize_regex(gchar * partition_regex){
     _re=NULL;
     l=l->next;
   }
-  init_regex(&filename_re,filename_regex);
   if (partition_regex)
     init_regex(&partition_re, partition_regex);
 }
@@ -102,8 +104,16 @@ gboolean check_regex(pcre2_code *tre, char *_database_name, char * _table_name) 
   char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(tre, NULL);
   int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
-//  rc = pcre2_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
-  g_message("%s | %s", p, (gchar *)match_data);
+  PCRE2_SPTR replacement=NULL;
+  PCRE2_UCHAR outputbuffer[1024];
+  size_t rlength = strlen((char *)replacement);
+  PCRE2_SIZE outlen=1020;
+
+  pcre2_substitute(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+  
+  //  rc = pcre2_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
+  if (rc)
+    g_message("%s | %s", p, (gchar *)match_data);
   g_free(p);
 
   return (rc > 0) ? TRUE : FALSE;
