@@ -106,7 +106,7 @@ gboolean check_regex(pcre2_code *tre, char *_database_name, char * _table_name) 
   int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
   PCRE2_SPTR replacement=NULL;
   PCRE2_UCHAR outputbuffer[1024];
-  size_t rlength = strlen((char *)replacement);
+  size_t rlength = 0;
   PCRE2_SIZE outlen=1020;
 
   pcre2_substitute(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
