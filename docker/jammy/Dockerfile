@@ -12,11 +12,11 @@ RUN \
 RUN \
   . /etc/os-release && \
   curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
-    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb \
-  && \
+    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb && \
   sudo dpkg -i /tmp/percona-release.deb && \
   rm -v /tmp/percona-release.deb && \
-  sudo apt-get update 
+  sudo apt-get update && \
+  sudo apt-get clean
 
 RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
@@ -24,8 +24,8 @@ RUN \
 RUN \
   . /etc/os-release && \
   curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb \
-    https://repo.mysql.com/mysql-apt-config_0.8.30-1_all.deb \
-  && \
+    https://repo.mysql.com/mysql-apt-config_0.8.30-1_all.deb && \
   sudo dpkg -i /tmp/mysql-apt-config.deb && \
   rm -v /tmp/mysql-apt-config.deb && \
-  sudo apt-get update
+  sudo apt-get update && \
+  sudo apt-get clean
