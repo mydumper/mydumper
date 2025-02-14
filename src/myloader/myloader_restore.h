@@ -31,11 +31,11 @@ struct statement{
 };
 
 void initialize_connection_pool();
-void start_connection_pool(MYSQL *thrconn);
+void start_connection_pool();
 
 int restore_data_in_gstring(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database);
 int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboolean is_schema, struct database *use_database, void log_fun(const char *, ...) , const char *fmt, ...);
 int restore_data_from_mydumper_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
 void release_load_data_as_it_is_close( gchar * filename );
-struct connection_data *close_restore_thread(gboolean return_connection);
+void close_restore_thread();
 void wait_restore_threads_to_close();
