@@ -509,7 +509,7 @@ int main(int argc, char *argv[]) {
     execute_replication_commands(conn,replication_statements->start_replica_until->str);
   }
 
-  start_connection_pool(conn);
+  start_connection_pool();
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
       g_message("Disabling redologs");
@@ -518,8 +518,6 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-
-//  start_connection_pool(conn);
 
   if (database_db){
     if (!no_schemas)
@@ -556,16 +554,13 @@ int main(int argc, char *argv[]) {
   g_async_queue_unref(conf.data_queue);
   conf.data_queue=NULL;
 
-  struct connection_data *cd=close_restore_thread(TRUE);
-  g_mutex_lock(cd->in_use);
-
   if (disable_redo_log)
-    m_query(cd->thrconn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
+    m_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
 
   gboolean checksum_ok=TRUE;
   tl=conf.table_list;
   while (tl != NULL){
-    checksum_ok&=checksum_dbt(tl->data, cd->thrconn);
+    checksum_ok&=checksum_dbt(tl->data, conn);
     tl=tl->next;
   }
 
@@ -576,19 +571,16 @@ int main(int argc, char *argv[]) {
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
       if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum,  cd->thrconn,
+        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum, conn,
                                   "Schema create checksum", checksum_database_defaults);
       if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum,  cd->thrconn,
+        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum, conn,
                                   "Post checksum", checksum_process_structure);
       if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum,  cd->thrconn,
+        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum, conn,
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
-  guint i=0;
-  for(i=1;i<num_threads;i++)
-    close_restore_thread(FALSE);
   wait_restore_threads_to_close();
 
   if (!checksum_ok){
@@ -608,17 +600,17 @@ int main(int argc, char *argv[]) {
 
   if (replication_statements->reset_replica){
     g_message("Sending reset replica");
-    execute_replication_commands(cd->thrconn,replication_statements->reset_replica->str);
+    execute_replication_commands(conn,replication_statements->reset_replica->str);
   }
 
   if (replication_statements->change_replication_source){
     g_message("Sending change replication source");
-    execute_replication_commands(cd->thrconn,replication_statements->change_replication_source->str);
+    execute_replication_commands(conn,replication_statements->change_replication_source->str);
   }
 
   if (replication_statements->start_replica){
     g_message("Sending start replica");
-    execute_replication_commands(cd->thrconn,replication_statements->start_replica->str);
+    execute_replication_commands(conn,replication_statements->start_replica->str);
   }
 
   g_async_queue_unref(conf.database_queue);
@@ -630,8 +622,8 @@ int main(int argc, char *argv[]) {
   free_hash(set_session_hash);
   g_hash_table_remove_all(set_session_hash);
   g_hash_table_unref(set_session_hash);
-  execute_gstring(cd->thrconn, set_global_back);
-  mysql_close(cd->thrconn);
+  execute_gstring(conn, set_global_back);
+  mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
   g_free(directory);

@@ -100,16 +100,20 @@ void initialize_connection_pool(){
   }
 }
 
-void start_connection_pool(MYSQL *thrconn){
+void start_connection_pool(){
   guint n=0;
   for (n = 0; n < num_threads; n++) {
-    restore_threads[n]=m_thread_new("myloader_conn",(GThreadFunc)restore_thread, thrconn, "Restore thread could not be created");
-    thrconn=NULL;
+    restore_threads[n]=m_thread_new("myloader_conn",(GThreadFunc)restore_thread, NULL, "Restore thread could not be created");
   }
 }
 
 void wait_restore_threads_to_close(){
   guint n=0;
+  struct connection_data *cd=NULL;
+  for(n = 0; n < num_threads; n++){
+    cd=g_async_queue_pop(connection_pool);
+    g_async_queue_push(cd->ready, &end_restore_thread);
+  }
   for (n = 0; n < num_threads; n++)
     g_thread_join(restore_threads[n]);
 }
@@ -159,15 +163,6 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
   g_string_set_size(data, 0);
   return 0;
 }
-
-struct connection_data *close_restore_thread(gboolean return_connection){
-  struct connection_data *cd=g_async_queue_pop(connection_pool);
-  g_async_queue_push(cd->ready, &end_restore_thread);
-  if (return_connection)
-    return cd;
-  return NULL;
-}
-
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->thread_id);
