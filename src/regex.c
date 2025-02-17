@@ -99,25 +99,15 @@ void initialize_regex(gchar * partition_regex){
 /* Check database.table string against regular expression */
 gboolean check_regex(pcre2_code *tre, char *_database_name, char * _table_name) {
   /* This is not going to be used in threads */
-//  int ovector[9] = {0};
   if (tre){
-  char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(tre, NULL);
-  int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
-  PCRE2_SPTR replacement=NULL;
-  PCRE2_UCHAR outputbuffer[1024];
-  size_t rlength = 0;
-  PCRE2_SIZE outlen=1020;
-
-  pcre2_substitute(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+    char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(tre, NULL);
+    int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
   
-  //  rc = pcre2_exec(tre, NULL, p, strlen(p), 0, 0, ovector, 9);
-  if (rc)
-    g_message("%s | %s", p, (gchar *)match_data);
-  g_free(p);
+    g_free(p);
 
-  return (rc > 0) ? TRUE : FALSE;
-} return TRUE;
+    return (rc > 0) ? TRUE : FALSE;
+  } return FALSE;
 }
 
 gboolean eval_regex(char * _database_name,char * _table_name){

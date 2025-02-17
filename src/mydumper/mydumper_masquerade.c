@@ -24,7 +24,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_common.h"
 #include "mydumper.h"
-struct function_pointer identity_function_pointer = {&identity_function, NULL, NULL, NULL, NULL, FALSE};
+struct function_pointer identity_function_pointer = {&identity_function, FALSE, NULL, NULL, NULL, NULL, FALSE, 0, NULL, FALSE};
 
 GHashTable *file_hash = NULL;
 
@@ -97,6 +97,19 @@ char *rand_string(char *str, size_t size)
     return str;
 }
 
+void m_random_string(char *str, guint size){
+  const char charset[] = "abcdefghijklmnopqrstuvwxyz";
+  if (size) {
+    --size;
+    size_t n;
+    for (n = 0; n < size; n++) {
+      int _key = rand() % (int) (sizeof charset - 1);
+      str[n] = charset[_key];
+    }
+    str[size] = '\0';
+  }
+}
+
 #ifndef WITH_GLIB_uuid_string_random
 char *rand_uuid(char *str, size_t size)
 {
@@ -122,36 +135,78 @@ gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *
   return *r;
 }
 
-gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) fp;
-  if (*r){
-    gulong l;
-    if (*length > 10)
-      l=g_snprintf(*r, *length + 1, "%u%u", g_random_int(), g_random_int());
-    else
-      l=g_snprintf(*r, *length + 1, "%u", g_random_int());
-    if (l<*length)
-      *length=l;
+void m_random_int(gchar *r, guint len){
+  if (len > 8)
+    g_snprintf(r, len + 1, "%u%u", g_random_int(), g_random_int());
+  else
+    g_snprintf(r, len + 1,   "%u", g_random_int());
+}
+
+gchar * random_basic_function(gchar ** r, gulong* length, struct function_pointer *fp, void (*random_funtion)(gchar *, guint) ){
+  (void) random_funtion;
+  gchar *new_r=NULL;
+
+  if (fp && fp->memory && *r)
+    new_r=g_hash_table_lookup(fp->memory,*r);
+  if (new_r){
+    *length=strlen(new_r);
+    *r=g_strdup(new_r);
+    return *r;
   }
-  return *r;
-}
+  gchar*_key=NULL;
 
-gchar * random_int(gchar * r, gulong *length){
-  return random_int_function(&r, length, NULL);
-}
-
-gchar * random_int_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length;
   if (*r){
-    gchar *value=g_hash_table_lookup(fp->memory,*r);
-    if (value==NULL){
-      value=g_strdup_printf("%u", g_random_int());
-      g_hash_table_insert(fp->memory,g_strdup(*r),value);
+    if (fp && fp->memory)
+      _key=g_strdup(*r);
+
+retry:
+
+    random_funtion(*r,*length);
+
+    if (fp && fp->unique){
+      if (g_list_find_custom(fp->unique_list,*r,(GCompareFunc)g_strcmp0)){
+        goto retry;
+      }
+      fp->unique_list=g_list_prepend(fp->unique_list,g_strdup(*r));
     }
-    g_strlcpy(*r, value, strlen(*r)+1);
+
+    if (fp && fp->memory)
+      g_hash_table_insert(fp->memory,_key,g_strdup(*r));
+
+    *length=strlen(*r);
+
+  }else{
+    // NULL value
+    if (fp && fp->replace_null){
+retry2:
+      new_r=g_new0(gchar, fp->max_length + 1);
+
+      random_funtion(new_r, fp->max_length );
+
+      if (fp->unique){
+        if (g_list_find_custom(fp->unique_list,new_r,(GCompareFunc)g_strcmp0)){
+          g_free(new_r);
+          goto retry2;
+        }
+        fp->unique_list=g_list_prepend(fp->unique_list,g_strdup(new_r));
+      }
+
+      *length=strlen(new_r);
+      return new_r;
+    }
   }
+
   return *r;
 }
+
+gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
+  return random_basic_function(r,length,fp,&m_random_int);
+}
+
+gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
+  return random_basic_function(r,length,fp,&m_random_string);
+}
+
 
 gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length;
@@ -184,7 +239,7 @@ gchar * random_uuid_function_with_mem(gchar ** r, gulong* length, struct functio
   return *r;
 }
 
-
+/*
 gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length; 
   (void) fp;
@@ -192,6 +247,7 @@ gchar * random_string_function(gchar ** r, gulong* length, struct function_point
     rand_string(*r, strlen(*r)+1);
   return *r;
 }
+*/
 
 gchar * random_string_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
   (void) length;
@@ -207,19 +263,114 @@ gchar * random_string_function_with_mem(gchar ** r, gulong* length, struct funct
   return *r;
 }
 
+
+
+gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, guint *i){
+  struct format_item_file *fid=NULL;
+  guint val;
+  GList *fl=NULL;
+  gboolean cont=TRUE;
+  gulong local_len;
+
+          struct regex_item *ri=NULL;
+          gulong new_max_len=0;
+          gchar *new_p=NULL;
+          guint new_i=0;
+          GString *new_r=NULL;
+
+  switch (fi->type){
+        case FORMAT_ITEM_FILE:
+          fid = fi->data;
+          if (fid->min < *max_len - *i){
+            val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - *i < fid->max ? *max_len - *i : fid->max + 1 ): fid->min;
+            fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
+            g_strlcpy(*p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (*i+val > *max_len ? *max_len - *i : val)+1);
+            *i+=val ;
+            *p+=val ;
+          }
+          break;
+        case FORMAT_ITEM_CONFIG_FILE:
+          break;
+        case FORMAT_ITEM_CONSTANT:
+          g_strlcpy(*p, fi->data, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+          *i+=fi->len;
+          *p+=fi->len;
+          break;
+        case FORMAT_ITEM_DELIMITER:
+          g_strlcpy(*p, fi->data, strlen(fi->data)+1);
+          *i+=strlen(fi->data) ;
+          *p+=strlen(fi->data) ;
+          cont=FALSE;
+          break;
+        case FORMAT_ITEM_NUMBER:
+          local_len=(*i+fi->len > *max_len? *max_len-*i : fi->len );
+          random_int_function(p, &local_len, NULL);
+          *i+=local_len;
+          *p+=local_len;
+          break;
+        case FORMAT_ITEM_STRING:
+          rand_string(*p, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+          *i+=fi->len;
+          *p+=fi->len;
+          break;
+        case FORMAT_ITEM_REGEX:
+
+          new_r= g_string_new(*p);
+          ri=(struct regex_item *)fi->data;
+          new_max_len=*max_len-*i;
+          new_p=g_new0(gchar, *max_len-*i);
+          PCRE2_SPTR replacement=(PCRE2_SPTR)new_p;
+          new_i=0;
+          apply_format_item(&new_p, &new_max_len, ri->fi, &new_i);
+          pcre2_code *re=*(ri->re);
+          pcre2_match_data *match_data = NULL;
+          PCRE2_UCHAR outputbuffer[1024];
+          size_t rlength=0;
+          PCRE2_SIZE outlen=1024;
+          match_data=pcre2_match_data_create_from_pattern(re, NULL);
+          rlength = strlen((gchar *)replacement);
+          pcre2_substitute(re, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+          g_string_printf(new_r,"%s", outputbuffer);
+
+          g_strlcpy(*p, (gchar*)outputbuffer, outlen+1);
+          *i+=outlen;
+          /*
+
+          pcre2_code *tre=fi->data;
+          GString *new_r= g_string_new(*r);
+          pcre2_match_data *match_data = NULL;
+          PCRE2_UCHAR outputbuffer[1024];
+          PCRE2_SPTR replacement=(PCRE2_SPTR)g_strdup("david");
+          size_t rlength=0;
+          PCRE2_SIZE outlen=1024;
+          tre=l->data;
+          match_data=pcre2_match_data_create_from_pattern(tre, NULL);
+    replacement=l->data;
+    rlength = strlen((gchar *)replacement);
+          pcre2_substitute(fi->data, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+          g_string_printf(new_r,"%s", outputbuffer);
+          *max_len=new_r->len;
+*/
+          break;
+      }
+
+  return cont;
+}
+
+
 gchar *random_format_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
   guint i=0;
   GList *l=fp->parse;
   GList *d=fp->delimiters;
-  GList *fl=NULL;
   struct format_item *fi=NULL;
   gchar *p=*r;
   guint local_max_len=0;
   (void) local_max_len;
   gboolean cont=TRUE;
-  struct format_item_file *fid = NULL;
-  guint val;
-  gulong local_len;
+//  GList *fl=NULL;
+//  struct format_item_file *fid = NULL;
+//  guint val;
+//  gulong local_len;
   while (l !=NULL && i < *max_len){
     if (d != NULL){
       //find delimiter position to determine size
@@ -230,7 +381,8 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
     cont=TRUE;
     while (l !=NULL && cont && i < *max_len){
       fi=l->data;
-      switch (fi->type){
+      cont=apply_format_item(&p, max_len, fi, &i);
+/*      switch (fi->type){
         case FORMAT_ITEM_FILE:
           fid = fi->data;
           if (fid->min < *max_len - i){
@@ -256,7 +408,8 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
           break;
         case FORMAT_ITEM_NUMBER:
           local_len=(i+fi->len > *max_len? *max_len-i : fi->len );
-          random_int(p, &local_len );
+//          random_int(p, &local_len );
+          random_int_function(&p, &local_len, NULL);
           i+=local_len;
           p+=local_len;
           break;
@@ -265,7 +418,11 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
           i+=fi->len;
           p+=fi->len;
           break;
+        case FORMAT_ITEM_REGEX:
+
+          break;
       }
+      */
       l=l->next; 
     }
     if (d != NULL){
@@ -274,9 +431,33 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
 
   } 
   if( i < *max_len){
+    (*r)[i]='\0';
     *max_len=i;
   }
   return *r;
+}
+
+gchar * regex_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
+  pcre2_code *tre=NULL;
+  GList *l=fp->parse;
+  GString *new_r= g_string_new(*r);
+  pcre2_match_data *match_data = NULL;
+  PCRE2_UCHAR outputbuffer[1024];
+  PCRE2_SPTR replacement=(PCRE2_SPTR)g_strdup("david");
+  size_t rlength=0;
+  PCRE2_SIZE outlen=1024;
+  while (l){
+    tre=l->data;
+    match_data=pcre2_match_data_create_from_pattern(tre, NULL);
+    l=l->next;
+    replacement=l->data;
+    l=l->next;
+    rlength = strlen((gchar *)replacement);
+    pcre2_substitute(tre, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+    g_string_printf(new_r,"%s", outputbuffer);
+  }
+  *max_len=new_r->len;
+  return new_r->str;
 }
 
 gchar *apply_function(gchar ** r, gulong* max_len, struct function_pointer *fp){
@@ -296,10 +477,85 @@ gchar *constant_function(gchar ** r, gulong* max_len, struct function_pointer *f
   *max_len=strlen(new_r);
   return new_r;
 }
-
+//
 // Function parsers
+//
 
-void parse_apply_function_value(struct function_pointer * fp, gchar *val){
+void parse_basic(struct function_pointer * fp, gchar *val){
+  char buffer[256];
+  guint i;
+  while (*val != '\0'){
+    while(*val == ' ')
+      val++;
+    i=0;
+    while(*val != '\0' && *val != ' '){
+      buffer[i]=*val;
+      val++;
+      i++;
+    }
+    buffer[i]='\0';
+    if (g_str_has_prefix(buffer,"WITH_MEM")){
+      fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
+    }else if (g_str_has_prefix(buffer,"REPLACE_NULL")){
+      fp->replace_null=TRUE;
+    }else if (g_str_has_prefix(buffer,"UNIQUE")){
+      fp->unique=TRUE;
+    }else if (g_str_has_prefix(buffer,"MAX_LENGTH")){
+      val++;
+      i=0;
+      while(*val != '\0' && *val != ' '){
+        buffer[i]=*val;
+        val++;
+        i++;
+      }
+      buffer[i]='\0';
+      fp->max_length=atoi(buffer);
+    }
+
+  }
+}
+
+
+void parse_regex_function(struct function_pointer * fp, gchar *val){
+  char buffer[256];
+  guint i=0;
+  pcre2_code **re = NULL;
+  gboolean even=TRUE;
+  while (*val != '\0'){
+    if (*val == '\''){
+      val++;
+      i=0;
+      while (*val != '\0' && *val!='\''){
+        buffer[i]=*val;
+        i++;
+        val++;
+      }
+      if (*val!='\''){
+        g_error("Parsing format failed missing quote (')");
+      }
+      buffer[i]='\0';
+      if (even){
+        re=g_new0(pcre2_code *,1);
+        init_regex(re,buffer);
+        fp->parse=g_list_append(fp->parse,*re);
+        even=FALSE;
+      }else{
+        fp->parse=g_list_append(fp->parse,g_strdup(buffer));
+        even=TRUE;
+      }
+
+    }
+    val++;
+    while(*val == ' ')
+      val++;
+  }
+
+  if (g_list_length(fp->parse)%2 != 0)
+    g_error("Parsing regex function failed. Elements found: %d but even amount of elements are allowed", g_list_length(fp->parse));
+
+}
+
+void parse_apply_function(struct function_pointer * fp, gchar *val){
   char buffer[256];
   guint i=0;
   while (*val != '\0'){
@@ -327,16 +583,17 @@ void parse_apply_function_value(struct function_pointer * fp, gchar *val){
 
 }
 
-void parse_constant_function_value(struct function_pointer * fp, gchar *val){
+void parse_constant_function(struct function_pointer * fp, gchar *val){
   fp->parse=g_list_append(fp->parse,g_strdup(val));
 }
 
-void parse_value(struct function_pointer * fp, gchar *val){
+void parse_random_format(struct function_pointer * fp, gchar *val){
   char buffer[256];
   guint i=0;
-  struct format_item *fi;
+  struct format_item *fi=NULL,*regex_fi=NULL;
   GList *keys=NULL, *sorted=NULL;
   guint sum;
+  gchar *regex_content=strdup("LALALAL");
   while (*val != '\0'){
     if (*val == '\''){
       val++;
@@ -354,21 +611,54 @@ void parse_value(struct function_pointer * fp, gchar *val){
       fi->type=FORMAT_ITEM_CONSTANT;
       fi->data = g_strdup(buffer);
       fi->len = i;
-      fp->parse=g_list_append(fp->parse,fi);
+      if (regex_fi){
+        fp->parse=g_list_append(fp->parse,regex_fi);
+        regex_fi->data=fi;
+        regex_fi=NULL;
+      }else
+        fp->parse=g_list_append(fp->parse,fi);
       val++;
     }else if (*val == '<'){
       val++;
       i=0;
-      while (*val != '\0' && *val!='>'){
+      while (*val != '\0' && *val!='>' && *val!=' '){ 
         buffer[i]=*val;
         i++;
         val++;
+      }
+      g_message("Buffers 1: %s", buffer);
+      if (*val == ' '){
+        buffer[i]=*val;
+        i++;
+        if (g_str_has_prefix(buffer,"regex ")){
+          val++;
+          if ( *val == '\''){
+            guint j=0;
+            val++;
+            while (*val != '\'' && *(val-1) != '\\' && *val != '\0'){
+              regex_content[j]=*val;
+              j++;
+              val++;
+            }
+          }else{
+            g_error("Missing initial quote (') on regex");
+          }
+
+        }
+
+        while (*val != '\0' && *val!='>'){
+          buffer[i]=*val;
+          i++;
+          val++;
+        }
+        g_message("Buffers: %s", buffer);
       }
       if (*val!='>'){
         g_error("Parsing format failed missing close character (>)");
       }
       if (i>0){
         buffer[i]='\0';
+        g_message("Buffers: %s", buffer);
         fi=g_new0(struct format_item, 1);
 
         if (g_str_has_prefix(buffer,"file ")){
@@ -387,16 +677,45 @@ void parse_value(struct function_pointer * fp, gchar *val){
           if (sum != 0 )
             g_error("The file %s shouldn't have gaps: %d | %d | %d", buffer, sum , fid->min , fid->max);
           fi->data = fid;
-          fp->parse=g_list_append(fp->parse,fi);
+          if (regex_fi){
+            fp->parse=g_list_append(fp->parse,regex_fi);
+            regex_fi->data=fi;
+            regex_fi=NULL;
+          }else
+            fp->parse=g_list_append(fp->parse,fi);
           g_list_free(keys);
         }else if (g_str_has_prefix(buffer,"string ")){
           fi->type=FORMAT_ITEM_STRING;
           fi->len=g_ascii_strtoull(&(buffer[7]), NULL, 10);
-          fp->parse=g_list_append(fp->parse,fi);
+          if (regex_fi){
+            ((struct regex_item *)regex_fi->data)->fi=fi;
+            fp->parse=g_list_append(fp->parse,regex_fi);
+            regex_fi=NULL;
+          }else
+            fp->parse=g_list_append(fp->parse,fi);
         }else if (g_str_has_prefix(buffer,"number ")){
           fi->type=FORMAT_ITEM_NUMBER;
           fi->len=g_ascii_strtoull(&(buffer[7]), NULL, 10);
-          fp->parse=g_list_append(fp->parse,fi);
+          if (regex_fi){
+            ((struct regex_item *)regex_fi->data)->fi=fi;
+            fp->parse=g_list_append(fp->parse,regex_fi);
+            regex_fi=NULL;
+          }else
+            fp->parse=g_list_append(fp->parse,fi);
+        }else if (g_str_has_prefix(buffer,"regex ")){
+          fi->type=FORMAT_ITEM_REGEX;
+          if (regex_fi){
+            g_critical("2 consectutive regex was found. It is not possible.");
+          }
+
+          pcre2_code **re=g_new0(pcre2_code *,1);
+          g_message("regex_content: %s", regex_content);
+          init_regex(re,regex_content);
+          struct regex_item *ri=g_new0(struct regex_item, 1);
+          ri->re=re;
+          fi->data=ri;
+          regex_fi=fi;
+
         }else
           g_error("Parsing format failed key inside <tag> not valid");
       }
@@ -421,7 +740,6 @@ void parse_value(struct function_pointer * fp, gchar *val){
 
 // Function initializer
 
-
 fun_ptr get_function_pointer_for (gchar *function_char){
   if (g_str_has_prefix(function_char,"random_format")){
     return &random_format_function;
@@ -433,10 +751,10 @@ fun_ptr get_function_pointer_for (gchar *function_char){
     return &random_string_function_with_mem;
 
 
-  if (!g_strcmp0(function_char,"random_int"))
+  if (g_str_has_prefix(function_char,"random_int"))
     return &random_int_function;
-  if (!g_strcmp0(function_char,"random_int_with_mem"))
-    return &random_int_function_with_mem;
+//  if (!g_strcmp0(function_char,"random_int_with_mem"))
+//    return &random_int_function;
 
   if (!g_strcmp0(function_char,"random_uuid"))
     return &random_uuid_function;
@@ -451,6 +769,10 @@ fun_ptr get_function_pointer_for (gchar *function_char){
     return &constant_function;
   }
 
+  if (g_str_has_prefix(function_char,"regex")){
+    return &regex_function;
+  }
+
   // TODO: more functions needs to be added.
   if (!g_strcmp0(function_char,""))
     return &identity_function;
@@ -463,22 +785,34 @@ fun_ptr get_function_pointer_for (gchar *function_char){
 struct function_pointer * init_function_pointer(gchar *value){
   struct function_pointer * fp= g_new0(struct function_pointer, 1);
   fp->function=get_function_pointer_for(value);
-  fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
+  fp->memory=NULL;
+  fp->replace_null=FALSE;
   fp->value=value;
   fp->parse=NULL;
+  fp->max_length=2;
   fp->delimiters=NULL;
   fp->is_pre=FALSE;
+  fp->unique=FALSE;
+  fp->unique_list=NULL;
   g_debug("init_function_pointer: %s", value);
   if (g_str_has_prefix(value,"random_format")){
-    parse_value(fp, g_strdup(&(fp->value[14])));
+    parse_random_format(fp, g_strdup(&(fp->value[14])));
   }else
   if (g_str_has_prefix(value,"apply")){
     fp->is_pre=TRUE;
-    parse_apply_function_value(fp, g_strdup(&(fp->value[6])));
+    parse_apply_function(fp, g_strdup(&(fp->value[6])));
   }else
   if (g_str_has_prefix(value,"constant")){
     fp->is_pre=TRUE;
-    parse_constant_function_value(fp, g_strdup(&(fp->value[9])));
+    parse_constant_function(fp, g_strdup(&(fp->value[9])));
+  }else
+  if (g_str_has_prefix(value,"regex")){
+    fp->is_pre=TRUE;
+    parse_regex_function(fp, g_strdup(&(fp->value[6])));
+  }else{
+    if (g_strstr_len(fp->value,-1," "))
+      parse_basic(fp, g_strdup(g_strstr_len(fp->value,-1," ")));
   }
   return fp;
 }
+
