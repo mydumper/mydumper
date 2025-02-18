@@ -13,6 +13,7 @@
 */
 #include "mydumper.h"
 
+#define REGEX_MAX_LEN 2048
 
 enum format_item_type {
   FORMAT_ITEM_FILE,
@@ -20,13 +21,15 @@ enum format_item_type {
   FORMAT_ITEM_STRING,
   FORMAT_ITEM_NUMBER,
   FORMAT_ITEM_DELIMITER,
-  FORMAT_ITEM_CONSTANT
+  FORMAT_ITEM_CONSTANT,
+  FORMAT_ITEM_REGEX
 };
 
 struct format_item_delimiter{
   
 
 };
+
 
 struct format_item_file{
   GHashTable * data;
@@ -38,7 +41,17 @@ struct format_item_file{
 struct format_item{
   enum format_item_type type;
   guint len;
-  void * data; // if type is FORMAT_ITEM_FILE then it is format_item_file, if type is FORMAT_ITEM_STRING then it is gchar*, FORMAT_ITEM_DELIMITER the string to match
+  void * data;  // if type is FORMAT_ITEM_FILE then it is format_item_file
+                // if type is FORMAT_ITEM_STRING then it is gchar* 
+                // if type is FORMAT_ITEM_DELIMITER the string to match
+                // if type is FORMAT_ITEM_REGEX is the next format_item
+};
+
+
+
+struct regex_item{
+  pcre2_code **re;
+  struct format_item *fi;  
 };
 
 void initialize_masquerade();
