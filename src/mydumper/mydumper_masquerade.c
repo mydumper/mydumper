@@ -82,51 +82,6 @@ gint comp(gconstpointer a, gconstpointer b){
   return GPOINTER_TO_INT(a) >= GPOINTER_TO_INT(b);
 }
 
-char *rand_string(char *str, size_t size)
-{
-    const char charset[] = "abcdefghijklmnopqrstuvwxyz";
-    if (size) {
-        --size;
-        size_t n;
-        for (n = 0; n < size; n++) {
-            int _key = rand() % (int) (sizeof charset - 1);
-            str[n] = charset[_key];
-        }
-        str[size] = '\0';
-    }
-    return str;
-}
-
-void m_random_string(char *str, guint size){
-  const char charset[] = "abcdefghijklmnopqrstuvwxyz";
-  if (size) {
-    --size;
-    size_t n;
-    for (n = 0; n < size; n++) {
-      int _key = rand() % (int) (sizeof charset - 1);
-      str[n] = charset[_key];
-    }
-    str[size] = '\0';
-  }
-}
-
-#ifndef WITH_GLIB_uuid_string_random
-char *rand_uuid(char *str, size_t size)
-{
-    const char charset[] = "0123456789abcdef";
-    if (size) {
-//        --size;
-        size_t n;
-        for (n = 0; n < size; n++) {
-          if (str[n]!='-')
-            str[n] = charset[rand() % (int) (sizeof charset - 1)];
-        }
-//        str[size] = '\0';
-    }
-    return str;
-}
-#endif
-
 // Functions that will be executed
 
 gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *fp){
@@ -135,15 +90,7 @@ gchar * identity_function(gchar ** r, gulong* length,  struct function_pointer *
   return *r;
 }
 
-void m_random_int(gchar *r, guint len){
-  if (len > 8)
-    g_snprintf(r, len + 1, "%u%u", g_random_int(), g_random_int());
-  else
-    g_snprintf(r, len + 1,   "%u", g_random_int());
-}
-
 gchar * random_basic_function(gchar ** r, gulong* length, struct function_pointer *fp, void (*random_funtion)(gchar *, guint) ){
-  (void) random_funtion;
   gchar *new_r=NULL;
 
   if (fp && fp->memory && *r)
@@ -161,7 +108,7 @@ gchar * random_basic_function(gchar ** r, gulong* length, struct function_pointe
 
 retry:
 
-    random_funtion(*r,*length);
+    random_funtion(*r,*length>fp->max_length?fp->max_length:*length);
 
     if (fp && fp->unique){
       if (g_list_find_custom(fp->unique_list,*r,(GCompareFunc)g_strcmp0)){
@@ -195,75 +142,63 @@ retry2:
       return new_r;
     }
   }
-
   return *r;
+}
+
+void m_random_int(gchar *r, guint len){
+  if (len > 8)
+    g_snprintf(r, len + 1, "%u%u", g_random_int(), g_random_int());
+  else
+    g_snprintf(r, len + 1,   "%u", g_random_int());
 }
 
 gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer *fp){
   return random_basic_function(r,length,fp,&m_random_int);
 }
 
+void m_random_string(char *str, guint size){
+  const char charset[] = "abcdefghijklmnopqrstuvwxyz";
+  if (size) {
+    --size;
+    size_t n;
+    for (n = 0; n < size; n++) {
+      int _key = rand() % (int) (sizeof charset - 1);
+      str[n] = charset[_key];
+    }
+    str[size] = '\0';
+  }
+}
+
 gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
   return random_basic_function(r,length,fp,&m_random_string);
 }
 
+void m_random_uuid(char *str, guint size){
+#ifndef WITH_GLIB_uuid_string_random
+const char charset[] = "0123456789abcdef";
+  if (size) {
+//        --size;
+    size_t n;
+    for (n = 0; n < size; n++) {
+      if (str[n]!='-'){
+        if ( n==8 || n==13 || n==18 || n==23)
+          str[n] = '-';
+        else
+          str[n] = charset[rand() % (int) (sizeof charset - 1)];
+      }
+    }
+    str[size] = '\0';
+ }
+#else
+  gchar *uuid=g_uuid_string_random();
+  g_strlcpy(str, uuid, strlen(str)+1);
+  g_free(uuid);
+#endif
+}
 
 gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length;
-  (void) fp;
-  if (*r){
-#ifdef WITH_GLIB_uuid_string_random
-    g_strlcpy(*r,g_uuid_string_random(), strlen(*r)+1);
-#else
-    rand_uuid(*r,strlen(*r));
-#endif
-  }
-  return *r;
+  return random_basic_function(r,length,fp,&m_random_uuid);
 }
-
-gchar * random_uuid_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length;
-  if (*r){
-    gchar *value=g_hash_table_lookup(fp->memory,*r);
-    if (value==NULL){
-      gchar *k=g_strdup(*r);
-#ifdef WITH_GLIB_uuid_string_random
-      value=g_strndup(g_uuid_string_random(),strlen(*r)+1);
-#else
-      rand_uuid(*r,strlen(*r));
-#endif
-      g_hash_table_insert(fp->memory,k,g_strdup(value));
-    }
-    g_strlcpy(*r, value, strlen(*r)+1);
-  }
-  return *r;
-}
-
-/*
-gchar * random_string_function(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length; 
-  (void) fp;
-  if (* r)
-    rand_string(*r, strlen(*r)+1);
-  return *r;
-}
-*/
-
-gchar * random_string_function_with_mem(gchar ** r, gulong* length, struct function_pointer *fp){
-  (void) length;
-  if (*r){
-    gchar *value=g_hash_table_lookup(fp->memory,*r);
-    if (value==NULL){
-      gchar *k=g_strdup(*r);
-      value=rand_string(*r,strlen(*r)+1);
-      g_hash_table_insert(fp->memory,k,g_strdup(value));
-    }
-    g_strlcpy(*r, value, strlen(*r)+1);
-  }
-  return *r;
-}
-
-
 
 gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, guint *i){
   struct format_item_file *fid=NULL;
@@ -271,91 +206,62 @@ gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, g
   GList *fl=NULL;
   gboolean cont=TRUE;
   gulong local_len;
-          struct regex_item *ri=NULL;
-          gulong new_max_len=0;
-          gchar *new_p=NULL;
-          guint new_i=0;
-          GString *new_r=NULL;
+  struct regex_item *ri=NULL;
+  gulong new_max_len=0;
+  guint new_i=0;
+  GString *new_r=NULL;
 
   switch (fi->type){
-        case FORMAT_ITEM_FILE:
-          fid = fi->data;
-          if (fid->min < *max_len - *i){
-            val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - *i < fid->max ? *max_len - *i : fid->max + 1 ): fid->min;
-            fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
-            g_strlcpy(*p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (*i+val > *max_len ? *max_len - *i : val)+1);
-            *i+=val ;
-            *p+=val ;
-          }
-          break;
-        case FORMAT_ITEM_CONFIG_FILE:
-          break;
-        case FORMAT_ITEM_CONSTANT:
-          g_strlcpy(*p, fi->data, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
-          *i+=fi->len;
-          *p+=fi->len;
-          break;
-        case FORMAT_ITEM_DELIMITER:
-          g_strlcpy(*p, fi->data, strlen(fi->data)+1);
-          *i+=strlen(fi->data) ;
-          *p+=strlen(fi->data) ;
-          cont=FALSE;
-          break;
-        case FORMAT_ITEM_NUMBER:
-          local_len=(*i+fi->len > *max_len? *max_len-*i : fi->len );
-          random_int_function(p, &local_len, NULL);
-          *i+=local_len;
-          *p+=local_len;
-          break;
-        case FORMAT_ITEM_STRING:
-          rand_string(*p, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
-          *i+=fi->len;
-          *p+=fi->len;
-          break;
-        case FORMAT_ITEM_REGEX:
-
-          new_r= g_string_new(*p);
-          ri=(struct regex_item *)fi->data;
-          new_max_len=*max_len-*i;
-          new_p=g_new0(gchar, *max_len-*i);
-          PCRE2_SPTR replacement=(PCRE2_SPTR)new_p;
-          new_i=0;
-          apply_format_item(&new_p, &new_max_len, ri->fi, &new_i);
-          pcre2_code *re=*(ri->re);
-          pcre2_match_data *match_data = NULL;
-          PCRE2_UCHAR outputbuffer[1024];
-          size_t rlength=0;
-          PCRE2_SIZE outlen=1024;
-          match_data=pcre2_match_data_create_from_pattern(re, NULL);
-          rlength = strlen((gchar *)replacement);
-          int rc = pcre2_substitute(re, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
-          if (rc < 0){
-            g_critical("Error found on pcre2_substitute: %s | %s", new_r->str, replacement);
-          
-          }
-          g_string_printf(new_r,"%s", outputbuffer);
-          g_strlcpy(*p, (gchar*)outputbuffer, outlen+1);
-          *i=outlen;
-          /*
-
-          pcre2_code *tre=fi->data;
-          GString *new_r= g_string_new(*r);
-          pcre2_match_data *match_data = NULL;
-          PCRE2_UCHAR outputbuffer[1024];
-          PCRE2_SPTR replacement=(PCRE2_SPTR)g_strdup("david");
-          size_t rlength=0;
-          PCRE2_SIZE outlen=1024;
-          tre=l->data;
-          match_data=pcre2_match_data_create_from_pattern(tre, NULL);
-    replacement=l->data;
-    rlength = strlen((gchar *)replacement);
-          pcre2_substitute(fi->data, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
-          g_string_printf(new_r,"%s", outputbuffer);
-          *max_len=new_r->len;
-*/
-          break;
+    case FORMAT_ITEM_FILE:
+      fid = fi->data;
+      if (fid->min < *max_len - *i){
+        val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - *i < fid->max ? *max_len - *i : fid->max + 1 ): fid->min;
+        fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
+        g_strlcpy(*p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (*i+val > *max_len ? *max_len - *i : val)+1);
+        *i+=val ;
+        *p+=val ;
       }
-
+      break;
+    case FORMAT_ITEM_CONFIG_FILE:
+      break;
+    case FORMAT_ITEM_CONSTANT:
+      g_strlcpy(*p, fi->data, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+      *i+=fi->len;
+      *p+=fi->len;
+      break;
+    case FORMAT_ITEM_DELIMITER:
+      g_strlcpy(*p, fi->data, strlen(fi->data)+1);
+      *i+=strlen(fi->data) ;
+      *p+=strlen(fi->data) ;
+      cont=FALSE;
+      break;
+    case FORMAT_ITEM_NUMBER:
+      local_len=(*i+fi->len > *max_len? *max_len-*i : fi->len );
+      random_int_function(p, &local_len, NULL);
+      *i+=local_len;
+      *p+=local_len;
+      break;
+    case FORMAT_ITEM_STRING:
+      m_random_string(*p, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+      *i+=fi->len;
+      *p+=fi->len;
+      break;
+    case FORMAT_ITEM_REGEX:
+      ri=(struct regex_item *)fi->data;
+      new_max_len=*max_len-*i;
+      gchar * tmp_replacement=g_new0(gchar, new_max_len), *replacement=tmp_replacement;
+      new_i=0;
+      apply_format_item(&tmp_replacement, &new_max_len, ri->fi, &new_i);
+      PCRE2_UCHAR outputbuffer[REGEX_MAX_LEN];
+      PCRE2_SIZE outlen=REGEX_MAX_LEN;
+      int rc = pcre2_substitute(*(ri->re), (PCRE2_SPTR)*p, strlen(*p), 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, NULL, NULL, (PCRE2_SPTR)replacement, strlen((gchar *)replacement), outputbuffer, &outlen);
+      if (rc < 0){
+        g_critical("Error found on pcre2_substitute: %s | %s", new_r->str, replacement);
+      }
+      g_strlcpy(*p, (gchar*)outputbuffer, outlen+1);
+      *i=outlen;
+      break;
+  }
   return cont;
 }
 
@@ -369,10 +275,6 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
   guint local_max_len=0;
   (void) local_max_len;
   gboolean cont=TRUE;
-//  GList *fl=NULL;
-//  struct format_item_file *fid = NULL;
-//  guint val;
-//  gulong local_len;
   while (l !=NULL && i < *max_len){
     if (d != NULL){
       //find delimiter position to determine size
@@ -384,53 +286,11 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
     while (l !=NULL && cont && i < *max_len){
       fi=l->data;
       cont=apply_format_item(&p, max_len, fi, &i);
-/*      switch (fi->type){
-        case FORMAT_ITEM_FILE:
-          fid = fi->data;
-          if (fid->min < *max_len - i){
-            val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - i < fid->max ? *max_len - i : fid->max + 1 ): fid->min;
-            fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
-            g_strlcpy(p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (i+val > *max_len ? *max_len - i : val)+1);
-            i+=val ;
-            p+=val ;
-          }
-          break;
-        case FORMAT_ITEM_CONFIG_FILE:
-          break;
-        case FORMAT_ITEM_CONSTANT:
-          g_strlcpy(p, fi->data, (i+fi->len > *max_len? *max_len-i:fi->len )+1);
-          i+=fi->len;
-          p+=fi->len;
-          break;
-        case FORMAT_ITEM_DELIMITER:
-          g_strlcpy(p, fi->data, strlen(fi->data)+1);
-          i+=strlen(fi->data) ; 
-          p+=strlen(fi->data) ;
-          cont=FALSE;
-          break;
-        case FORMAT_ITEM_NUMBER:
-          local_len=(i+fi->len > *max_len? *max_len-i : fi->len );
-//          random_int(p, &local_len );
-          random_int_function(&p, &local_len, NULL);
-          i+=local_len;
-          p+=local_len;
-          break;
-        case FORMAT_ITEM_STRING:
-          rand_string(p, (i+fi->len > *max_len? *max_len-i:fi->len )+1);
-          i+=fi->len;
-          p+=fi->len;
-          break;
-        case FORMAT_ITEM_REGEX:
-
-          break;
-      }
-      */
       l=l->next; 
     }
     if (d != NULL){
       d=d->next;
     }
-
   } 
   if( i < *max_len){
     (*r)[i]='\0';
@@ -513,10 +373,8 @@ void parse_basic(struct function_pointer * fp, gchar *val){
       buffer[i]='\0';
       fp->max_length=atoi(buffer);
     }
-
   }
 }
-
 
 void parse_regex_function(struct function_pointer * fp, gchar *val){
   char buffer[256];
@@ -614,7 +472,6 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
       fi->data = g_strdup(buffer);
       fi->len = i;
 
-
       if (regex_fi){
         ((struct regex_item *)regex_fi->data)->fi=fi;
         fp->parse=g_list_append(fp->parse,regex_fi);
@@ -642,10 +499,8 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
               g_string_append_c(regex_content,*val);
               val++;
             }
-          }else{
+          }else
             g_error("Missing initial quote (') on regex");
-          }
-
         }
 
         while (*val != '\0' && *val!='>'){
@@ -741,37 +596,26 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
 // Function initializer
 
 fun_ptr get_function_pointer_for (gchar *function_char){
-  if (g_str_has_prefix(function_char,"random_format")){
+  if (g_str_has_prefix(function_char,"random_format"))
     return &random_format_function;
-  }
 
-  if (!g_strcmp0(function_char,"random_string"))
+  if (g_str_has_prefix(function_char,"random_string"))
     return &random_string_function;
-  if (!g_strcmp0(function_char,"random_string_with_mem"))
-    return &random_string_function_with_mem;
-
 
   if (g_str_has_prefix(function_char,"random_int"))
     return &random_int_function;
-//  if (!g_strcmp0(function_char,"random_int_with_mem"))
-//    return &random_int_function;
 
-  if (!g_strcmp0(function_char,"random_uuid"))
+  if (g_str_has_prefix(function_char,"random_uuid"))
     return &random_uuid_function;
-  if (!g_strcmp0(function_char,"random_uuid_with_mem"))
-    return &random_uuid_function_with_mem;
 
-  if (g_str_has_prefix(function_char,"apply")){
+  if (g_str_has_prefix(function_char,"apply"))
     return &apply_function;
-  }
 
-  if (g_str_has_prefix(function_char,"constant")){
+  if (g_str_has_prefix(function_char,"constant"))
     return &constant_function;
-  }
 
-  if (g_str_has_prefix(function_char,"regex")){
+  if (g_str_has_prefix(function_char,"regex"))
     return &regex_function;
-  }
 
   // TODO: more functions needs to be added.
   if (!g_strcmp0(function_char,""))

@@ -13,6 +13,7 @@
 */
 #include "mydumper.h"
 
+#define REGEX_MAX_LEN 2048
 
 enum format_item_type {
   FORMAT_ITEM_FILE,
