@@ -271,7 +271,6 @@ gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, g
   GList *fl=NULL;
   gboolean cont=TRUE;
   gulong local_len;
-
           struct regex_item *ri=NULL;
           gulong new_max_len=0;
           gchar *new_p=NULL;
@@ -329,11 +328,14 @@ gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, g
           PCRE2_SIZE outlen=1024;
           match_data=pcre2_match_data_create_from_pattern(re, NULL);
           rlength = strlen((gchar *)replacement);
-          pcre2_substitute(re, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+          int rc = pcre2_substitute(re, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+          if (rc < 0){
+            g_critical("Error found on pcre2_substitute: %s | %s", new_r->str, replacement);
+          
+          }
           g_string_printf(new_r,"%s", outputbuffer);
-
           g_strlcpy(*p, (gchar*)outputbuffer, outlen+1);
-          *i+=outlen;
+          *i=outlen;
           /*
 
           pcre2_code *tre=fi->data;
@@ -593,7 +595,7 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
   struct format_item *fi=NULL,*regex_fi=NULL;
   GList *keys=NULL, *sorted=NULL;
   guint sum;
-  gchar *regex_content=strdup("LALALAL");
+  GString *regex_content=g_string_sized_new(100);
   while (*val != '\0'){
     if (*val == '\''){
       val++;
@@ -611,12 +613,15 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
       fi->type=FORMAT_ITEM_CONSTANT;
       fi->data = g_strdup(buffer);
       fi->len = i;
+
+
       if (regex_fi){
+        ((struct regex_item *)regex_fi->data)->fi=fi;
         fp->parse=g_list_append(fp->parse,regex_fi);
-        regex_fi->data=fi;
         regex_fi=NULL;
       }else
         fp->parse=g_list_append(fp->parse,fi);
+
       val++;
     }else if (*val == '<'){
       val++;
@@ -626,18 +631,15 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         i++;
         val++;
       }
-      g_message("Buffers 1: %s", buffer);
       if (*val == ' '){
         buffer[i]=*val;
         i++;
         if (g_str_has_prefix(buffer,"regex ")){
           val++;
           if ( *val == '\''){
-            guint j=0;
             val++;
             while (*val != '\'' && *(val-1) != '\\' && *val != '\0'){
-              regex_content[j]=*val;
-              j++;
+              g_string_append_c(regex_content,*val);
               val++;
             }
           }else{
@@ -651,14 +653,12 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
           i++;
           val++;
         }
-        g_message("Buffers: %s", buffer);
       }
       if (*val!='>'){
         g_error("Parsing format failed missing close character (>)");
       }
       if (i>0){
         buffer[i]='\0';
-        g_message("Buffers: %s", buffer);
         fi=g_new0(struct format_item, 1);
 
         if (g_str_has_prefix(buffer,"file ")){
@@ -709,8 +709,8 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
           }
 
           pcre2_code **re=g_new0(pcre2_code *,1);
-          g_message("regex_content: %s", regex_content);
-          init_regex(re,regex_content);
+          init_regex(re,regex_content->str);
+          g_string_set_size(regex_content, 0);
           struct regex_item *ri=g_new0(struct regex_item, 1);
           ri->re=re;
           fi->data=ri;
