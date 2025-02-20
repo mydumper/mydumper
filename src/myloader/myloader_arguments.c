@@ -111,6 +111,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       }
       return TRUE;
     }
+  } else if (!strcmp(option_name, "--enable-binlog") || !strcmp(option_name, "-e")){
+    m_critical("Option --enable-binlog / -e is deprecated. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
+    return FALSE;
   }
   
   return common_arguments_callback(option_name, value, data, error);
@@ -154,8 +157,8 @@ static GOptionEntry threads_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
-    {"enable-binlog", 'e', 0, G_OPTION_ARG_NONE, &enable_binlog,
-     "Enable binary logging of the restore data. This option is deprecated and will be removed in the next release. Use [myloader_session_variables] in the --defaults-file instead", NULL},
+    {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "This option is deprecated. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes unless SKIP is selected.\n"
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
