@@ -130,7 +130,7 @@ GOptionGroup * load_connection_entries(GOptionContext *context){
   return connection_group;
 }
 
-
+#ifdef WITH_SSL
 static
 void check_pem_exists(const char *filename, const char *option) {
   if (!filename)
@@ -145,7 +145,7 @@ void check_capath(const char *path) {
     m_critical("capath is not directory: %s\n", path);
 
 }
-
+#endif
 
 void configure_connection(MYSQL *conn) {
   if (connection_defaults_file != NULL)
