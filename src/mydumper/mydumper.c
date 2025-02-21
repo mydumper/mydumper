@@ -153,6 +153,7 @@ int main(int argc, char *argv[]) {
     print_string("socket",socket_path);
     print_string("protocol", protocol_str);
     print_bool("compress-protocol",compress_protocol);
+#ifdef WITH_SSL
     print_bool("ssl",ssl);
     print_string("ssl-mode",ssl_mode);
     print_string("key",key);
@@ -161,6 +162,7 @@ int main(int argc, char *argv[]) {
     print_string("capath",capath);
     print_string("cipher",cipher);
     print_string("tls-version",tls_version);
+#endif
     print_list("regex",regex_list);
     print_string("database",db);
     print_string("ignore-engines",ignore_engines_str);

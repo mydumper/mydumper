@@ -7581,6 +7581,7 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
     - compile_and_test_mydumper_in_focal_mariadb1006
+    - compile_and_test_mydumper_in_noble_mariadb1011
     - compile_and_test_mydumper_in_noble_mysql84
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
@@ -7721,6 +7722,14 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_bookworm_mariadb1011_arm64:
+        requires:
+          - build_jammy_percona80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
 
     - publish-github-release:
         requires:
@@ -7736,6 +7745,7 @@ workflows:
           - build_bullseye_percona80_amd64
           - build_buster_percona80_amd64
           - build_bookworm_percona80_amd64
+          - build_bookworm_mariadb1011_arm64
         filters:
           branches:
             ignore: /.*/
