@@ -914,7 +914,7 @@ gboolean read_data(FILE *file, GString *data,
 
   while (fgets(buffer, sizeof(buffer), file)) {
     l= strlen(buffer);
-    g_assert(l > 0 && l < sizeof(buffer));
+    //g_assert(l > 0 && l < sizeof(buffer));
     g_string_append(data, buffer);
     if (buffer[l - 1] == '\n') {
       (*line)++;

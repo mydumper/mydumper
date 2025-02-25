@@ -374,7 +374,7 @@ gboolean execute_use(struct connection_data *cd){
     }
     g_free(query);
   }else{
-    g_warning("Thread %ld: Not able to switch database", cd->thread_id);
+    g_warning("Thread %ld with connection %ld: Not able to switch database",cd->thread_id, cd->connection_id);
   }
   return FALSE;
 }
@@ -384,7 +384,7 @@ void execute_use_if_needs_to(struct connection_data *cd, struct database *databa
     if (cd->current_database==NULL || g_strcmp0(database->real_database, cd->current_database->real_database) != 0){
       cd->current_database=database;
       if (execute_use(cd)){
-        m_critical("Thread %d: Error switching to database `%s` %s: %s", cd->thread_id, cd->current_database->real_database, msg, mysql_error(cd->thrconn));
+        m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->real_database, msg, mysql_error(cd->thrconn));
       }
     }
   }

@@ -1,0 +1,6 @@
+[mydumper]
+routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))

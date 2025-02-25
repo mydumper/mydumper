@@ -1,0 +1,10 @@
+[mydumper]
+load-data=1
+compress=GZIP
+rows=1000
+routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))
+stream=1
