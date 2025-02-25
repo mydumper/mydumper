@@ -200,6 +200,8 @@ test_case_dir (){
   mydumper_default_extra_file="${DIR}/mydumper.cnf"
   myloader_default_extra_file="${DIR}/myloader.cnf"
 
+  myloader_pre_execution="${DIR}/pre_myloader.sh"
+
   mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
   myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user                --defaults-extra-file=${myloader_default_extra_file}"
 
@@ -246,6 +248,11 @@ test_case_dir (){
   fi
 
   mysql < test/clean_databases.sql
+
+  if [ -f $myloader_pre_execution ]
+  then
+    "$myloader_pre_execution"
+  fi
 
   if (( ${myloader_execute} > 0 ))
   then
