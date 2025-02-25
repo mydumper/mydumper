@@ -331,7 +331,7 @@ prepare_full_test()
 
 full_test_global(){
   prepare_full_test
-  for dir in $(find /home/circleci/project/issue_1348/mydumper/test -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 3 -n )  
+  for dir in $(find test -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 3 -n )  
   do 
     echo "Executing test: $dir"
     do_case test_case_dir ${dir}
