@@ -28,6 +28,7 @@ struct statement{
   gchar *error;
   guint error_number;
   struct db_table *dbt;
+  struct thread_data*td;
 };
 
 void initialize_connection_pool();

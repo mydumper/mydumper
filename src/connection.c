@@ -313,7 +313,7 @@ void print_connection_details_once(){
 
 void m_connect(MYSQL *conn){
   configure_connection(conn);
-  if (!mysql_real_connect(conn, hostname, username, password, NULL, port,
+  if (!mysql_real_connect(conn, hostname, username, password, "INFORMATION_SCHEMA", port,
                           socket_path, 0)) {
     m_critical("Error connection to database: %s", mysql_error(conn));
   }

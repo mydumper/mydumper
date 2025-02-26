@@ -1,0 +1,8 @@
+[myloader]
+overwrite-tables=1
+max-threads-for-index-creation=1
+max-threads-for-post-actions=1
+fifodir=/tmp/fifodir
+stream=1
+directory=/tmp/data
+serialized-table-creation=1
