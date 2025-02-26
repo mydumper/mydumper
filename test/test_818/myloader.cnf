@@ -3,4 +3,4 @@ overwrite-tables=1
 max-threads-for-index-creation=1
 max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
-directory=/tmp/stream_data
+directory=/tmp/data

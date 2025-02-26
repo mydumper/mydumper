@@ -4,5 +4,5 @@ max-threads-for-index-creation=1
 max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
 database=myd_test_2
-directory=/tmp/stream_data
+directory=/tmp/data
 serialized-table-creation=1
