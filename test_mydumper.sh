@@ -297,7 +297,7 @@ test_case_dir (){
 
 do_case()
 {
-  number=$(( $number + 1 ))
+  number=$( echo "$2" | cut -d'_' -f2 )
   if [[ -n "$case_num"  ]]
   then
     if [[ "$case_num" -ne $number ]]
@@ -342,7 +342,7 @@ prepare_full_test()
 
 full_test_global(){
   prepare_full_test
-  for dir in $(find test -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 3 -n )  
+  for dir in $(find test -name "test_*" -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 2 -n )  
   do 
     echo "Executing test: $dir"
     do_case test_case_dir ${dir}
