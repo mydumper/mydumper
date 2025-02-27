@@ -38,6 +38,8 @@ guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
 gboolean trx_tables=FALSE;
+const gchar *table_engine_for_view_dependency=MEMORY;
+
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -345,6 +347,8 @@ static GOptionEntry statement_entries[] = {
     {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "Doesn't add SET TIMEZONE on the backup files", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
+    {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
+      "Table engine to be use for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GOptionContext * load_contex_entries(){

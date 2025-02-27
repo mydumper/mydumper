@@ -38,6 +38,8 @@ gchar **exec_per_thread_cmd=NULL;
 gboolean skip_definer = FALSE;
 gboolean success_on_1146 = FALSE;
 
+extern gchar *table_engine_for_view_dependency;
+
 // Shared variables
 int (*m_open)(char **filename, const char *);
 
@@ -472,7 +474,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement, ",\n");
     g_string_append_printf(statement, "%c%s%c int", q, row[0], q);
   }
-  g_string_append(statement, "\n) ENGINE=MEMORY");
+  g_string_append(statement, "\n) ENGINE=");
+  g_string_append(statement, table_engine_for_view_dependency);
   if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT)
     g_string_append(statement," ENCRYPTION='N'");
   g_string_append(statement,";\n");
