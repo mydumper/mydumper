@@ -492,6 +492,9 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         buffer[i]=*val;
         i++;
         val++;
+        while (*val == ' '){
+          val++;
+        }
         if (g_str_has_prefix(buffer,"regex ")){
           if ( *val == '\''){
             val++;
@@ -521,8 +524,6 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         if (g_str_has_prefix(buffer,"file ")){
           fi->type=FORMAT_ITEM_FILE;
           struct format_item_file *fid=g_new0(struct format_item_file, 1);
-          g_message("File name: |%s|", buffer);
-          g_message("File name:");
           fid->data = load_file_into_file_hash(&(buffer[5]));
           keys=g_hash_table_get_keys(fid->data);
           sorted=g_list_sort(keys,comp);
