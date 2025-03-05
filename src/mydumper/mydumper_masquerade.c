@@ -491,14 +491,16 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
       if (*val == ' '){
         buffer[i]=*val;
         i++;
+        val++;
         if (g_str_has_prefix(buffer,"regex ")){
-          val++;
           if ( *val == '\''){
             val++;
             while (*val != '\'' && *(val-1) != '\\' && *val != '\0'){
               g_string_append_c(regex_content,*val);
               val++;
             }
+            if (*val == '\0')
+              g_error("Incorrect format, EOF found");
           }else
             g_error("Missing initial quote (') on regex");
         }
@@ -519,6 +521,8 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         if (g_str_has_prefix(buffer,"file ")){
           fi->type=FORMAT_ITEM_FILE;
           struct format_item_file *fid=g_new0(struct format_item_file, 1);
+          g_message("File name: |%s|", buffer);
+          g_message("File name:");
           fid->data = load_file_into_file_hash(&(buffer[5]));
           keys=g_hash_table_get_keys(fid->data);
           sorted=g_list_sort(keys,comp);
