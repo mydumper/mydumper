@@ -603,7 +603,7 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL
    if (f->is_pre){
      write_column_into_string( conn, &(column), field, rlength, buffers);
      column=f->function(&(buffers.column->str), &rlength, f);
-     g_string_printf(buffers.column,"%s",column);
+     g_string_append(buffers.column,column);
    }else{
      column=f->function(&(column), &rlength, f);
      write_column_into_string( conn, &(column), field, rlength, buffers);

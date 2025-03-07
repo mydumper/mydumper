@@ -200,10 +200,9 @@ gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer
   return random_basic_function(r,length,fp,&m_random_uuid);
 }
 
-gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, guint *i){
+gboolean apply_format_item(gchar **original_p, gulong* max_len, struct format_item *fi, guint *i){
+  
   struct format_item_file *fid=NULL;
-  guint val;
-  GList *fl=NULL;
   gboolean cont=TRUE;
   gulong local_len;
   struct regex_item *ri=NULL;
@@ -215,36 +214,34 @@ gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, g
     case FORMAT_ITEM_FILE:
       fid = fi->data;
       if (fid->min < *max_len - *i){
-        val=fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - *i < fid->max ? *max_len - *i : fid->max + 1 ): fid->min;
-        fl = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(val));
-        g_strlcpy(*p, g_list_nth_data(fl, g_random_int_range(0,g_list_length(fl))) , (*i+val > *max_len ? *max_len - *i : val)+1);
-        *i+=val ;
-        *p+=val ;
+        guint random_length       = fid->min < fid->max ?(guint) g_random_int_range(fid->min, *max_len - *i < fid->max ? *max_len - *i : fid->max): fid->min;
+        guint final_random_length = *i+ random_length  > *max_len ? *max_len - *i : random_length;
+        GList *list_of_string_of_lenght = (GList *) g_hash_table_lookup((GHashTable *)fid->data,GINT_TO_POINTER(final_random_length));
+        gchar *lala=g_list_nth_data(list_of_string_of_lenght, g_random_int_range(0,g_list_length(list_of_string_of_lenght)));
+//        g_message("i: %d | Max len: %ld | random_length: %d | final_random_length: %d | String: |%s|", *i, *max_len,random_length,final_random_length, lala);
+        g_strlcpy(&((*original_p)[*i]), lala , final_random_length+1);
+        *i+=final_random_length;
       }
       break;
     case FORMAT_ITEM_CONFIG_FILE:
       break;
     case FORMAT_ITEM_CONSTANT:
-      g_strlcpy(*p, fi->data, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+      g_strlcpy(&((*original_p)[*i]), fi->data, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
       *i+=fi->len;
-      *p+=fi->len;
       break;
     case FORMAT_ITEM_DELIMITER:
-      g_strlcpy(*p, fi->data, strlen(fi->data)+1);
+      g_strlcpy(&((*original_p)[*i]), fi->data, strlen(fi->data)+1);
       *i+=strlen(fi->data) ;
-      *p+=strlen(fi->data) ;
       cont=FALSE;
       break;
     case FORMAT_ITEM_NUMBER:
       local_len=(*i+fi->len > *max_len? *max_len-*i : fi->len );
-      random_int_function(p, &local_len, NULL);
+      m_random_int(&((*original_p)[*i]), local_len);
       *i+=local_len;
-      *p+=local_len;
       break;
     case FORMAT_ITEM_STRING:
-      m_random_string(*p, (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+      m_random_string(&((*original_p)[*i]), (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
       *i+=fi->len;
-      *p+=fi->len;
       break;
     case FORMAT_ITEM_REGEX:
       ri=(struct regex_item *)fi->data;
@@ -254,11 +251,11 @@ gboolean apply_format_item(gchar **p, gulong* max_len, struct format_item *fi, g
       apply_format_item(&tmp_replacement, &new_max_len, ri->fi, &new_i);
       PCRE2_UCHAR outputbuffer[REGEX_MAX_LEN];
       PCRE2_SIZE outlen=REGEX_MAX_LEN;
-      int rc = pcre2_substitute(*(ri->re), (PCRE2_SPTR)*p, strlen(*p), 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, NULL, NULL, (PCRE2_SPTR)replacement, strlen((gchar *)replacement), outputbuffer, &outlen);
+      int rc = pcre2_substitute(*(ri->re), (PCRE2_SPTR)*original_p, strlen(*original_p), 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, NULL, NULL, (PCRE2_SPTR)replacement, strlen((gchar *)replacement), outputbuffer, &outlen);
       if (rc < 0){
         g_critical("Error found on pcre2_substitute: %s | %s", new_r->str, replacement);
       }
-      g_strlcpy(*p, (gchar*)outputbuffer, outlen+1);
+      g_strlcpy(*original_p, (gchar*)outputbuffer, outlen+1);
       *i=outlen;
       break;
   }
@@ -271,21 +268,22 @@ gchar *random_format_function(gchar ** r, gulong* max_len, struct function_point
   GList *l=fp->parse;
   GList *d=fp->delimiters;
   struct format_item *fi=NULL;
-  gchar *p=*r;
-  guint local_max_len=0;
-  (void) local_max_len;
+//  gchar *p=*r;
+//  guint local_max_len=0;
+//  (void) local_max_len;
   gboolean cont=TRUE;
   while (l !=NULL && i < *max_len){
-    if (d != NULL){
+    // Delimiter could be implemented/simulated with regex.
+/*    if (d != NULL){
       //find delimiter position to determine size
       local_max_len=g_strstr_len(p, *max_len-i, (gchar*) (d->data)) - p;
     }else{
       local_max_len=*max_len-i;
-    }
+    }*/
     cont=TRUE;
     while (l !=NULL && cont && i < *max_len){
       fi=l->data;
-      cont=apply_format_item(&p, max_len, fi, &i);
+      cont=apply_format_item(/*&p,*/ r, max_len, fi, &i);
       l=l->next; 
     }
     if (d != NULL){
