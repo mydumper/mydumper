@@ -38,6 +38,7 @@ guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
 gboolean trx_tables=FALSE;
+gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 
 
@@ -245,6 +246,8 @@ static GOptionEntry daemon_entries[] = {
 static GOptionEntry chunks_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
      "Maximum number of threads per table to use", NULL},
+    {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 
+     "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
     {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
      "Defines the amount of characters to use when the primary key is a string",NULL},
     {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,

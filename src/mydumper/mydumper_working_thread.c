@@ -54,6 +54,9 @@ gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
 
+// Extern
+extern gboolean use_single_column;
+
 // Shared variables
 gint database_counter = 0;
 struct MList  *transactional_table = NULL;
@@ -1154,7 +1157,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->primary_key_separated_by_comma = NULL;
     if (order_by_primary_key)
       get_primary_key_separated_by_comma(dbt);
-    dbt->multicolumn = g_list_length(dbt->primary_key) > 1;
+    dbt->multicolumn = !use_single_column && g_list_length(dbt->primary_key) > 1;
 
 //  dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
     dbt->chunk_filesize=chunk_filesize;
