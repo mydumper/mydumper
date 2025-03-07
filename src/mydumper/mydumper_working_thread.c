@@ -1154,7 +1154,8 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
     g_string_free(dbt->insert_statement,TRUE);
-  g_string_free(dbt->select_fields, TRUE);
+  if (dbt->select_fields)
+    g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);
   g_free(dbt->data_checksum);
