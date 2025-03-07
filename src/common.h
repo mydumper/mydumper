@@ -106,6 +106,7 @@ struct function_pointer{
   GHashTable *memory;
   gboolean replace_null;
   guint max_length;
+  guint null_max_length;
   GList *unique_list;
   gboolean unique;
 };

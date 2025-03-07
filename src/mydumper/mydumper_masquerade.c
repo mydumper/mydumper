@@ -24,7 +24,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_common.h"
 #include "mydumper.h"
-struct function_pointer identity_function_pointer = {&identity_function, FALSE, NULL, NULL, NULL, NULL, FALSE, 0, NULL, FALSE};
+struct function_pointer identity_function_pointer = {&identity_function, FALSE, NULL, NULL, NULL, NULL, FALSE, 0, 0, NULL, FALSE};
 
 GHashTable *file_hash = NULL;
 
@@ -108,7 +108,7 @@ gchar * random_basic_function(gchar ** r, gulong* length, struct function_pointe
 
 retry:
 
-    random_funtion(*r,*length>fp->max_length?fp->max_length:*length);
+    random_funtion(*r,fp->max_length>0 && *length>fp->max_length?fp->max_length:*length);
 
     if (fp && fp->unique){
       if (g_list_find_custom(fp->unique_list,*r,(GCompareFunc)g_strcmp0)){
@@ -126,9 +126,9 @@ retry:
     // NULL value
     if (fp && fp->replace_null){
 retry2:
-      new_r=g_new0(gchar, fp->max_length + 1);
+      new_r=g_new0(gchar, fp->null_max_length + 1);
 
-      random_funtion(new_r, fp->max_length );
+      random_funtion(new_r, fp->null_max_length );
 
       if (fp->unique){
         if (g_list_find_custom(fp->unique_list,new_r,(GCompareFunc)g_strcmp0)){
@@ -159,7 +159,7 @@ gchar * random_int_function(gchar ** r, gulong* length, struct function_pointer 
 void m_random_string(char *str, guint size){
   const char charset[] = "abcdefghijklmnopqrstuvwxyz";
   if (size) {
-    --size;
+//    --size;
     size_t n;
     for (n = 0; n < size; n++) {
       int _key = rand() % (int) (sizeof charset - 1);
@@ -240,7 +240,7 @@ gboolean apply_format_item(gchar **original_p, gulong* max_len, struct format_it
       *i+=local_len;
       break;
     case FORMAT_ITEM_STRING:
-      m_random_string(&((*original_p)[*i]), (*i+fi->len > *max_len? *max_len-*i:fi->len )+1);
+      m_random_string(&((*original_p)[*i]), (*i+fi->len > *max_len? *max_len-*i:fi->len ));
       *i+=fi->len;
       break;
     case FORMAT_ITEM_REGEX:
@@ -358,6 +358,15 @@ void parse_basic(struct function_pointer * fp, gchar *val){
       fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
     }else if (g_str_has_prefix(buffer,"REPLACE_NULL")){
       fp->replace_null=TRUE;
+      val++;
+      i=0;
+      while(*val != '\0' && *val != ' '){
+        buffer[i]=*val;
+        val++;
+        i++;
+      }
+      buffer[i]='\0';
+      fp->null_max_length=atoi(buffer);
     }else if (g_str_has_prefix(buffer,"UNIQUE")){
       fp->unique=TRUE;
     }else if (g_str_has_prefix(buffer,"MAX_LENGTH")){
@@ -636,7 +645,8 @@ struct function_pointer * init_function_pointer(gchar *value){
   fp->replace_null=FALSE;
   fp->value=value;
   fp->parse=NULL;
-  fp->max_length=2;
+  fp->max_length=0;
+  fp->null_max_length=2;
   fp->delimiters=NULL;
   fp->is_pre=FALSE;
   fp->unique=FALSE;
