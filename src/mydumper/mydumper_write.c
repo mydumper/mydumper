@@ -336,6 +336,34 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
     g_string_append_c(statement,identifier_quote_character);
     g_string_append(statement, fields[i].name);    
     g_string_append_c(statement,identifier_quote_character);
+
+  }
+}
+
+
+void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
+  gchar *database=dbt->database->name;
+  gchar *table=dbt->table;
+
+  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
+  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
+  g_free(k);
+  struct function_pointer ** anonymized_function_list=NULL;
+
+  if (ht){
+    anonymized_function_list = g_new0(struct function_pointer *, num_fields);
+    guint i = 0;
+    struct function_pointer *fp=NULL;
+    for (i = 0; i < num_fields; ++i) {
+      fp=(struct function_pointer*)g_hash_table_lookup(ht,fields[i].name);
+      if (fp != NULL){
+        g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, fields[i].name);
+        anonymized_function_list[i]=fp;
+      }else{
+        anonymized_function_list[i]=&identity_function_pointer;
+      }
+    }
+    dbt->anonymized_function=anonymized_function_list;
   }
 }
 
@@ -345,7 +373,7 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append_c(i_s, identifier_quote_character);
   g_string_append(i_s, dbt->table);
   g_string_append_c(i_s, identifier_quote_character);
-
+  set_anonymized_function_list(dbt,fields,num_fields);
   if (dbt->columns_on_insert){
     g_string_append(i_s, " (");
     g_string_append(i_s, dbt->columns_on_insert);
@@ -845,7 +873,7 @@ void write_table_job_into_file(struct table_job * tj){
   query = g_strdup_printf(
       "SELECT %s %s FROM %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s %s %s",
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
-      tj->dbt->columns_on_select?tj->dbt->columns_on_select:tj->dbt->select_fields->str,
+      tj->dbt->select_fields?tj->dbt->select_fields->str:"*",
       identifier_quote_character_str,tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
        (tj->where->len || where_option   || tj->dbt->where) ? "WHERE"  : "" , tj->where->len ? tj->where->str : "",
        (tj->where->len && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",

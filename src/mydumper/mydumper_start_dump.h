@@ -332,7 +332,6 @@ struct db_table {
   struct function_pointer ** anonymized_function;
   gchar *where;
   gchar *limit;
-  gchar *columns_on_select;
   gchar *columns_on_insert;
   pcre2_code *partition_regex;
   guint num_threads;
