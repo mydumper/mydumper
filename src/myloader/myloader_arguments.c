@@ -25,7 +25,7 @@
 #include "myloader_global.h"
 #include "myloader_arguments.h"
 
-gchar *innodb_optimize_keys_str=NULL;
+gchar *optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 gboolean set_gtid_purge = FALSE;
 gchar *fifo_directory = NULL;
@@ -35,30 +35,30 @@ gboolean mysqldump = FALSE;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!strcmp(option_name, "--innodb-optimize-keys")) {
-    innodb_optimize_keys_str=g_strdup(value);
+  if (!strcmp(option_name, "--optimize-keys")) {
+    optimize_keys_str=g_strdup(value);
     if (value==NULL){
-      innodb_optimize_keys_per_table = TRUE;
-      innodb_optimize_keys_all_tables = FALSE;
+      optimize_keys_per_table = TRUE;
+      optimize_keys_all_tables = FALSE;
       return TRUE;
     }
     if (!strcasecmp(value, SKIP)) {
-      innodb_optimize_keys = FALSE;
-      innodb_optimize_keys_per_table = FALSE;
-      innodb_optimize_keys_all_tables = FALSE;
+      optimize_keys = FALSE;
+      optimize_keys_per_table = FALSE;
+      optimize_keys_all_tables = FALSE;
       return TRUE;
     }
     if (!strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
-      innodb_optimize_keys_per_table = TRUE;
-      innodb_optimize_keys_all_tables = FALSE;
+      optimize_keys_per_table = TRUE;
+      optimize_keys_all_tables = FALSE;
       return TRUE;
     }
     if (!strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
-      innodb_optimize_keys_all_tables = TRUE;
-      innodb_optimize_keys_per_table = FALSE;
+      optimize_keys_all_tables = TRUE;
+      optimize_keys_per_table = FALSE;
       return TRUE;
     }
-    g_critical("--innodb-optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
+    g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
   } else if (!strcmp(option_name, "--quote-character")) {
     quote_character_cli= TRUE;
     if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
@@ -159,7 +159,7 @@ static GOptionEntry threads_entries[] = {
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "This option is deprecated. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
-    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+    {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes unless SKIP is selected.\n"
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},

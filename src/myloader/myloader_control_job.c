@@ -425,7 +425,7 @@ void *control_job_thread(struct configuration *conf){
       break;
     }
   }
-  start_innodb_optimize_keys_all_tables();
+  start_optimize_keys_all_tables();
   trace("Thread control_job_thread finished");
   return NULL;
 }

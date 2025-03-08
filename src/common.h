@@ -20,7 +20,7 @@
 #include <pcre.h>
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
-#define IS_INNODB_TABLE 2
+#define IS_TRX_TABLE 2
 #define INCLUDE_CONSTRAINT 4
 #define IS_ALTER_TABLE_PRESENT 8
 #define START_SLAVE "START SLAVE"

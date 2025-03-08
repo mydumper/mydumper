@@ -252,7 +252,7 @@ void *intermediate_thread(){
   for (n = 0; n < num_threads; n++){
 //    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
   }
-//  if (innodb_optimize_keys_all_tables)
+//  if (optimize_keys_all_tables)
 //    enqueue_all_index_jobs(intermediate_conf);
   message("Intermediate thread ended");
   refresh_table_list(intermediate_conf);

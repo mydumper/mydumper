@@ -23,7 +23,7 @@
 #include "myloader_global.h"
 
 
-GAsyncQueue * innodb_optimize_keys_all_tables_queue=NULL;
+GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
 struct thread_data *index_td = NULL;
 static GMutex *init_connection_mutex=NULL;
@@ -35,7 +35,7 @@ void initialize_worker_index(struct configuration *conf){
   init_connection_mutex = g_mutex_new();
   index_threads = g_new(GThread *, max_threads_for_index_creation);
   index_td = g_new(struct thread_data, max_threads_for_index_creation);
-  innodb_optimize_keys_all_tables_queue=g_async_queue_new();
+  optimize_keys_all_tables_queue=g_async_queue_new();
   for (n = 0; n < max_threads_for_index_creation; n++) {
     initialize_thread_data(&(index_td[n]), conf, WAITING, n + 1 + num_threads + max_threads_for_schema_creation, NULL);
     index_threads[n] =
@@ -70,8 +70,8 @@ void *worker_index_thread(struct thread_data *td) {
   g_mutex_unlock(init_connection_mutex);
 
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
-  if (innodb_optimize_keys_all_tables){
-    g_async_queue_pop(innodb_optimize_keys_all_tables_queue);
+  if (optimize_keys_all_tables){
+    g_async_queue_pop(optimize_keys_all_tables_queue);
   }
 
   set_thread_name("I%02u", td->thread_id);
@@ -99,11 +99,11 @@ void wait_index_worker_to_finish(){
   }
 }
 
-void start_innodb_optimize_keys_all_tables(){
+void start_optimize_keys_all_tables(){
   guint n=0;
-  trace("innodb_optimize_keys_all_tables_queue <- 1 (%u times)", max_threads_for_index_creation);
+  trace("optimize_keys_all_tables_queue <- 1 (%u times)", max_threads_for_index_creation);
   for (n = 0; n < max_threads_for_index_creation; n++) {
-    g_async_queue_push(innodb_optimize_keys_all_tables_queue, GINT_TO_POINTER(1));
+    g_async_queue_push(optimize_keys_all_tables_queue, GINT_TO_POINTER(1));
   }
 }
 

@@ -79,6 +79,8 @@ GOptionEntry common_entries[] = {
      "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
+    {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK , &common_arguments_callback,
+      "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
     {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

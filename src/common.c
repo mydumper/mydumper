@@ -35,6 +35,7 @@ GList *ignore_errors_list=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
+gchar **optimize_key_engines=NULL;
 
 /*
 const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
@@ -635,6 +636,9 @@ void m_key_file_merge(GKeyFile *b, GKeyFile *a){
 
 
 void initialize_common_options(GOptionContext *context, const gchar *group){
+  if (!optimize_key_engines)
+    optimize_key_engines=g_strsplit("InnoDB,ROCKSDB", ",", 0);
+
   if (defaults_file == NULL ){ 
     if ( g_file_test(DEFAULTS_FILE, G_FILE_TEST_EXISTS) ){
       defaults_file=g_strdup(DEFAULTS_FILE);
@@ -1187,6 +1191,7 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
   append_alter_table(alter_table_constraint_statement, real_table);
   int fulltext_counter=0;
   int i=0;
+  gchar *engine_pos=NULL;
   for (i=0; i < (int)g_strv_length(split_file);i++){
     if (split_indexes &&( g_strstr_len(split_file[i],5,"  KEY")
       || g_strstr_len(split_file[i],8,"  UNIQUE")
@@ -1223,7 +1228,14 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
         g_string_append_c(create_table_statement,'\n');
       }
     }
-    if (g_strrstr(split_file[i],"ENGINE=InnoDB")) flag|=IS_INNODB_TABLE;
+    engine_pos=g_strrstr(split_file[i],"ENGINE=");
+    if (engine_pos){
+      engine_pos+=7;
+      guint j=0;
+      for( j=0; j<g_strv_length(optimize_key_engines); j++)
+        if (g_str_has_prefix(engine_pos, optimize_key_engines[j]))
+          flag|=IS_TRX_TABLE;
+    }
   }
   g_string_replace(create_table_statement,",\n)","\n)", 0);
   finish_alter_table(alter_table_statement);
@@ -1288,7 +1300,13 @@ gchar *build_dbt_key(gchar *a, gchar *b){
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
-  if (!strcmp(option_name, "--source-control-command")){
+  if (!strcmp(option_name, "--optimize-keys-engines")){
+    if (value){
+      optimize_key_engines = g_strsplit(value, ",", 0);
+      return TRUE;
+    }
+
+  } else if (!strcmp(option_name, "--source-control-command")){
     if (!strcasecmp(value, "TRADITIONAL")) {
       source_control_command=TRADITIONAL;
       return TRUE;

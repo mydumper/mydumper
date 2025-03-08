@@ -52,9 +52,9 @@ gchar *pwd=NULL;
 gboolean overwrite_tables = FALSE;
 gboolean overwrite_unsafe = FALSE;
 
-gboolean innodb_optimize_keys = TRUE;
-gboolean innodb_optimize_keys_per_table = TRUE;
-gboolean innodb_optimize_keys_all_tables = FALSE;
+gboolean optimize_keys = TRUE;
+gboolean optimize_keys_per_table = TRUE;
+gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean disable_redo_log = FALSE;
 enum checksum_modes checksum_mode= CHECKSUM_FAIL;
@@ -358,14 +358,14 @@ int main(int argc, char *argv[]) {
     print_string("pmm-path",pmm_path);
     print_string("pmm-resolution",pmm_resolution);
 
-    if (!innodb_optimize_keys){
-      print_string("innodb-optimize-keys",SKIP);
-    }else if(innodb_optimize_keys_per_table){
-      print_string("innodb-optimize-keys",AFTER_IMPORT_PER_TABLE);
-    }else if(innodb_optimize_keys_all_tables){
-      print_string("innodb-optimize-keys",AFTER_IMPORT_ALL_TABLES);
+    if (!optimize_keys){
+      print_string("optimize-keys",SKIP);
+    }else if(optimize_keys_per_table){
+      print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
+    }else if(optimize_keys_all_tables){
+      print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
     }else
-      print_string("innodb-optimize-keys",NULL);
+      print_string("optimize-keys",NULL);
 
     print_bool("no-schemas",no_schemas);
 
