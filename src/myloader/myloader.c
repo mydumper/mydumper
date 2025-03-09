@@ -336,6 +336,7 @@ int main(int argc, char *argv[]) {
     print_string("socket",socket_path);
     print_string("protocol", protocol_str);
     print_bool("compress-protocol",compress_protocol);
+#ifdef WITH_SSL
     print_bool("ssl",ssl);
     print_string("ssl-mode",ssl_mode);
     print_string("key",key);
@@ -344,6 +345,7 @@ int main(int argc, char *argv[]) {
     print_string("capath",capath);
     print_string("cipher",cipher);
     print_string("tls-version",tls_version);
+#endif
     print_list("regex",regex_list);
     print_string("source-db",source_db);
 
@@ -641,10 +643,6 @@ int main(int argc, char *argv[]) {
 
   stop_signal_thread();
 
-  if (logoutfile) {
-    fclose(logoutfile);
-  }
-
 /*
   GList * tl=g_list_sort(conf.table_list, compare_by_time);
   g_message("Import timings:");
@@ -661,6 +659,11 @@ int main(int argc, char *argv[]) {
   if (key_file)  g_key_file_free(key_file);
   g_remove(fifo_directory);
   g_message("Restore completed");
+
+  if (logoutfile) {
+    fclose(logoutfile);
+  }
+
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

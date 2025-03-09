@@ -5,8 +5,9 @@ myloader_log="/tmp/test_myloader.log"
 tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 mysqldumplog=/tmp/mysqldump.sql
-myloader_stor_dir=$mydumper_stor_dir
-stream_stor_dir="/tmp/stream_data"
+retries=1
+
+mysql_user=root
 
 die()
 {
@@ -76,14 +77,14 @@ mysqldump()
 {
   # mysqldump doesn't respect $MYSQL_HOST
   local host_arg=${MYSQL_HOST:+-h $MYSQL_HOST}
-  $mysqldump_exe --no-defaults $host_arg -f -uroot "$@" || exit
+  $mysqldump_exe --no-defaults $host_arg -f --user $mysql_user "$@" || exit
 }
 export -f mysqldump
 
 mysql()
 {
   # mysql seems to respect $MYSQL_HOST
-  $mysql_exe --no-defaults -f -uroot "$@" || exit
+  $mysql_exe --no-defaults -f --user $mysql_user "$@" || exit
 }
 export -f mysql
 
@@ -105,7 +106,7 @@ unset case_num
 unset case_repeat
 unset rr_myloader
 unset rr_mydumper
-log_level="-v 4"
+log_level="--verbose 4"
 
 while true
 do
@@ -131,12 +132,18 @@ do
   -d|--debug)
     log_level="--debug"
     shift;;
+  -r|--retry)
+    retries=$2
+    shift 2;;
   --prepare)
     prepare_only=1
     shift;;
   --) shift; break;;
   esac
 done
+
+mkdir -p ${mydumper_stor_dir}
+rm -rf ${mydumper_stor_dir}
 
 
 for i in $*
@@ -187,170 +194,110 @@ backtrace ()
 }
 
 test_case_dir (){
-  # Test case
-  # We should consider each test case, with different mydumper/myloader parameters
-  s=$*
 
   echo "Case #${number}${case_cycle:+:$case_cycle}"
+  DIR=$1
+  mydumper_default_extra_file="${DIR}/mydumper.cnf"
+  myloader_default_extra_file="${DIR}/myloader.cnf"
 
-  mydumper_parameters=${s%%"-- "*}
-  myloader_parameters=${s#*"-- "}
+  myloader_pre_execution="${DIR}/pre_myloader.sh"
+  myloader_clean_database="${DIR}/clean_databases.sql"
 
-  if [ "${mydumper_parameters}" != "" ]
+  mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
+  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user                --defaults-extra-file=${myloader_default_extra_file}"
+
+  mydumper_execute=$(grep '[mydumper]' $mydumper_default_extra_file | wc -l )
+  myloader_execute=$(grep '[myloader]' $myloader_default_extra_file | wc -l )
+
+  mydumper_stream=$(grep 'stream=' $mydumper_default_extra_file | wc -l )
+  myloader_stream=$(grep 'stream=' $myloader_default_extra_file | wc -l )
+
+  iter=1
+  error=0
+  if (( ${mydumper_execute} > 0 ))
   then
-    # Prepare
-    rm -rf ${mydumper_stor_dir}
-    mkdir -p ${mydumper_stor_dir}
-    # Export
-    echo "Exporting database: ${mydumper_parameters}"
-    rm -rf /tmp/fifodir
-    "${time2[@]}" $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
-    error=$?
-    cat $tmp_mydumper_log >> $mydumper_log
-    if (( $error > 0 ))
-    then
-      print_core
-      echo "Retrying export due error"
+    while (( $iter <= $retries ))
+    do
+      
+      # Prepare
+      rm -rf ${mydumper_stor_dir}
+      # Export
       echo "Exporting database: ${mydumper_parameters}"
-      rm -rf /tmp/fifodir
-      rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
-      $mydumper -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters}
+      if (( $mydumper_stream >= 1 ))
+      then
+        "${time2[@]}" $mydumper ${mydumper_parameters} > /tmp/stream.sql
+      else
+        "${time2[@]}" $mydumper ${mydumper_parameters}
+      fi
       error=$?
       cat $tmp_mydumper_log >> $mydumper_log
       if (( $error > 0 ))
-        then
+      then
         print_core
-        mysqldump --all-databases > $mysqldumplog
-        echo "Error running: $mydumper -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
-        cat $tmp_mydumper_log
-        mv $tmp_mydumper_log $mydumper_stor_dir
-        backtrace
-        exit $error
       fi
+      iter=$(( $iter + 1 ))
+    done
+    if (( $error > 0 )) && (( $iter > $retries ))
+    then
+      mysqldump --all-databases > $mysqldumplog
+      echo "Error running: $mydumper ${mydumper_parameters}"
+      #cat $tmp_mydumper_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
+      backtrace
+      exit $error
     fi
   fi
-  if [ "$PARTIAL" != "1" ]
+  if [ -f $myloader_clean_database ]
   then
-  echo "DROP DATABASE IF EXISTS sakila;
-DROP DATABASE IF EXISTS myd_test;
-DROP DATABASE IF EXISTS myd_test_no_fk;
-DROP DATABASE IF EXISTS empty_db;" | mysql
+    mysql < $myloader_clean_database
+  else
+    mysql < test/clean_databases.sql
   fi
-  if [ "${myloader_parameters}" != "" ]
+  if [ -f $myloader_pre_execution ]
   then
-    # Import
-    echo "Importing database: ${myloader_parameters}"
-    mysqldump --all-databases > $mysqldumplog
-    rm -rf /tmp/fifodir
-    "${time2[@]}" $myloader -u root $log_level -L $tmp_myloader_log ${myloader_parameters}
-    error=$?
-    cat $tmp_myloader_log >> $myloader_log
-    if (( $error > 0 ))
-    then
-      print_core
-      echo "Retrying import due error"
+    "$myloader_pre_execution"
+  fi
+
+  if (( ${myloader_execute} > 0 ))
+  then
+    iter=1
+    while (( $iter <= $retries ))
+    do
+      # Import
       echo "Importing database: ${myloader_parameters}"
       mysqldump --all-databases > $mysqldumplog
-      rm -rf /tmp/fifodir
-      $myloader -u root $log_level -L $tmp_myloader_log ${myloader_parameters}
+      if (( $myloader_stream >= 1 ))
+      then
+        "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
+      else
+        "${time2[@]}" $myloader ${myloader_parameters} 
+      fi
       error=$?
       cat $tmp_myloader_log >> $myloader_log
       if (( $error > 0 ))
       then
         print_core
-        mv $mysqldumplog $mydumper_stor_dir
-        echo "Error running: $myloader -u root $log_level -L $myloader_log ${myloader_parameters}"
-        echo "Error running myloader with mydumper: $mydumper -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
-        cat $tmp_mydumper_log
-        cat $tmp_myloader_log
-        mv $tmp_mydumper_log $mydumper_stor_dir
-        mv $tmp_myloader_log $mydumper_stor_dir
-        backtrace
-        exit $error
       fi
-    fi
-  fi
-}
-
-
-test_case_stream (){
-  # Test case
-  # We should consider each test case, with different mydumper/myloader parameters
-  s=$*
-
-  echo "Case #${number}${case_cycle:+:$case_cycle}"
-
-  mydumper_parameters=${s%%"-- "*}
-  myloader_parameters=${s#*"-- "}
-
-  if [ "${mydumper_parameters}" != "" ] && [ "${myloader_parameters}" != "" ]
-  then
-    # Prepare
-    rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
-    mkdir -p ${mydumper_stor_dir} ${myloader_stor_dir}
-    # Export
-    echo "Exporting database: $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream"
-    rm -rf /tmp/fifodir
-    "${time2[@]}" $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
-    error=$?
-    mysqldump --all-databases > $mysqldumplog
-    if (( $error > 0 ))
+      iter=$(( $iter + 1 ))
+    done
+    if (( $error > 0 )) && (( $iter > $retries ))
     then
-      echo "Retrying export due error"
-      echo "Exporting database: $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} | $myloader  ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream"
-      rm -rf ${mydumper_stor_dir} ${myloader_stor_dir}
-      rm -rf /tmp/fifodir
-      $mydumper --stream -u root -M $log_level -L $tmp_mydumper_log ${mydumper_parameters} > /tmp/stream.sql
-      error=$?
-      mysqldump --all-databases > $mysqldumplog
-      if (( $error > 0 ))
-      then
-        echo "Error running: $mydumper --stream -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
-        cat $tmp_mydumper_log
-        mv $tmp_mydumper_log $mydumper_stor_dir
-        backtrace
-        exit $error
-      fi
-    fi
-  if [ "$PARTIAL" != "1" ]
-  then
-  echo "DROP DATABASE IF EXISTS sakila;
-DROP DATABASE IF EXISTS myd_test;
-DROP DATABASE IF EXISTS myd_test_no_fk;
-DROP DATABASE IF EXISTS empty_db;" | mysql
-  fi
-    rm -rf /tmp/fifodir ${myloader_stor_dir} 
-    cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
-    error=$?
-    cat $tmp_myloader_log >> $myloader_log
-    cat $tmp_mydumper_log >> $mydumper_log
-    if (( $error > 0 ))
-    then
-      echo "Retrying import due error"
-      rm -rf /tmp/fifodir ${myloader_stor_dir}
-      cat /tmp/stream.sql | $myloader ${myloader_general_options} -u root $log_level -L $tmp_myloader_log ${myloader_parameters} --stream
-      error=$?
-      cat $tmp_myloader_log >> $myloader_log
-      cat $tmp_mydumper_log >> $mydumper_log
-      if (( $error > 0 ))
-      then
-        mv $mysqldumplog $mydumper_stor_dir
-        echo "Error running: $mydumper --stream -u root -M $log_level -L $mydumper_log ${mydumper_parameters}"
-        echo "Error running: $myloader ${myloader_general_options} -u root $log_level -L $myloader_log ${myloader_parameters} --stream"
-        cat $tmp_mydumper_log
-        cat $tmp_myloader_log
-        mv $tmp_mydumper_log $mydumper_stor_dir
-        mv $tmp_myloader_log $mydumper_stor_dir
-        backtrace
-        exit $error
-      fi
+      mv $mysqldumplog $mydumper_stor_dir
+      echo "Error running: $myloader ${myloader_parameters}"
+      echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
+      cat $tmp_mydumper_log
+      cat $tmp_myloader_log
+      mv $tmp_mydumper_log $mydumper_stor_dir
+      mv $tmp_myloader_log $mydumper_stor_dir
+      backtrace
+      exit $error
     fi
   fi
 }
 
 do_case()
 {
-  number=$(( $number + 1 ))
+  number=$( echo "$2" | cut -d'_' -f2 )
   if [[ -n "$case_num"  ]]
   then
     if [[ "$case_num" -ne $number ]]
@@ -365,6 +312,7 @@ do_case()
     finish
   fi
   unset case_cycle
+
   "$@"
 }
 
@@ -390,66 +338,19 @@ prepare_full_test()
   if [[ -n "$prepare_only"  ]]; then
     exit
   fi
-  mydumper_general_options="-u root -R -E -G -o ${mydumper_stor_dir} --regex "'^(?!(mysql\.|sys\.))'" $log_level $MYDUMPER_ARGS"
-  myloader_general_options="-o --max-threads-for-index-creation=1 --max-threads-for-post-actions=1  --fifodir=/tmp/fifodir $log_level $MYLOADER_ARGS"
 }
 
 full_test_global(){
   prepare_full_test
-  # single file compressed -- overriting database
-#  test_case_dir -c ${mydumper_general_options}                                 -- ${myloader_general_options} -d ${myloader_stor_dir}
-  PARTIAL=0
-  for test in test_case_dir test_case_stream
+  for dir in $(find test -name "test_*" -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 2 -n )  
   do 
-    echo "Executing test: $test"
-    for compress_mode in "" "-c GZIP" "-c ZSTD"
-      do
-      for backup_mode in "" "--load-data" "--csv"
-        do
-        for innodb_optimize_key_mode in "" "--innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES" "--innodb-optimize-keys=AFTER_IMPORT_PER_TABLE" 
-          do
-          for rows_and_filesize_mode in "" "-r 1000" "-r 10:100:10000" "-F 10" "-r 10:100:10000 -F 10" 
-            do
-            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode                                 ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
-            # statement size to 2MB -- overriting database
-            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode -s 2000000                      ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
-            # compress and rows
-            do_case $test $backup_mode $compress_mode $rows_and_filesize_mode --use-savepoints                ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation $innodb_optimize_key_mode
- 
-    # ANSI_QUOTES
-#    $test -r 1000 -G ${mydumper_general_options} --defaults-file="test/mydumper.cnf"                                -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation --defaults-file="test/mydumper.cnf"
-            done
-          done
-        done
-      done
-    myloader_stor_dir=$stream_stor_dir
-  done
-  myloader_stor_dir=$mydumper_stor_dir
-}
-
-full_test_per_table(){
-  prepare_full_test
-  PARTIAL=1
-  echo "Starting per table tests"
-  for test in test_case_dir test_case_stream
-  do
-    echo "Executing tests: $test"
-    do_case $test -G --sync-thread-lock-mode LOCK_ALL -B empty_db ${mydumper_general_options}                           -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
-    # exporting specific database -- overriting database
-    do_case $test -B myd_test_no_fk ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
-    # exporting specific table -- overriting database
-    do_case $test -B myd_test -T myd_test.mydumper_aipk_uuid ${mydumper_general_options}	-- ${myloader_general_options} -d ${myloader_stor_dir}
-    # exporting specific database -- overriting database
-    do_case $test -B myd_test_no_fk ${mydumper_general_options} -- ${myloader_general_options} -B myd_test_2 -d ${myloader_stor_dir} --serialized-table-creation
-    do_case $test --no-data -G ${mydumper_general_options} -- ${myloader_general_options} -d ${myloader_stor_dir} --serialized-table-creation
-    myloader_stor_dir=$stream_stor_dir
+    echo "Executing test: $dir"
+    do_case test_case_dir ${dir}
   done
 }
-
 
 full_test(){
   full_test_global
-  full_test_per_table
 }
 
 full_test &&

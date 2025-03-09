@@ -1,0 +1,9 @@
+[mydumper]
+csv=1
+rows=10:100:10000
+chunk-filesize=10
+routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))

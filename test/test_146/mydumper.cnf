@@ -1,0 +1,9 @@
+[mydumper]
+compress=GZIP
+chunk-filesize=10
+statement-size=2000000
+routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))
