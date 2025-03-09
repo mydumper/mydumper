@@ -5,4 +5,4 @@ max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
 directory=/tmp/data
 serialized-table-creation=1
-innodb-optimize-keys=AFTER_IMPORT_PER_TABLE
+optimize-keys=AFTER_IMPORT_PER_TABLE

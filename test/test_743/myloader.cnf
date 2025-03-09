@@ -6,4 +6,4 @@ fifodir=/tmp/fifodir
 stream=1
 directory=/tmp/data
 serialized-table-creation=1
-innodb-optimize-keys=AFTER_IMPORT_ALL_TABLES
+optimize-keys=AFTER_IMPORT_ALL_TABLES
