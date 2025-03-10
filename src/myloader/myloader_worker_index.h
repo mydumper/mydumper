@@ -19,4 +19,4 @@
 void initialize_worker_index(struct configuration *conf);
 void wait_index_worker_to_finish();
 void create_index_shutdown_job(struct configuration *conf);
-void start_innodb_optimize_keys_all_tables();
+void start_optimize_keys_all_tables();
