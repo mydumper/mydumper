@@ -537,6 +537,9 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     else
       cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + cs->integer_step.step - 1;
 
+    if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.min)
+      g_error("integer_step.type.unsign.cursor: %ld  | integer_step.type.unsign.min %ld  | cs->integer_step.type.unsign.max : %ld | cs->integer_step.step %ld", cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
+
     g_assert(cs->integer_step.type.unsign.cursor >= cs->integer_step.type.unsign.min);
   
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.cursor) / cs->integer_step.step:1;
@@ -546,7 +549,10 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.max;
     else
       cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + cs->integer_step.step - 1;
-//g_message("integer_step.type.sign.cursor: %ld  | integer_step.type.sign.min %ld  | cs->integer_step.type.sign.max : %ld | cs->integer_step.step %ld", cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+ 
+    if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.min)
+      g_error("integer_step.type.sign.cursor: %ld  | integer_step.type.sign.min %ld  | cs->integer_step.type.sign.max : %ld | cs->integer_step.step %ld", cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+ 
     g_assert(cs->integer_step.type.sign.cursor >= cs->integer_step.type.sign.min);
     
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) / cs->integer_step.step:1;
