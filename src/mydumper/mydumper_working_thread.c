@@ -56,6 +56,8 @@ int build_empty_files = 0;
 
 // Extern
 extern gboolean use_single_column;
+extern guint64 min_integer_chunk_step_size;
+extern guint64 max_integer_chunk_step_size;
 
 // Shared variables
 gint database_counter = 0;
@@ -1079,6 +1081,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
     dbt->max_threads_per_table=max_threads_per_table;
     dbt->current_threads_running=0;
+
+    // Load chunk step size values
     gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
     if (rows_p_chunk )
       dbt->split_integer_tables=parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size),"Invalid option on rows in configuration file");
@@ -1093,6 +1097,18 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
       dbt->starting_chunk_step_size = 2;
       g_warning("Setting min and start rows per file to 2 on %s", lkey);
     }
+    dbt->is_fixed_length=dbt->min_chunk_step_size != 0 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size == dbt->max_chunk_step_size;
+
+    if ( dbt->min_chunk_step_size==0)
+      dbt->min_chunk_step_size=MIN_CHUNK_STEP_SIZE;
+
+    // honor --rows-hard
+    if ( max_integer_chunk_step_size != 0 && (dbt->max_chunk_step_size > max_integer_chunk_step_size || dbt->max_chunk_step_size == 0 ))
+      dbt->max_chunk_step_size=max_integer_chunk_step_size;
+    if ( min_integer_chunk_step_size != 0 && (dbt->min_chunk_step_size < min_integer_chunk_step_size ))
+      dbt->min_chunk_step_size=min_integer_chunk_step_size;
+
+
     dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey), NULL, 10):num_threads;
     dbt->estimated_remaining_steps=1;
     dbt->min=NULL;
