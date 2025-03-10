@@ -39,7 +39,7 @@
 #include "mydumper_common.h"
 
 
-guint64 min_integer_chunk_step_size=1000;
+guint64 min_integer_chunk_step_size=0;
 guint64 max_integer_chunk_step_size=0;
 
 guint64 gint64_abs(gint64 a){
@@ -56,14 +56,14 @@ void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union t
     cs->integer_step.type.unsign.min = type.unsign.min;
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
-    cs->integer_step.step = step!=0?step:(max_integer_chunk_step_size!=0?((cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads>max_integer_chunk_step_size?max_integer_chunk_step_size:(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads):(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min)/num_threads);
-    cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step:1;
+    cs->integer_step.step = step;
+    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
-    cs->integer_step.step = step!=0?step:(max_integer_chunk_step_size!=0?(gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads>max_integer_chunk_step_size?max_integer_chunk_step_size:gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads):gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min)/num_threads);
-    cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step:1;
+    cs->integer_step.step = step;
+    cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) / cs->integer_step.step;
   }
   cs->integer_step.is_step_fixed_length = is_step_fixed_length;
   cs->integer_step.check_max=check_max;
@@ -590,7 +590,6 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       g_date_time_unref(to);
       if (diff > MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  / 2;
-        cs->integer_step.step=cs->integer_step.step<csi->chunk_step->integer_step.min_chunk_step_size?csi->chunk_step->integer_step.min_chunk_step_size:cs->integer_step.step;
         trace("Decreasing step to size %ld due time %ld seconds", cs->integer_step.step, diff);
       }else if (diff < MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
@@ -600,10 +599,11 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       cs->integer_step.step = csi->chunk_step->integer_step.max_chunk_step_size !=0 && cs->integer_step.step > csi->chunk_step->integer_step.max_chunk_step_size ? 
                               csi->chunk_step->integer_step.max_chunk_step_size :
                               cs->integer_step.step;
-      if (max_integer_chunk_step_size !=0 && cs->integer_step.step > max_integer_chunk_step_size )
-        cs->integer_step.step=max_integer_chunk_step_size;        
-      if (cs->integer_step.step < min_integer_chunk_step_size)
-        cs->integer_step.step=min_integer_chunk_step_size;
+
+      cs->integer_step.step = csi->chunk_step->integer_step.min_chunk_step_size !=0 && cs->integer_step.step < csi->chunk_step->integer_step.min_chunk_step_size ?
+                              csi->chunk_step->integer_step.min_chunk_step_size :
+                              cs->integer_step.step;
+
 //      trace("After checking: %ld == %ld | max_integer_chunk_step_size=%ld | min_integer_chunk_step_size=%ld", ant, cs->integer_step.step, max_integer_chunk_step_size, min_integer_chunk_step_size);
 
     }
@@ -772,11 +772,13 @@ void update_where_on_integer_step(struct chunk_step_item * csi){
 
 void determine_if_we_can_go_deeper(struct db_table *dbt, struct chunk_step_item * csi, guint64 rows){
   if (dbt->multicolumn && csi->position == 0){
-    if ((csi->chunk_step->integer_step.is_unsigned && (rows / (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > (dbt->min_chunk_step_size==0?min_integer_chunk_step_size:dbt->min_chunk_step_size))
-        )||(
-        (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max   - csi->chunk_step->integer_step.type.sign.min)   > (dbt->min_chunk_step_size==0?min_integer_chunk_step_size:dbt->min_chunk_step_size))
-       )
-        )){
+    if (
+        // In a multi column table, we will use the first column to split the table.
+        // This calculation will let us know how many rows are we getting on average per first column value
+        // we need to have have at least 1 chunk size per first column to perform multi column spliting
+        ( csi->chunk_step->integer_step.is_unsigned && (rows /         (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min) > dbt->min_chunk_step_size))||
+        (!csi->chunk_step->integer_step.is_unsigned && (rows / gint64_abs(csi->chunk_step->integer_step.type.sign.max -   csi->chunk_step->integer_step.type.sign.min) > dbt->min_chunk_step_size))
+       ){
       csi->chunk_step->integer_step.min_chunk_step_size=1;
       csi->chunk_step->integer_step.is_step_fixed_length=TRUE;
       csi->chunk_step->integer_step.max_chunk_step_size=1;
