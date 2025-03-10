@@ -579,7 +579,6 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     if (cs->integer_step.is_step_fixed_length) {
       write_table_job_into_file(tj);
     }else{
- 
       GDateTime *from = g_date_time_new_now_local();
       write_table_job_into_file(tj);
       GDateTime *to = g_date_time_new_now_local();
@@ -592,18 +591,21 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       if (diff > MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  / 2;
         cs->integer_step.step=cs->integer_step.step<csi->chunk_step->integer_step.min_chunk_step_size?csi->chunk_step->integer_step.min_chunk_step_size:cs->integer_step.step;
-//    g_message("Decreasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
+        trace("Decreasing step to size %ld due time %ld seconds", cs->integer_step.step, diff);
       }else if (diff < MAX_TIME_PER_QUERY){
         cs->integer_step.step=cs->integer_step.step  * 2 == 0?cs->integer_step.step:cs->integer_step.step  * 2;
-//    g_message("Increasing time: %ld | %ld", diff, tj->chunk_step->integer_step.step);
+        trace("Increasing step to size %ld due time %ld seconds", cs->integer_step.step, diff);
       }
-      cs->integer_step.step = cs->integer_step.step > csi->chunk_step->integer_step.max_chunk_step_size ? 
+//      guint ant=cs->integer_step.step;
+      cs->integer_step.step = csi->chunk_step->integer_step.max_chunk_step_size !=0 && cs->integer_step.step > csi->chunk_step->integer_step.max_chunk_step_size ? 
                               csi->chunk_step->integer_step.max_chunk_step_size :
                               cs->integer_step.step;
-      if (cs->integer_step.step > max_integer_chunk_step_size )
+      if (max_integer_chunk_step_size !=0 && cs->integer_step.step > max_integer_chunk_step_size )
         cs->integer_step.step=max_integer_chunk_step_size;        
       if (cs->integer_step.step < min_integer_chunk_step_size)
         cs->integer_step.step=min_integer_chunk_step_size;
+//      trace("After checking: %ld == %ld | max_integer_chunk_step_size=%ld | min_integer_chunk_step_size=%ld", ant, cs->integer_step.step, max_integer_chunk_step_size, min_integer_chunk_step_size);
+
     }
   }
 
