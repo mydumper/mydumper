@@ -902,7 +902,7 @@ void *working_thread(struct thread_data *td) {
 }
 
 static
-GString *get_insertable_fields(MYSQL *conn, char *database, char *table) {
+GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
   MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
@@ -963,47 +963,6 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   mysql_free_result(res);
 
   return FALSE;
-}
-
-static
-struct function_pointer ** get_anonymized_function_for(MYSQL *conn, gchar *database, gchar *table){
-  // TODO #364: this is the place where we need to link the column between file loaded and dbt.
-  // Currently, we are using identity_function, which return the same data.
-  // Key: `database`.`table`.`column`
-  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
-  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
-  struct function_pointer ** anonymized_function_list=NULL;
-  if (ht){
-
-    MYSQL_RES *res = NULL;
-    MYSQL_ROW row;
-
-    gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
-                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' ORDER BY ORDINAL_POSITION;",
-                      database, table);
-    mysql_query(conn, query);
-    g_free(query);
-
-    struct function_pointer *fp;
-    res = mysql_store_result(conn);
-    guint i=0;
-    anonymized_function_list = g_new0(struct function_pointer *, mysql_num_rows(res));
-    g_message("Using masquerade function on `%s`.`%s`", database, table);
-    while ((row = mysql_fetch_row(res))) {
-      fp=(struct function_pointer*)g_hash_table_lookup(ht,row[0]);
-      if (fp != NULL){
-        g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, row[0]);
-        anonymized_function_list[i]=fp;
-      }else{
-        anonymized_function_list[i]=&identity_function_pointer;
-      }
-      i++;
-    }
-    mysql_free_result(res);
-  }
-  g_free(k);
-  return anonymized_function_list;
 }
 
 static
@@ -1113,11 +1072,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->escaped_table = escape_string(conn,dbt->table);
-    dbt->anonymized_function=get_anonymized_function_for(conn, dbt->database->name, dbt->table);
     dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, lkey);
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
-    dbt->columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
-    dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
     parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
 
     dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
@@ -1163,12 +1119,23 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->chunk_filesize=chunk_filesize;
 //  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
 
-    dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
-    if (dbt->complete_insert) {
-      dbt->select_fields = get_insertable_fields(conn, dbt->database->escaped, dbt->escaped_table);
-    } else {
-      dbt->select_fields = g_string_new("*");
+    gchar *columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
+
+    dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
+
+    dbt->select_fields=NULL;
+
+    if (columns_on_select){
+      dbt->select_fields=g_string_new(columns_on_select);
+    }else if (!dbt->columns_on_insert){
+      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+      if (dbt->complete_insert) {
+        dbt->select_fields = get_selectable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+      }
     }
+
+//    dbt->anonymized_function=get_anonymized_function_for(conn, dbt);
+    dbt->anonymized_function=NULL;
     dbt->indexes_checksum=NULL;
     dbt->data_checksum=NULL;
     dbt->schema_checksum=NULL;
@@ -1187,7 +1154,8 @@ void free_db_table(struct db_table * dbt){
   g_free(dbt->escaped_table);
   if (dbt->insert_statement)
     g_string_free(dbt->insert_statement,TRUE);
-  g_string_free(dbt->select_fields, TRUE);
+  if (dbt->select_fields)
+    g_string_free(dbt->select_fields, TRUE);
   if (dbt->min!=NULL) g_free(dbt->min);
   if (dbt->max!=NULL) g_free(dbt->max);
   g_free(dbt->data_checksum);
