@@ -517,14 +517,28 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   csi->status = DUMPING_CHUNK;
 
   if (cs->integer_step.check_max && tj->dbt->max_chunk_step_size!=0){
-    g_debug("Thread %d: Updating MAX", td->thread_id);
+    trace("Thread %d: Updating MAX", td->thread_id);
+    if (cs->integer_step.is_unsigned)
+      trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+    else
+      trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
     update_integer_max(td->thrconn, tj->dbt, csi);
+    if (cs->integer_step.is_unsigned)
+      trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+    else
+      trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
     cs->integer_step.check_max=FALSE;
   }
   if (cs->integer_step.check_min && tj->dbt->max_chunk_step_size!=0){
-    g_debug("Thread %d: Updating MIN", td->thread_id);
+    if (cs->integer_step.is_unsigned)
+      trace("Thread %d: Updating MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+    else
+      trace("Thread %d: Updating MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
     update_integer_min(td->thrconn, tj->dbt, csi);
-//    g_message("thread: %d New MIN: %ld", td->thread_id, tj->chunk_step->integer_step.nmin);
+    if (cs->integer_step.is_unsigned)
+      trace("Thread %d: New MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+    else
+      trace("Thread %d: New MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
     cs->integer_step.check_min=FALSE;
   }
 
@@ -538,7 +552,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + cs->integer_step.step - 1;
 
     if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.min)
-      g_error("integer_step.type.unsign.cursor: %ld  | integer_step.type.unsign.min %ld  | cs->integer_step.type.unsign.max : %ld | cs->integer_step.step %ld", cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
+      g_error("integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT"  | cs->integer_step.type.unsign.max : %"G_GUINT64_FORMAT" | cs->integer_step.step %ld", cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
 
     g_assert(cs->integer_step.type.unsign.cursor >= cs->integer_step.type.unsign.min);
   
@@ -551,7 +565,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + cs->integer_step.step - 1;
  
     if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.min)
-      g_error("integer_step.type.sign.cursor: %ld  | integer_step.type.sign.min %ld  | cs->integer_step.type.sign.max : %ld | cs->integer_step.step %ld", cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+      g_error("integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld", cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
  
     g_assert(cs->integer_step.type.sign.cursor >= cs->integer_step.type.sign.min);
     
@@ -616,12 +630,14 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   if (cs->integer_step.is_unsigned){
     if ( cs->integer_step.type.unsign.cursor+1 < cs->integer_step.type.unsign.min){
       // Overflow
+      trace("Overflow due integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min);
       cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max;
       cs->integer_step.type.unsign.max--;
     }else
       cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.cursor+1;
   }else{
     if ( cs->integer_step.type.sign.cursor+1 < cs->integer_step.type.sign.min){
+      trace("Overflow due integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GINT64_FORMAT, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min);
       cs->integer_step.type.sign.min=cs->integer_step.type.sign.max;
       cs->integer_step.type.sign.max--;
     }else
