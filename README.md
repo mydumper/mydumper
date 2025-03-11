@@ -23,81 +23,10 @@ Both tools use multithreading capabilities.
 
 ## Dependencies for building MyDumper
 
-### Install development tools:
-* Ubuntu or Debian:
-```shell
-apt-get install cmake g++ git
-```
-* Fedora, RedHat and CentOS:
-```shell
-yum install -y cmake gcc gcc-c++ git make
-```
-* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager:
-
-```shell
-sudo port install cmake pkgconfig
-```
-### Install development versions of GLib, ZLib, PCRE and ZSTD:
-* Ubuntu or Debian:
-```shell
-apt-get install libglib2.0-dev zlib1g-dev libpcre3-dev libssl-dev libzstd-dev
-```
-* Fedora, RedHat and CentOS:
-```shell
-yum install -y glib2-devel openssl-devel pcre-devel zlib-devel libzstd-devel
-```
-* openSUSE:
-```shell
-zypper install glib2-devel libmysqlclient-devel pcre-devel zlib-devel
-```
-* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager:
-```shell
-sudo port install glib2 pcre
-```
-### Install MySQL/Percona/MariaDB development versions:
-You need to select one vendor development library.
-* Ubuntu or Debian:
-```shell
-apt-get install libmysqlclient-dev
-apt-get install libperconaserverclient20-dev
-apt-get install libmariadbclient-dev
-```
-* Fedora, RedHat and CentOS:
-```shell
-yum install -y mysql-devel
-yum install -y Percona-Server-devel-57
-yum install -y mariadb-devel
-```
-CentOS 7 comes by default with MariaDB 5.5 libraries which are very old.
-  It might be better to download a newer version of these libraries (MariaDB, MySQL, Percona etc).
-* openSUSE:
-```shell
-zypper install libmysqlclient-devel
-```
-
-* MacOS <= 10.13 (High Sierra) < 13 (Ventura) with MacPorts package manager
-``` shell
-sudo port install mariadb-10.11
-sudo port select mysql
-```
-## How to Build
-
-Run:
-
-```shell
-cmake .
-make
-sudo make install
-```
-
-One has to make sure, that pkg-config, mysql_config, pcre-config are all in $PATH
-
-Binlog dump is disabled by default to compile with it you need to add -DWITH_BINLOG=ON to cmake options
-
-To build against mysql libs < 5.7 you need to disable SSL adding -DWITH_SSL=OFF
+[This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/compiling.html) 
 
 ### Build Docker image
-You can download the [official docker image](https://hub.docker.com/r/mydumper/mydumper) or you can build the Docker image either from local sources or directly from Github sources with [the provided Dockerfile](./Dockerfile).
+You can download the [official docker image](https://hub.docker.com/r/mydumper/mydumper) or you can build the Docker image either from local sources or directly from Github sources with [the provided Dockerfile](./docker/Dockerfile).
 ```shell
 docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper github.com/mydumper/mydumper
 ```
