@@ -88,6 +88,7 @@ struct configuration_per_table{
 };
 
 #define STREAM_BUFFER_SIZE 1000000
+#define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
 typedef gchar * (*fun_ptr)(gchar **,gulong*, struct function_pointer*);

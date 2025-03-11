@@ -61,11 +61,12 @@ gboolean has_mydumper_suffix(gchar *line){
 void *process_stream(struct configuration *stream_conf){
   set_thread_name("STT");
   char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
-  char *buffer=g_new(char, STREAM_BUFFER_SIZE);
+  guint stream_buffer_size=no_stream?STREAM_BUFFER_SIZE_NO_STREAM:STREAM_BUFFER_SIZE;
+  char *buffer=g_new(char, stream_buffer_size);
   FILE *file=NULL;
-  int pos=0,buffer_len=0;
-  int diff=0, i=0, line_from=0, line_end=0; 
-  int initial_pos=0;
+  guint pos=0,buffer_len=0;
+  guint diff=0, i=0, line_from=0, line_end=0; 
+  guint initial_pos=0;
   guint total_size=0;
   guint file_size_from_stream=0;
   GString *set_buffer=g_string_new_len("", 1000);
@@ -73,7 +74,7 @@ void *process_stream(struct configuration *stream_conf){
   gboolean writing_set=TRUE;
   gchar *database_name=g_strdup("sakila");
   gchar *table_name=NULL;
-  for(i=0;i<STREAM_BUFFER_SIZE;i++){
+  for(i=0;i<stream_buffer_size;i++){
     buffer[i]='\0';
   }
   gchar *new_filename,*new_real_filename,*kind=NULL;
@@ -81,7 +82,7 @@ void *process_stream(struct configuration *stream_conf){
   while (TRUE){
     // Reads from stdin and fills the buffer from last position
 read_more:
-    buffer_len=fread(&(buffer[diff]), sizeof(char), STREAM_BUFFER_SIZE-1-diff, stdin)+diff;
+    buffer_len=fread(&(buffer[diff]), sizeof(char), stream_buffer_size-1-diff, stdin)+diff;
 
     if (buffer_len==diff){
       // This menas that there is nothing else to read from stdin

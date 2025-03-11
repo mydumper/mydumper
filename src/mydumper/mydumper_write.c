@@ -781,7 +781,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     // prepare row into statement_row
 		write_row_into_string(conn, dbt, row, fields, lengths, num_fields, tj->td->thread_data_buffers, write_column_into_string);
 
-		// if row exceeded statement_size then FLUSH buffer to disk
+    // if row exceeded statement_size then FLUSH buffer to disk
 		if (tj->td->thread_data_buffers.statement->len + tj->td->thread_data_buffers.row->len + 1 > statement_size){
       if (num_rows_st == 0) {
         g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
