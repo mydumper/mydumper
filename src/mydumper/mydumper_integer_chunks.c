@@ -368,7 +368,7 @@ end:
   return NULL;
 }
 
-void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
+gboolean refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
   struct integer_step * ics = &(csi->chunk_step->integer_step);
   gchar *query = NULL;
   MYSQL_ROW row = NULL;
@@ -385,13 +385,13 @@ void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_ste
   minmax = mysql_store_result(conn);
 
   if (!minmax){
-    return;
+    return FALSE;
   }
   row = mysql_fetch_row(minmax);
 
   if (row==NULL || row[0]==NULL){
     mysql_free_result(minmax);
-    return;
+    return FALSE;
   }
   if (ics->is_unsigned) {
     guint64 nmin = strtoull(row[0], NULL, 10);
@@ -406,6 +406,7 @@ void refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_ste
   }
   csi->include_null=TRUE;
   mysql_free_result(minmax);
+  return TRUE;
 }
 
 
@@ -581,8 +582,12 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   
 
   if (csi->next !=NULL){
+    // Multi column
     if (csi->next->needs_refresh)
-      refresh_integer_min_max(td->thrconn, tj->dbt, csi->next);
+      if (!refresh_integer_min_max(td->thrconn, tj->dbt, csi->next)){
+        trace("No min and max found");
+        goto update_min;
+      }
 
     csi->next->chunk_functions.process( tj , csi->next);
     csi->next->needs_refresh=TRUE;
@@ -624,6 +629,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
 
 // Step 5: Updating min
+update_min:
   g_mutex_lock(csi->mutex);
   if (csi->status != COMPLETED)
     csi->status = ASSIGNED;
