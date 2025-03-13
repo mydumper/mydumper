@@ -1,0 +1,4 @@
+[mydumper]
+ignore-engines=MyISAM,InnoDB
+database=specific_1
+outputdir=/tmp/data
