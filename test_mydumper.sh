@@ -200,20 +200,36 @@ test_case_dir (){
   mydumper_default_extra_file="${DIR}/mydumper.cnf"
   myloader_default_extra_file="${DIR}/myloader.cnf"
 
+  mydumper_prepare_database="${DIR}/prepare_mydumper.sql"
+  mydumper_check="${DIR}/check_mydumper.sh"
   myloader_pre_execution="${DIR}/pre_myloader.sh"
   myloader_clean_database="${DIR}/clean_databases.sql"
 
   mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
   myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user                --defaults-extra-file=${myloader_default_extra_file}"
 
-  mydumper_execute=$(grep '[mydumper]' $mydumper_default_extra_file | wc -l )
-  myloader_execute=$(grep '[myloader]' $myloader_default_extra_file | wc -l )
-
-  mydumper_stream=$(grep 'stream=' $mydumper_default_extra_file | wc -l )
-  myloader_stream=$(grep 'stream=' $myloader_default_extra_file | wc -l )
+  mydumper_execute=0;
+  if [ -f $mydumper_default_extra_file ]
+  then
+    mydumper_stream=$(grep 'stream=' $mydumper_default_extra_file | wc -l )
+    mydumper_execute=$(grep '[mydumper]' $mydumper_default_extra_file | wc -l )
+  fi
+  myloader_execute=0
+  if [ -f $myloader_default_extra_file ]
+  then
+    myloader_execute=$(grep '[myloader]' $myloader_default_extra_file | wc -l )
+    myloader_stream=$(grep 'stream=' $myloader_default_extra_file | wc -l )
+  fi
 
   iter=1
   error=0
+
+
+  if [ -f $mydumper_prepare_database ]
+  then
+    mysql < $mydumper_prepare_database
+  fi
+
   if (( ${mydumper_execute} > 0 ))
   then
     while (( $iter <= $retries ))
@@ -231,6 +247,14 @@ test_case_dir (){
       fi
       error=$?
       cat $tmp_mydumper_log >> $mydumper_log
+
+      if [ -f $mydumper_check ]
+      then
+        "$mydumper_check" $error
+        error=$?
+      fi
+
+
       if (( $error > 0 ))
       then
         print_core
@@ -297,9 +321,9 @@ test_case_dir (){
 
 do_case()
 {
-  number=$( echo "$2" | cut -d'_' -f2 )
   if [[ -n "$case_num"  ]]
   then
+    number=$( echo "$2" | cut -d'_' -f2 )
     if [[ "$case_num" -ne $number ]]
     then
       return
@@ -342,8 +366,14 @@ prepare_full_test()
 
 full_test_global(){
   prepare_full_test
-  for dir in $(find test -name "test_*" -maxdepth 1 -mindepth 1 -type d | sort -t '_' -k 2 -n )  
-  do 
+#  for dir in $(find test -maxdepth 1 -mindepth 1 -name "test_*" -type d | sort -t '_' -k 2 -n )  
+#  do 
+#    echo "Executing test: $dir"
+#    do_case test_case_dir ${dir}
+#  done
+
+  for dir in $(find test -maxdepth 1 -mindepth 1 -name "specific_*" -type d | sort -t '_' -k 2 -n )
+  do
     echo "Executing test: $dir"
     do_case test_case_dir ${dir}
   done
