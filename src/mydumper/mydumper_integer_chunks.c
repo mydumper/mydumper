@@ -286,6 +286,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
             if (new_csi_next){
               csi->deep=csi->deep+1;
               new_csi=clone_chunk_step_item(csi);
+              new_csi->status=ASSIGNED;
               if ( csi->chunk_step->integer_step.is_step_fixed_length ){
                 new_csi->number+=pow(2,csi->deep);
               }
