@@ -6,7 +6,7 @@ tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 mysqldumplog=/tmp/mysqldump.sql
 retries=1
-
+directories="specific test"
 mysql_user=root
 
 die()
@@ -94,7 +94,7 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare,directories:,retry:"
 optstring_short="c:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
@@ -134,6 +134,9 @@ do
     shift;;
   -r|--retry)
     retries=$2
+    shift 2;;
+  --directories)
+    directories=$2
     shift 2;;
   --prepare)
     prepare_only=1
@@ -365,18 +368,16 @@ prepare_full_test()
 }
 
 full_test_global(){
-  prepare_full_test
-#  for dir in $(find test -maxdepth 1 -mindepth 1 -name "test_*" -type d | sort -t '_' -k 2 -n )  
-#  do 
-#    echo "Executing test: $dir"
-#    do_case test_case_dir ${dir}
-#  done
 
-  for dir in $(find test -maxdepth 1 -mindepth 1 -name "specific_*" -type d | sort -t '_' -k 2 -n )
+  for t in $directories 
   do
-    echo "Executing test: $dir"
-    do_case test_case_dir ${dir}
-  done
+    prepare_full_test
+    for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
+    do
+      echo "Executing test: $dir"
+      do_case test_case_dir ${dir}
+    done
+done
 }
 
 full_test(){

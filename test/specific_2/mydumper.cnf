@@ -1,3 +1,7 @@
+#
+# Testing --ignore-engines with multiple engines
+#
+
 [mydumper]
 ignore-engines=MyISAM,InnoDB
 database=specific_1

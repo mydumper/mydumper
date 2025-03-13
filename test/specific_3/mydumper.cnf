@@ -1,3 +1,7 @@
+#
+# Testing --where and then we check if 10 rows has been exported
+#
+
 [mydumper]
 where= id > 5 AND id <= 15
 compact=1
