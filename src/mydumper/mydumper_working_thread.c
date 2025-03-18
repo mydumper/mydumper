@@ -351,6 +351,10 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     MYSQL_RES *result = m_store_result(conn, query, m_critical, "Error showing table status on: %s - Could not execute query", dt[0]);
     g_free(query);
 
+    if (!result) {
+      return;
+    }
+
     guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
     determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
     struct database * database=NULL;
@@ -364,12 +368,6 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_mutex_unlock(database->ad_mutex);
 //        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
       }
-    }
-
-    if (!result) {
-      g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
-      errors++;
-      return;
     }
 
     MYSQL_ROW row;
@@ -1211,10 +1209,8 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
       query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
       result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->name);
       g_free(query);
-      if (!result) {
-        errors++;
+      if (!result)
         return FALSE;
-      }
       while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1236,10 +1232,8 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->name, identifier_quote_character_str);
     result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->name);
     g_free(query);
-    if (!result) {
-      errors++;
+    if (!result)
       return FALSE;
-    }
     while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1267,10 +1261,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   const char *query= "SHOW TABLE STATUS";
   MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->name);
-  if (!result) {
-    errors++;
+  if (!result)
     return;
-  }
 
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);

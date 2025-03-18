@@ -673,6 +673,7 @@ void send_lock_all_tables(MYSQL *conn){
       g_string_printf(query, "SHOW TABLES IN %s LIKE '%s'", dt[0], dt[1]);
       res=m_store_result(conn, query->str, m_error, "Error showing tables in: %s - Could not execute query", dt[0]);
       if (!res){
+        g_warning("Error showing tables in: %s - Could not execute query", dt[0]);
         errors++;
         return;
       }else{
@@ -713,9 +714,7 @@ void send_lock_all_tables(MYSQL *conn){
         "('information_schema', 'performance_schema', 'data_dictionary')");
     }
     res = m_store_result(conn, query->str,m_critical,"Couldn't get table list for lock all tables",NULL);
-    if (!res){
-      errors++;
-    } else {
+    if (res){
       while ((row = mysql_fetch_row(res))) {
         // no need to check if the tb exists in the tables.
         if (tables_skiplist_file && check_skiplist(row[0], row[1]))
@@ -787,7 +786,7 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   const char *gtid_title = NULL;
   guint i;
   guint isms = 0;
-  MYSQL_RES *rest=m_store_result(conn, "SELECT @@default_master_connection", NULL, "Variable @@default_master_connection not found", NULL);
+  MYSQL_RES *rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
   if (rest != NULL && mysql_num_rows(rest)) {
     mysql_free_result(rest);
     g_message("Multisource slave detected.");
@@ -1053,7 +1052,7 @@ void start_dump() {
     nroutines= 2;
 
   // tokudb do not support consistent snapshot
-  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", NULL, "@@tokudb_version not found", NULL);
+  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", m_warning, "@@tokudb_version not found", NULL);
   if (rest && mysql_num_rows(rest)) {
     mysql_free_result(rest);
     g_message("TokuDB detected, creating dummy table for CS");

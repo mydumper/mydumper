@@ -217,7 +217,7 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        where?" WHERE ":"",where?where->str:""), NULL, "Failed to execute EXPLAIN", NULL);
+                        where?" WHERE ":"",where?where->str:""), m_warning, "Failed to execute EXPLAIN", NULL);
 
   g_free(query);
   if (!res){
@@ -245,7 +245,7 @@ guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
   MYSQL_RES *res= m_store_result(conn, query= g_strdup_printf("SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
                                is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                                identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str),
-      NULL, "", NULL);
+      m_warning, "Failed to get count", NULL);
   g_free(query);
   MYSQL_ROW row= mysql_fetch_row(res);
 

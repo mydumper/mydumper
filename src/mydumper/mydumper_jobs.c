@@ -66,6 +66,7 @@ gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *t
   gchar *checksum=fun(conn, database->name, table, &errn);
 //  g_message("Checksum value: %s", checksum);
   if (errn != 0 && !(success_on_1146 && errn == 1146)) {
+    g_warning("Writing checksum");
     errors++;
     return NULL;
   }
@@ -103,10 +104,8 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   }
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping create tablespace", NULL);
   g_free(query);
-  if (!result) {
-    errors++;
+  if (!result)
     return;
-  }
 
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
@@ -143,10 +142,8 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   char *query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping create database (%s)", database->name);
   g_free(query);
-  if (!result){
-    errors++;
+  if (!result)
     return;
-  }
 
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
@@ -200,10 +197,8 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result){
-    errors++;
+  if (!result)
     return;
-  }
 
   g_string_set_size(statement, 0);
 
@@ -328,10 +323,8 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c WHERE %cTable%c = '%s'", identifier_quote_character, dbt->database->name, identifier_quote_character,identifier_quote_character,identifier_quote_character, dbt->table);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping triggers (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result){
-    errors++;
+  if (!result)
     return;
-  }
 
   gchar *message=g_strdup_printf("%s.%s",dbt->database->name, dbt->table);
   write_triggers_definition_into_file(conn, result, dbt->database, message, outfile);
@@ -362,10 +355,8 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
   query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping triggers (%s)", database->name);
   g_free(query);
-  if (result){
-    errors++;
+  if (!result)
     return;
-  }
 
   write_triggers_definition_into_file(conn, result, database, database->name, outfile);
 
@@ -413,10 +404,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   query = g_strdup_printf("SHOW FIELDS FROM %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (result) {
-    errors++;
+  if (!result) 
     return;
-  }
+
   g_string_set_size(statement, 0);
   g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS %c%s%c(\n", identifier_quote_character, dbt->table, identifier_quote_character);
   row = mysql_fetch_row(result);
@@ -443,10 +433,8 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (result) {
-    errors++;
+  if (!result)
     return;
-  }
 
   m_close(0, outfile, filename, 1, dbt);
   g_string_set_size(statement, 0);
@@ -530,10 +518,8 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (result){
-    errors++;
+  if (!result)
     return;
-  }
   g_string_set_size(statement, 0);
 
   /* There should never be more than one row */
@@ -556,10 +542,9 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (result){
-    errors++;
+  if (!result)
     return;
-  }
+
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   row = mysql_fetch_row(result);
@@ -616,10 +601,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
       MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping %s from %s", routine_type[r], database->name);
       g_free(query);
-      if (result){
-        errors++;
+      if (!result)
         return;
-      }
       determine_charset_and_coll_columns_from_show(result, &charcol, &collcol);
 
       while ((row= mysql_fetch_row(result))) {
@@ -633,7 +616,9 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
           return;
         }
         g_string_set_size(statement, 0);
-        result2= m_store_result(conn, query= g_strdup_printf("SHOW CREATE %s %c%s%c.%c%s%c", routine_type[r], identifier_quote_character, database->name, identifier_quote_character,  identifier_quote_character, row[1], identifier_quote_character), m_warning, "Failed to execute SHOW CREATE %s %s.%s", routine_type[r], database->name, row[1]);
+        query= g_strdup_printf("SHOW CREATE %s %c%s%c.%c%s%c", routine_type[r], identifier_quote_character, database->name, identifier_quote_character,  identifier_quote_character, row[1], identifier_quote_character);
+        result2= m_store_result(conn, query,
+            m_warning, "Failed to execute SHOW CREATE %s %s.%s %s", routine_type[r], database->name, row[1], query);
         g_free(query);
         if (result2){
           row2= mysql_fetch_row(result2);
@@ -653,8 +638,6 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
               if (result2)
                 mysql_free_result(result2);
               return;
-            }else{
-              m_warning("Failed to execute SHOW CREATE %s %s.%s", routine_type[r], database->name, row[1]);
             }
           }
         }
@@ -677,10 +660,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     query = g_strdup_printf("SHOW EVENTS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
     MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping events from %s", database->name);
     g_free(query);
-    if (result){
-      errors++;
+    if (!result)
       return;
-    }
     determine_charset_and_coll_columns_from_show(result, &charcol, &collcol);
     while ((row = mysql_fetch_row(result))) {
       set_charset(statement, row[charcol], row[collcol]);

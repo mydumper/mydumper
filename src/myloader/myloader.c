@@ -70,7 +70,7 @@ guint sequences_processed = 0;
 GMutex sequences_mutex;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
-guint errors = 0;
+extern guint errors;
 guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_for_schema_creation=4;

@@ -32,7 +32,7 @@
 //#include "mydumper_global.h"
 
 extern gboolean success_on_1146;
-
+guint errors=0;
 GList *ignore_errors_list=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
@@ -1356,6 +1356,8 @@ static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun(const c
           log_fun("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
         g_free(c);
       }
+//      g_message("Incresing error due: %s", query);
+//      errors++;
       return TRUE;
     }
   }
@@ -1380,7 +1382,6 @@ gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, 
   return res;
 }
 
-
 MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (m_queryv(conn, query, log_fun_1, log_fun_2, fmt, args))
     return NULL;
@@ -1395,7 +1396,6 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
         log_fun_1("%s",c);
       g_free(c);
     }
-    return NULL;
   }
   return res;
 }
