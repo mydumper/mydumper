@@ -247,13 +247,8 @@ MYSQL *create_connection() {
 static
 void detect_quote_character(MYSQL *conn)
 {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
-  const char *query = "SELECT FIND_IN_SET('ANSI', @@SQL_MODE) OR FIND_IN_SET('ANSI_QUOTES', @@SQL_MODE)";
-
-  if (mysql_query(conn, query)){
-    g_warning("We were not able to determine ANSI mode: %s", mysql_error(conn));
+  MYSQL_RES *res = m_store_result(conn, "SELECT FIND_IN_SET('ANSI', @@SQL_MODE) OR FIND_IN_SET('ANSI_QUOTES', @@SQL_MODE)", m_warning, "We were not able to determine ANSI mode",NULL);
+  if (!res){
     identifier_quote_character= BACKTICK;
     identifier_quote_character_str= "`";
     fields_enclosed_by= "\"";
@@ -261,12 +256,8 @@ void detect_quote_character(MYSQL *conn)
 		return ;
   }
 
-  if (!(res = mysql_store_result(conn))){
-    g_warning("We were not able to determine ANSI mode");
-    return ;
-  }
-  row = mysql_fetch_row(res);
-  if (!strcmp(row[0], "0")) {
+  MYSQL_ROW row = mysql_fetch_row(res);
+  if (row && !strcmp(row[0], "0")) {
     identifier_quote_character= BACKTICK;
     identifier_quote_character_str= "`";
     fields_enclosed_by= "\"";
@@ -282,20 +273,14 @@ void detect_quote_character(MYSQL *conn)
 
 static
 void detect_sql_mode(MYSQL *conn){
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-  GString *str;
+  MYSQL_RES *res = m_store_result(conn, "SELECT @@SQL_MODE", m_critical, "Error getting SQL_MODE",NULL);
 
-  const char *query= "SELECT @@SQL_MODE";
-  if (mysql_query(conn, query)){
-    g_critical("Error getting SQL_MODE: %s", mysql_error(conn));
-  }
+  MYSQL_ROW row= mysql_fetch_row(res);
+  GString *str= g_string_new(NULL);
 
-  if (!(res= mysql_store_result(conn))){
-    g_critical("Error getting SQL_MODE");
-  }
-  row= mysql_fetch_row(res);
-  str= g_string_new(NULL);
+  if (!row)
+    m_critical("Error getting SQL_MODE");
+
   if (!g_strstr_len(row[0],-1, "NO_AUTO_VALUE_ON_ZERO"))
     g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
   else
@@ -394,7 +379,6 @@ MYSQL *create_main_connection() {
 
 static
 void get_not_updated(MYSQL *conn, FILE *file) {
-  MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
   gchar *query =
@@ -402,14 +386,10 @@ void get_not_updated(MYSQL *conn, FILE *file) {
                       "information_schema.TABLES WHERE TABLE_TYPE = 'BASE "
                       "TABLE' AND UPDATE_TIME < NOW() - INTERVAL %d DAY",
                       updated_since);
-  if (mysql_query(conn, query)){
-    g_free(query);
-    return;
-  }
-
+  MYSQL_RES *res = m_store_result(conn, query, m_warning, "Updated since query failed", NULL);
   g_free(query);
 
-  if (!(res = mysql_store_result(conn)))
+  if (!res)
     return;
 
   while ((row = mysql_fetch_row(res))) {
@@ -425,12 +405,10 @@ void long_query_wait(MYSQL *conn){
   char *p3=NULL;
     while (TRUE) {
       int longquery_count = 0;
-      if (mysql_query(conn, "SHOW PROCESSLIST")) {
-        g_warning("Could not check PROCESSLIST, no long query guard enabled: %s",
-                  mysql_error(conn));
+      MYSQL_RES *res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST, no long query guard enabled");
+      if (!res){
         break;
       } else {
-        MYSQL_RES *res = mysql_store_result(conn);
         MYSQL_ROW row;
 
         /* Just in case PROCESSLIST output column order changes */
@@ -457,9 +435,7 @@ void long_query_wait(MYSQL *conn){
             continue;
           if (row[tcol] && atoi(row[tcol]) > longquery) {
             if (killqueries) {
-              if (mysql_query(conn,
-                              p3 = g_strdup_printf("KILL %lu", atol(row[icol])))) {
-                g_warning("Could not KILL slow query: %s", mysql_error(conn));
+              if (m_query(conn, p3 = g_strdup_printf("KILL %lu", atol(row[icol])), m_warning, "Could not KILL slow query", NULL)){
                 longquery_count++;
               } else {
                 g_warning("Killed a query that was running for %ss", row[tcol]);
@@ -493,131 +469,64 @@ void long_query_wait(MYSQL *conn){
 }
 
 static
-int mysql_query_verbose(MYSQL *mysql, const char *q)
-{
-  int res= mysql_query(mysql, q);
-  if (!res)
-    g_message("%s: OK", q);
-  else
-    g_message("%s: %s (%d)", q, mysql_error(mysql), res);
-  return res;
-}
-
-static
 void send_backup_stage_on_block_commit(MYSQL *conn){
-/*
-  if (mysql_query(conn, "BACKUP STAGE START")) {
-    m_critical("Couldn't acquire BACKUP STAGE START: %s",
-               mysql_error(conn));
-    errors++;
-  }
-*/
-  if (mysql_query_verbose(conn, "BACKUP STAGE BLOCK_COMMIT")) {
-    m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
-               mysql_error(conn));
-    errors++;
-  }
+  m_query_verbose(conn, "BACKUP STAGE BLOCK_COMMIT", m_critical, "Couldn't acquire BACKUP STAGE BLOCK_COMMIT", NULL);
 }
 
 static
 void send_mariadb_backup_locks(MYSQL *conn){
-  if (mysql_query_verbose(conn, "BACKUP STAGE START")) {
-    m_critical("Couldn't acquire BACKUP STAGE START: %s",
-               mysql_error(conn));
-    errors++;
-  }
-/*
-  if (mysql_query(conn, "BACKUP STAGE FLUSH")) {
-    m_critical("Couldn't acquire BACKUP STAGE FLUSH: %s",
-               mysql_error(conn));
-    errors++;
-  }
-*/
-  if (mysql_query_verbose(conn, "BACKUP STAGE BLOCK_DDL")) {
-    m_critical("Couldn't acquire BACKUP STAGE BLOCK_DDL: %s",
-               mysql_error(conn));
-    errors++;
-  }
-/*
-  if (mysql_query(conn, "BACKUP STAGE BLOCK_COMMIT")) {
-    m_critical("Couldn't acquire BACKUP STAGE BLOCK_COMMIT: %s",
-               mysql_error(conn));
-    errors++;
-  }
-*/
+  m_query_verbose(conn, "BACKUP STAGE START", m_critical, "Couldn't acquire BACKUP STAGE START", NULL);
+  m_query_verbose(conn, "BACKUP STAGE BLOCK_DDL", m_critical, "Couldn't acquire BACKUP STAGE BLOCK_DDL", NULL);
 }
 
 static
 void send_percona57_backup_locks(MYSQL *conn){
-  if (mysql_query_verbose(conn, "LOCK TABLES FOR BACKUP")) {
-    m_critical("Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will "
-               "not be consistent: %s",
-               mysql_error(conn));
-    errors++;
-  }
-
-  if (mysql_query_verbose(conn, "LOCK BINLOG FOR BACKUP")) {
-    m_critical("Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will "
-               "not be consistent: %s",
-               mysql_error(conn));
-    errors++;
-  }
+  m_query_verbose(conn, "LOCK TABLES FOR BACKUP", m_critical, "Couldn't acquire LOCK TABLES FOR BACKUP, snapshots will not be consistent", NULL);
+  m_query_verbose(conn, "LOCK BINLOG FOR BACKUP", m_critical, "Couldn't acquire LOCK BINLOG FOR BACKUP, snapshots will not be consistent", NULL);
 }
 
 static
 void send_ddl_lock_instance_backup(MYSQL *conn){
-  if (mysql_query_verbose(conn, "LOCK INSTANCE FOR BACKUP")) {
-    m_critical("Couldn't acquire LOCK INSTANCE FOR BACKUP: %s",
-               mysql_error(conn));
-    errors++;
-  }
+  m_query_verbose(conn, "LOCK INSTANCE FOR BACKUP", m_critical, "Couldn't acquire LOCK INSTANCE FOR BACKUP", NULL);
 } 
 
 static
 void send_unlock_tables(MYSQL *conn){
-  mysql_query_verbose(conn, "UNLOCK TABLES");
+  m_query_verbose(conn, "UNLOCK TABLES", m_warning, "Failed to UNLOCK TABLES", NULL);
 }
 
 static
 void send_unlock_binlogs(MYSQL *conn){
-  mysql_query_verbose(conn, "UNLOCK BINLOG");
+  m_query_verbose(conn, "UNLOCK BINLOG", m_warning, "Failed to UNLOCK BINLOG", NULL);
 }
 
 static
 void send_ddl_unlock_instance_backup(MYSQL *conn){
-  mysql_query_verbose(conn, "UNLOCK INSTANCE");
+  m_query_verbose(conn, "UNLOCK INSTANCE", m_warning, "Failed to UNLOCK INSTANCE", NULL);
 }
 
 static
 void send_backup_stage_end(MYSQL *conn){
-  mysql_query_verbose(conn, "BACKUP STAGE END");
+  m_query_verbose(conn, "BACKUP STAGE END", m_warning, "Failed to BACKUP STAGE END", NULL);
 }
 
 static
 void send_flush_table_with_read_lock(MYSQL *conn){
-        if (mysql_query_verbose(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES")) {
-          g_warning("Flush tables failed, we are continuing anyways: %s",
-                   mysql_error(conn));
-        }
-       if (mysql_query_verbose(conn, "FLUSH TABLES WITH READ LOCK")) {
-          g_critical("Couldn't acquire global lock, snapshots will not be "
-                   "consistent: %s",
-                   mysql_error(conn));
-          errors++;
-        }
+  m_query_verbose(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES", m_warning, "Flush tables failed, we are continuing anyways", NULL);
+  m_query_verbose(conn, "FLUSH TABLES WITH READ LOCK", m_critical, "Couldn't acquire global lock, snapshots will not be consistent");
 }
-
 
 static
 void initialize_tidb_snapshot(MYSQL *conn){
   if (!tidb_snapshot){
     // Generate a @@tidb_snapshot to use for the worker threads since
     // the tidb-snapshot argument was not specified when starting mydumper
-    m_query(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
-    MYSQL_RES *result = mysql_store_result(conn);
-    MYSQL_ROW row = mysql_fetch_row(result); /* There should never be more than one row */
+    MYSQL_RES *res = m_store_result(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+    MYSQL_ROW row = mysql_fetch_row(res); /* There should never be more than one row */
+    if (!row)
+      m_critical("Couldn't generate @@tidb_snapshot");
     tidb_snapshot = g_strdup(row[1]);
-    mysql_free_result(result);
+    mysql_free_result(res);
   }
   // Need to set the @@tidb_snapshot for the master thread
   set_tidb_snapshot(conn);
@@ -762,13 +671,11 @@ void send_lock_all_tables(MYSQL *conn){
     for (guint i = 0; tables[i] != NULL; i++) {
       dt = g_strsplit(tables[i], ".", 0);
       g_string_printf(query, "SHOW TABLES IN %s LIKE '%s'", dt[0], dt[1]);
-      if (mysql_query(conn, query->str)) {
-        g_error("Error showing tables in: %s - Could not execute query: %s", dt[0],
-                  mysql_error(conn));
+      res=m_store_result(conn, query->str, m_error, "Error showing tables in: %s - Could not execute query", dt[0]);
+      if (!res){
         errors++;
         return;
-      }else {
-        res = mysql_store_result(conn);
+      }else{
         while ((row = mysql_fetch_row(res))) {
           if (tables_skiplist_file && check_skiplist(dt[0], row[0]))
             continue;
@@ -805,12 +712,10 @@ void send_lock_all_tables(MYSQL *conn){
         "WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN "
         "('information_schema', 'performance_schema', 'data_dictionary')");
     }
-    if (mysql_query(conn, query->str)) {
-      g_critical("Couldn't get table list for lock all tables: %s",
-                 mysql_error(conn));
+    res = m_store_result(conn, query->str,m_critical,"Couldn't get table list for lock all tables",NULL);
+    if (!res){
       errors++;
     } else {
-      res = mysql_store_result(conn);
       while ((row = mysql_fetch_row(res))) {
         // no need to check if the tb exists in the tables.
         if (tables_skiplist_file && check_skiplist(row[0], row[1]))
@@ -835,7 +740,7 @@ void send_lock_all_tables(MYSQL *conn){
       }
       g_strrstr(query->str,",")[0]=' ';
 
-      if (mysql_query(conn, query->str)) {
+      if (m_query(conn, query->str, m_warning, "Lock Table failed", NULL)) {
         gchar *failed_table = NULL;
         gchar **tmp_fail;
 
@@ -882,8 +787,7 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   const char *gtid_title = NULL;
   guint i;
   guint isms = 0;
-  mysql_query(conn, "SELECT @@default_master_connection");
-  MYSQL_RES *rest = mysql_store_result(conn);
+  MYSQL_RES *rest=m_store_result(conn, "SELECT @@default_master_connection", NULL, "Variable @@default_master_connection not found", NULL);
   if (rest != NULL && mysql_num_rows(rest)) {
     mysql_free_result(rest);
     g_message("Multisource slave detected.");
@@ -903,14 +807,10 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   }
   mysql_free_result(slave);
   g_message("Stopping replica");
-  replica_stopped=!mysql_query(conn, stop_replica_sql_thread);
-  if (!replica_stopped){
-    g_warning("Not able to stop replica: %s", mysql_error(conn));
-  }
+  replica_stopped=!m_query(conn, stop_replica_sql_thread, m_warning, "Not able to stop replica",NULL);
   if (source_control_command==AWS){
     discard_mysql_output(conn);
   } 
-
 
   if (isms)  
     m_query(conn, show_all_replicas_status, m_critical, "Error executing %s", show_all_replicas_status);
@@ -1145,9 +1045,7 @@ void start_dump() {
   // TODO: this should be deleted on future releases. 
   server_version= mysql_get_server_version(conn);
   if (server_version < 40108) {
-    mysql_query(
-        conn,
-        "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB");
+    m_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB", m_warning, "Not able to create dummy table for InnoDB", NULL);
     need_dummy_read = 1;
   }
   // TODO: MySQL also supports PACKAGE (Percona?)
@@ -1155,30 +1053,23 @@ void start_dump() {
     nroutines= 2;
 
   // tokudb do not support consistent snapshot
-  mysql_query(conn, "SELECT @@tokudb_version");
-  MYSQL_RES *rest = mysql_store_result(conn);
-  if (rest != NULL && mysql_num_rows(rest)) {
+  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", NULL, "@@tokudb_version not found", NULL);
+  if (rest && mysql_num_rows(rest)) {
     mysql_free_result(rest);
     g_message("TokuDB detected, creating dummy table for CS");
-    mysql_query(
-        conn,
-        "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB");
+    m_query(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB", m_warning, "Not able to create dummy table for TokuDB", NULL);
     need_dummy_toku_read = 1;
   }
 
   if (need_dummy_read) {
-    mysql_query(conn,
-                "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
-    MYSQL_RES *res = mysql_store_result(conn);
-    if (res)
-      mysql_free_result(res);
+    rest = m_store_result(conn, "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy", m_warning, "Select on mysql.mydumperdummy has failed", NULL);
+    if (rest)
+      mysql_free_result(rest);
   }
   if (need_dummy_toku_read) {
-    mysql_query(conn,
-                "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy");
-    MYSQL_RES *res = mysql_store_result(conn);
-    if (res)
-      mysql_free_result(res);
+    rest = m_store_result(conn, "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy", m_warning, "Select on mysql.tokudbdummy has failed", NULL);
+    if (rest)
+      mysql_free_result(rest);
   }
 
   // Initilizing the configuration
@@ -1268,9 +1159,8 @@ void start_dump() {
     }
     if (replica_stopped){
       g_message("Starting replica");
-      if (mysql_query(conn, start_replica_sql_thread)){
-        g_warning("Not able to start replica: %s", mysql_error(conn));
-      }
+      m_query(conn, start_replica_sql_thread, m_warning, "Not able to start replica", NULL);
+
       if (source_control_command==AWS){
         discard_mysql_output(conn);
       }
@@ -1338,9 +1228,8 @@ void start_dump() {
   // At this point, we can start the replica if it was stopped
   if (replica_stopped){
     g_message("Starting replica");
-    if (mysql_query(conn, start_replica_sql_thread)){
-      g_warning("Not able to start replica: %s", mysql_error(conn));
-    }
+    m_query(conn, start_replica_sql_thread, m_warning, "Not able to start replica", NULL);
+
     if (source_control_command==AWS){
       discard_mysql_output(conn);
     }

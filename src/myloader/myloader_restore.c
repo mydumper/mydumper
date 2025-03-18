@@ -209,7 +209,7 @@ gboolean request_another_connection(struct thread_data *td, struct io_restore_re
 
 
 int m_commit(struct connection_data *cd){
-  if (!m_query(cd->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
+  if (m_query(cd->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
     errors++;
     return 2;
   }

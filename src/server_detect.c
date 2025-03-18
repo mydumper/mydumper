@@ -58,65 +58,64 @@ gboolean server_support_tablespaces(){
 }
 
 void detect_server_version(MYSQL * conn) {
-  if (mysql_query(conn, "SELECT @@version_comment, @@version")){
-    g_warning("Not able to determine database version: %s",
-                 mysql_error(conn));
-    return;
-  }
+  MYSQL_RES *res = m_store_result(conn, "SELECT @@version_comment, @@version",m_warning,"Not able to determine database version", NULL);
+  if (res){
+    gchar *ascii_version=NULL;
+    gchar *ascii_version_comment=NULL;
 
-  MYSQL_RES *res = mysql_store_result(conn);
+    MYSQL_ROW ver;
+    ver = mysql_fetch_row(res);
+    if (ver){
+      ascii_version=g_ascii_strdown(ver[1],-1);
+      ascii_version_comment=g_ascii_strdown(ver[0],-1);
 
-  if (!res){
-    g_warning("Not able to determine database version");
-    return;
-  }
-
-  MYSQL_ROW ver;
-  ver = mysql_fetch_row(res);
-  gchar *ascii_version=g_ascii_strdown(ver[1],-1);
-  gchar *ascii_version_comment=g_ascii_strdown(ver[0],-1);
-
-  if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
-    product = SERVER_TYPE_PERCONA;
-  }else
-  if (g_strstr_len(ascii_version, -1, "mariadb") || g_strstr_len(ascii_version_comment, -1, "mariadb")){
-    product = SERVER_TYPE_MARIADB;
-  }else
-  if (g_strstr_len(ascii_version, -1, "tidb") || g_strstr_len(ascii_version_comment, -1, "tidb")){
-    product = SERVER_TYPE_TIDB;
-  }else
-  if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
-    product = SERVER_TYPE_MYSQL;    
-  }else
-  if (g_strstr_len(ascii_version, -1, "dolt") || g_strstr_len(ascii_version_comment, -1, "dolt")){
-    product = SERVER_TYPE_DOLT;
-  }
-	gchar ** sver=g_strsplit(ver[1],".",3);
-
-  if (product == SERVER_TYPE_UNKNOWN){
-		mysql_free_result(res);
-		mysql_query(conn, "SELECT value FROM system.build_options where name='VERSION_FULL'");
-		res = mysql_store_result(conn);
-		if (res){
-			ver = mysql_fetch_row(res);
-			ascii_version=g_ascii_strdown(ver[0],-1);
-			gchar ** psver=g_strsplit(ascii_version," ",2);
-	    if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
-        product = SERVER_TYPE_CLICKHOUSE;
-				sver=g_strsplit(psver[1],".",4);
+      if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
+        product = SERVER_TYPE_PERCONA;
+      }else
+      if (g_strstr_len(ascii_version, -1, "mariadb") || g_strstr_len(ascii_version_comment, -1, "mariadb")){
+        product = SERVER_TYPE_MARIADB;
+      }else
+      if (g_strstr_len(ascii_version, -1, "tidb") || g_strstr_len(ascii_version_comment, -1, "tidb")){
+        product = SERVER_TYPE_TIDB;
+      }else
+      if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
+        product = SERVER_TYPE_MYSQL;    
+      }else
+      if (g_strstr_len(ascii_version, -1, "dolt") || g_strstr_len(ascii_version_comment, -1, "dolt")){
+        product = SERVER_TYPE_DOLT;
       }
-			g_strfreev(psver);
-		}
-	}
+    }
 
+  	gchar ** sver=NULL;
+    if (product == SERVER_TYPE_UNKNOWN){
+  	  mysql_free_result(res);
+      res=m_store_result(conn, "SELECT value FROM system.build_options where name='VERSION_FULL'",m_warning,"Not able to determine database version", NULL);
+		  if (res){
+        ver = mysql_fetch_row(res);
+        if (ver){
+	        ascii_version=g_ascii_strdown(ver[0],-1);
+          gchar ** psver=g_strsplit(ascii_version," ",2);
+          if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
+            product = SERVER_TYPE_CLICKHOUSE;
+		        sver=g_strsplit(psver[1],".",4);
+          }
+			    g_strfreev(psver);
+        }
+		  }else
+        sver=g_strsplit("0.0.0",".",3);
+	  }else
+      sver=g_strsplit(ver[1],".",3);
+  
 
-  major=strtol(sver[0], NULL, 10);
-  secondary=strtol(sver[1], NULL, 10);
-  revision=strtol(sver[2], NULL, 10);
-  g_strfreev(sver);
-  mysql_free_result(res);
-  g_free(ascii_version);
-  g_free(ascii_version_comment);
+    major=strtol(sver[0], NULL, 10);
+    secondary=strtol(sver[1], NULL, 10);
+    revision=strtol(sver[2], NULL, 10);
+    g_strfreev(sver);
+    if (res)
+      mysql_free_result(res);
+    g_free(ascii_version);
+    g_free(ascii_version_comment);
+  }
 
   show_replica_status=SHOW_SLAVE_STATUS;
   show_binary_log_status=SHOW_MASTER_STATUS;

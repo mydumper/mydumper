@@ -30,7 +30,6 @@
 #include "mydumper_common.h"
 #include "mydumper_chunks.h"
 #include "mydumper_integer_chunks.h"
-#include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
 #include "mydumper_create_jobs.h"
 
@@ -43,7 +42,6 @@ GThread *chunk_builder=NULL;
 void initialize_chunk(){
   give_me_another_transactional_chunk_step_queue=g_async_queue_new();
   give_me_another_non_transactional_chunk_step_queue=g_async_queue_new();
-  initialize_char_chunk();
 }
 
 void start_chunk_builder(struct configuration *conf){
@@ -83,28 +81,29 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     gchar *field=g_list_nth_data(dbt->primary_key, position);
     gchar *query = NULL;
     MYSQL_ROW row;
-    MYSQL_RES *minmax = NULL;
     /* Get minimum/maximum */
-    mysql_query(conn, query = g_strdup_printf(
+    MYSQL_RES *minmax = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s MIN(%s%s%s),MAX(%s%s%s),LEFT(MIN(%s%s%s),1),LEFT(MAX(%s%s%s),1) FROM %s%s%s.%s%s%s %s %s %s %s",
                         is_mysql_like()? "/*!40001 SQL_NO_CACHE */":"",
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
 			identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-			where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
+			where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""),
+        m_message, "It is NONE with minmax == NULL", NULL);
 //    g_message("Query: %s", query);
     g_free(query);
-    minmax = mysql_store_result(conn);
 
-    if (!minmax){
-      g_message("It is NONE with minmax == NULL");
+    if (!minmax)
+      return new_none_chunk_step();
+
+    row = mysql_fetch_row(minmax);
+    if (!row){
+      mysql_free_result(minmax);
+      m_message("It is NONE with row == NULL");
       return new_none_chunk_step();
     }
 
-    row = mysql_fetch_row(minmax);
-
     MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-    gulong *lengths = mysql_fetch_lengths(minmax);
     /* Check if all values are NULL */
     if (row[0] == NULL){
       if (minmax)
@@ -192,15 +191,9 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         break;
       case MYSQL_TYPE_STRING:
       case MYSQL_TYPE_VAR_STRING:
-
         if (minmax)
           mysql_free_result(minmax);
         return new_none_chunk_step();
-
-        csi=new_char_step_item(conn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
-        if (minmax)
-          mysql_free_result(minmax);
-        return csi;
         break;
       default:
         if (minmax)
@@ -217,24 +210,21 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field){
   gchar *query = NULL;
   MYSQL_ROW row = NULL;
-  MYSQL_RES *res= NULL;
   /* Get minimum/maximum */
 
-  mysql_query(conn, query = g_strdup_printf(
+  MYSQL_RES *res=m_store_result(conn, query = g_strdup_printf(
                         "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        where?" WHERE ":"",where?where->str:""));
+                        where?" WHERE ":"",where?where->str:""), NULL, "Failed to execute EXPLAIN", NULL);
 
   g_free(query);
-  res = mysql_store_result(conn);
-
-  guint row_col=-1;
-
   if (!res){
     return 0;
   }
+
+  guint row_col=-1;
   determine_explain_columns(res, &row_col);
   row = mysql_fetch_row(res);
 
@@ -250,13 +240,13 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
 static
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
 {
-  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
-                               is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                               identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  mysql_query(conn, query);
+  char *query= NULL;
 
+  MYSQL_RES *res= m_store_result(conn, query= g_strdup_printf("SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
+                               is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                               identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str),
+      NULL, "", NULL);
   g_free(query);
-  MYSQL_RES *res= mysql_store_result(conn);
   MYSQL_ROW row= mysql_fetch_row(res);
 
   if (!row || !row[0]) {
