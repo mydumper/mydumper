@@ -879,7 +879,7 @@ void write_table_job_into_file(struct table_job * tj){
       ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
       order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
-  ), NULL, "Failed to execute query", NULL);
+  ), m_warning, "Failed to execute query", NULL);
 
   if (!result){
     if (!it_is_a_consistent_backup){

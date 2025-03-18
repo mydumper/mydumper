@@ -138,7 +138,6 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
 
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
-
   char *query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
   MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping create database (%s)", database->name);
   g_free(query);
@@ -749,11 +748,11 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
 }
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
-  struct database_job * tj = (struct database_job *)job->job_data;
+  struct database_job * dj = (struct database_job *)job->job_data;
   g_message("Thread %d: dumping schema create for %s%s%s", td->thread_id,
-            identifier_quote_character_str, masquerade_filename?tj->database->filename:tj->database->name, identifier_quote_character_str);
-  write_schema_definition_into_file(td->thrconn, tj->database, tj->filename);
-  free_database_job(tj);
+            identifier_quote_character_str, masquerade_filename?dj->database->filename:dj->database->name, identifier_quote_character_str);
+  write_schema_definition_into_file(td->thrconn, dj->database, dj->filename);
+  free_database_job(dj);
   g_free(job);
 }
 

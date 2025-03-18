@@ -406,7 +406,6 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     g_strfreev(dt);
   }
 
-  g_free(query);
   if (g_atomic_int_dec_and_test(&database_counter)) {
     g_async_queue_push(conf->db_ready,GINT_TO_POINTER(1));
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
