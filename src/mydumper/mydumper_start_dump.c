@@ -273,18 +273,14 @@ void detect_quote_character(MYSQL *conn)
 
 static
 void detect_sql_mode(MYSQL *conn){
-  MYSQL_RES *res = m_store_result(conn, "SELECT @@SQL_MODE", m_critical, "Error getting SQL_MODE",NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@SQL_MODE", m_critical, "Error getting SQL_MODE",NULL);
 
-  MYSQL_ROW row= mysql_fetch_row(res);
   GString *str= g_string_new(NULL);
 
-  if (!row)
-    m_critical("Error getting SQL_MODE");
-
-  if (!g_strstr_len(row[0],-1, "NO_AUTO_VALUE_ON_ZERO"))
-    g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", row[0]);
+  if (!g_strstr_len(mr->row[0],-1, "NO_AUTO_VALUE_ON_ZERO"))
+    g_string_printf(str, "'NO_AUTO_VALUE_ON_ZERO,%s'", mr->row[0]);
   else
-    g_string_printf(str, "'%s'", row[0]);
+    g_string_printf(str, "'%s'", mr->row[0]);
   g_string_replace(str, "NO_BACKSLASH_ESCAPES", "", 0);
   g_string_replace(str, ",,", ",", 0);
 
@@ -309,7 +305,7 @@ void detect_sql_mode(MYSQL *conn){
   g_string_replace(str, ",,", ",", 0);
   sql_mode= g_string_free(str, FALSE);
   g_assert(sql_mode);
-  mysql_free_result(res);
+  m_store_result_row_free(mr);
 }
 
 static
@@ -521,12 +517,9 @@ void initialize_tidb_snapshot(MYSQL *conn){
   if (!tidb_snapshot){
     // Generate a @@tidb_snapshot to use for the worker threads since
     // the tidb-snapshot argument was not specified when starting mydumper
-    MYSQL_RES *res = m_store_result(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
-    MYSQL_ROW row = mysql_fetch_row(res); /* There should never be more than one row */
-    if (!row)
-      m_critical("Couldn't generate @@tidb_snapshot");
-    tidb_snapshot = g_strdup(row[1]);
-    mysql_free_result(res);
+    struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+    tidb_snapshot = g_strdup(mr->row[1]);
+    m_store_result_row_free(mr);
   }
   // Need to set the @@tidb_snapshot for the master thread
   set_tidb_snapshot(conn);

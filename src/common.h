@@ -87,6 +87,11 @@ struct configuration_per_table{
   GHashTable *all_rows_per_table;
 };
 
+struct M_ROW{
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+};
+
 #define STREAM_BUFFER_SIZE 1000000
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
@@ -214,6 +219,8 @@ gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, 
 MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 MYSQL_RES *m_store_result_success_on_1146(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), void log_fun_success_on_1146(const char *, ...), const char *fmt, ...);
 MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), const char *fmt, ...);
+void m_store_result_row_free(struct M_ROW* mr);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);

@@ -276,7 +276,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
     }
     g_string_set_size(statement, 0);
     result2 = m_store_result(conn, query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", identifier_quote_character, database->name, identifier_quote_character, identifier_quote_character, row[0], identifier_quote_character),
-        NULL, "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
+        m_warning, "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
     g_free(query);
     if (result2){
       row2 = mysql_fetch_row(result2);

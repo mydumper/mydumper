@@ -1421,6 +1421,30 @@ MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char
   return m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
 }
 
+struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  struct M_ROW *mr=g_new0(struct M_ROW,1);
+  mr->res = m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+
+  mr->row= mysql_fetch_row(mr->res);
+
+  if (!mr->row){
+    if (fmt && log_fun){
+      gchar *c=g_strdup_vprintf(fmt,args);
+      log_fun("%s",c);
+      g_free(c);
+    }
+  }
+  return mr;
+}
+
+void m_store_result_row_free(struct M_ROW* mr){
+  mysql_free_result(mr->res);
+  g_free(mr);
+}
+
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text){
   GThread * thread=g_thread_new(title, func, data);
   if (thread == NULL) {
