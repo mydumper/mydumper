@@ -98,7 +98,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
      if (strlen(line[i])>2){
        GString *str=g_string_new(line[i]);
        g_string_append_c(str,';');
-       m_query(conn, str->str, m_warning, "Sending replication command: %s", str->str);
+       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
        g_string_free(str,TRUE);
      }
   }
@@ -367,7 +367,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 gboolean execute_use(struct connection_data *cd){
   if (cd->current_database){
     gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
-    if (m_query(cd->thrconn, query, m_warning, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database)) {
+    if (m_query_warning(cd->thrconn, query, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database)) {
       g_free(query);
       return TRUE;
     }

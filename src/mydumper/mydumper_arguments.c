@@ -127,7 +127,11 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-
+  if (!strcmp(option_name,"--success-on-1146")){
+    ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(1146));
+    success_on_1146=TRUE;
+    return TRUE;
+  }
 
   return common_arguments_callback(option_name, value, data, error);
 }
@@ -158,7 +162,7 @@ static GOptionEntry extra_entries[] = {
      NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
+    {"isuccess-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},

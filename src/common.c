@@ -1325,6 +1325,14 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
       source_control_command=AWS;
       return TRUE;
     }
+  } else if (!strcmp(option_name, "--ignore-errors")){
+    guint n=0;
+    gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
+    while(tmp_ignore_errors_list[n]!=NULL){
+      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
+      n++;
+    }
+    return TRUE;
   }
   return FALSE;
 }
@@ -1345,21 +1353,17 @@ void discard_mysql_output(MYSQL *conn){
   }
 }
 
-static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...), void log_fun_success_on_1146(const char *, ...), const char *fmt, va_list args){
+static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (mysql_query(conn, query)){
-    if(!g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) ))){
-      if (fmt && log_fun){
-        gchar *c=g_strdup_vprintf(fmt,args);
-        if (log_fun_success_on_1146 && success_on_1146 && mysql_errno(conn) == 1146 )
-          log_fun_success_on_1146("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-        else
-          log_fun("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-        g_free(c);
-      }
-//      g_message("Incresing error due: %s", query);
-//      errors++;
-      return TRUE;
+    if( fmt && log_fun_1 ){
+      gchar *c=g_strdup_vprintf(fmt,args);
+      if (g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) )) )
+        log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+      else
+        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+      g_free(c);
     }
+    return TRUE;
   }
   return FALSE;
 }
@@ -1370,6 +1374,30 @@ gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, .
   if (fmt)
     va_start(args, fmt);
   return m_queryv(conn, query, log_fun, NULL, fmt,args);
+}
+
+// Executes the query, if there is an error it send critical stopping the process unless the error is ignored
+gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, m_warning, NULL, fmt,args);
+}
+
+// Executes the query, if there is an error it send critical stopping the process unless the error is ignored
+gboolean m_query_critical(  MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, m_critical, m_warning, fmt,args);
+}
+
+
+gboolean m_query_ext(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, log_fun_1, log_fun_2, fmt,args);
 }
 
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...){
@@ -1390,7 +1418,7 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
   if (!res){
     if (fmt && log_fun_1){
       gchar *c=g_strdup_vprintf(fmt,args);
-      if (log_fun_2 && success_on_1146 && mysql_errno(conn) == 1146 )
+      if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
         log_fun_2("%s",c);
       else
         log_fun_1("%s",c);
@@ -1400,11 +1428,11 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
   return res;
 }
 
-MYSQL_RES *m_store_result_success_on_1146(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), void log_fun_success_on_1146(const char *, ...), const char *fmt, ...){
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...){
   va_list args;
   if (fmt)
     va_start(args, fmt);
-  return m_resultv(mysql_store_result, conn, query, log_fun, log_fun_success_on_1146, fmt, args);
+  return m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
 }
 
 MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){

@@ -392,6 +392,7 @@ void get_not_updated(MYSQL *conn, FILE *file) {
     no_updated_tables = g_list_prepend(no_updated_tables, row[0]);
     fprintf(file, "%s\n", row[0]);
   }
+  mysql_free_result(res);
   no_updated_tables = g_list_reverse(no_updated_tables);
   fflush(file);
 }
@@ -399,69 +400,69 @@ void get_not_updated(MYSQL *conn, FILE *file) {
 static
 void long_query_wait(MYSQL *conn){
   char *p3=NULL;
-    while (TRUE) {
-      int longquery_count = 0;
-      MYSQL_RES *res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST, no long query guard enabled");
-      if (!res){
-        break;
-      } else {
-        MYSQL_ROW row;
+  while (TRUE) {
+    int longquery_count = 0;
+    MYSQL_RES *res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST, no long query guard enabled");
+    if (!res){
+       break;
+    } else {
+      MYSQL_ROW row;
 
-        /* Just in case PROCESSLIST output column order changes */
-        MYSQL_FIELD *fields = mysql_fetch_fields(res);
-        guint i;
-        int tcol = -1, ccol = -1, icol = -1, ucol = -1;
-        for (i = 0; i < mysql_num_fields(res); i++) {
-        if (!strcasecmp(fields[i].name, "Command"))
-            ccol = i;
-          else if (!strcasecmp(fields[i].name, "Time"))
-            tcol = i;
-          else if (!strcasecmp(fields[i].name, "Id"))
-            icol = i;
-          else if (!strcasecmp(fields[i].name, "User"))
-            ucol = i;
-        }
-        if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-          m_critical("Error obtaining information from processlist");
-        }
-        while ((row = mysql_fetch_row(res))) {
-          if (row[ccol] && strcmp(row[ccol], "Query"))
-            continue;
-          if (row[ucol] && !strcmp(row[ucol], "system user"))
-            continue;
-          if (row[tcol] && atoi(row[tcol]) > longquery) {
-            if (killqueries) {
-              if (m_query(conn, p3 = g_strdup_printf("KILL %lu", atol(row[icol])), m_warning, "Could not KILL slow query", NULL)){
-                longquery_count++;
-              } else {
-                g_warning("Killed a query that was running for %ss", row[tcol]);
-              }
-              g_free(p3);
-            } else {
+      /* Just in case PROCESSLIST output column order changes */
+      MYSQL_FIELD *fields = mysql_fetch_fields(res);
+      guint i;
+      int tcol = -1, ccol = -1, icol = -1, ucol = -1;
+      for (i = 0; i < mysql_num_fields(res); i++) {
+      if (!strcasecmp(fields[i].name, "Command"))
+        ccol = i;
+      else if (!strcasecmp(fields[i].name, "Time"))
+        tcol = i;
+      else if (!strcasecmp(fields[i].name, "Id"))
+        icol = i;
+      else if (!strcasecmp(fields[i].name, "User"))
+        ucol = i;
+      }
+      if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
+        m_critical("Error obtaining information from processlist");
+      }
+      while ((row = mysql_fetch_row(res))) {
+        if (row[ccol] && strcmp(row[ccol], "Query"))
+          continue;
+        if (row[ucol] && !strcmp(row[ucol], "system user"))
+          continue;
+        if (row[tcol] && atoi(row[tcol]) > longquery) {
+          if (killqueries) {
+            if (m_query_warning(conn, p3 = g_strdup_printf("KILL %lu", atol(row[icol])), "Could not KILL slow query", NULL)){
               longquery_count++;
+            } else {
+              g_warning("Killed a query that was running for %ss", row[tcol]);
             }
+            g_free(p3);
+          } else {
+            longquery_count++;
           }
-        }
-        mysql_free_result(res);
-        if (longquery_count == 0)
-          break;
-        else {
-          if (longquery_retries == 0) {
-            m_critical("There are queries in PROCESSLIST running longer than "
-                       "%us, aborting dump,\n\t"
-                       "use --long-query-guard to change the guard value, kill "
-                       "queries (--kill-long-queries) or use \n\tdifferent "
-                       "server for dump",
-                       longquery);
-          }
-          longquery_retries--;
-          g_warning("There are queries in PROCESSLIST running longer than "
-                         "%us, retrying in %u seconds (%u left).",
-                         longquery, longquery_retry_interval, longquery_retries);
-          sleep(longquery_retry_interval);
         }
       }
+      mysql_free_result(res);
+      if (longquery_count == 0)
+        break;
+      else {
+        if (longquery_retries == 0) {
+          m_critical("There are queries in PROCESSLIST running longer than "
+                     "%us, aborting dump,\n\t"
+                     "use --long-query-guard to change the guard value, kill "
+                     "queries (--kill-long-queries) or use \n\tdifferent "
+                     "server for dump",
+                     longquery);
+        }
+        longquery_retries--;
+        g_warning("There are queries in PROCESSLIST running longer than "
+                       "%us, retrying in %u seconds (%u left).",
+                       longquery, longquery_retry_interval, longquery_retries);
+        sleep(longquery_retry_interval);
+      }
     }
+  }
 }
 
 static
@@ -664,12 +665,8 @@ void send_lock_all_tables(MYSQL *conn){
     for (guint i = 0; tables[i] != NULL; i++) {
       dt = g_strsplit(tables[i], ".", 0);
       g_string_printf(query, "SHOW TABLES IN %s LIKE '%s'", dt[0], dt[1]);
-      res=m_store_result(conn, query->str, m_error, "Error showing tables in: %s - Could not execute query", dt[0]);
-      if (!res){
-        g_warning("Error showing tables in: %s - Could not execute query", dt[0]);
-        errors++;
-        return;
-      }else{
+      res=m_store_result_critical(conn, query->str, "Error showing tables in: %s - Could not execute query", dt[0]);
+      if (res){
         while ((row = mysql_fetch_row(res))) {
           if (tables_skiplist_file && check_skiplist(dt[0], row[0]))
             continue;
@@ -706,7 +703,7 @@ void send_lock_all_tables(MYSQL *conn){
         "WHERE TABLE_TYPE ='BASE TABLE' AND TABLE_SCHEMA NOT IN "
         "('information_schema', 'performance_schema', 'data_dictionary')");
     }
-    res = m_store_result(conn, query->str,m_critical,"Couldn't get table list for lock all tables",NULL);
+    res = m_store_result_critical(conn, query->str, "Couldn't get table list for lock all tables", NULL);
     if (res){
       while ((row = mysql_fetch_row(res))) {
         // no need to check if the tb exists in the tables.
@@ -732,7 +729,7 @@ void send_lock_all_tables(MYSQL *conn){
       }
       g_strrstr(query->str,",")[0]=' ';
 
-      if (m_query(conn, query->str, m_warning, "Lock Table failed", NULL)) {
+      if (m_query_warning(conn, query->str, "Lock Table failed", NULL)) {
         gchar *failed_table = NULL;
         gchar **tmp_fail;
 
@@ -779,17 +776,20 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   const char *gtid_title = NULL;
   guint i;
   guint isms = 0;
-  MYSQL_RES *rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
-  if (rest != NULL && mysql_num_rows(rest)) {
-    mysql_free_result(rest);
-    g_message("Multisource slave detected.");
-    isms = 1;
+  MYSQL_RES *rest=NULL;
+  if (get_product() == SERVER_TYPE_MARIADB ){
+    rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
+    if (rest != NULL && mysql_num_rows(rest)) {
+      mysql_free_result(rest);
+      g_message("Multisource slave detected.");
+      isms = 1;
+    }
   }
 
   if (isms)
-    m_query(conn, show_all_replicas_status , m_critical, "Error executing %s", show_all_replicas_status);
+    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
   else
-    m_query(conn, show_replica_status, m_critical, "Error executing %s", show_replica_status);
+    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
 
   guint slave_count=0;
   slave = mysql_store_result(conn);
@@ -799,15 +799,15 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   }
   mysql_free_result(slave);
   g_message("Stopping replica");
-  replica_stopped=!m_query(conn, stop_replica_sql_thread, m_warning, "Not able to stop replica",NULL);
+  replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
   if (source_control_command==AWS){
     discard_mysql_output(conn);
   } 
 
   if (isms)  
-    m_query(conn, show_all_replicas_status, m_critical, "Error executing %s", show_all_replicas_status);
+    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
   else
-    m_query(conn, show_replica_status, m_critical, "Error executing %s", show_replica_status);
+    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
 
   slave = mysql_store_result(conn);
 
@@ -1037,7 +1037,7 @@ void start_dump() {
   // TODO: this should be deleted on future releases. 
   server_version= mysql_get_server_version(conn);
   if (server_version < 40108) {
-    m_query(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB", m_warning, "Not able to create dummy table for InnoDB", NULL);
+    m_query_warning(conn, "CREATE TABLE IF NOT EXISTS mysql.mydumperdummy (a INT) ENGINE=INNODB", "Not able to create dummy table for InnoDB", NULL);
     need_dummy_read = 1;
   }
   // TODO: MySQL also supports PACKAGE (Percona?)
@@ -1045,12 +1045,15 @@ void start_dump() {
     nroutines= 2;
 
   // tokudb do not support consistent snapshot
-  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", m_warning, "@@tokudb_version not found", NULL);
-  if (rest && mysql_num_rows(rest)) {
+  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", m_message, "@@tokudb_version not found", NULL);
+  if (rest){
+    if (mysql_num_rows(rest)) {
+      mysql_free_result(rest);
+      g_message("TokuDB detected, creating dummy table for CS");
+      m_query_warning(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB", "Not able to create dummy table for TokuDB", NULL);
+      need_dummy_toku_read = 1;
+    }
     mysql_free_result(rest);
-    g_message("TokuDB detected, creating dummy table for CS");
-    m_query(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB", m_warning, "Not able to create dummy table for TokuDB", NULL);
-    need_dummy_toku_read = 1;
   }
 
   if (need_dummy_read) {
@@ -1151,7 +1154,7 @@ void start_dump() {
     }
     if (replica_stopped){
       g_message("Starting replica");
-      m_query(conn, start_replica_sql_thread, m_warning, "Not able to start replica", NULL);
+      m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
       if (source_control_command==AWS){
         discard_mysql_output(conn);
@@ -1220,7 +1223,7 @@ void start_dump() {
   // At this point, we can start the replica if it was stopped
   if (replica_stopped){
     g_message("Starting replica");
-    m_query(conn, start_replica_sql_thread, m_warning, "Not able to start replica", NULL);
+    m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
     if (source_control_command==AWS){
       discard_mysql_output(conn);

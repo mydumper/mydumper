@@ -216,8 +216,10 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
+gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...);
+gboolean m_query_critical( MYSQL *conn, const gchar *query, const char *fmt, ...);
 MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
-MYSQL_RES *m_store_result_success_on_1146(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), void log_fun_success_on_1146(const char *, ...), const char *fmt, ...);
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...);
 MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), const char *fmt, ...);
 void m_store_result_row_free(struct M_ROW* mr);

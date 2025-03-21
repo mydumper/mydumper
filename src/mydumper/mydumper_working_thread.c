@@ -449,12 +449,12 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   if (use_savepoints){
     if (td->table_name!=NULL){
       if (tj->dbt->table != td->table_name){
-        m_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", m_critical, "Rollback to savepoint failed", NULL);
-        m_query(td->thrconn, "SAVEPOINT mydumper", m_critical,"Savepoint failed", NULL);
+        m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed", NULL);
+        m_query_critical(td->thrconn, "SAVEPOINT mydumper","Savepoint failed", NULL);
         td->table_name = tj->dbt->table;
       }
     }else{
-      m_query(td->thrconn, "SAVEPOINT mydumper", m_critical, "Savepoint failed", NULL);
+      m_query_critical(td->thrconn, "SAVEPOINT mydumper", "Savepoint failed", NULL);
       td->table_name = tj->dbt->table;
     }
   }
@@ -476,9 +476,10 @@ void initialize_thread(struct thread_data *td){
 }
 
 void initialize_consistent_snapshot(struct thread_data *td){
-  gchar *query;
+  gchar *query=NULL;
   if ( sync_wait != -1)
-    m_query(td->thrconn, query=g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait), m_critical, "Failed to set wsrep_sync_wait for the thread",NULL);
+    m_query_critical(td->thrconn, query=g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait), "Failed to set wsrep_sync_wait for the thread",NULL);
+  g_free(query);
   set_transaction_isolation_level_repeatable_read(td->thrconn);
   guint start_transaction_retry=0;
   gboolean cont = FALSE;
@@ -488,7 +489,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
 //    Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
 //      sleep(td->thread_id);
       g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
-      m_query(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", m_critical, "Failed to start consistent snapshot", NULL);
+      m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
       MYSQL_RES *res = m_store_result (td->thrconn, "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'", m_critical, "Failed to get binlog_snapshot_gtid_executed", NULL);
       if (res){
         MYSQL_ROW row = mysql_fetch_row(res);
@@ -511,7 +512,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
   }else
-    m_query(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", m_critical, "Failed to start consistent snapshot", NULL);
+    m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
 static
@@ -775,8 +776,8 @@ void *working_thread(struct thread_data *td) {
   execute_gstring(td->thrconn, set_session);
 
   // Initialize connection 
-  if (!skip_tz)       m_query(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */", m_critical, "Failed to set time zone",NULL);
-  if (use_savepoints) m_query(td->thrconn, "SET SQL_LOG_BIN = 0", m_critical,"Failed to disable binlog for the thread",NULL);
+  if (!skip_tz)       m_query_critical(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */", "Failed to set time zone", NULL);
+  if (use_savepoints) m_query_critical(td->thrconn, "SET SQL_LOG_BIN = 0", "Failed to disable binlog for the thread", NULL);
 
   initialize_consistent_snapshot(td);
   check_connection_status(td);
@@ -809,7 +810,7 @@ void *working_thread(struct thread_data *td) {
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }else{
       // Sending LOCK TABLE over all non-transactional tables
-      if (td->conf->lock_tables_statement!=NULL) m_query(td->thrconn, td->conf->lock_tables_statement->str, m_error, "Error locking non-transactional tables", NULL);
+      if (td->conf->lock_tables_statement!=NULL) m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
 
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
@@ -819,7 +820,7 @@ void *working_thread(struct thread_data *td) {
       process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
 
       // At this point, this thread is able to unlock the non-transactional tables
-      m_query(td->thrconn, UNLOCK_TABLES, m_error, "Error locking non-transactional tables", NULL);
+      m_query_critical(td->thrconn, UNLOCK_TABLES, "Error locking non-transactional tables", NULL);
     }
 
     // Processing Transactional tables
@@ -830,7 +831,7 @@ void *working_thread(struct thread_data *td) {
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
 
-  if (use_savepoints && td->table_name != NULL) m_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", m_critical, "Rollback to savepoint failed", NULL);
+  if (use_savepoints && td->table_name != NULL) m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed", NULL);
 
   g_message("Thread %d: Processing remaining objects jobs", td->thread_id);
   process_queue(td->conf->post_data_queue, td, FALSE, NULL);

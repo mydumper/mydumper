@@ -102,7 +102,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
     g_warning("Tablespace resquested, but not possible due to server version not supported");
     return;
   }
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping create tablespace", NULL);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping create tablespace", NULL);
   g_free(query);
   if (!result)
     return;
@@ -139,7 +139,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
   char *query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping create database (%s)", database->name);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping create database (%s)", database->name);
   g_free(query);
   if (!result)
     return;
@@ -194,7 +194,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
 
   query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result)
     return;
@@ -320,7 +320,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
 
   // get triggers
   query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c WHERE %cTable%c = '%s'", identifier_quote_character, dbt->database->name, identifier_quote_character,identifier_quote_character,identifier_quote_character, dbt->table);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping triggers (%s.%s)", dbt->database->name, dbt->table);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping triggers (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result)
     return;
@@ -352,7 +352,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 
   // get triggers
   query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping triggers (%s)", database->name);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping triggers (%s)", database->name);
   g_free(query);
   if (!result)
     return;
@@ -401,7 +401,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   // we create tables as workaround
   // for view dependencies
   query = g_strdup_printf("SHOW FIELDS FROM %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result) 
     return;
@@ -430,7 +430,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   // real view
   query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
-  result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result)
     return;
@@ -515,7 +515,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result)
     return;
@@ -539,7 +539,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 
   // Get current sequence position
   query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!result)
     return;
@@ -598,7 +598,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     g_assert(nroutines > 0);
     for (guint r= 0; r < nroutines; r++) {
       query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
-      MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping %s from %s", routine_type[r], database->name);
+      MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping %s from %s", routine_type[r], database->name);
       g_free(query);
       if (!result)
         return;
@@ -657,7 +657,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   // get events
   if (dump_events) {
     query = g_strdup_printf("SHOW EVENTS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
-    MYSQL_RES *result = m_store_result_success_on_1146(conn, query, m_critical, m_warning, "Error dumping events from %s", database->name);
+    MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping events from %s", database->name);
     g_free(query);
     if (!result)
       return;
@@ -831,12 +831,12 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
   if (use_savepoints) 
-    m_query(td->thrconn, "SAVEPOINT mydumper", m_critical, "Savepoint failed");
+    m_query_critical(td->thrconn, "SAVEPOINT mydumper", "Savepoint failed");
   
   tj->dbt->data_checksum=write_checksum_into_file(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
 
   if (use_savepoints)
-      m_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", m_critical, "Rollback to savepoint failed");
+      m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed");
 
   free_table_checksum_job(tj);
   g_free(job);
