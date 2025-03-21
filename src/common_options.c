@@ -74,7 +74,7 @@ GOptionEntry common_entries[] = {
      "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
     {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Turn on debugging output "
      "(automatically sets verbosity to 3)", NULL},
-    {"ignore-errors", 0, 0, G_OPTION_ARG_STRING, &ignore_errors,
+    {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
      "Not increment error count and Warning instead of Critical in case of any of the comman separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},

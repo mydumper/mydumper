@@ -273,7 +273,7 @@ void detect_quote_character(MYSQL *conn)
 
 static
 void detect_sql_mode(MYSQL *conn){
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@SQL_MODE", m_critical, "Error getting SQL_MODE",NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@SQL_MODE", m_critical, m_warning, "Error getting SQL_MODE",NULL);
 
   GString *str= g_string_new(NULL);
 
@@ -518,7 +518,7 @@ void initialize_tidb_snapshot(MYSQL *conn){
   if (!tidb_snapshot){
     // Generate a @@tidb_snapshot to use for the worker threads since
     // the tidb-snapshot argument was not specified when starting mydumper
-    struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_critical, "Couldn't generate @@tidb_snapshot");
+    struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_critical, m_warning, "Couldn't generate @@tidb_snapshot");
     tidb_snapshot = g_strdup(mr->row[1]);
     m_store_result_row_free(mr);
   }

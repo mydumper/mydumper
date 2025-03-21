@@ -490,7 +490,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
 //      sleep(td->thread_id);
       g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
       m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
-      MYSQL_RES *res = m_store_result (td->thrconn, "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'", m_critical, "Failed to get binlog_snapshot_gtid_executed", NULL);
+      MYSQL_RES *res = m_store_result_critical (td->thrconn, "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'", "Failed to get binlog_snapshot_gtid_executed", NULL);
       if (res){
         MYSQL_ROW row = mysql_fetch_row(res);
         if (row!=NULL)
@@ -542,33 +542,31 @@ void check_connection_status(struct thread_data *td){
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
-  MYSQL_RES *mdb = NULL;
-  MYSQL_ROW row;
-
   char *masterlog = NULL;
   char *masterpos = NULL;
   char *mastergtid = NULL;
 
   
-  MYSQL_RES *master = m_store_result(conn, show_binary_log_status, m_warning,"Couldn't get master position", NULL);
-    
-  if (master && (row = mysql_fetch_row(master))) {
-    masterlog = row[0];
-    masterpos = row[1];
+  struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
+  if ( mr->row ) {
+    masterlog = mr->row[0];
+    masterpos = mr->row[1];
     /* Oracle/Percona GTID */
-    if (mysql_num_fields(master) == 5) {
-      mastergtid = remove_new_line(row[4]);
+    if (mysql_num_fields(mr->res) == 5) {
+      mastergtid = remove_new_line(mr->row[4]);
     } else {
       /* Let's try with MariaDB 10.x */
       /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
  *        * cluster, gtid_binlog_pos works as well with normal mariadb server
  *               * https://jira.mariadb.org/browse/MDEV-10279 */
-      mdb = m_store_result(conn, "SELECT @@gtid_binlog_pos", NULL, "Failed to get @@gtid_binlog_pos", NULL);
-      if (mdb && (row = mysql_fetch_row(mdb))) {
-        mastergtid = remove_new_line(row[0]);
+      m_store_result_row_free(mr);
+      mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
+      if (mr->row){
+        mastergtid = remove_new_line(mr->row[0]);
       }
     }
   }
+  m_store_result_row_free(mr);
 
   if (masterlog) {
     fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
@@ -596,11 +594,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   fflush(file);
-
-  if (master)
-    mysql_free_result(master);
-  if (mdb)
-    mysql_free_result(mdb);
 
 }
 
@@ -858,11 +851,8 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
                       "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%' ORDER BY ORDINAL_POSITION ASC",
                       database, table);
-  MYSQL_RES *res=m_store_result(conn, query, m_warning, "Failed to get Selectable Fields", NULL);
+  MYSQL_RES *res=m_store_result_critical(conn, query, "Failed to get Selectable Fields", NULL);
   g_free(query);
-  if (!res){
-    m_warning("Failed to get Selectable Fields");
-  }
 
   gboolean first = TRUE;
   while ((row = mysql_fetch_row(res))) {
@@ -878,7 +868,7 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
     g_string_append(field_list, tb);
     g_free(tb);
   }
-//  g_string_append(field_list, ")");
+
   mysql_free_result(res);
 
   return field_list;
@@ -893,12 +883,11 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
                       "COLUMN_TYPE ='json'",
                       database, table);
-  MYSQL_RES *res = m_store_result(conn, query, m_warning, "Failed to get JSON fields", NULL);
+  MYSQL_RES *res = m_store_result_critical(conn, query, "Failed to get JSON fields on %s.%s", database, table);
   g_free(query);
-
-  if (!res){
+  if (!res)
     return FALSE;
-  }
+
   row = mysql_fetch_row(res);
   if (row != NULL){
     mysql_free_result(res);
@@ -910,30 +899,20 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
 
 static
 gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
   gboolean result = FALSE;
   if (ignore_generated_fields)
     return FALSE;
 
   gchar *query = g_strdup_printf(
-      "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      "SELECT COLUMN_NAME FROM information_schema.COLUMN "
+      "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
+      "LIMIT 1",
       database, table);
 
-  m_store_result(conn, query, m_warning, "Failed to detect generated fields");
+  struct M_ROW *mr = m_store_result_row(conn, query, m_warning, m_message, "Failed to detect generated fields", NULL);
   g_free(query);
-
-  if (res == NULL){
-    return FALSE;
-  }
-
-  if ((row = mysql_fetch_row(res))) {
-    result = TRUE;
-  }
-  mysql_free_result(res);
-
+  result=mr->row!=NULL;
+  m_store_result_row_free(mr);
   return result;
 }
 

@@ -1353,16 +1353,24 @@ void discard_mysql_output(MYSQL *conn){
   }
 }
 
+static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
+  if (fmt && log_fun_1){
+    gchar *c=g_strdup_vprintf(fmt,args);
+    if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
+      log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+    else{
+      if (mysql_errno(conn))
+        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+      else
+        log_fun_1("%s",c);
+    }
+    g_free(c);
+  }
+}
+
 static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (mysql_query(conn, query)){
-    if( fmt && log_fun_1 ){
-      gchar *c=g_strdup_vprintf(fmt,args);
-      if (g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) )) )
-        log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-      else
-        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-      g_free(c);
-    }
+    m_log(conn, log_fun_1, log_fun_2, fmt, args);
     return TRUE;
   }
   return FALSE;
@@ -1415,16 +1423,8 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
     return NULL;
 
   MYSQL_RES *res = m_result(conn);
-  if (!res){
-    if (fmt && log_fun_1){
-      gchar *c=g_strdup_vprintf(fmt,args);
-      if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
-        log_fun_2("%s",c);
-      else
-        log_fun_1("%s",c);
-      g_free(c);
-    }
-  }
+  if (!res)
+    m_log(conn, log_fun_1, log_fun_2, fmt, args);
   return res;
 }
 
@@ -1449,21 +1449,18 @@ MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char
   return m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
 }
 
-struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun(const char *, ...), const char *fmt, ...){
+struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
   va_list args;
   if (fmt)
     va_start(args, fmt);
   struct M_ROW *mr=g_new0(struct M_ROW,1);
-  mr->res = m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  mr->row=NULL;
+  mr->res = m_resultv(mysql_store_result, conn, query, log_fun_1, log_fun_2, fmt, args);
+  if (mr->res){
+    mr->row= mysql_fetch_row(mr->res);
 
-  mr->row= mysql_fetch_row(mr->res);
-
-  if (!mr->row){
-    if (fmt && log_fun){
-      gchar *c=g_strdup_vprintf(fmt,args);
-      log_fun("%s",c);
-      g_free(c);
-    }
+    if (!mr->row)
+      m_log(conn, log_fun_1, log_fun_2, fmt, args);
   }
   return mr;
 }
