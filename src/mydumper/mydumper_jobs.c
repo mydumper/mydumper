@@ -260,26 +260,23 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
       return;
     }
     g_string_set_size(statement, 0);
-    struct M_ROW *mr = m_store_result_row(conn, query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", 
+    struct M_ROW *mr = m_store_result_single_row(conn, query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", 
                         identifier_quote_character, database->name, identifier_quote_character, 
                         identifier_quote_character, row[0], identifier_quote_character),
-                        m_critical, m_warning, "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
+                        "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
     g_free(query);
-    if (mr->row){
-      if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE")){
-        remove_definer_from_gchar(mr->row[2]);
-      }
-      g_string_append_printf(statement, "%s", mr->row[2]);
-      splited_st = g_strsplit(statement->str, ";\n", 0);
-      g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-      g_strfreev(splited_st);
-      g_string_append(statement, ";\n");
-      restore_charset(statement);
-      if (!write_data(outfile, statement)) {
-        g_critical("Could not write triggers data for %s", message);
-        errors++;
-        return;
-      }
+    if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE"))
+      remove_definer_from_gchar(mr->row[2]);
+    g_string_append_printf(statement, "%s", mr->row[2]);
+    splited_st = g_strsplit(statement->str, ";\n", 0);
+    g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+    g_strfreev(splited_st);
+    g_string_append(statement, ";\n");
+    restore_charset(statement);
+    if (!write_data(outfile, statement)) {
+      g_critical("Could not write triggers data for %s", message);
+      errors++;
+      return;
     }
     m_store_result_row_free(mr);
     g_string_set_size(statement, 0);
@@ -345,7 +342,7 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
 }
 
 static
-void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, char *filename2, gboolean checksum_filename) {
+void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename, gboolean checksum_filename) {
   int outfile;
   char *query = NULL;
   MYSQL_ROW row;
@@ -359,9 +356,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  outfile = m_open(&filename,"w");
-
-
+  outfile = m_open(&tmp_table_filename,"w");
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
                errno);
@@ -397,7 +392,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     g_string_append(statement," ENCRYPTION='N'");
   g_string_append(statement,";\n");
 
-  if (result)
+  if (result) // should always be true
     mysql_free_result(result);
 
   if (!write_data(outfile, statement)) {
@@ -405,19 +400,18 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     errors++;
   }
 
+  m_close(0, outfile, tmp_table_filename, 1, dbt);
+  g_string_set_size(statement, 0);
+
   // real view
   query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
-  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_message, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping view (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!mr)
     return;
 
-  m_close(0, outfile, filename, 1, dbt);
-  g_string_set_size(statement, 0);
-
-  int outfile2;
-  outfile2 = m_open(&filename2,"w");
-  if (!outfile2) {
+  outfile = m_open(&view_filename,"w");
+  if (!outfile) {
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->name,
                errno);
     errors++;
@@ -428,7 +422,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
   g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
 
-  if (!write_data(outfile2, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
     errors++;
     return;
@@ -443,12 +437,12 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
   g_string_append(statement, mr->row[1]);
   g_string_append(statement, ";\n");
   restore_charset(statement);
-  if (!write_data(outfile2, statement)) {
+  if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
 
-  m_close(0, outfile2, filename2, 1, dbt);
+  m_close(0, outfile, view_filename, 1, dbt);
   g_string_free(statement, TRUE);
   m_store_result_row_free(mr);
 
