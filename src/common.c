@@ -1461,6 +1461,9 @@ struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1
 
     if (!mr->row)
       m_log(conn, log_fun_1, log_fun_2, fmt, args);
+  }else{
+    g_free(mr);
+    mr=NULL;
   }
   return mr;
 }

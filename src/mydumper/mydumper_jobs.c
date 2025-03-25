@@ -125,7 +125,6 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
 static
 void write_schema_definition_into_file(MYSQL *conn, struct database *database, char *filename) {
   int outfile=0;
-  MYSQL_ROW row;
 
   outfile = m_open(&filename,"w");
 
@@ -139,19 +138,18 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
   char *query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
-  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping create database (%s)", database->name);
+  struct M_ROW *mr = m_store_result_row (conn, query, m_critical, m_warning, "Error dumping create database (%s)", database->name);
   g_free(query);
-  if (!result)
+  if (!mr)
     return;
 
   /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  if (!row || !strstr(row[1], identifier_quote_character_str)) {
+  if (!mr->row || !strstr(mr->row[1], identifier_quote_character_str)) {
     g_critical("Identifier quote [%s] not found when fetching %s",
                identifier_quote_character_str, database->name);
     errors++;
   }
-  g_string_append(statement, row[1]);
+  g_string_append(statement, mr->row[1]);
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {
     g_critical("Could not write create database for %s", database->name);
@@ -159,9 +157,7 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   }
   m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
-  if (result)
-    mysql_free_result(result);
-
+  m_store_result_row_free(mr);
 
   if (schema_checksums)
     database->schema_checksum = write_checksum_into_file(conn, database, NULL, checksum_database_defaults);
@@ -173,7 +169,6 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
                       char *filename, gboolean checksum_filename, gboolean checksum_index_filename) {
   int outfile;
   char *query = NULL;
-  MYSQL_ROW row;
   outfile = m_open(&filename,"w");
 
   if (!outfile) {
@@ -194,27 +189,22 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
 
   query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result)
+  if (!mr)
     return;
 
   g_string_set_size(statement, 0);
 
-  /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-
-  char *create_table;
   if (schema_sequence_fix) {
-    create_table = filter_sequence_schemas(row[1]);
-  } else {
-    create_table = row[1];
-  }
-
-  g_string_append(statement, create_table);
-  if (schema_sequence_fix) {
+    gchar *create_table=NULL;
+    g_string_append(statement, create_table = filter_sequence_schemas(mr->row[1]));
     g_free(create_table);
+  } else {
+    g_string_append(statement, mr->row[1]);
   }
+  m_store_result_row_free(mr);
+
   g_string_append(statement, ";\n");
 
   if (skip_indexes || skip_constraints){
@@ -238,23 +228,18 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
-  if (result)
-    mysql_free_result(result);
 
-  if (checksum_filename){
+  if (checksum_filename)
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
-//    g_message("Checksum for table schema: %s", dbt->schema_checksum);
-  }
-  if (checksum_index_filename){
+  
+  if (checksum_index_filename)
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
-  }
+  
   return;
 }
 
 static
 void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct database *database, gchar *message, int outfile) {
-  MYSQL_RES *result2 = NULL;
-  MYSQL_ROW row2;
   MYSQL_ROW row;
   gchar *query = NULL;
   gchar **splited_st = NULL;
@@ -275,30 +260,28 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
       return;
     }
     g_string_set_size(statement, 0);
-    result2 = m_store_result(conn, query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", identifier_quote_character, database->name, identifier_quote_character, identifier_quote_character, row[0], identifier_quote_character),
-        m_warning, "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
+    struct M_ROW *mr = m_store_result_row(conn, query = g_strdup_printf("SHOW CREATE TRIGGER %c%s%c.%c%s%c", 
+                        identifier_quote_character, database->name, identifier_quote_character, 
+                        identifier_quote_character, row[0], identifier_quote_character),
+                        m_critical, m_warning, "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
     g_free(query);
-    if (result2){
-      row2 = mysql_fetch_row(result2);
-      if (row2){
-        if ( skip_definer && g_str_has_prefix(row2[2],"CREATE")){
-          remove_definer_from_gchar(row2[2]);
-        }
-        g_string_append_printf(statement, "%s", row2[2]);
-        splited_st = g_strsplit(statement->str, ";\n", 0);
-        g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-        g_strfreev(splited_st);
-        g_string_append(statement, ";\n");
-        restore_charset(statement);
-        if (!write_data(outfile, statement)) {
-          g_critical("Could not write triggers data for %s", message);
-          errors++;
-          return;
-        }
+    if (mr->row){
+      if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE")){
+        remove_definer_from_gchar(mr->row[2]);
       }
-    }else{
-      g_warning("Failed to get content of SHOW CREATE TRIGGER %s.%s",database->name, row[0]);
+      g_string_append_printf(statement, "%s", mr->row[2]);
+      splited_st = g_strsplit(statement->str, ";\n", 0);
+      g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+      g_strfreev(splited_st);
+      g_string_append(statement, ";\n");
+      restore_charset(statement);
+      if (!write_data(outfile, statement)) {
+        g_critical("Could not write triggers data for %s", message);
+        errors++;
+        return;
+      }
     }
+    m_store_result_row_free(mr);
     g_string_set_size(statement, 0);
   }
   return;
@@ -338,10 +321,7 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
 }
 
 void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
-  int outfile;
-  char *query = NULL;
-
-  outfile = m_open(&filename,"w");
+  int outfile = m_open(&filename,"w");
 
   if (!outfile) {
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->name,
@@ -351,19 +331,16 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
   }
 
   // get triggers
-  query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
+  gchar *query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
   MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping triggers (%s)", database->name);
   g_free(query);
-  if (!result)
-    return;
-
-  write_triggers_definition_into_file(conn, result, database, database->name, outfile);
-
-  m_close(0, outfile, filename, 1, NULL);
-  if (result)
+  if (result){
+    write_triggers_definition_into_file(conn, result, database, database->name, outfile);
     mysql_free_result(result);
-  if (checksum_filename)
-    database->triggers_checksum=write_checksum_into_file(conn, database, NULL, checksum_trigger_structure_from_database);
+    m_close(0, outfile, filename, 1, NULL);
+    if (checksum_filename)
+      database->triggers_checksum=write_checksum_into_file(conn, database, NULL, checksum_trigger_structure_from_database);
+  }
   return;
 }
 
@@ -398,7 +375,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
     return;
   }
 
-  // we create tables as workaround
+  // We create files with CREATE TABLE statements as workaround
   // for view dependencies
   query = g_strdup_printf("SHOW FIELDS FROM %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
@@ -430,9 +407,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   // real view
   query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
-  result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_message, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result)
+  if (!mr)
     return;
 
   m_close(0, outfile, filename, 1, dbt);
@@ -459,13 +436,11 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   g_string_set_size(statement, 0);
 
-  /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  set_charset(statement, row[2], row[3]);
-  if ( skip_definer && g_str_has_prefix(row[1],"CREATE")){
-    remove_definer_from_gchar(row[1]);
+  set_charset(statement, mr->row[2], mr->row[3]);
+  if ( skip_definer && g_str_has_prefix(mr->row[1],"CREATE")){
+    remove_definer_from_gchar(mr->row[1]);
   }
-  g_string_append(statement, row[1]);
+  g_string_append(statement, mr->row[1]);
   g_string_append(statement, ";\n");
   restore_charset(statement);
   if (!write_data(outfile2, statement)) {
@@ -475,11 +450,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *fi
 
   m_close(0, outfile2, filename2, 1, dbt);
   g_string_free(statement, TRUE);
-  if (result)
-    mysql_free_result(result);
+  m_store_result_row_free(mr);
 
   if (checksum_filename)
-    // build_meta_filename(database,table,"schema-view-checksum"),
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_view_structure);
   return;
 }
@@ -488,7 +461,6 @@ static
 void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
   int outfile;
   char *query = NULL;
-  MYSQL_ROW row;
   const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
@@ -515,52 +487,44 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result)
+  if (!mr)
     return;
   g_string_set_size(statement, 0);
 
   /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  if ( skip_definer && g_str_has_prefix(row[1],"CREATE")){
-    remove_definer_from_gchar(row[1]);
+  if ( skip_definer && g_str_has_prefix(mr->row[1],"CREATE")){
+    remove_definer_from_gchar(mr->row[1]);
   }
-  g_string_append(statement, row[1]);
+  g_string_append(statement, mr->row[1]);
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
     errors++;
   }
-  if (result) {
-    mysql_free_result(result);
-    result = NULL;
-  }
+  m_store_result_row_free(mr);
 
   // Get current sequence position
   query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
-  result = m_store_result_critical(conn, query,  "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
+  mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!result)
-    return;
 
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  g_string_printf(statement, "DO SETVAL(%c%s%c, %s, 0);\n", q, dbt->table, q, row[0]);
-  if (!write_data(outfile, statement)) {
-    g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
-    errors++;
+  if (mr->row){
+    g_string_printf(statement, "DO SETVAL(%c%s%c, %s, 0);\n", q, dbt->table, q, mr->row[0]);
+    if (!write_data(outfile, statement)) {
+      g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
+      errors++;
+    }
+    m_close(0, outfile, filename, 1, dbt);
+    // Table checksum should cover the basics, but doesn't checksum the current sequence position
+    if (checksum_filename)
+      write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
   }
-
-  m_close(0, outfile, filename, 1, dbt);
+  m_store_result_row_free(mr);
   g_string_free(statement, TRUE);
-  if (result)
-    mysql_free_result(result);
-
-  // Table checksum should cover the basics, but doesn't checksum the current sequence position
-  if (checksum_filename)
-    write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
   return;
 }
 
@@ -570,9 +534,7 @@ static
 void write_routines_definition_into_file(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
   int outfile;
   char *query = NULL;
-  MYSQL_RES *result2 = NULL;
   MYSQL_ROW row;
-  MYSQL_ROW row2;
   gchar **splited_st = NULL;
 
   outfile = m_open(&filename,"w");
@@ -596,6 +558,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
   guint charcol=0,collcol=0;
   if (dump_routines) {
     g_assert(nroutines > 0);
+    struct M_ROW *mr=NULL;
     for (guint r= 0; r < nroutines; r++) {
       query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
       MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping %s from %s", routine_type[r], database->name);
@@ -616,38 +579,29 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         }
         g_string_set_size(statement, 0);
         query= g_strdup_printf("SHOW CREATE %s %c%s%c.%c%s%c", routine_type[r], identifier_quote_character, database->name, identifier_quote_character,  identifier_quote_character, row[1], identifier_quote_character);
-        result2= m_store_result(conn, query,
-            m_warning, "Failed to execute SHOW CREATE %s %s.%s %s", routine_type[r], database->name, row[1], query);
+        mr = m_store_result_row(conn, query,
+                        m_critical, m_warning, "Failed to execute SHOW CREATE %s %s.%s %s", routine_type[r], database->name, row[1], query);
         g_free(query);
-        if (result2){
-          row2= mysql_fetch_row(result2);
-          if (row2){
-            g_string_printf(statement, "%s", row2[2]);
-            if (skip_definer && g_str_has_prefix(statement->str, "CREATE")) {
-              remove_definer(statement);
-            }
-            splited_st= g_strsplit(statement->str, ";\n", 0);
-            g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-            g_string_append(statement, ";\n");
-            restore_charset(statement);
-            if (!write_data(outfile, statement)) {
-              g_critical("Could not write %s data for %s.%s", routine_type[r], database->name, row[1]);
-              errors++;
-              mysql_free_result(result);
-              if (result2)
-                mysql_free_result(result2);
-              return;
-            }
+        if (mr->row){
+          g_string_printf(statement, "%s", mr->row[2]);
+          if (skip_definer && g_str_has_prefix(statement->str, "CREATE")) {
+            remove_definer(statement);
+          }
+          splited_st= g_strsplit(statement->str, ";\n", 0);
+          g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+          g_string_append(statement, ";\n");
+          restore_charset(statement);
+          if (!write_data(outfile, statement)) {
+            g_critical("Could not write %s data for %s.%s", routine_type[r], database->name, mr->row[1]);
+            errors++;
+            continue;
           }
         }
+        m_store_result_row_free(mr);
         g_string_set_size(statement, 0);
       }
 
       mysql_free_result(result);
-      if (result2) {
-        mysql_free_result(result2);
-        result2= NULL;
-      }
     } // for (guint r= 0; r < nroutines; r++)
 
     if (checksum_filename)
@@ -672,40 +626,33 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         mysql_free_result(result);
         return;
       }
-      result2 = m_store_result(conn, query=g_strdup_printf("SHOW CREATE EVENT %c%s%c.%c%s%c", identifier_quote_character, database->name, identifier_quote_character, identifier_quote_character, row[1], identifier_quote_character),
-          m_warning, "Failed to execute SHOW CREATE EVENT %s.%s",database->name, row[1] );
+      struct M_ROW *mr = m_store_result_row(conn, query=g_strdup_printf("SHOW CREATE EVENT %c%s%c.%c%s%c", identifier_quote_character, database->name, identifier_quote_character, identifier_quote_character, row[1], identifier_quote_character),
+          m_critical, m_warning, "Failed to execute SHOW CREATE EVENT %s.%s",database->name, row[1] );
       g_free(query);
       // DROP EVENT IF EXISTS event_name
-      if (result2){
-        row2 = mysql_fetch_row(result2);
-        if (row2){
-          g_string_printf(statement, "%s", row2[3]);
-          if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
-            remove_definer(statement);
-          }
-          splited_st = g_strsplit(statement->str, ";\n", 0);
-          g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-          g_string_append(statement, ";\n");
-          restore_charset(statement);
-          if (!write_data(outfile, statement)) {
-            g_critical("Could not write event data for %s.%s", database->name, row[1]);
-            errors++;
-            mysql_free_result(result);
-            if (result2)
-              mysql_free_result(result2);
-            return;
-          }
-        }else{
-          m_warning("Failed to execute SHOW CREATE EVENT %s.%s",database->name, row[1]);
+      if (mr->row){
+        g_string_printf(statement, "%s", mr->row[3]);
+        if ( skip_definer && g_str_has_prefix(statement->str,"CREATE")){
+          remove_definer(statement);
+        }
+        splited_st = g_strsplit(statement->str, ";\n", 0);
+        g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+        g_string_append(statement, ";\n");
+        restore_charset(statement);
+        if (!write_data(outfile, statement)) {
+          g_critical("Could not write event data for %s.%s", database->name, mr->row[1]);
+          errors++;
+          m_store_result_row_free(mr);
+          goto clean;
         }
       }
+      m_store_result_row_free(mr);
       g_string_set_size(statement, 0);
     }
     mysql_free_result(result);
-    if (result2)
-      mysql_free_result(result2);
   }
 
+clean:
   m_close(0, outfile, filename, 1, NULL);
   g_string_free(statement, TRUE);
   g_strfreev(splited_st);

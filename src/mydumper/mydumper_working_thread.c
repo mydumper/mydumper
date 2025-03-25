@@ -876,24 +876,18 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
 
 static
 gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
-  MYSQL_ROW row;
-
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
                       "COLUMN_TYPE ='json'",
                       database, table);
-  MYSQL_RES *res = m_store_result_critical(conn, query, "Failed to get JSON fields on %s.%s", database, table);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get JSON fields on %s.%s", database, table);
   g_free(query);
-  if (!res)
-    return FALSE;
-
-  row = mysql_fetch_row(res);
-  if (row != NULL){
-    mysql_free_result(res);
+  if (mr->row){
+    m_store_result_row_free(mr);
     return TRUE;
   }
-  mysql_free_result(res);
+  m_store_result_row_free(mr);
   return FALSE;
 }
 
@@ -904,7 +898,7 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
     return FALSE;
 
   gchar *query = g_strdup_printf(
-      "SELECT COLUMN_NAME FROM information_schema.COLUMN "
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
       "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
       "LIMIT 1",
       database, table);
@@ -921,18 +915,15 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   g_mutex_lock(character_set_hash_mutex);
   gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
   if (character_set == NULL){
-    MYSQL_RES *res = NULL;
-    MYSQL_ROW row;
     gchar *query =
       g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
                       "WHERE collation_name='%s'",
                       collation);
-    res=m_store_result(conn, query, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
+    struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
     g_free(query);
-    row = mysql_fetch_row(res);
-    if (row)
-      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
-    mysql_free_result(res);
+    if (mr->row)
+      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
+    m_store_result_row_free(mr);
   }
   g_mutex_unlock(character_set_hash_mutex);
   return character_set;
