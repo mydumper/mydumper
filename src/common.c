@@ -1459,14 +1459,40 @@ struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1
   if (mr->res){
     mr->row= mysql_fetch_row(mr->res);
 
-    if (!mr->row)
-      m_log(conn, log_fun_1, log_fun_2, fmt, args);
+//    if (!mr->row)
+//      m_log(conn, log_fun_1, log_fun_2, fmt, args);
   }else{
     g_free(mr);
     mr=NULL;
   }
   return mr;
 }
+
+struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  struct M_ROW *mr=g_new0(struct M_ROW,1);
+  mr->row=NULL;
+  mr->res = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  if (mr->res){
+    mr->row= mysql_fetch_row(mr->res);
+
+    if (!mr->row)
+      m_log(conn, m_critical, m_warning, fmt, args);
+  }else{
+    g_free(mr);
+    mr=NULL;
+  }
+  return mr;
+}
+
+
+
+
+
+
+
 
 void m_store_result_row_free(struct M_ROW* mr){
   mysql_free_result(mr->res);

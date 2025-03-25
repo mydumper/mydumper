@@ -579,8 +579,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
         }
         g_string_set_size(statement, 0);
         query= g_strdup_printf("SHOW CREATE %s %c%s%c.%c%s%c", routine_type[r], identifier_quote_character, database->name, identifier_quote_character,  identifier_quote_character, row[1], identifier_quote_character);
-        mr = m_store_result_row(conn, query,
-                        m_critical, m_warning, "Failed to execute SHOW CREATE %s %s.%s %s", routine_type[r], database->name, row[1], query);
+        mr = m_store_result_single_row(conn, query, "Failed to execute SHOW CREATE %s %s.%s %s", routine_type[r], database->name, row[1], query);
         g_free(query);
         if (mr->row){
           g_string_printf(statement, "%s", mr->row[2]);

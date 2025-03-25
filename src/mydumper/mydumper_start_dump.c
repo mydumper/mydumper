@@ -273,7 +273,7 @@ void detect_quote_character(MYSQL *conn)
 
 static
 void detect_sql_mode(MYSQL *conn){
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@SQL_MODE", m_critical, m_warning, "Error getting SQL_MODE",NULL);
+  struct M_ROW *mr = m_store_result_single_row(conn, "SELECT @@SQL_MODE", "Error getting SQL_MODE",NULL);
 
   GString *str= g_string_new(NULL);
 

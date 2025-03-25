@@ -881,7 +881,7 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
                       "COLUMN_TYPE ='json'",
                       database, table);
-  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get JSON fields on %s.%s", database, table);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get JSON fields on %s.%s: %s", database, table, query);
   g_free(query);
   if (mr->row){
     m_store_result_row_free(mr);

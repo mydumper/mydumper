@@ -82,7 +82,6 @@ void detect_server_version(MYSQL * conn) {
       product = SERVER_TYPE_DOLT;
     }
   }
-  m_store_result_row_free(mr);
 
 	gchar ** sver=NULL;
   if (product == SERVER_TYPE_UNKNOWN){
