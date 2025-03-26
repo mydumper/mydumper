@@ -243,9 +243,8 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   //    * configuration too 
   gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  mysql_query(conn, query);
+  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->name);
   g_free(query);
-  indexes = mysql_store_result(conn);
 
   if (indexes){
     while ((row = mysql_fetch_row(indexes))) {
@@ -299,11 +298,7 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   // TODO: This should be in a job as needs to be done by a thread.
   MYSQL_RES *databases;
   MYSQL_ROW row;
-  if (mysql_query(td->thrconn, "SHOW DATABASES") ||
-      !(databases = mysql_store_result(td->thrconn))) {
-    m_critical("Unable to list databases: %s", mysql_error(td->thrconn));
-    return;
-  }
+  databases=m_store_result(td->thrconn, "SHOW DATABASES", m_critical, "Unable to list databases", NULL);
 
   while ((row = mysql_fetch_row(databases))) {
     if (!strcasecmp(row[0], "information_schema") ||
@@ -353,15 +348,13 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     dt = g_strsplit(table_list[x], ".", 0);
 
     query= g_strdup_printf("SHOW TABLE STATUS FROM %s%s%s LIKE '%s'", identifier_quote_character_str, dt[0], identifier_quote_character_str, dt[1]);
+    MYSQL_RES *result = m_store_result(conn, query, m_critical, "Error showing table status on: %s - Could not execute query", dt[0]);
+    g_free(query);
 
-    if (mysql_query(conn, (query))) {
-      g_critical("Error showing table status on: %s - Could not execute query: %s", dt[0],
-                 mysql_error(conn));
-      errors++;
+    if (!result) {
       return;
     }
 
-    MYSQL_RES *result = mysql_store_result(conn);
     guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
     determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
     struct database * database=NULL;
@@ -375,12 +368,6 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_mutex_unlock(database->ad_mutex);
 //        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
       }
-    }
-
-    if (!result) {
-      g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
-      errors++;
-      return;
     }
 
     MYSQL_ROW row;
@@ -419,7 +406,6 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     g_strfreev(dt);
   }
 
-  g_free(query);
   if (g_atomic_int_dec_and_test(&database_counter)) {
     g_async_queue_push(conf->db_ready,GINT_TO_POINTER(1));
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
@@ -457,40 +443,28 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
   g_async_queue_push(queue, element);
 }
 
-
 void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   struct table_job *tj = (struct table_job *)job->job_data;
 
   if (use_savepoints){
     if (td->table_name!=NULL){
       if (tj->dbt->table != td->table_name){
-        if ( mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
-          g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
-        }
-        if (mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
-          g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
-        }
+        m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed", NULL);
+        m_query_critical(td->thrconn, "SAVEPOINT mydumper","Savepoint failed", NULL);
         td->table_name = tj->dbt->table;
       }
     }else{
-      if (mysql_query(td->thrconn, "SAVEPOINT mydumper")) {
-        g_critical("Savepoint failed: %s", mysql_error(td->thrconn));
-      }
+      m_query_critical(td->thrconn, "SAVEPOINT mydumper", "Savepoint failed", NULL);
       td->table_name = tj->dbt->table;
     }
   }
   tj->td=td;
 
-//  g_debug("chunk_type: %d %p", tj->dbt->chunk_type, tj->dbt->chunk_functions.process);
   tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
   g_mutex_lock(tj->dbt->chunks_mutex);
   tj->dbt->current_threads_running--;
   g_mutex_unlock(tj->dbt->chunks_mutex);
 
-/*  if (use_savepoints &&
-      mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
-    g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
-  }*/
   free_table_job(tj);
   g_free(job);
 }
@@ -502,10 +476,10 @@ void initialize_thread(struct thread_data *td){
 }
 
 void initialize_consistent_snapshot(struct thread_data *td){
-  if ( sync_wait != -1 && mysql_query(td->thrconn, g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait))){
-    m_critical("Failed to set wsrep_sync_wait for the thread: %s",
-               mysql_error(td->thrconn));
-  }
+  gchar *query=NULL;
+  if ( sync_wait != -1)
+    m_query_critical(td->thrconn, query=g_strdup_printf("SET SESSION WSREP_SYNC_WAIT = %d",sync_wait), "Failed to set wsrep_sync_wait for the thread",NULL);
+  g_free(query);
   set_transaction_isolation_level_repeatable_read(td->thrconn);
   guint start_transaction_retry=0;
   gboolean cont = FALSE;
@@ -515,26 +489,17 @@ void initialize_consistent_snapshot(struct thread_data *td){
 //    Uncommenting the sleep will cause inconsitent scenarios always, which is useful for debugging 
 //      sleep(td->thread_id);
       g_debug("Thread %d: Start transaction #%d", td->thread_id, start_transaction_retry);
-      if (mysql_query(td->thrconn,
-                    "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */")) {
-        m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-      }
-      if (mysql_query(td->thrconn,
-                    "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'")) {
-        m_critical("Failed to get binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-      }else{
-        MYSQL_RES *res = mysql_store_result(td->thrconn);
-        if (res){
-          MYSQL_ROW row = mysql_fetch_row(res);
-          if (row!=NULL)
-            td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
-          else
-            m_critical("Failed to get content of binlog_snapshot_gtid_executed");
-          mysql_free_result(res);
-        }else{
-          m_critical("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
-        }
-      }
+      m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
+      MYSQL_RES *res = m_store_result_critical (td->thrconn, "SHOW STATUS LIKE 'binlog_snapshot_gtid_executed'", "Failed to get binlog_snapshot_gtid_executed", NULL);
+      if (res){
+        MYSQL_ROW row = mysql_fetch_row(res);
+        if (row!=NULL)
+          td->binlog_snapshot_gtid_executed=g_strdup(row[1]);
+        else
+          m_critical("Failed to get content of binlog_snapshot_gtid_executed");
+        mysql_free_result(res);
+      }else
+        m_critical("Failed to get content of binlog_snapshot_gtid_executed: %s", mysql_error(td->thrconn));
       start_transaction_retry++;
       g_async_queue_push(td->conf->gtid_pos_checked, GINT_TO_POINTER(1));
       cont=GPOINTER_TO_INT(g_async_queue_pop(td->conf->are_all_threads_in_same_pos)) == 1;
@@ -546,11 +511,8 @@ void initialize_consistent_snapshot(struct thread_data *td){
     }else{
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
-  }else{
-    if (mysql_query(td->thrconn,
-                  "START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */"))
-      m_critical("Failed to start consistent snapshot: %s", mysql_error(td->thrconn));
-  }
+  }else
+    m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
 static
@@ -566,16 +528,12 @@ void check_connection_status(struct thread_data *td){
   /* Unfortunately version before 4.1.8 did not support consistent snapshot
    * transaction starts, so we cheat */
   if (need_dummy_read) {
-    mysql_query(td->thrconn,
-                "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy");
-    MYSQL_RES *res = mysql_store_result(td->thrconn);
+    MYSQL_RES *res = m_store_result(td->thrconn, "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.mydumperdummy", m_warning, "Failed to select on mysql.mydumperdummy", NULL);
     if (res)
       mysql_free_result(res);
   }
   if (need_dummy_toku_read) {
-    mysql_query(td->thrconn,
-                "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy");
-    MYSQL_RES *res = mysql_store_result(td->thrconn);
+    MYSQL_RES *res = m_store_result(td->thrconn, "SELECT /*!40001 SQL_NO_CACHE */ * FROM mysql.tokudbdummy", m_warning, "Failed to select on mysql.tokudbdummy", NULL);
     if (res)
       mysql_free_result(res);
   }
@@ -584,36 +542,31 @@ void check_connection_status(struct thread_data *td){
 
 /* Write some stuff we know about snapshot, before it changes */
 void write_snapshot_info(MYSQL *conn, FILE *file) {
-  MYSQL_RES *master = NULL, *mdb = NULL;
-  MYSQL_ROW row;
-
   char *masterlog = NULL;
   char *masterpos = NULL;
   char *mastergtid = NULL;
 
   
-  if (mysql_query(conn, show_binary_log_status))
-    m_warning("Couldn't get master position: %s", mysql_error(conn));
-    
-  master = mysql_store_result(conn);
-  if (master && (row = mysql_fetch_row(master))) {
-    masterlog = row[0];
-    masterpos = row[1];
+  struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
+  if ( mr->row ) {
+    masterlog = mr->row[0];
+    masterpos = mr->row[1];
     /* Oracle/Percona GTID */
-    if (mysql_num_fields(master) == 5) {
-      mastergtid = remove_new_line(row[4]);
+    if (mysql_num_fields(mr->res) == 5) {
+      mastergtid = remove_new_line(mr->row[4]);
     } else {
       /* Let's try with MariaDB 10.x */
       /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
  *        * cluster, gtid_binlog_pos works as well with normal mariadb server
  *               * https://jira.mariadb.org/browse/MDEV-10279 */
-      mysql_query(conn, "SELECT @@gtid_binlog_pos");
-      mdb = mysql_store_result(conn);
-      if (mdb && (row = mysql_fetch_row(mdb))) {
-        mastergtid = remove_new_line(row[0]);
+      m_store_result_row_free(mr);
+      mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
+      if (mr->row){
+        mastergtid = remove_new_line(mr->row[0]);
       }
     }
   }
+  m_store_result_row_free(mr);
 
   if (masterlog) {
     fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
@@ -641,11 +594,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   }
 
   fflush(file);
-
-  if (master)
-    mysql_free_result(master);
-  if (mdb)
-    mysql_free_result(mdb);
 
 }
 
@@ -821,13 +769,9 @@ void *working_thread(struct thread_data *td) {
   execute_gstring(td->thrconn, set_session);
 
   // Initialize connection 
-  if (!skip_tz && mysql_query(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */")) {
-    g_critical("Failed to set time zone: %s", mysql_error(td->thrconn));
-  }
-  if (use_savepoints && mysql_query(td->thrconn, "SET SQL_LOG_BIN = 0")) {
-    m_critical("Failed to disable binlog for the thread: %s",
-               mysql_error(td->thrconn));
-  }
+  if (!skip_tz)       m_query_critical(td->thrconn, "/*!40103 SET TIME_ZONE='+00:00' */", "Failed to set time zone", NULL);
+  if (use_savepoints) m_query_critical(td->thrconn, "SET SQL_LOG_BIN = 0", "Failed to disable binlog for the thread", NULL);
+
   initialize_consistent_snapshot(td);
   check_connection_status(td);
 
@@ -859,9 +803,7 @@ void *working_thread(struct thread_data *td) {
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }else{
       // Sending LOCK TABLE over all non-transactional tables
-      if (td->conf->lock_tables_statement!=NULL && mysql_query(td->thrconn, td->conf->lock_tables_statement->str)) {
-        m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
-      }
+      if (td->conf->lock_tables_statement!=NULL) m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
 
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
@@ -871,9 +813,7 @@ void *working_thread(struct thread_data *td) {
       process_queue(td->conf->non_transactional.defer, td, FALSE, NULL);
 
       // At this point, this thread is able to unlock the non-transactional tables
-      if (mysql_query(td->thrconn, UNLOCK_TABLES)) {
-        m_error("Error locking non-transactional tables %s", mysql_error(td->thrconn));
-      }
+      m_query_critical(td->thrconn, UNLOCK_TABLES, "Error locking non-transactional tables", NULL);
     }
 
     // Processing Transactional tables
@@ -884,10 +824,7 @@ void *working_thread(struct thread_data *td) {
     g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
   }
 
-  if (use_savepoints && td->table_name != NULL &&
-      mysql_query(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper")) {
-    g_critical("Rollback to savepoint failed: %s", mysql_error(td->thrconn));
-  }
+  if (use_savepoints && td->table_name != NULL) m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed", NULL);
 
   g_message("Thread %d: Processing remaining objects jobs", td->thread_id);
   process_queue(td->conf->post_data_queue, td, FALSE, NULL);
@@ -905,7 +842,6 @@ void *working_thread(struct thread_data *td) {
 
 static
 GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
-  MYSQL_RES *res = NULL;
   MYSQL_ROW row;
 
   GString *field_list = g_string_new("");
@@ -915,10 +851,9 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
                       "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%' ORDER BY ORDINAL_POSITION ASC",
                       database, table);
-  mysql_query(conn, query);
+  MYSQL_RES *res=m_store_result_critical(conn, query, "Failed to get Selectable Fields", NULL);
   g_free(query);
 
-  res = mysql_store_result(conn);
   gboolean first = TRUE;
   while ((row = mysql_fetch_row(res))) {
     if (first) {
@@ -933,7 +868,7 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
     g_string_append(field_list, tb);
     g_free(tb);
   }
-//  g_string_append(field_list, ")");
+
   mysql_free_result(res);
 
   return field_list;
@@ -941,59 +876,37 @@ GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
 
 static
 gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
                       "COLUMN_TYPE ='json'",
                       database, table);
-  mysql_query(conn, query);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get JSON fields on %s.%s: %s", database, table, query);
   g_free(query);
-
-  res = mysql_store_result(conn);
-  if (res == NULL){
-    return FALSE;
-  }
-  row = mysql_fetch_row(res);
-  if (row != NULL){
-    mysql_free_result(res);
+  if (mr->row){
+    m_store_result_row_free(mr);
     return TRUE;
   }
-//  g_string_append(field_list, ")");
-  mysql_free_result(res);
-
+  m_store_result_row_free(mr);
   return FALSE;
 }
 
 static
 gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
-  MYSQL_RES *res = NULL;
-  MYSQL_ROW row;
-
   gboolean result = FALSE;
   if (ignore_generated_fields)
     return FALSE;
 
   gchar *query = g_strdup_printf(
-      "select COLUMN_NAME from information_schema.COLUMNS where "
-      "TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra like '%%GENERATED%%' and extra not like '%%DEFAULT_GENERATED%%'",
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+      "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
+      "LIMIT 1",
       database, table);
 
-  mysql_query(conn, query);
+  struct M_ROW *mr = m_store_result_row(conn, query, m_warning, m_message, "Failed to detect generated fields", NULL);
   g_free(query);
-
-  res = mysql_store_result(conn);
-  if (res == NULL){
-    return FALSE;
-  }
-
-  if ((row = mysql_fetch_row(res))) {
-    result = TRUE;
-  }
-  mysql_free_result(res);
-
+  result=mr->row!=NULL;
+  m_store_result_row_free(mr);
   return result;
 }
 
@@ -1002,19 +915,15 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
   g_mutex_lock(character_set_hash_mutex);
   gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
   if (character_set == NULL){
-    MYSQL_RES *res = NULL;
-    MYSQL_ROW row;
     gchar *query =
       g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
                       "WHERE collation_name='%s'",
                       collation);
-    mysql_query(conn, query);
+    struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
     g_free(query);
-    res = mysql_store_result(conn);
-    row = mysql_fetch_row(res);
-    if (row)
-      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(row[0]));
-    mysql_free_result(res);
+    if (mr->row)
+      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
+    m_store_result_row_free(mr);
   }
   g_mutex_unlock(character_set_hash_mutex);
   return character_set;
@@ -1268,15 +1177,10 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
     g_assert(nroutines > 0);
     for (guint r= 0; r < nroutines; r++) {
       query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
-      if (mysql_query(conn, (query))) {
-        g_critical("Error showing procedure on: %s - Could not execute query: %s", database->name,
-                  mysql_error(conn));
-        errors++;
-        g_free(query);
-        return FALSE;
-      }
+      result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->name);
       g_free(query);
-      result= mysql_store_result(conn);
+      if (!result)
+        return FALSE;
       while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
         if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1296,15 +1200,10 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   if (dump_events) {
     // EVENTS
     query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->name, identifier_quote_character_str);
-    if (mysql_query(conn, (query))) {
-      g_critical("Error showing events on: %s - Could not execute query: %s", database->name,
-                 mysql_error(conn));
-      errors++;
-      g_free(query);
-      return FALSE;
-    }
+    result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->name);
     g_free(query);
-    result = mysql_store_result(conn);
+    if (!result)
+      return FALSE;
     while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
       if (tables_skiplist_file && check_skiplist(database->name, row[1]))
@@ -1324,29 +1223,20 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 static
 void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
 
-  const char *query= "SHOW TABLE STATUS";
-
   if (mysql_select_db(conn, database->name)) {
     g_critical("Could not select database: %s (%s)", database->name, mysql_error(conn));
     errors++;
     return;
   }
 
-  if (mysql_query(conn, (query))) {
-    g_critical("Error showing tables on: %s - Could not execute query: %s", database->name,
-               mysql_error(conn));
-    errors++;
+  const char *query= "SHOW TABLE STATUS";
+  MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->name);
+  if (!result)
     return;
-  }
 
-  MYSQL_RES *result = mysql_store_result(conn);
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
-  if (!result) {
-    g_critical("Could not list tables for %s: %s", database->name, mysql_error(conn));
-    errors++;
-    return;
-  }
+
   guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {

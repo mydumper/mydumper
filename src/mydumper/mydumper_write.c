@@ -864,13 +864,12 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 /* Do actual data chunk reading/writing magic */
 void write_table_job_into_file(struct table_job * tj){
   MYSQL *conn = tj->td->thrconn;
-  MYSQL_RES *result = NULL;
   char *query = NULL;
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
   /* Poor man's database code */
-  query = g_strdup_printf(
+  MYSQL_RES *result = m_use_result(conn, query = g_strdup_printf(
       "SELECT %s %s FROM %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s %s %s",
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->select_fields?tj->dbt->select_fields->str:"*",
@@ -880,8 +879,9 @@ void write_table_job_into_file(struct table_job * tj){
       ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
       order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
       tj->dbt->limit ?  "LIMIT" : "", tj->dbt->limit ? tj->dbt->limit : ""
-  );
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+  ), m_warning, "Failed to execute query", NULL);
+
+  if (!result){
     if (!it_is_a_consistent_backup){
       g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
                 mysql_error(conn), query);
@@ -892,7 +892,8 @@ void write_table_job_into_file(struct table_job * tj){
       }
       g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
 
-      if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
+      result = m_use_result(conn, query, NULL, "Failed to execute query on second try", NULL);
+      if (!result) {
        // ERROR 1146
         if (success_on_1146 && mysql_errno(conn) == 1146) {
           g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
@@ -918,7 +919,7 @@ void write_table_job_into_file(struct table_job * tj){
   }
 
   /* Poor man's data dump code */
-    write_result_into_file(conn, result, tj);
+  write_result_into_file(conn, result, tj);
 
   if (mysql_errno(conn)) {
     g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,

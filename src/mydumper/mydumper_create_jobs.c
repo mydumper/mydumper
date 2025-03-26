@@ -134,17 +134,12 @@ void create_job_to_dump_post(struct database *database, struct configuration *co
 //
 
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf) {
-  char *query = NULL;
-  MYSQL_RES *result = NULL;
+  gchar *query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", identifier_quote_character, dbt->database->name, identifier_quote_character, dbt->escaped_table);
 
-  const char q= identifier_quote_character;
-  query =
-      g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", q, dbt->database->name, q, dbt->escaped_table);
-  if (mysql_query(conn, query) || !(result = mysql_store_result(conn))) {
-    g_critical("Error Checking triggers for %s.%s. Err: %s St: %s", dbt->database->name, dbt->table,
-               mysql_error(conn),query);
-    errors++;
-  } else {
+  MYSQL_RES *result = m_store_result(conn, query, m_critical, "Error Checking triggers for %s.%s. St: %s", dbt->database->name, dbt->table, query);
+  g_free(query);
+
+  if (result) {
     if (mysql_num_rows(result)) {
       struct job *t = g_new0(struct job, 1);
       struct schema_job *st = g_new0(struct schema_job, 1);
@@ -155,9 +150,6 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct confi
       st->checksum_filename=routine_checksums;
       g_async_queue_push(conf->post_data_queue, t);
     }
-  }
-  g_free(query);
-  if (result) {
     mysql_free_result(result);
   }
 }
@@ -241,7 +233,7 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
-  tj->char_chunk_part=char_chunk;
+//  tj->char_chunk_part=char_chunk;
   tj->child_process=0;
   tj->where=g_string_new("");
   update_estimated_remaining_chunks_on_dbt(tj->dbt);

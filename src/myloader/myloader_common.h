@@ -44,7 +44,6 @@ void checksum_table_filename(const gchar *filename, MYSQL *conn);
 int execute_file_per_thread( const gchar *sql_fn, gchar *sql_fn3, gchar **exec);
 gboolean has_compession_extension(const gchar *filename);
 gboolean has_exec_per_thread_extension(const gchar *filename);
-gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn) ;
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
                                 const gchar *message, gchar* fun());

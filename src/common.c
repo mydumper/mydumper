@@ -31,6 +31,8 @@
 #include "common_options.h"
 //#include "mydumper_global.h"
 
+extern gboolean success_on_1146;
+guint errors=0;
 GList *ignore_errors_list=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
@@ -811,12 +813,20 @@ void check_num_threads()
   }
 }
 
-void m_error(const char *fmt, ...){
+void m_message(const char *fmt, ...){
   va_list    args;
   va_start(args, fmt);
   gchar *c=g_strdup_vprintf(fmt,args);
-  execute_gstring(main_connection, set_global_back); 
-  g_error("%s", c);
+  g_message("%s",c);
+  g_free(c);
+}
+
+void m_warning(const char *fmt, ...){
+  va_list    args;
+  va_start(args, fmt);
+  gchar *c=g_strdup_vprintf(fmt,args);
+  g_warning("%s",c);
+  g_free(c);
 }
 
 void m_critical(const char *fmt, ...){
@@ -828,14 +838,14 @@ void m_critical(const char *fmt, ...){
   exit(EXIT_FAILURE);
 }
 
-
-void m_warning(const char *fmt, ...){
+void m_error(const char *fmt, ...){
   va_list    args;
   va_start(args, fmt);
   gchar *c=g_strdup_vprintf(fmt,args);
-  g_warning("%s",c);
-  g_free(c);
+  execute_gstring(main_connection, set_global_back);
+  g_error("%s", c); // g_error exits program
 }
+
 
 /* Function to work around a bug in MariaDB which outputs the explicit
  * scehma for a sequence in a SHOW CREATE TABLE even if it is local to the
@@ -1315,6 +1325,14 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
       source_control_command=AWS;
       return TRUE;
     }
+  } else if (!strcmp(option_name, "--ignore-errors")){
+    guint n=0;
+    gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
+    while(tmp_ignore_errors_list[n]!=NULL){
+      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
+      n++;
+    }
+    return TRUE;
   }
   return FALSE;
 }
@@ -1335,18 +1353,150 @@ void discard_mysql_output(MYSQL *conn){
   }
 }
 
-gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
-  if (mysql_query(conn, query)){
-    if(!g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn) ))){
-      va_list    args;
-      va_start(args, fmt);
-      gchar *c=g_strdup_vprintf(fmt,args);
-      log_fun("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-      g_free(c);
-      return FALSE;
+static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
+  if (fmt && log_fun_1){
+    gchar *c=g_strdup_vprintf(fmt,args);
+    if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
+      log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+    else{
+      if (mysql_errno(conn))
+        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+      else
+        log_fun_1("%s",c);
     }
+    g_free(c);
   }
-  return TRUE;
+}
+
+static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
+  if (mysql_query(conn, query)){
+    m_log(conn, log_fun_1, log_fun_2, fmt, args);
+    return TRUE;
+  }
+  return FALSE;
+}
+
+
+gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, log_fun, NULL, fmt,args);
+}
+
+// Executes the query, if there is an error it send critical stopping the process unless the error is ignored
+gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, m_warning, NULL, fmt,args);
+}
+
+// Executes the query, if there is an error it send critical stopping the process unless the error is ignored
+gboolean m_query_critical(  MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, m_critical, m_warning, fmt,args);
+}
+
+
+gboolean m_query_ext(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_queryv(conn, query, log_fun_1, log_fun_2, fmt,args);
+}
+
+gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  gboolean res= m_queryv(conn, q, log_fun, NULL, fmt, args);
+  if (!res)
+    g_message("%s: OK", q);
+  return res;
+}
+
+MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
+  if (m_queryv(conn, query, log_fun_1, log_fun_2, fmt, args))
+    return NULL;
+
+  MYSQL_RES *res = m_result(conn);
+  if (!res)
+    m_log(conn, log_fun_1, log_fun_2, fmt, args);
+  return res;
+}
+
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+}
+
+MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+}
+
+MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  return m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
+}
+
+struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  struct M_ROW *mr=g_new0(struct M_ROW,1);
+  mr->row=NULL;
+  mr->res = m_resultv(mysql_store_result, conn, query, log_fun_1, log_fun_2, fmt, args);
+  if (mr->res){
+    mr->row= mysql_fetch_row(mr->res);
+
+//    if (!mr->row)
+//      m_log(conn, log_fun_1, log_fun_2, fmt, args);
+  }else{
+    g_free(mr);
+    mr=NULL;
+  }
+  return mr;
+}
+
+struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...){
+  va_list args;
+  if (fmt)
+    va_start(args, fmt);
+  struct M_ROW *mr=g_new0(struct M_ROW,1);
+  mr->row=NULL;
+  mr->res = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  if (mr->res){
+    mr->row= mysql_fetch_row(mr->res);
+
+    if (!mr->row)
+      m_log(conn, m_critical, m_warning, fmt, args);
+  }else{
+    g_free(mr);
+    mr=NULL;
+  }
+  return mr;
+}
+
+
+
+
+
+
+
+
+void m_store_result_row_free(struct M_ROW* mr){
+  mysql_free_result(mr->res);
+  g_free(mr);
 }
 
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text){

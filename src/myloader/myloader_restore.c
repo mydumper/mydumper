@@ -43,6 +43,8 @@ struct io_restore_result end_restore_thread = { NULL, NULL};
 
 GThread **restore_threads=NULL;
 
+extern gchar *ignore_errors;
+
 struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
   if (thrconn)
@@ -68,7 +70,6 @@ struct io_restore_result *new_io_restore_result(){
   return iors;
 }
 
-gchar *ignore_errors=NULL;
 
 int restore_data_from_mysqldump_file(struct thread_data *td, const char *filename, gboolean is_schema, struct database *use_database);
 
@@ -79,13 +80,6 @@ void initialize_connection_pool(){
     restore_data_from_file=&restore_data_from_mydumper_file;
 
   guint n=0;
-  if (ignore_errors){
-    gchar **tmp_ignore_errors_list = g_strsplit(ignore_errors, ",", 0);
-    while(tmp_ignore_errors_list[n]!=NULL){
-      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
-      n++;
-    }
-  }
   connection_pool=g_async_queue_new();
   restore_queues=g_async_queue_new();
   free_results_queue=g_async_queue_new();
@@ -179,9 +173,9 @@ void setup_connection(struct connection_data *cd, struct thread_data *td, struct
     td->granted_connections++;
   }
 
-  if (cd->transaction){
-    m_query(cd->thrconn, "START TRANSACTION", m_warning, "START TRANSACTION failed");
-  }
+  if (cd->transaction)
+    m_query_warning(cd->thrconn, "START TRANSACTION", "START TRANSACTION failed");
+
   cd->queue = io_restore_result;
   if (header)
     execute_gstring(cd->thrconn,header);
@@ -209,18 +203,14 @@ gboolean request_another_connection(struct thread_data *td, struct io_restore_re
 
 
 int m_commit(struct connection_data *cd){
-  if (!m_query(cd->thrconn, "COMMIT", m_warning, "COMMIT failed")) {
-    errors++;
-    return 2;
-  }
-  return 0;
+  return m_query_warning(cd->thrconn, "COMMIT", "COMMIT failed")?2:0;
 }
 
 int m_commit_and_start_transaction(struct connection_data *cd, guint* query_counter){
   int e=m_commit(cd);
   if (e) return e;
   *query_counter=0;
-  m_query(cd->thrconn, "START TRANSACTION", m_warning, "START TRANSACTION failed");
+  m_query_warning(cd->thrconn, "START TRANSACTION", "START TRANSACTION failed");
   return 0;
 }
 

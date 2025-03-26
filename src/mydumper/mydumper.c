@@ -54,8 +54,6 @@ gboolean skip_indexes = FALSE;
 // For daemon mode
 gboolean shutdown_triggered = FALSE;
 
-guint errors;
-
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
   if (g_strv_length(strsplit)!=2){

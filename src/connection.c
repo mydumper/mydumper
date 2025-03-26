@@ -320,7 +320,7 @@ void m_connect(MYSQL *conn){
   print_connection_details_once();
 
   if (set_names_statement)
-    mysql_query(conn, set_names_statement);
+    m_query_warning(conn, set_names_statement, "Not able to execute SET NAMES statement", NULL);
 }
 
 void hide_password(int argc, char *argv[]){

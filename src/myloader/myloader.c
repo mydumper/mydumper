@@ -70,7 +70,7 @@ guint sequences_processed = 0;
 GMutex sequences_mutex;
 gchar *source_db = NULL;
 gchar *purge_mode_str=NULL;
-guint errors = 0;
+extern guint errors;
 guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_for_schema_creation=4;
@@ -146,7 +146,6 @@ void create_database(struct thread_data *td, gchar *database) {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);
     if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
-	      //	    m_query(td->connection_data.thrconn, query, m_warning, "Fail to create database: %s", database))
       g_atomic_int_inc(&(detailed_errors.schema_errors));
     g_string_free(data, TRUE);
   }
@@ -511,7 +510,7 @@ int main(int argc, char *argv[]) {
   if (disable_redo_log){
     if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
       g_message("Disabling redologs");
-      m_query(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", m_critical, "DISABLE INNODB REDO LOG failed");
+      m_query_critical(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", "DISABLE INNODB REDO LOG failed");
     }else{
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
@@ -553,7 +552,7 @@ int main(int argc, char *argv[]) {
   conf.data_queue=NULL;
 
   if (disable_redo_log)
-    m_query(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", m_critical, "ENABLE INNODB REDO LOG failed");
+    m_query_critical(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", "ENABLE INNODB REDO LOG failed");
 
   gboolean checksum_ok=TRUE;
   tl=conf.table_list;

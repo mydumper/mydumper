@@ -26,6 +26,7 @@ char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 
+gboolean success_on_1146 = FALSE;
 gboolean help =FALSE;
 GString *set_session = NULL;
 GString *set_global = NULL;
@@ -35,6 +36,8 @@ MYSQL *main_connection = NULL;
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
 GKeyFile *key_file = NULL;
+
+gchar *ignore_errors=NULL;
 
 guint num_threads= 4;
 guint verbose = 2;
@@ -68,11 +71,11 @@ GOptionEntry common_entries[] = {
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
      "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
-     "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, "
-     "default 2",
-     NULL},
+     "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
     {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Turn on debugging output "
      "(automatically sets verbosity to 3)", NULL},
+    {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+     "Not increment error count and Warning instead of Critical in case of any of the comman separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
     {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
