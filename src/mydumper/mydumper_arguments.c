@@ -127,7 +127,11 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-
+  if (!strcmp(option_name,"--success-on-1146")){
+    ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(1146));
+    success_on_1146=TRUE;
+    return TRUE;
+  }
 
   return common_arguments_callback(option_name, value, data, error);
 }
@@ -158,7 +162,7 @@ static GOptionEntry extra_entries[] = {
      NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"success-on-1146", 0, 0, G_OPTION_ARG_NONE, &success_on_1146,
+    {"isuccess-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
@@ -248,10 +252,6 @@ static GOptionEntry chunks_entries[] = {
      "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 
      "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
-    {"char-deep", 0, 0, G_OPTION_ARG_INT64, &char_deep,
-     "Defines the amount of characters to use when the primary key is a string",NULL},
-    {"char-chunk", 0, 0, G_OPTION_ARG_INT64, &char_chunk,
-     "Defines in how many pieces should split the table. By default we use the amount of threads",NULL},
     {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
      NULL},

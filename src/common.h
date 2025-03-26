@@ -87,6 +87,11 @@ struct configuration_per_table{
   GHashTable *all_rows_per_table;
 };
 
+struct M_ROW{
+  MYSQL_RES *res;
+  MYSQL_ROW row;
+};
+
 #define STREAM_BUFFER_SIZE 1000000
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
@@ -162,6 +167,7 @@ void check_num_threads();
 void m_error(const char *fmt, ...);
 void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
+void m_message(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
@@ -209,6 +215,15 @@ gchar *build_dbt_key(gchar *a, gchar *b);
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
+gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...);
+gboolean m_query_critical( MYSQL *conn, const gchar *query, const char *fmt, ...);
+MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...);
+MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
+struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...);
+struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...);
+void m_store_result_row_free(struct M_ROW* mr);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);

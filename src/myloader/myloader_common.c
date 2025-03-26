@@ -98,7 +98,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
      if (strlen(line[i])>2){
        GString *str=g_string_new(line[i]);
        g_string_append_c(str,';');
-       m_query(conn, str->str, m_warning, "Sending replication command: %s", str->str);
+       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
        g_string_free(str,TRUE);
      }
   }
@@ -367,8 +367,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
 gboolean execute_use(struct connection_data *cd){
   if (cd->current_database){
     gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
-    if (mysql_query(cd->thrconn, query)) {
-//    g_critical("Thread %d: Error switching to database `%s` %s", cd->thread_id, cd->current_database, msg);
+    if (m_query_warning(cd->thrconn, query, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database)) {
       g_free(query);
       return TRUE;
     }
@@ -629,14 +628,11 @@ void initialize_thread_data(struct thread_data*td, struct configuration *conf, e
 char *show_warnings_if_possible(MYSQL *conn){
   if (!show_warnings)
     return NULL;
-  MYSQL_RES *result = NULL;
-  MYSQL_ROW row;
-  if (mysql_query(conn, "SHOW WARNINGS") || !(result = mysql_use_result(conn))) {
-    g_critical("Error on SHOW WARNINGS: %s", mysql_error(conn));
+  MYSQL_RES *result = m_store_result(conn, "SHOW WARNINGS", m_critical, "Error on SHOW WARNINGS", NULL);
+  if (!result)
     return NULL;
-  }
   GString *_error=g_string_new("");
-  row = mysql_fetch_row(result);
+  MYSQL_ROW row = mysql_fetch_row(result);
   while (row){
     g_string_append(_error,row[2]);
     g_string_append(_error,"\n");

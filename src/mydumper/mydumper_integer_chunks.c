@@ -372,28 +372,26 @@ end:
 gboolean refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
   struct integer_step * ics = &(csi->chunk_step->integer_step);
   gchar *query = NULL;
-  MYSQL_ROW row = NULL;
-  MYSQL_RES *minmax = NULL;
   /* Get minimum/maximum */
 
-  mysql_query(conn, query = g_strdup_printf(
+  MYSQL_RES *minmax = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s MIN(%s%s%s),MAX(%s%s%s) FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str, identifier_quote_character_str, csi->field, identifier_quote_character_str,
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""));
+                        csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""), NULL, "Query to get a new min and max failed", NULL);
   g_free(query);
-  minmax = mysql_store_result(conn);
 
   if (!minmax){
     return FALSE;
   }
-  row = mysql_fetch_row(minmax);
 
-  if (row==NULL || row[0]==NULL){
+  MYSQL_ROW row = mysql_fetch_row(minmax);
+  if (row==NULL || row[0]==NULL || row[1]==NULL){
     mysql_free_result(minmax);
     return FALSE;
   }
+
   if (ics->is_unsigned) {
     guint64 nmin = strtoull(row[0], NULL, 10);
     guint64 nmax = strtoull(row[1], NULL, 10);
@@ -412,35 +410,32 @@ gboolean refresh_integer_min_max(MYSQL *conn, struct db_table *dbt, struct chunk
 
 
 void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
-//  union chunk_step *cs= tj->chunk_step;
   struct integer_step * ics = &(csi->chunk_step->integer_step);
   gchar *query = NULL;
-  MYSQL_ROW row = NULL;
-  MYSQL_RES *minmax = NULL;
-  /* Get minimum/maximum */
 
   GString *where = g_string_new("");
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
-  mysql_query(conn, query = g_strdup_printf(
+  MYSQL_RES *min = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s ASC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-			where->str, 
-                        identifier_quote_character_str, csi->field, identifier_quote_character_str));
+                        where->str, 
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
+  g_string_free(where,TRUE);
   g_free(query);
-  minmax = mysql_store_result(conn);
 
-  if (!minmax){
+  if (!min){
     return;
   }
-  row = mysql_fetch_row(minmax);
+  MYSQL_ROW row = mysql_fetch_row(min);
 
   if (row==NULL || row[0]==NULL){
-    mysql_free_result(minmax);
+    mysql_free_result(min);
     return;
   }
+
   if (ics->is_unsigned) {
     guint64 nmin = strtoull(row[0], NULL, 10);
     ics->type.unsign.min = nmin;
@@ -448,46 +443,42 @@ void update_integer_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_ite
     gint64 nmin = strtoll(row[0], NULL, 10);
     ics->type.sign.min = nmin;
   }
-  mysql_free_result(minmax);
+
+  mysql_free_result(min);
 }
 
 void update_integer_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi ){
   struct integer_step * ics = &(csi->chunk_step->integer_step);
   gchar *query = NULL;
-  MYSQL_ROW row = NULL;
-  MYSQL_RES *minmax = NULL;
-  /* Get minimum/maximum */
 
   GString *where = g_string_new("");
   update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
 
-  mysql_query(conn, query = g_strdup_printf(
+  MYSQL_RES *max = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s DESC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where->str,
-                        identifier_quote_character_str, csi->field, identifier_quote_character_str));
-  minmax = mysql_store_result(conn);
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new max failed", NULL);
+  g_string_free(where,TRUE);
   g_free(query);
 
-  if (!minmax){
-//    g_message("No middle point");
+  if (!max){
     goto cleanup;
   }
-  row = mysql_fetch_row(minmax);
 
+  MYSQL_ROW row = mysql_fetch_row(max);
   if (row==NULL || row[0]==NULL){
-//    g_message("No middle point");
 cleanup:
-
     if (ics->is_unsigned) {
       ics->type.unsign.max = ics->type.unsign.min;
     }else{
       ics->type.sign.max = ics->type.sign.min;
     }
 
-    mysql_free_result(minmax);
+    if (max)
+      mysql_free_result(max);
     return;
   }
 
@@ -499,7 +490,7 @@ cleanup:
     ics->type.sign.max = nmax;
   }
 
-  mysql_free_result(minmax);
+  mysql_free_result(max);
 }
 
 guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *csi){

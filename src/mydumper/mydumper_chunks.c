@@ -30,7 +30,6 @@
 #include "mydumper_common.h"
 #include "mydumper_chunks.h"
 #include "mydumper_integer_chunks.h"
-#include "mydumper_char_chunks.h"
 #include "mydumper_partition_chunks.h"
 #include "mydumper_create_jobs.h"
 
@@ -43,7 +42,6 @@ GThread *chunk_builder=NULL;
 void initialize_chunk(){
   give_me_another_transactional_chunk_step_queue=g_async_queue_new();
   give_me_another_non_transactional_chunk_step_queue=g_async_queue_new();
-  initialize_char_chunk();
 }
 
 void start_chunk_builder(struct configuration *conf){
@@ -78,137 +76,125 @@ struct chunk_step_item * new_none_chunk_step(){
 }
 
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
-    struct chunk_step_item * csi=NULL;
+  struct chunk_step_item * csi=NULL;
 
-    gchar *field=g_list_nth_data(dbt->primary_key, position);
-    gchar *query = NULL;
-    MYSQL_ROW row;
-    MYSQL_RES *minmax = NULL;
-    /* Get minimum/maximum */
-    mysql_query(conn, query = g_strdup_printf(
+  gchar *field=g_list_nth_data(dbt->primary_key, position);
+  gchar *query = NULL;
+  /* Get minimum/maximum */
+  struct M_ROW *mr = m_store_result_row(conn, query = g_strdup_printf(
                         "SELECT %s MIN(%s%s%s),MAX(%s%s%s),LEFT(MIN(%s%s%s),1),LEFT(MAX(%s%s%s),1) FROM %s%s%s.%s%s%s %s %s %s %s",
                         is_mysql_like()? "/*!40001 SQL_NO_CACHE */":"",
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
-			identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-			where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""));
-//    g_message("Query: %s", query);
-    g_free(query);
-    minmax = mysql_store_result(conn);
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""),
+                        m_message, NULL, "It is NONE with minmax == NULL", NULL);
+  g_free(query);
 
-    if (!minmax){
-      g_message("It is NONE with minmax == NULL");
-      return new_none_chunk_step();
-    }
+  if (!mr)
+    return new_none_chunk_step();
 
-    row = mysql_fetch_row(minmax);
+  if (!mr->row){
+    m_store_result_row_free(mr);
+    return new_none_chunk_step();
+  }
 
-    MYSQL_FIELD *fields = mysql_fetch_fields(minmax);
-    gulong *lengths = mysql_fetch_lengths(minmax);
-    /* Check if all values are NULL */
-    if (row[0] == NULL){
-      if (minmax)
-        mysql_free_result(minmax);
-      g_message("It is NONE with row == NULL");
-      return new_none_chunk_step();
-    }
+  /* Check if all values are NULL */
+  if (mr->row[0] == NULL){
+    m_store_result_row_free(mr);
+    g_message("It is NONE with row == NULL");
+    return new_none_chunk_step();
+  }
+  MYSQL_FIELD *fields = mysql_fetch_fields(mr->res);
   /* Support just bigger INTs for now, very dumb, no verify approach */
-    guint64 diff_btwn_max_min;
-    guint64 unmin, unmax;
-    gint64 nmin, nmax;
+  guint64 diff_btwn_max_min;
+  guint64 unmin, unmax;
+  gint64 nmin, nmax;
 //    union chunk_step *cs = NULL;
-    switch (fields[0].type) {
-      case MYSQL_TYPE_TINY:
-      case MYSQL_TYPE_SHORT:
-      case MYSQL_TYPE_LONG:
-      case MYSQL_TYPE_LONGLONG:
-      case MYSQL_TYPE_INT24:
-        trace("Integer PK found on `%s`.`%s`",dbt->database->name, dbt->table);
-        unmin = strtoull(row[0], NULL, 10);
-        unmax = strtoull(row[1], NULL, 10);
-        nmin  = strtoll (row[0], NULL, 10);
-        nmax  = strtoll (row[1], NULL, 10);
+  switch (fields[0].type) {
+    case MYSQL_TYPE_TINY:
+    case MYSQL_TYPE_SHORT:
+    case MYSQL_TYPE_LONG:
+    case MYSQL_TYPE_LONGLONG:
+    case MYSQL_TYPE_INT24:
+      trace("Integer PK found on `%s`.`%s`",dbt->database->name, dbt->table);
+      unmin = strtoull(mr->row[0], NULL, 10);
+      unmax = strtoull(mr->row[1], NULL, 10);
+      nmin  = strtoll (mr->row[0], NULL, 10);
+      nmax  = strtoll (mr->row[1], NULL, 10);
 
-        if (fields[0].flags & UNSIGNED_FLAG){
-          diff_btwn_max_min=gint64_abs(unmax-unmin);
-        }else{
-          diff_btwn_max_min=gint64_abs(nmax-nmin);
-        }
-
-        gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
-        mysql_free_result(minmax);
-
-        // If !(diff_btwn_max_min > min_chunk_step_size), then there is no need to split the table.
-        if ( diff_btwn_max_min > dbt->min_chunk_step_size){
-          union type type;
-
-          if (unsign){
-            type.unsign.min=unmin;
-            type.unsign.max=unmax;
-          }else{
-            type.sign.min=nmin;
-            type.sign.max=nmax;
-          }
-
-          if (dbt->starting_chunk_step_size == 0){
-            if (unsign){
-              dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
-                                               (gint64_abs(type.unsign.max - type.unsign.min)/num_threads>dbt->max_chunk_step_size?
-                                                 dbt->max_chunk_step_size:
-                                                 gint64_abs(type.unsign.max - type.unsign.min)/num_threads):
-                                               gint64_abs(type.unsign.max - type.unsign.min)/num_threads;
-            }else{
-              dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
-                                               (gint64_abs(type.sign.max - type.sign.min)/num_threads>dbt->max_chunk_step_size?
-                                                 dbt->max_chunk_step_size:
-                                                 gint64_abs(type.sign.max - type.sign.min)/num_threads):
-                                               gint64_abs(type.sign.max - type.sign.min)/num_threads;
-
-            }
-          }
-          if (dbt->starting_chunk_step_size < dbt->min_chunk_step_size)
-            dbt->starting_chunk_step_size=dbt->min_chunk_step_size;
-
-          g_assert(dbt->starting_chunk_step_size>0);
-
-          csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position);
-          determine_if_we_can_go_deeper(dbt,csi, rows);
-
-          if (csi->chunk_step->integer_step.is_step_fixed_length){
-            if (csi->chunk_step->integer_step.is_unsigned){
-              csi->chunk_step->integer_step.type.unsign.min=(csi->chunk_step->integer_step.type.unsign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
-            }else{
-              csi->chunk_step->integer_step.type.sign.min=(csi->chunk_step->integer_step.type.sign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
-            }
-          }
-
-          if (dbt->is_fixed_length)
-            dbt->chunk_filesize=0;
-          return csi;
-        }else{
-          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
-          return new_none_chunk_step();
-        }
-        break;
-      case MYSQL_TYPE_STRING:
-      case MYSQL_TYPE_VAR_STRING:
-
-        if (minmax)
-          mysql_free_result(minmax);
-        return new_none_chunk_step();
-
-        csi=new_char_step_item(conn, TRUE, prefix, dbt->primary_key->data, 0, 0, row, lengths, NULL);
-        if (minmax)
-          mysql_free_result(minmax);
-        return csi;
-        break;
-      default:
-        if (minmax)
-          mysql_free_result(minmax);
-        g_message("It is NONE: default");
-        return new_none_chunk_step();
-        break;
+      if (fields[0].flags & UNSIGNED_FLAG){
+        diff_btwn_max_min=gint64_abs(unmax-unmin);
+      }else{
+        diff_btwn_max_min=gint64_abs(nmax-nmin);
       }
+
+      gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
+      m_store_result_row_free(mr);
+
+      // If !(diff_btwn_max_min > min_chunk_step_size), then there is no need to split the table.
+      if ( diff_btwn_max_min > dbt->min_chunk_step_size){
+        union type type;
+
+        if (unsign){
+          type.unsign.min=unmin;
+          type.unsign.max=unmax;
+        }else{
+          type.sign.min=nmin;
+          type.sign.max=nmax;
+        }
+
+        if (dbt->starting_chunk_step_size == 0){
+          if (unsign){
+            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+                                             (gint64_abs(type.unsign.max - type.unsign.min)/num_threads>dbt->max_chunk_step_size?
+                                               dbt->max_chunk_step_size:
+                                               gint64_abs(type.unsign.max - type.unsign.min)/num_threads):
+                                             gint64_abs(type.unsign.max - type.unsign.min)/num_threads;
+          }else{
+            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+                                             (gint64_abs(type.sign.max - type.sign.min)/num_threads>dbt->max_chunk_step_size?
+                                               dbt->max_chunk_step_size:
+                                               gint64_abs(type.sign.max - type.sign.min)/num_threads):
+                                             gint64_abs(type.sign.max - type.sign.min)/num_threads;
+
+          }
+        }
+        if (dbt->starting_chunk_step_size < dbt->min_chunk_step_size)
+          dbt->starting_chunk_step_size=dbt->min_chunk_step_size;
+
+        g_assert(dbt->starting_chunk_step_size>0);
+
+        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position);
+        determine_if_we_can_go_deeper(dbt,csi, rows);
+
+        if (csi->chunk_step->integer_step.is_step_fixed_length){
+          if (csi->chunk_step->integer_step.is_unsigned){
+            csi->chunk_step->integer_step.type.unsign.min=(csi->chunk_step->integer_step.type.unsign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
+          }else{
+            csi->chunk_step->integer_step.type.sign.min=(csi->chunk_step->integer_step.type.sign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
+          }
+        }
+
+        if (dbt->is_fixed_length)
+          dbt->chunk_filesize=0;
+        return csi;
+      }else{
+        trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
+        return new_none_chunk_step();
+      }
+      break;
+    case MYSQL_TYPE_STRING:
+    case MYSQL_TYPE_VAR_STRING:
+      m_store_result_row_free(mr);
+      return new_none_chunk_step();
+      break;
+    default:
+      m_store_result_row_free(mr);
+      g_message("It is NONE: default");
+      return new_none_chunk_step();
+      break;
+  }
 
   return NULL;
 }
@@ -216,55 +202,55 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field){
   gchar *query = NULL;
-  MYSQL_ROW row = NULL;
-  MYSQL_RES *res= NULL;
   /* Get minimum/maximum */
-
-  mysql_query(conn, query = g_strdup_printf(
+  struct M_ROW *mr = m_store_result_row(conn, query = g_strdup_printf(
                         "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        where?" WHERE ":"",where?where->str:""));
+                        where?" WHERE ":"",where?where->str:""), 
+                        m_critical, m_warning, "Failed to execute EXPLAIN", NULL);
 
   g_free(query);
-  res = mysql_store_result(conn);
+  if (!mr){
+    return 0;
+  }
 
   guint row_col=-1;
+  determine_explain_columns(mr->res, &row_col);
 
-  if (!res){
+  if (!mr->row || mr->row[row_col]==NULL){
+    m_store_result_row_free(mr);
     return 0;
   }
-  determine_explain_columns(res, &row_col);
-  row = mysql_fetch_row(res);
 
-  if (row==NULL || row[row_col]==NULL){
-    mysql_free_result(res);
-    return 0;
-  }
-  guint64 rows_in_explain = strtoull(row[row_col], NULL, 10);
-  mysql_free_result(res);
+  guint64 rows_in_explain = strtoull(mr->row[row_col], NULL, 10);
+  m_store_result_row_free(mr);
   return rows_in_explain;
 }
 
 static
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
 {
-  char *query= g_strdup_printf("SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
-                               is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                               identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  mysql_query(conn, query);
+  char *query= NULL;
 
+  struct M_ROW *mr = m_store_result_row(conn, query= g_strdup_printf(
+                        "SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str),
+                        m_critical, m_warning, "Failed to get count", NULL);
   g_free(query);
-  MYSQL_RES *res= mysql_store_result(conn);
-  MYSQL_ROW row= mysql_fetch_row(res);
-
-  if (!row || !row[0]) {
-    mysql_free_result(res);
+  if (!mr){
     return 0;
   }
-  guint64 rows= strtoull(row[0], NULL, 10);
-  mysql_free_result(res);
+
+  if (!mr->row || mr->row[0]==NULL){
+    m_store_result_row_free(mr);
+    return 0;
+  }
+
+  guint64 rows= strtoull(mr->row[0], NULL, 10);
+  m_store_result_row_free(mr);
   return rows;
 }
 

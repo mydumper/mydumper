@@ -193,11 +193,7 @@ gboolean is_empty_dir(gchar *directory)
 }
 
 void set_transaction_isolation_level_repeatable_read(MYSQL *conn){
-  if (mysql_query(conn,
-                  "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")) {
-    g_critical("Failed to set isolation level: %s", mysql_error(conn));
-    exit(EXIT_FAILURE);
-  }
+  m_query_critical(conn, "SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ", "Failed to set isolation level", NULL);
 }
 
 // Global Var used:
@@ -396,13 +392,9 @@ void initialize_sql_statement(GString *statement){
   g_string_printf(statement,"%s",headers->str);
 }
 
-
 void set_tidb_snapshot(MYSQL *conn){
-  gchar *query =
-  g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
-  if (mysql_query(conn, query)) {
-    m_critical("Failed to set tidb_snapshot: %s.\nThis might be related to https://github.com/pingcap/tidb/issues/8887", mysql_error(conn));
-  }
+  gchar *query = g_strdup_printf("SET SESSION tidb_snapshot = '%s'", tidb_snapshot);
+  m_query_critical(conn, query, "Failed to set tidb_snapshot (It could be related to https://github.com/pingcap/tidb/issues/8887)", NULL);
   g_free(query);
 }
 
