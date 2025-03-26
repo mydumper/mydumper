@@ -1,0 +1,11 @@
+
+
+num_of_inserts=$(grep INSERT /tmp/data/specific_4.t_regex_partition.00000.sql | wc -l)
+
+if [ $num_of_inserts == 2  ]
+then
+  exit 1;
+else
+  exit 0
+fi
+
