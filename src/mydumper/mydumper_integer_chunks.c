@@ -263,7 +263,12 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         g_mutex_unlock(csi->mutex);
         return csi;
       }
-      if (csi->status==UNSPLITTABLE || csi->status==COMPLETED){
+      if (csi->status==UNSPLITTABLE){
+        if (csi->next)
+          g_async_queue_push(dbt->chunks_queue, csi);
+        goto end;
+      }
+      if (csi->status==COMPLETED){
         goto end;
       }
       if (!is_splitable(csi)){
