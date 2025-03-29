@@ -565,6 +565,12 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) / cs->integer_step.step:1;
   }
 
+  if (csi->next !=NULL && csi->status==UNSPLITTABLE){
+    // Could be possible that in previous iteration on a multicolumn table, the status changed ot UNSPLITTABLE, but on next iteration could be possible
+    // to splittable, that is why we need to change back to ASSIGNED
+    csi->status=ASSIGNED; 
+  }
+
   g_mutex_unlock(csi->mutex);
 
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
