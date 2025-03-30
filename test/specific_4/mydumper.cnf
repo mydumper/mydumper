@@ -1,0 +1,10 @@
+#
+# Testing --ignore-engines with a single engine
+#
+
+[mydumper]
+database=specific_4
+outputdir=/tmp/data
+partition-regex=(p1|p3)
+rows=4
+split-partitions=1
