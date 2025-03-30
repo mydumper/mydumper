@@ -263,7 +263,12 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         g_mutex_unlock(csi->mutex);
         return csi;
       }
-      if (csi->status==UNSPLITTABLE || csi->status==COMPLETED){
+      if (csi->status==UNSPLITTABLE){
+        if (csi->next)
+          g_async_queue_push(dbt->chunks_queue, csi);
+        goto end;
+      }
+      if (csi->status==COMPLETED){
         goto end;
       }
       if (!is_splitable(csi)){
@@ -319,47 +324,6 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         g_mutex_unlock(csi->mutex);
         return new_csi;
       }
-      /*
-      // look's like it is not, but...
-      if (dbt->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
-        g_mutex_lock(csi->next->mutex);
-        if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){
-          g_mutex_unlock(csi->next->mutex);
-          goto end;
-        }
-        if (!is_splitable(csi->next)){
-          csi->next->status=UNSPLITTABLE;
-          goto end;
-        }
-
-        if (has_only_one_level(csi)){
-          new_csi_next=split_chunk_step(csi->next);
-
-          if (new_csi_next){
-            csi->deep=csi->deep+1;
-            new_csi=clone_chunk_step_item(csi);
-            if ( csi->chunk_step->integer_step.is_step_fixed_length ){
-              new_csi->number+=pow(2,csi->deep);
-            }
-            update_where_on_integer_step(new_csi);
-
-            new_csi->next=new_csi_next;
-
-            new_csi->next->prefix = new_csi->where;
-            dbt->chunks=g_list_append(dbt->chunks,new_csi);
-            g_async_queue_push(dbt->chunks_queue, csi);
-            g_async_queue_push(dbt->chunks_queue, new_csi);
-            g_mutex_unlock(csi->next->mutex);
-            g_mutex_unlock(csi->mutex);
-            return new_csi;
-          }
-        }
-        g_mutex_unlock(csi->next->mutex);
-        //split_unsigned_chunk_step
-      }else{
-        csi->status=UNSPLITTABLE;
-      }
-      */
   
 end:
       g_mutex_unlock(csi->mutex);
@@ -565,6 +529,12 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     cs->integer_step.estimated_remaining_steps=cs->integer_step.step>0?(cs->integer_step.type.sign.max - cs->integer_step.type.sign.cursor) / cs->integer_step.step:1;
   }
 
+  if (csi->next !=NULL && csi->status==UNSPLITTABLE){
+    // Could be possible that in previous iteration on a multicolumn table, the status changed ot UNSPLITTABLE, but on next iteration could be possible
+    // to splittable, that is why we need to change back to ASSIGNED
+    csi->status=ASSIGNED; 
+  }
+
   g_mutex_unlock(csi->mutex);
 
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
@@ -719,11 +689,11 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
   if (csi->position==0)
     cs->integer_step.estimated_remaining_steps=0;
   csi->status=COMPLETED;
-  g_mutex_unlock(csi->mutex);
   if (multicolumn_process){
     free_integer_step_item(csi->next);
     csi->next=NULL;
   }
+  g_mutex_unlock(csi->mutex);
 
 }
 
