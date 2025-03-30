@@ -47,7 +47,7 @@ void *process_directory(struct configuration *conf){
     we will get wrong condition (sequences == sequences_processed == 0).
   */
   if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
-    process_metadata_global("metadata");
+    process_metadata_global("metadata", conf->context);
     g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
     g_message("metadata pushed");
   }else

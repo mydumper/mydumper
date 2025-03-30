@@ -79,7 +79,6 @@ guint max_threads_for_post_creation= 1;
 guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
-gboolean quote_character_cli= FALSE;
 
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
@@ -89,6 +88,8 @@ GHashTable * load_data_list = NULL;
 extern GHashTable *db_hash;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
+extern gboolean local_infile;
+
 const char DIRECTORY[] = "import";
 
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -192,7 +193,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -240,7 +241,8 @@ int main(int argc, char *argv[]) {
     g_message("Using %u loader threads", num_threads);
 
   initialize_common_options(context, "myloader");
-  g_option_context_free(context);
+//  g_option_context_free(context);
+  conf.context=context;  
 
   hide_password(argc, argv);
   ask_password();
@@ -370,6 +372,7 @@ int main(int argc, char *argv[]) {
 
     print_bool("no-schemas",no_schemas);
 
+    print_bool("local-infile", local_infile);
     print_string("purge-mode",purge_mode_str);
     print_bool("disable-redo-log",disable_redo_log);
     print_string("checksum",checksum_str);

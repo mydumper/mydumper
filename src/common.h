@@ -157,7 +157,7 @@ void initialize_set_names();
 void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
 void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value);
-
+void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
 #endif
 
 /* using fewer than 2 threads can cause mydumper to hang */

@@ -32,6 +32,7 @@ gchar *fifo_directory = NULL;
 gboolean show_warnings=FALSE;
 GList *ignore_set_list=NULL;
 gboolean mysqldump = FALSE;
+extern gboolean local_infile;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -60,7 +61,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
   } else if (!strcmp(option_name, "--quote-character")) {
-    quote_character_cli= TRUE;
     if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
       identifier_quote_character= BACKTICK;
       return TRUE;
@@ -129,16 +129,22 @@ static GOptionEntry entries[] = {
      "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
      "An alternative database to restore into", NULL},
-    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Identifier quote character used in INSERT statements. "
-      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
-      "Default: detect from dump if possible, otherwise BACKTICK", NULL},
     {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
       "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
     {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, "When Ctrl+c is pressed it immediately terminates the process", NULL},
     {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, "It expect a mysqldump format when stream is used", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+static GOptionEntry load_from_metadata_entries[] = {
+    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Identifier quote character used in INSERT statements. "
+      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+      "Default: detect from metadata file if possible, otherwise BACKTICK", NULL},
+    {"local-infile", 0, 0, G_OPTION_ARG_NONE, &local_infile,
+     "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement"
+     "Default: detect from metadata file if possible, otherwise is disabled", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry threads_entries[] = {
@@ -170,14 +176,12 @@ static GOptionEntry execution_entries[] = {
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Treat checksums: skip, fail(default), warn.", NULL },
-
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
      "Drop tables if they already exist", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
      "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
      "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
-
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
       "Table recreation will be executed in series, one thread at a time. "
         "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
@@ -261,6 +265,11 @@ GOptionContext * load_contex_entries(){
   GOptionGroup *statement_group=g_option_group_new("statement", "Statement Options", "Statement Options", NULL, NULL);
   g_option_group_add_entries(statement_group, statement_entries);
   g_option_context_add_group(context, statement_group);
+
+
+  GOptionGroup *load_from_metadata_group=g_option_group_new("load_from_metadata", "Load from metadata Options", "Load from metadata Options", NULL, NULL);
+  g_option_group_add_entries(load_from_metadata_group, load_from_metadata_entries);
+  g_option_context_add_group(context, load_from_metadata_group);
 
 
   g_option_context_set_help_enabled(context, FALSE);

@@ -102,6 +102,7 @@ struct configuration {
   GMutex *mutex;
   GAsyncQueue *index_queue;
   int done;
+  GOptionContext * context;
 };
 
 
