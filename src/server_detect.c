@@ -59,6 +59,8 @@ gboolean server_support_tablespaces(){
 
 void detect_server_version(MYSQL * conn) {
   struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
+//  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
+
   gchar *ascii_version=NULL;
   gchar *ascii_version_comment=NULL;
 

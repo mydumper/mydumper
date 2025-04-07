@@ -140,8 +140,10 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   char *query = g_strdup_printf("SHOW CREATE DATABASE IF NOT EXISTS %c%s%c", identifier_quote_character, database->name, identifier_quote_character);
   struct M_ROW *mr = m_store_result_row (conn, query, m_critical, m_warning, "Error dumping create database (%s)", database->name);
   g_free(query);
-  if (!mr)
+  if (!mr->res){
+    m_store_result_row_free(mr);
     return;
+  }
 
   /* There should never be more than one row */
   if (!mr->row || !strstr(mr->row[1], identifier_quote_character_str)) {
@@ -191,8 +193,10 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!mr)
+  if (!mr->res){
+    m_store_result_row_free(mr);
     return;
+  }
 
   g_string_set_size(statement, 0);
 
@@ -265,18 +269,20 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
                         identifier_quote_character, row[0], identifier_quote_character),
                         "Failed to execute SHOW CREATE TRIGGER %s.%s",database->name, row[0] );
     g_free(query);
-    if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE"))
-      remove_definer_from_gchar(mr->row[2]);
-    g_string_append_printf(statement, "%s", mr->row[2]);
-    splited_st = g_strsplit(statement->str, ";\n", 0);
-    g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
-    g_strfreev(splited_st);
-    g_string_append(statement, ";\n");
-    restore_charset(statement);
-    if (!write_data(outfile, statement)) {
-      g_critical("Could not write triggers data for %s", message);
-      errors++;
-      return;
+    if (mr->row){
+      if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE"))
+        remove_definer_from_gchar(mr->row[2]);
+      g_string_append_printf(statement, "%s", mr->row[2]);
+      splited_st = g_strsplit(statement->str, ";\n", 0);
+      g_string_printf(statement, "%s", g_strjoinv("; \n", splited_st));
+      g_strfreev(splited_st);
+      g_string_append(statement, ";\n");
+      restore_charset(statement);
+      if (!write_data(outfile, statement)) {
+        g_critical("Could not write triggers data for %s", message);
+        errors++;
+        return;
+      }
     }
     m_store_result_row_free(mr);
     g_string_set_size(statement, 0);
@@ -407,8 +413,10 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping view (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!mr)
+  if (!mr->res || !mr->row){
+    m_store_result_row_free(mr);
     return;
+  }
 
   outfile = m_open(&view_filename,"w");
   if (!outfile) {
@@ -483,8 +491,10 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
   struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
-  if (!mr)
+  if (!mr->res){
+    m_store_result_row_free(mr);
     return;
+  }
   g_string_set_size(statement, 0);
 
   /* There should never be more than one row */

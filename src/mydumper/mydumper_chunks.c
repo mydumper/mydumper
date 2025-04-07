@@ -89,13 +89,10 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""),
                         m_message, NULL, "It is NONE with minmax == NULL", NULL);
-  g_message("Query: %s", query);
+//  g_message("Query: %s", query);
   g_free(query);
 
-  if (!mr)
-    return new_none_chunk_step();
-
-  if (!mr->row){
+  if (!mr->res || !mr->row){
     m_store_result_row_free(mr);
     return new_none_chunk_step();
   }
@@ -216,14 +213,15 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
                         m_critical, m_warning, "Failed to execute EXPLAIN: %s", query);
 
   g_free(query);
-  if (!mr){
+  if (!mr->res || !mr->row){
+    m_store_result_row_free(mr);
     return 0;
   }
 
   guint row_col=-1;
   determine_explain_columns(mr->res, &row_col);
 
-  if (!mr->row || mr->row[row_col]==NULL){
+  if ( mr->row[row_col]==NULL){
     m_store_result_row_free(mr);
     return 0;
   }
@@ -244,11 +242,7 @@ guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where)
                         where?" WHERE ":"",where?where->str:""),
                         m_critical, m_warning, "Failed to get count", NULL);
   g_free(query);
-  if (!mr){
-    return 0;
-  }
-
-  if (!mr->row || mr->row[0]==NULL){
+  if (!mr->res || !mr->row || mr->row[0]==NULL){
     m_store_result_row_free(mr);
     return 0;
   }
