@@ -855,6 +855,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     }
 		tj->st_in_file++;
   }
+  tj->num_rows_of_last_run=num_rows;
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
 //  g_string_free(statement_row, TRUE);	
