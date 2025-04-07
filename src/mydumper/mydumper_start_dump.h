@@ -230,6 +230,7 @@ struct chunk_step_item{
   enum chunk_type chunk_type;
   struct chunk_step_item *next;
   struct chunk_functions chunk_functions;
+  gboolean multicolumn;
   GString *where;
   gboolean include_null;
   GString *prefix;
@@ -272,6 +273,7 @@ struct table_job {
   int child_process;
   int char_chunk_part;
   struct thread_data *td;
+  guint64 num_rows_of_last_run;
 };
 
 struct dump_table_job{

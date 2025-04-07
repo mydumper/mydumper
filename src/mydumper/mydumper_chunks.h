@@ -41,6 +41,7 @@ extern GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 extern GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 void next_chunk_in_char_step(union chunk_step * cs);
 //union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where);
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *local_where, guint64 rows) ;
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *local_where) ;
 void build_where_clause_on_table_job(struct table_job *tj);
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field);
+guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where);
