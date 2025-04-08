@@ -133,7 +133,7 @@ all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
 
-os=bookworm
+os=trixie
 all_os[${os}_0]="trixie"
 all_os[${os}_1]="debian:trixie"
 all_os[${os}_2]="percona-release_latest.trixie_all.deb"
@@ -145,7 +145,7 @@ all_os[${os}_3]="true"
 list_el_os=("el7" "el8" "el9")
 list_el_os_without_el=( "7" "8" "9" )
 list_ubuntu_os=("bionic" "focal" "jammy" "noble")
-list_debian_os=("buster" "bullseye" "bookworm")
+list_debian_os=("buster" "bullseye" "bookworm" "trixie")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
 
 build_man_os="jammy_percona80_amd64"
