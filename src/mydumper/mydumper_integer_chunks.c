@@ -232,7 +232,7 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_s
              )
            )
          )
-)) ) || ( csi->chunk_step->integer_step.is_step_fixed_length && (   
+)) ) || ( csi->chunk_step->integer_step.is_step_fixed_length && csi->chunk_step->integer_step.step > 0 && (   
 (
   csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.min / csi->chunk_step->integer_step.step + 1 
 )||
@@ -272,9 +272,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         goto end;
       }
       if (!is_splitable(csi)){
-        if (csi->multicolumn && csi->next && csi->next->chunk_type==INTEGER
-            
-            ){
+        if (csi->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
           trace("Multicolumn table checking next");
           g_mutex_lock(csi->next->mutex);
           if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){

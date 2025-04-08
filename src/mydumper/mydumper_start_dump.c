@@ -275,6 +275,11 @@ static
 void detect_sql_mode(MYSQL *conn){
   struct M_ROW *mr = m_store_result_single_row(conn, "SELECT @@SQL_MODE", "Error getting SQL_MODE",NULL);
 
+  if (!mr->res || !mr->row){
+    m_store_result_row_free(mr);
+    return;
+  }
+
   GString *str= g_string_new(NULL);
 
   if (!g_strstr_len(mr->row[0],-1, "NO_AUTO_VALUE_ON_ZERO"))
