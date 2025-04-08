@@ -23,7 +23,6 @@
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <gio/gio.h>
-#include <pcre.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>

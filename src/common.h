@@ -17,7 +17,6 @@
 
 #include <mysql.h>
 #include <stdio.h>
-#include <pcre.h>
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 #define IS_TRX_TABLE 2

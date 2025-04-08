@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <pcre.h>
 #include <glib.h>
 #include <string.h>
 #include "config.h"

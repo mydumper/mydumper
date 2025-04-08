@@ -15,7 +15,6 @@
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
-#include <pcre.h>
 #include <glib.h>
 #include <string.h>
 #include "server_detect.h"
