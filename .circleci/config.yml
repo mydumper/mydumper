@@ -1176,6 +1176,123 @@ executors:
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
+  trixie_mariadb1011:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.11
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_mariadb1006:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: mariadb:10.6
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_percona57:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:5.7
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_percona80:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: percona:8
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_tidb:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    - image: pingcap/tidb
+      command: mysqld
+      environment:
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_mysql80:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.0
+      command: mysqld
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie_mysql84:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    - image: mysql:8.4
+      command: mysqld
+      environment:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+    working_directory: /tmp/src/mydumper
+
+  trixie:
+    docker:
+    - image: mydumper/mydumper-builder-trixie
+      environment:
+        MYSQL_HOST: 127.0.0.1
+        MYSQL_DB: mate
+        MYSQL_USER: root
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_PASSWORD:
+    working_directory: /tmp/src/mydumper
+
 commands:
 
   prepare_mariadb1006:

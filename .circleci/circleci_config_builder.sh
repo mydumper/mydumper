@@ -146,7 +146,7 @@ list_el_os=("el7" "el8" "el9")
 list_el_os_without_el=( "7" "8" "9" )
 list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("buster" "bullseye" "bookworm" "trixie")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
+list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm" "trixie")
 
 build_man_os="jammy_percona80_amd64"
 
