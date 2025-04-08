@@ -133,6 +133,11 @@ all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
 
+os=bookworm
+all_os[${os}_0]="trixie"
+all_os[${os}_1]="debian:trixie"
+all_os[${os}_2]="percona-release_latest.trixie_all.deb"
+all_os[${os}_3]="true"
 
 # os=
 # all_os[${os}_0]=""
@@ -155,7 +160,9 @@ list_build=(
   "el9_percona80_x86_64"     "el9_mysql80_aarch64"
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
-  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64")
+  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64"
+  "trixie_percona80_amd64" "trixie_mariadb1011_arm64"
+)
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
 list_compile=(
@@ -167,9 +174,12 @@ list_compile=(
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
   "buster_percona57"   "buster_percona80"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
-  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
+  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
+                       "trixie_percona80"   "trixie_mariadb1011"                          "trixie_mysql84"
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84")
+)
+
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "noble_mysql84")
 
 
 for os in ${list_all_os[@]}
