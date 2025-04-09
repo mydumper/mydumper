@@ -723,6 +723,8 @@ echo '
           git commit -am "[skip ci] Auto updated submodule references" && git push
 
   update_repo:
+    docker:
+      - image: mydumper/mydumper-builder-noble
     steps:
     - run:
         command: |
