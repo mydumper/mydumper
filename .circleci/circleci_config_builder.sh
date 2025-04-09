@@ -724,8 +724,11 @@ for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
-        e: ${list_test[${lt}]}
-"
+        e: ${list_test[${lt}]}"
+echo '        filters:
+          branches:
+            ignore: /.*/
+'
 done
 
 for os in ${list_build[@]}
@@ -739,8 +742,8 @@ echo "        requires:
           - build_${build_man_os}"
 fi
 echo '        filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done
