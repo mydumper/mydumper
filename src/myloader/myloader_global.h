@@ -123,6 +123,7 @@ extern guint source_control_command;
 extern gint source_data;
 extern gboolean set_gtid_purge;
 extern gboolean show_warnings;
+extern gboolean enable_binlog;
 extern guint refresh_table_list_interval;
 extern GList *ignore_set_list;
 extern gboolean skip_table_sorting;

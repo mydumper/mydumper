@@ -112,7 +112,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   } else if (!strcmp(option_name, "--enable-binlog") || !strcmp(option_name, "-e")){
-    m_critical("Option --enable-binlog / -e is deprecated. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
+    m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     return FALSE;
   }
   
@@ -164,7 +164,7 @@ static GOptionEntry threads_entries[] = {
 
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is deprecated. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
+     "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes unless SKIP is selected.\n"
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
