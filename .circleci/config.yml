@@ -10191,9 +10191,34 @@ jobs:
           git update-index --cacheinfo 160000,$(head -2 ../latest_commit | tail -1 | cut -b9-48),repo
           git commit -am "[skip ci] Auto updated submodule references" && git push
 
+  update_repo:
+    steps:
+    - run:
+        command: |
+          git clone https://github.com/mydumper/mydumper.git mydumper
+          cd mydumper
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
+          curl https://github.com/mydumper/mydumper_repo/info/refs?service=git-upload-pack --output ../latest_commit
+          git update-index --cacheinfo 160000,$(head -2 ../latest_commit | tail -1 | cut -b9-48),repo
+          git commit -am "[skip ci] Auto updated submodule references" && git push
+
+
+
+parameters:
+  my_trigger_parameter:
+    type: string
+    default: ""
+
 
 workflows:
   version: 2
+
+  api-update-repo:
+    when: << pipeline.parameters.my_trigger_parameter >>
+    jobs:
+    - update_repo:
+
+
   mydumper:
     jobs:
     - compile_and_test_mydumper_in_bionic_percona57
