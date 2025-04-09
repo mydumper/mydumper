@@ -718,6 +718,9 @@ workflows:
 for lc in ${!list_compile[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+echo '        filters:
+          branches:
+            ignore: /.*/'
 done
 
 for lt in ${!list_test[@]}
@@ -727,8 +730,7 @@ echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         e: ${list_test[${lt}]}"
 echo '        filters:
           branches:
-            ignore: /.*/
-'
+            ignore: /.*/'
 done
 
 for os in ${list_build[@]}
