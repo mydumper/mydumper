@@ -7,6 +7,19 @@ on:
         description: 'OS'
         required: true
         default: 'jammy'
+        type: choice
+        options:
+          - el7
+          - el8
+          - el9
+          - bionic
+          - bookworm
+          - bullseye
+          - buster
+          - focal
+          - jammy
+          - noble
+          - trixie 
 
 jobs:
 

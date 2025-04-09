@@ -1,61 +1,64 @@
 #!/bin/bash
 
-echo "---
-version: 2.1
-
-orbs:
-  capture-tag: rvla/capture-tag@0.0.2
-
-executors:"
-
 # TODO: make ASAN counterpart of builders
 
 declare -A all_vendors
 vendor=mysql80
-all_vendors[${vendor}_0]="mysql80"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
 vendor=mysql84
-all_vendors[${vendor}_0]="mysql84"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
 vendor=percona57
-all_vendors[${vendor}_0]="percona57"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
 vendor=percona80
-all_vendors[${vendor}_0]="percona80"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
 vendor=mariadb1006
-all_vendors[${vendor}_0]="mariadb1006"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
 vendor=mariadb1011
-all_vendors[${vendor}_0]="mariadb1011"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.11"
 all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
 vendor=tidb
-all_vendors[${vendor}_0]="tidb"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 
+vendor=debian_default
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="mysql:8.4"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+
+#_0: name
+#_1: docker image
+#_2
+#_3: variable found in CMAKE, like: -DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}
+#_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
 
 
-list_mysql_version=( "mysql80" "mysql84" )
+list_mysql_version=( "mysql80" "mysql84" "debian_default")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
@@ -133,6 +136,11 @@ all_os[${os}_1]="debian:bookworm"
 all_os[${os}_2]="percona-release_latest.bookworm_all.deb"
 all_os[${os}_3]="true"
 
+os=trixie
+all_os[${os}_0]="trixie"
+all_os[${os}_1]="debian:trixie"
+all_os[${os}_2]="percona-release_latest.trixie_all.deb"
+all_os[${os}_3]="true"
 
 # os=
 # all_os[${os}_0]=""
@@ -140,8 +148,8 @@ all_os[${os}_3]="true"
 list_el_os=("el7" "el8" "el9")
 list_el_os_without_el=( "7" "8" "9" )
 list_ubuntu_os=("bionic" "focal" "jammy" "noble")
-list_debian_os=("buster" "bullseye" "bookworm")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm")
+list_debian_os=("buster" "bullseye" "bookworm" "trixie")
+list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm" "trixie")
 
 build_man_os="jammy_percona80_amd64"
 
@@ -155,25 +163,42 @@ list_build=(
   "el9_percona80_x86_64"     "el9_mysql80_aarch64"
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
-  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64")
+  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64"
+  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
+)
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
 list_compile=(
   "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
-                                                                                          "noble_mysql84"
+#                                                                                          "noble_mysql84" This is already on the list of test
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
   "buster_percona57"   "buster_percona80"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
-  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84")
+  "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
+                                                                                                             "trixie_debian_default"
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "jammy_mysql84")
+)
+
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "noble_mysql84")
+
+echo "---
+version: 2.1
+
+orbs:
+  capture-tag: rvla/capture-tag@0.0.2
+
+executors:"
+
+# EXECUTORS
+
 
 
 for os in ${list_all_os[@]}
 do
+## EXECUTORS BY VENDOR
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
@@ -210,6 +235,7 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
+## SINGLE EXECUTOR: used just for building 
                 echo "
   ${all_os[${os}_0]}:
     docker:
@@ -222,6 +248,11 @@ do
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper"
 done
+
+# COMMANDS
+
+
+## SPECIFIC PREPARE COMMANDS
 
 cat <<EOF
 
@@ -244,6 +275,10 @@ commands:
   prepare_el_mysql84:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
+
+  prepare_ubuntu_debian_default:
+    steps:
+    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
 
   prepare_ubuntu_percona57:
     steps:
@@ -431,7 +466,6 @@ do
     resource_class: large
     steps:
     - checkout
-#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -461,7 +495,6 @@ do
     resource_class: large
     steps:
     - checkout
-#    - prepare_el
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -481,7 +514,6 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
-#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
@@ -492,7 +524,6 @@ echo '    - attach_workspace:
         at: /tmp/man'
 fi
 echo "    - set_env_vars
-#    - prepare_el
     - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -501,7 +532,14 @@ echo "    - set_env_vars
     - run: if (( \$(nm ./mydumper | grep -i mysql | grep \" T \" | wc -l) < 50 )); then false; fi
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
+    - run: 
+        command: |
+          if [ -z ${CIRCLE_TAG+x} ];
+          then
+            export MYDUMPER_VERSION=\"9.9.9\"
+            export MYDUMPER_REVISION=\"9\"
+          fi
+          ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
 echo "    - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -524,7 +562,6 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
-#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     parameters:
@@ -532,7 +569,6 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
         type: boolean
         default: false
     
-
     steps:
     - checkout"
 if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
@@ -541,7 +577,6 @@ echo '    - attach_workspace:
         at: /tmp/man'
 fi
 echo "    - set_env_vars
-#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -563,7 +598,14 @@ echo "    - set_env_vars
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
     - run: mkdir -p /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/etc
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
-    - run: ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
+    - run: 
+        command: |
+          if [ -z ${CIRCLE_TAG+x} ];
+          then
+            export MYDUMPER_VERSION=\"9.9.9\"
+            export MYDUMPER_REVISION=\"9\"
+          fi
+          ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
 echo '    - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -589,7 +631,7 @@ echo '
     - run:
         command: |
           rm /tmp/package/mydumper.1.gz /tmp/package/myloader.1.gz
-          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
+          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
 echo -n '
   publish-repository:
@@ -689,14 +731,26 @@ workflows:
 for lc in ${!list_compile[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+# Decomment next 5 lines if you want to ignore compilation and add : to previous line
+#echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
 done
 
 for lt in ${!list_test[@]}
 do
 echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
-        e: ${list_test[${lt}]}
-"
+        e: ${list_test[${lt}]}"
+# Decomment next 5 lines if you want to ignore compilation
+#echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
+
 done
 
 for os in ${list_build[@]}
@@ -710,8 +764,8 @@ echo "        requires:
           - build_${build_man_os}"
 fi
 echo '        filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done

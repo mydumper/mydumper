@@ -21,6 +21,7 @@ if [[ $# -ge 5 ]]; then
     extra="$6"
 else
     echo "USAGE: sh build.sh <version> <revision> [rpm|deb] <directory> <architecture>"
+    echo "USED: $*"
     exit 1
 fi
 
