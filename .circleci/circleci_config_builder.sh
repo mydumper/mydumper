@@ -728,6 +728,8 @@ echo '
     steps:
     - run:
         command: |
+          git config --global user.name "David Ducos"
+          git config --global user.email "david.ducos@gmail.com"
           git clone https://github.com/mydumper/mydumper.git mydumper
           cd mydumper
           git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/mydumper/mydumper.git
