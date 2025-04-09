@@ -56,6 +56,7 @@ gboolean optimize_keys = TRUE;
 gboolean optimize_keys_per_table = TRUE;
 gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
+gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 enum checksum_modes checksum_mode= CHECKSUM_FAIL;
 gboolean skip_triggers = FALSE;
@@ -103,7 +104,8 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   GHashTable * _set_session_hash=initialize_hash_of_session_variables();
   if (commit_count > 1)
     set_session_hash_insert(_set_session_hash,"AUTOCOMMIT",g_strdup("0"));
-
+  if (!enable_binlog)
+    set_session_hash_insert(_set_session_hash,"SQL_LOG_BIN",g_strdup("0"));
   return _set_session_hash;
 }
 
@@ -361,6 +363,8 @@ int main(int argc, char *argv[]) {
     print_string("pmm-path",pmm_path);
     print_string("pmm-resolution",pmm_resolution);
 
+    if (enable_binlog)
+      print_bool("enable-binlog",enable_binlog);
     if (!optimize_keys){
       print_string("optimize-keys",SKIP);
     }else if(optimize_keys_per_table){
