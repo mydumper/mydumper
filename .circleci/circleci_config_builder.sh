@@ -277,6 +277,7 @@ commands:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
   prepare_trixie_debian_default:
+    steps:
     - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
 
   prepare_ubuntu_percona57:
