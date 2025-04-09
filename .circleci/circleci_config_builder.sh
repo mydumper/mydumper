@@ -441,8 +441,11 @@ cat <<EOF
     - run:
         command: |
           : \${CIRCLE_TAG="0.0.0-0"}
+          echo "\$BASH_ENV"
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
           echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
+          echo "MYDUMPER_VERSION: \$MYDUMPER_VERSION"
+          echo "MYDUMPER_REVISION: \$MYDUMPER_REVISION"
           cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
           source "\$BASH_ENV"
 
