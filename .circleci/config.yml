@@ -1996,7 +1996,6 @@ commands:
     steps:
     - run:
         command: |
-          : ${CIRCLE_TAG:="v9.9.9-9"}
           echo "$CIRCLE_TAG"
           echo "$BASH_ENV"
           echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
@@ -4784,12 +4783,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -4829,12 +4829,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -4874,12 +4875,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -4919,12 +4921,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -4964,12 +4967,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5009,12 +5013,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5054,12 +5059,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5099,12 +5105,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5144,12 +5151,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5189,12 +5197,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5234,12 +5243,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5279,12 +5289,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5324,12 +5335,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5369,12 +5381,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5414,12 +5427,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5459,12 +5473,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5504,12 +5519,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5549,12 +5565,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5594,12 +5611,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5639,12 +5657,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5684,12 +5703,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5729,12 +5749,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5774,12 +5795,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5819,12 +5841,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5864,12 +5887,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5909,12 +5933,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5954,12 +5979,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -5999,12 +6025,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6044,12 +6071,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6089,12 +6117,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6134,12 +6163,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6179,12 +6209,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6224,12 +6255,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6269,12 +6301,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6314,12 +6347,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6359,12 +6393,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6404,12 +6439,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6449,12 +6485,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6494,12 +6531,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6539,12 +6577,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6584,12 +6623,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6629,12 +6669,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6674,12 +6715,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6719,12 +6761,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6764,12 +6807,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6809,12 +6853,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6854,12 +6899,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6899,12 +6945,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6944,12 +6991,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -6989,12 +7037,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7034,12 +7083,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7079,12 +7129,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7124,12 +7175,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7169,12 +7221,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7214,12 +7267,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7259,12 +7313,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7304,12 +7359,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7349,12 +7405,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7394,12 +7451,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7439,12 +7497,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7484,12 +7543,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7529,12 +7589,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7574,12 +7635,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bionic_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7619,12 +7681,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7664,12 +7727,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7709,12 +7773,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7754,12 +7819,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7799,12 +7865,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7844,12 +7911,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7889,12 +7957,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_focal_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7934,12 +8003,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -7979,12 +8049,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8024,12 +8095,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8069,12 +8141,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8114,10 +8187,11 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
-    - set_env_vars
+
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8161,12 +8235,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8206,12 +8281,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_jammy_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8251,12 +8327,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8296,12 +8373,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8341,12 +8419,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8386,12 +8465,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8431,12 +8511,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8476,12 +8557,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8521,12 +8603,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_noble_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8566,12 +8649,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8611,12 +8695,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8656,12 +8741,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8701,12 +8787,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8746,12 +8833,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8791,12 +8879,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8836,12 +8925,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_buster_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8881,12 +8971,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8926,12 +9017,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -8971,12 +9063,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9016,12 +9109,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9061,12 +9155,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9106,12 +9201,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9151,12 +9247,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bullseye_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9196,12 +9293,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9241,12 +9339,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9286,12 +9385,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9331,12 +9431,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9376,12 +9477,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9421,12 +9523,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9466,12 +9569,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_bookworm_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9511,12 +9615,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mysql80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9556,12 +9661,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mysql84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9601,12 +9707,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_debian_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9646,12 +9753,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_percona57
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9691,12 +9799,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_percona80
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9736,12 +9845,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mariadb1011
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9781,12 +9891,13 @@ jobs:
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout
     - attach_workspace:
         at: /tmp/man
-    - set_env_vars
+
     - prepare_trixie_mariadb1006
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -9828,7 +9939,7 @@ jobs:
     - run:
         command: |
           rm /tmp/package/mydumper.1.gz /tmp/package/myloader.1.gz
-          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
+          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package
 
   publish-repository:
     docker:

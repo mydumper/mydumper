@@ -440,7 +440,6 @@ cat <<EOF
     steps:
     - run:
         command: |
-          : \${CIRCLE_TAG:="v9.9.9-9"}
           echo "\$CIRCLE_TAG"
           echo "\$BASH_ENV"
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
@@ -570,7 +569,8 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
         type: boolean
         default: false
     
-
+    pre-steps:
+    - set_env_vars
     steps:
     - checkout"
 if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
@@ -578,7 +578,7 @@ then
 echo '    - attach_workspace:
         at: /tmp/man'
 fi
-echo "    - set_env_vars
+echo "
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -631,7 +631,7 @@ echo '
     - run:
         command: |
           rm /tmp/package/mydumper.1.gz /tmp/package/myloader.1.gz
-          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\n\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
+          ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -b "$( cd /tmp/package/; echo -e "MD5s:\n\`\`\`"; md5sum * ;echo -e "\`\`\`\nSHA1s:\n\`\`\`"; sha1sum * ; echo -e "\`\`\`\nSHA256s:\n\`\`\`"; sha256sum * ;echo -e "\`\`\`\n" )" -prerelease -draft -delete ${CIRCLE_TAG} /tmp/package'
 
 echo -n '
   publish-repository:
