@@ -569,8 +569,6 @@ echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_
         type: boolean
         default: false
     
-    pre-steps:
-    - set_env_vars
     steps:
     - checkout"
 if [ "${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}" != "${build_man_os}" ]
@@ -578,7 +576,7 @@ then
 echo '    - attach_workspace:
         at: /tmp/man'
 fi
-echo "
+echo "    - set_env_vars
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
@@ -605,6 +603,8 @@ echo "
           source \"\$BASH_ENV\"
           echo \"MYDUMPER_VERSION: \$MYDUMPER_VERSION  BASH_ENV : \$BASH_ENV\"
           echo \"MYDUMPER_REVISION: \$MYDUMPER_REVISION\"
+          export MYDUMPER_VERSION=\"9.9.9\"
+          export MYDUMPER_REVISION=\"9\"
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
 echo '    - persist_to_workspace:
          root: /tmp/package
