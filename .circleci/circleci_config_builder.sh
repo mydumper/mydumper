@@ -440,14 +440,10 @@ cat <<EOF
     steps:
     - run:
         command: |
-          echo "\$CIRCLE_TAG"
-          echo "\$BASH_ENV"
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
           echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
           cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
           source "\$BASH_ENV"
-          echo "MYDUMPER_VERSION: \$MYDUMPER_VERSION"
-          echo "MYDUMPER_REVISION: \$MYDUMPER_REVISION"
 
 jobs:
 
@@ -538,7 +534,11 @@ echo "    - set_env_vars
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
     - run: 
         command: |
-          source \$BASH_ENV
+          if [ -z ${CIRCLE_TAG+x} ];
+          then
+            export MYDUMPER_VERSION=\"9.9.9\"
+            export MYDUMPER_REVISION=\"9\"
+          fi
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
 echo "    - persist_to_workspace:
          root: /tmp/package
@@ -600,11 +600,11 @@ echo "    - set_env_vars
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
     - run: 
         command: |
-          source \"\$BASH_ENV\"
-          echo \"MYDUMPER_VERSION: \$MYDUMPER_VERSION  BASH_ENV : \$BASH_ENV\"
-          echo \"MYDUMPER_REVISION: \$MYDUMPER_REVISION\"
-          export MYDUMPER_VERSION=\"9.9.9\"
-          export MYDUMPER_REVISION=\"9\"
+          if [ -z ${CIRCLE_TAG+x} ];
+          then
+            export MYDUMPER_VERSION=\"9.9.9\"
+            export MYDUMPER_REVISION=\"9\"
+          fi
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
 echo '    - persist_to_workspace:
          root: /tmp/package

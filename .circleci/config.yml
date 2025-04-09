@@ -1996,14 +1996,10 @@ commands:
     steps:
     - run:
         command: |
-          echo "$CIRCLE_TAG"
-          echo "$BASH_ENV"
           echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
           echo 'export MYDUMPER_REVISION=$( echo "${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "$BASH_ENV"
           cat /etc/profile.d/sh.local >> "$BASH_ENV" || true
           source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
 
 jobs:
 
@@ -3785,7 +3781,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3809,7 +3809,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3833,7 +3837,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_debian_default_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_debian_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3857,7 +3865,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3881,7 +3893,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3905,7 +3921,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3929,7 +3949,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3953,7 +3977,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -3977,7 +4005,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4001,7 +4033,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_debian_default_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_debian_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4025,7 +4061,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4049,7 +4089,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4073,7 +4117,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4097,7 +4145,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4121,7 +4173,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4145,7 +4201,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4169,7 +4229,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_debian_default_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_debian_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4193,7 +4257,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4217,7 +4285,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4241,7 +4313,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4265,7 +4341,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_aarch64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
@@ -4289,7 +4369,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4313,7 +4397,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mysql84_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mysql84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4337,7 +4425,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_debian_default_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_debian_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4361,7 +4453,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona57_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona57_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4385,7 +4481,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4409,7 +4509,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1011_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1011_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4433,7 +4537,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_mariadb1006_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_mariadb1006_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4457,7 +4565,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4481,7 +4593,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mysql84_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mysql84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4505,7 +4621,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_debian_default_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_debian_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4529,7 +4649,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona57_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona57_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4553,7 +4677,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4577,7 +4705,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1011_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1011_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4601,7 +4733,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_mariadb1006_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_mariadb1006_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4625,7 +4761,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4649,7 +4789,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mysql84_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mysql84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4673,7 +4817,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_debian_default_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_debian_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4697,7 +4845,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona57_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona57_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4721,7 +4873,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona80_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona80_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4745,7 +4901,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1011_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1011_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4769,7 +4929,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_mariadb1006_x86_64/
     - run: 
         command: |
-          source $BASH_ENV
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_mariadb1006_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
@@ -4811,11 +4975,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -4857,11 +5021,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -4903,11 +5067,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -4949,11 +5113,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -4995,11 +5159,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5041,11 +5205,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5087,11 +5251,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5133,11 +5297,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5179,11 +5343,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5225,11 +5389,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5271,11 +5435,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5317,11 +5481,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5363,11 +5527,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5409,11 +5573,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5455,11 +5619,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5501,11 +5665,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5547,11 +5711,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5593,11 +5757,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5639,11 +5803,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5685,11 +5849,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5731,11 +5895,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5777,11 +5941,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5823,11 +5987,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5869,11 +6033,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5915,11 +6079,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -5961,11 +6125,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6007,11 +6171,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6053,11 +6217,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6099,11 +6263,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6145,11 +6309,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6191,11 +6355,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6237,11 +6401,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6283,11 +6447,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6329,11 +6493,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6375,11 +6539,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6421,11 +6585,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6467,11 +6631,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6513,11 +6677,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6559,11 +6723,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6605,11 +6769,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6651,11 +6815,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6697,11 +6861,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6743,11 +6907,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6789,11 +6953,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6835,11 +6999,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6881,11 +7045,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6927,11 +7091,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -6973,11 +7137,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7019,11 +7183,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7065,11 +7229,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mysql80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mysql80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7111,11 +7275,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mysql84_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mysql84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7157,11 +7321,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_debian_default_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_debian_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7203,11 +7367,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona57_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona57_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7249,11 +7413,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona80_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona80_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7295,11 +7459,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mariadb1011_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mariadb1011_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7341,11 +7505,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mariadb1006_arm64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mariadb1006_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
@@ -7387,11 +7551,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7433,11 +7597,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7479,11 +7643,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7525,11 +7689,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7571,11 +7735,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7617,11 +7781,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7663,11 +7827,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7709,11 +7873,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7755,11 +7919,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7801,11 +7965,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7847,11 +8011,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7893,11 +8057,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7939,11 +8103,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -7985,11 +8149,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8031,11 +8195,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8077,11 +8241,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8123,11 +8287,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8169,11 +8333,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8213,11 +8377,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8263,11 +8427,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8309,11 +8473,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8355,11 +8519,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8401,11 +8565,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8447,11 +8611,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8493,11 +8657,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8539,11 +8703,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8585,11 +8749,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8631,11 +8795,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8677,11 +8841,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8723,11 +8887,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8769,11 +8933,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8815,11 +8979,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8861,11 +9025,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8907,11 +9071,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8953,11 +9117,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -8999,11 +9163,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9045,11 +9209,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9091,11 +9255,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9137,11 +9301,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9183,11 +9347,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9229,11 +9393,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9275,11 +9439,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9321,11 +9485,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9367,11 +9531,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9413,11 +9577,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9459,11 +9623,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9505,11 +9669,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9551,11 +9715,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9597,11 +9761,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9643,11 +9807,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mysql80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9689,11 +9853,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mysql84_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mysql84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9735,11 +9899,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_debian_default_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_debian_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9781,11 +9945,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona57_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona57_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9827,11 +9991,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona80_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9873,11 +10037,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mariadb1011_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mariadb1011_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
@@ -9919,11 +10083,11 @@ jobs:
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_mariadb1006_amd64/
     - run: 
         command: |
-          source "$BASH_ENV"
-          echo "MYDUMPER_VERSION: $MYDUMPER_VERSION  BASH_ENV : $BASH_ENV"
-          echo "MYDUMPER_REVISION: $MYDUMPER_REVISION"
-          export MYDUMPER_VERSION="9.9.9"
-          export MYDUMPER_REVISION="9"
+          if [ -z  ];
+          then
+            export MYDUMPER_VERSION="9.9.9"
+            export MYDUMPER_REVISION="9"
+          fi
           ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_mariadb1006_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
