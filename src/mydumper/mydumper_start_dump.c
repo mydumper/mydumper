@@ -63,10 +63,10 @@ gboolean it_is_a_consistent_backup = FALSE;
 GHashTable *all_dbts=NULL;
 char * (*identifier_quote_character_protect)(char *r);
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+gboolean replica_stopped = FALSE;
 
 // static variables
 static GMutex **pause_mutex_per_thread=NULL;
-static gboolean replica_stopped = FALSE;
 static guint pause_at=0;
 static guint resume_at=0;
 static gchar **db_items=NULL;
@@ -765,7 +765,7 @@ void send_lock_all_tables(MYSQL *conn){
   g_free(query->str);
   g_list_free(tables_lock);
 }
-
+/*
 static
 void write_replica_info(MYSQL *conn, FILE *file) {
   MYSQL_RES *slave = NULL;
@@ -867,7 +867,7 @@ cleanup:
   if (slave)
     mysql_free_result(slave);
 }
-
+*/
 
 // Here is where the backup process start
 
@@ -1000,10 +1000,10 @@ void start_dump() {
     initialize_exec_command();
 
   // Write replica information
-  if (get_product() != SERVER_TYPE_TIDB) {
-    if (source_data >=0 )
-      write_replica_info(conn, mdfile);
-  }
+//  if (get_product() != SERVER_TYPE_TIDB) {
+//    if (source_data >=0 )
+//      write_replica_info(conn, mdfile);
+//  }
 
   // Determine the locking mechanisim that is going to be used
   // and send locks to database if needed
@@ -1159,7 +1159,7 @@ void start_dump() {
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
-    if (replica_stopped){
+    if (is_mysql_like() && g_async_queue_pop(conf.binlog_ready) && replica_stopped){
       g_message("Starting replica");
       m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
@@ -1228,7 +1228,7 @@ void start_dump() {
   }
 
   // At this point, we can start the replica if it was stopped
-  if (replica_stopped){
+  if (is_mysql_like() && g_async_queue_pop(conf.binlog_ready) && replica_stopped){
     g_message("Starting replica");
     m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
