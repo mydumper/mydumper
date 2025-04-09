@@ -1,61 +1,64 @@
 #!/bin/bash
 
-echo "---
-version: 2.1
-
-orbs:
-  capture-tag: rvla/capture-tag@0.0.2
-
-executors:"
-
 # TODO: make ASAN counterpart of builders
 
 declare -A all_vendors
 vendor=mysql80
-all_vendors[${vendor}_0]="mysql80"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.0"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
 vendor=mysql84
-all_vendors[${vendor}_0]="mysql84"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
 all_vendors[${vendor}_4]="mysqlclient"
 
 vendor=percona57
-all_vendors[${vendor}_0]="percona57"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:5.7"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
 vendor=percona80
-all_vendors[${vendor}_0]="percona80"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
 vendor=mariadb1006
-all_vendors[${vendor}_0]="mariadb1006"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.6"
 all_vendors[${vendor}_2]="mariadb-10.6"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
 vendor=mariadb1011
-all_vendors[${vendor}_0]="mariadb1011"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.11"
 all_vendors[${vendor}_2]="mariadb-10.11"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
 vendor=tidb
-all_vendors[${vendor}_0]="tidb"
+all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="pingcap/tidb"
 
+vendor=debian_default
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="mysql:8.4"
+all_vendors[${vendor}_3]="mariadb"
+all_vendors[${vendor}_4]="mariadbclient"
+
+#_0: name
+#_1: docker image
+#_2
+#_3: variable found in CMAKE, like: -DMYSQL_LIBRARIES_${all_vendors[${vendor}_3]}
+#_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
 
 
-list_mysql_version=( "mysql80" "mysql84" )
+list_mysql_version=( "mysql80" "mysql84" "debian_default")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
@@ -161,7 +164,7 @@ list_build=(
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
   "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64"
-  "trixie_percona80_amd64" "trixie_mariadb1011_arm64"
+  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
@@ -175,15 +178,27 @@ list_compile=(
   "buster_percona57"   "buster_percona80"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
-                       "trixie_percona80"   "trixie_mariadb1011"                          "trixie_mysql84"
+                                                                                                             "trixie_debian_default"
 
 )
 
 list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "noble_mysql84")
 
+echo "---
+version: 2.1
+
+orbs:
+  capture-tag: rvla/capture-tag@0.0.2
+
+executors:"
+
+# EXECUTORS
+
+
 
 for os in ${list_all_os[@]}
 do
+## EXECUTORS BY VENDOR
     for vendor in ${list_mariadb_version[@]} ${list_percona_version[@]} tidb
     do
         echo "
@@ -220,6 +235,7 @@ do
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper"
     done
+## SINGLE EXECUTOR: used just for building 
                 echo "
   ${all_os[${os}_0]}:
     docker:
@@ -232,6 +248,11 @@ do
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper"
 done
+
+# COMMANDS
+
+
+## SPECIFIC PREPARE COMMANDS
 
 cat <<EOF
 
@@ -441,7 +462,6 @@ do
     resource_class: large
     steps:
     - checkout
-#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -471,7 +491,6 @@ do
     resource_class: large
     steps:
     - checkout
-#    - prepare_el
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - compile_and_test_mydumper:
         test: << parameters.test >>
@@ -491,7 +510,6 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}:
-#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     steps:
@@ -502,7 +520,6 @@ echo '    - attach_workspace:
         at: /tmp/man'
 fi
 echo "    - set_env_vars
-#    - prepare_el
     - prepare_${os}_${all_vendors[${vendor}_0]}
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
@@ -534,7 +551,6 @@ do
         for vendor in ${list_all_vendors[@]}
         do
 echo "  build_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}:
-#    executor: ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     executor: ${all_os[${os}_0]}
     resource_class: ${all_arch[${arch}_resource_class]}
     parameters:
@@ -551,7 +567,6 @@ echo '    - attach_workspace:
         at: /tmp/man'
 fi
 echo "    - set_env_vars
-#    - prepare_ubuntu
     - prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
