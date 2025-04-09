@@ -751,6 +751,11 @@ workflows:
     jobs:
     - update_repo:
 
+  api-update-repo-commit:
+    when: 
+      not: << pipeline.parameters.my_trigger_parameter >>
+    jobs:
+    - update_repo:
 
   mydumper:
     jobs:'
