@@ -717,12 +717,12 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
-#echo '        filters:
-#          branches:
-#            ignore: /.*/
-#          tags:
-#            only: /^v\d+\.\d+\.\d+-\d+$/'
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
+echo '        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/'
 done
 
 for lt in ${!list_test[@]}
