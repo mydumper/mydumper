@@ -603,8 +603,8 @@ echo "    - set_env_vars
     - run: 
         command: |
           source \"\$BASH_ENV\"
-          echo "MYDUMPER_VERSION: \$MYDUMPER_VERSION  BASH_ENV : \$BASH_ENV"
-          echo "MYDUMPER_REVISION: \$MYDUMPER_REVISION"
+          echo \"MYDUMPER_VERSION: \$MYDUMPER_VERSION  BASH_ENV : \$BASH_ENV\"
+          echo \"MYDUMPER_REVISION: \$MYDUMPER_REVISION\"
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
 echo '    - persist_to_workspace:
          root: /tmp/package
