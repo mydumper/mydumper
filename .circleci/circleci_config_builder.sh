@@ -534,11 +534,11 @@ echo "    - set_env_vars
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]}/
     - run: 
         command: |
-          if [ -z ${CIRCLE_TAG+x} ];
-          then
-            export MYDUMPER_VERSION=\"9.9.9\"
-            export MYDUMPER_REVISION=\"9\"
-          fi
+#          if [ -z ${CIRCLE_TAG+x} ];
+#          then
+#            export MYDUMPER_VERSION=\"9.9.9\"
+#            export MYDUMPER_REVISION=\"9\"
+#          fi
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} rpm ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_rpm]} ${all_arch[${arch}_rpm]}"
 echo "    - persist_to_workspace:
          root: /tmp/package
@@ -600,11 +600,11 @@ echo "    - set_env_vars
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
     - run: 
         command: |
-          if [ -z ${CIRCLE_TAG+x} ];
-          then
-            export MYDUMPER_VERSION=\"9.9.9\"
-            export MYDUMPER_REVISION=\"9\"
-          fi
+#          if [ -z ${CIRCLE_TAG+x} ];
+#          then
+#            export MYDUMPER_VERSION=\"9.9.9\"
+#            export MYDUMPER_REVISION=\"9\"
+#          fi
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
 echo '    - persist_to_workspace:
          root: /tmp/package
