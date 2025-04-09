@@ -1996,7 +1996,7 @@ commands:
     steps:
     - run:
         command: |
-          : ${CIRCLE_TAG:="v0.0.0-0"}
+          : ${CIRCLE_TAG:="v9.9.9-9"}
           echo "$CIRCLE_TAG"
           echo "$BASH_ENV"
           echo 'export MYDUMPER_VERSION=$(  echo "${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "$BASH_ENV"
