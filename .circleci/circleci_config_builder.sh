@@ -602,7 +602,7 @@ echo "    - set_env_vars
     - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]}/
     - run: 
         command: |
-          source \$BASH_ENV
+          source \"\$BASH_ENV\"
           echo "MYDUMPER_VERSION: \$MYDUMPER_VERSION  BASH_ENV : \$BASH_ENV"
           echo "MYDUMPER_REVISION: \$MYDUMPER_REVISION"
           ./package/build.sh \${MYDUMPER_VERSION} \${MYDUMPER_REVISION} deb ${all_os[${os}_0]}_${all_vendors[${vendor}_0]}_${all_arch[${arch}_deb]} ${all_arch[${arch}_deb]}"
