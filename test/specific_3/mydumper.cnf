@@ -1,0 +1,9 @@
+#
+# Testing --where and then we check if 10 rows has been exported
+#
+
+[mydumper]
+where= id > 5 AND id <= 15
+compact=1
+tables-list=specific_3.t_where
+outputdir=/tmp/data
