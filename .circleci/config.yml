@@ -9202,119 +9202,119 @@ workflows:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_focal_percona80_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_jammy_percona80_amd64:
         build_man: true
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_mysql84_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_percona80_x86_64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql80_aarch64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_percona80_x86_64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql80_aarch64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bullseye_percona80_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_buster_percona80_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_percona80_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mariadb1011_arm64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_trixie_debian_default_amd64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_trixie_debian_default_arm64:
         requires:
           - build_jammy_percona80_amd64
         filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
 

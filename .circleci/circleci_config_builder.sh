@@ -798,8 +798,8 @@ echo "        requires:
           - build_${build_man_os}"
 fi
 echo '        filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done
