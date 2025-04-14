@@ -442,7 +442,7 @@ cat <<EOF
     - run:
         command: |
           echo "CIRCLE_TAG='\${CIRCLE_TAG}'"
-          if [ -z \${CIRCLE_TAG+x} ] ; then export CIRCLE_TAG="v0.0.0-1"; fi
+          if [ -z \${CIRCLE_TAG+x} ] ; then export CIRCLE_TAG="v0.0.0-2"; fi
           if [[ "" == "\${CIRCLE_TAG}" ]]; then export CIRCLE_TAG="v0.0.0-1"; fi
           echo "CIRCLE_TAG='\${CIRCLE_TAG}'"
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
