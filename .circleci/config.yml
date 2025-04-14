@@ -125,14 +125,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bionic_:
+  bionic_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-bionic
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -268,14 +268,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  focal_:
+  focal_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-focal
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -411,14 +411,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  jammy_:
+  jammy_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-jammy
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -554,14 +554,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_:
+  noble_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-noble
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -697,14 +697,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el7_:
+  el7_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-el7
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -840,14 +840,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el8_:
+  el8_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-el8
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -983,14 +983,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el9_:
+  el9_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-el9
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1126,14 +1126,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  buster_:
+  buster_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-buster
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1269,14 +1269,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bullseye_:
+  bullseye_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-bullseye
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1412,14 +1412,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bookworm_:
+  bookworm_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-bookworm
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1555,14 +1555,14 @@ executors:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  trixie_:
+  trixie_ubuntu_default:
     docker:
     - image: mydumper/mydumper-builder-trixie
       environment:
         MYSQL_HOST: 127.0.0.1
         MYSQL_DB: mate
         MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: 
+    - image: mysql:8.4
       command: mysqld
       environment:
         MYSQL_ALLOW_EMPTY_PASSWORD: true
@@ -1663,9 +1663,9 @@ commands:
     - prepare_el_debian_default
 
 
-  prepare_el7_:
+  prepare_el7_ubuntu_default:
     steps:
-    - prepare_el_
+    - prepare_el_ubuntu_default
 
 
   prepare_el7_percona57:
@@ -1693,9 +1693,9 @@ commands:
     - prepare_el_debian_default
 
 
-  prepare_el9_:
+  prepare_el9_ubuntu_default:
     steps:
-    - prepare_el_
+    - prepare_el_ubuntu_default
 
 
   prepare_el9_percona57:
@@ -1726,7 +1726,7 @@ commands:
     - prepare_el_mysql80
 
 
-  prepare_el8_:
+  prepare_el8_ubuntu_default:
     steps:
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
@@ -1804,9 +1804,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_bionic_:
+  prepare_bionic_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_bionic_mariadb1011:
@@ -1851,9 +1851,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_focal_:
+  prepare_focal_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_focal_mariadb1011:
@@ -1898,9 +1898,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_jammy_:
+  prepare_jammy_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_jammy_mariadb1011:
@@ -1945,9 +1945,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_noble_:
+  prepare_noble_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_noble_mariadb1011:
@@ -1992,9 +1992,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_buster_:
+  prepare_buster_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_buster_mariadb1011:
@@ -2039,9 +2039,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_bullseye_:
+  prepare_bullseye_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_bullseye_mariadb1011:
@@ -2086,9 +2086,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_bookworm_:
+  prepare_bookworm_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_bookworm_mariadb1011:
@@ -2133,9 +2133,9 @@ commands:
     - prepare_apt_debian_default
 
 
-  prepare_trixie_:
+  prepare_trixie_ubuntu_default:
     steps:
-    - prepare_apt_
+    - prepare_apt_ubuntu_default
 
 
   prepare_trixie_mariadb1011:
@@ -2268,19 +2268,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bionic_:
+  compile_and_test_mydumper_in_bionic_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bionic_
+        default: bionic_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_
+    - prepare_bionic_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2448,19 +2448,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_focal_:
+  compile_and_test_mydumper_in_focal_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: focal_
+        default: focal_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_
+    - prepare_focal_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2628,19 +2628,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_jammy_:
+  compile_and_test_mydumper_in_jammy_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: jammy_
+        default: jammy_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_
+    - prepare_jammy_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2808,19 +2808,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_:
+  compile_and_test_mydumper_in_noble_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_
+        default: noble_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_
+    - prepare_noble_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2988,19 +2988,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_buster_:
+  compile_and_test_mydumper_in_buster_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: buster_
+        default: buster_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_buster_
+    - prepare_buster_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3168,19 +3168,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bullseye_:
+  compile_and_test_mydumper_in_bullseye_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bullseye_
+        default: bullseye_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_
+    - prepare_bullseye_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3348,19 +3348,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bookworm_:
+  compile_and_test_mydumper_in_bookworm_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bookworm_
+        default: bookworm_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_
+    - prepare_bookworm_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3528,19 +3528,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_trixie_:
+  compile_and_test_mydumper_in_trixie_ubuntu_default:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: trixie_
+        default: trixie_ubuntu_default
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_
+    - prepare_trixie_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3708,7 +3708,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el7_:
+  compile_and_test_mydumper_in_el7_ubuntu_default:
     parameters:
       test:
         type: boolean
@@ -3720,7 +3720,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_
+    - prepare_el7_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3888,7 +3888,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el8_:
+  compile_and_test_mydumper_in_el8_ubuntu_default:
     parameters:
       test:
         type: boolean
@@ -3900,7 +3900,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_
+    - prepare_el8_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4068,7 +4068,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el9_:
+  compile_and_test_mydumper_in_el9_ubuntu_default:
     parameters:
       test:
         type: boolean
@@ -4080,7 +4080,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_
+    - prepare_el9_ubuntu_default
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4251,7 +4251,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7__aarch64:
+  build_el7_ubuntu_default_aarch64:
     executor: el7
     resource_class: arm.medium
     steps:
@@ -4259,15 +4259,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el7_
+    - prepare_el7_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el7_ubuntu_default_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_ubuntu_default_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_ubuntu_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4419,7 +4419,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8__aarch64:
+  build_el8_ubuntu_default_aarch64:
     executor: el8
     resource_class: arm.medium
     steps:
@@ -4427,15 +4427,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el8_
+    - prepare_el8_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el8_ubuntu_default_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_ubuntu_default_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_ubuntu_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4587,7 +4587,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9__aarch64:
+  build_el9_ubuntu_default_aarch64:
     executor: el9
     resource_class: arm.medium
     steps:
@@ -4595,15 +4595,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el9_
+    - prepare_el9_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el9_ubuntu_default_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_ubuntu_default_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_ubuntu_default_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4755,7 +4755,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7__x86_64:
+  build_el7_ubuntu_default_x86_64:
     executor: el7
     resource_class: large
     steps:
@@ -4763,15 +4763,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el7_
+    - prepare_el7_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el7_ubuntu_default_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_ubuntu_default_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_ubuntu_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -4923,7 +4923,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8__x86_64:
+  build_el8_ubuntu_default_x86_64:
     executor: el8
     resource_class: large
     steps:
@@ -4931,15 +4931,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el8_
+    - prepare_el8_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el8_ubuntu_default_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_ubuntu_default_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_ubuntu_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5091,7 +5091,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9__x86_64:
+  build_el9_ubuntu_default_x86_64:
     executor: el9
     resource_class: large
     steps:
@@ -5099,15 +5099,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el9_
+    - prepare_el9_ubuntu_default
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el9_ubuntu_default_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_ubuntu_default_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_ubuntu_default_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5291,7 +5291,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5313,7 +5313,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic__arm64:
+  build_bionic_ubuntu_default_arm64:
     executor: bionic
     resource_class: arm.medium
     parameters:
@@ -5326,11 +5326,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bionic_
+    - prepare_bionic_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5345,9 +5345,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bionic__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bionic_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5603,7 +5603,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5625,7 +5625,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal__arm64:
+  build_focal_ubuntu_default_arm64:
     executor: focal
     resource_class: arm.medium
     parameters:
@@ -5638,11 +5638,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_focal_
+    - prepare_focal_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5657,9 +5657,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/focal__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/focal_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5915,7 +5915,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5937,7 +5937,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy__arm64:
+  build_jammy_ubuntu_default_arm64:
     executor: jammy
     resource_class: arm.medium
     parameters:
@@ -5950,11 +5950,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_jammy_
+    - prepare_jammy_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -5969,9 +5969,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/jammy__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/jammy_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6227,7 +6227,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6249,7 +6249,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble__arm64:
+  build_noble_ubuntu_default_arm64:
     executor: noble
     resource_class: arm.medium
     parameters:
@@ -6262,11 +6262,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_
+    - prepare_noble_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6281,9 +6281,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6539,7 +6539,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6561,7 +6561,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster__arm64:
+  build_buster_ubuntu_default_arm64:
     executor: buster
     resource_class: arm.medium
     parameters:
@@ -6574,11 +6574,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_buster_
+    - prepare_buster_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6593,9 +6593,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/buster_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6851,7 +6851,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6873,7 +6873,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye__arm64:
+  build_bullseye_ubuntu_default_arm64:
     executor: bullseye
     resource_class: arm.medium
     parameters:
@@ -6886,11 +6886,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bullseye_
+    - prepare_bullseye_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6905,9 +6905,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bullseye__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7163,7 +7163,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7185,7 +7185,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm__arm64:
+  build_bookworm_ubuntu_default_arm64:
     executor: bookworm
     resource_class: arm.medium
     parameters:
@@ -7198,11 +7198,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bookworm_
+    - prepare_bookworm_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7217,9 +7217,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bookworm__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7475,7 +7475,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7497,7 +7497,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_trixie__arm64:
+  build_trixie_ubuntu_default_arm64:
     executor: trixie
     resource_class: arm.medium
     parameters:
@@ -7510,11 +7510,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_trixie_
+    - prepare_trixie_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7529,9 +7529,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/trixie__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/trixie_ubuntu_default_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_ubuntu_default_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_ubuntu_default_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7787,7 +7787,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7809,7 +7809,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic__amd64:
+  build_bionic_ubuntu_default_amd64:
     executor: bionic
     resource_class: large
     parameters:
@@ -7822,11 +7822,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bionic_
+    - prepare_bionic_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7841,9 +7841,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bionic__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bionic_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8099,7 +8099,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8121,7 +8121,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal__amd64:
+  build_focal_ubuntu_default_amd64:
     executor: focal
     resource_class: large
     parameters:
@@ -8134,11 +8134,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_focal_
+    - prepare_focal_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8153,9 +8153,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/focal__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/focal_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8411,7 +8411,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8433,7 +8433,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy__amd64:
+  build_jammy_ubuntu_default_amd64:
     executor: jammy
     resource_class: large
     parameters:
@@ -8446,11 +8446,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_jammy_
+    - prepare_jammy_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8465,9 +8465,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/jammy__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/jammy_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8725,7 +8725,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8747,7 +8747,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble__amd64:
+  build_noble_ubuntu_default_amd64:
     executor: noble
     resource_class: large
     parameters:
@@ -8760,11 +8760,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_
+    - prepare_noble_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8779,9 +8779,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9037,7 +9037,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9059,7 +9059,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster__amd64:
+  build_buster_ubuntu_default_amd64:
     executor: buster
     resource_class: large
     parameters:
@@ -9072,11 +9072,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_buster_
+    - prepare_buster_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9091,9 +9091,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/buster_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9349,7 +9349,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9371,7 +9371,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye__amd64:
+  build_bullseye_ubuntu_default_amd64:
     executor: bullseye
     resource_class: large
     parameters:
@@ -9384,11 +9384,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bullseye_
+    - prepare_bullseye_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9403,9 +9403,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bullseye__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9661,7 +9661,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9683,7 +9683,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm__amd64:
+  build_bookworm_ubuntu_default_amd64:
     executor: bookworm
     resource_class: large
     parameters:
@@ -9696,11 +9696,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bookworm_
+    - prepare_bookworm_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9715,9 +9715,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bookworm__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9973,7 +9973,7 @@ jobs:
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9995,7 +9995,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_trixie__amd64:
+  build_trixie_ubuntu_default_amd64:
     executor: trixie
     resource_class: large
     parameters:
@@ -10008,11 +10008,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_trixie_
+    - prepare_trixie_ubuntu_default
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10027,9 +10027,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/trixie__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/trixie_ubuntu_default_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_ubuntu_default_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_ubuntu_default_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:

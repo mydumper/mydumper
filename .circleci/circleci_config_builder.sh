@@ -51,7 +51,7 @@ all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
-vendor=debian_default
+vendor=ubuntu_default
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mysqlclient"
