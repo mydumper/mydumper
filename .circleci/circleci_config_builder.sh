@@ -777,13 +777,13 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
 # Decomment next 5 lines if you want to ignore compilation and add : to previous line
-echo '        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/'
+#echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
 done
 
 for lt in ${!list_test[@]}
@@ -792,11 +792,11 @@ echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
         e: ${list_test[${lt}]}"
 # Decomment next 5 lines if you want to ignore compilation
-echo '        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/'
+#echo '        filters:
+#          branches:
+#            ignore: /.*/
+#          tags:
+#            only: /^v\d+\.\d+\.\d+-\d+$/'
 
 done
 
@@ -811,8 +811,8 @@ echo "        requires:
           - build_${build_man_os}"
 fi
 echo '        filters:
-#          branches:
-#            ignore: /.*/
+          branches:
+            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done
