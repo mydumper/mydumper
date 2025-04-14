@@ -51,6 +51,12 @@ all_vendors[${vendor}_1]="mysql:8.4"
 all_vendors[${vendor}_3]="mariadb"
 all_vendors[${vendor}_4]="mariadbclient"
 
+vendor=ubuntu_default
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="mysql:8.4"
+all_vendors[${vendor}_3]="mysqlclient"
+all_vendors[${vendor}_4]="mysqlclient"
+
 #_0: name
 #_1: docker image
 #_2
@@ -58,7 +64,7 @@ all_vendors[${vendor}_4]="mariadbclient"
 #_4: static library name, like: lib${all_vendors[${vendor}_4]}.a
 
 
-list_mysql_version=( "mysql80" "mysql84" "debian_default")
+list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
 list_percona_version=( "percona57" "percona80" )
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
@@ -157,13 +163,13 @@ list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
-  "noble_mysql84_amd64"
+  "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
   "el7_percona57_x86_64" 
-  "el8_percona80_x86_64"     "el8_mysql80_aarch64"
-  "el9_percona80_x86_64"     "el9_mysql80_aarch64"
+  "el8_percona80_x86_64"        "el8_mysql80_aarch64"
+  "el9_percona80_x86_64"        "el9_mysql80_aarch64"
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
-  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64"
+  "bookworm_percona80_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
 
@@ -172,6 +178,7 @@ list_compile=(
   "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
 #                                                                                          "noble_mysql84" This is already on the list of test
+                                                                                                             "noble_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
@@ -276,21 +283,25 @@ commands:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
 
-  prepare_ubuntu_debian_default:
+  prepare_apt_debian_default:
     steps:
     - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
 
-  prepare_ubuntu_percona57:
+  prepare_apt_ubuntu_default:
+    steps:
+    - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
+
+  prepare_apt_percona57:
     steps:
     - run: sudo percona-release setup -y ps57
     - run: sudo apt-get install -y gdb screen time libperconaserverclient20 percona-server-client-5.7 libperconaserverclient20-dev
 
-  prepare_ubuntu_percona80:
+  prepare_apt_percona80:
     steps:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
-  prepare_ubuntu_mysql84:
+  prepare_apt_mysql84:
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
@@ -299,7 +310,7 @@ commands:
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
-  prepare_ubuntu_mariadb1006:
+  prepare_apt_mariadb1006:
     steps:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
@@ -310,7 +321,7 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
-  prepare_ubuntu_mariadb1011:
+  prepare_apt_mariadb1011:
     steps:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
@@ -365,7 +376,7 @@ do
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
-    - prepare_ubuntu_percona57
+    - prepare_apt_percona57
 "
     # For Percona and MySQL will be the standar apt preparation
     for vendor in ${list_percona_version[@]} ${list_mysql_version[@]}
@@ -373,7 +384,7 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
-    - prepare_ubuntu_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
 
@@ -384,7 +395,7 @@ echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
     - prepare_${all_vendors[${vendor}_0]}
-    - prepare_ubuntu_${all_vendors[${vendor}_0]}
+    - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
 done
@@ -440,9 +451,11 @@ cat <<EOF
     steps:
     - run:
         command: |
+          if [ -z \${CIRCLE_TAG+x} ] ; then echo 'export CIRCLE_TAG="v0.11.1-1"' >> "\$BASH_ENV"; fi
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
           echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
           cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
+          cat \$BASH_ENV
           source "\$BASH_ENV"
 
 jobs:
