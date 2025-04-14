@@ -442,12 +442,12 @@ cat <<EOF
     - run:
         command: |
           echo "CIRCLE_TAG='\${CIRCLE_TAG}'"
-          if [ -z \${CIRCLE_TAG+x} ] ; then export CIRCLE_TAG="v0.0.0-2"; fi
-          if [[ "" == "\${CIRCLE_TAG}" ]]; then export CIRCLE_TAG="v0.0.0-1"; fi
+          if [ -z \${CIRCLE_TAG+x} ] ; then export CIRCLE_TAG="v0.11.1-1"; fi
           echo "CIRCLE_TAG='\${CIRCLE_TAG}'"
           echo 'export MYDUMPER_VERSION=\$(  echo "\${CIRCLE_TAG:1}" | cut -d'-' -f1 ) ' >> "\$BASH_ENV"
           echo 'export MYDUMPER_REVISION=\$( echo "\${CIRCLE_TAG:1}" | cut -d'-' -f2 ) ' >> "\$BASH_ENV"
           cat /etc/profile.d/sh.local >> "\$BASH_ENV" || true
+          cat \$BASH_ENV
           source "\$BASH_ENV"
 
 jobs:
