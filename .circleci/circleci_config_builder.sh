@@ -157,13 +157,13 @@ list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
-  "noble_mysql84_amd64"
+  "noble_mysql84_amd64"         "noble_debian_default_arm64"
   "el7_percona57_x86_64" 
-  "el8_percona80_x86_64"     "el8_mysql80_aarch64"
-  "el9_percona80_x86_64"     "el9_mysql80_aarch64"
+  "el8_percona80_x86_64"        "el8_mysql80_aarch64"
+  "el9_percona80_x86_64"        "el9_mysql80_aarch64"
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
-  "bookworm_percona80_amd64" "bookworm_mariadb1011_arm64"
+  "bookworm_percona80_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
 
@@ -780,11 +780,11 @@ echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
         e: ${list_test[${lt}]}"
 # Decomment next 5 lines if you want to ignore compilation
-#echo '        filters:
-#          branches:
-#            ignore: /.*/
-#          tags:
-#            only: /^v\d+\.\d+\.\d+-\d+$/'
+echo '        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/'
 
 done
 
@@ -799,8 +799,8 @@ echo "        requires:
           - build_${build_man_os}"
 fi
 echo '        filters:
-          branches:
-            ignore: /.*/
+#          branches:
+#            ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 done
