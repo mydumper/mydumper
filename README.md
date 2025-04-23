@@ -28,7 +28,8 @@ Both tools use multithreading capabilities.
 ### Build Docker image
 You can download the [official docker image](https://hub.docker.com/r/mydumper/mydumper) or you can build the Docker image either from local sources or directly from Github sources with [the provided Dockerfile](./docker/Dockerfile).
 ```shell
-docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper github.com/mydumper/mydumper
+docker build --build-arg CMAKE_ARGS='-DWITH_ZSTD=ON' -t mydumper \
+    https://github.com/mydumper/mydumper.git#master:docker
 ```
 Keep in mind that the main purpose the Dockerfile addresses is development and build from source locally. It might not be optimal for distribution purposes, but can also work as a quick build and run solution with the above one-liner, though.
 
