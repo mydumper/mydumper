@@ -63,7 +63,9 @@ void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
   write_table_job_into_file(tj);
 }
 
+static
 void initialize_chunk_step_as_none(struct chunk_step_item * csi){
+  csi->part=0;
   csi->chunk_type=NONE;
   csi->chunk_functions.process=&process_none_chunk;
   csi->chunk_step = NULL;
@@ -176,8 +178,6 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           }
         }
 
-        if (dbt->is_fixed_length)
-          dbt->chunk_filesize=0;
         return csi;
       }else{
         trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
@@ -405,22 +405,20 @@ void table_job_enqueue(struct table_queuing *q)
         switch (csi->chunk_type) {
         case INTEGER:
           if (use_defer) {
-            create_job_to_dump_chunk(dbt, NULL, csi->number,
-                                     csi, g_async_queue_push, q->defer);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->defer);
             create_job_defer(dbt, q->queue);
           } else {
-            create_job_to_dump_chunk(dbt, NULL, csi->number,
-                                     csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           }
           break;
         case CHAR:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case NONE:
-          create_job_to_dump_chunk(dbt, NULL, 0, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         default:
           m_error("This should not happen %s", csi->chunk_type);

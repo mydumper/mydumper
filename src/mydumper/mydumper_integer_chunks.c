@@ -79,7 +79,7 @@ union chunk_step *new_integer_step(gboolean is_unsigned, union type type, gboole
 }
 
 static
-void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn){
+void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn){
   csi->chunk_step = new_integer_step(is_unsigned, type, is_step_fixed_length, step, min_css, max_css, check_min, check_max);
   csi->chunk_type=INTEGER;
   csi->position=position;
@@ -93,15 +93,15 @@ void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_
   csi->prefix = prefix;
   csi->field = g_strdup(field);
   csi->mutex = g_mutex_new();
-  csi->number = number;
+  csi->part = part;
   csi->deep = deep;
   csi->needs_refresh=FALSE;
   csi->multicolumn=multicolumn;
 }
 
-struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn){
+struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
-  initialize_integer_step_item(csi, include_null, prefix, field, is_unsigned, type, deep, is_step_fixed_length, step, min_css, max_css, number, check_min, check_max, next, position, multicolumn);
+  initialize_integer_step_item(csi, include_null, prefix, field, is_unsigned, type, deep, is_step_fixed_length, step, min_css, max_css, part, check_min, check_max, next, position, multicolumn);
   return csi;
 }
 
@@ -130,7 +130,7 @@ void print_type(union type * type, gboolean is_unsigned){
 
 struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
   struct chunk_step_item * new_csi = NULL;
-  guint number=csi->number;
+  guint part=csi->part;
   gint64 new_minmax_signed = 0;
   guint64 new_minmax_unsigned = 0;
   union type type;
@@ -162,6 +162,7 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
         return NULL;
       
       type.unsign.min = new_minmax_unsigned;
+      part= type.unsign.min / csi->chunk_step->integer_step.step + 1;
     }else{
       new_minmax_signed   =   (type.sign.min/ics->step)*ics->step + (signed) ics->step    *
                   ((((   ics->type.sign.max / (signed) ics->step )  -
@@ -172,10 +173,10 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
         return NULL;
       
       type.sign.min = new_minmax_signed;
+      part= type.sign.min / csi->chunk_step->integer_step.step + 1;
     }
-
   }else{
-    number+=pow(2,csi->deep);
+    part+=pow(2,csi->deep);
     if (ics->is_unsigned){
       new_minmax_unsigned = type.unsign.min + (ics->type.unsign.max - type.unsign.min)/2 ;
       if ( new_minmax_unsigned == type.unsign.min )
@@ -189,7 +190,7 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
     }
   }
   // print_type(&type, ics->is_unsigned);
-  new_csi = new_integer_step_item(FALSE, NULL, csi->field, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, number, TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position, csi->multicolumn);
+  new_csi = new_integer_step_item(FALSE, NULL, csi->field, csi->chunk_step->integer_step.is_unsigned, type, csi->deep + 1, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, part, TRUE, csi->chunk_step->integer_step.check_max, NULL, csi->position, csi->multicolumn);
   new_csi->status=ASSIGNED;
 
   csi->chunk_step->integer_step.check_max=TRUE;
@@ -246,7 +247,7 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_s
 void update_where_on_integer_step(struct chunk_step_item * csi);
 
 struct chunk_step_item *clone_chunk_step_item(struct chunk_step_item *csi){
-  return new_integer_step_item(csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, csi->deep, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->number, csi->chunk_step->integer_step.check_min, csi->chunk_step->integer_step.check_max, NULL, csi->position, csi->multicolumn);
+  return new_integer_step_item(csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, csi->deep, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->part, csi->chunk_step->integer_step.check_min, csi->chunk_step->integer_step.check_max, NULL, csi->position, csi->multicolumn);
 }
 
 
@@ -299,7 +300,7 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
               new_csi=clone_chunk_step_item(csi);
               new_csi->status=ASSIGNED;
 //              if ( csi->chunk_step->integer_step.is_step_fixed_length ){
-                new_csi->number+=pow(2,csi->deep);
+                new_csi->part+=pow(2,csi->deep);
 //              }
               update_where_on_integer_step(new_csi);
  
@@ -486,7 +487,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
 //    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
   csi->status = DUMPING_CHUNK;
 
-  if (cs->integer_step.check_max && tj->dbt->max_chunk_step_size!=0){
+  if (cs->integer_step.check_max && tj->dbt->max_chunk_step_size!=0 && !cs->integer_step.is_step_fixed_length){
     trace("Thread %d: Updating MAX", td->thread_id);
     if (cs->integer_step.is_unsigned)
       trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
@@ -499,7 +500,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
     cs->integer_step.check_max=FALSE;
   }
-  if (cs->integer_step.check_min && tj->dbt->max_chunk_step_size!=0){
+  if (cs->integer_step.check_min && tj->dbt->max_chunk_step_size!=0 && !cs->integer_step.is_step_fixed_length){
     if (cs->integer_step.is_unsigned)
       trace("Thread %d: Updating MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
     else
@@ -513,7 +514,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
 
 // Stage 2: Setting cursor
-  if (csi->multicolumn && csi->next == NULL ){
+  if (csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
     guint integer_step_step=cs->integer_step.step;
 retry:
   // We are setting cursor to build the WHERE clause for the EXPLAIN
@@ -529,7 +530,6 @@ retry:
         cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + integer_step_step - 1;
     }
 
-//  if (csi->multicolumn && csi->next == NULL ){
     update_where_on_integer_step(csi);
     guint64 rows = check_row_count?
                    get_rows_from_count  (td->thrconn, tj->dbt, csi->where):
@@ -630,6 +630,11 @@ retry:
     g_string_append(tj->where, csi->where->str);
 
     if (cs->integer_step.is_step_fixed_length) {
+      if (cs->integer_step.is_unsigned)
+        tj->part= cs->integer_step.type.unsign.min / cs->integer_step.step + 1;
+      else
+        tj->part= cs->integer_step.type.sign.min   / cs->integer_step.step + 1;      
+      reopen_files(tj);
       write_table_job_into_file(tj);
     }else{
       GDateTime *from = g_date_time_new_now_local();

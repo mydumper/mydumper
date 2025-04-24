@@ -21,13 +21,13 @@
 
 #ifndef _src_mydumper_create_jobs_h
 #define _src_mydumper_create_jobs_h
-struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 nchunk, struct chunk_step_item *chunk_step_item);
-void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 nchunk, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
+struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item);
+void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
 void create_job_defer(struct db_table *dbt, GAsyncQueue *queue);
 
 void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQueue *queue);
 void free_table_job(struct table_job *tj);
-struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 nchunk, char *order_by, struct chunk_step_item *chunk_step_item);
+struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 part, char *order_by, struct chunk_step_item *chunk_step_item);
 
 void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
 void create_job_to_dump_tablespaces(struct configuration *conf);
