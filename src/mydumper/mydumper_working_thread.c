@@ -1115,6 +1115,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
       g_warning("Setting min and start rows per file to 2 on %s", lkey);
     }
     dbt->is_fixed_length=dbt->min_chunk_step_size != 0 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size == dbt->max_chunk_step_size;
+    // We are disabling the file size limit when the user set a specific --rows size
+    dbt->chunk_filesize=dbt->is_fixed_length?0:chunk_filesize;
 
     if ( dbt->min_chunk_step_size==0)
       dbt->min_chunk_step_size=MIN_CHUNK_STEP_SIZE;
@@ -1130,15 +1132,11 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->estimated_remaining_steps=1;
     dbt->min=NULL;
     dbt->max=NULL;
-//  dbt->chunk_type_item.chunk_type = UNDEFINED;
-//  dbt->chunk_type_item.chunk_step = NULL;
     dbt->chunks=NULL;
-//  dbt->initial_chunk_step=NULL;
     dbt->load_data_header=NULL;
     dbt->load_data_suffix=NULL;
     dbt->insert_statement=NULL;
     dbt->chunks_mutex=g_mutex_new();
-//  g_mutex_lock(dbt->chunks_mutex);
     dbt->chunks_queue=g_async_queue_new();
     dbt->chunks_completed=g_new(int,1);
     *(dbt->chunks_completed)=0;
@@ -1147,10 +1145,6 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     if (order_by_primary_key)
       get_primary_key_separated_by_comma(dbt);
     dbt->multicolumn = !use_single_column && g_list_length(dbt->primary_key) > 1;
-
-//  dbt->primary_key = get_primary_key_string(conn, dbt->database->name, dbt->table);
-    dbt->chunk_filesize=chunk_filesize;
-//  create_job_to_determine_chunk_type(dbt, g_async_queue_push, );
 
     gchar *columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
 

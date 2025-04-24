@@ -235,7 +235,7 @@ struct chunk_step_item{
   gboolean include_null;
   GString *prefix;
   gchar *field;
-  guint64 number;
+  guint64 part;
   guint deep;
   guint position;
   GMutex *mutex;
@@ -255,7 +255,7 @@ struct table_job_file{
 // second number : when load data is used
 struct table_job {
   char *partition;
-  guint64 nchunk;
+  guint64 part;
   guint sub_part;
   GString *where;
 //  union chunk_step *chunk_step;  

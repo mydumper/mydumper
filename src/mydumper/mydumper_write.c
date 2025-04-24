@@ -72,21 +72,12 @@ gboolean hex_blob = FALSE;
 
 gboolean update_files_on_table_job(struct table_job *tj)
 {
-  struct chunk_step_item *csi= tj->chunk_step_item;
   if (tj->rows->file == 0){
-    if (csi->chunk_type == INTEGER) {
-      struct integer_step *s= &csi->chunk_step->integer_step;
-      if (s->is_step_fixed_length) {
-        tj->sub_part= (s->is_unsigned ? s->type.unsign.min : (guint64) s->type.sign.min) / s->step + 1;
-      }
-    }
-
-
-    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
 
     if (tj->sql){
-      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->nchunk, tj->sub_part);
+      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
       tj->sql->file = m_open(&(tj->sql->filename),"w");
       return TRUE;
     }
@@ -663,43 +654,37 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
   g_mutex_unlock(dbt->rows_lock);
 }
 
+void close_file(struct table_job * tj, struct table_job_file *tjf){
+  m_close(tj->td->thread_id, tjf->file, g_strdup(tjf->filename), 1, tj->dbt);
+  tjf->file=0;
+  g_free(tjf->filename);
+  tjf->filename=NULL;
+}
 
-void initiliaze_load_data_files(struct table_job * tj, struct db_table * dbt){
 
-  m_close(tj->td->thread_id, tj->sql->file, g_strdup(tj->sql->filename), 1, dbt);
-  m_close(tj->td->thread_id, tj->rows->file, g_strdup(tj->rows->filename), 1, dbt);
-  tj->sql->file=0;
-  tj->rows->file=0;
-
-  g_free(tj->sql->filename);
-  g_free(tj->rows->filename);
-
-  tj->sql->filename=NULL;
-  tj->rows->filename=NULL;
+void initiliaze_files_template(struct table_job * tj, void (*write_statement_fun) (struct table_job *)){
+  close_file(tj, tj->sql);
+  close_file(tj, tj->rows);
 
   if (update_files_on_table_job(tj)){
-    write_load_data_statement(tj);
+    write_statement_fun(tj);
     write_header(tj);
   }
 }
 
-
-void initiliaze_clickhouse_files(struct table_job * tj, struct db_table * dbt){
-
-  m_close(tj->td->thread_id, tj->sql->file, g_strdup(tj->sql->filename), 1, dbt);
-  m_close(tj->td->thread_id, tj->rows->file, g_strdup(tj->rows->filename), 1, dbt);
-  tj->sql->file=0;
-  tj->rows->file=0;
-
-  g_free(tj->sql->filename);
-  g_free(tj->rows->filename);
-
-  tj->sql->filename=NULL;
-  tj->rows->filename=NULL;
-
-  if (update_files_on_table_job(tj)){
-    write_clickhouse_statement(tj);
-    write_header(tj);
+void reopen_files(struct table_job * tj){
+  switch (output_format){
+    case LOAD_DATA:
+    case CSV:
+      initiliaze_files_template(tj,write_load_data_statement);
+      break;
+    case CLICKHOUSE:
+      initiliaze_files_template(tj,write_clickhouse_statement);
+      break;
+    case SQL_INSERT:
+      close_file(tj, tj->rows);
+      update_files_on_table_job(tj);
+      break;
   }
 }
 
@@ -818,21 +803,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		if (dbt->chunk_filesize && (guint)ceil((float)tj->filesize / 1024 / 1024) >
               dbt->chunk_filesize){
 			tj->sub_part++;
-			switch (output_format){
-			  case LOAD_DATA:
-				case CSV:
-					initiliaze_load_data_files(tj, dbt);
-          break;
-				case CLICKHOUSE:
-  				initiliaze_clickhouse_files(tj, dbt);
-					break;
-				case SQL_INSERT:
-          m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, 1, dbt);
-          tj->rows->file=0;
-          update_files_on_table_job(tj);
-			  	initialize_sql_statement(tj->td->thread_data_buffers.statement);
-          g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
-				  break;
+      reopen_files(tj);
+			if (output_format == SQL_INSERT){
+        initialize_sql_statement(tj->td->thread_data_buffers.statement);
+        g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       }
       tj->st_in_file = 0;
       tj->filesize = 0;			
