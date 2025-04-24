@@ -655,10 +655,12 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
 }
 
 void close_file(struct table_job * tj, struct table_job_file *tjf){
-  m_close(tj->td->thread_id, tjf->file, g_strdup(tjf->filename), 1, tj->dbt);
-  tjf->file=0;
-  g_free(tjf->filename);
-  tjf->filename=NULL;
+  if (tjf->file!=0){
+    m_close(tj->td->thread_id, tjf->file, g_strdup(tjf->filename), 1, tj->dbt);
+    tjf->file=0;
+    g_free(tjf->filename);
+    tjf->filename=NULL;
+  }
 }
 
 
