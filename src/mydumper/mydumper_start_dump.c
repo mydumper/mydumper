@@ -893,7 +893,6 @@ void m_stop_replica(MYSQL *conn) {
   if (!slave || mysql_num_rows(slave) == 0){
     goto cleanup;
   }
-  mysql_free_result(slave);
   g_message("Stopping replica");
   replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
   if (source_control_command==AWS){
