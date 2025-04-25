@@ -869,6 +869,42 @@ cleanup:
 }
 */
 
+guint isms = 0;
+static
+void m_stop_replica(MYSQL *conn) {
+  MYSQL_RES *slave = NULL;
+  MYSQL_RES *rest=NULL;
+  if (get_product() == SERVER_TYPE_MARIADB ){
+    rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
+    if (rest != NULL && mysql_num_rows(rest)) {
+      mysql_free_result(rest);
+      g_message("Multisource slave detected.");
+      isms = 1;
+    }
+  }
+
+  if (isms)
+    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
+  else
+    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
+
+  slave = mysql_store_result(conn);
+
+  if (!slave || mysql_num_rows(slave) == 0){
+    goto cleanup;
+  }
+  mysql_free_result(slave);
+  g_message("Stopping replica");
+  replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
+  if (source_control_command==AWS){
+    discard_mysql_output(conn);
+  }
+
+cleanup:
+  if (slave)
+    mysql_free_result(slave);
+}
+
 // Here is where the backup process start
 
 void start_dump() {
@@ -1000,10 +1036,10 @@ void start_dump() {
     initialize_exec_command();
 
   // Write replica information
-//  if (get_product() != SERVER_TYPE_TIDB) {
-//    if (source_data >=0 )
-//      write_replica_info(conn, mdfile);
-//  }
+  if (get_product() != SERVER_TYPE_TIDB) {
+    if (source_data >=0 )
+      m_stop_replica(conn);
+  }
 
   // Determine the locking mechanisim that is going to be used
   // and send locks to database if needed

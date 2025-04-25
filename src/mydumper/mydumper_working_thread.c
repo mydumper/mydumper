@@ -610,35 +610,7 @@ void write_replica_info(MYSQL *conn, FILE *file) {
   char *channel_name = NULL;
   const char *gtid_title = NULL;
   guint i;
-  guint isms = 0;
-  MYSQL_RES *rest=NULL;
-  if (get_product() == SERVER_TYPE_MARIADB ){
-    rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
-    if (rest != NULL && mysql_num_rows(rest)) {
-      mysql_free_result(rest);
-      g_message("Multisource slave detected.");
-      isms = 1;
-    }
-  }
-
-  if (isms)
-    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
-  else
-    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
-
   guint slave_count=0;
-  slave = mysql_store_result(conn);
-
-  if (!slave || mysql_num_rows(slave) == 0){
-    goto cleanup;
-  }
-  mysql_free_result(slave);
-  g_message("Stopping replica");
-  replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
-  if (source_control_command==AWS){
-    discard_mysql_output(conn);
-  }
-
   if (isms)
     m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
   else
@@ -693,7 +665,7 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
 
   fflush(file);
-cleanup:
+
   if (slave)
     mysql_free_result(slave);
 }
