@@ -1187,13 +1187,13 @@ void start_dump() {
   if (trx_tables) {
     // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
-    if (release_global_lock_function)
-      release_global_lock_function(conn);
     if (release_binlog_function != NULL){
       g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
+    if (release_global_lock_function)
+      release_global_lock_function(conn);
     if (is_mysql_like() && g_async_queue_pop(conf.binlog_ready) && replica_stopped){
       g_message("Starting replica");
       m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
@@ -1251,15 +1251,15 @@ void start_dump() {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf.unlock_tables);
     }
-    g_message("Non-InnoDB dump complete, releasing global locks");
-    if (release_global_lock_function)
-      release_global_lock_function(conn);
-    g_message("Global locks released");
     if (release_binlog_function != NULL){
       g_async_queue_pop(conf.binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
+    g_message("Non-InnoDB dump complete, releasing global locks");
+    if (release_global_lock_function)
+      release_global_lock_function(conn);
+    g_message("Global locks released");
   }
 
   // At this point, we can start the replica if it was stopped
