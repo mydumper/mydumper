@@ -141,3 +141,4 @@ extern gboolean masquerade_filename;
 extern enum sync_thread_lock_mode sync_thread_lock_mode;
 extern gboolean trx_tables;
 extern gboolean replica_stopped;
+extern guint isms;
