@@ -36,7 +36,9 @@ extern gboolean local_infile;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!strcmp(option_name, "--optimize-keys")) {
+  if (!strcmp(option_name, "--innodb-optimize-keys")) {
+    m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
+  }else if (!strcmp(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
     if (value==NULL){
       optimize_keys_per_table = TRUE;
@@ -165,6 +167,8 @@ static GOptionEntry threads_entries[] = {
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
+    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+     "Option --innodb-optimize-keys is deprecated use --optimize-keys instead",NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "Creates the table without the indexes unless SKIP is selected.\n"
      "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
