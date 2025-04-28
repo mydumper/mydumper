@@ -138,13 +138,6 @@ void initialize_working_thread(){
   if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
     m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
 
-  if (exec_per_thread!=NULL){
-    if (exec_per_thread[0]!='/')
-      m_critical("Absolute path is only allowed when --exec-per-thread is used");
-
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-  }
-
   if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
     exec_per_thread_extension=EMPTY_STRING;
     initialize_file_handler(FALSE);
@@ -169,6 +162,14 @@ void initialize_working_thread(){
     }
     initialize_file_handler(TRUE);
   }
+
+  if (exec_per_thread!=NULL){
+    if (exec_per_thread[0]!='/')
+      m_critical("Absolute path is only allowed when --exec-per-thread is used");
+
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+  }
+
 
   initialize_jobs();
   initialize_chunk();
