@@ -32,9 +32,6 @@
 /* Program options */
 gboolean dump_triggers = FALSE;
 gboolean ignore_generated_fields = FALSE;
-gchar *exec_per_thread = NULL;
-const gchar *exec_per_thread_extension = NULL;
-gchar **exec_per_thread_cmd=NULL;
 gboolean skip_definer = FALSE;
 
 extern gchar *table_engine_for_view_dependency;
@@ -47,17 +44,6 @@ void initialize_jobs(){
   if (ignore_generated_fields)
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
-  if (exec_per_thread_extension != NULL && strlen(exec_per_thread_extension)>0){
-    if(exec_per_thread == NULL)
-      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
-  }
-
-  if (exec_per_thread!=NULL){
-    if (exec_per_thread[0]!='/'){
-      m_error("Absolute path is only allowed when --exec-per-thread is used");
-    }
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-  }
 }
 
 static
