@@ -46,6 +46,7 @@
 #define CHANGE_REPLICATION_SOURCE "CHANGE REPLICATION SOURCE"
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
+#define EMPTY_STRING ""
 
 extern GList *ignore_errors_list;
 extern gchar zstd_paths[2][15];

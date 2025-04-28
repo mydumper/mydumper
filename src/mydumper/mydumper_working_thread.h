@@ -23,7 +23,6 @@
 #define INSERT "INSERT"
 #define REPLACE "REPLACE"
 #define UNLOCK_TABLES "UNLOCK TABLES"
-#define EMPTY_STRING ""
 typedef gchar * (*fun_ptr2)(gchar **);
 
 void initialize_working_thread();
