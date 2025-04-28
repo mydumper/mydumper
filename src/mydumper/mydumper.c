@@ -237,6 +237,7 @@ int main(int argc, char *argv[]) {
     print_string("outputdir",output_directory);
     print_bool("clear",clear_dumpdir);
     print_bool("dirty",dirty_dumpdir);
+    print_bool("merge",merge_dumpdir);
     print_bool("stream",stream);
     print_string("logfile",logfile);
     print_string("disk-limits",disk_limits);

@@ -144,6 +144,8 @@ static GOptionEntry entries[] = {
      "Clear output directory before dumping", NULL},
     {"dirty", 0, 0, G_OPTION_ARG_NONE, &dirty_dumpdir,
      "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
+    {"merge", 0, 0, G_OPTION_ARG_NONE, &merge_dumpdir,
+     "Merge the metadata with preious backup and overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,

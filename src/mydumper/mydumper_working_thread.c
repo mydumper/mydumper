@@ -38,8 +38,6 @@
 /* Program options */
 gboolean order_by_primary_key = FALSE;
 gboolean use_savepoints = FALSE;
-gboolean clear_dumpdir= FALSE;
-gboolean dirty_dumpdir= FALSE;
 gchar *ignore_engines_str = NULL;
 int skip_tz = 0;
 gboolean dump_events = FALSE;
