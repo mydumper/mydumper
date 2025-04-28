@@ -391,8 +391,12 @@ void execute_use_if_needs_to(struct connection_data *cd, struct database *databa
 
 enum file_type get_file_type (const char * filename){
 
-  if (!strcmp(filename, "metadata") || !strcmp(filename, "metadata.header") ||
-      (g_str_has_prefix(filename, "metadata.partial") && !g_str_has_suffix(filename, ".sql")))
+  if ((!strcmp(filename,          "metadata") || 
+       !strcmp(filename,          "metadata.header") ||
+       g_str_has_prefix(filename, "metadata.partial")) 
+      && 
+      !( g_str_has_suffix(filename, ".sql") || 
+         has_exec_per_thread_extension(filename)))
     return METADATA_GLOBAL;
 
   if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))

@@ -78,6 +78,7 @@ extern gboolean use_fifo;
 extern gboolean use_savepoints;
 extern gboolean clear_dumpdir;
 extern gboolean dirty_dumpdir;
+extern gboolean merge_dumpdir;
 extern gboolean use_defer;
 extern gboolean check_row_count;
 extern gchar *db;
