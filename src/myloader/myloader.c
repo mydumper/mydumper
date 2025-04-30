@@ -205,7 +205,6 @@ int main(int argc, char *argv[]) {
   g_thread_init(NULL);
   set_thread_name("MNT");
 
-  initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
 
   context = load_contex_entries();

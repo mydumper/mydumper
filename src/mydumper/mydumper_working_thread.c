@@ -136,36 +136,29 @@ void initialize_working_thread(){
   if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
     m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
 
-  if (compress_method==NULL && exec_per_thread==NULL && exec_per_thread_extension == NULL) {
+  if (compress_method==NULL && exec_per_thread==NULL) {
     exec_per_thread_extension=EMPTY_STRING;
     initialize_file_handler(FALSE);
   }else{
     if (compress_method!=NULL && exec_per_thread!=NULL )
       m_critical("--compression and --exec-per-thread are not comptatible");
     
-    gchar *cmd=NULL;
-    if ( g_strcmp0(compress_method,GZIP)==0){
-      if ((cmd=get_gzip_cmd()) == NULL){
-        m_critical("gzip command not found on any static location, use --exec-per-thread for non default locations");
+    if (compress_method){
+      if ( g_ascii_strcasecmp(compress_method,GZIP)==0){
+        exec_per_thread=g_strdup_printf("%s -c", GZIP);
+        exec_per_thread_extension=GZIP_EXTENSION;
+      }else if (g_ascii_strcasecmp(compress_method,ZSTD)==0){
+        exec_per_thread=g_strdup_printf("%s -c", ZSTD);
+        exec_per_thread_extension=ZSTD_EXTENSION;
       }
-      exec_per_thread=g_strdup_printf("%s -c", cmd);
-      exec_per_thread_extension=GZIP_EXTENSION;
-    }else 
-    if ( g_strcmp0(compress_method,ZSTD)==0){
-      if ( (cmd=get_zstd_cmd()) == NULL ){
-        m_critical("zstd command not found on any static location, use --exec-per-thread for non default locations");
-      }
-      exec_per_thread=g_strdup_printf("%s -c", cmd);
-      exec_per_thread_extension=ZSTD_EXTENSION;
     }
     initialize_file_handler(TRUE);
-  }
-
-  if (exec_per_thread!=NULL){
-    if (exec_per_thread[0]!='/')
-      m_critical("Absolute path is only allowed when --exec-per-thread is used");
 
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    if (!tmpcmd)
+      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
+    exec_per_thread_cmd[0]=tmpcmd;
   }
 
 

@@ -45,11 +45,11 @@ const gchar *table_engine_for_view_dependency=MEMORY;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
-    if (value==NULL || g_strstr_len(value,4,GZIP)){
+    if (value==NULL || !g_ascii_strcasecmp(value,GZIP)){
       compress_method=GZIP;
       return TRUE;
     }
-    if (g_strstr_len(value,4,ZSTD)){
+    if (!g_ascii_strcasecmp(value,ZSTD)){
       compress_method=ZSTD;
       return TRUE;
     }

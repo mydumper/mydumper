@@ -55,30 +55,35 @@ void initialize_intermediate_queue (struct configuration *c){
     g_mutex_unlock(start_intermediate_thread);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = m_thread_new("myloader_intermediate",(GThreadFunc)intermediate_thread, NULL, "Intermediate thread could not be created");
-  if (exec_per_thread_extension != NULL){
-    if(exec_per_thread == NULL)
-      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
+
+  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
+    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
+  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
+    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
+
+  gchar *tmpcmd=NULL;
+  if (exec_per_thread!=NULL){
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    if (!tmpcmd)
+      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
+    exec_per_thread_cmd[0]=tmpcmd;
   }
 
-  if (exec_per_thread!=NULL){
-    if (exec_per_thread[0]!='/'){
-      m_error("Absolute path is only allowed when --exec-per-thread is used");
-    }
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-  }
-  gchar *cmd=NULL, *tmp=NULL;
-  if ((cmd=get_zstd_cmd()) == NULL){
-    g_warning("zstd command not found on any static location, use --exec-per-thread for non default locations");
-  }else {
-    zstd_decompress_cmd = g_strsplit( tmp=g_strdup_printf("%s -c -d", cmd)," ",0);
-    g_free(tmp);
-  }
-  if ((cmd=get_gzip_cmd()) == NULL){
-    g_warning("gzip command not found on any static location, use --exec-per-thread for non default locations");
-  }else{
-    gzip_decompress_cmd = g_strsplit( tmp=g_strdup_printf("%s -c -d", cmd)," ",0);
-    g_free(tmp);
-  }
+  gchar *cmd=NULL;
+  tmpcmd=g_find_program_in_path(ZSTD);
+  if (!tmpcmd)
+    m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",ZSTD);
+  zstd_decompress_cmd = g_strsplit(cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+  g_free(tmpcmd);
+  g_free(cmd);
+
+  tmpcmd=g_find_program_in_path(GZIP);
+  if (!tmpcmd)
+    m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",GZIP);
+  gzip_decompress_cmd = g_strsplit( cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+  g_free(tmpcmd);
+  g_free(cmd);
 
   initialize_control_job(c);
 }
