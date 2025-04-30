@@ -45,11 +45,11 @@ const gchar *table_engine_for_view_dependency=MEMORY;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
-    if (value==NULL || g_strstr_len(value,4,GZIP)){
+    if (value==NULL || !g_ascii_strcasecmp(value,GZIP)){
       compress_method=GZIP;
       return TRUE;
     }
-    if (g_strstr_len(value,4,ZSTD)){
+    if (!g_ascii_strcasecmp(value,ZSTD)){
       compress_method=ZSTD;
       return TRUE;
     }
@@ -178,7 +178,7 @@ static GOptionEntry extra_entries[] = {
      NULL},
     {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, "Give less verbose output. Disables header/footer constructs.", NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
+     "Compress output files using: gzip and zstd. Options: gzip and zstd. Default: gzip. On future releases the default will be zstd", NULL},
     {"use-defer", 0, 0, G_OPTION_ARG_NONE, &use_defer,
      "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
     {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,

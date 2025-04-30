@@ -34,8 +34,6 @@ GThread *stream_intermediate_thread = NULL;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
-gchar ** zstd_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
-gchar ** gzip_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
@@ -55,30 +53,6 @@ void initialize_intermediate_queue (struct configuration *c){
     g_mutex_unlock(start_intermediate_thread);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = m_thread_new("myloader_intermediate",(GThreadFunc)intermediate_thread, NULL, "Intermediate thread could not be created");
-  if (exec_per_thread_extension != NULL){
-    if(exec_per_thread == NULL)
-      m_error("--exec-per-thread needs to be set when --exec-per-thread-extension is used");
-  }
-
-  if (exec_per_thread!=NULL){
-    if (exec_per_thread[0]!='/'){
-      m_error("Absolute path is only allowed when --exec-per-thread is used");
-    }
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-  }
-  gchar *cmd=NULL, *tmp=NULL;
-  if ((cmd=get_zstd_cmd()) == NULL){
-    g_warning("zstd command not found on any static location, use --exec-per-thread for non default locations");
-  }else {
-    zstd_decompress_cmd = g_strsplit( tmp=g_strdup_printf("%s -c -d", cmd)," ",0);
-    g_free(tmp);
-  }
-  if ((cmd=get_gzip_cmd()) == NULL){
-    g_warning("gzip command not found on any static location, use --exec-per-thread for non default locations");
-  }else{
-    gzip_decompress_cmd = g_strsplit( tmp=g_strdup_printf("%s -c -d", cmd)," ",0);
-    g_free(tmp);
-  }
 
   initialize_control_job(c);
 }

@@ -18,8 +18,6 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#define GZIP "GZIP"
-#define ZSTD "ZSTD"
 #define INSERT_ARG "INSERT"
 #define LOAD_DATA_ARG "LOAD_DATA"
 #define CSV_ARG "CSV"

@@ -70,8 +70,6 @@ int main(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
   context = load_contex_entries();
 
-  initialize_share_common();
-
   gchar ** tmpargv=g_strdupv(argv);
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
