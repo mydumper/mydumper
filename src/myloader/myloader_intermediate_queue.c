@@ -64,7 +64,7 @@ void initialize_intermediate_queue (struct configuration *c){
   gchar *tmpcmd=NULL;
   if (exec_per_thread!=NULL){
     exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
     if (!tmpcmd)
       m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
     exec_per_thread_cmd[0]=tmpcmd;
