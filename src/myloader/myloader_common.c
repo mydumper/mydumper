@@ -42,6 +42,8 @@ struct database *database_db=NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gboolean skip_table_sorting = FALSE;
+gchar ** zstd_decompress_cmd = NULL; 
+gchar ** gzip_decompress_cmd = NULL;
 
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
@@ -50,6 +52,39 @@ void initialize_common(){
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
   if (db){
     database_db=get_db_hash(g_strdup(db), g_strdup(db));
+  }
+
+  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
+    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
+  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
+    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
+
+  gchar *tmpcmd=NULL;
+  if (exec_per_thread!=NULL){
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+    tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    if (!tmpcmd)
+      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
+    exec_per_thread_cmd[0]=tmpcmd;
+  }
+
+  gchar *cmd=NULL;
+  tmpcmd=g_find_program_in_path(ZSTD);
+  if (!tmpcmd){
+    m_warning("%s was not found in PATH, use --exec-per-thread for non default locations",ZSTD);
+  }else{
+    zstd_decompress_cmd = g_strsplit(cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+    g_free(tmpcmd);
+    g_free(cmd);
+  }
+
+  tmpcmd=g_find_program_in_path(GZIP);
+  if (!tmpcmd){
+    m_warning("%s was not found in PATH, use --exec-per-thread for non default locations",GZIP);
+  }else{
+    gzip_decompress_cmd = g_strsplit( cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+    g_free(tmpcmd);
+    g_free(cmd);
   }
 }
 
@@ -606,8 +641,10 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
     *command=gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
-
   }
+
+  if (!*command)
+    m_critical("We don't have a command for extension on file %s",filename);
   if (len!=0){
     gchar *dotpos=&(filename[strlen(filename)]) - len;
     *dotpos='\0';

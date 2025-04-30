@@ -34,8 +34,6 @@ GThread *stream_intermediate_thread = NULL;
 gchar *exec_per_thread = NULL;
 gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
-gchar ** zstd_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
-gchar ** gzip_decompress_cmd = NULL; //[3][15]={"              ","-c","-d"};
 
 GHashTable * exec_process_id = NULL;
 GMutex *exec_process_id_mutex = NULL;
@@ -55,35 +53,6 @@ void initialize_intermediate_queue (struct configuration *c){
     g_mutex_unlock(start_intermediate_thread);
   intermediate_queue_ended=FALSE;
   stream_intermediate_thread = m_thread_new("myloader_intermediate",(GThreadFunc)intermediate_thread, NULL, "Intermediate thread could not be created");
-
-  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
-    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
-  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
-    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
-
-  gchar *tmpcmd=NULL;
-  if (exec_per_thread!=NULL){
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-    tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
-    if (!tmpcmd)
-      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
-    exec_per_thread_cmd[0]=tmpcmd;
-  }
-
-  gchar *cmd=NULL;
-  tmpcmd=g_find_program_in_path(ZSTD);
-  if (!tmpcmd)
-    m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",ZSTD);
-  zstd_decompress_cmd = g_strsplit(cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
-  g_free(tmpcmd);
-  g_free(cmd);
-
-  tmpcmd=g_find_program_in_path(GZIP);
-  if (!tmpcmd)
-    m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",GZIP);
-  gzip_decompress_cmd = g_strsplit( cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
-  g_free(tmpcmd);
-  g_free(cmd);
 
   initialize_control_job(c);
 }
