@@ -44,6 +44,7 @@ guint refresh_table_list_counter=1;
 gboolean skip_table_sorting = FALSE;
 gchar ** zstd_decompress_cmd = NULL; 
 gchar ** gzip_decompress_cmd = NULL;
+guint max_number_tables_to_sort_in_table_list = 100000;
 
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
@@ -521,7 +522,7 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-      if (skip_table_sorting)
+      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
         table_list=g_list_prepend(table_list,dbt);
       else
         table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
