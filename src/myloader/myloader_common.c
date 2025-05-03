@@ -127,6 +127,7 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
 //g_list_free_full(change_master_parameter_list, g_free);
 
 void execute_replication_commands(MYSQL *conn, gchar *statement){
+  m_query_warning(conn, "COMMIT", "COMMIT failed");
   guint i;
   gchar** line=g_strsplit(statement, ";\n", -1);
   for (i=0; i < g_strv_length(line);i++){
@@ -138,6 +139,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
      }
   }
   g_strfreev(line);
+  m_query_warning(conn, "START TRANSACTION", "START TRANSACTION failed");
 }
 
 void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs){
@@ -242,9 +244,9 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
   if (!auto_position)
-    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", ", source_log_file, source_log_pos);
-
-  g_string_append_printf(aws_change_source,"%d );\n", source_ssl);
+    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, source_ssl);
+  else
+    g_string_append_printf(aws_change_source,"%d, 0);\n", source_ssl);
 
   g_strfreev(keys);
   g_string_append(traditional_change_source," FOR CHANNEL '");
