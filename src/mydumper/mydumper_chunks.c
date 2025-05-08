@@ -186,13 +186,22 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       break;
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
+      // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
+      trace("String type %d", position);
       m_store_result_row_free(mr);
-      return new_none_chunk_step();
+      if (position>0)
+        dbt->multicolumn=FALSE;
+      else
+        return new_none_chunk_step();
       break;
     default:
+      // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       m_store_result_row_free(mr);
       g_message("It is NONE: default");
-      return new_none_chunk_step();
+      if (position>1)
+        dbt->multicolumn=FALSE;
+      else
+        return new_none_chunk_step();
       break;
   }
 
