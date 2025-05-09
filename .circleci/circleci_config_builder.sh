@@ -275,6 +275,11 @@ commands:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
     - run: yum-config-manager --disable mariadb-maxscale || true
 
+  prepare_el7_mariadb1011:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11.11"
+    - run: yum-config-manager --disable mariadb-maxscale || true
+
   prepare_el_mysql80:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
@@ -357,6 +362,18 @@ done
 
 for os in ${list_el_os[@]}
 do
+    for vendor in mariadb1006
+    do
+        echo "
+  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
+    steps:
+    - prepare_el_${all_vendors[${vendor}_0]}
+"
+    done
+done
+
+for os in el8 el9
+do
     for vendor in ${list_mariadb_version[@]}
     do
         echo "
@@ -366,6 +383,7 @@ do
 "
     done
 done
+
 
 
 # On apt repositories OS the preparation
