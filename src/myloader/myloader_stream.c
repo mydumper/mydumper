@@ -41,8 +41,12 @@ size_t read_stream_line(char *buffer, int c_to_read){
 }
 
 void flush(char *buffer, int from, int to, FILE *file, guint *total_size){
-//  char * tmp=g_strndup(&(buffer[from]),to-from);
-//  g_message("Flushing data %d: %s",to-from, tmp);
+/*  if (to>from){
+    char * tmp=g_strndup(&(buffer[from]),to-from);
+    g_message("Flushing data %d: %s",to-from, tmp);
+    g_free(tmp);
+  }
+  */
   if (file){ 
     if (write_file(file,&(buffer[from]),to-from+1) != to-from+1) 
       g_critical("Error on writing");
@@ -72,7 +76,7 @@ void *process_stream(struct configuration *stream_conf){
   GString *set_buffer=g_string_new_len("", 1000);
   g_string_set_size(set_buffer,0);
   gboolean writing_set=TRUE;
-  gchar *database_name=g_strdup("sakila");
+  gchar *database_name=db?g_strdup(db):NULL;
   gchar *table_name=NULL;
   for(i=0;i<stream_buffer_size;i++){
     buffer[i]='\0';
@@ -114,17 +118,23 @@ read_more:
               if (g_str_has_prefix(&(buffer[line_from]),"--")){
                 // after writing the SET and when file is NULL, we should be reading the header of the file
                 // we create a temporary filename 
-                filename=g_strdup_printf("mydumper_tmp.table_%d.sql",num);
-                num++;
+                if (g_str_has_prefix(&(buffer[initial_pos]),"\nUSE ")){
+                  gchar ** sp=g_strsplit(&(buffer[initial_pos]), "`", 3);
+                  database_name=g_strdup(sp[1]);
+                  g_strfreev(sp);
+                }else{
+                  filename=g_strdup_printf("mydumper_tmp.table_%d.sql",num);
+                  num++;
 
-                real_filename = g_build_filename(directory,filename,NULL);
+                  real_filename = g_build_filename(directory,filename,NULL);
+ 
+                  file = g_fopen(real_filename, "w");
+                  table_name=NULL;
+                  kind=NULL;
 
-                file = g_fopen(real_filename, "w");
-                table_name=NULL;
-                kind=NULL;
-
-                flush(set_buffer->str,0,set_buffer->len -1,file, &total_size);
-                flush(buffer,initial_pos,line_end-1,file, &total_size);
+                  flush(set_buffer->str,0,set_buffer->len -1,file, &total_size);
+                  flush(buffer,initial_pos,line_end-1,file, &total_size);
+                }
               }
 
             }else{
@@ -139,13 +149,15 @@ read_more:
                 new_filename=g_strdup_printf("%s%s%s%s.sql",database_name?database_name:"",table_name?".":"",table_name?table_name:"",kind?kind:"");
                 new_real_filename=g_build_filename(directory,new_filename,NULL);
                 g_rename(real_filename,new_real_filename);
+                trace("renaming: %s -> %s", real_filename,new_real_filename);
               }else{
                 new_filename=g_strdup(filename);
               }
               g_free(filename);
               filename=NULL;
               // sending previous file for processing
-              intermediate_queue_new(new_filename);
+              if(!g_str_has_prefix(new_filename,"mydumper_tmp"))
+                intermediate_queue_new(new_filename);
               new_filename=NULL;
             }
           }
@@ -169,37 +181,39 @@ read_more:
         // - line_end
 
         if (file){
-          // is it a complete line?
+          if ((line_end-line_from < 20) && (buffer[pos] !='\n') && (line_from>=20)){
+            // this is not a line, which means pos == buffer_len, so we are at the end of the buffer
+            // we need to copy the first 20 chars to the begining of the buffer to get relevant info
+            g_message("Copying");
+            diff=line_end-line_from ;
+            g_strlcpy(buffer,&(buffer[line_from]), line_end-line_from + 1);
+            continue;
+          }
+          // Can we get relevant info?
+          if (g_str_has_prefix(&(buffer[line_from]),"CREATE TABLE ") || g_str_has_prefix(&(buffer[line_from]),"/*!50001 CREATE VIEW") || g_str_has_prefix(&(buffer[line_from]),"/*!50001 VIEW")){
+            g_free(table_name);
+            gchar ** sp=g_strsplit(&(buffer[line_from]), "`", 3);
+            table_name=g_strdup(sp[1]);
+            g_strfreev(sp);
+            kind=g_strdup("-schema");
+          } else if (g_str_has_prefix(&(buffer[line_from]),"INSERT INTO ") ){
+            g_free(table_name);
+            gchar ** sp=g_strsplit(&(buffer[line_from]), "`", 3);
+            table_name=g_strdup(sp[1]);
+            g_strfreev(sp);
+            kind=g_strdup_printf(".000%d",num);
+          } 
+
+          char c=buffer[line_end];
+          buffer[line_end]='\0';
+          buffer[line_end]=c;
           if (buffer[line_end] == '\n'){
-            // this was a common line, flushing to disk
-//            if (!g_str_has_prefix(&(buffer[line_from]),"--"))
-
-            // Can we get relevant info?
-            if (g_str_has_prefix(&(buffer[line_from]),"CREATE TABLE ") || g_str_has_prefix(&(buffer[line_from]),"/*!50001 CREATE VIEW") || g_str_has_prefix(&(buffer[line_from]),"/*!50001 VIEW")){
-              g_free(table_name);
-              gchar ** sp=g_strsplit(&(buffer[line_from]), "`", 3);
-              table_name=g_strdup(sp[1]);
-              g_strfreev(sp);
-              kind=g_strdup("-schema");
-            } else if (g_str_has_prefix(&(buffer[line_from]),"INSERT INTO ")){
-              g_free(table_name);
-              gchar ** sp=g_strsplit(&(buffer[line_from]), "`", 3);
-              table_name=g_strdup(sp[1]);
-              g_strfreev(sp);
-              kind=g_strdup_printf(".000%d",num);
-            } 
-
-            char c=buffer[line_end];
-            buffer[line_end]='\0';
-            buffer[line_end]=c;
             flush(buffer,initial_pos,line_end,file, &total_size);
             pos++;
-            continue;
           }else{
-            // this was not a common line, flushing to disk anyways
             flush(buffer,initial_pos,line_end-1,file, &total_size);
-            continue;      
           }
+          continue;
         }else{
           if (writing_set){
             // file was NULL, this must be the header of the mysqldump

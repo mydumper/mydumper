@@ -64,6 +64,9 @@ GHashTable *all_dbts=NULL;
 char * (*identifier_quote_character_protect)(char *r);
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 gboolean replica_stopped = FALSE;
+gboolean merge_dumpdir= FALSE;
+gboolean clear_dumpdir= FALSE;
+gboolean dirty_dumpdir= FALSE;
 
 // static variables
 static GMutex **pause_mutex_per_thread=NULL;
@@ -926,9 +929,10 @@ void start_dump() {
   // Initializing process
   if (clear_dumpdir)
     clear_dump_directory(dump_directory);
-  else if (!dirty_dumpdir && !is_empty_dir(dump_directory)) {
-    g_error("Directory is not empty (use --clear or --dirty): %s\n", dump_directory);
+  else if (!(dirty_dumpdir || merge_dumpdir) && !is_empty_dir(dump_directory)) {
+    g_error("Directory is not empty (use --clear, --dirty or --merge): %s\n", dump_directory);
   }
+
   check_num_threads();
   g_message("Using %u dumper threads", num_threads);
   initialize_start_dump();
@@ -974,7 +978,11 @@ void start_dump() {
     metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
   metadata_filename = g_strdup_printf("%s/metadata", dump_directory);
 
-  mdfile = g_fopen(metadata_partial_filename, "w");
+  if (merge_dumpdir)
+   if (g_rename(metadata_filename, metadata_partial_filename))
+     m_critical("We were not able to rename metadata (%s) file to %s",metadata_filename, metadata_partial_filename);
+
+  mdfile = g_fopen(metadata_partial_filename, "a");
   if (!mdfile) {
     m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
   }
@@ -1005,16 +1013,14 @@ void start_dump() {
   g_free(datetimestr);
 
   /* Write dump config into beginning of metadata, stream this first */
-  {
-    g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
-    const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
-    fprintf(mdfile, "[config]\nquote-character = %s\n", qc);
-    if (load_data || csv )
-      fprintf(mdfile, "local-infile = 1\n");
-    fprintf(mdfile, "\n[myloader_session_variables]");
-    fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
-    fflush(mdfile);
-  }
+  g_assert(identifier_quote_character == BACKTICK || identifier_quote_character == DOUBLE_QUOTE);
+  const char *qc= identifier_quote_character == BACKTICK ? "BACKTICK" : "DOUBLE_QUOTE";
+  fprintf(mdfile, "[config]\nquote-character = %s\n", qc);
+  if (load_data || csv )
+    fprintf(mdfile, "local-infile = 1\n");
+  fprintf(mdfile, "\n[myloader_session_variables]");
+  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
+  fflush(mdfile);
 
   // Initilizing stream backup
   if (stream){
@@ -1353,7 +1359,8 @@ void start_dump() {
   if (updated_since > 0)
     fclose(nufile);
 
-  g_rename(metadata_partial_filename, metadata_filename);
+  if (g_rename(metadata_partial_filename, metadata_filename))
+    m_critical("We were not able to rename metadata file");
 
   if (stream) {
     stream_queue_push(NULL, g_strdup(metadata_filename));

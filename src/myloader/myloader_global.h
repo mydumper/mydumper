@@ -110,8 +110,6 @@ extern gchar **exec_per_thread_cmd;
 
 //extern guint index_threads_counter;
 extern GMutex *index_mutex;
-extern gchar **zstd_decompress_cmd;
-extern gchar **gzip_decompress_cmd;
 extern struct database *database_db;
 extern gchar *optimize_keys_str;
 extern gchar *checksum_str;

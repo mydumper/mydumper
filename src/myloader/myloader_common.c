@@ -42,6 +42,9 @@ struct database *database_db=NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gboolean skip_table_sorting = FALSE;
+gchar ** zstd_decompress_cmd = NULL; 
+gchar ** gzip_decompress_cmd = NULL;
+guint max_number_tables_to_sort_in_table_list = 100000;
 
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
@@ -50,6 +53,39 @@ void initialize_common(){
   db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
   if (db){
     database_db=get_db_hash(g_strdup(db), g_strdup(db));
+  }
+
+  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
+    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
+  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
+    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
+
+  gchar *tmpcmd=NULL;
+  if (exec_per_thread!=NULL){
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+    tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    if (!tmpcmd)
+      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
+    exec_per_thread_cmd[0]=tmpcmd;
+  }
+
+  gchar *cmd=NULL;
+  tmpcmd=g_find_program_in_path(ZSTD);
+  if (!tmpcmd){
+    m_warning("%s was not found in PATH, use --exec-per-thread for non default locations",ZSTD);
+  }else{
+    zstd_decompress_cmd = g_strsplit(cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+    g_free(tmpcmd);
+    g_free(cmd);
+  }
+
+  tmpcmd=g_find_program_in_path(GZIP);
+  if (!tmpcmd){
+    m_warning("%s was not found in PATH, use --exec-per-thread for non default locations",GZIP);
+  }else{
+    gzip_decompress_cmd = g_strsplit( cmd=g_strdup_printf("%s -c -d", tmpcmd)," ",0);
+    g_free(tmpcmd);
+    g_free(cmd);
   }
 }
 
@@ -92,6 +128,7 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
 //g_list_free_full(change_master_parameter_list, g_free);
 
 void execute_replication_commands(MYSQL *conn, gchar *statement){
+  m_query_warning(conn, "COMMIT", "COMMIT failed");
   guint i;
   gchar** line=g_strsplit(statement, ";\n", -1);
   for (i=0; i < g_strv_length(line);i++){
@@ -103,6 +140,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
      }
   }
   g_strfreev(line);
+  m_query_warning(conn, "START TRANSACTION", "START TRANSACTION failed");
 }
 
 void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs){
@@ -207,9 +245,9 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
   if (!auto_position)
-    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", ", source_log_file, source_log_pos);
-
-  g_string_append_printf(aws_change_source,"%d );\n", source_ssl);
+    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, source_ssl);
+  else
+    g_string_append_printf(aws_change_source,"%d, 0);\n", source_ssl);
 
   g_strfreev(keys);
   g_string_append(traditional_change_source," FOR CHANNEL '");
@@ -391,8 +429,12 @@ void execute_use_if_needs_to(struct connection_data *cd, struct database *databa
 
 enum file_type get_file_type (const char * filename){
 
-  if (!strcmp(filename, "metadata") || !strcmp(filename, "metadata.header") ||
-      (g_str_has_prefix(filename, "metadata.partial") && !g_str_has_suffix(filename, ".sql")))
+  if ((!strcmp(filename,          "metadata") || 
+       !strcmp(filename,          "metadata.header") ||
+       g_str_has_prefix(filename, "metadata.partial")) 
+      && 
+      !( g_str_has_suffix(filename, ".sql") || 
+         has_exec_per_thread_extension(filename)))
     return METADATA_GLOBAL;
 
   if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
@@ -482,7 +524,7 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-      if (skip_table_sorting)
+      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
         table_list=g_list_prepend(table_list,dbt);
       else
         table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
@@ -602,8 +644,14 @@ gboolean get_command_and_basename(gchar *filename, gchar ***command, gchar **bas
   }else if (g_str_has_suffix(filename, GZIP_EXTENSION)){
     *command=gzip_decompress_cmd;
     len=strlen(GZIP_EXTENSION);
-
+  }else{
+    goto avoid_command_check;
   }
+
+  if (!*command)
+    m_critical("We don't have a command for extension on file %s",filename);
+
+avoid_command_check:
   if (len!=0){
     gchar *dotpos=&(filename[strlen(filename)]) - len;
     *dotpos='\0';

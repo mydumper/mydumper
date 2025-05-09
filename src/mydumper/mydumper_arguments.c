@@ -45,11 +45,21 @@ const gchar *table_engine_for_view_dependency=MEMORY;
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
-    if (value==NULL || g_strstr_len(value,4,GZIP)){
+    if (value==NULL){
+      if (g_find_program_in_path(ZSTD)){
+        compress_method=ZSTD;
+        return TRUE;
+      }else if (g_find_program_in_path(GZIP)){
+        compress_method=GZIP;
+        return TRUE;
+      }
+      return FALSE;
+    }
+    if (!g_ascii_strcasecmp(value,GZIP)){
       compress_method=GZIP;
       return TRUE;
     }
-    if (g_strstr_len(value,4,ZSTD)){
+    if (!g_ascii_strcasecmp(value,ZSTD)){
       compress_method=ZSTD;
       return TRUE;
     }
@@ -144,6 +154,8 @@ static GOptionEntry entries[] = {
      "Clear output directory before dumping", NULL},
     {"dirty", 0, 0, G_OPTION_ARG_NONE, &dirty_dumpdir,
      "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
+    {"merge", 0, 0, G_OPTION_ARG_NONE, &merge_dumpdir,
+     "Merge the metadata with preious backup and overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
@@ -176,7 +188,7 @@ static GOptionEntry extra_entries[] = {
      NULL},
     {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, "Give less verbose output. Disables header/footer constructs.", NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
+     "Compress output files using: gzip and zstd. Options: gzip and zstd. Default: gzip. On future releases the default will be zstd", NULL},
     {"use-defer", 0, 0, G_OPTION_ARG_NONE, &use_defer,
      "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
     {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
