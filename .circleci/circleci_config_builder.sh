@@ -334,6 +334,13 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-devel
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
+  prepare_el7_mariadb1006:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.06.21"
+    - run: yum-config-manager --disable mariadb-maxscale || true
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+
   prepare_el_mariadb1011:
     steps:
     - prepare_mariadb1011
@@ -363,21 +370,9 @@ do
 "
 done
 
-for os in ${list_el_os[@]}
-do
-    for vendor in mariadb1006
-    do
-        echo "
-  prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
-    steps:
-    - prepare_el_${all_vendors[${vendor}_0]}
-"
-    done
-done
-
 for os in el8 el9
 do
-    for vendor in mariadb1011
+    for vendor in ${list_mariadb_version[@]}
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
