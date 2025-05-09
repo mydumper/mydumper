@@ -275,11 +275,6 @@ commands:
     - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11"
     - run: yum-config-manager --disable mariadb-maxscale || true
 
-  prepare_el7_mariadb1011:
-    steps:
-    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11.11"
-    - run: yum-config-manager --disable mariadb-maxscale || true
-
   prepare_el_mysql80:
     steps:
     - run: sudo yum install -y libasan gdb screen time mysql-community-libs mysql-community-devel mysql-community-client
@@ -330,6 +325,14 @@ commands:
     steps:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
+
+
+  prepare_el7_mariadb1011:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11.11"
+    - run: yum-config-manager --disable mariadb-maxscale || true
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 
   prepare_el_mariadb1011:
     steps:
