@@ -1769,19 +1769,9 @@ commands:
     - prepare_el_mariadb1011
 
 
-  prepare_el8_mariadb1006:
-    steps:
-    - prepare_el_mariadb1006
-
-
   prepare_el9_mariadb1011:
     steps:
     - prepare_el_mariadb1011
-
-
-  prepare_el9_mariadb1006:
-    steps:
-    - prepare_el_mariadb1006
 
 
   prepare_bionic_tidb:

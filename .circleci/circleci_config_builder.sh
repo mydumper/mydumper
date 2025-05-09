@@ -374,7 +374,7 @@ done
 
 for os in el8 el9
 do
-    for vendor in ${list_mariadb_version[@]}
+    for vendor in mariadb1011
     do
         echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
