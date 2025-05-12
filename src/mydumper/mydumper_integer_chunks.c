@@ -560,8 +560,10 @@ retry:
       }
       if (rows > tj->dbt->min_chunk_step_size){
         csi->next = initialize_chunk_step_item(td->thrconn, tj->dbt, csi->position + 1, csi->where);
-        csi->next->multicolumn=FALSE;
-        trace("Thread %d: New next with where %s | rows: %lld", td->thread_id, csi->where->str, rows);
+        if (csi->next){
+          csi->next->multicolumn=FALSE;
+          trace("Thread %d: New next with where %s | rows: %lld", td->thread_id, csi->where->str, rows);
+        }
       }else{
         trace("Thread %d: multicolumn=FALSE", td->thread_id);
         csi->multicolumn=FALSE;
@@ -616,6 +618,7 @@ retry:
     trace("Thread %d: WHERE: %s", td->thread_id, csi->where->str); 
 
   if (csi->next !=NULL){
+    trace("Thread %d: going down", td->thread_id);
     // Multi column
     if (csi->next->needs_refresh)
       if (!refresh_integer_min_max(td->thrconn, tj->dbt, csi->next)){
@@ -628,7 +631,7 @@ retry:
   }else{
     g_string_set_size(tj->where,0);
     g_string_append(tj->where, csi->where->str);
-
+    trace("Thread %d: WHERE in TJ: %s", td->thread_id, tj->where->str);
     if (cs->integer_step.is_step_fixed_length) {
       if (cs->integer_step.is_unsigned)
         tj->part= cs->integer_step.type.unsign.min / cs->integer_step.step + 1;

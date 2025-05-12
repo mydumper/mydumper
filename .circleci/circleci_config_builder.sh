@@ -326,6 +326,21 @@ commands:
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
+
+  prepare_el7_mariadb1011:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.11.11"
+    - run: yum-config-manager --disable mariadb-maxscale || true
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+
+  prepare_el7_mariadb1006:
+    steps:
+    - run: sudo bash /tmp/mariadb_repo_setup --mariadb-server-version "mariadb-10.6.21"
+    - run: yum-config-manager --disable mariadb-maxscale || true
+    - run: sudo yum install -y libasan gdb screen time MariaDB-devel
+    - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
+
   prepare_el_mariadb1011:
     steps:
     - prepare_mariadb1011
@@ -355,7 +370,7 @@ do
 "
 done
 
-for os in ${list_el_os[@]}
+for os in el8 el9
 do
     for vendor in ${list_mariadb_version[@]}
     do
@@ -366,6 +381,7 @@ do
 "
     done
 done
+
 
 
 # On apt repositories OS the preparation
