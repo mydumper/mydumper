@@ -143,3 +143,6 @@ extern enum sync_thread_lock_mode sync_thread_lock_mode;
 extern gboolean trx_tables;
 extern gboolean replica_stopped;
 extern guint isms;
+extern guint throttle_time;
+extern gchar *throttle_variable;
+extern guint throttle_value;

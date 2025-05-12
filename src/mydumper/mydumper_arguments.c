@@ -40,7 +40,8 @@ gboolean masquerade_filename=FALSE;
 gboolean trx_tables=FALSE;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
-
+gchar *throttle_variable=NULL;
+guint throttle_value=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -103,6 +104,17 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
+  if (!strcmp(option_name,"--throttle")){
+    if (value){
+      gchar ** tp=g_strsplit(value, "=", 2);
+      throttle_variable=g_strdup(tp[0]);
+      throttle_value = atoi(tp[1]);
+    }else{
+      throttle_variable=g_strdup("Threads_running");
+      throttle_value = 0;
+    }
+    return TRUE;
+  }
   if (!strcmp(option_name,"--trx-consistency-only")){
     m_critical("--lock-all-tables is deprecated use --trx-tables instead");
   }
@@ -160,6 +172,9 @@ static GOptionEntry entries[] = {
      "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
+    {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+     "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if is higher, it will increase the sleep time between SELECT. If option is used without parameters it will use Threads_running and the amount of threads",
+     NULL},
     { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."
@@ -174,7 +189,7 @@ static GOptionEntry extra_entries[] = {
      NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"isuccess-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+    {"success-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
      "Not increment error count and Warning instead of Critical in case of "
      "table doesn't exist",
      NULL},
