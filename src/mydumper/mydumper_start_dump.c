@@ -68,6 +68,9 @@ gboolean merge_dumpdir= FALSE;
 gboolean clear_dumpdir= FALSE;
 gboolean dirty_dumpdir= FALSE;
 
+guint net_write_timeout=0;
+guint throttle_time=0;
+
 // static variables
 static GMutex **pause_mutex_per_thread=NULL;
 static guint pause_at=0;
@@ -148,6 +151,49 @@ void *monitor_disk_space_thread (void *queue){
   }
   return NULL;
 }
+
+static
+void *monitor_throttling_thread (void *queue){
+  (void)queue;
+  guint current_value;
+  gchar *query = g_strdup_printf("SHOW GLOBAL STATUS LIKE '%s'", throttle_variable);
+  g_message("Query %s", query);
+  struct M_ROW *mr;
+  MYSQL *conn;
+  conn = mysql_init(NULL);
+  if (throttle_value==0){
+    throttle_value=num_threads;
+  }
+  m_connect(conn);  
+  while (TRUE){
+    mr = m_store_result_single_row (conn, query, "We were not able to check: '%s'", throttle_variable);
+
+    if (mr->res && mr->row){
+      current_value=atoi(mr->row[1]);
+
+      if (current_value>throttle_value){
+        if (throttle_time==0)
+          throttle_time=1000000;
+        else
+          throttle_time+=throttle_time;
+        if (net_write_timeout < throttle_time/1000000)
+          throttle_time=net_write_timeout*1000000;
+        trace("Increasing throttle_time to: %d", throttle_time);
+      }else if (current_value<throttle_value && throttle_time > 0){
+        throttle_time=throttle_time/2;
+        trace("Decreasing throttle_time to: %d", throttle_time);
+      }
+    }else{
+      trace("Invalid query: %s", query);
+    }
+    m_store_result_row_free(mr);
+    trace("Monitoring");
+    sleep(1);
+  }
+
+  return NULL;
+}
+
 
 gboolean sig_triggered(void * user_data, int signal) {
   if (signal == SIGTERM){
@@ -245,6 +291,21 @@ MYSQL *create_connection() {
 
   execute_gstring(conn, set_session);
   return conn;
+}
+
+
+static
+void detect_net_write_timeout(MYSQL *conn){
+
+  struct M_ROW *mr = m_store_result_single_row (conn, "SELECT round(@@NET_WRITE_TIMEOUT * 80 / 100)", "Error getting NET_WRITE_TIMEOUT", NULL);
+
+  if (!mr->res || !mr->row){
+    m_store_result_row_free(mr);
+    return;
+  }
+
+  net_write_timeout=atoi(mr->row[0]);
+  trace("Detecting net_write_timeout: %d", net_write_timeout);
 }
 
 static
@@ -346,6 +407,8 @@ MYSQL *create_main_connection() {
   execute_gstring(conn, set_session);
   execute_gstring(conn, set_global);
   detect_quote_character(conn);
+  if (throttle_variable)
+    detect_net_write_timeout(conn);
   initialize_headers();
   initialize_write();
 
@@ -961,8 +1024,12 @@ void start_dump() {
 
   if (disk_limits!=NULL){
     conf.pause_resume = g_async_queue_new();
-    disk_check_thread = m_thread_new("monitor",monitor_disk_space_thread, conf.pause_resume, "Monitor thread could not be created");
+    disk_check_thread = m_thread_new("mon_disk",monitor_disk_space_thread, conf.pause_resume, "Monitor thread could not be created");
   }
+
+//  GThread *throttling_thread = 
+  if (throttle_variable)
+    m_thread_new("mon_thro",monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
 
   // signal_thread is disable if daemon mode
   if (!daemon_mode)
