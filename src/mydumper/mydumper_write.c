@@ -843,7 +843,8 @@ void write_table_job_into_file(struct table_job * tj){
   MYSQL *conn = tj->td->thrconn;
   char *query = NULL;
 
-  usleep(throttle_time);
+  if (throttle_time)
+    usleep(throttle_time);
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
