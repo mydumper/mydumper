@@ -173,7 +173,7 @@ void *monitor_throttling_thread (void *queue){
 
       if (current_value>throttle_value){
         if (throttle_time==0)
-          throttle_time=1000000;
+          throttle_time=10000;
         else
           throttle_time+=throttle_time;
         if (net_write_timeout < throttle_time/1000000)
@@ -188,7 +188,7 @@ void *monitor_throttling_thread (void *queue){
     }
     m_store_result_row_free(mr);
     trace("Monitoring");
-    sleep(1);
+    sleep(2);
   }
 
   return NULL;

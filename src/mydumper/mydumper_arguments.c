@@ -40,8 +40,8 @@ gboolean masquerade_filename=FALSE;
 gboolean trx_tables=FALSE;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
-gchar *throttle_variable;
-guint throttle_value;
+gchar *throttle_variable=NULL;
+guint throttle_value=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
