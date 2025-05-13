@@ -61,6 +61,7 @@ extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
 extern const gchar *change_replication_source;
 extern guint source_control_command;
+extern guint throttle_max_usleep_limit;
 #ifndef _src_common_h
 #define _src_common_h
 void initialize_zstd_cmd();
@@ -224,3 +225,4 @@ void m_store_result_row_free(struct M_ROW* mr);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);
+void *monitor_throttling_thread (void *queue);

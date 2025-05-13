@@ -65,6 +65,9 @@ guint max_threads_per_table= G_MAXUINT;
 guint source_control_command = TRADITIONAL;
 gint source_data=0;
 
+gchar *throttle_variable=NULL;
+guint throttle_value=0;
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
      "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
@@ -85,6 +88,9 @@ GOptionEntry common_entries[] = {
     {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK , &common_arguments_callback,
       "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
     {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
+    {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+     "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if is higher, it will increase the sleep time between SELECT. If option is used without parameters it will use Threads_running and the amount of threads",
+     NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 

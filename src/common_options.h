@@ -38,5 +38,6 @@ extern guint num_threads;
 extern MYSQL *main_connection;
 extern GString *set_global_back;
 extern gboolean no_sync;
-
-
+extern gchar *throttle_variable;
+extern guint throttle_value;
+extern guint throttle_time;

@@ -243,6 +243,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
+      g_usleep(throttle_time);
       g_mutex_lock(dbt->mutex);
       dbt->rows_inserted+=current_rows;
       g_mutex_unlock(dbt->mutex);

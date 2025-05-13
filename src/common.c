@@ -38,6 +38,8 @@ GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
 gchar **optimize_key_engines=NULL;
+guint throttle_time=0;
+guint throttle_max_usleep_limit=60000000;
 
 gchar *get_zstd_cmd(){
   return g_find_program_in_path("zstd");
@@ -1232,6 +1234,26 @@ gchar *build_dbt_key(gchar *a, gchar *b){
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
+  if (!strcmp(option_name,"--throttle")){
+    if (value){
+      gchar ** tp;
+      gchar ** tq=g_strsplit(value, ":", 2);
+      if (tq[1]){
+        throttle_max_usleep_limit=atoi(tq[0]);
+        tp=g_strsplit(tq[1], "=", 2);
+      }else{
+        tp=g_strsplit(value, "=", 2);
+      }
+      throttle_variable=g_strdup(tp[0]);
+      throttle_value = atoi(tp[1]);
+      g_strfreev(tq);
+      g_strfreev(tp);
+    }else{
+      throttle_variable=g_strdup("Threads_running");
+      throttle_value = 0;
+    }
+    return TRUE;
+  }
   if (!strcmp(option_name, "--optimize-keys-engines")){
     if (value){
       optimize_key_engines = g_strsplit(value, ",", 0);
@@ -1258,7 +1280,6 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
   }
   return FALSE;
 }
-
 
 void discard_mysql_output(MYSQL *conn){
   MYSQL_RES *result = NULL;
@@ -1412,3 +1433,43 @@ GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, cons
   return thread;
 }
 
+void *monitor_throttling_thread (void *queue){
+  (void)queue;
+  guint current_value;
+  gchar *query = g_strdup_printf("SHOW GLOBAL STATUS LIKE '%s'", throttle_variable);
+  g_message("Query %s", query);
+  struct M_ROW *mr;
+  MYSQL *conn;
+  conn = mysql_init(NULL);
+  if (throttle_value==0){
+    throttle_value=num_threads;
+  }
+  m_connect(conn);
+  while (TRUE){
+    mr = m_store_result_single_row (conn, query, "We were not able to check: '%s'", throttle_variable);
+
+    if (mr->res && mr->row){
+      current_value=atoi(mr->row[1]);
+
+      if (current_value>throttle_value){
+        if (throttle_time==0)
+          throttle_time=10000;
+        else
+          throttle_time+=throttle_time;
+        if (throttle_max_usleep_limit < throttle_time/1000000)
+          throttle_time=throttle_max_usleep_limit*1000000;
+        trace("Increasing throttle_time to: %d", throttle_time);
+      }else if (current_value<throttle_value && throttle_time > 0){
+        throttle_time=throttle_time/2;
+        trace("Decreasing throttle_time to: %d", throttle_time);
+      }
+    }else{
+      trace("Invalid query: %s", query);
+    }
+    m_store_result_row_free(mr);
+    trace("Monitoring");
+    sleep(2);
+  }
+
+  return NULL;
+}

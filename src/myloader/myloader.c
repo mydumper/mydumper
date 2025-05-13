@@ -530,6 +530,9 @@ int main(int argc, char *argv[]) {
   start_worker_schema();
   initialize_loader_threads(&conf);
 
+  if (throttle_variable)
+    m_thread_new("mon_thro",monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
+
   if (stream){
     wait_stream_to_finish();
   }
