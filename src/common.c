@@ -132,8 +132,40 @@ char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *err
 GKeyFile * load_config_file(gchar * config_file){
   GError *error = NULL;
   GKeyFile *kf = g_key_file_new ();
+  gchar* contents=NULL;
+  gsize length = 0;
   // Loads the config_file
-  if (!g_key_file_load_from_file (kf, config_file,
+  if (!g_file_get_contents (config_file, &contents, &length, &error)){
+    g_error("Error while loading config file %s: %s", config_file, error->message);
+  }
+  gchar* current_contents=contents;
+  GString * new_content=g_string_sized_new(length);
+  gboolean equal_found=FALSE, new_line=TRUE;
+  while ((unsigned int)(current_contents-contents) < length){
+    if (current_contents[0] == '['){
+      while (((unsigned int)(current_contents-contents) < length) && current_contents[0] != '\n'){
+        g_string_append_c(new_content,current_contents[0]);
+        current_contents++;
+      }
+    }else{
+      if (current_contents[0] == '\n'){
+        if (!equal_found && !new_line){
+          g_string_append(new_content,"= 1");
+        }
+        new_line=TRUE;
+        equal_found=FALSE;
+      }else{ 
+        if (current_contents[0] == '='){
+          equal_found=TRUE;
+        }
+        new_line=FALSE;
+      }
+    }
+    g_string_append_c(new_content,current_contents[0]);
+    current_contents++;
+  }
+
+  if (!g_key_file_load_from_data (kf, new_content->str, new_content->len,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
     g_warning ("Failed to load config file %s: %s", config_file, error->message);
     return NULL;
