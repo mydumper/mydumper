@@ -1,0 +1,8 @@
+#
+# Testing --ignore-engines with a single engine
+#
+
+[mydumper]
+database=sakila
+outputdir=/tmp/data
+exec=/usr/bin/gzip FILENAME
