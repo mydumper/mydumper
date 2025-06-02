@@ -215,7 +215,7 @@ static GOptionEntry lock_entries[] = {
     {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
      "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
-     "The backup process change if we known that we are exporitng transactional tables only", NULL},
+     "The backup process changes if we know that we are exporting transactional tables only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
