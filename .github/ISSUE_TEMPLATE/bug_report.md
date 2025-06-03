@@ -29,7 +29,7 @@ If applicable, add the list of content of the database path, an `ls -l` will be 
 Take into account that you can also use --masquerade-filename to do not expose the filenames.
 
 **How to repeat**
-If applicable, add the minimal table structure and data that we need to reproduce the issue.
+If applicable, add a `Test Case` with the minimal table structure and data that we need to reproduce the issue.
 Or upload a [core dump](https://github.com/mydumper/mydumper/wiki/Support#core-dump) for cases where mydumper or myloader is crashing.
 
 **Environment (please complete the following information):**
