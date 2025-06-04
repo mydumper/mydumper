@@ -3,6 +3,6 @@
 #
 
 [mydumper]
-database=sakila
+tables-list=specific_5.actor
 outputdir=/tmp/data
 exec=/usr/bin/gzip FILENAME
