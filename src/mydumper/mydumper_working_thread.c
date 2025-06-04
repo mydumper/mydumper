@@ -556,11 +556,11 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   
   struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
   if ( mr->row ) {
-    masterlog = mr->row[0];
-    masterpos = mr->row[1];
+    masterlog = g_strdup(mr->row[0]);
+    masterpos = g_strdup(mr->row[1]);
     /* Oracle/Percona GTID */
     if (mysql_num_fields(mr->res) == 5) {
-      mastergtid = remove_new_line(mr->row[4]);
+      mastergtid = g_strdup(remove_new_line(mr->row[4]));
     } else {
       /* Let's try with MariaDB 10.x */
       /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
@@ -569,7 +569,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       m_store_result_row_free(mr);
       mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
       if (mr->row){
-        mastergtid = remove_new_line(mr->row[0]);
+        mastergtid = g_strdup(remove_new_line(mr->row[0]));
       }
     }
   }
@@ -578,7 +578,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   if (masterlog) {
     fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
     if (source_data > 0){
-      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname);
+      fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
       if (((source_data) & (1<<(3)))>0)
         fprintf(file, "SOURCE_SSL = 1\n");
       else
@@ -600,6 +600,9 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     g_message("Written master status");
   }
 
+  g_free(masterlog);
+  g_free(masterpos);
+  g_free(mastergtid);
   fflush(file);
 }
 
