@@ -66,7 +66,7 @@ union chunk_step *new_real_partition_step(GList *partition){
   return cs;
 }
 
-struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint number){
+struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint part){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item, 1);
   csi->chunk_type=PARTITION;
   csi->chunk_step = new_real_partition_step(partition);
@@ -75,7 +75,7 @@ struct chunk_step_item *new_real_partition_step_item(GList *partition, guint dee
   csi->status= UNASSIGNED;
   csi->mutex = g_mutex_new();
   csi->deep = deep;
-  csi->number = number;
+  csi->part = part;
   return csi;
 }
 
@@ -99,7 +99,7 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
       GList *new_list=g_list_nth(csi->chunk_step->partition_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->deep+1, csi->number+pow(2,csi->deep));
+      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->deep+1, csi->part+pow(2,csi->deep));
       csi->deep++;
       new_csi->status=ASSIGNED;
       dbt->chunks=g_list_append(dbt->chunks,new_csi);

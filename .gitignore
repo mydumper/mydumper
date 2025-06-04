@@ -16,7 +16,7 @@ docs/html/searchindex.js
 docs/cmake_install.cmake
 docs/man/
 export-*
-mydumper
-myloader
+/mydumper
+/myloader
 sakila-db*
 data/

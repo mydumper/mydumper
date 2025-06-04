@@ -39,7 +39,7 @@ gboolean process_checksum_filename(char * filename);
 void initialize_process(struct configuration *c);
 void free_table_hash(GHashTable *table_hash);
 gboolean process_schema_view_filename(gchar *filename);
-void process_metadata_global(const char *file);
+void process_metadata_global(const char *file, GOptionContext * local_context);
 gboolean process_schema_sequence_filename(gchar *filename);
 FILE * myl_open(char *filename, const char *type);
 void myl_close(const char *filename, FILE *file, gboolean rm);

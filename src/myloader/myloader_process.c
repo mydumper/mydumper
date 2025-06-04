@@ -32,13 +32,14 @@
 #include "myloader_control_job.h"
 #include "myloader_restore_job.h"
 #include "myloader_global.h"
+#include "myloader_arguments.h"
 
 //GString *change_master_statement=NULL;
 struct replication_statements *replication_statements=NULL;
 gboolean append_if_not_exist=FALSE;
 GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
-
+extern gboolean local_infile;
 struct configuration *conf;
 extern gboolean schema_sequence_fix;
 void initialize_process(struct configuration *c){
@@ -526,8 +527,26 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-void process_metadata_global(const char *file)
+gboolean test;
+/*static GOptionEntry local_entries[] = {
+    {"local-infile", 0, 0, G_OPTION_ARG_NONE, &local_infile,
+     "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement", NULL},
+    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Identifier quote character used in INSERT statements. "
+      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+      "Default: detect from dump if possible, otherwise BACKTICK", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+*/
+
+void process_metadata_global(const char *file, GOptionContext * local_context)
 {
+//  GOptionContext * local_context = g_option_context_new("local_context");
+//  GOptionGroup *local_group =
+//      g_option_group_new("local_group", "local group", "local group", NULL, NULL);
+//  g_option_context_add_main_entries(local_context, local_entries, 0);
+//  g_option_context_add_group(local_context, local_group);
+//  g_option_context_set_main_group(local_context, local_group);
+
 //  void *infile;
   gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
@@ -553,7 +572,55 @@ void process_metadata_global(const char *file)
     if (g_str_has_prefix(group, "config")) {
       if (j > 0)
         m_critical("Wrong metadata: [config] group must be first");
-      value= get_value(kf, group, "quote_character");
+
+
+  gsize len=0;
+  GError *error = NULL;
+  gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
+  gsize i=0;
+  GSList *list = NULL;
+
+  if (error != NULL){
+    g_error("Loading configuration on section %s: %s",group,error->message);
+  }else{
+    // Transform the key-value pair to parameters option that the parsing will understand
+//    gchar *value;
+    for (i=0; i < len; i++){
+      list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
+      value=g_key_file_get_value(kf,group,keys[i],&error);
+      if ( value != NULL ) list=g_slist_append(list, value);
+    }
+    gint slen = g_slist_length(list) + 1;
+    gchar ** gclist = g_new0(gchar *, slen);
+    GSList *ilist=list;
+    gint j2=0;
+    for (j2=1; j2 < slen ; j2++){
+      gclist[j2]=ilist->data;
+      ilist=ilist->next;
+    }
+    g_slist_free(list);
+    // Second parse over the options
+    if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
+      m_critical("option parsing failed: %s, try --help\n", error->message);
+    }else{
+      g_message("Config file loaded");
+    }
+    g_strfreev(gclist);
+  }
+  g_strfreev(keys);
+
+  if (identifier_quote_character==BACKTICK){
+    wrong_quote= "\"";
+    delimiter= delim_bt;
+  }else if (identifier_quote_character==DOUBLE_QUOTE){
+    delimiter= delim_dq;
+    wrong_quote= "`";
+  }else{
+    m_critical("Wrong quote_character in metadata");
+  }
+  trace("metadata: quote character is %c", identifier_quote_character);
+      
+ /*      value= get_value(kf, group, "quote_character");
       if (value) {
         if (!strcmp(value, "BACKTICK")) {
           identifier_quote_character= BACKTICK;
@@ -570,6 +637,9 @@ void process_metadata_global(const char *file)
         }
         trace("metadata: quote character is %c", identifier_quote_character);
       }
+*/
+
+
     } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {

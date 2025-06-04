@@ -15,7 +15,6 @@
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
-#include <pcre.h>
 #include <glib.h>
 #include <string.h>
 #include "server_detect.h"
@@ -59,6 +58,8 @@ gboolean server_support_tablespaces(){
 
 void detect_server_version(MYSQL * conn) {
   struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
+//  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
+
   gchar *ascii_version=NULL;
   gchar *ascii_version_comment=NULL;
 
@@ -75,11 +76,11 @@ void detect_server_version(MYSQL * conn) {
     if (g_strstr_len(ascii_version, -1, "tidb") || g_strstr_len(ascii_version_comment, -1, "tidb")){
       product = SERVER_TYPE_TIDB;
     }else
-    if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql")){
-      product = SERVER_TYPE_MYSQL;    
-    }else
     if (g_strstr_len(ascii_version, -1, "dolt") || g_strstr_len(ascii_version_comment, -1, "dolt")){
       product = SERVER_TYPE_DOLT;
+    }else
+    if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql") || g_strstr_len(ascii_version, -1, "source") || g_strstr_len(ascii_version_comment, -1, "source")){
+      product = SERVER_TYPE_MYSQL;    
     }
   }
 

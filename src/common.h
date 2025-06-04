@@ -17,7 +17,6 @@
 
 #include <mysql.h>
 #include <stdio.h>
-#include <pcre.h>
 #include "common_options.h"
 #define MYLOADER_MODE "myloader_mode"
 #define IS_TRX_TABLE 2
@@ -45,14 +44,13 @@
 #define SHOW_BINARY_LOG_STATUS "SHOW BINARY LOG STATUS"
 #define CHANGE_MASTER "CHANGE MASTER"
 #define CHANGE_REPLICATION_SOURCE "CHANGE REPLICATION SOURCE"
+#define GZIP "gzip"
+#define ZSTD "zstd"
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
+#define EMPTY_STRING ""
 
 extern GList *ignore_errors_list;
-extern gchar zstd_paths[2][15];
-extern gchar gzip_paths[2][15];
-extern gchar **zstd_cmd;
-extern gchar **gzip_cmd;
 extern const gchar *start_replica;
 extern const gchar *stop_replica;
 extern const gchar *start_replica_sql_thread;
@@ -63,9 +61,9 @@ extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
 extern const gchar *change_replication_source;
 extern guint source_control_command;
+extern guint throttle_max_usleep_limit;
 #ifndef _src_common_h
 #define _src_common_h
-void initialize_share_common();
 void initialize_zstd_cmd();
 void initialize_gzip_cmd();
 
@@ -157,7 +155,7 @@ void initialize_set_names();
 void free_set_names();
 gchar *filter_sequence_schemas(const gchar *create_table);
 void set_session_hash_insert(GHashTable * set_session_hash, const gchar *key, gchar *value);
-
+void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
 #endif
 
 /* using fewer than 2 threads can cause mydumper to hang */
@@ -227,3 +225,4 @@ void m_store_result_row_free(struct M_ROW* mr);
 gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);
+void *monitor_throttling_thread (void *queue);

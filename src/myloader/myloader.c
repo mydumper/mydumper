@@ -56,6 +56,7 @@ gboolean optimize_keys = TRUE;
 gboolean optimize_keys_per_table = TRUE;
 gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
+gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
 enum checksum_modes checksum_mode= CHECKSUM_FAIL;
 gboolean skip_triggers = FALSE;
@@ -79,7 +80,6 @@ guint max_threads_for_post_creation= 1;
 guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
-gboolean quote_character_cli= FALSE;
 
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
@@ -89,6 +89,8 @@ GHashTable * load_data_list = NULL;
 extern GHashTable *db_hash;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
+extern gboolean local_infile;
+
 const char DIRECTORY[] = "import";
 
 struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -102,7 +104,8 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   GHashTable * _set_session_hash=initialize_hash_of_session_variables();
   if (commit_count > 1)
     set_session_hash_insert(_set_session_hash,"AUTOCOMMIT",g_strdup("0"));
-
+  if (!enable_binlog)
+    set_session_hash_insert(_set_session_hash,"SQL_LOG_BIN",g_strdup("0"));
   return _set_session_hash;
 }
 
@@ -192,7 +195,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -202,7 +205,6 @@ int main(int argc, char *argv[]) {
   g_thread_init(NULL);
   set_thread_name("MNT");
 
-  initialize_share_common();
   signal(SIGCHLD, SIG_IGN);
 
   context = load_contex_entries();
@@ -240,7 +242,8 @@ int main(int argc, char *argv[]) {
     g_message("Using %u loader threads", num_threads);
 
   initialize_common_options(context, "myloader");
-  g_option_context_free(context);
+//  g_option_context_free(context);
+  conf.context=context;  
 
   hide_password(argc, argv);
   ask_password();
@@ -359,6 +362,8 @@ int main(int argc, char *argv[]) {
     print_string("pmm-path",pmm_path);
     print_string("pmm-resolution",pmm_resolution);
 
+    if (enable_binlog)
+      print_bool("enable-binlog",enable_binlog);
     if (!optimize_keys){
       print_string("optimize-keys",SKIP);
     }else if(optimize_keys_per_table){
@@ -370,6 +375,7 @@ int main(int argc, char *argv[]) {
 
     print_bool("no-schemas",no_schemas);
 
+    print_bool("local-infile", local_infile);
     print_string("purge-mode",purge_mode_str);
     print_bool("disable-redo-log",disable_redo_log);
     print_string("checksum",checksum_str);
@@ -523,6 +529,9 @@ int main(int argc, char *argv[]) {
   }
   start_worker_schema();
   initialize_loader_threads(&conf);
+
+  if (throttle_variable)
+    m_thread_new("mon_thro",monitor_throttling_thread, NULL, "Monitor throttling thread could not be created");
 
   if (stream){
     wait_stream_to_finish();

@@ -63,7 +63,9 @@ void process_none_chunk(struct table_job *tj, struct chunk_step_item * csi){
   write_table_job_into_file(tj);
 }
 
+static
 void initialize_chunk_step_as_none(struct chunk_step_item * csi){
+  csi->part=0;
   csi->chunk_type=NONE;
   csi->chunk_functions.process=&process_none_chunk;
   csi->chunk_step = NULL;
@@ -75,7 +77,7 @@ struct chunk_step_item * new_none_chunk_step(){
   return csi;
 }
 
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix, guint64 rows) {
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix) {
   struct chunk_step_item * csi=NULL;
 
   gchar *field=g_list_nth_data(dbt->primary_key, position);
@@ -89,12 +91,10 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""),
                         m_message, NULL, "It is NONE with minmax == NULL", NULL);
+//  g_message("Query: %s", query);
   g_free(query);
 
-  if (!mr)
-    return new_none_chunk_step();
-
-  if (!mr->row){
+  if (!mr->res || !mr->row){
     m_store_result_row_free(mr);
     return new_none_chunk_step();
   }
@@ -137,22 +137,24 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         union type type;
 
         if (unsign){
+          trace("Min: %lld | Max %lld", unmin, unmax);
           type.unsign.min=unmin;
           type.unsign.max=unmax;
         }else{
+          trace("Min: %lld | Max %lld", unmin, unmax);
           type.sign.min=nmin;
           type.sign.max=nmax;
         }
-
+        guint64 _starting_chunk_step_size;
         if (dbt->starting_chunk_step_size == 0){
           if (unsign){
-            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
                                              (gint64_abs(type.unsign.max - type.unsign.min)/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
                                                gint64_abs(type.unsign.max - type.unsign.min)/num_threads):
                                              gint64_abs(type.unsign.max - type.unsign.min)/num_threads;
           }else{
-            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
                                              (gint64_abs(type.sign.max - type.sign.min)/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
                                                gint64_abs(type.sign.max - type.sign.min)/num_threads):
@@ -160,13 +162,13 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
           }
         }
-        if (dbt->starting_chunk_step_size < dbt->min_chunk_step_size)
-          dbt->starting_chunk_step_size=dbt->min_chunk_step_size;
+        if (_starting_chunk_step_size < dbt->min_chunk_step_size)
+          _starting_chunk_step_size=dbt->min_chunk_step_size;
 
-        g_assert(dbt->starting_chunk_step_size>0);
+        g_assert(_starting_chunk_step_size>0);
 
-        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position);
-        determine_if_we_can_go_deeper(dbt,csi, rows);
+        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn);
+//        determine_if_we_can_go_deeper(dbt,csi, rows);
 
         if (csi->chunk_step->integer_step.is_step_fixed_length){
           if (csi->chunk_step->integer_step.is_unsigned){
@@ -176,23 +178,32 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           }
         }
 
-        if (dbt->is_fixed_length)
-          dbt->chunk_filesize=0;
         return csi;
       }else{
-        trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
-        return new_none_chunk_step();
+        if (position==0){
+          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
+          return new_none_chunk_step();
+        }
       }
       break;
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
+      // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
+      trace("String type %d", position);
       m_store_result_row_free(mr);
-      return new_none_chunk_step();
+      if (position>0)
+        dbt->multicolumn=FALSE;
+      else
+        return new_none_chunk_step();
       break;
     default:
+      // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       m_store_result_row_free(mr);
       g_message("It is NONE: default");
-      return new_none_chunk_step();
+      if (position>1)
+        dbt->multicolumn=FALSE;
+      else
+        return new_none_chunk_step();
       break;
   }
 
@@ -201,25 +212,27 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
 
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field){
-  gchar *query = NULL;
-  /* Get minimum/maximum */
-  struct M_ROW *mr = m_store_result_row(conn, query = g_strdup_printf(
+  gchar *query = g_strdup_printf(
                         "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
                         identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        where?" WHERE ":"",where?where->str:""), 
-                        m_critical, m_warning, "Failed to execute EXPLAIN", NULL);
+                        where?" WHERE ":"",where?where->str:"");
+  /* Get minimum/maximum */
+  trace("EXPLAIN: %s", query);
+  struct M_ROW *mr = m_store_result_row(conn, query, 
+                        m_critical, m_warning, "Failed to execute EXPLAIN: %s", query);
 
   g_free(query);
-  if (!mr){
+  if (!mr->res || !mr->row){
+    m_store_result_row_free(mr);
     return 0;
   }
 
   guint row_col=-1;
   determine_explain_columns(mr->res, &row_col);
 
-  if (!mr->row || mr->row[row_col]==NULL){
+  if ( mr->row[row_col]==NULL){
     m_store_result_row_free(mr);
     return 0;
   }
@@ -229,22 +242,18 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
   return rows_in_explain;
 }
 
-static
-guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt)
+guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where)
 {
   char *query= NULL;
 
   struct M_ROW *mr = m_store_result_row(conn, query= g_strdup_printf(
-                        "SELECT %s COUNT(*) FROM %s%s%s.%s%s%s",
+                        "SELECT %s COUNT(*) FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str),
+                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        where?" WHERE ":"",where?where->str:""),
                         m_critical, m_warning, "Failed to get count", NULL);
   g_free(query);
-  if (!mr){
-    return 0;
-  }
-
-  if (!mr->row || mr->row[0]==NULL){
+  if (!mr->res || !mr->row || mr->row[0]==NULL){
     m_store_result_row_free(mr);
     return 0;
   }
@@ -260,7 +269,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   struct chunk_step_item * csi = NULL;
   guint64 rows;
   if (check_row_count) {
-    rows= get_rows_from_count(conn, dbt);
+    rows= get_rows_from_count(conn, dbt, NULL);
   } else
     rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
   g_message("%s.%s has %s%"G_GINT64_FORMAT" rows", dbt->database->name, dbt->table,
@@ -275,7 +284,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       csi=new_real_partition_step_item(partitions,0,0);
     }else{
       if (dbt->split_integer_tables) {
-        csi = initialize_chunk_step_item(conn, dbt, 0, NULL, rows);
+        csi = initialize_chunk_step_item(conn, dbt, 0, NULL);
       }else{
         csi = new_none_chunk_step();
       }
@@ -407,22 +416,20 @@ void table_job_enqueue(struct table_queuing *q)
         switch (csi->chunk_type) {
         case INTEGER:
           if (use_defer) {
-            create_job_to_dump_chunk(dbt, NULL, csi->number,
-                                     csi, g_async_queue_push, q->defer);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->defer);
             create_job_defer(dbt, q->queue);
           } else {
-            create_job_to_dump_chunk(dbt, NULL, csi->number,
-                                     csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           }
           break;
         case CHAR:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:
-          create_job_to_dump_chunk(dbt, NULL, csi->number, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case NONE:
-          create_job_to_dump_chunk(dbt, NULL, 0, csi, g_async_queue_push, q->queue);
+          create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         default:
           m_error("This should not happen %s", csi->chunk_type);

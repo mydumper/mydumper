@@ -74,8 +74,6 @@ extern gboolean skip_triggers;
 extern gboolean skip_constraints;
 extern gboolean skip_indexes;
 extern gboolean stream;
-/* Whether --quote-character was set from CLI */
-extern gboolean quote_character_cli;
 extern gchar *compress_extension;
 extern gchar *db;
 extern gchar *directory;
@@ -112,8 +110,6 @@ extern gchar **exec_per_thread_cmd;
 
 //extern guint index_threads_counter;
 extern GMutex *index_mutex;
-extern gchar **zstd_decompress_cmd;
-extern gchar **gzip_decompress_cmd;
 extern struct database *database_db;
 extern gchar *optimize_keys_str;
 extern gchar *checksum_str;
@@ -125,6 +121,7 @@ extern guint source_control_command;
 extern gint source_data;
 extern gboolean set_gtid_purge;
 extern gboolean show_warnings;
+extern gboolean enable_binlog;
 extern guint refresh_table_list_interval;
 extern GList *ignore_set_list;
 extern gboolean skip_table_sorting;

@@ -38,92 +38,16 @@ GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
 gchar **optimize_key_engines=NULL;
-
-/*
-const char *usr_bin_zstd_cmd[] = {"/usr/bin/zstd", "-c", NULL};
-const char *bin_zstd_cmd[] = {"/bin/zstd", "-c", NULL};
-
-const char *const_zstd_cmd[][3] = { {"/usr/bin/zstd", "-c", NULL},
-                             {"/bin/zstd", "-c", NULL}};
-*/
-
-
-gchar zstd_paths[2][15] = { "/usr/bin/zstd", "/bin/zstd" };
-gchar gzip_paths[2][15] = { "/usr/bin/gzip", "/bin/gzip" };
-
-/*
-gchar * zstd_paths_2[4];
-gchar * gzip_paths_2[4];
-
-
-const  char *usr_bin_gzip_cmd[] = {"/usr/bin/gzip", "-c", NULL};
-const  char *bin_gzip_cmd[] = {"/bin/gzip", "-c", NULL};
-*/
-
-//gchar **argv;
-
-//gchar **zstd_cmd = NULL;
-//gchar **gzip_cmd = NULL;
-
-
-
-//gchar **exec_per_thread_command = NULL;
-
-
-void initialize_share_common(){
-/*
-  zstd_paths_2[0] = (char *) bin_zstd_cmd[0];
-  zstd_paths_2[1] = (char *) bin_zstd_cmd;
-  zstd_paths_2[2] = (char *) usr_bin_zstd_cmd[0];
-  zstd_paths_2[3] = (char *) usr_bin_zstd_cmd;
-  gzip_paths_2[0] = (char *) bin_gzip_cmd[0];
-  gzip_paths_2[1] = (char *) bin_gzip_cmd;
-  gzip_paths_2[2] = (char *) usr_bin_gzip_cmd[0];
-  gzip_paths_2[3] = (char *) usr_bin_gzip_cmd;
-*/
-}
-/*
-void initialize_zstd_cmd(){
-  if (g_file_test(usr_bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
-    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
-    return;
-  }
-  if (g_file_test(bin_zstd_cmd[0] , G_FILE_TEST_EXISTS)){
-    zstd_cmd=(gchar **)usr_bin_zstd_cmd;
-    return;
-  }
-}
-
-void initialize_gzip_cmd(){
-  if (g_file_test(usr_bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
-    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
-    return;
-  }
-  if (g_file_test(bin_gzip_cmd[0] , G_FILE_TEST_EXISTS)){
-    gzip_cmd=(gchar **)usr_bin_gzip_cmd;
-    return;
-  }
-}
-*/
+guint throttle_time=0;
+guint throttle_max_usleep_limit=60000000;
 
 gchar *get_zstd_cmd(){
-  guint i=0;
-  for(i=0; i<2; i++){
-    if (g_file_test( zstd_paths[i] , G_FILE_TEST_EXISTS))
-      return zstd_paths[i];
-  }
-  return NULL;
+  return g_find_program_in_path("zstd");
 }
 
 gchar *get_gzip_cmd(){
-  guint i=0;
-  for(i=0; i<2; i++){
-    if (g_file_test( gzip_paths[i] , G_FILE_TEST_EXISTS))
-      return gzip_paths[i];
-  }
-  return NULL;
+  return g_find_program_in_path("gzip");
 }
-
 
 GHashTable * initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -208,8 +132,40 @@ char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *err
 GKeyFile * load_config_file(gchar * config_file){
   GError *error = NULL;
   GKeyFile *kf = g_key_file_new ();
+  gchar* contents=NULL;
+  gsize length = 0;
   // Loads the config_file
-  if (!g_key_file_load_from_file (kf, config_file,
+  if (!g_file_get_contents (config_file, &contents, &length, &error)){
+    g_error("Error while loading config file %s: %s", config_file, error->message);
+  }
+  gchar* current_contents=contents;
+  GString * new_content=g_string_sized_new(length);
+  gboolean equal_found=FALSE, new_line=TRUE;
+  while ((unsigned int)(current_contents-contents) < length){
+    if (current_contents[0] == '['){
+      while (((unsigned int)(current_contents-contents) < length) && current_contents[0] != '\n'){
+        g_string_append_c(new_content,current_contents[0]);
+        current_contents++;
+      }
+    }else{
+      if (current_contents[0] == '\n'){
+        if (!equal_found && !new_line){
+          g_string_append(new_content,"= 1");
+        }
+        new_line=TRUE;
+        equal_found=FALSE;
+      }else{ 
+        if (current_contents[0] == '='){
+          equal_found=TRUE;
+        }
+        new_line=FALSE;
+      }
+    }
+    g_string_append_c(new_content,current_contents[0]);
+    current_contents++;
+  }
+
+  if (!g_key_file_load_from_data (kf, new_content->str, new_content->len,
                                   G_KEY_FILE_KEEP_COMMENTS, &error)) {
     g_warning ("Failed to load config file %s: %s", config_file, error->message);
     return NULL;
@@ -1310,6 +1266,26 @@ gchar *build_dbt_key(gchar *a, gchar *b){
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   (void) data;
+  if (!strcmp(option_name,"--throttle")){
+    if (value){
+      gchar ** tp;
+      gchar ** tq=g_strsplit(value, ":", 2);
+      if (tq[1]){
+        throttle_max_usleep_limit=atoi(tq[0]);
+        tp=g_strsplit(tq[1], "=", 2);
+      }else{
+        tp=g_strsplit(value, "=", 2);
+      }
+      throttle_variable=g_strdup(tp[0]);
+      throttle_value = atoi(tp[1]);
+      g_strfreev(tq);
+      g_strfreev(tp);
+    }else{
+      throttle_variable=g_strdup("Threads_running");
+      throttle_value = 0;
+    }
+    return TRUE;
+  }
   if (!strcmp(option_name, "--optimize-keys-engines")){
     if (value){
       optimize_key_engines = g_strsplit(value, ",", 0);
@@ -1336,7 +1312,6 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
   }
   return FALSE;
 }
-
 
 void discard_mysql_output(MYSQL *conn){
   MYSQL_RES *result = NULL;
@@ -1456,15 +1431,8 @@ struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1
   struct M_ROW *mr=g_new0(struct M_ROW,1);
   mr->row=NULL;
   mr->res = m_resultv(mysql_store_result, conn, query, log_fun_1, log_fun_2, fmt, args);
-  if (mr->res){
+  if (mr->res)
     mr->row= mysql_fetch_row(mr->res);
-
-//    if (!mr->row)
-//      m_log(conn, log_fun_1, log_fun_2, fmt, args);
-  }else{
-    g_free(mr);
-    mr=NULL;
-  }
   return mr;
 }
 
@@ -1480,19 +1448,9 @@ struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const c
 
     if (!mr->row)
       m_log(conn, m_critical, m_warning, fmt, args);
-  }else{
-    g_free(mr);
-    mr=NULL;
   }
   return mr;
 }
-
-
-
-
-
-
-
 
 void m_store_result_row_free(struct M_ROW* mr){
   mysql_free_result(mr->res);
@@ -1507,3 +1465,43 @@ GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, cons
   return thread;
 }
 
+void *monitor_throttling_thread (void *queue){
+  (void)queue;
+  guint current_value;
+  gchar *query = g_strdup_printf("SHOW GLOBAL STATUS LIKE '%s'", throttle_variable);
+  g_message("Query %s", query);
+  struct M_ROW *mr;
+  MYSQL *conn;
+  conn = mysql_init(NULL);
+  if (throttle_value==0){
+    throttle_value=num_threads;
+  }
+  m_connect(conn);
+  while (TRUE){
+    mr = m_store_result_single_row (conn, query, "We were not able to check: '%s'", throttle_variable);
+
+    if (mr->res && mr->row){
+      current_value=atoi(mr->row[1]);
+
+      if (current_value>throttle_value){
+        if (throttle_time==0)
+          throttle_time=10000;
+        else
+          throttle_time+=throttle_time;
+        if (throttle_max_usleep_limit < throttle_time/1000000)
+          throttle_time=throttle_max_usleep_limit*1000000;
+        trace("Increasing throttle_time to: %d", throttle_time);
+      }else if (current_value<throttle_value && throttle_time > 0){
+        throttle_time=throttle_time/2;
+        trace("Decreasing throttle_time to: %d", throttle_time);
+      }
+    }else{
+      trace("Invalid query: %s", query);
+    }
+    m_store_result_row_free(mr);
+    trace("Monitoring");
+    sleep(2);
+  }
+
+  return NULL;
+}

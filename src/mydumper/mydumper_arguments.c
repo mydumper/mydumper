@@ -41,15 +41,24 @@ gboolean trx_tables=FALSE;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 
-
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
-    if (value==NULL || g_strstr_len(value,4,GZIP)){
+    if (value==NULL){
+      if (g_find_program_in_path(ZSTD)){
+        compress_method=ZSTD;
+        return TRUE;
+      }else if (g_find_program_in_path(GZIP)){
+        compress_method=GZIP;
+        return TRUE;
+      }
+      return FALSE;
+    }
+    if (!g_ascii_strcasecmp(value,GZIP)){
       compress_method=GZIP;
       return TRUE;
     }
-    if (g_strstr_len(value,4,ZSTD)){
+    if (!g_ascii_strcasecmp(value,ZSTD)){
       compress_method=ZSTD;
       return TRUE;
     }
@@ -139,148 +148,150 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
 static GOptionEntry entries[] = {
     {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
     {"outputdir", 'o', 0, G_OPTION_ARG_FILENAME, &output_directory_str,
-     "Directory to output files to", NULL},
+      "Directory to output files to", NULL},
     {"clear", 0, 0, G_OPTION_ARG_NONE, &clear_dumpdir,
-     "Clear output directory before dumping", NULL},
+      "Clear output directory before dumping", NULL},
     {"dirty", 0, 0, G_OPTION_ARG_NONE, &dirty_dumpdir,
-     "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
+      "Overwrite output directory without clearing (beware of leftower chunks)", NULL},
+    {"merge", 0, 0, G_OPTION_ARG_NONE, &merge_dumpdir,
+      "Merge the metadata with previous backup and overwrite output directory without clearing (beware of leftower chunks)", NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
-     "It will stream over STDOUT once the files has been written. Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
+      "It will stream over STDOUT once the files has been written. "
+      "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL "
+      "which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stdout is used", NULL},
-    { "disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
+      "Log file name to use, by default stdout is used", NULL},
+    {"disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."
-      "For instance: 100:500 will pause when there is only 100MB free and will"
+      "For instance: 100:500 will pause when there is only 100MB free and will "
       "resume if 500MB are available", NULL },
-    { "masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename, "Masquerades the filenames", NULL},
+    {"masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename, 
+      "Masquerades the filenames", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry extra_entries[] = {
     {"chunk-filesize", 'F', 0, G_OPTION_ARG_INT, &chunk_filesize,
-     "Split data files into pieces of this size in MB. Useful for myloader multi-threading.",
-     NULL},
+      "Split data files into pieces of this size in MB. Useful for myloader multi-threading.", NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"isuccess-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-     "Not increment error count and Warning instead of Critical in case of "
-     "table doesn't exist",
-     NULL},
+    {"success-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
-     "Build dump files even if no data available from table", NULL},
+      "Build dump files even if no data available from table", NULL},
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
-     "Sort the data by Primary Key or Unique key if no primary key exists",
-     NULL},
-    {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, "Give less verbose output. Disables header/footer constructs.", NULL},
+      "Sort the data by Primary Key or Unique key if no primary key exists", NULL},
+    {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, 
+      "Give less verbose output. Disables header/footer constructs.", NULL},
     {"compress", 'c', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Compress output files using: /usr/bin/gzip and /usr/bin/zstd. Options: GZIP and ZSTD. Default: GZIP", NULL},
+      "Compress output files using: gzip and zstd. Options: gzip and zstd. Default: gzip. On future releases the default will be zstd", NULL},
     {"use-defer", 0, 0, G_OPTION_ARG_NONE, &use_defer,
-     "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
+      "Use defer integer sharding until all non-integer PK tables processed (saves RSS for huge quantities of tables)", NULL},
     {"check-row-count", 0, 0, G_OPTION_ARG_NONE, &check_row_count,
-     "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
+      "Run SELECT COUNT(*) and fail mydumper if dumped row count is different", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
-     "Snapshot to use for TiDB", NULL},
+      "Snapshot to use for TiDB", NULL},
     {"no-locks", 'k', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is deprecated use --sync-thread-lock-mode instead",
+      "This option is deprecated use --sync-thread-lock-mode instead",
      NULL},
     {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is deprecated use --sync-thread-lock-mode instead", NULL},
+      "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. Default: AUTO which uses the best option depending on the database vendor",
-     NULL},
+      "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. "
+      "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
+      "Default: AUTO which uses the best option depending on the database vendor", NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
-     "Use savepoints to reduce metadata locking issues, needs SUPER privilege",
-     NULL},
+      "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
-     "Do not use Percona backup locks", NULL},
+      "Do not use Percona backup locks", NULL},
     {"less-locking", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
+      "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
     {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is deprecated use --trx-tables instead", NULL},
+      "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
-     "The backup process change if we known that we are exporitng transactional tables only", NULL},
-    {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, "Do not send DDL locks when possible", NULL},
+      "The backup process changes, if we know that we are exporting transactional tables only", NULL},
+    {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
+      "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry query_running_entries[] = {
     {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
-     "Retry checking for long queries, default 0 (do not retry)", NULL},
+      "Retry checking for long queries, default 0 (do not retry)", NULL},
     {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
-     "Time to wait before retrying the long query check in seconds, default 60", NULL},
+      "Time to wait before retrying the long query check in seconds, default 60", NULL},
     {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
-     "Set long query timer in seconds, default 60", NULL},
+      "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
-     "Kill long running queries (instead of aborting)", NULL},
+      "Kill long running queries (instead of aborting)", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry exec_entries[] = {
     {"exec-threads", 0, 0, G_OPTION_ARG_INT, &num_exec_threads,
-     "Amount of threads to use with --exec", NULL},
+      "Amount of threads to use with --exec", NULL},
     {"exec", 0, 0, G_OPTION_ARG_STRING, &exec_command,
       "Command to execute using the file as parameter", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
-     "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
+      "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
-     "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
+      "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry pmm_entries[] = {
-    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
+    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
       "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
+    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
       "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry daemon_entries[] = {
-    {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, "Enable daemon mode",
-     NULL},
+    {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, 
+      "Enable daemon mode", NULL},
     {"snapshot-interval", 'I', 0, G_OPTION_ARG_INT, &snapshot_interval,
-     "Interval between each dump snapshot (in minutes), requires --daemon, "
-     "default 60",
-     NULL},
+      "Interval between each dump snapshot (in minutes), requires --daemon, "
+      "default 60", NULL},
     {"snapshot-count", 'X', 0, G_OPTION_ARG_INT, &snapshot_count, "number of snapshots, default 2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry chunks_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-     "Maximum number of threads per table to use", NULL},
+      "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 
-     "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
+      "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
     {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-     "Spliting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds",
-     NULL},
-    {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, "This set the MIN and MAX limit when even if --rows is 0", NULL},
-    { "split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
-      "Dump partitions into separate files. This options overrides the --rows option for partitioned tables.", NULL},
+      "Splitting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds", NULL},
+    {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
+      "This set the MIN and MAX limit when even if --rows is 0", NULL},
+    {"split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
+      "Dump partitions into separate files. This option overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
-     "Dump checksums for all elements", NULL},
+      "Dump checksums for all elements", NULL},
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
-     "Dump table checksums with the data", NULL},
+      "Dump table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
-     "Dump schema table and view creation checksums", NULL},
+      "Dump schema table and view creation checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
-     "Dump triggers, functions and routines checksums", NULL},
+      "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
       "Comma delimited list of databases to dump", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines_str,
-     "Comma delimited list of storage engines to ignore", NULL},
-    { "where", 0, 0, G_OPTION_ARG_STRING, &where_option,
+      "Comma delimited list of storage engines to ignore", NULL},
+    {"where", 0, 0, G_OPTION_ARG_STRING, &where_option,
       "Dump only selected records.", NULL },
     {"updated-since", 'U', 0, G_OPTION_ARG_INT, &updated_since,
-     "Use Update_time to dump only tables updated in the last U days", NULL},
-    { "partition-regex", 0, 0, G_OPTION_ARG_STRING, &partition_regex,
+      "Use Update_time to dump only tables updated in the last U days", NULL},
+    {"partition-regex", 0, 0, G_OPTION_ARG_STRING, &partition_regex,
       "Regex to filter by partition name.", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
@@ -288,70 +299,78 @@ static GOptionEntry objects_entries[] = {
     {"no-schemas", 'm', 0, G_OPTION_ARG_NONE, &no_schemas,
       "Do not dump table schemas with the data and triggers", NULL},
     {"all-tablespaces", 'Y', 0 , G_OPTION_ARG_NONE, &dump_tablespaces,
-    "Dump all the tablespaces.", NULL},
-    {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, "Do not dump table data",
-     NULL},
-    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, "Dump triggers. By default, it do not dump triggers",
-     NULL},
-    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, "Dump events. By default, it do not dump events", NULL},
+      "Dump all the tablespaces.", NULL},
+    {"no-data", 'd', 0, G_OPTION_ARG_NONE, &no_data, 
+      "Do not dump table data", NULL},
+    {"triggers", 'G', 0, G_OPTION_ARG_NONE, &dump_triggers, 
+      "Dump triggers. By default, it do not dump triggers", NULL},
+    {"events", 'E', 0, G_OPTION_ARG_NONE, &dump_events, 
+      "Dump events. By default, it do not dump events", NULL},
     {"routines", 'R', 0, G_OPTION_ARG_NONE, &dump_routines,
-     "Dump stored procedures and functions. By default, it do not dump stored procedures nor functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Remove the constraints from the CREATE TABLE statement. By default, the statement is not modified",
-     NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Remove the indexes from the CREATE TABLE statement. By default, the statement is not modified",
-     NULL},
-    {"views-as-tables", 0, 0, G_OPTION_ARG_NONE, &views_as_tables, "Export VIEWs as they were tables",
-     NULL},
-    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, "Do not dump VIEWs",
-     NULL},
+     "Dump stored procedures and functions. By default, it does not dump stored procedures nor functions", NULL},
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
+      "Remove the constraints from the CREATE TABLE statement. By default, the statement is not modified", NULL },
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, 
+      "Remove the indexes from the CREATE TABLE statement. By default, the statement is not modified", NULL},
+    {"views-as-tables", 0, 0, G_OPTION_ARG_NONE, &views_as_tables, 
+      "Export VIEWs as they were tables", NULL},
+    {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, 
+      "Do not dump VIEWs", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
 static GOptionEntry statement_entries[] = {
     {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-     "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files. This option will be deprecated on future releases use --format", NULL },
+      "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files. "
+      "This option will be deprecated on future releases use --format", NULL },
     {"csv", 0, 0, G_OPTION_ARG_NONE, &csv,
-      "Automatically enables --load-data and set variables to export in CSV format. This option will be deprecated on future releases use --format", NULL },
-    {"format", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, "Set the output format which can be INSERT, LOAD_DATA, CSV or CLICKHOUSE. Default: INSERT", NULL },
-    {"include-header", 0, 0, G_OPTION_ARG_NONE, &include_header, "When --load-data or --csv is used, it will include the header with the column name", NULL},
-    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,"Defines the character that is written between fields", NULL },
-    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,"Defines the character to enclose fields. Default: \"", NULL },
+      "Automatically enables --load-data and set variables to export in CSV format. "
+      "This option will be deprecated on future releases use --format", NULL },
+    {"format", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Set the output format which can be INSERT, LOAD_DATA, CSV or CLICKHOUSE. "
+      "Default: INSERT", NULL },
+    {"include-header", 0, 0, G_OPTION_ARG_NONE, &include_header, 
+      "When --load-data or --csv is used, it will include the header with the column name", NULL},
+    {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,
+      "Defines the character that is written between fields", NULL },
+    {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,
+      "Defines the character to enclose fields. Default: \"", NULL },
     {"fields-escaped-by", 0, 0, G_OPTION_ARG_STRING, &fields_escaped_by,
       "Single character that is going to be used to escape characters in the"
-      "LOAD DATA stament, default: '\\' ", NULL },
+      "LOAD DATA statement, default: '\\' ", NULL },
     {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
-      "Adds the string at the begining of each row. When --load-data is used"
-      "it is added to the LOAD DATA statement. Its affects INSERT INTO statements"
+      "Adds the string at the beginning of each row. When --load-data is used "
+      "it is added to the LOAD DATA statement. It affects INSERT INTO statements "
       "also when it is used.", NULL },
     {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
-      "Adds the string at the end of each row. When --load-data is used it is"
-       "added to the LOAD DATA statement. Its affects INSERT INTO statements"
-       "also when it is used.", NULL },
+      "Adds the string at the end of each row. When --load-data is used it is "
+      "added to the LOAD DATA statement. It affects INSERT INTO statements "
+      "also when it is used.", NULL },
     {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
       "This might never be used, unless you know what are you doing", NULL },
     {"insert-ignore", 'N', 0, G_OPTION_ARG_NONE, &insert_ignore,
-     "Dump rows with INSERT IGNORE", NULL},
+      "Dump rows with INSERT IGNORE", NULL},
     {"replace", 0, 0 , G_OPTION_ARG_NONE, &replace,
-     "Dump rows with REPLACE", NULL},
+      "Dump rows with REPLACE", NULL},
     {"complete-insert", 0, 0, G_OPTION_ARG_NONE, &complete_insert,
-     "Use complete INSERT statements that include column names", NULL},
+      "Use complete INSERT statements that include column names", NULL},
     {"hex-blob", 0, 0, G_OPTION_ARG_NONE, &hex_blob,
       "Dump binary columns using hexadecimal notation", NULL},
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
-     "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
-     "Attempted size of INSERT statement in bytes, default 1000000", NULL},
+      "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
-     "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
-     "when a server has data in different time zones or data is being moved "
-     "between servers with different time zones, defaults to on use "
-     "--skip-tz-utc to disable.",
-     NULL},
-    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz, "Doesn't add SET TIMEZONE on the backup files", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
+      "SET TIME_ZONE='+00:00' at top of dump to allow dumping of TIMESTAMP data "
+      "when a server has data in different time zones or data is being moved "
+      "between servers with different time zones, defaults to on use "
+      "--skip-tz-utc to disable.", NULL},
+    {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz,
+      "Doesn't add SET TIMEZONE on the backup files", NULL},
+    {"set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
       "Sets the names, use it at your own risk, default binary", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
-      "Table engine to be use for the CREATE TABLE statement for temporary tables when using views",NULL},
+      "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 GOptionContext * load_contex_entries(){

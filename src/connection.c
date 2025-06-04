@@ -18,7 +18,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <pcre.h>
 #include <glib.h>
 #include <string.h>
 #include "config.h"
@@ -34,6 +33,7 @@ gboolean askPassword = FALSE;
 char *protocol_str = NULL;
 enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
 static gint print_connection_details=1;
+gboolean local_infile = FALSE;
 
 #ifdef WITH_SSL
 char *key=NULL;
@@ -152,8 +152,9 @@ void configure_connection(MYSQL *conn) {
     mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
   if (connection_default_file_group != NULL)
     mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, connection_default_file_group);
-  
-  mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
+ 
+  if (local_infile)
+    mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
 
   mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", program_name);
   gchar *version=g_strdup_printf("Release %s", VERSION);

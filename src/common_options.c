@@ -42,8 +42,6 @@ gchar *ignore_errors=NULL;
 guint num_threads= 4;
 guint verbose = 2;
 gboolean debug = FALSE;
-//gboolean ssl = FALSE;
-//gboolean compress_protocol = FALSE;
 gboolean program_version = FALSE;
 
 gchar *tables_list = NULL;
@@ -65,35 +63,41 @@ guint max_threads_per_table= G_MAXUINT;
 guint source_control_command = TRADITIONAL;
 gint source_data=0;
 
+gchar *throttle_variable=NULL;
+guint throttle_value=0;
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
-     "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
+      "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
-     "Show the program version and exit", NULL},
+      "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
-     "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
-    {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, "Turn on debugging output "
-     "(automatically sets verbosity to 3)", NULL},
+      "Verbosity of output, 0 = silent, 1 = errors, 2 = warnings, 3 = info, default 2", NULL},
+    {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, 
+      "Turn on debugging output "
+      "(automatically sets verbosity to 3)", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
-     "Not increment error count and Warning instead of Critical in case of any of the comman separated error number list", NULL},
+      "Not increment error count and Warning instead of Critical in case of any of the comma-separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
-     "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
+      "Use a specific defaults file. Default: /etc/mydumper.cnf", NULL},
     {"defaults-extra-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_extra_file,
-     "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
+      "Use an additional defaults file. This is loaded after --defaults-file, replacing previous defined values", NULL},
     {"source-control-command", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
     {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK , &common_arguments_callback,
       "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
-    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
+    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, 
+      "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
+    {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+      "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
+      "If option is used without parameters it will use Threads_running and the amount of threads", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 GOptionEntry common_filter_entries[] = {
     {"omit-from-file", 'O', 0, G_OPTION_ARG_STRING, &tables_skiplist_file,
-     "File containing a list of database.table entries to skip, one per line "
-     "(skips before applying regex option)",
-     NULL},
+      "File containing a list of database.table entries to skip, one per line "
+      "(skips before applying regex option)", NULL},
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
-     "Comma delimited table list to dump (does not exclude regex option). Table name must include database name. For instance: test.t1,test.t2",
-     NULL},
+      "Comma delimited table list to dump (does not exclude regex option). "
+      "Table name must include database name. For instance: test.t1,test.t2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
