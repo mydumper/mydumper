@@ -10581,16 +10581,16 @@ workflows:
     - build_el7_percona57_x86_64:
         requires:
           - build_jammy_percona80_amd64
-    - build_el8_percona80_x86_64:
+    - build_el8_mysql84_x86_64:
         requires:
           - build_jammy_percona80_amd64
-    - build_el8_mysql80_aarch64:
+    - build_el8_mysql84_aarch64:
         requires:
           - build_jammy_percona80_amd64
-    - build_el9_percona80_x86_64:
+    - build_el9_mysql84_x86_64:
         requires:
           - build_jammy_percona80_amd64
-    - build_el9_mysql80_aarch64:
+    - build_el9_mysql84_aarch64:
         requires:
           - build_jammy_percona80_amd64
     - build_bullseye_percona80_amd64:
@@ -10599,7 +10599,7 @@ workflows:
     - build_buster_percona80_amd64:
         requires:
           - build_jammy_percona80_amd64
-    - build_bookworm_percona80_amd64:
+    - build_bookworm_mysql84_amd64:
         requires:
           - build_jammy_percona80_amd64
     - build_bookworm_mariadb1011_arm64:
@@ -10620,13 +10620,13 @@ workflows:
           - build_noble_mysql84_amd64
           - build_noble_ubuntu_default_arm64
           - build_el7_percona57_x86_64
-          - build_el8_percona80_x86_64
-          - build_el8_mysql80_aarch64
-          - build_el9_percona80_x86_64
-          - build_el9_mysql80_aarch64
+          - build_el8_mysql84_x86_64
+          - build_el8_mysql84_aarch64
+          - build_el9_mysql84_x86_64
+          - build_el9_mysql84_aarch64
           - build_bullseye_percona80_amd64
           - build_buster_percona80_amd64
-          - build_bookworm_percona80_amd64
+          - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_debian_default_amd64
           - build_trixie_debian_default_arm64
