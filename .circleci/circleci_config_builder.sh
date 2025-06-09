@@ -826,10 +826,11 @@ else
 echo "        requires:
           - build_${build_man_os}"
 fi
-echo '        filters:
-          branches:
-            ignore: /.*/'
+
 # Comment next 2 lines if you want to build
+#echo '        filters:
+#          branches:
+#            ignore: /.*/'
 #echo '          tags:
 #            only: /^v\d+\.\d+\.\d+-\d+$/'
 done
