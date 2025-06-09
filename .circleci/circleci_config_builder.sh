@@ -165,11 +165,11 @@ list_build=(
   "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
   "el7_percona57_x86_64" 
-  "el8_percona80_x86_64"        "el8_mysql80_aarch64"
-  "el9_percona80_x86_64"        "el9_mysql80_aarch64"
+  "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
+  "el9_mysql84_x86_64"        "el9_mysql84_aarch64"
   "bullseye_percona80_amd64" 
   "buster_percona80_amd64"
-  "bookworm_percona80_amd64"    "bookworm_mariadb1011_arm64"
+  "bookworm_mysql84_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
 
@@ -177,6 +177,7 @@ list_build=(
 list_compile=(
   "bionic_percona57"   "bionic_percona80"
   "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
+# jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
                                                                                                              "noble_ubuntu_default"
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
@@ -793,7 +794,7 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
 # Decomment next 5 lines if you want to ignore compilation and add : to previous line
 #echo '        filters:
 #          branches:
@@ -826,6 +827,8 @@ else
 echo "        requires:
           - build_${build_man_os}"
 fi
+
+# Comment next 5 lines if you want to build
 echo '        filters:
           branches:
             ignore: /.*/
