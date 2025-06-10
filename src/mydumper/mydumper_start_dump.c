@@ -567,24 +567,19 @@ void send_flush_table_with_read_lock(MYSQL *conn){
   guint id=mysql_thread_id(conn);
   m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
 
-//ftwrl_max_wait_time;
-//  ftwrl_timeout_retries
   guint i=0;
-
-  while (!ftwrl_completed){
 try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
-    i++;
-    if (m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways") && i < ftwrl_timeout_retries){
-      if ( ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries )
-        goto try_FLUSH_NO_WRITE_TO_BINLOG_TABLES;
-    }
+  i++;
+  if (( m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways")) && 
+      ( ftwrl_timeout_retries == 0 || (i < ftwrl_timeout_retries )))
+      goto try_FLUSH_NO_WRITE_TO_BINLOG_TABLES;
+
 try_FLUSH_TABLES_WITH_READ_LOCK:
-    if(m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent")){
-      if ( ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries )
-        goto try_FLUSH_TABLES_WITH_READ_LOCK;
-    }
-    ftwrl_completed=TRUE;
-  }
+  if (( m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent")) &&
+      ( ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries ))
+      goto try_FLUSH_TABLES_WITH_READ_LOCK;
+
+  ftwrl_completed=TRUE;
 }
 
 static
