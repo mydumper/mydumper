@@ -1467,7 +1467,6 @@ void *monitor_throttling_thread (void *queue){
       trace("Invalid query: %s", query);
     }
     m_store_result_row_free(mr);
-    trace("Monitoring");
     sleep(2);
   }
 

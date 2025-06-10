@@ -74,7 +74,7 @@ static guint pause_at=0;
 static guint resume_at=0;
 static gchar **db_items=NULL;
 static GRecMutex *ready_table_dump_mutex = NULL;
-
+static gboolean ftwrl_completed=FALSE;
 static
 void initialize_start_dump(){
   all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
@@ -146,6 +146,59 @@ void *monitor_disk_space_thread (void *queue){
     }
     sleep(10);
   }
+  return NULL;
+}
+
+// | Id  | User            | Host             | db   | Command | Time   | State                  | Info                  | Time_ms   | Rows_sent | Rows_examined |
+static
+void determine_columns_on_show_processlist( MYSQL_FIELD *fields, guint num_fields, int *id_col, int *user_col, int *command_col, int *time_col, int *info_col ){
+  /* Just in case PROCESSLIST output column order changes */
+  guint i;
+  for (i = 0; i < num_fields; i++) {
+    if (id_col && !strcasecmp(fields[i].name, "Id"))
+      *id_col = i;
+    else if (user_col && !strcasecmp(fields[i].name, "User"))
+      *user_col = i;
+    else if (command_col && !strcasecmp(fields[i].name, "Command"))
+      *command_col = i;
+    else if (time_col && !strcasecmp(fields[i].name, "Time"))
+      *time_col = i;
+    else if (info_col && !strcasecmp(fields[i].name, "Info"))
+      *info_col = i;
+  }
+  if ((     id_col && *id_col < 0) ||
+      (command_col && *command_col < 0) ||
+      (   time_col && *time_col < 0)){
+    m_critical("Error obtaining information from processlist");
+  }
+}
+
+void *monitor_ftwrl_thread (void *thread_id){
+  MYSQL *conn;
+  MYSQL_RES *res = NULL;
+  conn = mysql_init(NULL);
+  m_connect(conn);
+  while (!ftwrl_completed){
+    sleep(2);
+    res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
+    if (!res){
+       break;
+    } else {
+      MYSQL_ROW row;
+
+      /* Just in case PROCESSLIST output column order changes */
+      int id_col = -1, info_col=-1; 
+      determine_columns_on_show_processlist(mysql_fetch_fields(res), mysql_num_fields(res), &id_col, NULL, NULL, NULL, &info_col);
+      while ((row = mysql_fetch_row(res))) {
+        if ((atol(row[id_col]) == *((guint *)(thread_id)))){
+           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col])) 
+            g_message("%s found",row[info_col]);
+        }
+      }
+    }
+    mysql_free_result(res);
+  }
+
   return NULL;
 }
 
@@ -417,22 +470,8 @@ void long_query_wait(MYSQL *conn){
       MYSQL_ROW row;
 
       /* Just in case PROCESSLIST output column order changes */
-      MYSQL_FIELD *fields = mysql_fetch_fields(res);
-      guint i;
       int tcol = -1, ccol = -1, icol = -1, ucol = -1;
-      for (i = 0; i < mysql_num_fields(res); i++) {
-      if (!strcasecmp(fields[i].name, "Command"))
-        ccol = i;
-      else if (!strcasecmp(fields[i].name, "Time"))
-        tcol = i;
-      else if (!strcasecmp(fields[i].name, "Id"))
-        icol = i;
-      else if (!strcasecmp(fields[i].name, "User"))
-        ucol = i;
-      }
-      if ((tcol < 0) || (ccol < 0) || (icol < 0)) {
-        m_critical("Error obtaining information from processlist");
-      }
+      determine_columns_on_show_processlist(mysql_fetch_fields(res), mysql_num_fields(res), &icol, &ucol, &ccol, &tcol, NULL);
       while ((row = mysql_fetch_row(res))) {
         if (row[ccol] && strcmp(row[ccol], "Query"))
           continue;
@@ -517,8 +556,11 @@ void send_backup_stage_end(MYSQL *conn){
 
 static
 void send_flush_table_with_read_lock(MYSQL *conn){
-  m_query_verbose(conn, "FLUSH NO_WRITE_TO_BINLOG TABLES", m_warning, "Flush tables failed, we are continuing anyways", NULL);
-  m_query_verbose(conn, "FLUSH TABLES WITH READ LOCK", m_critical, "Couldn't acquire global lock, snapshots will not be consistent");
+  guint id=mysql_thread_id(conn);
+  m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
+  m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways", NULL);
+  m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent");
+  ftwrl_completed=TRUE;
 }
 
 static
