@@ -794,7 +794,7 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
 # Decomment next 5 lines if you want to ignore compilation and add : to previous line
 #echo '        filters:
 #          branches:
