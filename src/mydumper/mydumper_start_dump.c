@@ -68,6 +68,10 @@ gboolean merge_dumpdir= FALSE;
 gboolean clear_dumpdir= FALSE;
 gboolean dirty_dumpdir= FALSE;
 
+// Program options used only on this file 
+extern guint ftwrl_max_wait_time;
+extern guint ftwrl_timeout_retries;
+
 // static variables
 static GMutex **pause_mutex_per_thread=NULL;
 static guint pause_at=0;
@@ -178,8 +182,9 @@ void *monitor_ftwrl_thread (void *thread_id){
   MYSQL_RES *res = NULL;
   conn = mysql_init(NULL);
   m_connect(conn);
+  gchar *query=NULL;
   while (!ftwrl_completed){
-    sleep(2);
+    sleep(ftwrl_max_wait_time);
     res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
     if (!res){
        break;
@@ -191,14 +196,17 @@ void *monitor_ftwrl_thread (void *thread_id){
       determine_columns_on_show_processlist(mysql_fetch_fields(res), mysql_num_fields(res), &id_col, NULL, NULL, NULL, &info_col);
       while ((row = mysql_fetch_row(res))) {
         if ((atol(row[id_col]) == *((guint *)(thread_id)))){
-           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col])) 
-            g_message("%s found",row[info_col]);
+           if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col])){
+             m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
+             g_free(query);
+           }
+//            g_message("%s found. KILL %d",row[info_col], id_col);
         }
       }
     }
     mysql_free_result(res);
   }
-
+  mysql_close(conn);
   return NULL;
 }
 
@@ -558,9 +566,25 @@ static
 void send_flush_table_with_read_lock(MYSQL *conn){
   guint id=mysql_thread_id(conn);
   m_thread_new("mon_ftwrl", monitor_ftwrl_thread, &id, "FTWRL monitor thread could not be created");
-  m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways", NULL);
-  m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent");
-  ftwrl_completed=TRUE;
+
+//ftwrl_max_wait_time;
+//  ftwrl_timeout_retries
+  guint i=0;
+
+  while (!ftwrl_completed){
+try_FLUSH_NO_WRITE_TO_BINLOG_TABLES:
+    i++;
+    if (m_query_verbose(conn, FLUSH_NO_WRITE_TO_BINLOG_TABLES, m_warning, "Flush tables failed, we are continuing anyways") && i < ftwrl_timeout_retries){
+      if ( ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries )
+        goto try_FLUSH_NO_WRITE_TO_BINLOG_TABLES;
+    }
+try_FLUSH_TABLES_WITH_READ_LOCK:
+    if(m_query_verbose(conn, FLUSH_TABLES_WITH_READ_LOCK, m_critical, "Couldn't acquire global lock, snapshots will not be consistent")){
+      if ( ftwrl_timeout_retries == 0 || i < ftwrl_timeout_retries )
+        goto try_FLUSH_TABLES_WITH_READ_LOCK;
+    }
+    ftwrl_completed=TRUE;
+  }
 }
 
 static
