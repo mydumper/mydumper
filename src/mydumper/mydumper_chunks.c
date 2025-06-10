@@ -145,16 +145,16 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           type.sign.min=nmin;
           type.sign.max=nmax;
         }
-
+        guint64 _starting_chunk_step_size;
         if (dbt->starting_chunk_step_size == 0){
           if (unsign){
-            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
                                              (gint64_abs(type.unsign.max - type.unsign.min)/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
                                                gint64_abs(type.unsign.max - type.unsign.min)/num_threads):
                                              gint64_abs(type.unsign.max - type.unsign.min)/num_threads;
           }else{
-            dbt->starting_chunk_step_size= dbt->max_chunk_step_size!=0?
+            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
                                              (gint64_abs(type.sign.max - type.sign.min)/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
                                                gint64_abs(type.sign.max - type.sign.min)/num_threads):
@@ -162,12 +162,12 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
           }
         }
-        if (dbt->starting_chunk_step_size < dbt->min_chunk_step_size)
-          dbt->starting_chunk_step_size=dbt->min_chunk_step_size;
+        if (_starting_chunk_step_size < dbt->min_chunk_step_size)
+          _starting_chunk_step_size=dbt->min_chunk_step_size;
 
-        g_assert(dbt->starting_chunk_step_size>0);
+        g_assert(_starting_chunk_step_size>0);
 
-        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, dbt->starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn);
+        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn);
 //        determine_if_we_can_go_deeper(dbt,csi, rows);
 
         if (csi->chunk_step->integer_step.is_step_fixed_length){
@@ -180,8 +180,10 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 
         return csi;
       }else{
-        trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
-        return new_none_chunk_step();
+        if (position==0){
+          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
+          return new_none_chunk_step();
+        }
       }
       break;
     case MYSQL_TYPE_STRING:

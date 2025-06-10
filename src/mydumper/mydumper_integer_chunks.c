@@ -550,6 +550,7 @@ retry:
         goto retry;
       }
       trace("Thread %d: integer_step.step>1 not retrying as rows %lld <=  step %lld", td->thread_id, rows, cs->integer_step.step);
+      cs->integer_step.step=integer_step_step;
     }else{
       // at this poing cs->integer_step.step == 1 always
       cs->integer_step.step=1;

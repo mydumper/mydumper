@@ -122,7 +122,8 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
 }
 
 static GOptionEntry entries[] = {
-    {"help", '?', 0, G_OPTION_ARG_NONE, &help, "Show help options", NULL},
+    {"help", '?', 0, G_OPTION_ARG_NONE, &help, 
+      "Show help options", NULL},
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
      "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
@@ -135,65 +136,71 @@ static GOptionEntry entries[] = {
       "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
     {"resume",0, 0, G_OPTION_ARG_NONE, &resume,
       "Expect to find resume file in backup dir and will only process those files",NULL},
-    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, "When Ctrl+c is pressed it immediately terminates the process", NULL},
-    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, "It expect a mysqldump format when stream is used", NULL},
+    {"kill-at-once", 'k', 0, G_OPTION_ARG_NONE, &kill_at_once, 
+      "When Ctrl+c is pressed it immediately terminates the process", NULL},
+    {"mysqldump", 0, 0, G_OPTION_ARG_NONE, &mysqldump, 
+      "It expect a mysqldump format when stream is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry load_from_metadata_entries[] = {
     {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Identifier quote character used in INSERT statements. "
-      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
+      "Possible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
       "Default: detect from metadata file if possible, otherwise BACKTICK", NULL},
     {"local-infile", 0, 0, G_OPTION_ARG_NONE, &local_infile,
-     "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement"
-     "Default: detect from metadata file if possible, otherwise is disabled", NULL},
+      "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement"
+      "Default: detect from metadata file if possible, otherwise is disabled", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry threads_entries[] = {
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
-     "Maximum number of threads per table to use, defaults to --threads", NULL},
+      "Maximum number of threads per table to use, defaults to --threads", NULL},
     {"max-threads-for-index-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_index_creation,
-     "Maximum number of threads for index creation, default 4", NULL},
+      "Maximum number of threads for index creation, default 4", NULL},
     {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
-     "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
+      "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
-     "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
+      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
-     "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
+      "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
-     "Set the input file extension when --exec-per-thread is used. Otherwise it will be ignored", NULL},
+      "Set the input file extension when --exec-per-thread is used. Otherwise it will be ignored", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
+      "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
     {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Option --innodb-optimize-keys is deprecated use --optimize-keys instead",NULL},
+      "Option --innodb-optimize-keys is deprecated use --optimize-keys instead",NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Creates the table without the indexes unless SKIP is selected.\n"
-     "It will add the indexes right after complete the table restoration by default or after import all the tables.\n"
-     "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
-    { "no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, "Do not import table schemas and triggers ", NULL},
-    { "purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This specify the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
+      "Creates the table without the indexes unless SKIP is selected. "
+      "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
+      "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
+    {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
+      "Do not import table schemas and triggers ", NULL},
+    {"purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
+      "This specifies the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-     "Treat checksums: skip, fail(default), warn.", NULL },
+      "Treat checksums: skip, fail(default), warn.", NULL },
     {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
-     "Drop tables if they already exist", NULL},
+      "Drop tables if they already exist", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
-     "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
+      "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
-     "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
+      "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
     {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
       "Table recreation will be executed in series, one thread at a time. "
-        "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
+      "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
-     "It will receive the stream from STDIN and creates the file in the disk before start processing. "
-       "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
-    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, "Every this amount of tables the internal metadata will be refreshed. If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
-    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
+      "It will receive the stream from STDIN and create the file in the disk before start processing. "
+      "Since v0.12.7-1, accepts NO_DELETE, NO_STREAM_AND_NO_DELETE and TRADITIONAL which is the default value and used if no parameter is given and also NO_STREAM since v0.16.3-1", NULL},
+    {"metadata-refresh-interval", 0, 0, G_OPTION_ARG_INT, &refresh_table_list_interval, 
+      "Every this amount of tables the internal metadata will be refreshed. "
+      "If the amount of tables you have in your metadata file is high, then you should increase this value. Default: 100", NULL},
+    {"skip-table-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_table_sorting, 
+      "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -213,9 +220,9 @@ static GOptionEntry filter_entries[] ={
      NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Do not import constraints. By default, it imports contraints",
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Do not import constraints. By default, it imports constraints",
      NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Do not import secondary index on InnoDB tables. By default, it import the indexes",
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Do not import secondary indexes on InnoDB tables. By default, it import the indexes",
      NULL},
     {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
      NULL},
@@ -232,7 +239,8 @@ static GOptionEntry statement_entries[] ={
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    { "ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, "List of variables that will be ignored from the header of SET", NULL},
+    { "ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
+      "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
