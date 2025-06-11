@@ -40,6 +40,9 @@ gboolean masquerade_filename=FALSE;
 gboolean trx_tables=FALSE;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
+guint ftwrl_max_wait_time=60;
+guint ftwrl_timeout_retries=0;
+
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -166,8 +169,12 @@ static GOptionEntry entries[] = {
       "Accepts values like: '<resume>:<pause>' in MB."
       "For instance: 100:500 will pause when there is only 100MB free and will "
       "resume if 500MB are available", NULL },
-    {"masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename, 
+    {"masquerade-filename", 0, 0, G_OPTION_ARG_NONE, &masquerade_filename,
       "Masquerades the filenames", NULL},
+    {"ftwrl-max-wait-time", 0, 0, G_OPTION_ARG_INT, &ftwrl_max_wait_time,
+      "Sets the max time that we are going to wait before kill the FLUSH TABLES related commands. Default: 60", NULL},
+    {"ftwrl-timeout-retries", 0, 0, G_OPTION_ARG_INT, &ftwrl_timeout_retries,
+      "Sets the amount of retries before give up acquiring FLUSH TABLES. Default: 0, never gives up.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry extra_entries[] = {
