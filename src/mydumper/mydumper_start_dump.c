@@ -790,6 +790,7 @@ void send_lock_all_tables(MYSQL *conn){
   if (g_list_length(tables_lock) > 0) {
   // Try three times to get the lock, this is in case of tmp tables
   // disappearing
+    g_message("Initialing Lock All tables");
     while (g_list_length(tables_lock) > 0 && !success && retry < 4 ) {
       g_string_set_size(query,0);
       g_string_append(query, "LOCK TABLE ");
@@ -821,6 +822,7 @@ void send_lock_all_tables(MYSQL *conn){
     if (!success) {
       m_critical("Lock all tables fail: %s", mysql_error(conn));
     }
+    g_message("Lock All tables completed");
   }else{
     g_warning("No table found to lock");
 //    exit(EXIT_FAILURE);

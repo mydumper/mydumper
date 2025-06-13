@@ -893,7 +893,10 @@ void *working_thread(struct thread_data *td) {
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
     }else{
       // Sending LOCK TABLE over all non-transactional tables
-      if (td->conf->lock_tables_statement!=NULL) m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
+      if (td->conf->lock_tables_statement!=NULL){
+        g_message("Thread %d: Locking non-transactional tables", td->thread_id);
+        m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
+      }
 
       // This push will unlock the FTWRL on the Main Connection
       g_async_queue_push(td->conf->unlock_tables, GINT_TO_POINTER(1));
