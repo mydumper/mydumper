@@ -663,28 +663,36 @@ void close_file(struct table_job * tj, struct table_job_file *tjf){
   }
 }
 
-
-void initiliaze_files_template(struct table_job * tj, void (*write_statement_fun) (struct table_job *)){
-  close_file(tj, tj->sql);
-  close_file(tj, tj->rows);
-
-  if (update_files_on_table_job(tj)){
-    write_statement_fun(tj);
-    write_header(tj);
-  }
-}
-
-void reopen_files(struct table_job * tj){
+void close_files(struct table_job * tj){
   switch (output_format){
     case LOAD_DATA:
     case CSV:
-      initiliaze_files_template(tj,write_load_data_statement);
-      break;
     case CLICKHOUSE:
-      initiliaze_files_template(tj,write_clickhouse_statement);
+      close_file(tj, tj->sql);
       break;
     case SQL_INSERT:
-      close_file(tj, tj->rows);
+      break;
+  }
+  close_file(tj, tj->rows);
+}
+
+void reopen_files(struct table_job * tj){
+  close_files(tj);
+  switch (output_format){
+    case LOAD_DATA:
+    case CSV:
+      if (update_files_on_table_job(tj)){
+        write_load_data_statement(tj);
+        write_header(tj);
+      }
+      break;
+    case CLICKHOUSE:
+      if (update_files_on_table_job(tj)){
+        write_clickhouse_statement(tj);
+        write_header(tj);
+      }
+      break;
+    case SQL_INSERT:
       update_files_on_table_job(tj);
       break;
   }

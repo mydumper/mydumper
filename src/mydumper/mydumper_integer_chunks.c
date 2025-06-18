@@ -638,7 +638,8 @@ retry:
         tj->part= cs->integer_step.type.unsign.min / cs->integer_step.step + 1;
       else
         tj->part= cs->integer_step.type.sign.min   / cs->integer_step.step + 1;      
-      reopen_files(tj);
+//      reopen_files(tj);
+      close_files(tj);
       write_table_job_into_file(tj);
     }else{
       GDateTime *from = g_date_time_new_now_local();

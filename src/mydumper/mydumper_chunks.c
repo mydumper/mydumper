@@ -145,7 +145,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           type.sign.min=nmin;
           type.sign.max=nmax;
         }
-        guint64 _starting_chunk_step_size;
+        guint64 _starting_chunk_step_size=0;
         if (dbt->starting_chunk_step_size == 0){
           if (unsign){
             _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
