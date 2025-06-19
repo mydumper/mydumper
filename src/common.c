@@ -32,6 +32,7 @@
 //#include "mydumper_global.h"
 
 extern gboolean success_on_1146;
+extern gboolean help;
 guint errors=0;
 GList *ignore_errors_list=NULL;
 GAsyncQueue *stream_queue = NULL;
@@ -459,11 +460,13 @@ void escape_tab_with(gchar *to){
 
 
 gboolean create_dir(char *directory){
-  if (g_mkdir(directory, 0750) == -1) {
-    if (errno != EEXIST) {
-      m_critical("Unable to create `%s': %s", directory, g_strerror(errno));
+  if (!help){
+    if (g_mkdir(directory, 0750) == -1) {
+      if (errno != EEXIST) {
+        m_critical("Unable to create `%s': %s", directory, g_strerror(errno));
+      }
+      return FALSE;
     }
-    return FALSE;
   }
   return TRUE;
 }
