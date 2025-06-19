@@ -34,6 +34,8 @@ char *protocol_str = NULL;
 enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
 static gint print_connection_details=1;
 gboolean local_infile = FALSE;
+gchar * default_connection_database=NULL;
+
 
 #ifdef WITH_SSL
 char *key=NULL;
@@ -70,6 +72,8 @@ GOptionEntry connection_entries[] = {
     {"user", 'u', 0, G_OPTION_ARG_STRING, &username,
      "Username with the necessary privileges", NULL},
     {"password", 'p', 0, G_OPTION_ARG_STRING, &password, "User password", NULL},
+    {"default-connection-database", 0, 0, G_OPTION_ARG_STRING, &default_connection_database, 
+      "Set the database name to connect to. Default: INFORMATION_SCHEMA", NULL},
     {"ask-password", 'a', 0, G_OPTION_ARG_NONE, &askPassword,
      "Prompt For User password", NULL},
     {"port", 'P', 0, G_OPTION_ARG_INT, &port, "TCP/IP port to connect to",
@@ -314,7 +318,7 @@ void print_connection_details_once(){
 
 void m_connect(MYSQL *conn){
   configure_connection(conn);
-  if (!mysql_real_connect(conn, hostname, username, password, "INFORMATION_SCHEMA", port,
+  if (!mysql_real_connect(conn, hostname, username, password, default_connection_database?default_connection_database:"INFORMATION_SCHEMA", port,
                           socket_path, 0)) {
     m_critical("Error connection to database: %s", mysql_error(conn));
   }

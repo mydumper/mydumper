@@ -18,8 +18,6 @@
 #define _connection_h
 #include <mysql.h>
 
-
-
 void initialize_connection(const gchar *app);
 //void initialize_connection(gchar *cdf, const gchar *group, const gchar *app);
 void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
