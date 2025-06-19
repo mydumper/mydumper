@@ -140,6 +140,6 @@ extern struct function_pointer identity_function_pointer;
 extern GAsyncQueue *stream_queue;
 extern gboolean masquerade_filename;
 extern enum sync_thread_lock_mode sync_thread_lock_mode;
-extern gboolean trx_tables;
+extern guint trx_tables;
 extern gboolean replica_stopped;
 extern guint isms;
