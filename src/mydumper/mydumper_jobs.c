@@ -197,11 +197,15 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   g_string_append(statement, ";\n");
 
+  GString *alter_table_statement=g_string_sized_new(statement_size);
+  GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
+  GString *create_table_statement=g_string_sized_new(statement_size);
+  int flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
+  if ( flag & IS_TRX_TABLE && trx_tables && sync_thread_lock_mode!=NO_LOCK){
+    m_error("Non transactional table found: `%s`.`%s` on a consitent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->name, dbt->table);
+  }
+
   if (skip_indexes || skip_constraints){
-    GString *alter_table_statement=g_string_sized_new(statement_size);
-    GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
-    GString *create_table_statement=g_string_sized_new(statement_size);
-    global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
     if (!write_data(outfile, create_table_statement)) {
       g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
       errors++;
@@ -211,6 +215,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     if (!skip_constraints)
       write_data(outfile, alter_table_constraint_statement);
   }else{
+
     if (!write_data(outfile, statement)) {
       g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
       errors++;
@@ -218,13 +223,16 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
+  g_string_free(alter_table_statement, TRUE);
+  g_string_free(alter_table_constraint_statement, TRUE);
+  g_string_free(create_table_statement, TRUE);
 
   if (checksum_filename)
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
   
   if (checksum_index_filename)
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
-  
+
   return;
 }
 

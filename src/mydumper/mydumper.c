@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
     print_string("tidb-snapshot",tidb_snapshot);
     print_bool("use-savepoints",use_savepoints);
     print_bool("no-backup-locks",no_backup_locks);
-    print_bool("trx-tables",trx_tables);
+    print_int("trx-tables",trx_tables);
     print_bool("skip-ddl-locks",skip_ddl_locks);
     print_string("pmm-path",pmm_path);
     print_string("pmm-resolution",pmm_resolution);
