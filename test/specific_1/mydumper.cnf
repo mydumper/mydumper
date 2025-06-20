@@ -6,3 +6,4 @@
 ignore-engines=MyISAM
 database=specific_1
 outputdir=/tmp/data
+trx-tables=0
