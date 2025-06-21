@@ -16,6 +16,7 @@
 #include <string.h>
 
 GSequence *tables_skiplist = NULL;
+GMutex *tables_skiplist_mutex = NULL;
 
 /* Comparison function for skiplist sort and lookup */
 
@@ -39,6 +40,7 @@ void read_tables_skiplist(const gchar *filename, guint *errors) {
   /* Create skiplist if it does not exist */
   if (!tables_skiplist) {
     tables_skiplist = g_sequence_new(NULL);
+    tables_skiplist_mutex = g_mutex_new();
   };
   tables_skiplist_channel = g_io_channel_new_file(filename, "r", &error);
 
@@ -68,15 +70,19 @@ void read_tables_skiplist(const gchar *filename, guint *errors) {
 /* Check database.table string against skip list; returns TRUE if found */
 
 gboolean check_skiplist(char *database, char *table) {
+  g_mutex_lock(tables_skiplist_mutex);
   gboolean b = g_sequence_lookup(tables_skiplist,
                         database,
                         tables_skiplist_cmp, NULL) != NULL;
-  if (!table || b)
+  if (!table || b){
+    g_mutex_unlock(tables_skiplist_mutex);
     return b;
+  }
   gchar * k=g_strdup_printf("%s.%s", database, table);
   b = g_sequence_lookup(tables_skiplist,
                         k,
                         tables_skiplist_cmp, NULL) != NULL;
+  g_mutex_unlock(tables_skiplist_mutex);
   g_free(k);
   return b;
 }
