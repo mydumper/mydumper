@@ -201,7 +201,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
   GString *create_table_statement=g_string_sized_new(statement_size);
   int flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
-  if ( flag & IS_TRX_TABLE && trx_tables && sync_thread_lock_mode!=NO_LOCK){
+  if ( !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode!=NO_LOCK){
     m_error("Non transactional table found: `%s`.`%s` on a consitent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->name, dbt->table);
   }
 
