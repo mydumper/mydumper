@@ -515,7 +515,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
 
 // Stage 2: Setting cursor
-  if (csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
+  if (tj->dbt->multicolumn && csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
     guint64 integer_step_step=cs->integer_step.step;
 retry:
   // We are setting cursor to build the WHERE clause for the EXPLAIN
@@ -566,8 +566,6 @@ retry:
         if (csi->next){
           csi->next->multicolumn=FALSE;
           trace("Thread %d: New next with where %s | rows: %lld", td->thread_id, csi->where->str, rows);
-        }else{
-          csi->multicolumn=FALSE;
         }
       }else{
         trace("Thread %d: multicolumn=FALSE", td->thread_id);
