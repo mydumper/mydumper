@@ -171,22 +171,23 @@ struct chunk_step_item * split_chunk_step(struct chunk_step_item * csi){
         return NULL;
       if (new_minmax_signed == type.sign.min)
         return NULL;
-      
+//      trace("Signed Chunk split like this: min: %"G_GINT64_FORMAT " | Mid: %"G_GINT64_FORMAT" | max: %"G_GINT64_FORMAT, type.sign.min, new_minmax_signed, type.sign.max);
       type.sign.min = new_minmax_signed;
       part= type.sign.min / csi->chunk_step->integer_step.step + 1;
     }
   }else{
     part+=pow(2,csi->deep);
     if (ics->is_unsigned){
-      new_minmax_unsigned = type.unsign.min + (ics->type.unsign.max - type.unsign.min)/2 ;
+      new_minmax_unsigned = type.unsign.min + ics->type.unsign.max/2 - type.unsign.min/2 ;
       if ( new_minmax_unsigned == type.unsign.min )
         new_minmax_unsigned++;
       type.unsign.min = new_minmax_unsigned;
     }else{
-      new_minmax_signed = type.sign.min   + (ics->type.sign.max   - type.sign.min  )/2 ;
+      new_minmax_signed = type.sign.min   + ics->type.sign.max/2   - type.sign.min/2 ;
       if ( new_minmax_signed == type.sign.min   )
         new_minmax_signed++;
       type.sign.min = new_minmax_signed;
+      trace("Signed Chunk split like this: min: %"G_GINT64_FORMAT " | Mid: %"G_GINT64_FORMAT" | max: %"G_GINT64_FORMAT, type.sign.min, new_minmax_signed, type.sign.max);
     }
   }
   // print_type(&type, ics->is_unsigned);
@@ -514,8 +515,8 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
 
 // Stage 2: Setting cursor
-  if (csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
-    guint integer_step_step=cs->integer_step.step;
+  if (tj->dbt->multicolumn && csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
+    guint64 integer_step_step=cs->integer_step.step;
 retry:
   // We are setting cursor to build the WHERE clause for the EXPLAIN
     if (cs->integer_step.is_unsigned){
@@ -523,13 +524,14 @@ retry:
         cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.max;
       else
         cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + integer_step_step - 1;
+      trace("Thread %d: cs->integer_step.type.unsign.cursor: %lld", td->thread_id, cs->integer_step.type.unsign.cursor);
     }else{
       if (integer_step_step > gint64_abs(cs->integer_step.type.sign.max - cs->integer_step.type.sign.min) + 1)
         cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.max;
       else
         cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + integer_step_step - 1;
+      trace("Thread %d: cs->integer_step.type.sign.cursor: %lld", td->thread_id, cs->integer_step.type.sign.cursor);
     }
-
     update_where_on_integer_step(csi);
     guint64 rows = check_row_count?
                    get_rows_from_count  (td->thrconn, tj->dbt, csi->where):
@@ -549,7 +551,7 @@ retry:
         integer_step_step=integer_step_step/2;
         goto retry;
       }
-      trace("Thread %d: integer_step.step>1 not retrying as rows %lld <=  step %lld", td->thread_id, rows, cs->integer_step.step);
+      trace("Thread %d: integer_step.step>1 not retrying as rows %lld <=  step %lld and integer_step_step: %lld", td->thread_id, rows, cs->integer_step.step, integer_step_step);
       cs->integer_step.step=integer_step_step;
     }else{
       // at this poing cs->integer_step.step == 1 always
