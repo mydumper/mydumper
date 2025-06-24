@@ -68,7 +68,7 @@ guint throttle_value=0;
 
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
-      "Number of threads to use, 0 means to use number of CPUs. Default: 4", NULL},
+      "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
       "Show the program version and exit", NULL},
     {"verbose", 'v', 0, G_OPTION_ARG_INT, &verbose,
