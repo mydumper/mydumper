@@ -200,6 +200,86 @@ gchar * random_uuid_function(gchar ** r, gulong* length, struct function_pointer
   return random_basic_function(r,length,fp,&m_random_uuid);
 }
 
+// Helper function to collect all elements from file content (ignoring length buckets)
+static GList *collect_all_elements_from_file(GHashTable *file_content)
+{
+  if (!file_content) {
+    return NULL;
+  }
+
+  GList *all_elements = NULL;
+  GList *keys = g_hash_table_get_keys(file_content);
+
+  for (GList *key_iter = keys; key_iter; key_iter = key_iter->next) {
+    GList *elements_of_length = (GList *)g_hash_table_lookup(file_content, key_iter->data);
+    for (GList *element_iter = elements_of_length; element_iter; element_iter = element_iter->next) {
+      all_elements = g_list_prepend(all_elements, element_iter->data);
+    }
+  }
+
+  g_list_free(keys);
+  return all_elements;
+}
+
+gchar *random_element_function(gchar **r, gulong *length, struct function_pointer *fp)
+{
+  gchar *new_r = NULL;
+
+  // Check for cached result
+  if (fp && fp->memory && *r) {
+    new_r = g_hash_table_lookup(fp->memory, *r);
+    if (new_r) {
+      *length = strlen(new_r);
+      return g_strdup(new_r);
+    }
+  }
+
+  // Validate parameters
+  if (!fp || !fp->parse || !fp->parse->data) {
+    g_error("random_element function requires a filename parameter");
+    return *r;
+  }
+
+  gchar *filename = (gchar *)fp->parse->data;
+  GHashTable *file_content = load_file_into_file_hash(filename);
+
+  if (!file_content || g_hash_table_size(file_content) == 0) {
+    g_warning("File %s is empty or could not be loaded", filename);
+    return *r;
+  }
+
+  // Collect all elements from all length buckets
+  GList *all_elements = collect_all_elements_from_file(file_content);
+  if (!all_elements) {
+    g_warning("File %s contains no valid elements", filename);
+    return *r;
+  }
+
+  // Select random element
+  guint list_length = g_list_length(all_elements);
+  guint random_index = g_random_int_range(0, list_length);
+  gchar *selected_element = (gchar *)g_list_nth_data(all_elements, random_index);
+
+  if (!selected_element) {
+    g_warning("Could not select element from file %s", filename);
+    g_list_free(all_elements);
+    return *r;
+  }
+
+  // Format result with quotes for SQL
+  new_r = g_strdup_printf("\"%s\"", selected_element);
+
+  // Cache result if memory is enabled
+  if (fp && fp->memory && *r) {
+    g_hash_table_insert(fp->memory, g_strdup(*r), g_strdup(new_r));
+  }
+
+  g_list_free(all_elements);
+  *length = strlen(new_r);
+  return new_r;
+}
+
+
 gboolean apply_format_item(gchar **original_p, gulong* max_len, struct format_item *fi, guint *i){
   
   struct format_item_file *fid=NULL;
@@ -422,6 +502,39 @@ void parse_regex_function(struct function_pointer * fp, gchar *val){
 
 }
 
+void parse_random_element_function(struct function_pointer *fp, gchar *val)
+{
+  // Remove leading and trailing whitespace
+  gchar *trimmed_val = g_strstrip(g_strdup(val));
+
+  if (strlen(trimmed_val) == 0) {
+    g_free(trimmed_val);
+    g_error("random_element function requires a filename parameter");
+  }
+
+  // Check for <file filename> format
+  if (!g_str_has_prefix(trimmed_val, "<file ") || !g_str_has_suffix(trimmed_val, ">")) {
+    g_free(trimmed_val);
+    g_error("random_element function requires format: <file filename>");
+  }
+
+  // Extract filename: skip "<file " (6 chars) and remove trailing ">"
+  gchar *filename_part = g_strndup(trimmed_val + 6, strlen(trimmed_val) - 7);
+  gchar *filename = g_strstrip(filename_part); // Remove whitespace in-place
+
+  if (strlen(filename) == 0) {
+    g_free(trimmed_val);
+    g_free(filename_part);
+    g_error("random_element function requires a non-empty filename");
+  }
+
+  fp->parse = g_list_append(fp->parse, g_strdup(filename));
+
+  g_free(trimmed_val);
+  g_free(filename_part);
+}
+
+
 void parse_apply_function(struct function_pointer * fp, gchar *val){
   char buffer[256];
   guint i=0;
@@ -617,6 +730,9 @@ fun_ptr get_function_pointer_for (gchar *function_char){
   if (g_str_has_prefix(function_char,"random_int"))
     return &random_int_function;
 
+  if (g_str_has_prefix(function_char,"random_element"))
+    return &random_element_function;
+
   if (g_str_has_prefix(function_char,"random_uuid"))
     return &random_uuid_function;
 
@@ -662,6 +778,10 @@ struct function_pointer * init_function_pointer(gchar *value){
   if (g_str_has_prefix(value,"constant")){
     fp->is_pre=TRUE;
     parse_constant_function(fp, g_strdup(&(fp->value[9])));
+  }else
+  if (g_str_has_prefix(value,"random_element")){
+    fp->is_pre=TRUE;
+    parse_random_element_function(fp, g_strdup(&(fp->value[15])));
   }else
   if (g_str_has_prefix(value,"regex")){
     fp->is_pre=TRUE;
