@@ -111,7 +111,7 @@ void *process_stream(void *data){
         
 //        g_message("File size of %s is %"G_GINT64_FORMAT, sf->filename, size);
 //        g_message("Streaming file %s", sf->filename);
-        gchar *c = g_strdup_printf("%"G_GINT64_FORMAT,size);
+        gchar *c = g_strdup_printf("%lld",(long long)size);
         len=write(fileno(stdout), c, strlen(c));
         len=write(fileno(stdout), "\n", 1);
         total_size+=strlen(c) + 1;
