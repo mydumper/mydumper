@@ -200,7 +200,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       m_store_result_row_free(mr);
       g_message("It is NONE: default");
-      if (position>1)
+      if (position>0)
         dbt->multicolumn=FALSE;
       else
         return new_none_chunk_step();
