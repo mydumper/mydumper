@@ -113,7 +113,7 @@ host = 127.0.0.1
 user = root
 password = p455w0rd
 database = new_db
-innodb-optimize-keys = AFTER_IMPORT_PER_TABLE
+optimize-keys = AFTER_IMPORT_PER_TABLE
 ```
 
 - Variables for mydumper and myloader executions:
