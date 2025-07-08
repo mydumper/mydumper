@@ -187,7 +187,7 @@ void *metadata_partial_writer(void *data){
   }
   dbt=g_async_queue_try_pop(metadata_partial_queue);   
   while (dbt != NULL ){
-    dbt_list=g_list_append(dbt_list,dbt);
+    dbt_list=g_list_prepend(dbt_list,dbt);
     dbt=g_async_queue_try_pop(metadata_partial_queue);
   }
   g_string_set_size(output,0);
@@ -208,7 +208,7 @@ void *metadata_partial_writer(void *data){
   dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   while (metadata_partial_writer_alive){
     if (dbt != NULL && g_list_find(dbt_list, dbt)==NULL){
-      dbt_list=g_list_append(dbt_list,dbt);
+      dbt_list=g_list_prepend(dbt_list,dbt);
     }
     current_datetime = g_date_time_new_now_local();
     diff=g_date_time_difference(current_datetime,prev_datetime)/G_TIME_SPAN_SECOND;
