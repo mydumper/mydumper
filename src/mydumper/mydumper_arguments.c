@@ -37,7 +37,7 @@ const gchar *rows_file_extension=SQL;
 guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
-gboolean trx_tables=FALSE;
+guint trx_tables=1;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
@@ -73,6 +73,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
     return FALSE;
+  }
+  if (!strcmp(option_name,"--trx-tables")){
+    trx_tables=atoi(value);
+    return TRUE;
   }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
     if (value!=NULL)
@@ -221,7 +225,7 @@ static GOptionEntry lock_entries[] = {
       "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
     {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is deprecated use --trx-tables instead", NULL},
-    {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
+    {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
       "Do not send DDL locks when possible", NULL},
