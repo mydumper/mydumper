@@ -26,7 +26,6 @@ char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 
-gboolean success_on_1146 = FALSE;
 gboolean help =FALSE;
 GString *set_session = NULL;
 GString *set_global = NULL;

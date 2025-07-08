@@ -73,7 +73,6 @@ extern gboolean skip_definer;
 extern gboolean skip_constraints;
 extern gboolean skip_indexes;
 extern gboolean stream;
-extern gboolean success_on_1146;
 extern gboolean use_fifo;
 extern gboolean use_savepoints;
 extern gboolean clear_dumpdir;

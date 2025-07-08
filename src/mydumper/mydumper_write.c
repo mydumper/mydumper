@@ -881,29 +881,10 @@ void write_table_job_into_file(struct table_job * tj){
       g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
 
       result = m_use_result(conn, query, NULL, "Failed to execute query on second try", NULL);
-      if (!result) {
-       // ERROR 1146
-        if (success_on_1146 && mysql_errno(conn) == 1146) {
-          g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                  mysql_error(conn), query);
-        } else {
-          g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                     mysql_error(conn), query);
-          errors++;
-        }
+      if (!result) 
         goto cleanup;
-      }
-    }else{
-      if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                  mysql_error(conn), query);
-      } else {
-        g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                   mysql_error(conn), query);
-        errors++;
-      }
+    }else
       goto cleanup;
-    }
   }
 
   /* Poor man's data dump code */
