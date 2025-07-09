@@ -567,20 +567,18 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
 }
 
 gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
-                           const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *,int*))
+                           const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  int errn= 0;
-  const char *checksum= fun(conn, dbt->database->real_database, dbt->real_table, &errn);
+  const char *checksum= fun(conn, dbt->database->real_database, dbt->real_table);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
                     "%s confirmed for %s.%s", message, dbt->database->real_database, dbt->real_table);
 }
 
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
-                                const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *,int*))
+                                const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  int errn= 0;
-  const char *checksum= fun(conn, _db, NULL, &errn);
+  const char *checksum= fun(conn, _db, NULL);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s: got %s, expecting %s",
                     "%s confirmed for %s", message, _db, NULL);

@@ -220,7 +220,6 @@ int main(int argc, char *argv[]) {
     print_string("set-names",set_names_str);
     print_int("chunk-filesize",chunk_filesize);
     print_bool("exit-if-broken-table-found",exit_if_broken_table_found);
-    print_bool("success-on-1146",success_on_1146);
     print_bool("build-empty-files",build_empty_files);
     print_bool("no-check-generated-fields",ignore_generated_fields);
     print_bool("order-by-primary",order_by_primary_key);

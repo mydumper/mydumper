@@ -47,16 +47,9 @@ void initialize_jobs(){
 }
 
 static
-gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *,int*)) {
-  int errn=0;
-  gchar *checksum=fun(conn, database->name, table, &errn);
-//  g_message("Checksum value: %s", checksum);
-  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
-    g_warning("Writing checksum");
-    errors++;
-    return NULL;
-  }
-  if (checksum == NULL)
+gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
+  gchar *checksum=fun(conn, database->name, table);
+  if (!checksum)
     checksum = g_strdup("0");
   return checksum;
 }
