@@ -13,6 +13,10 @@ jobs:
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
+      - name: Sleep for 5m to let repository to be refreshed
+        run: sleep 5m
+        shell: bash
+
       - name: Check out the repo
         uses: actions/checkout@v3
         
