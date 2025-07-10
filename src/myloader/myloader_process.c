@@ -612,9 +612,11 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
   if (identifier_quote_character==BACKTICK){
     wrong_quote= "\"";
     delimiter= delim_bt;
+    identifier_quote_character_str= "`";
   }else if (identifier_quote_character==DOUBLE_QUOTE){
     delimiter= delim_dq;
     wrong_quote= "`";
+    identifier_quote_character_str= "\"";
   }else{
     m_critical("Wrong quote_character in metadata");
   }
