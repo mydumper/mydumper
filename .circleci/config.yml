@@ -1628,6 +1628,7 @@ commands:
 
   prepare_apt_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
