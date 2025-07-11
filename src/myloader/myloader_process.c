@@ -574,72 +574,52 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
         m_critical("Wrong metadata: [config] group must be first");
 
 
-  gsize len=0;
-  GError *error = NULL;
-  gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
-  gsize i=0;
-  GSList *list = NULL;
+      gsize len=0;
+      GError *error = NULL;
+      gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
+      gsize i=0;
+      GSList *list = NULL;
 
-  if (error != NULL){
-    g_error("Loading configuration on section %s: %s",group,error->message);
-  }else{
-    // Transform the key-value pair to parameters option that the parsing will understand
-//    gchar *value;
-    for (i=0; i < len; i++){
-      list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
-      value=g_key_file_get_value(kf,group,keys[i],&error);
-      if ( value != NULL ) list=g_slist_append(list, value);
-    }
-    gint slen = g_slist_length(list) + 1;
-    gchar ** gclist = g_new0(gchar *, slen);
-    GSList *ilist=list;
-    gint j2=0;
-    for (j2=1; j2 < slen ; j2++){
-      gclist[j2]=ilist->data;
-      ilist=ilist->next;
-    }
-    g_slist_free(list);
-    // Second parse over the options
-    if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
-      m_critical("option parsing failed: %s, try --help\n", error->message);
-    }else{
-      g_message("Config file loaded");
-    }
-    g_strfreev(gclist);
-  }
-  g_strfreev(keys);
-
-  if (identifier_quote_character==BACKTICK){
-    wrong_quote= "\"";
-    delimiter= delim_bt;
-  }else if (identifier_quote_character==DOUBLE_QUOTE){
-    delimiter= delim_dq;
-    wrong_quote= "`";
-  }else{
-    m_critical("Wrong quote_character in metadata");
-  }
-  trace("metadata: quote character is %c", identifier_quote_character);
-      
- /*      value= get_value(kf, group, "quote_character");
-      if (value) {
-        if (!strcmp(value, "BACKTICK")) {
-          identifier_quote_character= BACKTICK;
-          identifier_quote_character_str= "`";
-          wrong_quote= "\"";
-          delimiter= delim_bt;
-        } else if (!strcmp(value, "DOUBLE_QUOTE")) {
-          identifier_quote_character= DOUBLE_QUOTE;
-          identifier_quote_character_str= "\"";
-          delimiter= delim_dq;
-          wrong_quote= "`";
-        } else {
-          m_critical("Wrong quote_character = %s in metadata", value);
+      if (error != NULL){
+        g_error("Loading configuration on section %s: %s",group,error->message);
+      }else{
+        // Transform the key-value pair to parameters option that the parsing will understand
+        for (i=0; i < len; i++){
+          list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
+          value=g_key_file_get_value(kf,group,keys[i],&error);
+          if ( value != NULL ) list=g_slist_append(list, value);
         }
-        trace("metadata: quote character is %c", identifier_quote_character);
+        gint slen = g_slist_length(list) + 1;
+        gchar ** gclist = g_new0(gchar *, slen);
+        GSList *ilist=list;
+        gint j2=0;
+        for (j2=1; j2 < slen ; j2++){
+          gclist[j2]=ilist->data;
+          ilist=ilist->next;
+        }
+        g_slist_free(list);
+        // Second parse over the options
+        if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
+          m_critical("option parsing failed: %s, try --help\n", error->message);
+        }else{
+          g_message("Config file loaded");
+        }
+        g_strfreev(gclist);
       }
-*/
+      g_strfreev(keys);
 
-
+      if (identifier_quote_character==BACKTICK){
+        wrong_quote= "\"";
+        delimiter= delim_bt;
+        identifier_quote_character_str= "`";
+      }else if (identifier_quote_character==DOUBLE_QUOTE){
+        delimiter= delim_dq;
+        wrong_quote= "`";
+        identifier_quote_character_str= "\"";
+      }else{
+        m_critical("Wrong quote_character in metadata");
+      }
+      trace("metadata: quote character is %c", identifier_quote_character);
     } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {

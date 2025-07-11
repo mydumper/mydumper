@@ -1,0 +1,12 @@
+#
+# Testing --sql-mode and quote-character with ANSI
+#
+
+[mydumper]
+tables-list=specific_5.actor
+outputdir=/tmp/data
+exec=/usr/bin/gzip FILENAME
+
+[mydumper_session_variables]
+sql_mode='ANSI_QUOTES'
+
