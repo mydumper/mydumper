@@ -286,6 +286,7 @@ commands:
 
   prepare_apt_debian_default:
     steps:
+    - run: sudo apt-get update
     - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
 
   prepare_apt_ubuntu_default:
