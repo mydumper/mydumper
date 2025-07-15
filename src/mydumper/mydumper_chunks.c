@@ -77,7 +77,7 @@ struct chunk_step_item * new_none_chunk_step(){
   return csi;
 }
 
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *prefix) {
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, guint64 rows, GString *prefix) {
   struct chunk_step_item * csi=NULL;
 
   gchar *field=g_list_nth_data(dbt->primary_key, position);
@@ -107,7 +107,6 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
   }
   MYSQL_FIELD *fields = mysql_fetch_fields(mr->res);
   /* Support just bigger INTs for now, very dumb, no verify approach */
-  guint64 diff_btwn_max_min;
   guint64 unmin, unmax;
   gint64 nmin, nmax;
 //    union chunk_step *cs = NULL;
@@ -123,13 +122,9 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
       nmin  = strtoll (mr->row[0], NULL, 10);
       nmax  = strtoll (mr->row[1], NULL, 10);
 
-      if (fields[0].flags & UNSIGNED_FLAG){
-        diff_btwn_max_min=gint64_abs(unmax-unmin);
-      }else{
-        diff_btwn_max_min=gint64_abs(nmax-nmin);
-      }
-
       gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
+      guint64 diff_btwn_max_min = unsign ? gint64_abs(unmax-unmin) : gint64_abs(nmax-nmin); 
+
       m_store_result_row_free(mr);
 
       // If !(diff_btwn_max_min > min_chunk_step_size), then there is no need to split the table.
@@ -147,20 +142,13 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         }
         guint64 _starting_chunk_step_size=0;
         if (dbt->starting_chunk_step_size == 0){
-          if (unsign){
-            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
-                                             (gint64_abs(type.unsign.max - type.unsign.min)/num_threads>dbt->max_chunk_step_size?
-                                               dbt->max_chunk_step_size:
-                                               gint64_abs(type.unsign.max - type.unsign.min)/num_threads):
-                                             gint64_abs(type.unsign.max - type.unsign.min)/num_threads;
-          }else{
-            _starting_chunk_step_size= dbt->max_chunk_step_size!=0?
-                                             (gint64_abs(type.sign.max - type.sign.min)/num_threads>dbt->max_chunk_step_size?
-                                               dbt->max_chunk_step_size:
-                                               gint64_abs(type.sign.max - type.sign.min)/num_threads):
-                                             gint64_abs(type.sign.max - type.sign.min)/num_threads;
+//          guint64 diff_max_min=unsign ? gint64_abs(type.unsign.max - type.unsign.min) : gint64_abs(type.sign.max - type.sign.min);
 
-          }
+          _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
+                                             (rows/num_threads>dbt->max_chunk_step_size?
+                                               dbt->max_chunk_step_size:
+                                               rows/num_threads):
+                                             rows/num_threads;
         }
         if (_starting_chunk_step_size < dbt->min_chunk_step_size)
           _starting_chunk_step_size=dbt->min_chunk_step_size;
@@ -168,7 +156,6 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         g_assert(_starting_chunk_step_size>0);
 
         csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn);
-//        determine_if_we_can_go_deeper(dbt,csi, rows);
 
         if (csi->chunk_step->integer_step.is_step_fixed_length){
           if (csi->chunk_step->integer_step.is_unsigned){
@@ -284,7 +271,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
       csi=new_real_partition_step_item(partitions,0,0);
     }else{
       if (dbt->split_integer_tables) {
-        csi = initialize_chunk_step_item(conn, dbt, 0, NULL);
+        csi = initialize_chunk_step_item(conn, dbt, 0, rows, NULL);
       }else{
         csi = new_none_chunk_step();
       }
