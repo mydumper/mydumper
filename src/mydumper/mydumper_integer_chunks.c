@@ -562,7 +562,7 @@ retry:
         trace("Thread %d: integer_step.step==1 min: %"G_GINT64_FORMAT" | max: %"G_GINT64_FORMAT, td->thread_id, csi->chunk_step->integer_step.type.sign.min, csi->chunk_step->integer_step.type.sign.max);
       }
       if (rows > tj->dbt->min_chunk_step_size){
-        csi->next = initialize_chunk_step_item(td->thrconn, tj->dbt, csi->position + 1, csi->where);
+        csi->next = initialize_chunk_step_item(td->thrconn, tj->dbt, csi->position + 1, rows, csi->where);
         if (csi->next){
           csi->next->multicolumn=FALSE;
           trace("Thread %d: New next with where %s | rows: %lld", td->thread_id, csi->where->str, rows);
