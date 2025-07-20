@@ -385,7 +385,7 @@ gboolean real_write_data(int file, float *filesize, GString *data) {
   ssize_t r = 0;
   gboolean second_write_zero = FALSE;
   while (written < data->len) {
-    r=write(file, data->str + written, data->len);
+    r=write(file, data->str + written, data->len - written);
     if (r < 0) {
       g_critical("Couldn't write data to a file: %s", strerror(errno));
       errors++;
