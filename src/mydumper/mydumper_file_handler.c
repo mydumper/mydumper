@@ -27,6 +27,8 @@
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
 #include "mydumper_exec_command.h"
+#include "mydumper_file_handler.h"
+
 // Shared variables
 int (*m_close)(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt) = NULL;
 

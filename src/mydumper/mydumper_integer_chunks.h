@@ -20,6 +20,42 @@
 */
 #define MAX_TIME_PER_QUERY 2
 
+
+#if !defined(mydumper_mydumper_interger_chunks)
+#define mydumper_mydumper_interger_chunks
+
+#include "mydumper_chunks.h"
+
+struct unsigned_int{
+  guint64 min;
+  guint64 cursor;
+  guint64 max;
+};
+
+struct signed_int{
+  gint64 min;
+  gint64 cursor;
+  gint64 max;
+};
+
+union type {
+  struct unsigned_int unsign;
+  struct signed_int   sign;
+};
+
+struct integer_step {
+  gboolean is_unsigned;
+  union type type;
+  gboolean is_step_fixed_length;
+  guint64 step;
+  guint64 min_chunk_step_size;
+  guint64 max_chunk_step_size;
+  guint64 estimated_remaining_steps;
+  gboolean check_max;
+  gboolean check_min;
+};
+#endif 
+
 guint64 gint64_abs(gint64 a);
 struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn);
 void free_integer_step(union chunk_step * cs);

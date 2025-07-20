@@ -27,6 +27,7 @@
 #include "mydumper_working_thread.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
+#include "mydumper_create_jobs.h"
 
 //
 // Enqueueing in initial_queue
