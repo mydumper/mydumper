@@ -286,7 +286,6 @@ commands:
 
   prepare_apt_debian_default:
     steps:
-    - run: sudo apt-get update
     - run: sudo apt-get install -y default-mysql-client default-libmysqlclient-dev default-mysql-client-core
 
   prepare_apt_ubuntu_default:
@@ -309,12 +308,10 @@ commands:
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
-    - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
   prepare_apt_mariadb1006:
     steps:
-    - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat || true
     - run: sudo apt-get install -y gdb screen time mariadb-client libmariadbclient18 libmariadb-dev libmariadb-dev-compat
 
@@ -395,6 +392,7 @@ do
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 "
     # For Percona and MySQL will be the standar apt preparation
@@ -403,6 +401,7 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
@@ -413,6 +412,7 @@ echo "
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
