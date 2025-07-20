@@ -83,6 +83,7 @@ static
 void initialize_start_dump(){
   all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
   initialize_set_names();
+  initialize_table();
   initialize_working_thread();
 	initialize_conf_per_table(&conf_per_table);
 
