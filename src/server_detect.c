@@ -34,7 +34,8 @@ const gchar *show_replica_status=NULL;
 const gchar *show_all_replicas_status=NULL;
 const gchar *show_binary_log_status=NULL;
 const gchar *change_replication_source=NULL;
-
+const gchar *case_sensitive_prefix=NULL;
+const gchar *case_sensitive_suffix=NULL;
 int get_product(){
   return product;
 }
@@ -57,7 +58,8 @@ gboolean server_support_tablespaces(){
 }
 
 void detect_server_version(MYSQL * conn) {
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
+  guint lower_case_table_names=0;
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version, @@lower_case_table_names",m_warning, m_message, "Not able to determine database version", NULL);
 //  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
 
   gchar *ascii_version=NULL;
@@ -66,6 +68,7 @@ void detect_server_version(MYSQL * conn) {
   if (mr->row){
     ascii_version_comment=g_ascii_strdown(mr->row[0],-1);
     ascii_version        =g_ascii_strdown(mr->row[1],-1);
+    lower_case_table_names=atoi(mr->row[2]);
 
     if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
       product = SERVER_TYPE_PERCONA;
@@ -108,7 +111,14 @@ void detect_server_version(MYSQL * conn) {
   g_strfreev(sver);
   g_free(ascii_version);
   g_free(ascii_version_comment);
-  
+
+  if (lower_case_table_names){
+    case_sensitive_prefix=CAST;
+    case_sensitive_suffix=AS_BINARY;
+  }else{
+    case_sensitive_prefix=EMPTY_STRING;
+    case_sensitive_suffix=EMPTY_STRING;
+  }
 
   show_replica_status=SHOW_SLAVE_STATUS;
   show_binary_log_status=SHOW_MASTER_STATUS;
