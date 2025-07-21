@@ -134,7 +134,7 @@ void run_daemon(){
     g_timeout_add(snapshot_interval * 60 * 1000, (GSourceFunc)run_snapshot,
                   NULL);
 #else
-    g_timeout_add_seconds(snapshot_interval * 60, (GSourceFunc)run_snapshot,
+    g_timeout_add_seconds(snapshot_interval * 60 , (GSourceFunc)run_snapshot,
                           NULL);
 #endif
     guint sigsource = g_unix_signal_add(SIGINT, sig_triggered_int, NULL);

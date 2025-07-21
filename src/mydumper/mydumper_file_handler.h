@@ -43,7 +43,8 @@ struct fifo{
   int error_number;
 };
 
-void initialize_file_handler(gboolean is_pipe);
+void set_pipe_backup();
+void initialize_file_handler();
 int m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);

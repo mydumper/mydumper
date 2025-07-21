@@ -36,6 +36,7 @@
 #include "mydumper_daemon_thread.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
+#include "mydumper_file_handler.h"
 
 const char DIRECTORY[] = "export";
 
@@ -76,7 +77,7 @@ int main(int argc, char *argv[]) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
   }
 
-	// TODO: This must be removed when --csv and --load-data are deprecated
+  // TODO: This must be removed when --csv and --load-data are deprecated
   if (load_data){
     output_format=LOAD_DATA;
 		rows_file_extension=DAT;
@@ -256,6 +257,38 @@ int main(int argc, char *argv[]) {
   if (num_threads < 2) {
     use_defer= FALSE;
   }
+
+
+  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
+    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
+  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
+    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
+
+  if (compress_method==NULL && exec_per_thread==NULL) {
+    exec_per_thread_extension=EMPTY_STRING;
+  }else{
+    set_pipe_backup();
+
+    if (compress_method!=NULL && exec_per_thread!=NULL )
+      m_critical("--compression and --exec-per-thread are not comptatible");
+
+    if (compress_method){
+      if ( g_ascii_strcasecmp(compress_method,GZIP)==0){
+        exec_per_thread=g_strdup_printf("%s -c", GZIP);
+        exec_per_thread_extension=GZIP_EXTENSION;
+      }else if (g_ascii_strcasecmp(compress_method,ZSTD)==0){
+        exec_per_thread=g_strdup_printf("%s -c", ZSTD);
+        exec_per_thread_extension=ZSTD_EXTENSION;
+      }
+    }
+
+    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
+    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
+    if (!tmpcmd)
+      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
+    exec_per_thread_cmd[0]=tmpcmd;
+  }
+
 
   if (daemon_mode) {
     clear_dumpdir= TRUE;

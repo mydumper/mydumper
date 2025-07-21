@@ -221,8 +221,11 @@ void wait_close_files(){
   }
 }
 
-void initialize_file_handler(gboolean _is_pipe){
-  is_pipe=_is_pipe;
+void set_pipe_backup(){
+  is_pipe=TRUE;
+}
+
+void initialize_file_handler(){
   if (!is_pipe){
     m_open  = &m_open_file;
     m_close = &m_close_file;

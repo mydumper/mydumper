@@ -1182,7 +1182,7 @@ void start_dump() {
     if (rest)
       mysql_free_result(rest);
   }
-
+  trace("Initilizing the configuration");
   // Initilizing the configuration
 
   conf.initial_queue = g_async_queue_new();
@@ -1215,14 +1215,14 @@ void start_dump() {
   ready_table_dump_mutex = g_rec_mutex_new();
   g_rec_mutex_lock(ready_table_dump_mutex);
 
-
+  trace("Begin Job Creation");
   // Begin Job Creation
 
   // Create metadata job
   if (is_mysql_like()) {
     create_job_to_dump_metadata(&conf, mdfile);
   }
-
+  trace("Create tablespace jobs");
   // Create tablespace jobs
   if (dump_tablespaces){
     create_job_to_dump_tablespaces(&conf);
@@ -1235,8 +1235,10 @@ void start_dump() {
   //
   // if tables and db both exists , should not call dump_database_thread
   if (tables && g_strv_length(tables) > 0) {
+    trace("Specific tables");
     create_job_to_dump_table_list(tables, &conf);
   } else if (db_items && g_strv_length(db_items) > 0) {
+    trace("Specific databases");
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
       struct database *this_db=new_database(conn,db_items[i],TRUE);
@@ -1245,9 +1247,11 @@ void start_dump() {
         create_job_to_dump_schema(this_db, &conf);
     }
   } else {
+    trace("All databases");
     create_job_to_dump_all_databases(&conf);
   }
 
+  trace("End Job Creation");
   // End Job Creation
 
   // Starting the chunk builder

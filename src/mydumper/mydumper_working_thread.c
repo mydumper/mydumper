@@ -117,39 +117,7 @@ void initialize_working_thread(){
   if (ignore_engines_str)
     ignore_engines = g_strsplit(ignore_engines_str, ",", 0);
 
-
-// TODO: We need to cleanup this
-
-  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
-    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
-  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
-    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
-
-  if (compress_method==NULL && exec_per_thread==NULL) {
-    exec_per_thread_extension=EMPTY_STRING;
-    initialize_file_handler(FALSE);
-  }else{
-    if (compress_method!=NULL && exec_per_thread!=NULL )
-      m_critical("--compression and --exec-per-thread are not comptatible");
-    
-    if (compress_method){
-      if ( g_ascii_strcasecmp(compress_method,GZIP)==0){
-        exec_per_thread=g_strdup_printf("%s -c", GZIP);
-        exec_per_thread_extension=GZIP_EXTENSION;
-      }else if (g_ascii_strcasecmp(compress_method,ZSTD)==0){
-        exec_per_thread=g_strdup_printf("%s -c", ZSTD);
-        exec_per_thread_extension=ZSTD_EXTENSION;
-      }
-    }
-    initialize_file_handler(TRUE);
-
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
-    if (!tmpcmd)
-      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
-    exec_per_thread_cmd[0]=tmpcmd;
-  }
-
+  initialize_file_handler();
 
   initialize_jobs();
   initialize_chunk();
@@ -1316,7 +1284,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
       if (exit_if_broken_table_found)
-        exit(EXIT_FAILURE);
+        m_error("Broken table detected");
       dump = 0;
     }
 
