@@ -17,6 +17,7 @@
 # wait_timeout = 300
 # sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
 # sql_mode='ANSI_QUOTES';
+CHARACTER_SET_RESULTS = NULL
 
 [myloader_global_variables]
 # The global variables changed in this section are rolled back after execution unless QUIT signal is sent.
