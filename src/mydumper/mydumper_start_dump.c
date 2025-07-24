@@ -387,7 +387,7 @@ MYSQL *create_main_connection() {
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
-  detect_server_version(conn);
+  server_detect(conn);
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){

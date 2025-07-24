@@ -28,7 +28,7 @@ enum server_type {
   SERVER_TYPE_CLICKHOUSE,
   SERVER_TYPE_DOLT
 };
-void detect_server_version(MYSQL * conn);
+void server_detect(MYSQL * conn);
 gboolean server_support_tablespaces();
 int get_product();
 int get_major();

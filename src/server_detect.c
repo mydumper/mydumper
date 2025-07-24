@@ -36,6 +36,7 @@ const gchar *show_binary_log_status=NULL;
 const gchar *change_replication_source=NULL;
 const gchar *case_sensitive_prefix=NULL;
 const gchar *case_sensitive_suffix=NULL;
+
 int get_product(){
   return product;
 }
@@ -49,6 +50,19 @@ int get_revision(){
       return revision;
 }
 
+const gchar * get_product_name(){
+  switch (get_product()){
+    case SERVER_TYPE_PERCONA:   return "Percona"; break;
+    case SERVER_TYPE_MYSQL:     return "MySQL";   break;
+    case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
+    case SERVER_TYPE_TIDB:      return "TiDB"; break;
+    case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
+    case SERVER_TYPE_DOLT:      return "Dolt"; break;
+    case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
+    default: return "";
+  }
+}
+
 gboolean is_mysql_like(){
   return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN;
 }
@@ -57,9 +71,9 @@ gboolean server_support_tablespaces(){
   return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
 }
 
+static
 void detect_server_version(MYSQL * conn) {
-  guint lower_case_table_names=0;
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version, @@lower_case_table_names",m_warning, m_message, "Not able to determine database version", NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
 //  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
 
   gchar *ascii_version=NULL;
@@ -68,7 +82,6 @@ void detect_server_version(MYSQL * conn) {
   if (mr->row){
     ascii_version_comment=g_ascii_strdown(mr->row[0],-1);
     ascii_version        =g_ascii_strdown(mr->row[1],-1);
-    lower_case_table_names=atoi(mr->row[2]);
 
     if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
       product = SERVER_TYPE_PERCONA;
@@ -111,7 +124,14 @@ void detect_server_version(MYSQL * conn) {
   g_strfreev(sver);
   g_free(ascii_version);
   g_free(ascii_version_comment);
+}
 
+static
+void detect_lower_case_table_names(MYSQL * conn) {
+  guint lower_case_table_names=0;
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@lower_case_table_names",m_warning, m_message, "Not able to determine lower_case_table_names", NULL);
+  if (mr->row)
+    lower_case_table_names=atoi(mr->row[0]);
   if (lower_case_table_names){
     case_sensitive_prefix=CAST;
     case_sensitive_suffix=AS_BINARY;
@@ -119,7 +139,11 @@ void detect_server_version(MYSQL * conn) {
     case_sensitive_prefix=EMPTY_STRING;
     case_sensitive_suffix=EMPTY_STRING;
   }
+  m_store_result_row_free(mr);
+}
 
+static
+void detect_replica() {
   show_replica_status=SHOW_SLAVE_STATUS;
   show_binary_log_status=SHOW_MASTER_STATUS;
 
@@ -189,21 +213,10 @@ void detect_server_version(MYSQL * conn) {
   }
 }
 
-const gchar * get_product_name(){
-  switch (get_product()){
-  case SERVER_TYPE_PERCONA:   return "Percona"; break;
-  case SERVER_TYPE_MYSQL:     return "MySQL";   break;
-  case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
-  case SERVER_TYPE_TIDB:      return "TiDB"; break;
-  case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
-  case SERVER_TYPE_DOLT:      return "Dolt"; break;
-  case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
-  default: return "";
+void server_detect(MYSQL * conn){
+  detect_server_version(conn);
+  detect_lower_case_table_names(conn);
+  detect_replica();  
 }
-
-
-}
-
-
 
 
