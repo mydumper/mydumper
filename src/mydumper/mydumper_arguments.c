@@ -110,7 +110,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
   }
   if (!strcmp(option_name,"--trx-consistency-only")){
-    m_critical("--lock-all-tables is deprecated use --trx-tables instead");
+    m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
   }
   if (!strcmp(option_name,"--less-locking")){
     m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
