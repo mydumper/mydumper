@@ -38,11 +38,12 @@
 #include "mydumper_arguments.h"
 
 gboolean compact = FALSE;
-GMutex *ref_table_mutex = NULL;
-GHashTable *ref_table=NULL;
 guint table_number=0;
 guint server_version= 0;
 GString *headers;
+
+static GMutex *ref_table_mutex = NULL;
+static GHashTable *ref_table=NULL;
 
 const char *routine_type[]= {"FUNCTION", "PROCEDURE", "PACKAGE", "PACKAGE BODY"};
 guint nroutines= 4;
@@ -53,10 +54,12 @@ void initialize_common(){
 }
 
 void free_common(){
-  g_mutex_free(ref_table_mutex);
-  ref_table_mutex=NULL;
+  g_mutex_lock(ref_table_mutex);
   g_hash_table_destroy(ref_table);
   ref_table=NULL;
+  g_mutex_unlock(ref_table_mutex);
+  g_mutex_free(ref_table_mutex);
+  ref_table_mutex=NULL;
 }
 
 char * determine_filename (char * table){
@@ -82,7 +85,6 @@ gchar *get_ref_table(gchar *k){
   g_mutex_unlock(ref_table_mutex);
   return val;
 }
-
 
 char * escape_string(MYSQL *conn, char *str){
   char * r=g_new(char, strlen(str) * 2 + 1);

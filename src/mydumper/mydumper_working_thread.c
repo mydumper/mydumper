@@ -34,7 +34,7 @@
 #include "mydumper_file_handler.h"
 #include "mydumper_create_jobs.h"
 #include "mydumper_working_thread.h"
-
+#include "mydumper_table.h"
 /* Program options */
 gboolean order_by_primary_key = FALSE;
 gboolean use_savepoints = FALSE;
@@ -51,11 +51,6 @@ gboolean schema_checksums = FALSE;
 gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
-
-// Extern
-extern gboolean use_single_column;
-extern guint64 min_integer_chunk_step_size;
-extern guint64 max_integer_chunk_step_size;
 
 // Shared variables
 gint database_counter = 0;
@@ -74,11 +69,8 @@ static gchar *binlog_snapshot_gtid_executed = NULL;
 static char **ignore_engines = NULL;
 static int sync_wait = -1;
 static GMutex *table_schemas_mutex = NULL;
-static GMutex *all_dbts_mutex=NULL;
 static GMutex *trigger_schemas_mutex = NULL;
 static GMutex *view_schemas_mutex = NULL;
-static GHashTable *character_set_hash=NULL;
-static GMutex *character_set_hash_mutex = NULL;
 static const guint tablecol= 0;
 static GThread **threads=NULL;
 static struct thread_data *thread_data;
@@ -96,8 +88,6 @@ void initialize_working_thread(){
     m_error("This should not happen");
   }
 
-  character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
-  character_set_hash_mutex = g_mutex_new();
   transactional_table=g_new(struct MList, 1);
   non_transactional_table=g_new(struct MList, 1);
   transactional_table->list=NULL;
@@ -108,7 +98,6 @@ void initialize_working_thread(){
   view_schemas_mutex = g_mutex_new();
   table_schemas_mutex = g_mutex_new();
   trigger_schemas_mutex = g_mutex_new();
-  all_dbts_mutex = g_mutex_new();
   init_mutex = g_mutex_new();
   binlog_snapshot_gtid_executed = NULL;
 
@@ -128,39 +117,7 @@ void initialize_working_thread(){
   if (ignore_engines_str)
     ignore_engines = g_strsplit(ignore_engines_str, ",", 0);
 
-
-// TODO: We need to cleanup this
-
-  if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
-    m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
-  if ((exec_per_thread_extension!=NULL) && (exec_per_thread == NULL))
-    m_critical("--exec-per-thread needs to be set when --exec-per-thread-extension (%s) is used", exec_per_thread_extension);
-
-  if (compress_method==NULL && exec_per_thread==NULL) {
-    exec_per_thread_extension=EMPTY_STRING;
-    initialize_file_handler(FALSE);
-  }else{
-    if (compress_method!=NULL && exec_per_thread!=NULL )
-      m_critical("--compression and --exec-per-thread are not comptatible");
-    
-    if (compress_method){
-      if ( g_ascii_strcasecmp(compress_method,GZIP)==0){
-        exec_per_thread=g_strdup_printf("%s -c", GZIP);
-        exec_per_thread_extension=GZIP_EXTENSION;
-      }else if (g_ascii_strcasecmp(compress_method,ZSTD)==0){
-        exec_per_thread=g_strdup_printf("%s -c", ZSTD);
-        exec_per_thread_extension=ZSTD_EXTENSION;
-      }
-    }
-    initialize_file_handler(TRUE);
-
-    exec_per_thread_cmd=g_strsplit(exec_per_thread, " ", 0);
-    gchar *tmpcmd=g_find_program_in_path(exec_per_thread_cmd[0]);
-    if (!tmpcmd)
-      m_critical("%s was not found in PATH, use --exec-per-thread for non default locations",exec_per_thread_cmd[0]);
-    exec_per_thread_cmd[0]=tmpcmd;
-  }
-
+  initialize_file_handler();
 
   initialize_jobs();
   initialize_chunk();
@@ -226,12 +183,9 @@ void wait_working_thread_to_finish(){
 }
 
 void finalize_working_thread(){
-  g_hash_table_destroy(character_set_hash);
-  g_mutex_free(character_set_hash_mutex);
   g_mutex_free(view_schemas_mutex);
   g_mutex_free(table_schemas_mutex);
   g_mutex_free(trigger_schemas_mutex);
-  g_mutex_free(all_dbts_mutex);
   g_mutex_free(init_mutex);
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
@@ -239,8 +193,9 @@ void finalize_working_thread(){
   finalize_chunk();
   g_free(thread_data);
   g_free(threads);
+  finalize_table();
 }
-
+/*
 static
 void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
   MYSQL_RES *indexes = NULL;
@@ -300,6 +255,7 @@ cleanup:
   if (indexes)
     mysql_free_result(indexes);
 }
+*/
 
 void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   // TODO: This should be in a job as needs to be done by a thread.
@@ -834,9 +790,6 @@ void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt){
       case INTEGER:
         total+=((union chunk_step *)(l->data))->integer_step.estimated_remaining_steps;
         break;
-      case CHAR:
-        total+=((union chunk_step *)(l->data))->char_step.estimated_remaining_steps;
-        break;
       default:
         total++;
         break; 
@@ -930,7 +883,7 @@ void *working_thread(struct thread_data *td) {
   mysql_thread_end();
   return NULL;
 }
-
+/*
 static
 GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
   MYSQL_ROW row;
@@ -1157,26 +1110,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
   *d=dbt;
   return b; 
 }
-
-void free_db_table(struct db_table * dbt){
-  g_mutex_lock(dbt->chunks_mutex);
-  g_mutex_free(dbt->rows_lock);
-  g_free(dbt->escaped_table);
-  if (dbt->insert_statement)
-    g_string_free(dbt->insert_statement,TRUE);
-  if (dbt->select_fields)
-    g_string_free(dbt->select_fields, TRUE);
-  if (dbt->min!=NULL) g_free(dbt->min);
-  if (dbt->max!=NULL) g_free(dbt->max);
-  g_free(dbt->data_checksum);
-  dbt->data_checksum=NULL;
-  g_free(dbt->chunks_completed);
-
-  g_free(dbt->table);
-  g_mutex_unlock(dbt->chunks_mutex);
-  g_mutex_free(dbt->chunks_mutex);
-  g_free(dbt);
-}
+*/
 
 static
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
@@ -1350,7 +1284,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       g_warning("Broken table detected, please review: %s.%s", database->name,
                 row[0]);
       if (exit_if_broken_table_found)
-        exit(EXIT_FAILURE);
+        m_error("Broken table detected");
       dump = 0;
     }
 
@@ -1414,13 +1348,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
   mysql_free_result(result);
 
-  if (determine_if_schema_is_elected_to_dump_post(conn,database)) {
+  if (determine_if_schema_is_elected_to_dump_post(conn,database))
     create_job_to_dump_post(database, conf);
-//    struct schema_post *sp = g_new(struct schema_post, 1);
-//    sp->database = database;
-//    schema_post = g_list_prepend(schema_post, sp);
-  }
-
 
   if (dump_triggers && database->dump_triggers)
     create_job_to_dump_schema_triggers(database, conf);

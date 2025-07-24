@@ -40,12 +40,10 @@ gboolean is_regex_being_used(){
   return regex_list!=NULL;
 }
 
-
 GOptionEntry regex_entries[] = {
     {"regex", 'x', 0, G_OPTION_ARG_CALLBACK, &regex_arguments_callback,
      "Regular expression for 'db.table' matching", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 GOptionGroup * load_regex_entries(GOptionContext *context){
   GOptionGroup *filter_group =
@@ -57,12 +55,10 @@ GOptionGroup * load_regex_entries(GOptionContext *context){
 
 gboolean check_filename_regex(char *word) {
   /* This is not going to be used in threads */
-//  int ovector[9] = {0};
   if (filename_re){
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(filename_re, NULL);
-  int rc =pcre2_match(filename_re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
-//  int rc = pcre2_exec(filename_re, NULL, word, strlen(word), 0, 0, ovector, 9);
-  return (rc > 0) ? TRUE : FALSE;
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(filename_re, NULL);
+    int rc =pcre2_match(filename_re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
+    return (rc > 0) ? TRUE : FALSE;
   }
   return TRUE;
 }
@@ -124,12 +120,10 @@ gboolean eval_regex(char * _database_name,char * _table_name){
 }
 
 gboolean eval_pcre_regex(pcre2_code * re, char * word){
-//  int ovector[9] = {0};
   if (re){
-  pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
-//  int rc = pcre2_exec(p, NULL, word, strlen(word), 0, 0, ovector, 9);
-  int rc = pcre2_match(re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
-  return (rc > 0) ? TRUE : FALSE;
+    pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(re, NULL);
+    int rc = pcre2_match(re, (PCRE2_SPTR)word, strlen(word), 0, 0, match_data, NULL);
+    return (rc > 0) ? TRUE : FALSE;
   }
   return TRUE;
 }
@@ -143,6 +137,6 @@ gboolean eval_partition_regex(char * word){
 
 void free_regex(){
   g_free(filename_re);
+  filename_re=NULL;
 }
-
 

@@ -28,6 +28,7 @@
 #include "mydumper_database.h"
 #include "mydumper_write.h"
 #include "mydumper_global.h"
+#include "mydumper_working_thread.h"
 
 /* Program options */
 gboolean dump_triggers = FALSE;

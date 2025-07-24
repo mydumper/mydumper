@@ -101,7 +101,6 @@ void *process_stream(void *data){
           f=open(sf->filename,O_RDONLY);
           if (f < 0){
             m_error("File failed to open: %s (%s). Cancelling",sf->filename, strerror(errno));
-            exit(EXIT_FAILURE);
           }
         }
         trace("Streaming %s", sf->filename);

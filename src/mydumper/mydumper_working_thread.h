@@ -23,6 +23,31 @@
 #define INSERT "INSERT"
 #define REPLACE "REPLACE"
 #define UNLOCK_TABLES "UNLOCK TABLES"
+
+
+#ifndef _src_mydumper_working_thread_h
+#define _src_mydumper_working_thread_h
+
+struct thread_data_buffers {
+  GString *statement;
+  GString *row;
+  GString *escaped;
+  GString *column;
+};
+
+struct thread_data {
+  struct configuration *conf;
+  guint thread_id;
+  char *table_name;
+  MYSQL *thrconn;
+  gchar *binlog_snapshot_gtid_executed;
+  GMutex *pause_resume_mutex;
+  struct thread_data_buffers thread_data_buffers;
+};
+
+#endif
+
+
 typedef gchar * (*fun_ptr2)(gchar **);
 
 void initialize_working_thread();

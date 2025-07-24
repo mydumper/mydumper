@@ -21,6 +21,12 @@
 
 #ifndef _src_mydumper_jobs_h
 #define _src_mydumper_jobs_h
+
+struct job {
+  enum job_type type;
+  void *job_data;
+};
+
 struct schema_metadata_job {
   FILE *metadata_file;
   GMutex *release_binlog_mutex;
@@ -61,6 +67,8 @@ struct view_job {
   gboolean checksum_filename;
 };
 
+#endif
+
 void initialize_jobs();
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job);
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job);
@@ -71,4 +79,3 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job);
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job);
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job);
-#endif

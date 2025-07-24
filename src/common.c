@@ -72,6 +72,7 @@ void initialize_set_names(){
 
 void free_set_names(){
   g_free(set_names_str);
+  set_names_str=NULL;
   g_free(set_names_statement);
 }
 

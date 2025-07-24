@@ -21,7 +21,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void initialize_file_handler(gboolean is_pipe);
+
+struct filename_queue_element{
+  struct db_table *dbt;
+  gchar *filename;
+  GAsyncQueue *done;
+};
+
+
+struct fifo{
+  gchar *filename;
+  gchar *stdout_filename;
+  GAsyncQueue * queue;
+  float size;
+  struct db_table *dbt;
+  int fdout;
+  GPid gpid;
+  int child_pid;
+  int pipe[2];
+  GMutex *out_mutex;
+  int error_number;
+};
+
+void set_pipe_backup();
+void initialize_file_handler();
 int m_open_pipe(char **filename, const char *type);
 void release_pid();
 void child_process_ended(int child_pid);
