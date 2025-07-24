@@ -36,7 +36,8 @@ gboolean ignore_generated_fields = FALSE;
 gboolean skip_definer = FALSE;
 
 extern gchar *table_engine_for_view_dependency;
-
+extern gchar *case_sensitive_prefix;
+extern gchar *case_sensitive_suffix;
 // Shared variables
 int (*m_open)(char **filename, const char *);
 
@@ -559,7 +560,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     g_assert(nroutines > 0);
     struct M_ROW *mr=NULL;
     for (guint r= 0; r < nroutines; r++) {
-      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
+      query= g_strdup_printf("SHOW %s STATUS WHERE %s Db %s = '%s'", routine_type[r], case_sensitive_prefix, case_sensitive_suffix, database->escaped);
       MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping %s from %s", routine_type[r], database->name);
       g_free(query);
       if (!result)

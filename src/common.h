@@ -51,6 +51,9 @@
 #define ZSTD_EXTENSION ".zst"
 #define GZIP_EXTENSION ".gz"
 #define EMPTY_STRING ""
+#define CAST "CAST("
+#define AS_BINARY "AS BINARY)"
+
 
 extern GList *ignore_errors_list;
 extern const gchar *start_replica;
