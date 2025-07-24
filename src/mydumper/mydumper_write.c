@@ -271,6 +271,9 @@ void finalize_write(){
   g_free(statement_terminated_by);
 }
 
+gboolean is_hex_blob (MYSQL_FIELD field){
+  return hex_blob && (field.type == MYSQL_TYPE_BLOB || ( field.charsetnr== 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING )));
+}
 
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
@@ -292,7 +295,7 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
       appendable=TRUE;
-    }else if (hex_blob && fields[i].type == MYSQL_TYPE_BLOB){
+    }else if ( is_hex_blob(fields[i])){
       g_string_append_c(statement,'@');
       g_string_append(statement, fields[i].name);
       if (str->len > 4)
@@ -563,7 +566,7 @@ guint64 get_estimated_remaining_of_all_chunks(){
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
     if (!*column) {
       g_string_append(buffers.column, "\\N");
-    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
+    } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       mysql_hex_string(buffers.escaped->str,*column,length);
       g_string_append(buffers.column,buffers.escaped->str);
@@ -590,7 +593,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( length == 0){
       g_string_append_c(buffers.column,*fields_enclosed_by);
       g_string_append_c(buffers.column,*fields_enclosed_by);
-    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
+    } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       g_string_append(buffers.column,"0x");
       mysql_hex_string(buffers.escaped->str,*column,length);
