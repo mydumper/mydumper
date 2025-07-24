@@ -65,6 +65,8 @@ gint source_data=0;
 gchar *throttle_variable=NULL;
 guint throttle_value=0;
 
+gchar *server_version_arg=NULL;
+
 GOptionEntry common_entries[] = {
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
       "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
@@ -85,6 +87,8 @@ GOptionEntry common_entries[] = {
       "Instruct the proper commands to execute depending where are configuring the replication. Options: TRADITIONAL, AWS", NULL},
     {"optimize-keys-engines", 0, 0, G_OPTION_ARG_CALLBACK , &common_arguments_callback,
       "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
+    {"server-version", 0, 0, G_OPTION_ARG_STRING, &server_version_arg,
+      "Set the server version avoid automatic detection", NULL},
     {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, 
       "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
