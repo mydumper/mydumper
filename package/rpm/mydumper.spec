@@ -8,6 +8,7 @@ Vendor:         David Ducos
 URL:            https://github.com/mydumper/mydumper
 Source:         mydumper-%{version}.tar.gz
 BuildArch:      %{architecture}
+Requires:       pcre2
 AutoReq:        no
 %define _rpmfilename %{name}-%{version}-%{release}.%{distro}.%{arch}.rpm
 
