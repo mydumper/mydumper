@@ -44,22 +44,33 @@ static gboolean is_pipe=FALSE;
 // FILE open/close without pipe
 int m_open_file(char **filename, const char *type ){
   (void) type;
-  return open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
+  int fd=open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
+  if (fd<0)
+    m_critical("Couldn't open file(%s): %s", *filename, strerror(errno));
+  return fd;
 }
 
 int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt){
-  int r=close(file);
-  if (size > 0){
-    if (exec_command)  exec_queue_push(dbt, g_strdup(filename));
-    else if (stream) stream_queue_push(dbt, g_strdup(filename));
-  }else if (!build_empty_files){
-    if (remove(filename)) {
-      g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
-    }else{
-      g_debug("Thread %d: File removed: %s", thread_id, filename);
+  if (file >= 0){
+    trace("Closing file(%d): %s", file, filename);
+    int r=close(file);
+    if (size > 0){
+      if (exec_command)  exec_queue_push(dbt, g_strdup(filename));
+      else if (stream) stream_queue_push(dbt, g_strdup(filename));
+    }else if (!build_empty_files){
+      if (filename){
+        if (remove(filename)) {
+          g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
+        }else{
+          g_debug("Thread %d: File removed: %s", thread_id, filename);
+        }
+      }
+      return r;
     }
+  }else{
+    m_critical("Trying to close %s with fd: %d", filename, file); 
   }
-  return r;
+  return 0;
 }
 
 // PIPE related functions 

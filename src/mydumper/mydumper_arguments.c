@@ -29,6 +29,7 @@
 
 extern guint64 min_integer_chunk_step_size;
 extern guint64 max_integer_chunk_step_size;
+extern guint max_time_per_select;
 
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
@@ -268,6 +269,8 @@ static GOptionEntry daemon_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry chunks_entries[] = {
+    {"max-time-per-select", 0, 0, G_OPTION_ARG_INT, &max_time_per_select,
+      "Maximum amount of seconds that a select should take. Default: 2", NULL},
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
       "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 

@@ -53,11 +53,12 @@ struct integer_step {
   guint64 estimated_remaining_steps;
   gboolean check_max;
   gboolean check_min;
+  guint64 rows_in_explain;
 };
 #endif 
 
 guint64 gint64_abs(gint64 a);
-struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn);
+struct chunk_step_item *new_integer_step_item(gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 number, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn, guint64 rows_in_explain);
 void free_integer_step(union chunk_step * cs);
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt);
 void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi);
