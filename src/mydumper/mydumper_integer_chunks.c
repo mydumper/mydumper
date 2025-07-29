@@ -60,14 +60,12 @@ void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union t
   cs->integer_step.max_chunk_step_size = max_css;
   if (cs->integer_step.is_unsigned){
     cs->integer_step.type.unsign.min = type.unsign.min;
-    cs->integer_step.type.unsign.initial_min = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min;
     cs->integer_step.type.unsign.max = type.unsign.max;
     cs->integer_step.step = step;
     cs->integer_step.estimated_remaining_steps=(cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min) / cs->integer_step.step;
   }else{
     cs->integer_step.type.sign.min = type.sign.min;
-    cs->integer_step.type.sign.initial_min = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min;
     cs->integer_step.type.sign.max = type.sign.max;
     cs->integer_step.step = step;

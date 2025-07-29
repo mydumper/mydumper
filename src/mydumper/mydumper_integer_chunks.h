@@ -27,14 +27,12 @@
 #include "mydumper_chunks.h"
 
 struct unsigned_int{
-  guint64 initial_min;
   guint64 min;
   guint64 cursor;
   guint64 max;
 };
 
 struct signed_int{
-  gint64 initial_min;
   gint64 min;
   gint64 cursor;
   gint64 max;
