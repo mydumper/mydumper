@@ -221,13 +221,13 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
   tj->part=part;
   tj->sub_part = 0;
   tj->rows=g_new0(struct table_job_file, 1);
-  tj->rows->file = 0;
+  tj->rows->file = -1;
   tj->rows->filename = NULL;
   if (output_format==SQL_INSERT)
 		tj->sql=NULL;
 	else{
 		tj->sql=g_new0(struct table_job_file, 1);
-    tj->sql->file = 0;
+    tj->sql->file = -1;
     tj->sql->filename = NULL;
   }
   tj->exec_out_filename = NULL;
@@ -243,14 +243,16 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
 }
 
 void free_table_job(struct table_job *tj){
-  if (tj->sql){
-    m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, tj->filesize, tj->dbt);
-    tj->sql->file=0;
+  if (tj->sql && tj->sql->file >= 0){
+    if (tj->sql->file >= 0)
+      m_close(tj->td->thread_id, tj->sql->file, tj->sql->filename, tj->filesize, tj->dbt);
+    tj->sql->file=-1;
     tj->sql=NULL;
   }
   if (tj->rows){
-    m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, tj->filesize, tj->dbt);
-    tj->rows->file=0;
+    if (tj->rows->file >= 0)
+      m_close(tj->td->thread_id, tj->rows->file, tj->rows->filename, tj->filesize, tj->dbt);
+    tj->rows->file=-1;
     tj->rows=NULL;
   }
 

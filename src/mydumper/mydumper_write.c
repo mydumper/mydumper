@@ -72,7 +72,7 @@ gboolean hex_blob = FALSE;
 
 gboolean update_files_on_table_job(struct table_job *tj)
 {
-  if (tj->rows->file == 0){
+  if (tj->rows->file < 0){
     tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
     trace("Thread %d: Filename assigned(%d): %s", tj->td->thread_id, tj->rows->file, tj->rows->filename);
@@ -660,14 +660,11 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
 }
 
 void close_file(struct table_job * tj, struct table_job_file *tjf){
-  if (tjf->file!=0){
+  if (tjf->file >= 0){
     m_close(tj->td->thread_id, tjf->file, tjf->filename, 1, tj->dbt);
-    tjf->file=0;
+    tjf->file=-1;
     g_free(tjf->filename);
     tjf->filename=NULL;
-  }else{
-    g_message("Not closing file: %d %s", tjf->file, tjf->filename);
-  
   }
 }
 
@@ -739,7 +736,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       }
 	  	break;
     case CLICKHOUSE:
-      if (tj->rows->file == 0){
+      if (tj->rows->file < 0){
         update_files_on_table_job(tj);
       }
 			if (dbt->load_data_suffix==NULL){
@@ -761,7 +758,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       break;
 		case SQL_INSERT:
-      if (tj->rows->file == 0){
+      if (tj->rows->file < 0){
         update_files_on_table_job(tj);
   		}
       if (dbt->insert_statement==NULL){
