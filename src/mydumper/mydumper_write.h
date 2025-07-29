@@ -30,5 +30,4 @@ void initialize_write();
 void finalize_write();
 void write_table_job_into_file(struct table_job *tj);
 gboolean write_data(int file, GString *data);
-void reopen_files(struct table_job * tj);
 void close_files(struct table_job * tj);

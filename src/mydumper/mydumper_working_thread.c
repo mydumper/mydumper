@@ -195,67 +195,6 @@ void finalize_working_thread(){
   g_free(threads);
   finalize_table();
 }
-/*
-static
-void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *conf){
-  MYSQL_RES *indexes = NULL;
-  MYSQL_ROW row;
-  dbt->primary_key=NULL;
-  // first have to pick index, in future should be able to preset in
-  //    * configuration too 
-  gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->name);
-  g_free(query);
-
-  if (indexes){
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[2], "PRIMARY") ) {
-        // Pick first column in PK, cardinality doesn't matter
-        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
-      }
-    }
-    if (dbt->primary_key)
-      goto cleanup;
-
-    // If no PK found, try using first UNIQUE index
-    mysql_data_seek(indexes, 0);
-    while ((row = mysql_fetch_row(indexes))) {
-      if (!strcmp(row[1], "0")) {
-        // Again, first column of any unique index 
-        dbt->primary_key=g_list_append(dbt->primary_key,g_strdup(row[4]));
-      }
-    }
-
-    if (dbt->primary_key)
-      goto cleanup;
-
-    // Still unlucky? Pick any high-cardinality index 
-    if (!dbt->primary_key && conf->use_any_index) {
-      guint64 max_cardinality = 0;
-      guint64 cardinality = 0;
-      gchar *field=NULL;
-      mysql_data_seek(indexes, 0);
-      while ((row = mysql_fetch_row(indexes))) {
-        if (!strcmp(row[3], "1")) {
-          if (row[6])
-            cardinality = strtoul(row[6], NULL, 10);
-          if (cardinality > max_cardinality) {
-            field = g_strdup(row[4]);
-            max_cardinality = cardinality;
-          }
-        }
-      }
-      if (field)
-        dbt->primary_key=g_list_append(dbt->primary_key,field);
-    }
-  }
-
-cleanup:
-  if (indexes)
-    mysql_free_result(indexes);
-}
-*/
 
 void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
   // TODO: This should be in a job as needs to be done by a thread.
@@ -373,10 +312,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
     g_async_queue_push(conf->db_ready,GINT_TO_POINTER(1));
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
   }
-
 }
-
-
 
 void thd_JOB_DUMP_TABLE_LIST(struct thread_data *td, struct job *job){
   struct dump_table_list_job * dtlj = (struct dump_table_list_job *)job->job_data;

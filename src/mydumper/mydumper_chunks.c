@@ -20,7 +20,7 @@
 */
 
 #include <gio/gio.h>
-
+#include <math.h>
 #include "mydumper.h"
 #include "mydumper_start_dump.h"
 #include "mydumper_database.h"
@@ -141,21 +141,27 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           type.sign.max=nmax;
         }
         guint64 _starting_chunk_step_size=0;
+        guint percentage_of_fragmentation = diff_btwn_max_min / rows;
+        g_message("percentage_of_fragmentation of `%s`.`%s` %f", dbt->database->name, dbt->table, log(percentage_of_fragmentation ));
         if (dbt->starting_chunk_step_size == 0){
-//          guint64 diff_max_min=unsign ? gint64_abs(type.unsign.max - type.unsign.min) : gint64_abs(type.sign.max - type.sign.min);
 
           _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
                                              (rows/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
                                                rows/num_threads):
-                                             rows/num_threads;
+//                                               rows/((log(percentage_of_fragmentation )+1)*num_threads)):
+                                                rows/num_threads;
+//                                             rows/((log(percentage_of_fragmentation )+1)*num_threads);
+          if (dbt->max_chunk_step_size==0)
+            max_chunk_step_size=rows/num_threads;
+            //            max_chunk_step_size=rows/((log(percentage_of_fragmentation )+1)*num_threads);
         }
         if (_starting_chunk_step_size < dbt->min_chunk_step_size)
           _starting_chunk_step_size=dbt->min_chunk_step_size;
 
         g_assert(_starting_chunk_step_size>0);
 
-        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn);
+        csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
 
         if (csi->chunk_step->integer_step.is_step_fixed_length){
           if (csi->chunk_step->integer_step.is_unsigned){
@@ -287,73 +293,96 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
 }
 
 gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list){
-  g_mutex_lock(dbt_list->mutex);
   GList *iter=dbt_list->list;
   struct db_table *dbt;
   gboolean are_there_jobs_defining=FALSE;
   struct chunk_step_item *lcs;
-//  struct chunk_step_item *(*get_next)(struct db_table *dbt);
-  while (iter){
-    dbt=iter->data;
-    g_mutex_lock(dbt->chunks_mutex);
+
+  gboolean finish=FALSE;
+  guint current_max_threads_running=0;
+  for (current_max_threads_running=0; current_max_threads_running < max_threads_per_table && !finish; current_max_threads_running++){
+//    g_message("Current current_max_threads_running: %d %d", current_max_threads_running, max_threads_per_table);
+
+    g_mutex_lock(dbt_list->mutex);
+    iter=dbt_list->list;
+  //  struct chunk_step_item *(*get_next)(struct db_table *dbt);
+    while (iter && !finish){
+      dbt=iter->data;
+      g_mutex_lock(dbt->chunks_mutex);
 //    g_message("Checking table: %s.%s", d->database->name, d->table);
-    if (dbt->status != DEFINING){
+      if (dbt->status != DEFINING){
 
-      if (dbt->status == UNDEFINED){
+        if (dbt->status == UNDEFINED){
 //        g_message("Checking table: %s.%s DEFINING NOW", d->database->name, d->table);
-        *dbt_pointer=iter->data;
-        dbt->status = DEFINING;
-        are_there_jobs_defining=TRUE;
-        g_mutex_unlock(dbt->chunks_mutex);
-        break;
-      }
+          *dbt_pointer=iter->data;
+          dbt->status = DEFINING;
+          are_there_jobs_defining=TRUE;
+          g_mutex_unlock(dbt->chunks_mutex);
+          finish=TRUE;
+          goto next;
+        }
 
-      // Set by set_chunk_strategy_for_dbt() in working_thread()
-      g_assert(dbt->status == READY);
+        // Set by set_chunk_strategy_for_dbt() in working_thread()
+        g_assert(dbt->status == READY);
 
-      // Initially chunks are set by set_chunk_strategy_for_dbt() and then by
-      // chunk_functions.get_next(d) (see below)
-      if (dbt->chunks == NULL){
-        g_mutex_unlock(dbt->chunks_mutex);
-        goto next;
-      }
+        // Initially chunks are set by set_chunk_strategy_for_dbt() and then by
+        // chunk_functions.get_next(d) (see below)
+        if (dbt->chunks == NULL){
+          g_mutex_unlock(dbt->chunks_mutex);
+          goto next;
+        }
 
-      lcs = (struct chunk_step_item *)g_list_first(dbt->chunks)->data;
-      if (lcs->chunk_type == NONE){
-        *dbt_pointer=iter->data;
-        *csi = lcs;
-        dbt_list->list=g_list_remove(dbt_list->list,dbt);
-        g_mutex_unlock(dbt->chunks_mutex);
-        break;
-      }
+        // Reading first chunk 
+        lcs = (struct chunk_step_item *)g_list_first(dbt->chunks)->data;
+        // If it is a full table scan, we assign it and exit
+        if (lcs->chunk_type == NONE){
+          *dbt_pointer=iter->data;
+          *csi = lcs;
+          dbt_list->list=g_list_remove(dbt_list->list,dbt);
+          g_mutex_unlock(dbt->chunks_mutex);
+          finish=TRUE;
+          goto next;
+        }
 
-      if (dbt->max_threads_per_table <= dbt->current_threads_running){
-        g_mutex_unlock(dbt->chunks_mutex);
-        goto next;
-      }
-      dbt->current_threads_running++;
-      lcs=lcs->chunk_functions.get_next(dbt);
+        // if we reach the max limit of threads per table, we continue with next table
+        if (dbt->max_threads_per_table <= dbt->current_threads_running){
+          g_mutex_unlock(dbt->chunks_mutex);
+          goto next;
+        }
 
-      if (lcs!=NULL){
-        *dbt_pointer=iter->data;
-        *csi = lcs;
-        g_mutex_unlock(dbt->chunks_mutex);
-        break;
+        if (dbt->current_threads_running > current_max_threads_running ){
+          g_mutex_unlock(dbt->chunks_mutex);
+          goto next;
+        }
+
+        lcs=lcs->chunk_functions.get_next(dbt);
+
+        if (lcs!=NULL){
+          dbt->current_threads_running++;
+          *dbt_pointer=iter->data;
+          *csi = lcs;
+          g_mutex_unlock(dbt->chunks_mutex);
+          finish=TRUE;
+          goto next;
+        }else{
+          // If there is no more chunks on this table, we remove it from the list, and continue with the next table
+          iter=iter->next;
+          // Assign iter previous removing dbt from list is important as we might break the list
+          dbt_list->list=g_list_remove(dbt_list->list,dbt);
+          g_mutex_unlock(dbt->chunks_mutex);
+          // we just continue as iter has been already set
+         continue;
+        }
       }else{
-        iter=iter->next;
-        // Assign iter previous removing dbt from list is important as we might break the list
-        dbt_list->list=g_list_remove(dbt_list->list,dbt);
         g_mutex_unlock(dbt->chunks_mutex);
-        continue;
+        are_there_jobs_defining=TRUE;
       }
-    }else{
-      g_mutex_unlock(dbt->chunks_mutex);
-      are_there_jobs_defining=TRUE;
-    }
 next:
-    iter=iter->next;
+      iter=iter->next;
+    }
+    g_mutex_unlock(dbt_list->mutex);
+
   }
-  g_mutex_unlock(dbt_list->mutex);
   return are_there_jobs_defining;
 }
 
