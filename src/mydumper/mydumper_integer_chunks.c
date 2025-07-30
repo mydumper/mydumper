@@ -128,6 +128,7 @@ void free_integer_step_item(struct chunk_step_item * csi){
   }
   if (csi->where){
     g_string_free(csi->where, TRUE);
+    csi->where=NULL;
   }
   if (csi->field){
     g_free(csi->field);
