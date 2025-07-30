@@ -19,7 +19,6 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <gio/gio.h>
-
 #include "mydumper_start_dump.h"
 #include "mydumper_common.h"
 #include "mydumper_jobs.h"
@@ -28,7 +27,7 @@
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_create_jobs.h"
-
+#include "mydumper_chunks.h"
 //
 // Enqueueing in initial_queue
 //
@@ -259,6 +258,10 @@ void free_table_job(struct table_job *tj){
   if (tj->where!=NULL)
     g_string_free(tj->where,TRUE);
 
+  if (tj->chunk_step_item){
+    tj->chunk_step_item->chunk_functions.free(tj->chunk_step_item);
+    tj->chunk_step_item=NULL;
+  }
   g_free(tj);
 }
 

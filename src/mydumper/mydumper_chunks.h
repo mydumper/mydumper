@@ -50,6 +50,7 @@ enum chunk_states{
 struct chunk_functions{
   void (*process)(struct table_job *tj, struct chunk_step_item *csi);
   struct chunk_step_item *(*get_next)(struct db_table *dbt);
+  void (*free)(struct chunk_step_item *csi);
 };
 
 union chunk_step {
