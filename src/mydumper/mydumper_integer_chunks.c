@@ -231,7 +231,7 @@ return ( csi->chunk_step->integer_step.is_step_fixed_length && (
 ) );
 }
 
-
+static
 gboolean is_splitable(struct chunk_step_item *csi){
 return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max
         && (
@@ -258,6 +258,36 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_s
 
 ) );
 }
+
+static
+gboolean is_last_step(struct chunk_step_item *csi){
+return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (
+      ( csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.unsign.cursor < csi->chunk_step->integer_step.type.unsign.max
+        && (
+             ( csi->status == DUMPING_CHUNK && (csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.cursor ) <= csi->chunk_step->integer_step.step
+             )
+           )
+    )) || 
+      ( ! csi->chunk_step->integer_step.is_unsigned && (csi->chunk_step->integer_step.type.sign.cursor < csi->chunk_step->integer_step.type.sign.max
+        && (
+             ( csi->status == DUMPING_CHUNK && gint64_abs(csi->chunk_step->integer_step.type.sign.max - csi->chunk_step->integer_step.type.sign.cursor) <= csi->chunk_step->integer_step.step
+             )
+           )
+         )
+)) ); 
+  /*
+  || ( csi->chunk_step->integer_step.is_step_fixed_length && csi->chunk_step->integer_step.step > 0 && (
+(
+  csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.unsign.max / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.unsign.min / csi->chunk_step->integer_step.step + 1
+)||
+(
+ !csi->chunk_step->integer_step.is_unsigned && csi->chunk_step->integer_step.type.sign.max   / csi->chunk_step->integer_step.step > csi->chunk_step->integer_step.type.sign.min   / csi->chunk_step->integer_step.step + 1
+)
+
+) );*/
+}
+
+
 
 void update_where_on_integer_step(struct chunk_step_item * csi);
 
@@ -286,6 +316,33 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
       }
       if (csi->status==COMPLETED){
         goto end;
+      }
+      if (is_last_step(csi)){
+        trace("Last chunk on step in `%s`.`%s` assigned", dbt->database->name, dbt->table);
+        csi->status=UNSPLITTABLE;
+        csi->deep=csi->deep+1;
+        new_csi=clone_chunk_step_item(csi);
+        new_csi->status=ASSIGNED;
+
+        if (csi->chunk_step->integer_step.is_unsigned){
+          csi->chunk_step->integer_step.type.unsign.max=csi->chunk_step->integer_step.type.unsign.cursor;
+          new_csi->chunk_step->integer_step.type.unsign.min=csi->chunk_step->integer_step.type.unsign.cursor+1;
+        }else{
+          csi->chunk_step->integer_step.type.sign.max=csi->chunk_step->integer_step.type.sign.cursor;
+          new_csi->chunk_step->integer_step.type.sign.min=csi->chunk_step->integer_step.type.sign.cursor+1;
+        }
+
+        new_csi->part+=pow(2,csi->deep);
+        update_where_on_integer_step(new_csi);
+
+        dbt->chunks=g_list_append(dbt->chunks,new_csi);
+        // should I push them again? isn't it pointless?
+        g_async_queue_push(dbt->chunks_queue, csi);
+        g_async_queue_push(dbt->chunks_queue, new_csi);
+        //
+        g_mutex_unlock(csi->mutex);
+        return new_csi;
+      
       }
       if (!is_splitable(csi)){
         if (csi->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
@@ -542,7 +599,9 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   if (!c_min && !c_max){
     trace("Thread %d: both min and max doesn't exists", td->thread_id);
     close_files(tj);
-    goto end_process; 
+    g_mutex_unlock(csi->mutex);
+    goto update_min;
+//    goto end_process; 
   }
 
 
@@ -771,7 +830,7 @@ update_min:
 
 //  g_message("Thread %d: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld", td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
 
-end_process:
+//end_process:
 
   if (csi->position==0)
     csi->multicolumn=tj->dbt->multicolumn;
