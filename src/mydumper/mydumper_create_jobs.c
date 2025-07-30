@@ -259,8 +259,8 @@ void free_table_job(struct table_job *tj){
     g_string_free(tj->where,TRUE);
 
   if (tj->chunk_step_item){
-    if (tj->chunk_step_item->chunk_functions.free)
-      tj->chunk_step_item->chunk_functions.free(tj->chunk_step_item);
+//    if (tj->chunk_step_item->chunk_functions.free)
+//      tj->chunk_step_item->chunk_functions.free(tj->chunk_step_item);
     g_free(tj->chunk_step_item);
     tj->chunk_step_item=NULL;
   }
