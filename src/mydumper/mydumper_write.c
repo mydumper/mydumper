@@ -853,6 +853,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     }
 		tj->st_in_file++;
   }
+  if (from)
+    g_date_time_unref(from);
+  if (to)
+    g_date_time_unref(to);
+
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
 //  g_string_free(statement_row, TRUE);	

@@ -68,6 +68,7 @@ void initialize_chunk_step_as_none(struct chunk_step_item * csi){
   csi->part=0;
   csi->chunk_type=NONE;
   csi->chunk_functions.process=&process_none_chunk;
+  csi->chunk_functions.free=NULL;
   csi->chunk_step = NULL;
 }
 

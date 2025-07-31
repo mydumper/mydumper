@@ -84,6 +84,8 @@ union chunk_step *new_integer_step(gboolean is_unsigned, union type type, gboole
   return cs;
 }
 
+void free_integer_step_item(struct chunk_step_item * csi);
+
 static
 void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_null, GString *prefix, gchar *field, gboolean is_unsigned, union type type, guint deep, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, gboolean multicolumn, guint64 rows_in_explain){
   csi->chunk_step = new_integer_step(is_unsigned, type, is_step_fixed_length, step, min_css, max_css, check_min, check_max, rows_in_explain);
@@ -92,6 +94,7 @@ void initialize_integer_step_item(struct chunk_step_item *csi, gboolean include_
   csi->next=next;
   csi->status = UNASSIGNED;
   csi->chunk_functions.process = &process_integer_chunk;
+  csi->chunk_functions.free=&free_integer_step_item;
 //  csi->chunk_functions.update_where = &get_integer_chunk_where;
   csi->chunk_functions.get_next = &get_next_integer_chunk;
   csi->where=g_string_new("");
@@ -123,6 +126,19 @@ void free_integer_step_item(struct chunk_step_item * csi){
     free_integer_step(csi->chunk_step);
     csi->chunk_step=NULL;
   }
+  if (csi->where){
+    g_string_free(csi->where, TRUE);
+    csi->where=NULL;
+  }
+  if (csi->field){
+    g_free(csi->field);
+    csi->field=NULL;
+  }
+  if (csi->mutex){
+    g_mutex_free(csi->mutex);
+    csi->mutex=NULL;
+  }
+
   // We cannot free it here, otherwise get_next_integer_chunk() fails
   // g_free(csi);
 }
@@ -569,17 +585,18 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   csi->status = DUMPING_CHUNK;
 
   gboolean c_min=TRUE, c_max=TRUE;
-  
 
-  if (cs->integer_step.check_max /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
-    trace("Thread %d: Updating MAX", td->thread_id);
-    if (cs->integer_step.is_unsigned)
-      trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
-    else
-      trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
-    c_max=update_integer_max(td->thrconn, tj->dbt, csi);
-    if (cs->integer_step.is_unsigned)
-      trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+  if (!cs->integer_step.is_step_fixed_length){  
+
+    if (cs->integer_step.check_max /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
+      trace("Thread %d: Updating MAX", td->thread_id);
+      if (cs->integer_step.is_unsigned)
+        trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+      else
+        trace("Thread %d: Updating MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
+      c_max=update_integer_max(td->thrconn, tj->dbt, csi);
+      if (cs->integer_step.is_unsigned)
+        trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
     else
       trace("Thread %d: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
     cs->integer_step.check_max=FALSE;
@@ -605,11 +622,12 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
 
 
-  if (cs->integer_step.rows_in_explain == 0){
+  if ( cs->integer_step.rows_in_explain == 0){
     GString *_where=get_where_from_csi(csi);
     cs->integer_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field); 
     trace("Thread %d: We calculated rows %"G_GUINT64_FORMAT" for %s", td->thread_id, cs->integer_step.rows_in_explain, _where->str);
     g_string_free(_where, TRUE);
+  }
   }
 
 
@@ -774,10 +792,6 @@ retry:
       if (diff>0 && tj->num_rows_of_last_run>0){
         cs->integer_step.step=tj->num_rows_of_last_run*max_time_per_select*G_TIME_SPAN_SECOND/diff;
         trace("Thread %d: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->name, tj->dbt->table, cs->integer_step.step, tj->num_rows_of_last_run, diff);
-
-//2025-07-28 19:48:04 [INFO] - Thread 3: dumping data from `sbtest`.`sb_int` WHERE (1475486539 <= `id` AND `id` <= 1476486538) into data/sbtest.sb_int.00000.sql | Completed: 51% | Remaining tables: 3 / 3
-//2025-07-28 19:48:04 [DEBUG] - [0x5555555c6640] Thread 3: Step size on `sbtest`.`sb_int` is 38435775486  ( 16777216 873)
-
       }else{
         cs->integer_step.step*=2;
         cs->integer_step.check_min=TRUE;
