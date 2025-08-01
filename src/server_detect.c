@@ -34,6 +34,10 @@ const gchar *show_replica_status=NULL;
 const gchar *show_all_replicas_status=NULL;
 const gchar *show_binary_log_status=NULL;
 const gchar *change_replication_source=NULL;
+const gchar *case_sensitive_prefix=NULL;
+const gchar *case_sensitive_suffix=NULL;
+
+extern gchar *server_version_arg;
 
 int get_product(){
   return product;
@@ -48,6 +52,19 @@ int get_revision(){
       return revision;
 }
 
+const gchar * get_product_name(){
+  switch (get_product()){
+    case SERVER_TYPE_PERCONA:   return "Percona"; break;
+    case SERVER_TYPE_MYSQL:     return "MySQL";   break;
+    case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
+    case SERVER_TYPE_TIDB:      return "TiDB"; break;
+    case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
+    case SERVER_TYPE_DOLT:      return "Dolt"; break;
+    case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
+    default: return "";
+  }
+}
+
 gboolean is_mysql_like(){
   return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN;
 }
@@ -56,32 +73,46 @@ gboolean server_support_tablespaces(){
   return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
 }
 
+static
+void detect_product(gchar *_ascii_version_comment, gchar *_ascii_version){
+  gchar *ascii_version=_ascii_version?g_ascii_strdown(_ascii_version,-1):NULL;
+  gchar *ascii_version_comment=_ascii_version_comment?g_ascii_strdown(_ascii_version_comment,-1):NULL;
+
+  if ( (ascii_version && g_strstr_len(ascii_version, -1, "percona") ) || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "percona"))){
+    product = SERVER_TYPE_PERCONA;
+  }else
+  if ( (ascii_version && g_strstr_len(ascii_version, -1, "mariadb")) || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "mariadb"))){
+    product = SERVER_TYPE_MARIADB;
+  }else
+  if ( (ascii_version && g_strstr_len(ascii_version, -1, "tidb"))    || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "tidb"))){
+    product = SERVER_TYPE_TIDB;
+  }else
+  if ( (ascii_version && g_strstr_len(ascii_version, -1, "dolt"))    || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "dolt"))){
+    product = SERVER_TYPE_DOLT;
+  }else
+  if ( (ascii_version && g_strstr_len(ascii_version, -1, "mysql"))   || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "mysql")) || 
+       (ascii_version && g_strstr_len(ascii_version, -1, "source"))  || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "source"))){
+    product = SERVER_TYPE_MYSQL;
+  }
+}
+
+static
+void detect_version(gchar ** sver){
+  major=strtol(sver[0], NULL, 10);
+  secondary=strtol(sver[1], NULL, 10);
+  revision=strtol(sver[2], NULL, 10);
+}
+
+static
 void detect_server_version(MYSQL * conn) {
   struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
 //  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
 
-  gchar *ascii_version=NULL;
   gchar *ascii_version_comment=NULL;
 
   if (mr->row){
     ascii_version_comment=g_ascii_strdown(mr->row[0],-1);
-    ascii_version        =g_ascii_strdown(mr->row[1],-1);
-
-    if (g_strstr_len(ascii_version, -1, "percona") || g_strstr_len(ascii_version_comment, -1, "percona")){
-      product = SERVER_TYPE_PERCONA;
-    }else
-    if (g_strstr_len(ascii_version, -1, "mariadb") || g_strstr_len(ascii_version_comment, -1, "mariadb")){
-      product = SERVER_TYPE_MARIADB;
-    }else
-    if (g_strstr_len(ascii_version, -1, "tidb") || g_strstr_len(ascii_version_comment, -1, "tidb")){
-      product = SERVER_TYPE_TIDB;
-    }else
-    if (g_strstr_len(ascii_version, -1, "dolt") || g_strstr_len(ascii_version_comment, -1, "dolt")){
-      product = SERVER_TYPE_DOLT;
-    }else
-    if (g_strstr_len(ascii_version, -1, "mysql") || g_strstr_len(ascii_version_comment, -1, "mysql") || g_strstr_len(ascii_version, -1, "source") || g_strstr_len(ascii_version_comment, -1, "source")){
-      product = SERVER_TYPE_MYSQL;    
-    }
+    detect_product(mr->row[0],mr->row[1]);
   }
 
 	gchar ** sver=NULL;
@@ -89,27 +120,44 @@ void detect_server_version(MYSQL * conn) {
     m_store_result_row_free(mr);
     mr = m_store_result_row(conn, "SELECT value FROM system.build_options where name='VERSION_FULL' LIMIT 1",m_warning,m_message,"Not able to determine database version", NULL);
     if (mr->row){
-      ascii_version=g_ascii_strdown(mr->row[0],-1);
+      gchar * ascii_version=g_ascii_strdown(mr->row[0],-1);
       gchar ** psver=g_strsplit(ascii_version," ",2);
       if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
         product = SERVER_TYPE_CLICKHOUSE;
       sver=g_strsplit(psver[1],".",4);
       }
       g_strfreev(psver);
-		}else
+      g_free(ascii_version);
+	}else
       sver=g_strsplit("0.0.0",".",3);
 	}else
     sver=g_strsplit(mr->row[1],".",3);
   m_store_result_row_free(mr);
 
-  major=strtol(sver[0], NULL, 10);
-  secondary=strtol(sver[1], NULL, 10);
-  revision=strtol(sver[2], NULL, 10);
-  g_strfreev(sver);
-  g_free(ascii_version);
-  g_free(ascii_version_comment);
-  
+  detect_version(sver);
 
+  g_strfreev(sver);
+  g_free(ascii_version_comment);
+}
+
+static
+void detect_lower_case_table_names(MYSQL * conn) {
+  guint lower_case_table_names=0;
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@lower_case_table_names",m_warning, m_message, "Not able to determine lower_case_table_names", NULL);
+  if (mr->row)
+    lower_case_table_names=atoi(mr->row[0]);
+  if (lower_case_table_names){
+    case_sensitive_prefix=CAST;
+    case_sensitive_suffix=AS_BINARY;
+  }else{
+    case_sensitive_prefix=EMPTY_STRING;
+    case_sensitive_suffix=EMPTY_STRING;
+  }
+  m_store_result_row_free(mr);
+}
+
+static
+void detect_replica() {
   show_replica_status=SHOW_SLAVE_STATUS;
   show_binary_log_status=SHOW_MASTER_STATUS;
 
@@ -179,21 +227,20 @@ void detect_server_version(MYSQL * conn) {
   }
 }
 
-const gchar * get_product_name(){
-  switch (get_product()){
-  case SERVER_TYPE_PERCONA:   return "Percona"; break;
-  case SERVER_TYPE_MYSQL:     return "MySQL";   break;
-  case SERVER_TYPE_MARIADB:   return "MariaDB"; break;
-  case SERVER_TYPE_TIDB:      return "TiDB"; break;
-  case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
-  case SERVER_TYPE_DOLT:      return "Dolt"; break;
-  case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
-  default: return "";
+void server_detect(MYSQL * conn){
+  if (server_version_arg){
+    gchar ** _product=g_strsplit(server_version_arg,"-",2);
+    detect_product(_product[0],_product[1]);
+    if (_product[1]){
+      gchar ** sver=g_strsplit(_product[1],".",3);
+      detect_version(sver);
+      g_strfreev(sver);
+    }
+    g_strfreev(_product);
+  }else
+    detect_server_version(conn);
+  detect_lower_case_table_names(conn);
+  detect_replica();  
 }
-
-
-}
-
-
 
 

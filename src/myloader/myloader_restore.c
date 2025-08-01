@@ -597,11 +597,14 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             gchar *from_equal=g_strstr_len(data->str, strlen(data->str),"=");
             if (from_equal && ignore_set_list ){
               *from_equal='\0';
-              if (!is_in_ignore_set_list(data->str)) {
+              gchar * var_name=g_strrstr(data->str," ");
+              var_name++;
+              if (!is_in_ignore_set_list(var_name)) {
                 *from_equal='=';
                 g_string_append(header,data->str);
               }else{
                 *from_equal='=';
+                goto STMT_IGNORED;
               }
             }else{
               g_string_append(header,data->str);
@@ -614,13 +617,14 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }
-        r|= ir->result;
 
+        r|= ir->result;
+        if (ir->result>0)
+          g_critical("(1)Error occurs processing file %s",filename);
+
+STMT_IGNORED:
         g_string_set_size(data, 0);
         preline=line+1;
-        if (ir->result>0){
-          g_critical("(1)Error occurs processing file %s",filename);
-        }
       }
     } else {
       g_critical("error reading file %s (%d)", filename, errno);

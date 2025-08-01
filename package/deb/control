@@ -5,7 +5,7 @@ Maintainer: David Ducos <david.ducos@gmail.com>
 Homepage: https://github.com/mydumper/mydumper
 Package: mydumper
 Version: %{version}~%{distro}
-Pre-Depends: libatomic1, libglib2.0-0, libpcre3
+Pre-Depends: libatomic1, libglib2.0-0, libpcre2-dev
 Architecture: %{architecture}
 Description: mydumper and myloader MySQL backup tools
  This package provides mydumper and myloader MySQL backup tools.

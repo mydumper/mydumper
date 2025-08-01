@@ -72,6 +72,7 @@ struct chunk_step_item *new_real_partition_step_item(GList *partition, guint dee
   csi->chunk_step = new_real_partition_step(partition);
   csi->chunk_functions.process = &process_partition_chunk;
   csi->chunk_functions.get_next = &get_next_partition_chunk;
+  csi->chunk_functions.free=NULL;
   csi->status= UNASSIGNED;
   csi->mutex = g_mutex_new();
   csi->deep = deep;

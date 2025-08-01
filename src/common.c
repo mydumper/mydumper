@@ -31,7 +31,6 @@
 #include "common_options.h"
 //#include "mydumper_global.h"
 
-extern gboolean success_on_1146;
 extern gboolean help;
 guint errors=0;
 GList *ignore_errors_list=NULL;
@@ -73,61 +72,52 @@ void initialize_set_names(){
 
 void free_set_names(){
   g_free(set_names_str);
+  set_names_str=NULL;
   g_free(set_names_statement);
 }
 
-char *generic_checksum(MYSQL *conn, char *database, char *table, int *errn,const gchar *query_template, int column_number){
-  MYSQL_RES *result = NULL;
-  MYSQL_ROW row;
-  *errn=0;
+char *generic_checksum(MYSQL *conn, char *database, char *table, const gchar *query_template, int column_number){
   char *query = g_strdup_printf(query_template, database, table);
-  if (mysql_query(conn, query) || !(result = mysql_use_result(conn))) {
-    g_critical("Error dumping checksum (%s.%s): %s", database, table, mysql_error(conn));
-    *errn=mysql_errno(conn);
-    g_free(query);
-    return NULL;
-  }
-
-  /* There should never be more than one row */
-  row = mysql_fetch_row(result);
-  char * r=NULL;
-  if (row != NULL) r=g_strdup_printf("%s",row[column_number]);
+  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s)", database, table);
   g_free(query);
-  mysql_free_result(result);
+  char * r=NULL;
+  if (mr->row)
+    r=g_strdup_printf("%s",mr->row[column_number]);
+  m_store_result_row_free(mr);
   return r;
 }
 
-char * checksum_table(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn, "CHECKSUM TABLE `%s`.`%s`", 1);
+char * checksum_table(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "CHECKSUM TABLE `%s`.`%s`", 1);
 }
 
 
-char * checksum_table_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
+char * checksum_table_structure(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
 }
 
-char * checksum_process_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 0);
+char * checksum_process_structure(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 0);
 }
 
-char * checksum_trigger_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
+char * checksum_trigger_structure(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
 }
 
-char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s';",0);
+char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s';",0);
 }
 
-char * checksum_view_structure(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",0);
+char * checksum_view_structure(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",0);
 }
 
-char * checksum_database_defaults(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
+char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
 }
 
-char * checksum_table_indexes(MYSQL *conn, char *database, char *table, int *errn){
-  return generic_checksum(conn, database, table, errn,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
+char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
 }
 
 GKeyFile * load_config_file(gchar * config_file){
@@ -1337,9 +1327,11 @@ static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2
     if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
       log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
     else{
-      if (mysql_errno(conn))
+      if (mysql_errno(conn)){
         log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-      else
+        if (log_fun_1 != m_message)
+          errors++; 
+      }else
         log_fun_1("%s",c);
     }
     g_free(c);

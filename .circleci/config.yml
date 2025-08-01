@@ -1007,149 +1007,6 @@ executors:
         MYSQL_PASSWORD:
     working_directory: /tmp/src/mydumper
 
-  buster_mariadb1011:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    - image: mariadb:10.11
-      command: mysqld
-      environment:
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_mariadb1006:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    - image: mariadb:10.6
-      command: mysqld
-      environment:
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_percona57:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    - image: percona:5.7
-      command: mysqld
-      environment:
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_percona80:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    - image: percona:8
-      command: mysqld
-      environment:
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_tidb:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    - image: pingcap/tidb
-      command: mysqld
-      environment:
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_mysql80:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: mysql:8.0
-      command: mysqld
-      environment:
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_mysql84:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: mysql:8.4
-      command: mysqld
-      environment:
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_debian_default:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: mysql:8.4
-      command: mysqld
-      environment:
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster_ubuntu_default:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    - image: mysql:8.4
-      command: mysqld
-      environment:
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-    working_directory: /tmp/src/mydumper
-
-  buster:
-    docker:
-    - image: mydumper/mydumper-builder-buster
-      environment:
-        MYSQL_HOST: 127.0.0.1
-        MYSQL_DB: mate
-        MYSQL_USER: root
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_PASSWORD:
-    working_directory: /tmp/src/mydumper
-
   bullseye_mariadb1011:
     docker:
     - image: mydumper/mydumper-builder-bullseye
@@ -1781,376 +1638,392 @@ commands:
 
   prepare_bionic_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bionic_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bionic_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_bionic_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_bionic_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_bionic_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_bionic_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_bionic_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_bionic_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_focal_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_focal_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_focal_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_focal_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_focal_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_focal_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_focal_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_focal_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_focal_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_jammy_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_jammy_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_jammy_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_jammy_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_jammy_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_jammy_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_jammy_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_jammy_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_jammy_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_noble_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_noble_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_noble_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_noble_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_noble_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_noble_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_noble_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_noble_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_noble_mariadb1006:
     steps:
-    - prepare_mariadb1006
-    - prepare_apt_mariadb1006
-
-
-  prepare_buster_tidb:
-    steps:
-    - prepare_apt_percona57
-
-
-  prepare_buster_percona57:
-    steps:
-    - prepare_apt_percona57
-
-
-  prepare_buster_percona80:
-    steps:
-    - prepare_apt_percona80
-
-
-  prepare_buster_mysql80:
-    steps:
-    - prepare_apt_mysql80
-
-
-  prepare_buster_mysql84:
-    steps:
-    - prepare_apt_mysql84
-
-
-  prepare_buster_debian_default:
-    steps:
-    - prepare_apt_debian_default
-
-
-  prepare_buster_ubuntu_default:
-    steps:
-    - prepare_apt_ubuntu_default
-
-
-  prepare_buster_mariadb1011:
-    steps:
-    - prepare_mariadb1011
-    - prepare_apt_mariadb1011
-
-
-  prepare_buster_mariadb1006:
-    steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_bullseye_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bullseye_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bullseye_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_bullseye_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_bullseye_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_bullseye_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_bullseye_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_bullseye_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_bullseye_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_bookworm_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bookworm_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_bookworm_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_bookworm_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_bookworm_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_bookworm_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_bookworm_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_bookworm_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_bookworm_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
 
   prepare_trixie_tidb:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_trixie_percona57:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 
 
   prepare_trixie_percona80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona80
 
 
   prepare_trixie_mysql80:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql80
 
 
   prepare_trixie_mysql84:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_mysql84
 
 
   prepare_trixie_debian_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_debian_default
 
 
   prepare_trixie_ubuntu_default:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_ubuntu_default
 
 
   prepare_trixie_mariadb1011:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1011
     - prepare_apt_mariadb1011
 
 
   prepare_trixie_mariadb1006:
     steps:
+    - run: sudo apt-get update
     - prepare_mariadb1006
     - prepare_apt_mariadb1006
 
@@ -2926,186 +2799,6 @@ jobs:
     steps:
     - checkout
     - prepare_noble_tidb
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_mysql80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mysql80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_mysql80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_mysql84:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mysql84
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_mysql84
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_debian_default:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_debian_default
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_debian_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_ubuntu_default:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_ubuntu_default
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_ubuntu_default
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_percona57:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_percona57
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_percona57
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_percona80:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_percona80
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_percona80
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_mariadb1011:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mariadb1011
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_mariadb1011
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_mariadb1006:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_mariadb1006
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_mariadb1006
-    - compile_and_test_mydumper:
-        test: << parameters.test >>
-    - persist_to_workspace:
-         root: /tmp/src/mydumper
-         paths:
-           - .
-
-  compile_and_test_mydumper_in_buster_tidb:
-    parameters:
-      test:
-        type: boolean
-        default: false
-      e:
-        type: string
-        default: buster_tidb
-    executor: << parameters.e >>
-    resource_class: large
-    steps:
-    - checkout
-    - prepare_buster_tidb
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -6449,318 +6142,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql80_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mysql80
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mysql84_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mysql84
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_debian_default_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_debian_default
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_debian_default_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_debian_default_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_debian_default_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_ubuntu_default_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_ubuntu_default
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_ubuntu_default_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_ubuntu_default_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_ubuntu_default_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_percona57_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_percona57
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_percona57_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_percona80_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_percona80
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_percona80_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mariadb1011_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mariadb1011
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mariadb1006_arm64:
-    executor: buster
-    resource_class: arm.medium
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mariadb1006
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/aarch64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_arm64 arm64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_bullseye_mysql80_arm64:
     executor: bullseye
     resource_class: arm.medium
@@ -8947,318 +8328,6 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_buster_mysql80_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mysql80
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql80_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql80_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mysql84_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mysql84
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mysql84_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mysql84_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mysql84_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_debian_default_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_debian_default
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_debian_default_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_debian_default_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_debian_default_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_ubuntu_default_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_ubuntu_default
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libmysqlclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_ubuntu_default_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_ubuntu_default_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_ubuntu_default_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_percona57_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_percona57
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_percona57_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona57_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona57_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_percona80_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_percona80
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_percona80_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_percona80_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_percona80_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mariadb1011_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mariadb1011
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mariadb1011_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1011_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1011_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
-  build_buster_mariadb1006_amd64:
-    executor: buster
-    resource_class: large
-    parameters:
-      build_man:
-        type: boolean
-        default: false
-    
-    steps:
-    - checkout
-    - attach_workspace:
-        at: /tmp/man
-    - set_env_vars
-    - prepare_buster_mariadb1006
-    - run: sudo apt install -y fakeroot
-    - run: mkdir -p /tmp/man/
-    - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_mariadb:FILEPATH=/usr/lib/x86_64-linux-gnu/libmariadbclient.a"
-    - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - when:
-        condition: << parameters.build_man >>
-        steps:
-        - run: git submodule update --init docs/
-        - run: sudo apt-get install pip sphinx-common
-        - run: pip install furo sphinx_copybutton sphinx-inline-tabs
-        - run: 
-            command: |
-              cd docs
-              cmake . -DWITH_HTML=OFF
-              make
-              gzip man/mydumper.1 man/myloader.1
-              cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/buster_mariadb1006_amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/buster_mariadb1006_amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb buster_mariadb1006_amd64 amd64
-    - persist_to_workspace:
-         root: /tmp/package
-         paths:
-           - .
   build_bullseye_mysql80_amd64:
     executor: bullseye
     resource_class: large
@@ -10244,7 +9313,6 @@ jobs:
           cd ${BASE_PATH}
           cd ${DEBIAN_PATH}
           git checkout conf dists db 
-          reprepro ${REPREPRO_OPTIONS} includedeb buster /tmp/package/mydumper*buster*deb 
           reprepro ${REPREPRO_OPTIONS} includedeb bullseye /tmp/package/mydumper*bullseye*deb 
           reprepro ${REPREPRO_OPTIONS} includedeb bookworm /tmp/package/mydumper*bookworm*deb 
           reprepro ${REPREPRO_OPTIONS} includedeb trixie /tmp/package/mydumper*trixie*deb
@@ -10353,8 +9421,6 @@ workflows:
     - compile_and_test_mydumper_in_el9_mariadb1011
     - compile_and_test_mydumper_in_el9_mariadb1006
     - compile_and_test_mydumper_in_el9_mysql84
-    - compile_and_test_mydumper_in_buster_percona57
-    - compile_and_test_mydumper_in_buster_percona80
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
     - compile_and_test_mydumper_in_bullseye_mariadb1011
@@ -10466,14 +9532,6 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_buster_percona80_amd64:
-        requires:
-          - build_jammy_percona80_amd64
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mysql84_amd64:
         requires:
           - build_jammy_percona80_amd64
@@ -10520,7 +9578,6 @@ workflows:
           - build_el9_mysql84_x86_64
           - build_el9_mysql84_aarch64
           - build_bullseye_percona80_amd64
-          - build_buster_percona80_amd64
           - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_debian_default_amd64

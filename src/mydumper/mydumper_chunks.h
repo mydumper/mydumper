@@ -22,6 +22,62 @@
 #define MIN_CHUNK_STEP_SIZE 1000
 
 
+
+union chunk_step;
+
+#if !defined(mydumper_mydumper_chunks)
+#define mydumper_mydumper_chunks
+
+#include "mydumper_integer_chunks.h"
+#include "mydumper_partition_chunks.h"
+
+enum chunk_type{
+  NONE,
+  INTEGER,
+  CHAR,
+  PARTITION,
+  MULTICOLUMN_INTEGER
+};
+
+enum chunk_states{
+  UNASSIGNED,
+  ASSIGNED,
+  DUMPING_CHUNK,
+  UNSPLITTABLE,
+  COMPLETED
+};
+
+struct chunk_functions{
+  void (*process)(struct table_job *tj, struct chunk_step_item *csi);
+  struct chunk_step_item *(*get_next)(struct db_table *dbt);
+  void (*free)(struct chunk_step_item *csi);
+};
+
+union chunk_step {
+  struct integer_step integer_step;
+  struct partition_step partition_step;
+};
+
+struct chunk_step_item{
+  union chunk_step *chunk_step;
+  enum chunk_type chunk_type;
+  struct chunk_step_item *next;
+  struct chunk_functions chunk_functions;
+  gboolean multicolumn;
+  GString *where;
+  gboolean include_null;
+  GString *prefix;
+  gchar *field;
+  guint64 part;
+  guint deep;
+  guint position;
+  GMutex *mutex;
+  gboolean needs_refresh;
+  enum chunk_states status;
+};
+
+#endif
+
 void initialize_chunk();
 void start_chunk_builder(struct configuration *conf);
 
@@ -31,17 +87,13 @@ void load_chunks_entries(GOptionContext *context);
 GList *get_chunks_for_table(MYSQL *conn, struct db_table * dbt,
                             struct configuration *conf);
 void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt);
-void free_char_step(union chunk_step * cs);
 void free_integer_step(union chunk_step * cs);
 union chunk_step *get_next_chunk(struct db_table *dbt);
-gchar * get_max_char( MYSQL *conn, struct db_table *dbt, char *field, gchar min);
 void *chunk_builder_thread(struct configuration *conf);
 void finalize_chunk();
 extern GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 extern GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
-void next_chunk_in_char_step(union chunk_step * cs);
-//union chunk_step *get_initial_chunk (MYSQL *conn, enum chunk_type *chunk_type,  struct chunk_functions * chunk_functions, struct db_table *dbt, guint position, gchar *local_where);
-struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, GString *local_where) ;
+struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, guint64 rows, GString *local_where) ;
 void build_where_clause_on_table_job(struct table_job *tj);
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field);
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where);

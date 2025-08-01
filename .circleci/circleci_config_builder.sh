@@ -124,12 +124,6 @@ all_os[${os}_1]="almalinux:9"
 
 all_os[${os}_3]="true"
 
-os=buster
-all_os[${os}_0]="buster"
-all_os[${os}_1]="debian:buster"
-all_os[${os}_2]="percona-release_latest.buster_all.deb"
-all_os[${os}_3]="false"
-
 os=bullseye
 all_os[${os}_0]="bullseye"
 all_os[${os}_1]="debian:bullseye"
@@ -154,8 +148,8 @@ all_os[${os}_3]="true"
 list_el_os=("el7" "el8" "el9")
 list_el_os_without_el=( "7" "8" "9" )
 list_ubuntu_os=("bionic" "focal" "jammy" "noble")
-list_debian_os=("buster" "bullseye" "bookworm" "trixie")
-list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "buster" "bullseye" "bookworm" "trixie")
+list_debian_os=("bullseye" "bookworm" "trixie")
+list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "bullseye" "bookworm" "trixie")
 
 build_man_os="jammy_percona80_amd64"
 
@@ -168,7 +162,6 @@ list_build=(
   "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
   "el9_mysql84_x86_64"        "el9_mysql84_aarch64"
   "bullseye_percona80_amd64" 
-  "buster_percona80_amd64"
   "bookworm_mysql84_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
@@ -183,7 +176,6 @@ list_compile=(
   "el7_percona57"      "el7_percona80"      "el7_mariadb1011"      "el7_mariadb1006"      "el7_mysql84"
   "el8_percona57"      "el8_percona80"      "el8_mariadb1011"      "el8_mariadb1006"      "el8_mysql84"
                        "el9_percona80"      "el9_mariadb1011"      "el9_mariadb1006"      "el9_mysql84"
-  "buster_percona57"   "buster_percona80"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
                                                                                                              "trixie_debian_default"
@@ -393,6 +385,7 @@ do
     echo "
   prepare_${all_os[${os}_0]}_${vendor}:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_percona57
 "
     # For Percona and MySQL will be the standar apt preparation
@@ -401,6 +394,7 @@ do
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - run: sudo apt-get update
     - prepare_apt_${all_vendors[${vendor}_0]}
 "
     done
@@ -411,6 +405,7 @@ echo "
 echo "
   prepare_${all_os[${os}_0]}_${all_vendors[${vendor}_0]}:
     steps:
+    - run: sudo apt-get update
     - prepare_${all_vendors[${vendor}_0]}
     - prepare_apt_${all_vendors[${vendor}_0]}
 "

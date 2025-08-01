@@ -28,6 +28,7 @@
 #include "mydumper_database.h"
 #include "mydumper_write.h"
 #include "mydumper_global.h"
+#include "mydumper_working_thread.h"
 
 /* Program options */
 gboolean dump_triggers = FALSE;
@@ -35,7 +36,8 @@ gboolean ignore_generated_fields = FALSE;
 gboolean skip_definer = FALSE;
 
 extern gchar *table_engine_for_view_dependency;
-
+extern gchar *case_sensitive_prefix;
+extern gchar *case_sensitive_suffix;
 // Shared variables
 int (*m_open)(char **filename, const char *);
 
@@ -47,16 +49,9 @@ void initialize_jobs(){
 }
 
 static
-gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *,int*)) {
-  int errn=0;
-  gchar *checksum=fun(conn, database->name, table, &errn);
-//  g_message("Checksum value: %s", checksum);
-  if (errn != 0 && !(success_on_1146 && errn == 1146)) {
-    g_warning("Writing checksum");
-    errors++;
-    return NULL;
-  }
-  if (checksum == NULL)
+gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
+  gchar *checksum=fun(conn, database->name, table);
+  if (!checksum)
     checksum = g_strdup("0");
   return checksum;
 }
@@ -197,11 +192,15 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   g_string_append(statement, ";\n");
 
+  GString *alter_table_statement=g_string_sized_new(statement_size);
+  GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
+  GString *create_table_statement=g_string_sized_new(statement_size);
+  int flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
+  if ( !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode!=NO_LOCK){
+    m_error("Non transactional table found: `%s`.`%s` on a consitent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->name, dbt->table);
+  }
+
   if (skip_indexes || skip_constraints){
-    GString *alter_table_statement=g_string_sized_new(statement_size);
-    GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
-    GString *create_table_statement=g_string_sized_new(statement_size);
-    global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
     if (!write_data(outfile, create_table_statement)) {
       g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
       errors++;
@@ -211,6 +210,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     if (!skip_constraints)
       write_data(outfile, alter_table_constraint_statement);
   }else{
+
     if (!write_data(outfile, statement)) {
       g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
       errors++;
@@ -218,13 +218,16 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }
   m_close(0, outfile, filename, 1, dbt);
   g_string_free(statement, TRUE);
+  g_string_free(alter_table_statement, TRUE);
+  g_string_free(alter_table_constraint_statement, TRUE);
+  g_string_free(create_table_statement, TRUE);
 
   if (checksum_filename)
     dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
   
   if (checksum_index_filename)
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
-  
+
   return;
 }
 
@@ -557,7 +560,7 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
     g_assert(nroutines > 0);
     struct M_ROW *mr=NULL;
     for (guint r= 0; r < nroutines; r++) {
-      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
+      query= g_strdup_printf("SHOW %s STATUS WHERE %s Db %s = '%s'", routine_type[r], case_sensitive_prefix, case_sensitive_suffix, database->escaped);
       MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping %s from %s", routine_type[r], database->name);
       g_free(query);
       if (!result)

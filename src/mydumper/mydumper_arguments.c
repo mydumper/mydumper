@@ -29,6 +29,7 @@
 
 extern guint64 min_integer_chunk_step_size;
 extern guint64 max_integer_chunk_step_size;
+extern guint max_time_per_select;
 
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
@@ -37,7 +38,7 @@ const gchar *rows_file_extension=SQL;
 guint output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
-gboolean trx_tables=FALSE;
+guint trx_tables=1;
 gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
@@ -74,6 +75,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     return FALSE;
   }
+  if (!strcmp(option_name,"--trx-tables")){
+    trx_tables=atoi(value);
+    return TRUE;
+  }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
     if (value!=NULL)
       split_integer_tables=parse_rows_per_chunk(value, &min_chunk_step_size, &starting_chunk_step_size, &max_chunk_step_size, "Invalid option on --rows");
@@ -106,7 +111,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
   }
   if (!strcmp(option_name,"--trx-consistency-only")){
-    m_critical("--lock-all-tables is deprecated use --trx-tables instead");
+    m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
   }
   if (!strcmp(option_name,"--less-locking")){
     m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
@@ -140,9 +145,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
   }
   if (!strcmp(option_name,"--success-on-1146")){
-    ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(1146));
-    success_on_1146=TRUE;
-    return TRUE;
+    m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
   }
 
   return common_arguments_callback(option_name, value, data, error);
@@ -182,8 +185,8 @@ static GOptionEntry extra_entries[] = {
       "Split data files into pieces of this size in MB. Useful for myloader multi-threading.", NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"success-on-1146", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Not increment error count and Warning instead of Critical in case of table doesn't exist", NULL},
+    {"success-on-1146", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "This option is deprecated use --ignore-errors instead", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
       "Build dump files even if no data available from table", NULL},
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
@@ -221,7 +224,7 @@ static GOptionEntry lock_entries[] = {
       "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
     {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is deprecated use --trx-tables instead", NULL},
-    {"trx-tables", 0, 0, G_OPTION_ARG_NONE, &trx_tables, 
+    {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
       "Do not send DDL locks when possible", NULL},
@@ -266,6 +269,8 @@ static GOptionEntry daemon_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry chunks_entries[] = {
+    {"max-time-per-select", 0, 0, G_OPTION_ARG_INT, &max_time_per_select,
+      "Maximum amount of seconds that a select should take. Default: 2", NULL},
     {"max-threads-per-table", 0, 0, G_OPTION_ARG_INT, &max_threads_per_table,
       "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 

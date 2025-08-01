@@ -72,13 +72,15 @@ gboolean hex_blob = FALSE;
 
 gboolean update_files_on_table_job(struct table_job *tj)
 {
-  if (tj->rows->file == 0){
+  if (tj->rows->file < 0){
     tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
+    trace("Thread %d: Filename assigned(%d): %s", tj->td->thread_id, tj->rows->file, tj->rows->filename);
 
     if (tj->sql){
       tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
       tj->sql->file = m_open(&(tj->sql->filename),"w");
+      trace("Thread %d: Filename assigned: %s", tj->td->thread_id, tj->sql->filename);
       return TRUE;
     }
   }
@@ -271,6 +273,9 @@ void finalize_write(){
   g_free(statement_terminated_by);
 }
 
+gboolean is_hex_blob (MYSQL_FIELD field){
+  return hex_blob && (field.type == MYSQL_TYPE_BLOB || ( field.charsetnr== 63 && (field.type == MYSQL_TYPE_VAR_STRING || field.type == MYSQL_TYPE_STRING )));
+}
 
 GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint num_fields){
   guint i = 0;
@@ -292,7 +297,7 @@ GString *append_load_data_columns(GString *statement, MYSQL_FIELD *fields, guint
       g_string_append(str, fields[i].name);
       g_string_append(str, " USING UTF8MB4)");
       appendable=TRUE;
-    }else if (hex_blob && fields[i].type == MYSQL_TYPE_BLOB){
+    }else if ( is_hex_blob(fields[i])){
       g_string_append_c(statement,'@');
       g_string_append(statement, fields[i].name);
       if (str->len > 4)
@@ -385,9 +390,9 @@ gboolean real_write_data(int file, float *filesize, GString *data) {
   ssize_t r = 0;
   gboolean second_write_zero = FALSE;
   while (written < data->len) {
-    r=write(file, data->str + written, data->len);
+    r=write(file, data->str + written, data->len - written);
     if (r < 0) {
-      g_critical("Couldn't write data to a file: %s", strerror(errno));
+      g_critical("Couldn't write data to a file(%d): %s", file, strerror(errno));
       errors++;
       return FALSE;
     }
@@ -563,7 +568,7 @@ guint64 get_estimated_remaining_of_all_chunks(){
 void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
     if (!*column) {
       g_string_append(buffers.column, "\\N");
-    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
+    } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       mysql_hex_string(buffers.escaped->str,*column,length);
       g_string_append(buffers.column,buffers.escaped->str);
@@ -590,7 +595,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( length == 0){
       g_string_append_c(buffers.column,*fields_enclosed_by);
       g_string_append_c(buffers.column,*fields_enclosed_by);
-    } else if ( field.type == MYSQL_TYPE_BLOB && hex_blob ) {
+    } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       g_string_append(buffers.column,"0x");
       mysql_hex_string(buffers.escaped->str,*column,length);
@@ -655,9 +660,9 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
 }
 
 void close_file(struct table_job * tj, struct table_job_file *tjf){
-  if (tjf->file!=0){
+  if (tjf->file >= 0){
     m_close(tj->td->thread_id, tjf->file, tjf->filename, 1, tj->dbt);
-    tjf->file=0;
+    tjf->file=-1;
     g_free(tjf->filename);
     tjf->filename=NULL;
   }
@@ -676,6 +681,7 @@ void close_files(struct table_job * tj){
   close_file(tj, tj->rows);
 }
 
+static
 void reopen_files(struct table_job * tj){
   close_files(tj);
   switch (output_format){
@@ -730,7 +736,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       }
 	  	break;
     case CLICKHOUSE:
-      if (tj->rows->file == 0){
+      if (tj->rows->file < 0){
         update_files_on_table_job(tj);
       }
 			if (dbt->load_data_suffix==NULL){
@@ -752,7 +758,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       break;
 		case SQL_INSERT:
-      if (tj->rows->file == 0){
+      if (tj->rows->file < 0){
         update_files_on_table_job(tj);
   		}
       if (dbt->insert_statement==NULL){
@@ -770,7 +776,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   message_dumping_data(tj);
 
   GDateTime *from = g_date_time_new_now_local();
+  GDateTime *to = NULL;
+  GTimeSpan diff=0;
 	while ((row = mysql_fetch_row(result))) {
+// Uncomment next line if you need to simulate a slow read which is useful when calculate the chunk size
+//    g_usleep(1);
     lengths = mysql_fetch_lengths(result);
     num_rows++;
     // prepare row into statement_row
@@ -786,9 +796,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       }
       g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
       if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
+        g_critical("Fail to write on %s", tj->rows->filename);
         return;
       }
 			update_dbt_rows(dbt, num_rows);
+      tj->num_rows_of_last_run+=num_rows;
 			num_rows=0;
 			num_rows_st=0;
 			tj->st_in_file++;
@@ -796,8 +808,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
 				g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 			}
-      GDateTime *to = g_date_time_new_now_local();
-      GTimeSpan diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
+      to = g_date_time_new_now_local();
+      diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
       if (diff > 4){
         g_date_time_unref(from);
         from=to;
@@ -831,15 +843,21 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     g_string_set_size(tj->td->thread_data_buffers.row, 0);
   }
   update_dbt_rows(dbt, num_rows);
+  tj->num_rows_of_last_run+=num_rows;
   if (num_rows_st > 0 && tj->td->thread_data_buffers.statement->len > 0){
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
 			g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
     if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
+      g_critical("Fail to write on %s", tj->rows->filename);
       return;
     }
 		tj->st_in_file++;
   }
-  tj->num_rows_of_last_run=num_rows;
+  if (from)
+    g_date_time_unref(from);
+  if (to)
+    g_date_time_unref(to);
+
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
 //  g_string_free(statement_row, TRUE);	
@@ -853,6 +871,8 @@ void write_table_job_into_file(struct table_job * tj){
 
 //  if (throttle_time)
   g_usleep(throttle_time);
+
+  tj->num_rows_of_last_run=0;
 
   /* Ghm, not sure if this should be statement_size - but default isn't too big
    * for now */
@@ -881,29 +901,10 @@ void write_table_job_into_file(struct table_job * tj){
       g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
 
       result = m_use_result(conn, query, NULL, "Failed to execute query on second try", NULL);
-      if (!result) {
-       // ERROR 1146
-        if (success_on_1146 && mysql_errno(conn) == 1146) {
-          g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                  mysql_error(conn), query);
-        } else {
-          g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                     mysql_error(conn), query);
-          errors++;
-        }
+      if (!result) 
         goto cleanup;
-      }
-    }else{
-      if (success_on_1146 && mysql_errno(conn) == 1146) {
-        g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                  mysql_error(conn), query);
-      } else {
-        g_critical("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s ", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
-                   mysql_error(conn), query);
-        errors++;
-      }
+    }else
       goto cleanup;
-    }
   }
 
   /* Poor man's data dump code */
