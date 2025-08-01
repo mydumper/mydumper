@@ -70,7 +70,6 @@ guint sequences = 0;
 guint sequences_processed = 0;
 GMutex sequences_mutex;
 gchar *source_db = NULL;
-gchar *purge_mode_str=NULL;
 extern guint errors;
 guint max_errors= 0;
 struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
@@ -143,13 +142,17 @@ void create_database(struct thread_data *td, gchar *database) {
   const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql%s",
                                             directory, database, exec_per_thread_extension);
 
+  if (drop_database)
+    execute_drop_database(td, database);
   if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
     g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
   } else {
     GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
     g_string_append_printf(data,"`%s`", database);
+    trace("Creating schema %s", database);
     if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
       g_atomic_int_inc(&(detailed_errors.schema_errors));
+
     g_string_free(data, TRUE);
   }
 
@@ -279,7 +282,6 @@ int main(int argc, char *argv[]) {
       m_critical("Could not create pmm thread");
     }
   }
-//  initialize_job(purge_mode_str);
   initialize_restore_job();
   char *current_dir=g_get_current_dir();
   if (!input_directory) {
@@ -376,7 +378,6 @@ int main(int argc, char *argv[]) {
     print_bool("no-schemas",no_schemas);
 
     print_bool("local-infile", local_infile);
-    print_string("purge-mode",purge_mode_str);
     print_bool("disable-redo-log",disable_redo_log);
     print_string("checksum",checksum_str);
     print_bool("overwrite-tables",overwrite_tables);

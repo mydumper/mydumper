@@ -43,7 +43,6 @@ enum checksum_modes {
 
 extern gboolean disable_redo_log;
 extern enum checksum_modes checksum_mode;
-extern gchar *purge_mode_str;
 extern enum purge_mode purge_mode;
 extern GString *set_global;
 extern GString *set_global_back;
@@ -128,4 +127,4 @@ extern gboolean skip_table_sorting;
 extern gboolean mysqldump;
 extern int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *);
 extern struct replication_statements *replication_statements;
-
+extern gboolean drop_database;

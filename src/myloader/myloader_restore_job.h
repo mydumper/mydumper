@@ -70,4 +70,5 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj);
 void restore_job_finish();
 void stop_signal_thread();
 void *signal_thread(void *data);
+void execute_drop_database(struct thread_data *td, gchar *database);
 #endif

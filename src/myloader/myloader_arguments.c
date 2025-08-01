@@ -32,6 +32,7 @@ gchar *fifo_directory = NULL;
 gboolean show_warnings=FALSE;
 GList *ignore_set_list=NULL;
 gboolean mysqldump = FALSE;
+gboolean drop_database = FALSE;
 extern gboolean local_infile;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -94,12 +95,18 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
+  } else if (!strcmp(option_name, "--overwrite-tables")){
+    m_error("Option --overwrite-tables has been deprecated. User -o/--drop-table instead");
+    return FALSE;
   } else if (!strcmp(option_name, "--purge-mode")){
+    m_error("Option --purge-mode has been deprecated. User -o/--drop-table instead");
+    return FALSE;
+  } else if (!strcmp(option_name, "--drop-table") || !strcmp(option_name, "-o")){
+    overwrite_tables=TRUE;
     if (value){
-      purge_mode_str=g_strdup(value);
       if (!strcmp(value,"TRUNCATE")){
         purge_mode=TRUNCATE;
-      } else if (!strcmp(value,"DROP")){
+      } else if (!strcmp(value,"DROP") || !strcmp(value,"")){
         purge_mode=DROP;
       } else if (!strcmp(value,"DELETE")){
         purge_mode=DELETE;
@@ -111,8 +118,9 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
         m_error("Purge mode unknown");
         return FALSE;
       }
-      return TRUE;
-    }
+    }else
+      purge_mode=DROP;
+    return TRUE;
   } else if (!strcmp(option_name, "--enable-binlog") || !strcmp(option_name, "-e")){
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     return FALSE;
@@ -179,13 +187,19 @@ static GOptionEntry execution_entries[] = {
     {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
       "Do not import table schemas and triggers ", NULL},
     {"purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This specifies the truncate mode which can be: FAIL, NONE, DROP, TRUNCATE and DELETE. Default if not set: FAIL", NULL },
+      "Option --purge-mode is deprecated use -o/--drop-table instead", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Treat checksums: skip, fail(default), warn.", NULL },
-    {"overwrite-tables", 'o', 0, G_OPTION_ARG_NONE, &overwrite_tables,
-      "Drop tables if they already exist", NULL},
+    {"drop-database", 0, 0, G_OPTION_ARG_NONE, &drop_database,
+      "Executes a DROP DATABASE if the schema database file is found. ", NULL},
+    {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
+      "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
+      "This option accepts no parameter which set default to: DROP. "
+      "If this option is not used, the default is set to: FAIL", NULL},
+    {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
+      "Option --overwrite-tables has been deprecated. User -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
       "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
