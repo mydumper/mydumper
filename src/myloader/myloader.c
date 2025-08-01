@@ -152,7 +152,6 @@ void create_database(struct thread_data *td, gchar *database) {
     trace("Creating schema %s", database);
     if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
       g_atomic_int_inc(&(detailed_errors.schema_errors));
-
     g_string_free(data, TRUE);
   }
 
