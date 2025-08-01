@@ -41,7 +41,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
   }else if (!strcmp(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
-    if (value==NULL){
+    if (value==NULL || !strcmp(value,"1")){
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
