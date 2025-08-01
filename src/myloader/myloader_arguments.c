@@ -106,7 +106,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     if (value){
       if (!strcmp(value,"TRUNCATE")){
         purge_mode=TRUNCATE;
-      } else if (!strcmp(value,"DROP") || !strcmp(value,"")){
+      } else if (!strcmp(value,"DROP") || !strcmp(value,"") || !strcmp(value,"1")){
         purge_mode=DROP;
       } else if (!strcmp(value,"DELETE")){
         purge_mode=DELETE;
@@ -115,7 +115,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       } else if (!strcmp(value,"FAIL")){
         purge_mode=FAIL;
       } else {
-        m_error("Purge mode unknown");
+        m_error("Purge mode unknown: %s", value);
         return FALSE;
       }
     }else
