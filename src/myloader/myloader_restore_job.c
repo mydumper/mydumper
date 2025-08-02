@@ -46,13 +46,6 @@ void initialize_restore_job(){
   single_threaded_create_table = g_mutex_new();
   progress_mutex = g_mutex_new();
   shutdown_triggered_mutex = g_mutex_new();
-  if (!purge_mode_str){
-    if (overwrite_tables)
-      purge_mode=DROP; // Default mode is DROP when overwrite_tables is especified
-    else
-      purge_mode=FAIL; // This means that if -o is not set and CREATE TABLE statement fails, myloader will stop.
-  }
-
 }
 
 struct data_restore_job * new_data_restore_job_internal( guint index, guint part, guint sub_part){
@@ -205,6 +198,14 @@ void get_total_created(struct configuration * conf, guint *total){
   g_mutex_unlock(conf->table_hash_mutex);
 }
 
+void execute_drop_database(struct thread_data *td, gchar *database) {
+  GString *data = g_string_new("DROP DATABASE IF EXISTS ");
+  g_string_append_printf(data,"`%s`", database);
+  trace("Droping database %s", database);
+  if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to drop database: %s", database) )
+    g_atomic_int_inc(&(detailed_errors.schema_errors));
+  g_string_free(data, TRUE);
+}
 
 int process_restore_job(struct thread_data *td, struct restore_job *rj){
   if (td->conf->pause_resume != NULL){
@@ -305,6 +306,10 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
                     rj->data.srj->database->real_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
           if (dbt)
             dbt->schema_state= CREATING;
+
+          if (!g_strcmp0(rj->data.srj->object, CREATE_DATABASE) && drop_database)
+            execute_drop_database(td, rj->data.srj->database->real_database);
+
           if ( restore_data_from_file(td, rj->filename, TRUE, g_strcmp0(rj->data.srj->object, CREATE_DATABASE) ? rj->data.srj->database : NULL ) > 0 ) {
             increse_object_error(rj->data.srj->object);
             if (dbt)
