@@ -1,8 +1,8 @@
 
 
-num_insert_ignore=$(grep -i "replace into" /tmp/data/* | wc -l)
+num_replace=$(grep -i "replace into" /tmp/data/* | wc -l)
 
-if [ $num_insert_ignore == 1 ]
+if [ $num_replace == 1 ]
 then
   exit 0
 else
