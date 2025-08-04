@@ -1,0 +1,9 @@
+#
+# Testing --insert-ignore
+#
+
+[mydumper]
+database=specific_11
+outputdir=/tmp/data
+routines
+skip-definer

@@ -1,0 +1,8 @@
+#
+# Testing --routines and checking definer
+#
+
+[mydumper]
+database=specific_11
+outputdir=/tmp/data
+routines
