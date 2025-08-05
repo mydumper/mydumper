@@ -1,0 +1,8 @@
+#
+# Testing --no-schemas
+#
+
+[mydumper]
+database=specific_15
+outputdir=/tmp/data
+no-schemas
