@@ -52,38 +52,7 @@ This for now does not provide consistent snapshots for non-transactional engines
 
 ## How to exclude (or include) databases?
 
-Once can use --regex functionality, for example not to dump mysql, sys and test databases:
-
-```bash
- mydumper --regex '^(?!(mysql\.|sys\.|test\.))'
-```
-
-To dump only mysql and test databases:
-
-```bash
- mydumper --regex '^(mysql\.|test\.)'
-```
-
-To not dump all databases starting with test:
-
-```bash
- mydumper --regex '^(?!(test))'
-```
-
-To dump specific tables in different databases (Note: The name of tables should end with $. [related issue](https://github.com/maxbube/mydumper/issues/407)):
-
-```bash
- mydumper --regex '^(db1\.table1$|db2\.table2$)'
-```
-
-If you want to dump a couple of databases but discard some tables, you can do:
-```bash
- mydumper --regex '^(?=(?:(db1\.|db2\.)))(?!(?:(db1\.table1$|db2\.table2$)))'
-```
-Which will dump all the tables in db1 and db2 but it will exclude db1.table1 and db2.table2
-
-Of course, regex functionality can be used to describe pretty much any list of tables.
-
+[This sections has been migrated](https://mydumper.github.io/mydumper/docs/html/examples.html#regex) 
 
 ## How to use --exec?
 
