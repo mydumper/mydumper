@@ -547,7 +547,7 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
                   const char *info_templ, const char *message, const char *_db, const char *_table)
 {
   g_assert(checksum_mode != CHECKSUM_SKIP);
-  if (g_strcmp0(dbt_checksum, checksum)) {
+  if (g_ascii_strcasecmp(dbt_checksum, checksum)) {
     if (_table) {
       if (checksum_mode == CHECKSUM_WARN)
         g_warning(err_templ, message, _db, _table, checksum, dbt_checksum);

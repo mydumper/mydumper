@@ -419,7 +419,7 @@ gboolean write_data(int file, GString *data) {
 }
 
 void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
-  gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
+  gchar *character_set=set_names_in_conn_by_default != NULL ? set_names_in_conn_by_default : dbt->character_set /* "BINARY"*/;
   GString *load_data_suffix=g_string_sized_new(statement_size);
   g_string_append_printf(load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   if (character_set && strlen(character_set)!=0)
@@ -453,7 +453,7 @@ void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * f
 }
 
 void initialize_clickhouse_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
-  gchar *character_set=set_names_str != NULL ? set_names_str : dbt->character_set /* "BINARY"*/;
+  gchar *character_set=set_names_in_conn_by_default != NULL ? set_names_in_conn_by_default : dbt->character_set /* "BINARY"*/;
   dbt->load_data_suffix=g_string_sized_new(statement_size);
   g_string_append_printf(dbt->load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   if (character_set && strlen(character_set)!=0)

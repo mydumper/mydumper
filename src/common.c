@@ -41,6 +41,8 @@ gchar **optimize_key_engines=NULL;
 guint throttle_time=0;
 guint throttle_max_usleep_limit=60000000;
 
+gchar *set_names_in_conn_for_sct=NULL, *set_names_in_file_for_sct=NULL, *set_names_in_file_by_default=NULL;
+
 gchar *get_zstd_cmd(){
   return g_find_program_in_path("zstd");
 }
@@ -59,20 +61,22 @@ GHashTable * initialize_hash_of_session_variables(){
 }
 
 void initialize_set_names(){
-  if (set_names_str){
-    if (strlen(set_names_str)!=0){
-      set_names_statement=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_str);
-    }else
-      set_names_str=NULL;
-  } else {
-    set_names_str=g_strdup("binary");
-    set_names_statement=g_strdup("/*!40101 SET NAMES binary*/");
-  }
+  if (!set_names_in_conn_by_default)
+    set_names_in_conn_by_default=g_strdup(BINARY_CHARSET);
+
+  if (!set_names_in_conn_for_sct)
+    set_names_in_conn_for_sct=g_strdup(AUTO_CHARSET);
+
+  if (!set_names_in_file_by_default)
+    set_names_in_file_by_default=g_strdup(BINARY_CHARSET);
+
+  if (!set_names_in_file_for_sct)
+    set_names_in_file_for_sct=set_names_in_file_by_default;
 }
 
 void free_set_names(){
-  g_free(set_names_str);
-  set_names_str=NULL;
+  g_free(set_names_in_conn_by_default);
+  set_names_in_conn_by_default=NULL;
   g_free(set_names_statement);
 }
 
