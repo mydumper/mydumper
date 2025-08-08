@@ -44,7 +44,6 @@ const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
 
-
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
@@ -146,6 +145,32 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
   }
   if (!strcmp(option_name,"--success-on-1146")){
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
+  }
+
+  if (!g_strcmp0(option_name,"--set-names")){
+    gchar ** value_split=g_strsplit(value, ",", 2);
+    if (!value_split)
+      return FALSE;
+    set_names_in_conn_for_sct=g_strdup(value_split[0]);
+    if (g_strv_length(value_split)>1)
+      set_names_in_conn_by_default=g_strdup(value_split[1]);
+    else
+      set_names_in_conn_by_default=set_names_in_conn_for_sct;
+    g_strfreev(value_split);
+    return TRUE;
+  }
+  if (!g_strcmp0(option_name,"--default-character-set")){
+
+    gchar ** value_split=g_strsplit(value, ",", 2);
+    if (!value_split)
+      return FALSE;
+    set_names_in_file_for_sct=g_strdup(value_split[0]);
+    if (g_strv_length(value_split)>1)
+      set_names_in_file_by_default=g_strdup(value_split[1]);
+    else
+      set_names_in_file_by_default=set_names_in_file_for_sct;
+    g_strfreev(value_split);
+    return TRUE;
   }
 
   return common_arguments_callback(option_name, value, data, error);
@@ -379,8 +404,10 @@ static GOptionEntry statement_entries[] = {
       "--skip-tz-utc to disable.", NULL},
     {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz,
       "Doesn't add SET TIMEZONE on the backup files", NULL},
-    {"set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
-      "Sets the names, use it at your own risk, default binary", NULL },
+    {"set-names",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item when executes SHOW CREATE TABLE and the second item for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
+    {"default-character-set",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item for the schema files and the second item for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
       "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

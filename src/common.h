@@ -53,8 +53,8 @@
 #define EMPTY_STRING ""
 #define CAST "CAST("
 #define AS_BINARY "AS BINARY)"
-
-
+#define BINARY_CHARSET "binary"
+#define AUTO_CHARSET "auto"
 extern GList *ignore_errors_list;
 extern const gchar *start_replica;
 extern const gchar *stop_replica;

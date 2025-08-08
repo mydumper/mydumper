@@ -72,7 +72,7 @@ GMutex sequences_mutex;
 gchar *source_db = NULL;
 extern guint errors;
 guint max_errors= 0;
-struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
@@ -181,6 +181,8 @@ void print_errors(){
     "- Trigger:   \t%d\n"
     "- Constraint:\t%d\n"
     "- Post:      \t%d\n"
+    "Warnings found:\n"
+    "- Data:\t%d\n"
     "Retries:\t%d",
     detailed_errors.tablespace_errors,
     detailed_errors.schema_errors,
@@ -191,6 +193,7 @@ void print_errors(){
     detailed_errors.trigger_errors,
     detailed_errors.constraints_errors,
     detailed_errors.post_errors,
+    detailed_errors.data_warnings,
     detailed_errors.retries);
 
 
@@ -395,7 +398,7 @@ int main(int argc, char *argv[]) {
     print_int("rows",rows);
     print_int("queries-per-transaction",commit_count);
     print_bool("append-if-not-exist",append_if_not_exist);
-    print_string("set-names",set_names_str);
+    print_string("set-names",set_names_in_conn_by_default);
 
     print_bool("skip-definer",skip_definer);
     print_bool("help",help);

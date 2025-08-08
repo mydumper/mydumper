@@ -20,6 +20,8 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include "mydumper_table.h"
+#include "mydumper_start_dump.h"
 
 void initialize_common();
 void initialize_headers();
@@ -56,3 +58,5 @@ guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *sta
 extern guint nroutines;
 extern guint server_version;
 extern const char *routine_type[];
+void initialize_header_in_gstring(GString *statement, gchar *charset);
+

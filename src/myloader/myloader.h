@@ -34,6 +34,7 @@ enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE };
 
 struct restore_errors {
   guint data_errors;
+  guint data_warnings;
   guint index_errors;
   guint schema_errors;
   guint trigger_errors;

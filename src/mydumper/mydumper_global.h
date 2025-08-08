@@ -89,7 +89,7 @@ extern gchar *output_directory;
 extern gchar *output_directory_str;
 extern gchar *pmm_path;
 extern gchar *pmm_resolution ;
-extern gchar *set_names_str;
+extern gchar *set_names_in_conn_by_default;
 extern gchar *tables_skiplist_file;
 extern gchar *tidb_snapshot;
 extern gchar *where_option;
@@ -142,3 +142,6 @@ extern enum sync_thread_lock_mode sync_thread_lock_mode;
 extern guint trx_tables;
 extern gboolean replica_stopped;
 extern guint isms;
+
+
+extern gchar *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;

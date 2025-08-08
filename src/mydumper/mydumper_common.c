@@ -367,30 +367,34 @@ void determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *char
 }
 
 
-void initialize_headers(){
-  headers=g_string_sized_new(100);
+void initialize_header_in_gstring(GString *_headers, gchar *charset){
   if (is_mysql_like()) {
-    if (set_names_statement)
-      g_string_printf(headers,"%s;\n",set_names_statement);
-    g_string_append(headers, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+    if (charset)
+      g_string_printf(_headers,"/*!40101 SET NAMES %s*/;\n",charset);
+    g_string_append(_headers, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(headers, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
+      g_string_append_printf(_headers, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
     if (!skip_tz) {
-      g_string_append(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_append(_headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else if (get_product() == SERVER_TYPE_TIDB) {
     if (!skip_tz) {
-      g_string_printf(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_printf(_headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else {
-    g_string_printf(headers, "SET FOREIGN_KEY_CHECKS=0;\n");
+    g_string_printf(_headers, "SET FOREIGN_KEY_CHECKS=0;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(headers, "SET SQL_MODE=%s;\n", sql_mode);
+      g_string_append_printf(_headers, "SET SQL_MODE=%s;\n", sql_mode);
   }
 }
 
 void initialize_sql_statement(GString *statement){
   g_string_printf(statement,"%s",headers->str);
+}
+
+void initialize_headers(){
+   headers=g_string_sized_new(100);
+   initialize_header_in_gstring(headers,set_names_in_file_by_default);
 }
 
 void set_tidb_snapshot(MYSQL *conn){

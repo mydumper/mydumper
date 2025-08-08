@@ -218,7 +218,8 @@ int main(int argc, char *argv[]) {
     print_int("statement-size",statement_size);
     print_bool("tz-utc",skip_tz);
     print_bool("skip-tz-utc",skip_tz);
-    print_string("set-names",set_names_str);
+    print_string("set-names", set_names_in_conn_by_default || set_names_in_conn_for_sct ? g_strdup_printf("%s,%s",set_names_in_conn_for_sct,set_names_in_conn_by_default):NULL);
+    print_string("default-character-set", set_names_in_file_by_default || set_names_in_file_for_sct ? g_strdup_printf("%s,%s",set_names_in_file_for_sct,set_names_in_file_by_default):NULL);
     print_int("chunk-filesize",chunk_filesize);
     print_bool("exit-if-broken-table-found",exit_if_broken_table_found);
     print_bool("build-empty-files",build_empty_files);

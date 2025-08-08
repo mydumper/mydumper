@@ -249,7 +249,7 @@ static GOptionEntry statement_entries[] ={
      "Number of queries per transaction, default 1000", NULL},
     {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
       "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},

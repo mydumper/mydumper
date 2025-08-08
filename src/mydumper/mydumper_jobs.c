@@ -161,9 +161,16 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     return;
   }
 
-  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
-  initialize_sql_statement(statement);
+
+  initialize_header_in_gstring(statement, set_names_in_file_for_sct);
+  if (g_strcmp0(set_names_in_conn_for_sct, AUTO_CHARSET) || !dbt->character_set)
+    query = g_strdup_printf("SET NAMES %s", set_names_in_conn_for_sct);
+  else
+    query = g_strdup_printf("SET NAMES %s", dbt->character_set);
+  mysql_query(conn, query);
+  g_free(query);
+
 
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
@@ -171,12 +178,12 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     return;
   }
 
-  query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
+  query = g_strdup_printf("SHOW CREATE TABLE %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!mr->res){
     m_store_result_row_free(mr);
-    return;
+    goto end;
   }
 
   g_string_set_size(statement, 0);
@@ -227,6 +234,11 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   
   if (checksum_index_filename)
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
+
+end:
+  query = g_strdup_printf("SET NAMES %s", set_names_in_conn_by_default);
+  mysql_query(conn, query);
+  g_free(query);
 
   return;
 }
@@ -459,7 +471,6 @@ static
 void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
   int outfile;
   char *query = NULL;
-  const char q= identifier_quote_character;
   GString *statement = g_string_sized_new(statement_size);
   initialize_sql_statement(statement);
 
@@ -475,8 +486,8 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   }
 
   // DROP TABLE works for sequences
-  g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", q, dbt->table, q);
-  g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", q, dbt->table, q);
+  g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
+  g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n" , identifier_quote_character, dbt->table, identifier_quote_character);
 
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema data for %s.%s", dbt->database->name, dbt->table);
@@ -484,7 +495,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     return;
   }
 
-  query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
+  query = g_strdup_printf("SHOW CREATE SEQUENCE %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
   if (!mr->res){
@@ -506,14 +517,14 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   m_store_result_row_free(mr);
 
   // Get current sequence position
-  query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", q, dbt->database->name, q, q, dbt->table, q);
+  query = g_strdup_printf("SELECT next_not_cached_value FROM %c%s%c.%c%s%c", identifier_quote_character, dbt->database->name, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
   mr = m_store_result_row(conn, query, m_critical, m_warning, "Error dumping schemas (%s.%s)", dbt->database->name, dbt->table);
   g_free(query);
 
   g_string_set_size(statement, 0);
   /* There should never be more than one row */
   if (mr->row){
-    g_string_printf(statement, "DO SETVAL(%c%s%c, %s, 0);\n", q, dbt->table, q, mr->row[0]);
+    g_string_printf(statement, "DO SETVAL(%c%s%c, %s, 0);\n", identifier_quote_character, dbt->table, identifier_quote_character, mr->row[0]);
     if (!write_data(outfile, statement)) {
       g_critical("Could not write schema for %s.%s", dbt->database->name, dbt->table);
       errors++;

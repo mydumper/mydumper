@@ -18,7 +18,7 @@
 
 #ifndef _src_mydumper_table_h
 #define _src_mydumper_table_h
-
+#include "mydumper_start_dump.h"
 enum db_table_states{
   UNDEFINED,
   DEFINING,
