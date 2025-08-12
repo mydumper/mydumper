@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <glib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "config.h"
 #include "connection.h"
 #include "common.h"
@@ -36,7 +37,6 @@ static gint print_connection_details=1;
 gboolean local_infile = FALSE;
 gchar * default_connection_database=NULL;
 
-
 #ifdef WITH_SSL
 char *key=NULL;
 char *cert=NULL;
@@ -50,7 +50,12 @@ gchar *ssl_mode=NULL;
 
 gboolean compress_protocol = FALSE;
 gboolean enable_cleartext_plugin = FALSE;
+
+#if defined(HAVE_MY_BOOL)
+my_bool enable_cleartext = 1;
+#else
 bool enable_cleartext = 1;
+#endif
 
 gboolean connection_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
