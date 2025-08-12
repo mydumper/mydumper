@@ -559,13 +559,15 @@ cleanup:
   return TRUE;
 }
 
-
-gboolean is_last(union chunk_step *cs){
-  if (cs->integer_step.is_unsigned)
-    return cs->integer_step.type.unsign.cursor == cs->integer_step.type.unsign.max;
-  else
-    return cs->integer_step.type.sign.cursor == cs->integer_step.type.sign.max;
-  return FALSE;
+static
+gboolean is_last(struct chunk_step_item *csi){
+  g_mutex_lock(csi->mutex);
+  gboolean r = 
+    csi->chunk_step->integer_step.is_unsigned ?
+    csi->chunk_step->integer_step.type.unsign.cursor == csi->chunk_step->integer_step.type.unsign.max :
+    csi->chunk_step->integer_step.type.sign.cursor   == csi->chunk_step->integer_step.type.sign.max;
+  g_mutex_unlock(csi->mutex);
+  return r;
 }
 
 guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *csi){
@@ -759,7 +761,7 @@ retry:
         tj->part= cs->integer_step.type.sign.min   / cs->integer_step.step + 1;      
       close_files(tj);
       write_table_job_into_file(tj);
-    }else if (is_last(cs)) {
+    }else if (is_last(csi)) {
       trace("Thread %d: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->name, tj->dbt->table);
       write_table_job_into_file(tj);
     }else{
