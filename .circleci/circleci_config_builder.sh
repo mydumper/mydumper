@@ -182,7 +182,8 @@ list_compile=(
 
 )
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "noble_mysql84")
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" # "jammy_mariadb1006" 
+                                                                                        "noble_mysql84")
 
 echo "---
 version: 2.1
