@@ -116,10 +116,9 @@ int main(int argc, char *argv[]) {
 
   if (debug) {
     set_debug();
-    set_verbose(3);
-  } else {
-    set_verbose(verbose);
+    verbose=4;
   }
+  set_verbose(verbose);
 
   g_message("MyDumper backup version: %s", VERSION);
 

@@ -231,10 +231,9 @@ int main(int argc, char *argv[]) {
 
   if (debug) {
     set_debug();
-    set_verbose(3);
-  } else {
-    set_verbose(verbose);
+    verbose=3;
   }
+  set_verbose(verbose);
 
   if (overwrite_unsafe)
     overwrite_tables= TRUE;
