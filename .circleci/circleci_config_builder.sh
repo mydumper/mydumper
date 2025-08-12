@@ -456,7 +456,13 @@ cat <<EOF
         - run: bash ./test_mydumper.sh -d SSL
     - store_artifacts:
         path: /tmp/stream.sql
-        destination: artifact-file
+        destination: stream.sql
+    - store_artifacts:
+        path: /tmp/test_mydumper.log.tmp
+        destination: test_mydumper.log
+    - store_artifacts:
+        path: /tmp/test_myloader.log.tmp
+        destination: test_loader.log
     - store_artifacts:
         path: /tmp/data/
 
