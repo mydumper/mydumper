@@ -353,8 +353,8 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
 
         dbt->chunks=g_list_append(dbt->chunks,new_csi);
         // should I push them again? isn't it pointless?
-        g_async_queue_push(dbt->chunks_queue, csi);
-        g_async_queue_push(dbt->chunks_queue, new_csi);
+//        g_async_queue_push(dbt->chunks_queue, csi);
+//        g_async_queue_push(dbt->chunks_queue, new_csi);
         //
         g_mutex_unlock(csi->mutex);
         return new_csi;
