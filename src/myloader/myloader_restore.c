@@ -256,6 +256,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       }
       if (mysql_warning_count(cd->thrconn)){
         g_warning("Connection %ld: Warnings found during INSERT between lines: %d and %d: %s",cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
+        detailed_errors.data_warnings+=mysql_warning_count(cd->thrconn);
       }
     }else
       tr=0;

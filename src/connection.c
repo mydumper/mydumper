@@ -123,6 +123,7 @@ void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group){
 
 void initialize_connection(const gchar *app){
   program_name=app;
+  set_names_statement=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_in_conn_by_default);
 }
 
 
@@ -324,7 +325,7 @@ void m_connect(MYSQL *conn){
   }
   print_connection_details_once();
 
-  if (set_names_statement)
+//  if (set_names_statement)
     m_query_warning(conn, set_names_statement, "Not able to execute SET NAMES statement", NULL);
 }
 

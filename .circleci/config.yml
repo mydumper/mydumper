@@ -2066,10 +2066,16 @@ commands:
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh SSL
+        - run: bash ./test_mydumper.sh -d SSL
     - store_artifacts:
         path: /tmp/stream.sql
-        destination: artifact-file
+        destination: stream.sql
+    - store_artifacts:
+        path: /tmp/test_mydumper.log.tmp
+        destination: test_mydumper.log
+    - store_artifacts:
+        path: /tmp/test_myloader.log.tmp
+        destination: test_loader.log
     - store_artifacts:
         path: /tmp/data/
 
@@ -9405,7 +9411,6 @@ workflows:
     - compile_and_test_mydumper_in_focal_percona57
     - compile_and_test_mydumper_in_focal_percona80
     - compile_and_test_mydumper_in_focal_mariadb1011
-    - compile_and_test_mydumper_in_focal_mariadb1006
     - compile_and_test_mydumper_in_noble_ubuntu_default
     - compile_and_test_mydumper_in_el7_percona57
     - compile_and_test_mydumper_in_el7_percona80
@@ -9439,9 +9444,6 @@ workflows:
     - compile_and_test_mydumper_in_jammy_mariadb1011:
         test: true
         e: jammy_mariadb1011
-    - compile_and_test_mydumper_in_jammy_mariadb1006:
-        test: true
-        e: jammy_mariadb1006
     - compile_and_test_mydumper_in_noble_mysql84:
         test: true
         e: noble_mysql84

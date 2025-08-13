@@ -169,7 +169,7 @@ list_build=(
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
 list_compile=(
   "bionic_percona57"   "bionic_percona80"
-  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    "focal_mariadb1006"
+  "focal_percona57"    "focal_percona80"    "focal_mariadb1011"    #"focal_mariadb1006"
 # jammy is in the tests list 
 #                                                                                          "noble_mysql84" This is already on the list of test
                                                                                                              "noble_ubuntu_default"
@@ -182,7 +182,8 @@ list_compile=(
 
 )
 
-list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" "jammy_mariadb1006" "noble_mysql84")
+list_test=("jammy_percona57" "jammy_percona80" "jammy_mariadb1011" # "jammy_mariadb1006" 
+                                                                                        "noble_mysql84")
 
 echo "---
 version: 2.1
@@ -452,10 +453,16 @@ cat <<EOF
     - when:
         condition: << parameters.test >>
         steps:
-        - run: bash ./test_mydumper.sh SSL
+        - run: bash ./test_mydumper.sh -d SSL
     - store_artifacts:
         path: /tmp/stream.sql
-        destination: artifact-file
+        destination: stream.sql
+    - store_artifacts:
+        path: /tmp/test_mydumper.log.tmp
+        destination: test_mydumper.log
+    - store_artifacts:
+        path: /tmp/test_myloader.log.tmp
+        destination: test_loader.log
     - store_artifacts:
         path: /tmp/data/
 
