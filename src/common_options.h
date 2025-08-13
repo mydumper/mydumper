@@ -26,7 +26,7 @@
 extern char identifier_quote_character;
 extern const char *identifier_quote_character_str;
 extern guint max_threads_per_table;
-extern gchar *set_names_str;
+extern gchar *set_names_in_conn_by_default;
 extern gchar *set_names_statement;
 extern gboolean no_stream;
 extern gboolean stream;

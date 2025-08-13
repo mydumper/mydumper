@@ -50,7 +50,7 @@ char **tables = NULL;
 gboolean no_stream = FALSE;
 gboolean no_sync=FALSE;
 
-gchar *set_names_str=NULL;
+gchar *set_names_in_conn_by_default=NULL;
 gchar *set_names_statement=NULL;
 
 gchar identifier_quote_character=BACKTICK;

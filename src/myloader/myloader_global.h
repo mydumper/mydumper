@@ -78,7 +78,6 @@ extern gchar *db;
 extern gchar *directory;
 extern gchar *pmm_path;
 extern gchar *pmm_resolution ;
-extern gchar *set_names_str;
 extern gchar *source_db;
 extern gchar *tables_skiplist_file;
 extern GHashTable *db_hash;
