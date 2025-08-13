@@ -1,0 +1,5 @@
+
+
+DROP DATABASE IF EXISTS empty_db;
+CREATE DATABASE empty_db;
+

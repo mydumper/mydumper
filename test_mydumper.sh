@@ -196,6 +196,11 @@ backtrace ()
    done
 }
 
+prepare_sakila(){
+  mysql < sakila-db/sakila-schema.sql
+  mysql < sakila-db/sakila-data.sql
+}
+
 test_case_dir (){
 
   echo "Case #${number}${case_cycle:+:$case_cycle}"
@@ -231,6 +236,8 @@ test_case_dir (){
   if [ -f $mydumper_prepare_database ]
   then
     mysql < $mydumper_prepare_database
+  else
+    prepare_sakila
   fi
 
   if (( ${mydumper_execute} > 0 ))
@@ -353,18 +360,7 @@ prepare_full_test()
   fi
   tar xzf sakila-db.tar.gz
   sed -i 's/last_update TIMESTAMP/last_update TIMESTAMP NOT NULL/g;s/NOT NULL NOT NULL/NOT NULL/g' sakila-db/sakila-schema.sql
-  mysql < sakila-db/sakila-schema.sql
-  mysql < sakila-db/sakila-data.sql
 
-  echo "Import testing database"
-  DATABASE=myd_test
-  mysql < test/mydumper_testing_db.sql
-
-  # export -- import
-  # 1000 rows -- database must not exist
-  if [[ -n "$prepare_only"  ]]; then
-    exit
-  fi
 }
 
 full_test_global(){
@@ -383,6 +379,13 @@ done
 full_test(){
   full_test_global
 }
+
+prepare_full_test
+
+if [[ -n "$prepare_only"  ]]; then
+  prepare_sakila
+  exit
+fi
 
 full_test &&
   finish

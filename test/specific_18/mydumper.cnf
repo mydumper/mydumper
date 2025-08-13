@@ -1,0 +1,7 @@
+#
+# Testing integer primary key 
+#
+
+[mydumper]
+database=specific_18
+outputdir=/tmp/data

@@ -1,0 +1,7 @@
+#
+# Testing multicolumn primary key 
+#
+
+[mydumper]
+database=specific_17
+outputdir=/tmp/data

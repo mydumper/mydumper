@@ -97,14 +97,15 @@ void create_job_to_dump_tablespaces(struct configuration *conf){
   g_async_queue_push(conf->schema_queue, j);
 }
 
-void create_database_related_job(struct database *database, struct configuration *conf, enum job_type type, const gchar *suffix) {
+static
+void create_database_related_job(struct database *database, struct configuration *conf, enum job_type type, const gchar *suffix, gboolean checksum_filename) {
   struct job *j = g_new0(struct job, 1);
   struct database_job *dj = g_new0(struct database_job, 1);
   j->job_data = (void *)dj;
   dj->database = database;
   j->type = type;
   dj->filename = build_schema_filename(database->filename, suffix);
-  dj->checksum_filename = schema_checksums;
+  dj->checksum_filename = checksum_filename;
   g_async_queue_push(conf->schema_queue, j);
   return;
 }
@@ -122,11 +123,11 @@ void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration 
 }
 
 void create_job_to_dump_schema(struct database *database, struct configuration *conf) {
-  create_database_related_job(database, conf, JOB_CREATE_DATABASE, "schema-create");
+  create_database_related_job(database, conf, JOB_CREATE_DATABASE, "schema-create", schema_checksums);
 }
 
 void create_job_to_dump_post(struct database *database, struct configuration *conf) {
-  create_database_related_job(database, conf, JOB_SCHEMA_POST, "schema-post");
+  create_database_related_job(database, conf, JOB_SCHEMA_POST, "schema-post", routine_checksums);
 }
 
 //

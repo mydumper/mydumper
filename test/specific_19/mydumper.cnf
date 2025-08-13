@@ -1,0 +1,7 @@
+#
+# Testing binary 16 primary key
+#
+
+[mydumper]
+database=specific_19
+outputdir=/tmp/data

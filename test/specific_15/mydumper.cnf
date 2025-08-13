@@ -1,0 +1,7 @@
+#
+# Testing empty database
+#
+
+[mydumper]
+database=empty_db
+outputdir=/tmp/data
