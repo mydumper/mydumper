@@ -183,11 +183,10 @@ void configure_connection(MYSQL *conn) {
   m_options(conn, MYSQL_OPT_COMPRESS, compress_protocol, NULL);
   m_options(conn, MYSQL_OPT_PROTOCOL, protocol!=MYSQL_PROTOCOL_DEFAULT, &protocol);
 
-
 #ifdef WITH_SSL
 #ifdef LIBMARIADB
   my_bool enable= ssl_mode != NULL;
-  if (ssl_mode) {
+  if (enable) {
       if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
         m_options(conn, MYSQL_OPT_SSL_ENFORCE, TRUE, &enable);
         if (key || cert) {
@@ -205,8 +204,6 @@ void configure_connection(MYSQL *conn) {
       else {
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
       }
-  }else{
-    m_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, TRUE, &enable);
   }
 #else
   unsigned int i;
