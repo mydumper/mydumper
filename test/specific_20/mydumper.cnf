@@ -3,5 +3,5 @@
 #
 
 [mydumper]
-database=specific_19
+database=specific_20
 outputdir=/tmp/data

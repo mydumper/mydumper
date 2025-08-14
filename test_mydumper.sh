@@ -196,9 +196,12 @@ backtrace ()
    done
 }
 
-prepare_sakila(){
-  mysql < sakila-db/sakila-schema.sql
-  mysql < sakila-db/sakila-data.sql
+prepare_database_in_directory(){
+  prepare_database="test/${1}.sql"
+  if [ -f ${prepare_database} ]
+  then
+    mysql < ${prepare_database}
+  fi
 }
 
 test_case_dir (){
@@ -237,7 +240,7 @@ test_case_dir (){
   then
     mysql < $mydumper_prepare_database
   else
-    prepare_sakila
+    prepare_database_in_directory ${DIR}
   fi
 
   if (( ${mydumper_execute} > 0 ))
@@ -367,27 +370,28 @@ full_test_global(){
 
   for t in $directories 
   do
-    prepare_full_test
+    prepare_database_in_directory ${t}
     for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
     do
       echo "Executing test: $dir"
       do_case test_case_dir ${dir}
     done
-done
-}
-
-full_test(){
-  full_test_global
+    mysql < test/clean_databases.sql
+  done
 }
 
 prepare_full_test
 
 if [[ -n "$prepare_only"  ]]; then
-  prepare_sakila
+  for dir in $directories
+  do
+    prepare_database_in_directory ${dir}
+  done
+
   exit
 fi
 
-full_test &&
+full_test_global &&
   finish
 
 #cat $mydumper_log
