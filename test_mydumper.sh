@@ -95,7 +95,7 @@ export G_DEBUG=fatal-criticals
 > $myloader_log
 
 optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare,directories:,retry:"
-optstring_short="c:LDd"
+optstring_short="ce:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
@@ -122,6 +122,23 @@ do
     case_num=${case_num###}
     echo "Executing test case: #${case_num}${case_repeat:+ for $case_repeat times}  "
     case_repeat=${case_repeat:-1}
+    shift 2;;
+  -e)
+    if [[ "$2" == *:* ]]
+    then
+      case_max=${2##*:}
+      [[ case_max -lt 1 ]] &&
+        case_max=$(printf "%u/2\n" -2 | bc)
+    fi
+    case_min=${2%%:*}
+    case_min=${case_min###}
+
+    if (( ${case_max} < ${case_min} ))
+    then
+      echo "Error setting the max case (${case_max}) and the starting case (${case_min})"
+      exit
+    fi
+    echo "Executing test case: #${case_min} up to case ${case_max}"
     shift 2;;
   -L|--rr-myloader)
     myloader="rr record $myloader"
@@ -334,6 +351,16 @@ test_case_dir (){
 
 do_case()
 {
+  
+  if [[ -n "$case_min"  ]]
+  then
+    number=$( echo "$2" | cut -d'_' -f2 )
+    if (( $number > $case_min  )) && (( $number < $case_max ))
+    then
+        "$@" || exit
+    fi
+    return
+  fi
   if [[ -n "$case_num"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
@@ -370,13 +397,13 @@ full_test_global(){
 
   for t in $directories 
   do
+    mysql < test/clean_databases.sql
     prepare_database_in_directory ${t}
     for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
     do
       echo "Executing test: $dir"
       do_case test_case_dir ${dir}
     done
-    mysql < test/clean_databases.sql
   done
 }
 
