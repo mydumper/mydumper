@@ -1,8 +1,0 @@
-[mydumper]
-database=myd_test
-tables-list=myd_test.mydumper_aipk_uuid
-routines=1
-events=1
-triggers=1
-outputdir=/tmp/data
-regex=^(?!(mysql\.|sys\.))

@@ -1,9 +1,0 @@
-[mydumper]
-triggers=1
-sync-thread-lock-mode=LOCK_ALL
-database=empty_db
-routines=1
-events=1
-triggers=1
-outputdir=/tmp/data
-regex=^(?!(mysql\.|sys\.))
