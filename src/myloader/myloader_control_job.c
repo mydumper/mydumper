@@ -92,20 +92,19 @@ gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *
 {
   switch (job->type) {
     case JOB_RESTORE: {
-//      g_message("Restore Job");
+      trace("Thread %d: Restoring Job", td->thread_id);
       gboolean res= process_restore_job(td, job->data.restore_job);
       if (retry)
         *retry= res;
       return TRUE;
     }
     case JOB_WAIT:
-//      g_message("Wait Job");
+      trace("Thread %d: Waiting Job", td->thread_id);
       g_async_queue_push(td->conf->ready, GINT_TO_POINTER(1));
-//      GAsyncQueue *queue=job->data.queue;
       g_async_queue_pop(job->data.queue);
       break;
     case JOB_SHUTDOWN: // TODO: do we need JOB_SHUTDOWN for data_queue as it is done in here_is_your_job queue?
-//      g_message("Thread %d: shutting down", td->thread_id);
+      trace("Thread %d: Shutting down", td->thread_id);
       g_free(job);
       return FALSE;
       break;
