@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <glib.h>
 #include <string.h>
+#include <stdbool.h>
 #include "config.h"
 #include "connection.h"
 #include "common.h"
@@ -36,7 +37,6 @@ static gint print_connection_details=1;
 gboolean local_infile = FALSE;
 gchar * default_connection_database=NULL;
 
-
 #ifdef WITH_SSL
 char *key=NULL;
 char *cert=NULL;
@@ -49,6 +49,13 @@ gchar *ssl_mode=NULL;
 #endif
 
 gboolean compress_protocol = FALSE;
+gboolean enable_cleartext_plugin = FALSE;
+
+#if defined(HAVE_MY_BOOL)
+my_bool enable_cleartext = 1;
+#else
+bool enable_cleartext = 1;
+#endif
 
 gboolean connection_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -107,6 +114,8 @@ GOptionEntry connection_entries[] = {
     {"tls-version", 0, 0, G_OPTION_ARG_STRING, &tls_version,
      "Which protocols the server permits for encrypted connections", NULL},
 #endif
+    {"enable-cleartext-plugin", 0, 0, G_OPTION_ARG_NONE, &enable_cleartext_plugin,
+     "Enable the clear text authentication plugin which is disable by default.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 
@@ -152,38 +161,41 @@ void check_capath(const char *path) {
 }
 #endif
 
+static
+void m_options(MYSQL *conn, enum mysql_option option, gboolean arg_b, const void *arg_v){
+  if (arg_b){
+    if ( mysql_options(conn, option, &arg_v))
+       m_error("mysql_options() failed: %s\n", mysql_error(conn));
+  }
+}
+
 void configure_connection(MYSQL *conn) {
-  if (connection_defaults_file != NULL)
-    mysql_options(conn, MYSQL_READ_DEFAULT_FILE, connection_defaults_file);
-  if (connection_default_file_group != NULL)
-    mysql_options(conn, MYSQL_READ_DEFAULT_GROUP, connection_default_file_group);
- 
-  if (local_infile)
-    mysql_options(conn, MYSQL_OPT_LOCAL_INFILE, NULL);
+  m_options(conn, MYSQL_READ_DEFAULT_FILE,  connection_defaults_file != NULL, connection_defaults_file);
+  m_options(conn, MYSQL_READ_DEFAULT_GROUP, connection_default_file_group != NULL, connection_default_file_group);
+
+  m_options(conn, MYSQL_OPT_LOCAL_INFILE, local_infile, NULL);
 
   mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "program_name", program_name);
   gchar *version=g_strdup_printf("Release %s", VERSION);
   mysql_options4(conn, MYSQL_OPT_CONNECT_ATTR_ADD, "app_version", version);
   g_free(version);
-  if (compress_protocol)
-    mysql_options(conn, MYSQL_OPT_COMPRESS, NULL);
-
-  if (protocol!=MYSQL_PROTOCOL_DEFAULT)
-    mysql_options(conn, MYSQL_OPT_PROTOCOL, &protocol);
+  
+  m_options(conn, MYSQL_OPT_COMPRESS, compress_protocol, NULL);
+  m_options(conn, MYSQL_OPT_PROTOCOL, protocol!=MYSQL_PROTOCOL_DEFAULT, &protocol);
 
 #ifdef WITH_SSL
 #ifdef LIBMARIADB
   my_bool enable= ssl_mode != NULL;
-  if (ssl_mode) {
+  if (enable) {
       if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
-        mysql_options(conn, MYSQL_OPT_SSL_ENFORCE, &enable);
+        m_options(conn, MYSQL_OPT_SSL_ENFORCE, TRUE, &enable);
         if (key || cert) {
           check_pem_exists(key, "key");
           check_pem_exists(cert, "cert");
         }
       }
       else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
-        mysql_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &enable);
+        m_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, TRUE, &enable);
         if (capath)
           check_capath(capath);
         else
@@ -192,14 +204,12 @@ void configure_connection(MYSQL *conn) {
       else {
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
       }
-  }else{
-    mysql_options(conn, MYSQL_OPT_SSL_VERIFY_SERVER_CERT, &enable);
   }
 #else
   unsigned int i;
   if (ssl) {
     i = SSL_MODE_REQUIRED;
-    mysql_options(conn, MYSQL_OPT_SSL_MODE, &i);
+    m_options(conn, MYSQL_OPT_SSL_MODE, TRUE, &i);
   } else {
     if (ssl_mode) {
       if (g_ascii_strncasecmp(ssl_mode, "DISABLED", 16) == 0) {
@@ -236,28 +246,16 @@ void configure_connection(MYSQL *conn) {
       else {
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
       }
-      mysql_options(conn, MYSQL_OPT_SSL_MODE, &i);
+      m_options(conn, MYSQL_OPT_SSL_MODE, TRUE, &i);
     }
   }
 #endif // LIBMARIADB
-  if (key) {
-    mysql_options(conn, MYSQL_OPT_SSL_KEY, key);
-  }
-  if (cert) {
-    mysql_options(conn, MYSQL_OPT_SSL_CERT, cert);
-  }
-  if (ca) {
-    mysql_options(conn, MYSQL_OPT_SSL_CA, ca);
-  }
-  if (capath) {
-    mysql_options(conn, MYSQL_OPT_SSL_CAPATH, capath);
-  }
-  if (cipher) {
-    mysql_options(conn, MYSQL_OPT_SSL_CIPHER, cipher);
-  }
-  if (tls_version) {
-    mysql_options(conn, MYSQL_OPT_TLS_VERSION, tls_version);
-  }
+    m_options(conn, MYSQL_OPT_SSL_KEY,    key != NULL, key);
+    m_options(conn, MYSQL_OPT_SSL_CERT,   cert != NULL, cert);
+    m_options(conn, MYSQL_OPT_SSL_CA,     ca != NULL, ca);
+    m_options(conn, MYSQL_OPT_SSL_CAPATH, capath != NULL, capath);
+    m_options(conn, MYSQL_OPT_SSL_CIPHER, cipher != NULL, cipher);
+    m_options(conn, MYSQL_OPT_TLS_VERSION,tls_version != NULL, tls_version);
 #endif
 
   if (!hostname)
@@ -267,6 +265,8 @@ void configure_connection(MYSQL *conn) {
     char *p= getenv("MYSQL_TCP_PORT");
     port= p ? atoi(p) : 0;
   }
+
+  m_options(conn, MYSQL_ENABLE_CLEARTEXT_PLUGIN, enable_cleartext_plugin, &enable_cleartext);
 }
 
 void print_connection_details_once(){
