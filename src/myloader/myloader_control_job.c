@@ -195,10 +195,10 @@ void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft){
     case SCHEMA_CREATE:
     case SCHEMA_TABLE:
     case SCHEMA_SEQUENCE:
-      schema_queue_push(current_ft);
+      schema_queue_push(current_ft, "");
       break;
     case INTERMEDIATE_ENDED:
-      schema_queue_push(current_ft);
+      schema_queue_push(current_ft, "");
       control_job_queue_push(current_ft);
       break;
     case DATA:
