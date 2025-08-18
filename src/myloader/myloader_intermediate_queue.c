@@ -85,15 +85,21 @@ void intermediate_queue_incomplete(struct intermediate_filename * iflnm){
 }
 
 enum file_type process_filename(char *filename){
-//  g_message("Filename: %s", filename);
   enum file_type ft= get_file_type(filename);
   switch (ft){
-    case INIT:
+    case METADATA_GLOBAL:
+      process_metadata_global(filename, intermediate_conf->context);
+      refresh_table_list(intermediate_conf);
       break;
     case SCHEMA_TABLESPACE:
+      g_warning("Tablespace file %s has been ignored. It should be imported manually before restoring", filename);
+      break;
+    case SCHEMA_SEQUENCE:
+      if (!process_schema_sequence_filename(filename)){
+        return DO_NOT_ENQUEUE;
+      }
       break;
     case SCHEMA_CREATE:
-//      g_async_queue_push(schema_counter,GINT_TO_POINTER(1));
       g_atomic_int_inc(&schema_counter);
       process_database_filename(filename);
       if (db){
@@ -102,45 +108,10 @@ enum file_type process_filename(char *filename){
       }
       break;
     case SCHEMA_TABLE:
-      // filename is free
-//      g_async_queue_push(schema_counter,GINT_TO_POINTER(1));
       g_atomic_int_inc(&schema_counter);
       if (!process_table_filename(filename)){
         return DO_NOT_ENQUEUE;
-/*      }else{
-        g_free(filename);
-        refresh_table_list(intermediate_conf);
-*/
       }
-      break;
-    case SCHEMA_VIEW:
-      if (!process_schema_view_filename(filename))
-        return DO_NOT_ENQUEUE;
-      break;
-    case SCHEMA_SEQUENCE:
-      if (!process_schema_sequence_filename(filename)){
-        return DO_NOT_ENQUEUE;
-      }
-      break;
-    case SCHEMA_TRIGGER:
-      if (!skip_triggers)
-        if (!process_schema_filename(filename, TRIGGER))
-          return DO_NOT_ENQUEUE;
-      break;
-    case SCHEMA_POST:
-      // can be enqueued in any order
-      if (!skip_post)
-        if (!process_schema_filename(filename, POST))
-          return DO_NOT_ENQUEUE;
-      break;
-    case CHECKSUM:
-      if (!process_checksum_filename(filename))
-        return DO_NOT_ENQUEUE;
-      intermediate_conf->checksum_list=g_list_insert(intermediate_conf->checksum_list,filename,-1);
-      break;
-    case METADATA_GLOBAL:
-      process_metadata_global(filename, intermediate_conf->context);
-      refresh_table_list(intermediate_conf);
       break;
     case DATA:
       if (!no_data){
@@ -150,20 +121,30 @@ enum file_type process_filename(char *filename){
         m_remove(directory,filename);
       total_data_sql_files++;
       break;
-    case RESUME:
-      if (stream){
-        m_critical("We don't expect to find resume files in a stream scenario");
-      }
+    case LOAD_DATA:
+      release_load_data_as_it_is_close(filename);
+      break;
+    case SCHEMA_VIEW:
+      if (!process_schema_view_filename(filename))
+        return DO_NOT_ENQUEUE;
+      break;
+    case SCHEMA_TRIGGER:
+      if (!skip_triggers)
+        if (!process_schema_filename(filename, TRIGGER))
+          return DO_NOT_ENQUEUE;
+      break;
+    case SCHEMA_POST:
+      if (!skip_post)
+        if (!process_schema_filename(filename, POST))
+          return DO_NOT_ENQUEUE;
       break;
     case IGNORED:
       g_warning("Filename %s has been ignored", filename);
       break;
-    case LOAD_DATA:
-        release_load_data_as_it_is_close(filename);
-      break;
-    case SHUTDOWN:
-      break;
-    case INCOMPLETE:
+    case RESUME:
+      if (stream){
+        m_critical("We don't expect to find resume files in a stream scenario");
+      }
       break;
     default:
       g_message("Ignoring file %s", filename);
@@ -181,26 +162,12 @@ void remove_fifo_file(gchar *fifo_name){
 
 }
 
+/*
 void process_stream_filename(struct intermediate_filename  * iflnm){
   enum file_type current_ft=process_filename(iflnm->filename);
-  if (current_ft == INCOMPLETE ){
-    if (iflnm->iterations > 5){
-      g_warning("Max renqueing reached for: %s", iflnm->filename);
-    }else{
-      intermediate_queue_incomplete(iflnm);
-    }
-//    g_async_queue_push(intermediate_queue, filename);
-    return;
-  }
-  if (current_ft != SCHEMA_VIEW &&
-      current_ft != SCHEMA_TRIGGER &&
-      current_ft != SCHEMA_POST &&
-      current_ft != CHECKSUM &&
-      current_ft != IGNORED &&
-      current_ft != DO_NOT_ENQUEUE )
-    refresh_db_and_jobs(current_ft);
-//    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(current_ft));
+  enroute_into_the_right_queue_based_on_file_type(current_ft);
 }
+*/
 
 void *intermediate_thread(){
   struct intermediate_filename  * iflnm=NULL;
@@ -220,17 +187,12 @@ void *intermediate_thread(){
       iflnm=NULL;
       break;
     }
-    process_stream_filename(iflnm);
+//    process_stream_filename(iflnm);
+    enroute_into_the_right_queue_based_on_file_type(process_filename(iflnm->filename));
   } while (iflnm != NULL);
-  guint n=0;
-  for (n = 0; n < num_threads; n++){
-//    g_async_queue_push(intermediate_conf->stream_queue, GINT_TO_POINTER(SHUTDOWN));
-  }
-//  if (optimize_keys_all_tables)
-//    enqueue_all_index_jobs(intermediate_conf);
   message("Intermediate thread ended");
   refresh_table_list(intermediate_conf);
-  refresh_db_and_jobs(INTERMEDIATE_ENDED);
+  enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
   return NULL;
 }
 

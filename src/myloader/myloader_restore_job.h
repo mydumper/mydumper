@@ -18,7 +18,7 @@
 #ifndef _src_myloader_restore_job_h
 #define _src_myloader_restore_job_h
 #include "myloader.h"
-
+#include "myloader_control_job.h"
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_TO_CREATE_TABLE, JOB_RESTORE_STRING };
 static inline
 const char * rjtype2str(enum restore_job_type rjtype)
@@ -71,4 +71,5 @@ void restore_job_finish();
 void stop_signal_thread();
 void *signal_thread(void *data);
 void execute_drop_database(struct thread_data *td, gchar *database);
+gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry);
 #endif

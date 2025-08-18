@@ -23,10 +23,6 @@
 #include "myloader_worker_loader.h"
 #include "myloader_global.h"
 
-extern GAsyncQueue *here_is_your_job;
-extern GAsyncQueue *refresh_db_queue;
-extern GAsyncQueue *data_queue;
-
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
 void *loader_thread(struct thread_data *td);
@@ -94,20 +90,13 @@ void *process_loader_thread(struct thread_data * td) {
 //  guint pass=0;
   struct db_table * dbt = NULL;
   while (cont){
-    // control job threads needs to know that I'm ready to receive another job
-    trace("refresh_db_queue <- %s", ft2str(THREAD));
-    g_async_queue_push(refresh_db_queue, GINT_TO_POINTER(THREAD));
-    ft=(enum file_type)GPOINTER_TO_INT(g_async_queue_pop(here_is_your_job));
-    trace("here_is_your_job -> %s", ft2str(ft));
+    ft=request_restore_data_job();
     switch (ft){
     case DATA:
-      rj = (struct restore_job *)g_async_queue_pop(data_queue);
+      rj = request_next_data_job();
       dbt = rj->dbt;
-      trace("data_queue -> %s: %s.%s, threads %u", rjtype2str(rj->type), dbt->database->real_database, dbt->real_table, dbt->current_threads);
       job=new_control_job(JOB_RESTORE,rj, dbt->database);
       td->dbt=dbt;
-//      td->use_database=job->use_database;
-//      execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring tables (2)");
       cont=process_job(td, job, NULL);
       g_mutex_lock(dbt->mutex);
       dbt->current_threads--;

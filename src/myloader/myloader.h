@@ -93,7 +93,7 @@ struct configuration {
   GAsyncQueue *post_queue;
   GAsyncQueue *ready;
   GAsyncQueue *pause_resume;
-  GAsyncQueue *stream_queue;
+//  GAsyncQueue *stream_queue;
   GList *table_list;
   GMutex * table_list_mutex;
   GHashTable *table_hash;
@@ -182,28 +182,26 @@ struct db_table {
 };
 
 enum file_type { 
-  INIT, 
+  METADATA_GLOBAL,
   SCHEMA_TABLESPACE, 
+  SCHEMA_SEQUENCE,
   SCHEMA_CREATE, 
-  CJT_RESUME,
   SCHEMA_TABLE,
   DATA,
+  LOAD_DATA,
   SCHEMA_VIEW, 
-  SCHEMA_SEQUENCE,
   SCHEMA_TRIGGER, 
   SCHEMA_POST, 
-  CHECKSUM, 
-//  METADATA_TABLE,
-  METADATA_GLOBAL, 
+  IGNORED,
+
+  INIT,
+  CJT_RESUME,
   RESUME, 
-  IGNORED, 
-  LOAD_DATA, 
   SHUTDOWN, 
-  INCOMPLETE,
   DO_NOT_ENQUEUE,
-  THREAD,
-  INDEX,
-  INTERMEDIATE_ENDED };
+  REQUEST_DATA_JOB,
+  INTERMEDIATE_ENDED
+};
 
 static inline
 const char *ft2str(enum file_type ft)
@@ -229,8 +227,6 @@ const char *ft2str(enum file_type ft)
     return "SCHEMA_TRIGGER";
   case SCHEMA_POST:
     return "SCHEMA_POST";
-  case CHECKSUM:
-    return "CHECKSUM";
   case METADATA_GLOBAL:
     return "METADATA_GLOBAL";
   case RESUME:
@@ -241,14 +237,10 @@ const char *ft2str(enum file_type ft)
     return "LOAD_DATA";
   case SHUTDOWN:
     return "SHUTDOWN";
-  case INCOMPLETE:
-    return "INCOMPLETE";
   case DO_NOT_ENQUEUE:
     return "DO_NOT_ENQUEUE";
-  case THREAD:
-    return "THREAD";
-  case INDEX:
-    return "INDEX";
+  case REQUEST_DATA_JOB:
+    return "REQUEST_DATA_JOB";
   case INTERMEDIATE_ENDED:
     return "INTERMEDIATE_ENDED";
   }
