@@ -20,14 +20,12 @@
 
 #include "myloader.h"
 
-enum control_job_type { JOB_RESTORE, JOB_WAIT, JOB_SHUTDOWN };
+enum control_job_type { JOB_RESTORE, JOB_SHUTDOWN };
 static inline const char *jtype2str(enum control_job_type jtype)
 {
   switch (jtype) {
   case JOB_RESTORE:
     return "JOB_RESTORE";
-  case JOB_WAIT:
-    return "JOB_WAIT";
   case JOB_SHUTDOWN:
     return "JOB_SHUTDOWN";
   }
@@ -47,10 +45,12 @@ struct control_job {
 };
 
 struct control_job * new_control_job (enum control_job_type type, void *job_data, struct database *use_database);
-gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry);
-void refresh_db_and_jobs(enum file_type current_ft);
+//gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry);
+void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft);
 void cjt_resume();
 void initialize_control_job (struct configuration *conf);
 void wait_control_job();
 void maybe_shutdown_control_job();
+enum file_type request_restore_data_job();
+struct restore_job * request_next_data_job();
 #endif

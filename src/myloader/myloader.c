@@ -200,7 +200,7 @@ void print_errors(){
 }
 
 int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
 
   GError *error = NULL;
   GOptionContext *context;
@@ -460,7 +460,7 @@ int main(int argc, char *argv[]) {
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
   conf.table_list_mutex = g_mutex_new();
-  conf.stream_queue = g_async_queue_new();
+//  conf.stream_queue = g_async_queue_new();
   conf.table_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   conf.table_hash_mutex=g_mutex_new();
 

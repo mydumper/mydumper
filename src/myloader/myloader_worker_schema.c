@@ -26,11 +26,10 @@
 GAsyncQueue *refresh_db_queue2 = NULL;
 struct thread_data *schema_td = NULL;
 
-void schema_queue_push(enum file_type current_ft){
-  trace("refresh_db_queue2 <- %s", ft2str(current_ft));
+void schema_queue_push(enum file_type current_ft, const gchar * message){
+  trace("refresh_db_queue2 <- %s%s", ft2str(current_ft), message);
   g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(current_ft));
 }
-
 
 static
 void set_db_schema_created(struct database * real_db_name, struct configuration *conf)
@@ -52,8 +51,7 @@ void set_db_schema_created(struct database * real_db_name, struct configuration 
   cj= g_async_queue_try_pop(queue);
   while (cj != NULL){
     g_async_queue_push(object_queue, cj);
-    trace("refresh_db_queue2 <- %s (requeuing from db queue)", ft2str(ft));
-    g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(ft));
+    schema_queue_push(ft, " (requeuing from db queue)");
     cj = g_async_queue_try_pop(queue);
   }
 }
@@ -119,7 +117,6 @@ gboolean process_schema(struct thread_data * td){
       char *filename;
       if (restore) {
         filename= job->data.restore_job->filename;
-//        execute_use_if_needs_to(&(td->connection_data), job->use_database, "Restoring table structure");
         trace("%s -> %s: %s", qname, ft2str(ft), filename);
       } else
         trace("%s -> %s", qname, jtype2str(job->type));
@@ -128,11 +125,11 @@ gboolean process_schema(struct thread_data * td){
         g_assert(restore);
         trace("retry_queue <- %s: %s", ft2str(ft), filename);
         g_async_queue_push(td->conf->retry_queue, job);
-        refresh_db_and_jobs(ft);
+        enroute_into_the_right_queue_based_on_file_type(ft);
         break;
       }
       if (ft == SCHEMA_TABLE) { /* TODO: for spoof view table don't do DATA */
-        refresh_db_and_jobs(DATA);
+        enroute_into_the_right_queue_based_on_file_type(DATA);
       } else if (restore) {
         g_assert(ft == SCHEMA_SEQUENCE && sequences_processed < sequences);
         g_mutex_lock(&sequences_mutex);
@@ -147,7 +144,7 @@ gboolean process_schema(struct thread_data * td){
         g_mutex_lock(&sequences_mutex);
         if (sequences_processed < sequences) {
           trace("INTERMEDIATE_ENDED waits %d sequences", sequences - sequences_processed);
-          refresh_db_and_jobs(INTERMEDIATE_ENDED);
+          enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
           g_mutex_unlock(&sequences_mutex);
           return TRUE;
         }
@@ -164,7 +161,7 @@ gboolean process_schema(struct thread_data * td){
               g_warning("Schema file for `%s` not found, continue anyways",real_db_name->name);
               real_db_name->schema_state=CREATED;
             }
-            refresh_db_and_jobs(INTERMEDIATE_ENDED);
+            enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
             g_mutex_unlock(real_db_name->mutex);
             return TRUE;
           }
@@ -173,8 +170,7 @@ gboolean process_schema(struct thread_data * td){
         }
         message("Schema creation enqueing completed");
         second_round=TRUE;
-        trace("refresh_db_queue2 <- %s (first round)", ft2str(ft));
-        g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(ft));
+        schema_queue_push(ft, " (first round)");
       }else{
         set_table_schema_state_to_created(td->conf);
         message("Table creation enqueing completed");
@@ -183,12 +179,11 @@ gboolean process_schema(struct thread_data * td){
         for (n = 0; n < max_threads_for_schema_creation; n++, td++) {
           trace("table_queue <- JOB_SHUTDOWN");
           g_async_queue_push(td->conf->table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-          trace("refresh_db_queue2 <- %s (second round)", ft2str(SCHEMA_TABLE));
           if (!postpone_load || n < max_threads_for_schema_creation - 1)
-            g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(SCHEMA_TABLE));
+            schema_queue_push(SCHEMA_TABLE, " (second round)");
         }
         if (postpone_load)
-          g_async_queue_push(refresh_db_queue2, GINT_TO_POINTER(CJT_RESUME));
+          schema_queue_push(CJT_RESUME, "");
       }
       break;
     default:
@@ -236,9 +231,11 @@ void start_worker_schema(){
 
 void wait_schema_worker_to_finish(){
   guint n=0;
+  trace("Waiting schema worker to finish");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     g_thread_join(schema_threads[n]);
   }
+  trace("Schema worker finished");
 }
 
 void free_schema_worker_threads(){

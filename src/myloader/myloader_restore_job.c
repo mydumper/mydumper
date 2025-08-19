@@ -428,3 +428,27 @@ void restore_job_finish(){
     g_async_queue_push(file_list_to_do, g_strdup("NO_MORE_FILES"));
 }
 
+
+gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry)
+{
+  switch (job->type) {
+    case JOB_RESTORE: {
+      trace("Thread %d: Restoring Job", td->thread_id);
+      gboolean res= process_restore_job(td, job->data.restore_job);
+      if (retry)
+        *retry= res;
+      return TRUE;
+    }
+    case JOB_SHUTDOWN: // TODO: do we need JOB_SHUTDOWN for data_queue as it is done in data_job_queue queue?
+      trace("Thread %d: Shutting down", td->thread_id);
+      g_free(job);
+      return FALSE;
+      break;
+    default:
+      g_free(job);
+      g_critical("Something very bad happened!(1)");
+      exit(EXIT_FAILURE);
+  }
+  g_free(job);
+  return TRUE;
+}

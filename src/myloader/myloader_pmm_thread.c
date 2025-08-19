@@ -60,7 +60,7 @@ void write_pmm_entries(const gchar* filename, GString *content, struct configura
   append_pmm_entry(content,"post_table_queue",  conf->post_table_queue);
   append_pmm_entry(content,"post_queue",        conf->post_queue);
   append_pmm_entry(content,"pause_resume",      conf->pause_resume);
-  append_pmm_entry(content,"stream_queue",      conf->stream_queue);
+//  append_pmm_entry(content,"stream_queue",      conf->stream_queue);
   append_pmm_entry(content,"ready",             conf->ready);
   append_pmm_entry_tables(content,conf);
   g_file_set_contents( filename , content->str, content->len, NULL);

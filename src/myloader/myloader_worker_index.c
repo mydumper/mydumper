@@ -79,6 +79,7 @@ void *worker_index_thread(struct thread_data *td) {
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
+    enroute_into_the_right_queue_based_on_file_type(REQUEST_DATA_JOB);
   }
 
   trace("I-Thread %u: ending", td->thread_id);
@@ -87,6 +88,7 @@ void *worker_index_thread(struct thread_data *td) {
 
 void create_index_shutdown_job(struct configuration *conf){
   guint n=0;
+  trace("Sending SHUTDOWN to index threads");
   for (n = 0; n < max_threads_for_index_creation; n++) {
     g_async_queue_push(conf->index_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
   }
@@ -105,6 +107,44 @@ void start_optimize_keys_all_tables(){
   for (n = 0; n < max_threads_for_index_creation; n++) {
     g_async_queue_push(optimize_keys_all_tables_queue, GINT_TO_POINTER(1));
   }
+}
+
+static
+gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
+  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
+  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
+  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
+  g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
+  dbt->schema_state=INDEX_ENQUEUED;
+  return TRUE;
+}
+
+void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+  if (dbt->schema_state==DATA_DONE){
+    if (dbt->indexes == NULL){
+      dbt->schema_state=ALL_DONE;
+//      return FALSE;
+    }else{
+//      return 
+        create_index_job(conf, dbt, 0);
+    }
+  }
+//  return !(dbt->schema_state == ALL_DONE || dbt->schema_state == INDEX_ENQUEUED ) ;
+}
+
+void enqueue_indexes_if_possible(struct configuration *conf){
+  (void )conf;
+  g_mutex_lock(conf->table_list_mutex);
+  GList * iter=conf->table_list;
+  struct db_table * dbt = NULL;
+  while (iter != NULL){
+    dbt=iter->data;
+    g_mutex_lock(dbt->mutex);
+    enqueue_index_for_dbt_if_possible(conf,dbt);
+    g_mutex_unlock(dbt->mutex);
+    iter=iter->next;
+  }
+  g_mutex_unlock(conf->table_list_mutex);
 }
 
 void free_index_worker_threads(){

@@ -456,9 +456,6 @@ enum file_type get_file_type (const char * filename){
   if ( strcmp(filename, "resume.partial") == 0 )
     m_critical("resume.partial file found. Remove it and restart process if you consider that it will be safe.");
 
-  if (m_filename_has_suffix(filename, "-checksum"))
-    return CHECKSUM;
-
   if (m_filename_has_suffix(filename, "-schema-view.sql") )
     return SCHEMA_VIEW;
 
