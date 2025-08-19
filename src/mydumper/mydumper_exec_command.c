@@ -60,7 +60,8 @@ void exec_this_command(gchar **c_arg,struct filename_queue_element * sqe){
       g_mutex_unlock(exec_mutex);
       if (sqe2!=NULL){
         remove(sqe2->filename);
-        g_hash_table_remove(pid_file_table, _key);
+        if (g_hash_table_contains(pid_file_table, _key))
+          g_hash_table_remove(pid_file_table, _key);
         if (sqe2->done)
           g_async_queue_push(sqe2->done, GINT_TO_POINTER(1));
       }else{
