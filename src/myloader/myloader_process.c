@@ -678,6 +678,9 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
     g_free(group);
   }
 
+  if (stream)
+    metadata_has_been_processed();
+
   m_remove(directory, file);
 }
 

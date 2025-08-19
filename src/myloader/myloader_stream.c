@@ -27,13 +27,36 @@
 GThread *stream_thread = NULL;
 void *process_stream(struct configuration *stream_conf);
 
+static GMutex *metadata_header_mutex=NULL;
+static gboolean metadata_header_done=FALSE;
+static GCond *metadata_header_cond= NULL;
+
 void initialize_stream (struct configuration *c){
   stream_thread = m_thread_new("myloader_stream",(GThreadFunc)process_stream, c, "Stream thread could not be created");
+  metadata_header_mutex=g_mutex_new();
+  metadata_header_cond= g_cond_new();
 }
 
 void wait_stream_to_finish(){
   g_thread_join(stream_thread);
 }
+
+void wait_stream_to_process_metadata_header(){
+  g_mutex_lock(metadata_header_mutex);
+  while(!metadata_header_done)
+    g_cond_wait (metadata_header_cond, metadata_header_mutex);
+  g_mutex_unlock(metadata_header_mutex);
+}
+
+
+void metadata_has_been_processed(){
+  g_mutex_lock(metadata_header_mutex);
+  metadata_header_done=TRUE;
+  g_cond_signal(metadata_header_cond);
+  g_mutex_unlock(metadata_header_mutex);
+}
+
+
 
 size_t read_stream_line(char *buffer, int c_to_read){
     size_t bytes = fread(buffer, sizeof(char), c_to_read, stdin);
