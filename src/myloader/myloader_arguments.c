@@ -72,7 +72,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       identifier_quote_character= DOUBLE_QUOTE;
       return TRUE;
     }
-    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dt, \"");
+    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dq, \"");
   } else if (!strcmp(option_name, "--checksum")) {
     checksum_str=g_strdup(value);
     if (value == NULL || !strcasecmp(value, "FAIL")) {

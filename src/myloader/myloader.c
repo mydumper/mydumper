@@ -501,6 +501,8 @@ int main(int argc, char *argv[]) {
 
   if (!stream){
     wait_directory_to_process_metadata();
+  }else{
+    wait_stream_to_process_metadata_header();
   }
 
   remove_ignore_set_session_from_hash();
