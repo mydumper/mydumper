@@ -22,6 +22,7 @@
 #include "myloader_control_job.h"
 #include "myloader_worker_loader.h"
 #include "myloader_global.h"
+#include "myloader_worker_index.h"
 
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
@@ -41,44 +42,6 @@ void initialize_loader_threads(struct configuration *conf){
     g_async_queue_pop(conf->ready);
   }
 }
-
-gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
-  struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
-  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
-  g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
-  dbt->schema_state=INDEX_ENQUEUED;
-  return TRUE;
-}
-
-gboolean enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
-  if (dbt->schema_state==DATA_DONE){
-    if (dbt->indexes == NULL){
-      dbt->schema_state=ALL_DONE;
-      return FALSE;
-    }else{
-      return create_index_job(conf, dbt, 0);
-    }
-  }
-  return !(dbt->schema_state == ALL_DONE || dbt->schema_state == INDEX_ENQUEUED ) ;
-}
-
-void enqueue_indexes_if_possible(struct configuration *conf){
-  (void )conf;
-  g_mutex_lock(conf->table_list_mutex);
-  GList * iter=conf->table_list;
-  struct db_table * dbt = NULL;
-  while (iter != NULL){
-    dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
-    (void) enqueue_index_for_dbt_if_possible(conf,dbt);
-    g_mutex_unlock(dbt->mutex);
-    iter=iter->next;
-  }
-  g_mutex_unlock(conf->table_list_mutex);
-}
-
-
 
 void *process_loader_thread(struct thread_data * td) {
   struct control_job *job = NULL;

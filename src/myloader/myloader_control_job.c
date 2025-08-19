@@ -174,7 +174,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
         gboolean res= enqueue_index_for_dbt_if_possible(conf,dbt);
-//          create_index_job(conf, dbt, -1);
         if (res) {
           giveup= FALSE;
           trace("%s.%s queuing indexes, prohibiting finish", dbt->database->real_database, dbt->real_table);
@@ -203,6 +202,7 @@ void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft){
       schema_queue_push(current_ft, "");
       control_job_queue_push(current_ft);
       break;
+    case REQUEST_DATA_JOB:
     case DATA:
     case SHUTDOWN:
       control_job_queue_push(current_ft);
@@ -272,11 +272,6 @@ void *control_job_thread(struct configuration *conf){
           trace("Thread will be waiting | all_jobs_are_enqueued: %d | giveup: %d", all_jobs_are_enqueued, giveup);
           if (threads_waiting<_num_threads)
               threads_waiting++;
-          if (threads_waiting==_num_threads){
-            trace("CJT will sleep...");
-//            sleep(1);
-//            control_job_queue_push(REQUEST_DATA_JOB);
-          }
         }
       }
       break;
