@@ -173,13 +173,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       trace("No remaining jobs on %s.%s", dbt->database->real_database, dbt->real_table); 
       if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
-        gboolean res= enqueue_index_for_dbt_if_possible(conf,dbt);
-        if (res) {
-          giveup= FALSE;
-          trace("%s.%s queuing indexes, prohibiting finish", dbt->database->real_database, dbt->real_table);
-        } else {
-          trace("%s.%s skipping indexes, voting for finish", dbt->database->real_database, dbt->real_table);
-        }
+        enqueue_index_for_dbt_if_possible(conf,dbt);
+        trace("%s.%s queuing indexes, voting for finish", dbt->database->real_database, dbt->real_table);
       }
     }
     
