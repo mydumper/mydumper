@@ -268,6 +268,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     }
     dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
     dbt->rows_lock= g_mutex_new();
+    dbt->rows_total=0;
     dbt->escaped_table = escape_string(conn,dbt->table);
     dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, lkey);
     dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
