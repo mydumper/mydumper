@@ -50,6 +50,7 @@ void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft);
 void cjt_resume();
 void initialize_control_job (struct configuration *conf);
 void wait_control_job();
+void control_job_queue_push(enum file_type current_ft);
 void maybe_shutdown_control_job();
 enum file_type request_restore_data_job();
 struct restore_job * request_next_data_job();

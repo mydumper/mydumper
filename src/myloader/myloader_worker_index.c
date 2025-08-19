@@ -79,6 +79,7 @@ void *worker_index_thread(struct thread_data *td) {
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
+    control_job_queue_push(REQUEST_DATA_JOB);
   }
 
   trace("I-Thread %u: ending", td->thread_id);
@@ -87,6 +88,7 @@ void *worker_index_thread(struct thread_data *td) {
 
 void create_index_shutdown_job(struct configuration *conf){
   guint n=0;
+  trace("Sending SHUTDOWN to index threads");
   for (n = 0; n < max_threads_for_index_creation; n++) {
     g_async_queue_push(conf->index_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
   }

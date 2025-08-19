@@ -231,9 +231,11 @@ void start_worker_schema(){
 
 void wait_schema_worker_to_finish(){
   guint n=0;
+  trace("Waiting schema worker to finish");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     g_thread_join(schema_threads[n]);
   }
+  trace("Schema worker finished");
 }
 
 void free_schema_worker_threads(){

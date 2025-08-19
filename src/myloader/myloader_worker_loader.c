@@ -60,7 +60,7 @@ gboolean enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db
       return create_index_job(conf, dbt, 0);
     }
   }
-  return dbt->schema_state != ALL_DONE;
+  return !(dbt->schema_state == ALL_DONE || dbt->schema_state == INDEX_ENQUEUED ) ;
 }
 
 void enqueue_indexes_if_possible(struct configuration *conf){

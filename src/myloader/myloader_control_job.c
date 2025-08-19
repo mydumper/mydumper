@@ -62,9 +62,11 @@ void initialize_control_job (struct configuration *conf){
 
 void wait_control_job()
 {
+  trace("Waiting control job to finish");
   g_thread_join(control_job_t);
   g_mutex_free(cjt_mutex);
   g_cond_free(cjt_cond);
+  trace("Control job to finished");
 }
 
 struct control_job * new_control_job (enum control_job_type type, void *job_data, struct database *use_database) {
@@ -267,9 +269,14 @@ void *control_job_thread(struct configuration *conf){
             g_async_queue_push(data_job_queue, GINT_TO_POINTER(SHUTDOWN));
           }
         }else{
-          trace("Thread will be waiting");
+          trace("Thread will be waiting | all_jobs_are_enqueued: %d | giveup: %d", all_jobs_are_enqueued, giveup);
           if (threads_waiting<_num_threads)
               threads_waiting++;
+          if (threads_waiting==_num_threads){
+            trace("CJT will sleep...");
+//            sleep(1);
+//            control_job_queue_push(REQUEST_DATA_JOB);
+          }
         }
       }
       break;
