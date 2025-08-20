@@ -60,14 +60,102 @@ gboolean schema_sequence_fix = FALSE;
 guint max_threads_per_table= 4;
 
 guint source_control_command = TRADITIONAL;
-gint source_data=0;
+
+struct replication_settings source_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
+struct replication_settings replica_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
 
 gchar *throttle_variable=NULL;
 guint throttle_value=0;
 
 gchar *server_version_arg=NULL;
 
+gchar **optimize_key_engines=NULL;
+
+
+void parse_source_replica_options(const gchar *value, struct replication_settings *rep_set){
+  rep_set->enabled=TRUE;
+  if (value){
+    gchar ** lp=g_strsplit(value, ",", 0);
+    if (g_strv_length(lp)==1){
+      guint64 _source_data;
+       if (g_ascii_string_to_unsigned(value, 10, 0, 256, &_source_data, NULL)){
+        rep_set->exec_reset_replica=((_source_data) & (1<<(0)))>0;
+        rep_set->exec_change_source=((_source_data) & (1<<(1)))>0;
+        rep_set->exec_start_replica=((_source_data) & (1<<(2)))>0;
+        rep_set->source_ssl        =((_source_data) & (1<<(3)))>0;
+        rep_set->auto_position     =((_source_data) & (1<<(4)))>0;
+        rep_set->exec_start_replica_until=((_source_data) & (1<<(5)))>0;
+        return;
+       }
+    }
+    rep_set->exec_reset_replica=g_strv_contains((const char * const*)lp,"exec_reset_replica");
+    rep_set->exec_change_source=g_strv_contains((const char * const*)lp,"exec_change_source");
+    rep_set->exec_start_replica=g_strv_contains((const char * const*)lp,"exec_start_replica");
+    rep_set->source_ssl=g_strv_contains((const char * const*)lp,"enable_ssl");
+    rep_set->auto_position=g_strv_contains((const char * const*)lp,"use_auto_position");
+    rep_set->exec_start_replica_until=g_strv_contains((const char * const*)lp,"exec_start_replica_until");
+    g_strfreev(lp);
+  }
+}
+
+gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
+  *error=NULL;
+  (void) data;
+  if (!strcmp(option_name,"--throttle")){
+    if (value){
+      gchar ** tp;
+      gchar ** tq=g_strsplit(value, ":", 2);
+      if (tq[1]){
+        throttle_max_usleep_limit=atoi(tq[0]);
+        tp=g_strsplit(tq[1], "=", 2);
+      }else{
+        tp=g_strsplit(value, "=", 2);
+      }
+      throttle_variable=g_strdup(tp[0]);
+      throttle_value = atoi(tp[1]);
+      g_strfreev(tq);
+      g_strfreev(tp);
+    }else{
+      throttle_variable=g_strdup("Threads_running");
+      throttle_value = 0;
+    }
+    return TRUE;
+  } else if (!strcmp(option_name, "--optimize-keys-engines")){
+    if (value){
+      optimize_key_engines = g_strsplit(value, ",", 0);
+      return TRUE;
+    }
+
+  } else if (!strcmp(option_name, "--source-control-command")){
+    if (!strcasecmp(value, "TRADITIONAL")) {
+      source_control_command=TRADITIONAL;
+      return TRUE;
+    }
+    if (!strcasecmp(value, "AWS")) {
+      source_control_command=AWS;
+      return TRUE;
+    }
+  } else if (!strcmp(option_name, "--ignore-errors")){
+    guint n=0;
+    gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
+    while(tmp_ignore_errors_list[n]!=NULL){
+      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
+      n++;
+    }
+    return TRUE;
+  } else if (!strcmp(option_name, "--source-data")){
+    parse_source_replica_options(value,&source_data);
+    return TRUE;
+  } else if (!strcmp(option_name, "--replica-data")){
+    parse_source_replica_options(value,&replica_data);
+    return TRUE;
+  }
+  return FALSE;
+}
+
 GOptionEntry common_entries[] = {
+    {"source-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+      "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {"threads", 't', 0, G_OPTION_ARG_INT, &num_threads,
       "Number of threads to use, 0 means to use number of CPUs. Default: 4, Minimum: 2", NULL},
     {"version", 'V', 0, G_OPTION_ARG_NONE, &program_version,
@@ -89,8 +177,6 @@ GOptionEntry common_entries[] = {
       "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
     {"server-version", 0, 0, G_OPTION_ARG_STRING, &server_version_arg,
       "Set the server version avoid automatic detection", NULL},
-    {"source-data", 0, 0, G_OPTION_ARG_INT, &source_data, 
-      "It will include the options in the metadata file, to allow myloader to establish replication", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
       "If option is used without parameters it will use Threads_running and the amount of threads", NULL},

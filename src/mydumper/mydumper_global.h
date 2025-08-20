@@ -133,7 +133,10 @@ extern guint64 max_chunk_step_size;
 extern gboolean compact;
 extern gboolean split_integer_tables;
 extern const gchar *rows_file_extension;
-extern gint source_data;
+
+extern struct replication_settings replica_data;
+extern struct replication_settings source_data;
+
 extern guint output_format;
 extern struct function_pointer identity_function_pointer;
 extern GAsyncQueue *stream_queue;

@@ -41,3 +41,18 @@ extern gboolean no_sync;
 extern gchar *throttle_variable;
 extern guint throttle_value;
 extern guint throttle_time;
+
+#ifndef _src_common_options_h
+#define _src_common_options_h
+struct replication_settings{
+  gboolean enabled;
+  gboolean exec_start_replica;
+  gboolean exec_reset_replica;
+  gboolean exec_change_source;
+  gboolean auto_position;
+  gboolean source_ssl;
+  gboolean exec_start_replica_until;
+};
+#endif
+
+gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
