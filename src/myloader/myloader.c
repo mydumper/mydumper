@@ -205,7 +205,6 @@ int main(int argc, char *argv[]) {
   GError *error = NULL;
   GOptionContext *context;
 
-  source_data=-1;
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
   set_thread_name("MNT");

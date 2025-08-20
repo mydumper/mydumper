@@ -468,16 +468,16 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
   m_store_result_row_free(mr);
 
   if (masterlog) {
-    fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
-    if (source_data >= 0){
+    fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    if (source_data.enabled){
       fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
-      if (((source_data) & (1<<(3)))>0)
+      if (source_data.source_ssl)
         fprintf(file, "SOURCE_SSL = 1\n");
       else
         fprintf(file, "#SOURCE_SSL = {0|1}\n");
       if (mastergtid && strlen(mastergtid)>0)
         fprintf(file, "executed_gtid_set = \"%s\"\n", mastergtid);
-      if (((source_data) & (1<<(4)))>0){
+      if (source_data.auto_position){
         fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", masterlog, masterpos);
         fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
       }else{
@@ -485,7 +485,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
         fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
       }
       fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
-          ((source_data) & (1<<(0))) , ((source_data) & (1<<(1)))>0?1:0, ((source_data) & (1<<(2)))>0?1:0);
+          source_data.exec_reset_replica?1:0 , source_data.exec_change_source?1:0, source_data.exec_start_replica?1:0);
 		}
     g_message("Written master status");
   }
@@ -552,11 +552,27 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     }
     if (slavehost) {
       slave_count++;
-      fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
-      fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
-              slavelog, slavepos, gtid_title, slavegtid);
+      fprintf(file, "\n[replication%s%s]\n", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
+
+      if (slavegtid && strlen(slavegtid)>0)
+        fprintf(file, "%s = \"%s\"\n", gtid_title, slavegtid);
+
+      if (replica_data.auto_position){
+        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", slavelog, slavepos);
+        fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
+      }else{
+        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", slavelog, slavepos);
+        fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
+      }
+
       fprintf(file,"%s",replication_section_str->str);
-      fprintf(file,"# myloader_exec_reset_slave = 0 # 1 means execute the command\n# myloader_exec_change_master = 0 # 1 means execute the command\n# myloader_exec_start_slave = 0 # 1 means execute the command\n");
+      if (replica_data.source_ssl)
+        fprintf(file, "SOURCE_SSL = 1\n");
+      else
+        fprintf(file, "#SOURCE_SSL = {0|1}\n");
+
+      fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
+          replica_data.exec_reset_replica?1:0 , replica_data.exec_change_source?1:0, replica_data.exec_start_replica?1:0);
       g_message("Written slave status");
     }
   }
@@ -588,10 +604,8 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
       // Write replica information
-      if (get_product() != SERVER_TYPE_TIDB) {
-        if (source_data >=0 )
+      if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
-      }
       g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
       g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
       g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));

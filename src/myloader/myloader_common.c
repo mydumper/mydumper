@@ -143,7 +143,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
   m_query_warning(conn, "START TRANSACTION", "START TRANSACTION failed");
 }
 
-void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs){
+void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs, struct replication_settings *rep_set){
   gchar *val=NULL;
   guint i=0;
   gsize len=0;
@@ -157,10 +157,10 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   gchar** group_name= g_strsplit(group, ".", 2);
   gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
   gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
-  guint exec_change_source=0, exec_reset_replica=0, exec_start_replica=0, exec_start_replica_until=0;
+  guint _exec_change_source=0, _exec_reset_replica=0, _exec_start_replica=0, _exec_start_replica_until=0;
 
-  gboolean auto_position = FALSE;
-  gboolean source_ssl = FALSE;
+  gboolean _auto_position = FALSE;
+  gboolean _source_ssl = FALSE;
   gchar *source_host = NULL;
   guint source_port = 3306;
   gchar *source_user = NULL;
@@ -171,13 +171,13 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   gchar *source_gtid=NULL;
   for (i=0; i < len; i++){
     if (!(g_strcmp0(keys[i], "myloader_exec_reset_slave") && g_strcmp0(keys[i], "myloader_exec_reset_replica") )){
-      exec_reset_replica=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
+      _exec_reset_replica=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
     } else if (!(g_strcmp0(keys[i], "myloader_exec_change_master") && g_strcmp0(keys[i], "myloader_exec_change_source"))){
       if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
-        exec_change_source=1;
+        _exec_change_source=1;
     } else if (!(g_strcmp0(keys[i], "myloader_exec_start_slave") && g_strcmp0(keys[i], "myloader_exec_start_replica"))){
       if (g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10) == 1 )
-        exec_start_replica=1;
+        _exec_start_replica=1;
     } else if (!g_strcmp0(keys[i], "executed_gtid_set") ){
       source_gtid=g_key_file_get_value(kf,group,keys[i],&error);
     } else if(!g_ascii_strcasecmp(keys[i], "channel_name")){
@@ -189,10 +189,10 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
         g_string_append_printf(traditional_change_source,", ");
       }
       if (!g_ascii_strcasecmp(keys[i], "SOURCE_AUTO_POSITION")){
-        auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
+        _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
 //        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_SSL")){
-        source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
+        _source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
 //        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], source_ssl);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_HOST")){
         source_host=g_key_file_get_value(kf,group,keys[i],&error);
@@ -220,34 +220,34 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     }
   }
 
-
-  if (source_data>=0){
-    exec_reset_replica=((source_data) & (1<<(0)))>0;
-    exec_change_source=((source_data) & (1<<(1)))>0;
-    exec_start_replica=((source_data) & (1<<(2)))>0;
-    source_ssl        =((source_data) & (1<<(3)))>0;
-    auto_position     =((source_data) & (1<<(4)))>0;
-    exec_start_replica_until=((source_data) & (1<<(5)))>0;
+  if (rep_set->enabled){
+    _exec_reset_replica       = rep_set->exec_reset_replica;
+    _exec_change_source       = rep_set->exec_change_source;
+    _exec_start_replica       = rep_set->exec_start_replica;
+    _source_ssl               = rep_set->source_ssl;
+    _auto_position            = rep_set->auto_position;
+    _exec_start_replica_until = rep_set->exec_start_replica_until;
   }
-  g_assert( ( exec_start_replica_until != 0 && (exec_reset_replica == 0 && exec_change_source == 0) )
-         || ( exec_start_replica_until == 0 )
+
+  g_assert( ( _exec_start_replica_until != 0 && (_exec_reset_replica == 0 && _exec_change_source == 0) )
+         || ( _exec_start_replica_until == 0 )
       );
 
-  if (source_ssl)
-    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", source_ssl);
+  if (_source_ssl)
+    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
 
-  if (auto_position){
-    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", auto_position);
+  if (_auto_position){
+    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
   }else
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master");
   
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
-  if (!auto_position)
-    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, source_ssl);
+  if (!_auto_position)
+    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, _source_ssl);
   else
-    g_string_append_printf(aws_change_source,"%d, 0);\n", source_ssl);
+    g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
 
   g_strfreev(keys);
   g_string_append(traditional_change_source," FOR CHANNEL '");
@@ -263,7 +263,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     else
       g_string_append_printf(rs->gtid_purge, "CALL mysql.rds_gtid_purged (%s);\n", source_gtid);
   }
-  if (exec_reset_replica){
+  if (_exec_reset_replica){
     if (!rs->reset_replica)
       rs->reset_replica=g_string_new("");
 
@@ -273,7 +273,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     g_string_append(rs->reset_replica,reset_replica);
     if (source_control_command == TRADITIONAL){
       g_string_append(rs->reset_replica," ");
-      if (exec_reset_replica>1)
+      if (_exec_reset_replica>1)
         g_string_append(rs->reset_replica,"ALL ");
       if (channel_name!=NULL)
         g_string_append_printf(rs->reset_replica,"FOR CHANNEL '%s'", channel_name);
@@ -281,7 +281,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     g_string_append(rs->reset_replica,";\n");
   }
 
-  if (exec_start_replica_until){
+  if (_exec_start_replica_until){
     if (! rs->start_replica_until)
       rs->start_replica_until=g_string_new("");
     g_string_append(rs->start_replica_until,stop_replica_sql_thread);
@@ -307,7 +307,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     g_string_append(rs->start_replica_until,"';\n");
   }
 // SQL_AFTER_GTIDS
-  if (exec_change_source){
+  if (_exec_change_source){
     if (! rs->change_replication_source)
       rs->change_replication_source=g_string_new("");
     if (source_control_command == TRADITIONAL){
@@ -317,7 +317,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     }
   }
 
-  if (exec_start_replica){
+  if (_exec_start_replica){
     if (! rs->start_replica)
       rs->start_replica=g_string_new("");
     g_string_append(rs->start_replica,start_replica);

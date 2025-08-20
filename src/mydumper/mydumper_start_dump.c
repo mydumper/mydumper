@@ -832,109 +832,6 @@ void send_lock_all_tables(MYSQL *conn){
   g_free(query->str);
   g_list_free(tables_lock);
 }
-/*
-static
-void write_replica_info(MYSQL *conn, FILE *file) {
-  MYSQL_RES *slave = NULL;
-  MYSQL_FIELD *fields;
-  MYSQL_ROW row;
-
-  char *slavehost = NULL;
-  char *slavelog = NULL;
-  char *slavepos = NULL;
-  char *slavegtid = NULL;
-
-  char *channel_name = NULL;
-  const char *gtid_title = NULL;
-  guint i;
-  guint isms = 0;
-  MYSQL_RES *rest=NULL;
-  if (get_product() == SERVER_TYPE_MARIADB ){
-    rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
-    if (rest != NULL && mysql_num_rows(rest)) {
-      mysql_free_result(rest);
-      g_message("Multisource slave detected.");
-      isms = 1;
-    }
-  }
-
-  if (isms)
-    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
-  else
-    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
-
-  guint slave_count=0;
-  slave = mysql_store_result(conn);
-
-  if (!slave || mysql_num_rows(slave) == 0){
-    goto cleanup;
-  }
-  mysql_free_result(slave);
-  g_message("Stopping replica");
-  replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
-  if (source_control_command==AWS){
-    discard_mysql_output(conn);
-  } 
-
-  if (isms)  
-    m_query_critical(conn, show_all_replicas_status, "Error executing %s", show_all_replicas_status);
-  else
-    m_query_critical(conn, show_replica_status, "Error executing %s", show_replica_status);
-
-  slave = mysql_store_result(conn);
-
-  GString *replication_section_str = g_string_sized_new(100);
-
-  while (slave && (row = mysql_fetch_row(slave))) {
-    g_string_set_size(replication_section_str,0);
-    fields = mysql_fetch_fields(slave);
-    slavepos=NULL;
-    slavelog=NULL;
-    slavehost=NULL;
-    slavegtid=NULL;
-    channel_name=NULL;
-    gtid_title=NULL;
-    for (i = 0; i < mysql_num_fields(slave); i++) {
-      if (!strcasecmp("exec_master_log_pos", fields[i].name)          || !strcasecmp("exec_source_log_pos", fields[i].name)) {
-        slavepos = row[i];
-      } else if (!strcasecmp("relay_master_log_file", fields[i].name) || !strcasecmp("relay_source_log_file", fields[i].name)) {
-        slavelog = row[i];
-      } else if (!strcasecmp("master_host", fields[i].name)           || !strcasecmp("source_host", fields[i].name)) {
-        slavehost = row[i];
-      } else if (!strcasecmp("Executed_Gtid_Set", fields[i].name)){
-        gtid_title="Executed_Gtid_Set";
-        slavegtid = remove_new_line(row[i]);
-      } else if (!strcasecmp("Gtid_Slave_Pos", fields[i].name)        || !strcasecmp("Gtid_source_Pos", fields[i].name)) {
-        gtid_title=g_strdup(fields[i].name);
-        slavegtid = remove_new_line(row[i]);
-      } else if ( ( !strcasecmp("connection_name", fields[i].name) || !strcasecmp("Channel_Name", fields[i].name) ) && strlen(row[i]) > 1) {
-        channel_name = row[i];
-      }
-      g_string_append_printf(replication_section_str,"# %s = ", fields[i].name);
-      (fields[i].type != MYSQL_TYPE_LONG && fields[i].type != MYSQL_TYPE_LONGLONG  && fields[i].type != MYSQL_TYPE_INT24  && fields[i].type != MYSQL_TYPE_SHORT )  ?
-      g_string_append_printf(replication_section_str,"'%s'\n", remove_new_line(row[i])):
-      g_string_append_printf(replication_section_str,"%s\n", remove_new_line(row[i]));
-    }
-    if (slavehost) {
-      slave_count++;
-      fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
-      fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
-              slavelog, slavepos, gtid_title, slavegtid);
-      fprintf(file,"%s",replication_section_str->str);
-      fprintf(file,"# myloader_exec_reset_slave = 0 # 1 means execute the command\n# myloader_exec_change_master = 0 # 1 means execute the command\n# myloader_exec_start_slave = 0 # 1 means execute the command\n");
-      g_message("Written slave status");
-    }
-  }
-  g_string_free(replication_section_str,TRUE);
-  if (slave_count > 1)
-    g_warning("Multisource replication found. Do not trust in the exec_master_log_pos as it might cause data inconsistencies. Search 'Replication and Transaction Inconsistencies' on MySQL Documentation");
-
-  fflush(file);
-cleanup:
-  if (slave)
-    mysql_free_result(slave);
-}
-*/
 
 guint isms = 0;
 static
@@ -1087,7 +984,7 @@ void start_dump() {
   if (load_data || csv )
     fprintf(mdfile, "local-infile = 1\n");
   fprintf(mdfile, "\n[myloader_session_variables]");
-  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n\n", sql_mode);
+  fprintf(mdfile, "\nSQL_MODE=%s /*!40101\n", sql_mode);
   fflush(mdfile);
 
   // Initilizing stream backup
@@ -1110,7 +1007,7 @@ void start_dump() {
 
   // Write replica information
   if (get_product() != SERVER_TYPE_TIDB) {
-    if (source_data >=0 )
+    if (replica_data.enabled)
       m_stop_replica(conn);
   }
 

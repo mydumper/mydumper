@@ -203,6 +203,8 @@ static GOptionEntry entries[] = {
       "Sets the max time that we are going to wait before kill the FLUSH TABLES related commands. Default: 60", NULL},
     {"ftwrl-timeout-retries", 0, 0, G_OPTION_ARG_INT, &ftwrl_timeout_retries,
       "Sets the amount of retries before give up acquiring FLUSH TABLES. Default: 0, never gives up.", NULL},
+    {"replica-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+      "Includes the replica information", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry extra_entries[] = {
