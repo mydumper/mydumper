@@ -75,7 +75,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     return FALSE;
   }
   if (!strcmp(option_name,"--trx-tables")){
-    trx_tables=atoi(value);
+    if (value)
+      trx_tables=atoi(value);
+    else
+      trx_tables=0;
     return TRUE;
   }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
