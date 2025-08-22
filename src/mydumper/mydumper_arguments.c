@@ -78,7 +78,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     if (value)
       trx_tables=atoi(value);
     else
-      trx_tables=0;
+      trx_tables=1;
     return TRUE;
   }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
