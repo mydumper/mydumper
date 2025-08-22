@@ -55,7 +55,7 @@ void stream_queue_push(struct db_table *dbt,gchar *filename){
 void *process_stream(void *data){
   (void)data;
   int f=0;
-  char buf[STREAM_BUFFER_SIZE];
+  char *buf=g_new(gchar, STREAM_BUFFER_SIZE);
   int buflen;
   guint64 total_size=0;
   GDateTime *total_start_time=g_date_time_new_now_local();
