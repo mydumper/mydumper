@@ -701,7 +701,7 @@ retry:
       cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + cs->integer_step.step - 1;
 
     if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.min)
-      g_error("Thread %d: integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT"  | cs->integer_step.type.unsign.max : %"G_GUINT64_FORMAT" | cs->integer_step.step %ld", td->thread_id, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
+      g_error("Thread %d: integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT"  | cs->integer_step.type.unsign.max : %"G_GUINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
 
     g_assert(cs->integer_step.type.unsign.cursor >= cs->integer_step.type.unsign.min);
 
@@ -714,7 +714,7 @@ retry:
       cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + cs->integer_step.step - 1;
 
     if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.min)
-      g_error("Thread %d: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld", td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+      g_error("Thread %d: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
 
     g_assert(cs->integer_step.type.sign.cursor >= cs->integer_step.type.sign.min);
 
