@@ -1,0 +1,7 @@
+[myloader]
+drop-table
+max-threads-for-index-creation=1
+max-threads-for-post-actions=1
+fifodir=/tmp/fifodir
+directory=/tmp/data
+serialized-table-creation
