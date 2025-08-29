@@ -237,7 +237,6 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
 end:
   execute_set_names(conn, set_names_in_conn_by_default);
-  g_free(query);
 
   return;
 }
