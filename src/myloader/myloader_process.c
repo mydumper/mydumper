@@ -329,7 +329,7 @@ regex_error:
             if (flag & IS_TRX_TABLE){
               if (flag & IS_ALTER_TABLE_PRESENT){
 //                finish_alter_table(alter_table_statement);
-                g_message("Fast index creation will be use for table: %s.%s",dbt->database->real_database,dbt->real_table);
+                g_message("Fast index creation will be used for table: %s.%s",dbt->database->real_database,dbt->real_table);
               }else{
                 g_string_free(alter_table_statement,TRUE);
                 alter_table_statement=NULL;
