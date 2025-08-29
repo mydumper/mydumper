@@ -1,0 +1,9 @@
+#
+# Testing binary 16 primary key
+#
+
+[mydumper]
+database=specific_21
+outputdir=/tmp/data
+#set-names=utf8mb4
+default-character-set=utf8mb4

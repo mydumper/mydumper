@@ -106,6 +106,8 @@ unset case_num
 unset case_repeat
 unset rr_myloader
 unset rr_mydumper
+unset case_min
+unset case_max
 log_level="--verbose 4"
 
 while true

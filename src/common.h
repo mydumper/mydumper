@@ -230,3 +230,5 @@ gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);
 void *monitor_throttling_thread (void *queue);
+gchar *set_names_statement_template(gchar *_set_names);
+void execute_set_names(MYSQL *conn, gchar *_set_names);

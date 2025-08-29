@@ -164,12 +164,12 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   GString *statement = g_string_sized_new(statement_size);
 
   initialize_header_in_gstring(statement, set_names_in_file_for_sct);
-  if (g_strcmp0(set_names_in_conn_for_sct, AUTO_CHARSET) || !dbt->character_set)
-    query = g_strdup_printf("SET NAMES %s", set_names_in_conn_for_sct);
-  else
-    query = g_strdup_printf("SET NAMES %s", dbt->character_set);
-  mysql_query(conn, query);
-  g_free(query);
+  if (!g_strcmp0(set_names_in_conn_for_sct, AUTO_CHARSET)){
+    if (dbt->character_set)
+      execute_set_names(conn, dbt->character_set);
+  }else
+    execute_set_names(conn, set_names_in_conn_for_sct);
+
 
 
   if (!write_data(outfile, statement)) {
@@ -236,9 +236,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
     dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
 
 end:
-  query = g_strdup_printf("SET NAMES %s", set_names_in_conn_by_default);
-  mysql_query(conn, query);
-  g_free(query);
+  execute_set_names(conn, set_names_in_conn_by_default);
 
   return;
 }

@@ -132,7 +132,7 @@ void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group){
 
 void initialize_connection(const gchar *app){
   program_name=app;
-  set_names_statement=g_strdup_printf("/*!40101 SET NAMES %s*/",set_names_in_conn_by_default);
+  set_names_statement=set_names_statement_template(set_names_in_conn_by_default);
 }
 
 

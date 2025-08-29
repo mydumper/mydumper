@@ -150,7 +150,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
   }
 
-  if (!g_strcmp0(option_name,"--set-names")){
+  if (!g_strcmp0(option_name,"--default-character-set")){
     gchar ** value_split=g_strsplit(value, ",", 2);
     if (!value_split)
       return FALSE;
@@ -162,8 +162,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     g_strfreev(value_split);
     return TRUE;
   }
-  if (!g_strcmp0(option_name,"--default-character-set")){
-
+  if (!g_strcmp0(option_name,"--set-names")){
     gchar ** value_split=g_strsplit(value, ",", 2);
     if (!value_split)
       return FALSE;
@@ -410,9 +409,9 @@ static GOptionEntry statement_entries[] = {
     {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz,
       "Doesn't add SET TIMEZONE on the backup files", NULL},
     {"set-names",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item when executes SHOW CREATE TABLE and the second item for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
+      "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item is used for the schema files and the second item is used for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
     {"default-character-set",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item for the schema files and the second item for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
+      "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item is used when executes SHOW CREATE TABLE and the second item is used for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
       "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

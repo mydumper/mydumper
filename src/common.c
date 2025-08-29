@@ -74,6 +74,10 @@ void initialize_set_names(){
     set_names_in_file_for_sct=set_names_in_file_by_default;
 }
 
+gchar *set_names_statement_template(gchar *_set_names){
+  return g_strdup_printf("/*!40101 SET NAMES %s*/", _set_names);
+}
+
 void free_set_names(){
   g_free(set_names_in_conn_by_default);
   set_names_in_conn_by_default=NULL;
@@ -1454,6 +1458,12 @@ struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const c
 void m_store_result_row_free(struct M_ROW* mr){
   mysql_free_result(mr->res);
   g_free(mr);
+}
+
+void execute_set_names(MYSQL *conn, gchar *_set_names){
+  gchar *_set_names_statement=set_names_statement_template(_set_names); 
+  m_query_warning(conn, _set_names_statement, "Not able to execute SET NAMES statement", NULL);
+  g_free(_set_names_statement);
 }
 
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text){
