@@ -151,12 +151,12 @@ list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("bullseye" "bookworm" "trixie")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "bullseye" "bookworm" "trixie")
 
-build_man_os="jammy_percona80_amd64"
+build_man_os="jammy_mysql80_amd64"
 
 list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
-  "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
+  "jammy_mysql80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
   "el7_percona57_x86_64" 
   "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
