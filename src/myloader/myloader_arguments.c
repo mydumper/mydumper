@@ -196,8 +196,8 @@ static GOptionEntry execution_entries[] = {
       "Executes a DROP DATABASE if the schema database file is found. ", NULL},
     {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
-      "This option accepts no parameter which set default to: DROP. "
-      "If this option is not used, the default is set to: FAIL", NULL},
+      "If the option is not set, the default is set to: FAIL. "
+      "If the option is used without a parameter, the default is: DROP.", NULL},
     {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
       "Option --overwrite-tables has been deprecated. User -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
