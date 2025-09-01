@@ -190,7 +190,6 @@ void finalize_working_thread(){
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
 
-  finalize_chunk();
   g_free(thread_data);
   g_free(threads);
   finalize_table();
