@@ -9535,15 +9535,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_bullseye_mysql84_amd64:
-        requires:
-          - build_jammy_mysql80_amd64
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_bullseye_debian_default_amd64:
+    - build_bullseye_percona57_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -9588,8 +9580,7 @@ workflows:
           - build_el8_mysql84_aarch64
           - build_el9_mysql84_x86_64
           - build_el9_mysql84_aarch64
-          - build_bullseye_mysql84_amd64
-          - build_bullseye_debian_default_amd64
+          - build_bullseye_percona57_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_debian_default_amd64
           - build_trixie_debian_default_arm64
