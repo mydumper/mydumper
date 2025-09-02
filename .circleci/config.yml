@@ -9464,7 +9464,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_focal_percona80_amd64:
+    - build_focal_mysql80_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -9535,7 +9535,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_bullseye_percona80_amd64:
+    - build_bullseye_mysql80_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -9579,7 +9579,7 @@ workflows:
     - publish-github-release:
         requires:
           - build_bionic_percona80_amd64
-          - build_focal_percona80_amd64
+          - build_focal_mysql80_amd64
           - build_jammy_mysql80_amd64
           - build_noble_mysql84_amd64
           - build_noble_ubuntu_default_arm64
@@ -9588,7 +9588,7 @@ workflows:
           - build_el8_mysql84_aarch64
           - build_el9_mysql84_x86_64
           - build_el9_mysql84_aarch64
-          - build_bullseye_percona80_amd64
+          - build_bullseye_mysql80_amd64
           - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_debian_default_amd64

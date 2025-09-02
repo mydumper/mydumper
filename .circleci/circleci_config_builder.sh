@@ -155,13 +155,13 @@ build_man_os="jammy_mysql80_amd64"
 
 list_build=(
   "bionic_percona80_amd64"   
-  "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
+  "focal_mysql80_amd64"   # "focal_mariadb1011_arm64"
   "jammy_mysql80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
   "el7_percona57_x86_64" 
   "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
   "el9_mysql84_x86_64"        "el9_mysql84_aarch64"
-  "bullseye_percona80_amd64" 
+  "bullseye_mysql80_amd64" 
   "bookworm_mysql84_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
