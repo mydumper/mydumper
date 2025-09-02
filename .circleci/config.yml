@@ -1489,8 +1489,6 @@ commands:
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
-    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
-    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
     - run: sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
@@ -9545,7 +9543,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_bookworm_mysql84_amd64:
+    - build_bullseye_debian_default_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -9591,7 +9589,7 @@ workflows:
           - build_el9_mysql84_x86_64
           - build_el9_mysql84_aarch64
           - build_bullseye_mysql84_amd64
-          - build_bookworm_mysql84_amd64
+          - build_bullseye_debian_default_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_debian_default_amd64
           - build_trixie_debian_default_arm64

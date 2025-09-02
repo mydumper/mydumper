@@ -162,7 +162,7 @@ list_build=(
   "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
   "el9_mysql84_x86_64"        "el9_mysql84_aarch64"
   "bullseye_mysql84_amd64" 
-  "bookworm_mysql84_amd64"    "bookworm_mariadb1011_arm64"
+  "bullseye_debian_default_amd64"    "bookworm_mariadb1011_arm64"
   "trixie_debian_default_amd64" "trixie_debian_default_arm64"
 )
 
@@ -308,8 +308,6 @@ commands:
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
     - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
-    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
-    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
     - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
     - run: sudo apt-get update
