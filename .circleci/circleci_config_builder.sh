@@ -151,12 +151,12 @@ list_ubuntu_os=("bionic" "focal" "jammy" "noble")
 list_debian_os=("bullseye" "bookworm" "trixie")
 list_all_os=("bionic" "focal" "jammy" "noble" "el7" "el8" "el9" "bullseye" "bookworm" "trixie")
 
-build_man_os="jammy_percona80_amd64"
+build_man_os="jammy_mysql80_amd64"
 
 list_build=(
   "bionic_percona80_amd64"   
   "focal_percona80_amd64"   # "focal_mariadb1011_arm64"
-  "jammy_percona80_amd64"   # "jammy_mariadb1011_arm64"
+  "jammy_mysql80_amd64"   # "jammy_mariadb1011_arm64"
   "noble_mysql84_amd64"         "noble_ubuntu_default_arm64"
   "el7_percona57_x86_64" 
   "el8_mysql84_x86_64"        "el8_mysql84_aarch64"
@@ -294,6 +294,15 @@ commands:
     steps:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+
+  prepare_apt_mysql80:
+    steps:
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.0-lts" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev mysql-client
 
   prepare_apt_mysql84:
     steps:

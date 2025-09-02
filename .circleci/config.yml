@@ -1474,6 +1474,15 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_apt_mysql80:
+    steps:
+    - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
+    - run: echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.0-lts" | sudo debconf-set-selections
+    - run: sudo rm /usr/share/keyrings/mysql-apt-config.gpg
+    - run: echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+    - run: sudo apt-get update
+    - run: sudo apt-get install -y gdb screen time libmysqlclient21 libmysqlclient-dev mysql-client
+
   prepare_apt_mysql84:
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
@@ -7718,8 +7727,6 @@ jobs:
     
     steps:
     - checkout
-    - attach_workspace:
-        at: /tmp/man
     - set_env_vars
     - prepare_jammy_mysql80
     - run: sudo apt install -y fakeroot
@@ -7745,6 +7752,10 @@ jobs:
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_mysql80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
+         paths:
+           - .
+    - persist_to_workspace:
+         root: /tmp/man
          paths:
            - .
   build_jammy_mysql84_amd64:
@@ -7913,6 +7924,8 @@ jobs:
     
     steps:
     - checkout
+    - attach_workspace:
+        at: /tmp/man
     - set_env_vars
     - prepare_jammy_percona80
     - run: sudo apt install -y fakeroot
@@ -7938,10 +7951,6 @@ jobs:
     - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona80_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
-         paths:
-           - .
-    - persist_to_workspace:
-         root: /tmp/man
          paths:
            - .
   build_jammy_mariadb1011_amd64:
@@ -9449,7 +9458,7 @@ workflows:
         e: noble_mysql84
     - build_bionic_percona80_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9457,13 +9466,13 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_focal_percona80_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_jammy_percona80_amd64:
+    - build_jammy_mysql80_amd64:
         build_man: true
         filters:
           branches:
@@ -9472,7 +9481,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_mysql84_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9480,7 +9489,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_ubuntu_default_arm64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9488,7 +9497,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9496,7 +9505,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql84_x86_64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9504,7 +9513,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql84_aarch64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9512,7 +9521,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql84_x86_64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9520,7 +9529,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql84_aarch64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9528,7 +9537,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bullseye_percona80_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9536,7 +9545,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mysql84_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9544,7 +9553,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mariadb1011_arm64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9552,7 +9561,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_trixie_debian_default_amd64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9560,7 +9569,7 @@ workflows:
             only: /^v\d+\.\d+\.\d+-\d+$/
     - build_trixie_debian_default_arm64:
         requires:
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
@@ -9571,7 +9580,7 @@ workflows:
         requires:
           - build_bionic_percona80_amd64
           - build_focal_percona80_amd64
-          - build_jammy_percona80_amd64
+          - build_jammy_mysql80_amd64
           - build_noble_mysql84_amd64
           - build_noble_ubuntu_default_arm64
           - build_el7_percona57_x86_64
