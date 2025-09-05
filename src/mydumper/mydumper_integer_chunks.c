@@ -42,16 +42,13 @@
 guint64 min_integer_chunk_step_size=0;
 guint64 max_integer_chunk_step_size=0;
 
-guint max_time_per_select=MAX_TIME_PER_QUERY;
+extern guint max_time_per_select;
 
 guint64 gint64_abs(gint64 a){
   if (a >= 0)
     return a;
   return -a;
 }
-
-static
-GString * get_where_from_csi(struct chunk_step_item * csi);
 
 static
 void initialize_integer_step(union chunk_step *cs, gboolean is_unsigned, union type type, gboolean is_step_fixed_length, guint64 step, guint64 min_css, guint64 max_css, gboolean check_min, gboolean check_max, guint64 rows_in_explain){
@@ -599,37 +596,35 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       c_max=update_integer_max(td->thrconn, tj->dbt, csi);
       if (cs->integer_step.is_unsigned)
         trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
-    else
-      trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
-    cs->integer_step.check_max=FALSE;
-  }
-  if (cs->integer_step.check_min /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
-    if (cs->integer_step.is_unsigned)
-      trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
-    else
-      trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
-    c_min=update_integer_min(td->thrconn, tj->dbt, csi);
-    if (cs->integer_step.is_unsigned)
-      trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
-    else
-      trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
-    cs->integer_step.check_min=FALSE;
-  }
-  if (!c_min && !c_max){
-    trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
-    close_files(tj);
-    g_mutex_unlock(csi->mutex);
-    goto update_min;
-//    goto end_process; 
-  }
+      else
+        trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
+      cs->integer_step.check_max=FALSE;
+    }
+    if (cs->integer_step.check_min /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
+      if (cs->integer_step.is_unsigned)
+        trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+      else
+        trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
+      c_min=update_integer_min(td->thrconn, tj->dbt, csi);
+      if (cs->integer_step.is_unsigned)
+        trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+      else
+        trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
+      cs->integer_step.check_min=FALSE;
+    }
+    if (!c_min && !c_max){
+      trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
+      close_files(tj);
+      g_mutex_unlock(csi->mutex);
+      goto update_min;
+    }
 
-
-  if ( cs->integer_step.rows_in_explain == 0){
-    GString *_where=get_where_from_csi(csi);
-    cs->integer_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field); 
-    trace("Thread %d: I-Chunk 1: We calculated rows %"G_GUINT64_FORMAT" for %s", td->thread_id, cs->integer_step.rows_in_explain, _where->str);
-    g_string_free(_where, TRUE);
-  }
+    if ( cs->integer_step.rows_in_explain == 0){
+      GString *_where=get_where_from_csi(csi);
+      cs->integer_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field); 
+      trace("Thread %d: I-Chunk 1: We calculated rows %"G_GUINT64_FORMAT" for %s", td->thread_id, cs->integer_step.rows_in_explain, _where->str);
+      g_string_free(_where, TRUE);
+    }
   }
 
 
@@ -986,13 +981,6 @@ void update_where_on_integer_step(struct chunk_step_item * csi){
   struct integer_step *chunk_step=&(csi->chunk_step->integer_step);
   g_string_set_size(csi->where,0);
   update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, chunk_step->is_unsigned, chunk_step->type, TRUE);
-}
-
-static
-GString * get_where_from_csi(struct chunk_step_item * csi){
-  GString *where = g_string_new("");
-  update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
-  return where;
 }
 
 void determine_if_we_can_go_deeper( struct chunk_step_item * csi, guint64 rows){

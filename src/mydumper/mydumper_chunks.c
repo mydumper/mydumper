@@ -39,6 +39,21 @@ GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 GThread *chunk_builder=NULL;
 
+
+GString * get_where_from_csi(struct chunk_step_item * csi){
+  GString *where = g_string_new("");
+  switch (csi->chunk_type){
+    case INTEGER:
+      update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
+      break;
+    case STRING:
+      break;
+    default:
+      break;
+  }
+  return where;
+}
+
 void initialize_chunk(){
   give_me_another_transactional_chunk_step_queue=g_async_queue_new();
   give_me_another_non_transactional_chunk_step_queue=g_async_queue_new();
@@ -439,7 +454,7 @@ void table_job_enqueue(struct table_queuing *q)
           create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           }
           break;
-        case CHAR:
+        case STRING:
           create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:

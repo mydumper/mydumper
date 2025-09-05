@@ -29,8 +29,8 @@
 
 extern guint64 min_integer_chunk_step_size;
 extern guint64 max_integer_chunk_step_size;
-extern guint max_time_per_select;
 
+guint max_time_per_select=MAX_TIME_PER_QUERY;
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;

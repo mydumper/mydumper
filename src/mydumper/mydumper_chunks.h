@@ -30,11 +30,12 @@ union chunk_step;
 
 #include "mydumper_integer_chunks.h"
 #include "mydumper_partition_chunks.h"
+#include "mydumper_string_chunks.h"
 
 enum chunk_type{
   NONE,
   INTEGER,
-  CHAR,
+  STRING,
   PARTITION,
   MULTICOLUMN_INTEGER
 };
@@ -56,6 +57,7 @@ struct chunk_functions{
 union chunk_step {
   struct integer_step integer_step;
   struct partition_step partition_step;
+  struct string_step string_step;
 };
 
 struct chunk_step_item{
@@ -97,3 +99,5 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
 void build_where_clause_on_table_job(struct table_job *tj);
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field);
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where);
+GString * get_where_from_csi(struct chunk_step_item * csi);
+
