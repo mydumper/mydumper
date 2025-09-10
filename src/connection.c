@@ -164,7 +164,7 @@ void check_capath(const char *path) {
 static
 void m_options(MYSQL *conn, enum mysql_option option, gboolean arg_b, const void *arg_v){
   if (arg_b){
-    if ( mysql_options(conn, option, &arg_v))
+    if ( mysql_options(conn, option, arg_v))
        m_error("mysql_options() failed: %s\n", mysql_error(conn));
   }
 }
