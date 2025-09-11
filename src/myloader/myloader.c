@@ -370,11 +370,12 @@ int main(int argc, char *argv[]) {
   else
     g_message("Using %u loader threads", num_threads);
 
+  initialize_set_names();
+
   if (debug) {
     set_debug();
     verbose=3;
   }
-  set_verbose(verbose);
 
   if (help){
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
@@ -389,6 +390,8 @@ int main(int argc, char *argv[]) {
 
   if (help)
     print_help();
+
+  set_verbose(verbose);
 
   g_message("MyDumper restore version: %s", VERSION);
 

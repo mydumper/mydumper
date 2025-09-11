@@ -234,12 +234,6 @@ int main(int argc, char *argv[]) {
 
   initialize_directories();
 
-  if (debug) {
-    set_debug();
-    verbose=4;
-  }
-  set_verbose(verbose);
-
   if (disk_limits!=NULL){
     parse_disk_limits();
   }
@@ -278,6 +272,13 @@ int main(int argc, char *argv[]) {
     exec_per_thread_cmd[0]=tmpcmd;
   }
 
+  initialize_set_names();
+
+  if (debug) {
+    set_debug();
+    verbose=4;
+  }
+
   if (help)
     printf("%s", g_option_context_get_help (context, FALSE, NULL));
 
@@ -290,6 +291,8 @@ int main(int argc, char *argv[]) {
 
   if (help)
     print_help();
+
+  set_verbose(verbose);
 
   g_message("MyDumper backup version: %s", VERSION);
 
