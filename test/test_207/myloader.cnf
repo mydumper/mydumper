@@ -6,3 +6,5 @@ fifodir=/tmp/fifodir
 directory=/tmp/data
 serialized-table-creation=1
 optimize-keys=AFTER_IMPORT_ALL_TABLES
+[myloader_global_variables]
+local_infile=ON

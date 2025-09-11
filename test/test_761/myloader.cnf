@@ -7,3 +7,5 @@ stream=1
 directory=/tmp/data
 serialized-table-creation=1
 optimize-keys=AFTER_IMPORT_PER_TABLE
+[myloader_global_variables]
+local_infile=ON

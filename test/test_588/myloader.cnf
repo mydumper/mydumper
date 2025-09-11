@@ -6,3 +6,5 @@ fifodir=/tmp/fifodir
 stream=1
 directory=/tmp/data
 serialized-table-creation=1
+[myloader_global_variables]
+local_infile=ON

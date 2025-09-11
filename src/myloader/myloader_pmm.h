@@ -15,5 +15,4 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void *pmm_thread(void *data);
-void kill_pmm_thread();
+void write_myloader_pmm_entries(const gchar* filename, GString *content, struct configuration* conf);

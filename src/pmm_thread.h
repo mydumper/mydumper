@@ -16,5 +16,5 @@
 */
 
 void initialize_pmm();
-void start_pmm_thread(struct configuration *conf);
+void start_pmm_thread(void *conf);
 void stop_pmm_thread();

@@ -26,12 +26,6 @@
 #include "myloader.h"
 #include "myloader_global.h"
 
-gint kill_pmm = 0;
-
-void kill_pmm_thread(){
-  kill_pmm=1;
-}
-
 void append_pmm_entry(GString *content, const gchar *_key, GAsyncQueue * queue){
   if (queue != NULL)
     g_string_append_printf(content,"myloader_queue{name=\"%s\"} %d\n",_key,g_async_queue_length(queue));
@@ -50,7 +44,7 @@ void append_pmm_entry_tables(GString *content,struct configuration *conf){
   }
 }
 
-void write_pmm_entries(const gchar* filename, GString *content, struct configuration* conf){
+void write_myloader_pmm_entries(const gchar* filename, GString *content, struct configuration* conf){
   g_string_set_size(content,0);
   append_pmm_entry(content,"database_queue",    conf->database_queue);
   append_pmm_entry(content,"table_queue",       conf->table_queue);
@@ -66,13 +60,3 @@ void write_pmm_entries(const gchar* filename, GString *content, struct configura
   g_file_set_contents( filename , content->str, content->len, NULL);
 }
 
-void *pmm_thread(void *conf){
-  const gchar* filename=g_strdup_printf("%s/myloader.prom",pmm_path);
-  GString *content = g_string_sized_new(200);
-  while (!kill_pmm){
-    write_pmm_entries(filename, content, (struct configuration*)conf);
-    sleep(1);
-  }
-  write_pmm_entries(filename, content, conf);
-  return NULL;
-}

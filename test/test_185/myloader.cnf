@@ -5,3 +5,5 @@ max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
 directory=/tmp/data
 serialized-table-creation=1
+[myloader_global_variables]
+local_infile=ON

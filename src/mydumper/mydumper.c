@@ -63,84 +63,7 @@ void parse_disk_limits(){
   set_disk_limits(atoi(strsplit[0]),atoi(strsplit[1]));
 }
 
-int main(int argc, char *argv[]) {
-  GError *error = NULL;
-  GOptionContext *context;
-
-  g_thread_init(NULL);
-  setlocale(LC_ALL, "");
-  context = load_contex_entries();
-
-  gchar ** tmpargv=g_strdupv(argv);
-  int tmpargc=argc;
-  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
-    m_critical("option parsing failed: %s, try --help\n", error->message);
-  }
-
-  // TODO: This must be removed when --csv and --load-data are deprecated
-  if (load_data){
-    output_format=LOAD_DATA;
-		rows_file_extension=DAT;
-  }
-  if (csv){
-    output_format=CSV;
-		rows_file_extension=DAT;
-  }
-
-  if (help){
-    printf("%s", g_option_context_get_help (context, FALSE, NULL));
-//    exit(EXIT_SUCCESS);
-  }
-
-  if (program_version) {
-    print_version("mydumper");
-    if (!help)
-      exit(EXIT_SUCCESS);
-    printf("\n");
-  }
-
-  if (tmpargc > 1 ){
-    int pos=0;
-    stream=TRUE;
-    db=strdup(tmpargv[1]);
-    if (tmpargc > 2 ){
-      GString *s = g_string_new(tmpargv[2]);
-      for (pos=3; pos<tmpargc;pos++){
-        g_string_append_printf(s,",%s",tmpargv[pos]);
-      }
-      tables_list=g_strdup(s->str);
-      g_string_free(s, TRUE);
-    }
-  }
-  g_strfreev(tmpargv);
-
-  if (debug) {
-    set_debug();
-    verbose=4;
-  }
-  set_verbose(verbose);
-
-  g_message("MyDumper backup version: %s", VERSION);
-
-  // Loading the defaults file:
-  initialize_common_options(context, "mydumper");
-//  initialize_start_dump();
-
-  hide_password(argc, argv);
-  ask_password();
-
-  if (!output_directory_str){
-    GDateTime * datetime = g_date_time_new_now_local();
-    char *datetimestr;
-    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
-    g_free(datetimestr);
-    g_date_time_unref(datetime);
-  }else{
-    output_directory=output_directory_str;
-  }
-
-  if (help){
+void print_help(){
     print_string("host", hostname);
     print_string("user", username);
     print_string("password", password);
@@ -246,9 +169,70 @@ int main(int argc, char *argv[]) {
     print_string("defaults-file",defaults_file);
     print_string("defaults-extra-file",defaults_extra_file);
     exit(EXIT_SUCCESS);
+}
+
+void initialize_directories(){
+  if (!output_directory_str){
+    GDateTime * datetime = g_date_time_new_now_local();
+    char *datetimestr;
+    datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+    output_directory = g_strdup_printf("%s-%s", DIRECTORY, datetimestr);
+    g_free(datetimestr);
+    g_date_time_unref(datetime);
+  }else{
+    output_directory=output_directory_str;
   }
-  
-  create_dir(output_directory);
+}
+
+int main(int argc, char *argv[]) {
+
+
+  GError *error = NULL;
+  GOptionContext *context;
+
+  setlocale(LC_ALL, "");
+  g_thread_init(NULL);
+  set_thread_name("MNT");
+
+
+
+  context = load_contex_entries();
+
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
+    m_critical("option parsing failed: %s, try --help\n", error->message);
+  }
+
+  // Loading the defaults file:
+  initialize_common_options(context, "mydumper");
+
+  if (tmpargc > 1 ){
+    int pos=0;
+    stream=TRUE;
+    db=strdup(tmpargv[1]);
+    if (tmpargc > 2 ){
+      GString *s = g_string_new(tmpargv[2]);
+      for (pos=3; pos<tmpargc;pos++){
+        g_string_append_printf(s,",%s",tmpargv[pos]);
+      }
+      tables_list=g_strdup(s->str);
+      g_string_free(s, TRUE);
+    }
+  }
+  g_strfreev(tmpargv);
+
+  // TODO: This must be removed when --csv and --load-data are deprecated
+  if (load_data){
+    output_format=LOAD_DATA;
+		rows_file_extension=DAT;
+  }
+  if (csv){
+    output_format=CSV;
+		rows_file_extension=DAT;
+  }
+
+  initialize_directories();
 
   if (disk_limits!=NULL){
     parse_disk_limits();
@@ -257,7 +241,6 @@ int main(int argc, char *argv[]) {
   if (num_threads < 2) {
     use_defer= FALSE;
   }
-
 
   if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
     m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
@@ -289,6 +272,38 @@ int main(int argc, char *argv[]) {
     exec_per_thread_cmd[0]=tmpcmd;
   }
 
+  initialize_set_names();
+
+  if (debug) {
+    set_debug();
+    verbose=4;
+  }
+
+  if (help)
+    printf("%s", g_option_context_get_help (context, FALSE, NULL));
+
+  if (program_version) {
+    print_version("mydumper");
+    if (!help)
+      exit(EXIT_SUCCESS);
+    printf("\n");
+  }
+
+  if (help)
+    print_help();
+
+  set_verbose(verbose);
+
+  g_message("MyDumper backup version: %s", VERSION);
+
+  // Startmodifying file in disk, creating objects and backup
+
+  hide_password(argc, argv);
+  ask_password();
+
+  initialize_pmm();
+
+  create_dir(output_directory);
 
   if (daemon_mode) {
     clear_dumpdir= TRUE;
@@ -296,7 +311,9 @@ int main(int argc, char *argv[]) {
     run_daemon();
   }else{
     dump_directory = output_directory;
-    start_dump();
+    struct configuration conf;
+    start_pmm_thread((void *)&conf);
+    start_dump(&conf);
   }
 
   if (logoutfile) {

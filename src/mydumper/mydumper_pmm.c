@@ -20,49 +20,6 @@
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
 
-
-gchar *pmm_resolution = NULL;
-gchar *pmm_path = NULL;
-
-gint kill_pmm = 0;
-GMutex *pmm_mutex=NULL;
-const gchar* filename=NULL;
-GThread *pmm_thread = NULL;
-
-gboolean pmm=FALSE;
-
-
-void *worker_pmm_thread(void *conf);
-
-void initialize_pmm(){
-  if (pmm_path){
-    pmm=TRUE;
-    if (!pmm_resolution){
-      pmm_resolution=g_strdup("high");
-    }
-  }else if (pmm_resolution){
-    pmm=TRUE;
-    pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
-  }
-}
-
-void start_pmm_thread(struct configuration *conf){
-  if (pmm){
-    g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
-    pmm_thread = m_thread_new("pmm", worker_pmm_thread, conf,"PMM thread could not be created");
-  }
-}
-
-void stop_pmm_thread(){
-  if (pmm){
-    g_mutex_lock(pmm_mutex);
-    kill_pmm=1;
-    remove(filename);
-    g_mutex_unlock(pmm_mutex);
-    g_thread_join(pmm_thread);
-  }
-}
-
 void append_pmm_entry(GString *content, const gchar *metric, const gchar *_key, guint64 value){
   g_string_append_printf(content,"mydumper_%s{name=\"%s\"} %"G_GUINT64_FORMAT"\n",metric, _key, value);
 }
@@ -82,7 +39,7 @@ void append_pmm_entry_all_tables(GString *content){
   }
 }
 
-void write_pmm_entries(GString *content, struct configuration* conf){
+void write_mydumper_pmm_entries(const gchar* filename, GString *content, struct configuration* conf){
   g_string_set_size(content,0);
   append_pmm_entry_queue(content,"schema_queue",      conf->schema_queue);
   append_pmm_entry_queue(content,"non_transactional_queue",  conf->non_transactional.queue);
@@ -101,22 +58,3 @@ void write_pmm_entries(GString *content, struct configuration* conf){
   g_file_set_contents( filename , content->str, content->len, NULL);
 }
 
-void *worker_pmm_thread(void *conf){
-  pmm_mutex = g_mutex_new();
-  g_mutex_lock(pmm_mutex);
-  filename=g_strdup_printf("%s/mydumper.prom",pmm_path);
-  g_mutex_unlock(pmm_mutex);
-  GString *content = g_string_sized_new(200);
-  pmm_mutex = g_mutex_new();
-  while (!kill_pmm){
-    g_mutex_lock(pmm_mutex);
-    if (kill_pmm){
-      g_mutex_unlock(pmm_mutex);
-      break;
-    }
-    write_pmm_entries(content, (struct configuration*)conf);
-    g_mutex_unlock(pmm_mutex);
-    sleep(1);
-  }
-  return NULL;
-}
