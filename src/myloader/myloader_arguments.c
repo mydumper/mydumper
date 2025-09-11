@@ -219,14 +219,6 @@ static GOptionEntry execution_entries[] = {
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-static GOptionEntry pmm_entries[] = {
-    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-
 static GOptionEntry filter_entries[] ={
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
      "Database to restore", NULL},

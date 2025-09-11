@@ -15,6 +15,4 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-void initialize_pmm();
-void start_pmm_thread(struct configuration *conf);
-void stop_pmm_thread();
+void write_mydumper_pmm_entries(GString *content, struct configuration* conf);

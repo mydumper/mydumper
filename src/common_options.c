@@ -190,3 +190,10 @@ GOptionEntry common_filter_entries[] = {
       "Comma delimited table list to dump (does not exclude regex option). "
       "Table name must include database name. For instance: test.t1,test.t2", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+GOptionEntry pmm_entries[] = {
+    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
+      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
+    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
+      "which default will be high", NULL },
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

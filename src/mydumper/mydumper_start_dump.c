@@ -99,7 +99,6 @@ void initialize_start_dump(){
   if (db){
     db_items=g_strsplit(db,",",0);
   }
-  initialize_pmm();
 }
 
 void set_disk_limits(guint p_at, guint r_at){
@@ -870,9 +869,10 @@ cleanup:
 
 // Here is where the backup process start
 
-void start_dump() {
+void start_dump(struct configuration *conf) {
+  memset(conf, 0, sizeof(struct configuration));
+
   MYSQL *conn = NULL, *second_conn = NULL;
-  struct configuration conf;
   char *metadata_partial_filename, *metadata_filename;
   char *u;
   void (*acquire_global_lock_function)(MYSQL *) = NULL;
@@ -912,17 +912,15 @@ void start_dump() {
 
   initialize_regex(partition_regex);
 
-
   // Connecting to the database
   conn = create_main_connection();
   main_connection = conn;
   second_conn = conn;
-  memset(&conf, 0, sizeof(conf));
-  conf.use_any_index= 1;
+  conf->use_any_index= 1;
 
   if (disk_limits!=NULL){
-    conf.pause_resume = g_async_queue_new();
-    disk_check_thread = m_thread_new("mon_disk",monitor_disk_space_thread, conf.pause_resume, "Monitor thread could not be created");
+    conf->pause_resume = g_async_queue_new();
+    disk_check_thread = m_thread_new("mon_disk",monitor_disk_space_thread, conf->pause_resume, "Monitor thread could not be created");
   }
 
 //  GThread *throttling_thread = 
@@ -931,10 +929,7 @@ void start_dump() {
 
   // signal_thread is disable if daemon mode
   if (!daemon_mode)
-    sthread = m_thread_new("signal", signal_thread, &conf, "Signal thread could not be created");
-
-  start_pmm_thread(&conf);
-
+    sthread = m_thread_new("signal", signal_thread, conf, "Signal thread could not be created");
 
   // Initilizing METADATA file
   if (stream)
@@ -1082,33 +1077,33 @@ void start_dump() {
   trace("Initilizing the configuration");
   // Initilizing the configuration
 
-  conf.initial_queue = g_async_queue_new();
-  conf.initial_completed_queue = g_async_queue_new();
+  conf->initial_queue = g_async_queue_new();
+  conf->initial_completed_queue = g_async_queue_new();
 
-  conf.schema_queue = g_async_queue_new();
-  conf.post_data_queue = g_async_queue_new();
-  conf.transactional.queue= g_async_queue_new();
-  conf.transactional.defer= g_async_queue_new();
+  conf->schema_queue = g_async_queue_new();
+  conf->post_data_queue = g_async_queue_new();
+  conf->transactional.queue= g_async_queue_new();
+  conf->transactional.defer= g_async_queue_new();
   // These are initialized in the guts of initialize_start_dump() above
   g_assert(give_me_another_transactional_chunk_step_queue &&
            give_me_another_non_transactional_chunk_step_queue &&
            transactional_table &&
            non_transactional_table);
-  conf.transactional.request_chunk= give_me_another_transactional_chunk_step_queue;
-  conf.transactional.table_list= transactional_table;
-  conf.transactional.descr= "transactional";
-  conf.ready = g_async_queue_new();
-  conf.non_transactional.queue= g_async_queue_new();
-  conf.non_transactional.defer= g_async_queue_new();
-  conf.non_transactional.request_chunk= give_me_another_non_transactional_chunk_step_queue;
-  conf.non_transactional.table_list= non_transactional_table;
-  conf.non_transactional.descr= "non-transactional";
-  conf.ready_non_transactional_queue = g_async_queue_new();
-  conf.unlock_tables = g_async_queue_new();
-  conf.gtid_pos_checked = g_async_queue_new();
-  conf.are_all_threads_in_same_pos = g_async_queue_new();
-  conf.db_ready = g_async_queue_new();
-  conf.binlog_ready = g_async_queue_new();
+  conf->transactional.request_chunk= give_me_another_transactional_chunk_step_queue;
+  conf->transactional.table_list= transactional_table;
+  conf->transactional.descr= "transactional";
+  conf->ready = g_async_queue_new();
+  conf->non_transactional.queue= g_async_queue_new();
+  conf->non_transactional.defer= g_async_queue_new();
+  conf->non_transactional.request_chunk= give_me_another_non_transactional_chunk_step_queue;
+  conf->non_transactional.table_list= non_transactional_table;
+  conf->non_transactional.descr= "non-transactional";
+  conf->ready_non_transactional_queue = g_async_queue_new();
+  conf->unlock_tables = g_async_queue_new();
+  conf->gtid_pos_checked = g_async_queue_new();
+  conf->are_all_threads_in_same_pos = g_async_queue_new();
+  conf->db_ready = g_async_queue_new();
+  conf->binlog_ready = g_async_queue_new();
   ready_table_dump_mutex = g_rec_mutex_new();
   g_rec_mutex_lock(ready_table_dump_mutex);
 
@@ -1117,12 +1112,12 @@ void start_dump() {
 
   // Create metadata job
   if (is_mysql_like()) {
-    create_job_to_dump_metadata(&conf, mdfile);
+    create_job_to_dump_metadata(conf, mdfile);
   }
   trace("Create tablespace jobs");
   // Create tablespace jobs
   if (dump_tablespaces){
-    create_job_to_dump_tablespaces(&conf);
+    create_job_to_dump_tablespaces(conf);
   }
 
   // There are 3 ways to dump tables based on the filters
@@ -1133,29 +1128,29 @@ void start_dump() {
   // if tables and db both exists , should not call dump_database_thread
   if (tables && g_strv_length(tables) > 0) {
     trace("Specific tables");
-    create_job_to_dump_table_list(tables, &conf);
+    create_job_to_dump_table_list(tables, conf);
   } else if (db_items && g_strv_length(db_items) > 0) {
     trace("Specific databases");
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
       struct database *this_db=new_database(conn,db_items[i],TRUE);
-      create_job_to_dump_database(this_db, &conf);
+      create_job_to_dump_database(this_db, conf);
       if (!no_schemas)
-        create_job_to_dump_schema(this_db, &conf);
+        create_job_to_dump_schema(this_db, conf);
     }
   } else {
     trace("All databases");
-    create_job_to_dump_all_databases(&conf);
+    create_job_to_dump_all_databases(conf);
   }
 
   trace("End Job Creation");
   // End Job Creation
 
   // Starting the chunk builder
-  start_chunk_builder(&conf);
+  start_chunk_builder(conf);
 
   // Starting the workers threads
-  start_working_thread(&conf);
+  start_working_thread(conf);
 
   // IMPORTANT: At this point, all the threads are in sync
 
@@ -1163,13 +1158,13 @@ void start_dump() {
     // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
     if (release_binlog_function != NULL){
-      g_async_queue_pop(conf.binlog_ready);
+      g_async_queue_pop(conf->binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
     if (release_global_lock_function)
       release_global_lock_function(conn);
-    if (is_mysql_like() && g_async_queue_pop(conf.binlog_ready) && replica_stopped){
+    if (is_mysql_like() && g_async_queue_pop(conf->binlog_ready) && replica_stopped){
       g_message("Starting replica");
       m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
@@ -1182,9 +1177,9 @@ void start_dump() {
 
   // Every time a schema job is created a counter increases
   // Every time that a schema jobs is completed, the counter decreases
-  // When the counter reaches to 0, it releases conf.db_ready 
+  // When the counter reaches to 0, it releases conf->db_ready 
   g_message("Waiting database finish");
-  g_async_queue_pop(conf.db_ready);
+  g_async_queue_pop(conf->db_ready);
 
   // At this point all schema jobs are completed
 
@@ -1195,11 +1190,11 @@ void start_dump() {
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.initial_queue, j);
+    g_async_queue_push(conf->initial_queue, j);
   }
 
   for (n = 0; n < num_threads; n++) {
-    g_async_queue_pop(conf.initial_completed_queue);
+    g_async_queue_pop(conf->initial_completed_queue);
   }
   // at this point initial jobs has been completed
   // which means that all schema jobs has been created 
@@ -1208,26 +1203,26 @@ void start_dump() {
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.schema_queue, j);
+    g_async_queue_push(conf->schema_queue, j);
   }
   // In case that we are NOT exporting transactional table, we need to 
   // build the lock table statement, at this stage, before
   // let workers to start dumping data
   if (!trx_tables){
-    build_lock_tables_statement(&conf);
+    build_lock_tables_statement(conf);
   }
   // Allowing workers to start dumping Non-Transactional tables
   for (n = 0; n < num_threads; n++) {
-    g_async_queue_push(conf.ready_non_transactional_queue, GINT_TO_POINTER(1));
+    g_async_queue_push(conf->ready_non_transactional_queue, GINT_TO_POINTER(1));
   }
 
   // Releasing locks if possible
   if (sync_thread_lock_mode!=NO_LOCK && !trx_tables) {
     for (n = 0; n < num_threads; n++) {
-      g_async_queue_pop(conf.unlock_tables);
+      g_async_queue_pop(conf->unlock_tables);
     }
     if (release_binlog_function != NULL){
-      g_async_queue_pop(conf.binlog_ready);
+      g_async_queue_pop(conf->binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
@@ -1238,7 +1233,7 @@ void start_dump() {
   }
 
   // At this point, we can start the replica if it was stopped
-  if (is_mysql_like() && g_async_queue_pop(conf.binlog_ready) && replica_stopped){
+  if (is_mysql_like() && g_async_queue_pop(conf->binlog_ready) && replica_stopped){
     g_message("Starting replica");
     m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
@@ -1246,14 +1241,14 @@ void start_dump() {
       discard_mysql_output(conn);
     }
   }
-  g_async_queue_unref(conf.binlog_ready);
+  g_async_queue_unref(conf->binlog_ready);
 
   // All the jobs related to post data has been created and enquequed
   // so, we can send the JOB_SHUTDOWN
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
-    g_async_queue_push(conf.post_data_queue, j);
+    g_async_queue_push(conf->post_data_queue, j);
   }
   // At this point the main process, needs to wait the working threads to finish 
   wait_working_thread_to_finish();
@@ -1270,11 +1265,11 @@ void start_dump() {
     release_ddl_lock_function(second_conn);
   }
 
-  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf.initial_queue),
-            g_async_queue_length(conf.schema_queue),
-            g_async_queue_length(conf.non_transactional.queue) + g_async_queue_length(conf.non_transactional.defer),
-            g_async_queue_length(conf.transactional.queue) + g_async_queue_length(conf.transactional.defer),
-            g_async_queue_length(conf.post_data_queue));
+  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf->initial_queue),
+            g_async_queue_length(conf->schema_queue),
+            g_async_queue_length(conf->non_transactional.queue) + g_async_queue_length(conf->non_transactional.defer),
+            g_async_queue_length(conf->transactional.queue) + g_async_queue_length(conf->transactional.defer),
+            g_async_queue_length(conf->post_data_queue));
 
   // Closing main connection
   if (conn != second_conn)
@@ -1296,28 +1291,27 @@ void start_dump() {
   write_database_on_disk(mdfile);
   g_list_free(table_schemas);
   table_schemas=NULL;
-  stop_pmm_thread();
-  g_async_queue_unref(conf.transactional.defer);
-  conf.transactional.defer= NULL;
-  g_async_queue_unref(conf.transactional.queue);
-  conf.transactional.queue= NULL;
-  g_async_queue_unref(conf.non_transactional.defer);
-  conf.non_transactional.defer= NULL;
-  g_async_queue_unref(conf.non_transactional.queue);
-  conf.non_transactional.queue= NULL;
-  g_async_queue_unref(conf.unlock_tables);
-  conf.unlock_tables=NULL;
-  g_async_queue_unref(conf.ready);
-  conf.ready=NULL;
-  g_async_queue_unref(conf.schema_queue);
-  conf.schema_queue=NULL;
-  g_async_queue_unref(conf.initial_queue);
-  conf.initial_queue=NULL;
-  g_async_queue_unref(conf.post_data_queue);
-  conf.post_data_queue=NULL;
+  g_async_queue_unref(conf->transactional.defer);
+  conf->transactional.defer= NULL;
+  g_async_queue_unref(conf->transactional.queue);
+  conf->transactional.queue= NULL;
+  g_async_queue_unref(conf->non_transactional.defer);
+  conf->non_transactional.defer= NULL;
+  g_async_queue_unref(conf->non_transactional.queue);
+  conf->non_transactional.queue= NULL;
+  g_async_queue_unref(conf->unlock_tables);
+  conf->unlock_tables=NULL;
+  g_async_queue_unref(conf->ready);
+  conf->ready=NULL;
+  g_async_queue_unref(conf->schema_queue);
+  conf->schema_queue=NULL;
+  g_async_queue_unref(conf->initial_queue);
+  conf->initial_queue=NULL;
+  g_async_queue_unref(conf->post_data_queue);
+  conf->post_data_queue=NULL;
 
-  g_async_queue_unref(conf.ready_non_transactional_queue);
-  conf.ready_non_transactional_queue=NULL;
+  g_async_queue_unref(conf->ready_non_transactional_queue);
+  conf->ready_non_transactional_queue=NULL;
 
   g_date_time_unref(datetime);
   datetime = g_date_time_new_now_local();
@@ -1375,15 +1369,15 @@ void start_dump() {
 
   finalize_masquerade();
 
-  g_async_queue_unref(conf.gtid_pos_checked);
-  g_async_queue_unref(conf.are_all_threads_in_same_pos);
-  g_async_queue_unref(conf.db_ready);
+  g_async_queue_unref(conf->gtid_pos_checked);
+  g_async_queue_unref(conf->are_all_threads_in_same_pos);
+  g_async_queue_unref(conf->db_ready);
   g_rec_mutex_clear(ready_table_dump_mutex);
 //  g_source_remove(SIGINT);
 //  g_source_remove(SIGTERM);
-//  g_main_loop_quit(conf.loop);
-  if (!daemon_mode && conf.loop)
-    g_main_loop_unref(conf.loop);
+//  g_main_loop_quit(conf->loop);
+  if (!daemon_mode && conf->loop)
+    g_main_loop_unref(conf->loop);
 
   if (tables_list)
     g_strfreev(tables);

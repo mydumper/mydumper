@@ -37,6 +37,9 @@ GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
 
+GMutex *load_data_list_mutex=NULL;
+GHashTable * load_data_list = NULL;
+
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
 struct io_restore_result end_restore_thread = { NULL, NULL};
@@ -44,6 +47,16 @@ struct io_restore_result end_restore_thread = { NULL, NULL};
 GThread **restore_threads=NULL;
 
 extern gchar *ignore_errors;
+
+
+void initialize_restore(){
+  load_data_list_mutex=g_mutex_new();
+  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+
+}
+
+
+
 
 struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);

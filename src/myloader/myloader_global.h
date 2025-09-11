@@ -28,9 +28,6 @@
 #define CONSTRAINTS "constraints"
 
 extern struct restore_errors detailed_errors;
-extern GOptionEntry common_filter_entries[];
-extern GOptionEntry common_connection_entries[];
-extern GOptionEntry common_entries[];
 extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
@@ -81,9 +78,7 @@ extern gchar *pmm_resolution ;
 extern gchar *source_db;
 extern gchar *tables_skiplist_file;
 extern GHashTable *db_hash;
-extern GHashTable * load_data_list;
 extern GHashTable *tbl_hash;
-extern GMutex *load_data_list_mutex;
 extern GString *set_session;
 extern guint commit_count;
 extern guint errors;

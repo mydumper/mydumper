@@ -6,9 +6,6 @@
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GHashTable *all_dbts;
-extern GOptionEntry common_filter_entries[];
-extern GOptionEntry common_connection_entries[];
-extern GOptionEntry common_entries[];
 extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;

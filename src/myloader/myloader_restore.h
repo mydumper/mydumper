@@ -31,6 +31,7 @@ struct statement{
   struct thread_data*td;
 };
 
+void initialize_restore();
 void initialize_connection_pool();
 void start_connection_pool();
 

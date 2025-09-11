@@ -24,6 +24,7 @@
 #include "../tables_skiplist.h"
 #include "../regex.h"
 #include "../server_detect.h"
+#include "../pmm_thread.h"
 
 #ifndef _src_myloader_h
 #define _src_myloader_h

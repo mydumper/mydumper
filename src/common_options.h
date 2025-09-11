@@ -41,6 +41,13 @@ extern gboolean no_sync;
 extern gchar *throttle_variable;
 extern guint throttle_value;
 extern guint throttle_time;
+extern gchar *pmm_resolution;
+extern gchar *pmm_path;
+
+extern GOptionEntry common_filter_entries[];
+extern GOptionEntry common_connection_entries[];
+extern GOptionEntry common_entries[];
+extern GOptionEntry pmm_entries[]; 
 
 #ifndef _src_common_options_h
 #define _src_common_options_h

@@ -281,13 +281,6 @@ static GOptionEntry exec_entries[] = {
       "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
-static GOptionEntry pmm_entries[] = {
-    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 static GOptionEntry daemon_entries[] = {
     {"daemon", 'D', 0, G_OPTION_ARG_NONE, &daemon_mode, 
       "Enable daemon mode", NULL},

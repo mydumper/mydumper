@@ -73,7 +73,7 @@ struct configuration {
 #endif
 
 void load_start_dump_entries(GOptionContext *context, GOptionGroup * filter_group);
-void start_dump();
+void start_dump(struct configuration *conf);
 void *exec_thread(void *data);
 gboolean sig_triggered_int(void * user_data);
 gboolean sig_triggered_term(void * user_data);
