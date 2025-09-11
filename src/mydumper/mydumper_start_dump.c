@@ -30,7 +30,7 @@
 #include "mydumper_stream.h"
 #include "mydumper_database.h"
 #include "mydumper_working_thread.h"
-#include "mydumper_pmm_thread.h"
+#include "mydumper_pmm.h"
 #include "mydumper_exec_command.h"
 #include "mydumper_masquerade.h"
 #include "mydumper_chunks.h"
