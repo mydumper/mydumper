@@ -987,8 +987,8 @@ void start_dump(struct configuration *conf) {
     if (exec_command)
       g_error("--exec and --stream are not comptabile, use --exec-per-thread instead as file extension is needed to stream the out file");
     initialize_stream();
-    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     fclose(mdfile);
+    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
     mdfile= g_fopen(metadata_partial_filename, "w");
     if (!mdfile) {
