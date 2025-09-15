@@ -341,8 +341,8 @@ test_case_dir (){
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
+#      cat $tmp_mydumper_log
+#      cat $tmp_myloader_log
       mv $tmp_mydumper_log $mydumper_stor_dir
       mv $tmp_myloader_log $mydumper_stor_dir
       backtrace
