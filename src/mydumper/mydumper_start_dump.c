@@ -967,6 +967,7 @@ void start_dump(struct configuration *conf) {
   // Recoring that backup has started
   GDateTime *datetime = g_date_time_new_now_local();
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  g_date_time_unref(datetime);
   fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
@@ -1312,7 +1313,8 @@ void start_dump(struct configuration *conf) {
   g_async_queue_unref(conf->ready_non_transactional_queue);
   conf->ready_non_transactional_queue=NULL;
 
-  g_date_time_unref(datetime);
+  fprintf(mdfile, "[config]\nmax-statement-size = %ld\n", max_statement_size);
+
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   g_date_time_unref(datetime);

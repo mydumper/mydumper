@@ -573,7 +573,6 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
       if (j > 0)
         m_critical("Wrong metadata: [config] group must be first");
 
-
       gsize len=0;
       GError *error = NULL;
       gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);

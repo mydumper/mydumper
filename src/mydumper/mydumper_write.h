@@ -27,6 +27,7 @@
 
 void load_write_entries(GOptionGroup *main_group, GOptionContext *context);
 void initialize_write();
+void initialize_config_on_string(GString *output);
 void finalize_write();
 void write_table_job_into_file(struct table_job *tj);
 gboolean write_data(int file, GString *data);

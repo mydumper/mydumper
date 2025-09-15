@@ -31,6 +31,7 @@
 #include "myloader_restore.h"
 
 struct statement * new_statement();
+guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean skip_definer = FALSE;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
@@ -48,15 +49,10 @@ GThread **restore_threads=NULL;
 
 extern gchar *ignore_errors;
 
-
 void initialize_restore(){
   load_data_list_mutex=g_mutex_new();
   load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
-
 }
-
-
-
 
 struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
@@ -238,6 +234,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
   next_line=g_strstr_len(current_line, -1, "\n");
   GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
   guint current_rows=0;
+  guint64 transaction_size=0;
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
@@ -255,6 +252,11 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       current_offset_line++;
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
+      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size) )){ //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
+        tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
+      }
+      transaction_size+=new_insert->len;
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
       g_usleep(throttle_time);
       g_mutex_lock(dbt->mutex);
@@ -262,6 +264,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       g_mutex_unlock(dbt->mutex);
       if (cd->transaction && *query_counter == commit_count) {
         tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
       }
 
       if (tr > 0){

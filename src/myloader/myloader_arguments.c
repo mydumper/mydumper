@@ -34,6 +34,8 @@ GList *ignore_set_list=NULL;
 gboolean mysqldump = FALSE;
 gboolean drop_database = FALSE;
 extern gboolean local_infile;
+extern guint64 max_transaction_size;
+guint64 max_statement_size;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -222,16 +224,16 @@ static GOptionEntry execution_entries[] = {
 static GOptionEntry filter_entries[] ={
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
      "Database to restore", NULL},
-    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
-     NULL},
+    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers,
+      "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Do not import constraints. By default, it imports constraints",
-     NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Do not import secondary indexes on InnoDB tables. By default, it import the indexes",
-     NULL},
-    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
-     NULL},
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
+      "Do not import constraints. By default, it imports constraints", NULL },
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
+      "Do not import secondary indexes on InnoDB tables. By default, it import the indexes", NULL},
+    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, 
+      "Do not dump or import table data", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry statement_entries[] ={
@@ -239,13 +241,17 @@ static GOptionEntry statement_entries[] ={
      "Split the INSERT statement into this many rows.", NULL},
     {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
      "Number of queries per transaction, default 1000", NULL},
+    {"max-statement-size", 0, 0, G_OPTION_ARG_INT, &max_statement_size,
+     "Informs what is the max statement size. Currently not being used.", NULL},
+    {"max-transaction-size", 0, 0, G_OPTION_ARG_INT, &max_transaction_size,
+     "Set the max size of the transaction in megabytes, default 1000", NULL},
     {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
       "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
     { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    { "ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
+    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

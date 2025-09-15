@@ -47,6 +47,8 @@ gchar *where_option=NULL;
 
 const gchar *insert_statement=INSERT;
 guint statement_size = 1000000;
+guint64 max_statement_size=0;
+GMutex *max_statement_size_mutex=NULL;
 guint complete_insert = 0;
 guint chunk_filesize = 0;
 gboolean load_data = FALSE;
@@ -142,6 +144,7 @@ void initialize_write(){
   if(fields_escaped_by && strlen(fields_escaped_by)>1)
     m_critical("--fields-escaped-by must be a single character");
 
+  max_statement_size_mutex=g_mutex_new();
 
   switch (output_format){
 		case CLICKHOUSE:
@@ -504,13 +507,24 @@ void initialize_load_data_header(struct db_table *dbt, MYSQL_FIELD *fields, guin
   g_string_append(dbt->load_data_header,lines_terminated_by);
 }
 
+static
 gboolean write_statement(int load_data_file, float *filessize, GString *statement, struct db_table * dbt){
   if (!real_write_data(load_data_file, filessize, statement)) {
     g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
     return FALSE;
   }
+  g_mutex_lock(max_statement_size_mutex);
+  if (statement->len > max_statement_size)
+    max_statement_size=statement->len;
+  g_mutex_unlock(max_statement_size_mutex);
   g_string_set_size(statement, 0);
   return TRUE;
+}
+
+void initialize_config_on_string(GString *output){
+  g_mutex_lock(max_statement_size_mutex);
+  g_string_append_printf(output,"[config]\nmax-statement-size = %ld\n", max_statement_size);
+  g_mutex_unlock(max_statement_size_mutex);
 }
 
 void write_load_data_statement(struct table_job * tj){
@@ -789,7 +803,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (diff > 4){
         g_date_time_unref(from);
         from=to;
+        to=NULL;
         message_dumping_data(tj);
+      }else{
+        g_date_time_unref(to);
       }
 
 			check_pause_resume(tj->td);
@@ -829,10 +846,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     }
 		tj->st_in_file++;
   }
-  if (from)
-    g_date_time_unref(from);
-  if (to)
-    g_date_time_unref(to);
+  g_date_time_unref(from);
 
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
