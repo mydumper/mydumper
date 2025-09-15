@@ -84,6 +84,7 @@ extern GHashTable *db_hash;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean local_infile;
+extern guint64 max_transaction_size;
 
 const char DIRECTORY[] = "import";
 
@@ -99,6 +100,15 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   return _set_session_hash;
 }
 
+static
+void detect_group_replication_transaction_size_limit(MYSQL * conn) {
+  guint64 _max_transaction_size=0;
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@group_replication_transaction_size_limit / 1024 / 1024",m_message, m_message, "Using default transaction limit", NULL);
+  if (mr->row)
+    _max_transaction_size=strtoll(mr->row[0], NULL, 10);
+  max_transaction_size=_max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
+  m_store_result_row_free(mr);
+}
 
 gchar * print_time(GTimeSpan timespan){
   GTimeSpan days   = timespan/G_TIME_SPAN_DAY;
@@ -445,6 +455,8 @@ int main(int argc, char *argv[]) {
   }
 	initialize_conf_per_table(&conf_per_table);
   load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
+  if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
+    detect_group_replication_transaction_size_limit(conn);
 
   // To here.
   conf.database_queue = g_async_queue_new();

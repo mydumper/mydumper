@@ -570,9 +570,9 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
   for (j= 0; j < length; j++) {
     gchar *group= newline_unprotect(groups[j]);
     if (g_str_has_prefix(group, "config")) {
-      if (j > 0)
-        m_critical("Wrong metadata: [config] group must be first");
-
+// Why it has to be the first always? just on the first one and actually, we don't care.
+//      if (j > 0)
+//        m_critical("Wrong metadata: [config] group must be first");
 
       gsize len=0;
       GError *error = NULL;

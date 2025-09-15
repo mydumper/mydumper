@@ -25,6 +25,7 @@
 #include "mydumper_global.h"
 #include "mydumper_stream.h"
 #include "mydumper_file_handler.h"
+#include "mydumper_write.h"
 
 GThread *stream_thread = NULL;
 GThread *metadata_partial_writer_thread = NULL;
@@ -215,6 +216,7 @@ void *metadata_partial_writer(void *data){
       if (g_list_length(dbt_list) > 0){  
         filename= make_partial_filename(i);
         i++;
+        initialize_config_on_string(output);
         g_list_foreach(dbt_list,(GFunc)(&print_dbt_on_metadata_gstring),output);
         g_file_set_contents(filename,output->str,output->len,&gerror);
         stream_queue_push(NULL, filename);

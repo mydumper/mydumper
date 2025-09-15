@@ -15,6 +15,7 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 #define DEFAULT_DELIMITER ";\n"
+#define DEFAULT_MAX_TRANSACTION_SIZE 1000
 
 enum kind_of_statement { NOT_DEFINED, INSERT, OTHER, CLOSE};
 

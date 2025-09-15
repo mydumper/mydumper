@@ -967,6 +967,7 @@ void start_dump(struct configuration *conf) {
   // Recoring that backup has started
   GDateTime *datetime = g_date_time_new_now_local();
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
+  g_date_time_unref(datetime);
   fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
   g_message("Started dump at: %s", datetimestr);
   g_free(datetimestr);
@@ -986,8 +987,8 @@ void start_dump(struct configuration *conf) {
     if (exec_command)
       g_error("--exec and --stream are not comptabile, use --exec-per-thread instead as file extension is needed to stream the out file");
     initialize_stream();
-    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     fclose(mdfile);
+    stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
     mdfile= g_fopen(metadata_partial_filename, "w");
     if (!mdfile) {
@@ -1312,7 +1313,8 @@ void start_dump(struct configuration *conf) {
   g_async_queue_unref(conf->ready_non_transactional_queue);
   conf->ready_non_transactional_queue=NULL;
 
-  g_date_time_unref(datetime);
+  fprintf(mdfile, "[config]\nmax-statement-size = %ld\n", max_statement_size);
+
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   g_date_time_unref(datetime);
