@@ -32,7 +32,8 @@ enum sync_thread_lock_mode {
   FTWRL,
   LOCK_ALL,
   GTID,
-  NO_LOCK
+  NO_LOCK,
+  SAFE_NO_LOCK
 };
 
 struct MList{
@@ -59,7 +60,7 @@ struct configuration {
   GAsyncQueue *ready;
   GAsyncQueue *ready_non_transactional_queue;
   GAsyncQueue *db_ready;
-  GAsyncQueue *binlog_ready;
+  GAsyncQueue *source_and_replica_status_queue;
   GAsyncQueue *unlock_tables;
   GAsyncQueue *pause_resume;
   GAsyncQueue *gtid_pos_checked;

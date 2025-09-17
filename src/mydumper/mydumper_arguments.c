@@ -145,6 +145,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       sync_thread_lock_mode=NO_LOCK;
       return TRUE;
     }
+    if (!g_ascii_strcasecmp(value,"SAFE_NO_LOCK")){
+      sync_thread_lock_mode=SAFE_NO_LOCK;
+      return TRUE;
+    }
   }
   if (!strcmp(option_name,"--success-on-1146")){
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
@@ -242,7 +246,7 @@ static GOptionEntry lock_entries[] = {
     {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. "
+      "There are 4 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL and GTID. "
       "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
       "Default: AUTO which uses the best option depending on the database vendor", NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
