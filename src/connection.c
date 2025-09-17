@@ -186,7 +186,7 @@ void configure_connection(MYSQL *conn) {
 #ifdef WITH_SSL
 #ifdef LIBMARIADB
   my_bool enable= ssl_mode != NULL;
-  if (enable) {
+  if (ssl_mode) {
       if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
         m_options(conn, MYSQL_OPT_SSL_ENFORCE, TRUE, &enable);
         if (key || cert) {
@@ -207,55 +207,46 @@ void configure_connection(MYSQL *conn) {
   }
 #else
   unsigned int i;
-  if (ssl) {
+  if (ssl)
     i = SSL_MODE_REQUIRED;
-    m_options(conn, MYSQL_OPT_SSL_MODE, TRUE, &i);
-  } else {
-    if (ssl_mode) {
-      if (g_ascii_strncasecmp(ssl_mode, "DISABLED", 16) == 0) {
-        i = SSL_MODE_DISABLED;
+  if (ssl_mode) {
+    if (g_ascii_strncasecmp(ssl_mode, "DISABLED", 16) == 0)
+      i = SSL_MODE_DISABLED;
+    else if (g_ascii_strncasecmp(ssl_mode, "PREFERRED", 16) == 0) {
+      i = SSL_MODE_PREFERRED;
+      if (key || cert) {
+        check_pem_exists(key, "key");
+        check_pem_exists(cert, "cert");
       }
-      else if (g_ascii_strncasecmp(ssl_mode, "PREFERRED", 16) == 0) {
-        i = SSL_MODE_PREFERRED;
-        if (key || cert) {
-          check_pem_exists(key, "key");
-          check_pem_exists(cert, "cert");
-        }
+    }else if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
+      i = SSL_MODE_REQUIRED;
+      if (key || cert) {
+        check_pem_exists(key, "key");
+        check_pem_exists(cert, "cert");
       }
-      else if (g_ascii_strncasecmp(ssl_mode, "REQUIRED", 16) == 0) {
-        i = SSL_MODE_REQUIRED;
-        if (key || cert) {
-          check_pem_exists(key, "key");
-          check_pem_exists(cert, "cert");
-        }
-      }
-      else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_CA", 16) == 0) {
-        i = SSL_MODE_VERIFY_CA;
-        if (capath)
-          check_capath(capath);
-        else
-          check_pem_exists(ca, "ca");
-      }
-      else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
-        i = SSL_MODE_VERIFY_IDENTITY;
-        if (capath)
-          check_capath(capath);
-        else
-          check_pem_exists(ca, "ca");
-      }
-      else {
+    }else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_CA", 16) == 0) {
+      i = SSL_MODE_VERIFY_CA;
+      if (capath)
+        check_capath(capath);
+      else
+        check_pem_exists(ca, "ca");
+    }else if (g_ascii_strncasecmp(ssl_mode, "VERIFY_IDENTITY", 16) == 0) {
+      i = SSL_MODE_VERIFY_IDENTITY;
+      if (capath)
+        check_capath(capath);
+      else
+        check_pem_exists(ca, "ca");
+    }else
         m_critical("Unsupported ssl-mode specified: %s\n", ssl_mode);
-      }
-      m_options(conn, MYSQL_OPT_SSL_MODE, TRUE, &i);
-    }
   }
+  m_options(conn, MYSQL_OPT_SSL_MODE,   ssl_mode || ssl, &i);
 #endif // LIBMARIADB
-    m_options(conn, MYSQL_OPT_SSL_KEY,    key != NULL, key);
-    m_options(conn, MYSQL_OPT_SSL_CERT,   cert != NULL, cert);
-    m_options(conn, MYSQL_OPT_SSL_CA,     ca != NULL, ca);
-    m_options(conn, MYSQL_OPT_SSL_CAPATH, capath != NULL, capath);
-    m_options(conn, MYSQL_OPT_SSL_CIPHER, cipher != NULL, cipher);
-    m_options(conn, MYSQL_OPT_TLS_VERSION,tls_version != NULL, tls_version);
+  m_options(conn, MYSQL_OPT_SSL_KEY,    key != NULL, key);
+  m_options(conn, MYSQL_OPT_SSL_CERT,   cert != NULL, cert);
+  m_options(conn, MYSQL_OPT_SSL_CA,     ca != NULL, ca);
+  m_options(conn, MYSQL_OPT_SSL_CAPATH, capath != NULL, capath);
+  m_options(conn, MYSQL_OPT_SSL_CIPHER, cipher != NULL, cipher);
+  m_options(conn, MYSQL_OPT_TLS_VERSION,tls_version != NULL, tls_version);
 #endif
 
   if (!hostname)
