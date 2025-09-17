@@ -67,6 +67,9 @@ gboolean replica_stopped = FALSE;
 gboolean merge_dumpdir= FALSE;
 gboolean clear_dumpdir= FALSE;
 gboolean dirty_dumpdir= FALSE;
+gchar *initial_source_log = NULL;
+gchar *initial_source_pos = NULL;
+gchar *initial_source_gtid = NULL;
 
 // Program options used only on this file 
 extern guint ftwrl_max_wait_time;
@@ -87,7 +90,7 @@ void initialize_start_dump(){
 	initialize_conf_per_table(&conf_per_table);
 
   // until we have an unique option on lock types we need to ensure this
-  if (sync_thread_lock_mode==NO_LOCK)
+  if (sync_thread_lock_mode==NO_LOCK || sync_thread_lock_mode==SAFE_NO_LOCK)
     trx_tables=TRUE;
 
   // clarify binlog coordinates with --trx-tables
@@ -957,7 +960,7 @@ void start_dump(struct configuration *conf) {
   }
 
   // If we are locking, we need to be sure there is no long running queries
-  if (sync_thread_lock_mode!=NO_LOCK && is_mysql_like()) {
+  if (sync_thread_lock_mode!=NO_LOCK && sync_thread_lock_mode!=SAFE_NO_LOCK && is_mysql_like()) {
   // We check SHOW PROCESSLIST, and if there're queries
   // larger than preset value, we terminate the process.
   // This avoids stalling whole server with flush.
@@ -1010,7 +1013,10 @@ void start_dump(struct configuration *conf) {
   // and send locks to database if needed
   switch (sync_thread_lock_mode){
     case NO_LOCK:
-      g_warning("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
+      g_message("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
+      break;
+    case SAFE_NO_LOCK:
+      g_message("Executing in SAFE_NO_LOCK mode. This backup will fail if all threads are not in the same point in time, which garanty consitency");
       break;
     case LOCK_ALL:
       send_lock_all_tables(conn);
@@ -1024,7 +1030,7 @@ void start_dump(struct configuration *conf) {
       release_global_lock_function = &send_unlock_tables;
       break;
     case GTID:
-      g_warning("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
+      g_message("Using binlog_snapshot_gtid_executed which doesn't lock the database but uses best effort to sync the threads");
       break;
   }
   if (skip_ddl_locks){
@@ -1103,7 +1109,7 @@ void start_dump(struct configuration *conf) {
   conf->gtid_pos_checked = g_async_queue_new();
   conf->are_all_threads_in_same_pos = g_async_queue_new();
   conf->db_ready = g_async_queue_new();
-  conf->binlog_ready = g_async_queue_new();
+  conf->source_and_replica_status_queue = g_async_queue_new();
   ready_table_dump_mutex = g_rec_mutex_new();
   g_rec_mutex_lock(ready_table_dump_mutex);
 
@@ -1111,9 +1117,11 @@ void start_dump(struct configuration *conf) {
   // Begin Job Creation
 
   // Create metadata job
-  if (is_mysql_like()) {
-    create_job_to_dump_metadata(conf, mdfile);
-  }
+  if (is_mysql_like())
+    create_job_to_write_source_and_replica_status(conf, mdfile);
+  else
+    g_async_queue_push(conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
+  
   trace("Create tablespace jobs");
   // Create tablespace jobs
   if (dump_tablespaces){
@@ -1151,6 +1159,27 @@ void start_dump(struct configuration *conf) {
 
   // Starting the workers threads
   start_working_thread(conf);
+  g_async_queue_pop(conf->source_and_replica_status_queue);
+  g_async_queue_unref(conf->source_and_replica_status_queue);
+
+  gchar *source_log = NULL;
+  gchar *source_pos = NULL;
+  gchar *source_gtid = NULL;
+  get_binlog_position(conn, &source_log, &source_pos, &source_gtid);
+  
+  if (g_strcmp0(source_log, initial_source_log) ||
+      g_strcmp0(source_pos, initial_source_pos) ||
+      g_strcmp0(source_gtid,initial_source_gtid)){
+    if (sync_thread_lock_mode == NO_LOCK){
+      g_warning("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent due to the use of NO_LOCK. Continues anyway, use SAFE_NO_LOCK otherwise.");
+      trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos,g_strcmp0(source_pos, initial_source_pos), source_gtid,initial_source_gtid, g_strcmp0(source_gtid,initial_source_gtid));
+    } else if (sync_thread_lock_mode == SAFE_NO_LOCK){
+      trace("Backup will be inconsistent %s %s %d || %s %s %d || %s %s %d", source_log, initial_source_log, g_strcmp0(source_log, initial_source_log), source_pos, initial_source_pos,g_strcmp0(source_pos, initial_source_pos), source_gtid,initial_source_gtid, g_strcmp0(source_gtid,initial_source_gtid));
+      m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent. Stopping backup due to the use of SAFE_NO_LOCK.");
+    }
+  }else{
+    g_message("Backup will be consistent");
+  }
 
   // IMPORTANT: At this point, all the threads are in sync
 
@@ -1158,13 +1187,12 @@ void start_dump(struct configuration *conf) {
     // Releasing locks as user instructed that all tables are transactional
     g_message("Transactions started, unlocking tables");
     if (release_binlog_function != NULL){
-      g_async_queue_pop(conf->binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
     if (release_global_lock_function)
       release_global_lock_function(conn);
-    if (is_mysql_like() && g_async_queue_pop(conf->binlog_ready) && replica_stopped){
+    if (is_mysql_like() && replica_stopped){
       g_message("Starting replica");
       m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
@@ -1217,12 +1245,11 @@ void start_dump(struct configuration *conf) {
   }
 
   // Releasing locks if possible
-  if (sync_thread_lock_mode!=NO_LOCK && !trx_tables) {
+  if (sync_thread_lock_mode!=NO_LOCK && sync_thread_lock_mode!=SAFE_NO_LOCK && !trx_tables) {
     for (n = 0; n < num_threads; n++) {
       g_async_queue_pop(conf->unlock_tables);
     }
     if (release_binlog_function != NULL){
-      g_async_queue_pop(conf->binlog_ready);
       g_message("Releasing binlog lock");
       release_binlog_function(second_conn);
     }
@@ -1233,7 +1260,7 @@ void start_dump(struct configuration *conf) {
   }
 
   // At this point, we can start the replica if it was stopped
-  if (is_mysql_like() && g_async_queue_pop(conf->binlog_ready) && replica_stopped){
+  if (is_mysql_like() && replica_stopped){
     g_message("Starting replica");
     m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
@@ -1241,7 +1268,6 @@ void start_dump(struct configuration *conf) {
       discard_mysql_output(conn);
     }
   }
-  g_async_queue_unref(conf->binlog_ready);
 
   // All the jobs related to post data has been created and enquequed
   // so, we can send the JOB_SHUTDOWN

@@ -44,7 +44,7 @@ enum job_type {
   JOB_DUMP_DATABASE,
   JOB_DUMP_ALL_DATABASES,
   JOB_DUMP_TABLE_LIST,
-  JOB_WRITE_MASTER_STATUS
+  JOB_WRITE_SOURCE_AND_REPLICA_STATUS
 };
 
 struct dump_table_job{
@@ -116,7 +116,7 @@ void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQu
 void free_table_job(struct table_job *tj);
 struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 part, char *order_by, struct chunk_step_item *chunk_step_item);
 
-void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
+void create_job_to_write_source_and_replica_status(struct configuration *conf, FILE *mdfile);
 void create_job_to_dump_tablespaces(struct configuration *conf);
 void create_job_to_dump_post(struct database *database, struct configuration *conf);
 void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);

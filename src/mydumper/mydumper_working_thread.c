@@ -63,6 +63,10 @@ gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
 
+extern gchar *initial_source_log;
+extern gchar *initial_source_pos;
+extern gchar *initial_source_gtid;
+
 // Static
 static GMutex *init_mutex = NULL;
 static gchar *binlog_snapshot_gtid_executed = NULL; 
@@ -438,35 +442,36 @@ void check_connection_status(struct thread_data *td){
 }
 
 
-/* Write some stuff we know about snapshot, before it changes */
-void write_snapshot_info(MYSQL *conn, FILE *file) {
-  char *masterlog = NULL;
-  char *masterpos = NULL;
-  char *mastergtid = NULL;
-
-  
+void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
   struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
   if ( mr->row ) {
-    masterlog = g_strdup(mr->row[0]);
-    masterpos = g_strdup(mr->row[1]);
-    /* Oracle/Percona GTID */
+    *masterlog = g_strdup(mr->row[0]);
+    *masterpos = g_strdup(mr->row[1]);
+    // Oracle/Percona GTID
     if (mysql_num_fields(mr->res) == 5) {
-      mastergtid = g_strdup(remove_new_line(mr->row[4]));
+      *mastergtid = g_strdup(remove_new_line(mr->row[4]));
     } else {
-      /* Let's try with MariaDB 10.x */
-      /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
- *        * cluster, gtid_binlog_pos works as well with normal mariadb server
- *               * https://jira.mariadb.org/browse/MDEV-10279 */
+      // Let's try with MariaDB 10.x
+      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
+      // cluster, gtid_binlog_pos works as well with normal mariadb server
+      // https://jira.mariadb.org/browse/MDEV-10279      
       m_store_result_row_free(mr);
       mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
       if (mr->row){
-        mastergtid = g_strdup(remove_new_line(mr->row[0]));
+        *mastergtid = g_strdup(remove_new_line(mr->row[0]));
       }
     }
   }
   m_store_result_row_free(mr);
+}
 
-  if (masterlog) {
+
+/* Write some stuff we know about snapshot, before it changes */
+void write_snapshot_info(MYSQL *conn, FILE *file) {
+
+  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+  if (initial_source_log) {
     fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
     if (source_data.enabled){
       fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
@@ -474,13 +479,13 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
         fprintf(file, "SOURCE_SSL = 1\n");
       else
         fprintf(file, "#SOURCE_SSL = {0|1}\n");
-      if (mastergtid && strlen(mastergtid)>0)
-        fprintf(file, "executed_gtid_set = \"%s\"\n", mastergtid);
+      if (initial_source_gtid && strlen(initial_source_gtid)>0)
+        fprintf(file, "executed_gtid_set = \"%s\"\n", initial_source_gtid);
       if (source_data.auto_position){
-        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", masterlog, masterpos);
+        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
       }else{
-        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", masterlog, masterpos);
+        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
       }
       fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
@@ -489,9 +494,6 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
     g_message("Written master status");
   }
 
-  g_free(masterlog);
-  g_free(masterpos);
-  g_free(mastergtid);
   fflush(file);
 }
 
@@ -600,14 +602,13 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_TABLE:
       thd_JOB_TABLE(td, job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
-      write_snapshot_info(td->thrconn, job->job_data);
+    case JOB_WRITE_SOURCE_AND_REPLICA_STATUS:
+//      if (source_data.enabled)
+        write_snapshot_info(td->thrconn, job->job_data);
       // Write replica information
       if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:
@@ -661,17 +662,18 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_SCHEMA_POST:
       do_JOB_SCHEMA_POST(td,job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
+/*    case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
+      */
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
       break;
     default:
-      m_error("Something very bad happened!");
+      m_error("Something very bad happened! %d", job->type);
     }
   return TRUE;
 }

@@ -46,10 +46,10 @@ void create_job_to_dump_table(struct configuration *conf, gboolean is_view, gboo
   g_async_queue_push(conf->initial_queue, j);
 }
 
-void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile){
+void create_job_to_write_source_and_replica_status(struct configuration *conf, FILE *mdfile){
   struct job *j = g_new0(struct job, 1);
   j->job_data = (void *)mdfile;
-  j->type = JOB_WRITE_MASTER_STATUS;
+  j->type = JOB_WRITE_SOURCE_AND_REPLICA_STATUS;
   g_async_queue_push(conf->initial_queue, j);
 }
 
