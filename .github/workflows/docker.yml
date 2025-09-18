@@ -51,9 +51,8 @@ jobs:
           IFS=$'\n' read -r -d '' -a tags_array <<< "$RAW_TAGS"
           for tag in "${tags_array[@]}"; do
             # Trim whitespace and check if not 'latest'
-            trimmed_tag=$(echo "$tag" | xargs)
-            if [ "$trimmed_tag" != "latest" ]; then
-              FILTERED_TAG_ARRAY+=("$trimmed_tag")
+            if [[ "$tag" != *"latest" ]]; then
+              FILTERED_TAG_ARRAY+=("$tag")
             fi
           done
           
@@ -71,4 +70,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             "tags=${{ github.ref_name }}"
+
 
