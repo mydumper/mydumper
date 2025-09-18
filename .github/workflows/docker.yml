@@ -43,14 +43,14 @@ jobs:
         run: |
           # Get the raw tags output
           RAW_TAGS="${{ steps.meta.outputs.tags }}"
-          
+          RAW_VERSION="${{ steps.meta.outputs.version }}"
           # Initialize an empty array for filtered tags
           FILTERED_TAG_ARRAY=()
           
           # Split the raw tags by newline and iterate
           for tag in $RAW_TAGS; do
             # Trim whitespace and check if not 'latest'
-            if [[ "$tag" != *"latest" ]]; then
+            if [ $(($(echo "$RAW_VERSION" | cut -d"." -f3 | cut -d"-" -f1)%2)) -eq 1 ] || [[ "$tag" != *"latest" ]]; then
               FILTERED_TAG_ARRAY+=("$tag")
             fi
           done
@@ -69,6 +69,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             "tags=${{ github.ref_name }}"
+
 
 
 
