@@ -48,8 +48,7 @@ jobs:
           FILTERED_TAG_ARRAY=()
           
           # Split the raw tags by newline and iterate
-          IFS=$'\n' read -r -d '' -a tags_array <<< "$RAW_TAGS"
-          for tag in "${tags_array[@]}"; do
+          for tag in $RAW_TAGS; do
             # Trim whitespace and check if not 'latest'
             if [[ "$tag" != *"latest" ]]; then
               FILTERED_TAG_ARRAY+=("$tag")
@@ -70,6 +69,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             "tags=${{ github.ref_name }}"
+
 
 
 
