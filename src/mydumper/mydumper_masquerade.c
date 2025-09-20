@@ -314,7 +314,7 @@ gchar * regex_function(gchar ** r, gulong* max_len, struct function_pointer *fp)
     g_string_printf(new_r,"%s", outputbuffer);
   }
   *max_len=new_r->len;
-  g_message("new_r->str: %s",new_r->str );
+//  g_message("new_r->str: %s",new_r->str );
   return new_r->str;
 }
 
