@@ -503,7 +503,8 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         if (g_str_has_prefix(buffer,"regex ")){
           if ( *val == '\''){
             val++;
-            while (*val != '\'' && *(val-1) != '\\' && *val != '\0'){
+            while (( ( *(val-1) == '\\' && *val == '\'' ) || *val != '\'' ) && *val != '\0'){
+
               g_string_append_c(regex_content,*val);
               val++;
             }
