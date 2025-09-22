@@ -252,9 +252,10 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
   td->status=STARTED;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
+// INDEXES
+// CONSTRAINTS
       if (!source_db || g_strcmp0(dbt->database->name,source_db)==0){
         if ( !no_schemas && (
-             (rj->data.srj->object==VIEW && !dbt->object_to_export.no_view ) ||
              (rj->data.srj->object==INDEXES && !dbt->object_to_export.no_index ) ||
              (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ))
            ){
@@ -337,13 +338,21 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
+// TABLESPACE
+// CREATE_DATABASE
+// VIEW
+// SEQUENCE
+// TRIGGER
+// POST
       trace("Thread %d: Restoring JOB_RESTORE_SCHEMA_FILENAME %s", td->thread_id, rj->filename);
       if (!source_db || g_strcmp0(rj->data.srj->database->name,source_db)==0){
         if ( !no_schemas && (
+             (rj->data.srj->object==TABLESPACE) ||
+             (rj->data.srj->object==CREATE_DATABASE) ||
              (rj->data.srj->object==VIEW && !dbt->object_to_export.no_view ) ||
-             (rj->data.srj->object==INDEXES && !dbt->object_to_export.no_index ) ||
-             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ) ||
-             (rj->data.srj->object==CREATE_DATABASE)
+             (rj->data.srj->object==SEQUENCE) ||
+             (rj->data.srj->object==TRIGGER) ||
+             (rj->data.srj->object==POST)
              
              )
            ){

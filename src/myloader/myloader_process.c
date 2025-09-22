@@ -764,7 +764,7 @@ gboolean process_schema_filename(gchar *filename, enum restore_job_statement_typ
 		dbt= append_new_db_table(real_db_name, table_name, 0, NULL);
   }
   if ( object == TRIGGER || dbt==NULL || !dbt->object_to_export.no_trigger){
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object); //TRIGGER or POST
     g_async_queue_push(conf->post_queue, new_control_job(JOB_RESTORE,rj,real_db_name));
 	}
   return TRUE; // SCHEMA_VIEW
