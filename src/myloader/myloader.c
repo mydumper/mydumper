@@ -72,7 +72,7 @@ GMutex sequences_mutex;
 gchar *source_db = NULL;
 extern guint errors;
 guint max_errors= 0;
-struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
@@ -292,12 +292,14 @@ void print_errors(){
   if (detailed_errors.tablespace_errors ||
     detailed_errors.schema_errors ||
     detailed_errors.data_errors ||
+    detailed_errors.data_warnings ||
     detailed_errors.view_errors ||
     detailed_errors.sequence_errors ||
     detailed_errors.index_errors ||
     detailed_errors.trigger_errors ||
     detailed_errors.constraints_errors ||
     detailed_errors.post_errors ||
+    detailed_errors.skip_errors ||
     detailed_errors.retries)
     g_message(
     "Errors found:\n"
@@ -312,6 +314,7 @@ void print_errors(){
     "- Post:      \t%d\n"
     "Warnings found:\n"
     "- Data:\t%d\n"
+    "- Skip Schema:\t%d\n"
     "Retries:\t%d",
     detailed_errors.tablespace_errors,
     detailed_errors.schema_errors,
@@ -323,6 +326,7 @@ void print_errors(){
     detailed_errors.constraints_errors,
     detailed_errors.post_errors,
     detailed_errors.data_warnings,
+    detailed_errors.skip_errors,
     detailed_errors.retries);
 
 

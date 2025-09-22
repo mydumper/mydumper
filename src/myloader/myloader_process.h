@@ -16,7 +16,7 @@
 */
 
 #include <stdio.h>
-
+#include "myloader_restore_job.h"
 struct fifo{
   int pid;
   gchar *filename;
@@ -30,7 +30,7 @@ void process_database_filename(char * filename);
 gboolean process_table_filename(char * filename);
 //void process_metadata_filename( char * filename);
 gboolean process_metadata_filename(char * filename);
-gboolean process_schema_filename(gchar *filename, const char * object);
+gboolean process_schema_filename(gchar *filename, enum restore_job_statement_type object);
 //void process_data_filename(char * filename);
 gboolean process_data_filename(char * filename);
 gboolean process_checksum_filename(char * filename);

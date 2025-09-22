@@ -17,7 +17,7 @@
 
 */
 
-
+/*
 #define SEQUENCE "sequence"
 #define TRIGGER "trigger"
 #define POST "post"
@@ -26,6 +26,7 @@
 #define VIEW "view"
 #define INDEXES "indexes"
 #define CONSTRAINTS "constraints"
+*/
 
 extern struct restore_errors detailed_errors;
 extern gboolean program_version;

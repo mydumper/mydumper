@@ -74,7 +74,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     return FALSE;
   }
-  if (!strcmp(option_name,"--trx-tables")){
+  if (!g_strcmp0(option_name,"--trx-tables")){
     if (value)
       trx_tables=atoi(value);
     else
@@ -112,19 +112,19 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (!strcmp(option_name,"--trx-consistency-only")){
+  if (!g_strcmp0(option_name,"--trx-consistency-only")){
     m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
   }
-  if (!strcmp(option_name,"--less-locking")){
+  if (!g_strcmp0(option_name,"--less-locking")){
     m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
   }
-  if (!strcmp(option_name,"--lock-all-tables")){
+  if (!g_strcmp0(option_name,"--lock-all-tables")){
     m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--no-locks")){
+  if (!g_strcmp0(option_name,"--no-locks")){
     m_critical("--no-locks is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--sync-thread-lock-mode")){
+  if (!g_strcmp0(option_name,"--sync-thread-lock-mode")){
     if (!g_ascii_strcasecmp(value,"AUTO")){
       sync_thread_lock_mode=AUTO;
       return TRUE;
@@ -150,7 +150,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (!strcmp(option_name,"--success-on-1146")){
+  if (!g_strcmp0(option_name,"--success-on-1146")){
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
   }
 
