@@ -337,11 +337,15 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
+      trace("Thread %d: Restoring JOB_RESTORE_SCHEMA_FILENAME %s", td->thread_id, rj->filename);
       if (!source_db || g_strcmp0(rj->data.srj->database->name,source_db)==0){
         if ( !no_schemas && (
              (rj->data.srj->object==VIEW && !dbt->object_to_export.no_view ) ||
              (rj->data.srj->object==INDEXES && !dbt->object_to_export.no_index ) ||
-             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ))
+             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ) ||
+             (rj->data.srj->object==CREATE_DATABASE)
+             
+             )
            ){
           get_total_done(td->conf, &total); 
           message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rjstmtype2str(rj->data.srj->object),
