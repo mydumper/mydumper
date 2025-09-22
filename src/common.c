@@ -1237,14 +1237,14 @@ gboolean str_list_has_str(gchar ** str_list, const gchar* str){
 }
 
 void parse_object_to_export(struct object_to_export *object_to_export,gchar *val){
-  if (!val){
-    object_to_export->no_data=FALSE;
-    object_to_export->no_schema=FALSE;
-    object_to_export->no_index=FALSE;
-    object_to_export->no_constraint=FALSE;
-    object_to_export->no_trigger=FALSE;
+  object_to_export->no_data=FALSE;
+  object_to_export->no_schema=FALSE;
+  object_to_export->no_view=FALSE;
+  object_to_export->no_trigger=FALSE;
+  object_to_export->no_index=FALSE;
+  object_to_export->no_constraint=FALSE;
+  if (!val)
     return;
-  }
   gchar **split_option = g_strsplit(val, ",", 4);
   object_to_export->no_data=!str_list_has_str(split_option,"DATA");
   object_to_export->no_schema=!str_list_has_str(split_option,"SCHEMA");
@@ -1252,6 +1252,7 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
   if (str_list_has_str(split_option,"ALL")){
     object_to_export->no_data=FALSE;
     object_to_export->no_schema=FALSE;
+    object_to_export->no_view=FALSE;
     object_to_export->no_index=FALSE;
     object_to_export->no_constraint=FALSE;
     object_to_export->no_trigger=FALSE;
@@ -1259,6 +1260,7 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
   if (str_list_has_str(split_option,"NONE")){
     object_to_export->no_data=TRUE;
     object_to_export->no_schema=TRUE;
+    object_to_export->no_view=TRUE;
     object_to_export->no_index=TRUE;
     object_to_export->no_constraint=TRUE;
     object_to_export->no_trigger=TRUE;
