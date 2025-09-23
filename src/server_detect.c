@@ -230,9 +230,15 @@ void detect_replica() {
 void server_detect(MYSQL * conn){
   if (server_version_arg){
     gchar ** _product=g_strsplit(server_version_arg,"-",2);
+    if (g_strv_length(_product) != 2){
+      m_error("Not able to correctly determine the product and version which should be <product>-<version> where version will 3 number delimited by dots");
+    }
     detect_product(_product[0],_product[1]);
     if (_product[1]){
       gchar ** sver=g_strsplit(_product[1],".",3);
+      if (g_strv_length(sver) != 3){
+        m_error("Not able to correctly determine the product and version which should be <product>-<version> where version will 3 number delimited by dots");
+      }
       detect_version(sver);
       g_strfreev(sver);
     }
