@@ -333,6 +333,10 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 
     if (columns_on_select){
       dbt->select_fields=g_string_new(columns_on_select);
+      if (!dbt->columns_on_insert && complete_insert){
+        g_warning("Ignoring complete-insert on %s.%s due usage of columns_on_select only", dbt->database->name,dbt->table);
+      }
+
     }else if (!dbt->columns_on_insert){
       dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
       if (dbt->complete_insert) {

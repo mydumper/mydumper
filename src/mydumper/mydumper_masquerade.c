@@ -297,7 +297,7 @@ gchar * regex_function(gchar ** r, gulong* max_len, struct function_pointer *fp)
   GString *new_r= g_string_new(*r);
   pcre2_match_data *match_data = NULL;
   PCRE2_UCHAR outputbuffer[1024];
-  PCRE2_SPTR replacement=(PCRE2_SPTR)g_strdup("david");
+  PCRE2_SPTR replacement=NULL;
   size_t rlength=0;
   PCRE2_SIZE outlen=1024;
   while (l){
@@ -307,10 +307,14 @@ gchar * regex_function(gchar ** r, gulong* max_len, struct function_pointer *fp)
     replacement=l->data;
     l=l->next;
     rlength = strlen((gchar *)replacement);
-    pcre2_substitute(tre, (PCRE2_SPTR)new_r->str, new_r->len, 0, PCRE2_SUBSTITUTE_GLOBAL, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+    int rc =pcre2_substitute(tre, (PCRE2_SPTR)new_r->str, strlen(new_r->str), 0, PCRE2_SUBSTITUTE_GLOBAL | PCRE2_SUBSTITUTE_EXTENDED, match_data, NULL, replacement, rlength, outputbuffer, &outlen);
+    if (rc < 0){
+      g_critical("Error found on pcre2_substitute: %s | %s", new_r->str, replacement);
+    }
     g_string_printf(new_r,"%s", outputbuffer);
   }
   *max_len=new_r->len;
+//  g_message("new_r->str: %s",new_r->str );
   return new_r->str;
 }
 
@@ -499,7 +503,8 @@ void parse_random_format(struct function_pointer * fp, gchar *val){
         if (g_str_has_prefix(buffer,"regex ")){
           if ( *val == '\''){
             val++;
-            while (*val != '\'' && *(val-1) != '\\' && *val != '\0'){
+            while (( ( *(val-1) == '\\' && *val == '\'' ) || *val != '\'' ) && *val != '\0'){
+
               g_string_append_c(regex_content,*val);
               val++;
             }
@@ -658,7 +663,7 @@ struct function_pointer * init_function_pointer(gchar *value){
     parse_constant_function(fp, g_strdup(&(fp->value[9])));
   }else
   if (g_str_has_prefix(value,"regex")){
-    fp->is_pre=TRUE;
+//    fp->is_pre=TRUE;
     parse_regex_function(fp, g_strdup(&(fp->value[6])));
   }else{
     if (g_strstr_len(fp->value,-1," "))
