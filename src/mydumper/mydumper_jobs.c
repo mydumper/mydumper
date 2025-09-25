@@ -400,7 +400,7 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   }
   g_string_append(statement, "\n) ENGINE=");
   g_string_append(statement, table_engine_for_view_dependency);
-  if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT)
+  if (get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_RDS || get_product() == SERVER_TYPE_DOLT)
     g_string_append(statement," ENCRYPTION='N'");
   g_string_append(statement,";\n");
 

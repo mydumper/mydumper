@@ -414,28 +414,15 @@ MYSQL *create_main_connection() {
 
   switch (get_product()) {
   case SERVER_TYPE_MYSQL:
-    set_transaction_isolation_level_repeatable_read(conn);
-    break;
   case SERVER_TYPE_MARIADB:
+  case SERVER_TYPE_PERCONA:
+  case SERVER_TYPE_DOLT:
+  case SERVER_TYPE_RDS:
+  case SERVER_TYPE_UNKNOWN:
     set_transaction_isolation_level_repeatable_read(conn);
     break;
   case SERVER_TYPE_TIDB:
     data_checksums=FALSE;
-    break;
-  case SERVER_TYPE_PERCONA:
-    set_transaction_isolation_level_repeatable_read(conn);
-    break;
-  case SERVER_TYPE_UNKNOWN:
-    set_transaction_isolation_level_repeatable_read(conn);
-    break;
-  case SERVER_TYPE_CLICKHOUSE:
-    data_checksums=FALSE;
-    break;
-  case SERVER_TYPE_DOLT:
-    set_transaction_isolation_level_repeatable_read(conn);
-    break;
-  default:
-    m_critical("Cannot detect server type");
     break;
   }
 
@@ -621,7 +608,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
           *acquire_global_lock_function = &send_flush_table_with_read_lock;
           *release_global_lock_function = &send_unlock_tables;
 
-	  break;
+          break;
         case 5:
           if (get_secondary() == 7) {
             if (no_backup_locks){
@@ -647,6 +634,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
           break;
       }
       break;
+    case SERVER_TYPE_RDS:
     case SERVER_TYPE_MYSQL: 
       switch (get_major()) {
         case 8:

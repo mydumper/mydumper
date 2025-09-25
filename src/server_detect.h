@@ -26,6 +26,7 @@ enum server_type {
   SERVER_TYPE_MARIADB,
   SERVER_TYPE_PERCONA,
   SERVER_TYPE_CLICKHOUSE,
+  SERVER_TYPE_RDS,
   SERVER_TYPE_DOLT
 };
 void server_detect(MYSQL * conn);
