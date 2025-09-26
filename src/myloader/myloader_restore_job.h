@@ -20,6 +20,8 @@
 #include "myloader.h"
 #include "myloader_control_job.h"
 enum restore_job_type { JOB_RESTORE_SCHEMA_FILENAME, JOB_RESTORE_FILENAME, JOB_TO_CREATE_TABLE, JOB_RESTORE_STRING };
+enum restore_job_statement_type {SEQUENCE, TRIGGER, POST, TABLESPACE, CREATE_DATABASE, CREATE_TABLE, VIEW, INDEXES, CONSTRAINTS};
+
 static inline
 const char * rjtype2str(enum restore_job_type rjtype)
 {
@@ -37,6 +39,33 @@ const char * rjtype2str(enum restore_job_type rjtype)
   return 0;
 }
 
+static inline
+const char * rjstmtype2str(enum restore_job_statement_type rjstmtype)
+{
+  switch (rjstmtype) {
+  case SEQUENCE:
+    return "sequence";
+  case TRIGGER:
+    return "trigger";
+  case POST:
+    return "post";
+  case TABLESPACE:
+    return "tablespace";
+  case CREATE_DATABASE:
+    return "create database";
+ case CREATE_TABLE:
+    return "create table";
+ case VIEW:
+    return "view";
+  case INDEXES:
+    return "indexes";
+  case CONSTRAINTS:
+    return "constraints";
+  }
+  g_assert(0);
+  return 0;
+}
+
 struct data_restore_job{
   guint index;
   guint part;
@@ -46,7 +75,7 @@ struct data_restore_job{
 struct schema_restore_job{
   struct database *database;
   GString *statement;
-  const char *object;
+  enum restore_job_statement_type object;
 };
 
 
@@ -65,7 +94,7 @@ struct restore_job {
 void initialize_restore_job();
 //struct restore_job * new_restore_job( char * filename, /*char * database,*/ struct db_table * dbt, GString * statement, guint part, guint sub_part, enum restore_job_type type, const char *object);
 struct restore_job * new_data_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, guint part, guint sub_part);
-struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, const char *object);
+struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object);
 int process_restore_job(struct thread_data *td, struct restore_job *rj);
 void restore_job_finish();
 void stop_signal_thread();

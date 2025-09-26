@@ -75,7 +75,10 @@ void initialize_gzip_cmd();
 struct object_to_export{
   gboolean no_data;
   gboolean no_schema;
+  gboolean no_view;
   gboolean no_trigger;
+  gboolean no_index;
+  gboolean no_constraint;
 };
 
 struct configuration_per_table{

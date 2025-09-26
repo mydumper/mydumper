@@ -370,7 +370,7 @@ regex_error:
     g_free(statement);
   }
 
-  struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, "");
+  struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE);
   struct control_job * cj = new_control_job(JOB_RESTORE,rj,dbt->database);
 //  g_async_queue_push(conf->table_queue, new_control_job(JOB_RESTORE,rj,dbt->database->real_database));
   myl_close(filename,infile,TRUE);
@@ -701,7 +701,7 @@ gboolean process_schema_view_filename(gchar *filename) {
   }
   struct db_table *dbt=append_new_db_table(real_db_name, table_name,0, NULL);
   dbt->is_view=TRUE;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, VIEW);
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, real_db_name, NULL, VIEW);
   g_async_queue_push(conf->view_queue, new_control_job(JOB_RESTORE,rj,real_db_name));
   return TRUE;
 }
@@ -747,7 +747,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
 }
 
 
-gboolean process_schema_filename(gchar *filename, const char * object) {
+gboolean process_schema_filename(gchar *filename, enum restore_job_statement_type object) {
   gchar *database=NULL, *table_name=NULL;
   struct database *real_db_name=NULL;
 	struct db_table *dbt=NULL;
@@ -763,8 +763,8 @@ gboolean process_schema_filename(gchar *filename, const char * object) {
     }
 		dbt= append_new_db_table(real_db_name, table_name, 0, NULL);
   }
-	if ( g_strcmp0(object,TRIGGER) || dbt==NULL || !dbt->object_to_export.no_trigger){
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object);
+  if ( object == TRIGGER || dbt==NULL || !dbt->object_to_export.no_trigger){
+    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, real_db_name, NULL, object); //TRIGGER or POST
     g_async_queue_push(conf->post_queue, new_control_job(JOB_RESTORE,rj,real_db_name));
 	}
   return TRUE; // SCHEMA_VIEW

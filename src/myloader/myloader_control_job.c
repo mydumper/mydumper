@@ -150,6 +150,15 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }
 
     if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
+      if (dbt->object_to_export.no_data){
+        GList * current = dbt->restore_job_list;
+        while (current){
+          g_free(((struct restore_job *)current->data)->data.drj);
+          current=current->next;
+        }
+        dbt->schema_state = ALL_DONE;
+
+      }else{
       if (dbt->current_threads >= dbt->max_threads ){
         giveup=FALSE;
         iter=iter->next;
@@ -168,6 +177,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->real_database, dbt->real_table,
             rjtype2str(job->type), job->filename, dbt->current_threads);
       break;
+      }
     }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
       trace("No remaining jobs on %s.%s", dbt->database->real_database, dbt->real_table); 
