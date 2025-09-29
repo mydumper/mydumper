@@ -135,6 +135,9 @@ int overwrite_table(struct thread_data *td, struct db_table *dbt){
       }
       break;
     case TRUNCATE:
+      if (dbt->constraints || dbt->indexes){
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->real_database, dbt->real_table);
+      }
       message("Truncating table %s.%s", dbt->database->real_database, dbt->real_table);
       g_string_printf(data,"TRUNCATE TABLE %c%s%c.%c%s%c",
           q, dbt->database->real_database, q, q, dbt->real_table, q);
@@ -143,6 +146,9 @@ int overwrite_table(struct thread_data *td, struct db_table *dbt){
         g_warning("Truncate failed, we are going to try to create table or view");
       break;
     case DELETE:
+      if (dbt->constraints || dbt->indexes){
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->real_database, dbt->real_table);
+      }
       message("Deleting content of table %s.%s", dbt->database->real_database, dbt->real_table);
       g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
           q, dbt->database->real_database, q, q, dbt->real_table, q);

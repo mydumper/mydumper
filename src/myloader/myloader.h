@@ -149,15 +149,12 @@ struct database {
 };
 
 struct db_table {
-//  char *database;
-//  char *real_database;
   struct database * database;
   char *table;
   char *real_table;
   struct object_to_export object_to_export;
 	guint64 rows;
   guint64 rows_inserted;
-//  GAsyncQueue * queue;
   GList * restore_job_list;
   guint current_threads;
   guint max_threads;
@@ -173,7 +170,6 @@ struct db_table {
   GDateTime * finish_data_time;
   GDateTime * start_index_time;
   GDateTime * finish_time;
-//  gboolean completed;
   gint remaining_jobs;
   gchar *data_checksum;
   gchar *schema_checksum;
