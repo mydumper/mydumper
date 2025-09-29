@@ -74,6 +74,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     return FALSE;
   }
+  if (!g_strcmp0(option_name,"--no-trx-tables")){
+    trx_tables=0;
+    return TRUE;
+  }
   if (!g_strcmp0(option_name,"--trx-tables")){
     if (value)
       trx_tables=atoi(value);
@@ -259,6 +263,9 @@ static GOptionEntry lock_entries[] = {
       "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
+    {"no-trx-tables", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Indicates that some or all are not transactional tables. "
+      "Locks will take longer to be released, as it needs to determine which tables are not transactional and export them before releasing global lock", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
       "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
