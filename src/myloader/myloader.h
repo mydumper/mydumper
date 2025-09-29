@@ -31,7 +31,7 @@
 #include <mysql.h>
 #define MYLOADER "myloader"
 
-enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE };
+enum purge_mode { FAIL, NONE, DROP, TRUNCATE, DELETE, PM_SKIP};
 
 struct restore_errors {
   guint data_errors;
@@ -44,6 +44,7 @@ struct restore_errors {
   guint tablespace_errors;
   guint post_errors;
   guint constraints_errors;
+  guint skip_errors;
   guint retries;
 };
 struct database;

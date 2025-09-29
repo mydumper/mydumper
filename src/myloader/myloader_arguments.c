@@ -39,83 +39,86 @@ guint64 max_statement_size;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!strcmp(option_name, "--innodb-optimize-keys")) {
+  if (!g_strcmp0(option_name, "--innodb-optimize-keys")) {
     m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
-  }else if (!strcmp(option_name, "--optimize-keys")) {
+  }else if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
-    if (value==NULL || !strcmp(value,"1")){
+    if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, SKIP)) {
+    if (!g_ascii_strcasecmp(value, SKIP)) {
       optimize_keys = FALSE;
       optimize_keys_per_table = FALSE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       optimize_keys_all_tables = TRUE;
       optimize_keys_per_table = FALSE;
       return TRUE;
     }
     g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
-  } else if (!strcmp(option_name, "--quote-character")) {
-    if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
+  } else if (!g_strcmp0(option_name, "--quote-character")) {
+    if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`")) {
       identifier_quote_character= BACKTICK;
       return TRUE;
     }
-    if (!strcasecmp(value, "DOUBLE_QUOTE") || !strcasecmp(value, "DQ") || !strcmp(value, "\"")) {
+    if (!g_ascii_strcasecmp(value, "DOUBLE_QUOTE") || !g_ascii_strcasecmp(value, "DQ") || !g_strcmp0(value, "\"")) {
       identifier_quote_character= DOUBLE_QUOTE;
       return TRUE;
     }
     g_critical("--quote-character accepts: backtick, bt, `, double_quote, dq, \"");
-  } else if (!strcmp(option_name, "--checksum")) {
+  } else if (!g_strcmp0(option_name, "--checksum")) {
     checksum_str=g_strdup(value);
-    if (value == NULL || !strcasecmp(value, "FAIL")) {
+    if (value == NULL || !g_ascii_strcasecmp(value, "FAIL")) {
       checksum_mode= CHECKSUM_FAIL;
       return TRUE;
     }
-    if (!strcasecmp(value, "WARN")) {
+    if (!g_ascii_strcasecmp(value, "WARN")) {
       checksum_mode= CHECKSUM_WARN;
       return TRUE;
     }
-    if (!strcasecmp(value, "SKIP")) {
+    if (!g_ascii_strcasecmp(value, SKIP)) {
       checksum_mode= CHECKSUM_SKIP;
       return TRUE;
     }
     g_critical("--checksum accepts: fail (default), warn, skip");
-  } else if (!strcmp(option_name, "--ignore-set")){
+  } else if (!g_strcmp0(option_name, "--ignore-set")){
     gchar** ignore_set_items= g_strsplit(value, ",", 0);
     guint i=0;
     for (i=0; g_strv_length(ignore_set_items)>i; i++)
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
-  } else if (!strcmp(option_name, "--overwrite-tables")){
+  } else if (!g_strcmp0(option_name, "--overwrite-tables")){
     m_error("Option --overwrite-tables has been deprecated. User -o/--drop-table instead");
     return FALSE;
-  } else if (!strcmp(option_name, "--purge-mode")){
+  } else if (!g_strcmp0(option_name, "--purge-mode")){
     m_error("Option --purge-mode has been deprecated. User -o/--drop-table instead");
     return FALSE;
-  } else if (!strcmp(option_name, "--drop-table") || !strcmp(option_name, "-o")){
+  } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
     overwrite_tables=TRUE;
     if (value){
-      if (!strcmp(value,"TRUNCATE")){
+      if (!g_strcmp0(value,"TRUNCATE")){
         purge_mode=TRUNCATE;
-      } else if (!strcmp(value,"DROP") || !strcmp(value,"") || !strcmp(value,"1")){
+      } else if (!g_ascii_strcasecmp(value,"DROP") || !g_strcmp0(value,"") || !g_strcmp0(value,"1")){
         purge_mode=DROP;
-      } else if (!strcmp(value,"DELETE")){
+      } else if (!g_ascii_strcasecmp(value,"DELETE")){
         purge_mode=DELETE;
-      } else if (!strcmp(value,"NONE")){
+      } else if (!g_ascii_strcasecmp(value,"NONE")){
         purge_mode=NONE;
-      } else if (!strcmp(value,"FAIL")){
+      } else if (!g_ascii_strcasecmp(value,"FAIL")){
         purge_mode=FAIL;
+      } else if (!g_ascii_strcasecmp(value,SKIP)){
+        overwrite_tables=FALSE;
+        purge_mode=PM_SKIP;
       } else {
         m_error("Purge mode unknown: %s", value);
         return FALSE;
@@ -123,7 +126,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }else
       purge_mode=DROP;
     return TRUE;
-  } else if (!strcmp(option_name, "--enable-binlog") || !strcmp(option_name, "-e")){
+  } else if (!g_strcmp0(option_name, "--enable-binlog") || !g_strcmp0(option_name, "-e")){
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     return FALSE;
   }
