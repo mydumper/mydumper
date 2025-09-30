@@ -614,7 +614,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     }
   }else{
     if (defaults_file == NULL){
-      g_message("Using no configuration file");
+      trace("Using no configuration file");
       return;
     }
   }
@@ -624,7 +624,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     defaults_extra_file=NULL;
   }
 
-//  g_message("Using default file: %s %s", defaults_file, defaults_extra_file);
+  trace("Using default file: %s %s", defaults_file, defaults_extra_file);
 
   gchar *new_defaults_file=NULL;
   if (!g_path_is_absolute(defaults_file)){
@@ -659,7 +659,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   if (extra_key_file!=NULL){ 
     if (g_key_file_has_group(extra_key_file, group )){
-      g_message("Parsing extra key file");
+      trace("Parsing extra key file");
       parse_key_file_group(extra_key_file, context, group);
       set_connection_defaults_file_and_group(defaults_extra_file, group);
     } 
@@ -669,7 +669,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
   }else
     set_connection_defaults_file_and_group(defaults_extra_file, NULL);
 
-  g_message("Merging config files user: ");
+  trace("Merging config files user");
 
   m_key_file_merge(key_file, extra_key_file);
 
