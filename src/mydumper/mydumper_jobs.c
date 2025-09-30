@@ -80,7 +80,7 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   }
   query=get_tablespace_query();
   if (query == NULL ){
-    g_warning("Tablespace resquested, but not possible due to server version not supported");
+    g_warning("Tablespace requested, but not possible due to server version not supported");
     return;
   }
   MYSQL_RES *result = m_store_result_critical(conn, query,  "Error dumping create tablespace", NULL);
@@ -204,7 +204,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   GString *create_table_statement=g_string_sized_new(statement_size);
   int flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
   if ( !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode!=NO_LOCK){
-    m_error("Non transactional table found: `%s`.`%s` on a consitent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->name, dbt->table);
+    m_error("Non transactional table found: `%s`.`%s` on a consistent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->name, dbt->table);
   }
 
   if (skip_indexes || skip_constraints){
