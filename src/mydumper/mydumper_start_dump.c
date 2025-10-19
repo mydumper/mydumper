@@ -1006,7 +1006,7 @@ void start_dump(struct configuration *conf) {
       g_message("Executing in NO_LOCK mode, we are not able to ensure that backup will be consistent");
       break;
     case SAFE_NO_LOCK:
-      g_message("Executing in SAFE_NO_LOCK mode. This backup will fail if all threads are not in the same point in time, which assurance consitency");
+      g_message("Executing in SAFE_NO_LOCK mode. This backup will fail if all threads are not in the same point in time, which ensures consistency");
       break;
     case LOCK_ALL:
       send_lock_all_tables(conn);
