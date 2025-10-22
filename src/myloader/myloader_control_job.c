@@ -27,6 +27,7 @@
 #include "myloader_worker_loader.h"
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
+#include "myloader_database.h"
 
 gboolean control_job_ended=FALSE;
 gboolean all_jobs_are_enqueued=FALSE;
@@ -96,7 +97,7 @@ enum file_type request_restore_data_job(){
 
 struct restore_job * request_next_data_job(){
   struct restore_job *rj= (struct restore_job *)g_async_queue_pop(data_queue);
-  trace("data_queue -> %s: %s.%s, threads %u", rjtype2str(rj->type), rj->dbt->database->real_database, rj->dbt->real_table, rj->dbt->current_threads);
+  trace("data_queue -> %s: %s.%s, threads %u", rjtype2str(rj->type), rj->dbt->database->target_database, rj->dbt->real_table, rj->dbt->current_threads);
   return rj;
 }
 
@@ -120,13 +121,13 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         printed. You can also use the special value all. This environment variable only
         affects the default log handler, g_log_default_handler().
       */
-      trace("%s.%s: %s, voting for finish", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
+      trace("%s.%s: %s, voting for finish", dbt->database->target_database, dbt->real_table, status2str(dbt->schema_state));
       continue;
     }
-//    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->real_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
+//    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
     if (dbt->schema_state >= DATA_DONE ||
         (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
-      trace("%s.%s done: %s, voting for finish", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
+      trace("%s.%s done: %s, voting for finish", dbt->database->target_database, dbt->real_table, status2str(dbt->schema_state));
       iter=iter->next;
       continue;
     }
@@ -134,7 +135,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     // I could do some job in here, do we have some for me?
     if (!resume && dbt->schema_state<CREATED ){
       giveup=FALSE;
-      trace("%s.%s not yet created: %s, waiting", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
+      trace("%s.%s not yet created: %s, waiting", dbt->database->target_database, dbt->real_table, status2str(dbt->schema_state));
       iter=iter->next;
       g_mutex_unlock(dbt->mutex);
       continue;
@@ -143,7 +144,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       // TODO: can we do without double check (not under and under dbt->mutex)?
     if (dbt->schema_state >= DATA_DONE ||
         (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
-      trace("%s.%s done just now: %s, voting for finish", dbt->database->real_database, dbt->real_table, status2str(dbt->schema_state));
+      trace("%s.%s done just now: %s, voting for finish", dbt->database->target_database, dbt->real_table, status2str(dbt->schema_state));
       iter=iter->next;
       g_mutex_unlock(dbt->mutex);
       continue;
@@ -174,17 +175,17 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       dbt->current_threads++;
       g_mutex_unlock(dbt->mutex);
       giveup=FALSE;
-      trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->real_database, dbt->real_table,
+      trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->real_table,
             rjtype2str(job->type), job->filename, dbt->current_threads);
       break;
       }
     }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
-      trace("No remaining jobs on %s.%s", dbt->database->real_database, dbt->real_table); 
+      trace("No remaining jobs on %s.%s", dbt->database->target_database, dbt->real_table); 
       if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
         enqueue_index_for_dbt_if_possible(conf,dbt);
-        trace("%s.%s queuing indexes, voting for finish", dbt->database->real_database, dbt->real_table);
+        trace("%s.%s queuing indexes, voting for finish", dbt->database->target_database, dbt->real_table);
       }
     }
     

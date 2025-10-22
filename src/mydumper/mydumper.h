@@ -29,3 +29,4 @@
 #include "../regex.h"
 #include "../server_detect.h"
 #include "../pmm_thread.h"
+#include "../checksum.h"

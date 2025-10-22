@@ -23,6 +23,7 @@
 #include "myloader_worker_loader.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
+#include "myloader_database.h"
 
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
@@ -63,7 +64,7 @@ void *process_loader_thread(struct thread_data * td) {
       cont=process_job(td, job, NULL);
       g_mutex_lock(dbt->mutex);
       dbt->current_threads--;
-      trace("%s.%s: done job, threads %u", dbt->database->real_database, dbt->real_table, dbt->current_threads);
+      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->real_table, dbt->current_threads);
       g_mutex_unlock(dbt->mutex);
       break;
     case SHUTDOWN:

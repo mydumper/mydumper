@@ -75,12 +75,12 @@ gboolean hex_blob = FALSE;
 gboolean update_files_on_table_job(struct table_job *tj)
 {
   if (tj->rows->file < 0){
-    tj->rows->filename = build_rows_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
+    tj->rows->filename = build_rows_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
     trace("Thread %d: Filename assigned(%d): %s", tj->td->thread_id, tj->rows->file, tj->rows->filename);
 
     if (tj->sql){
-      tj->sql->filename =build_sql_filename(tj->dbt->database->filename, tj->dbt->table_filename, tj->part, tj->sub_part);
+      tj->sql->filename =build_sql_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
       tj->sql->file = m_open(&(tj->sql->filename),"w");
       trace("Thread %d: Filename assigned: %s", tj->td->thread_id, tj->sql->filename);
       return TRUE;
@@ -98,7 +98,7 @@ void message_dumping_data_short(struct table_job *tj){
   g_mutex_unlock(non_transactional_table->mutex);
   g_message("Thread %d: %s%s%s.%s%s%s [ %"G_GINT64_FORMAT"%% ] | Tables: %u/%u",
                     tj->td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str,
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str,
                     tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, non_transactional_table_size+transactional_table_size, g_hash_table_size(all_dbts));
 }
@@ -112,7 +112,7 @@ void message_dumping_data_long(struct table_job *tj){
   g_mutex_unlock(non_transactional_table->mutex);
   g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% | Remaining tables: %u / %u",
                     tj->td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->filename:tj->dbt->database->name, identifier_quote_character_str, 
+                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str, 
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str,
                     tj->partition?" ":"",tj->partition?tj->partition:"",
                      (tj->where->len || where_option   || tj->dbt->where) ? " WHERE " : "" , tj->where->len ? tj->where->str : "",
@@ -345,7 +345,7 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
 
 void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
-  gchar *database=dbt->database->name;
+  gchar *database=dbt->database->source_database;
   gchar *table=dbt->table;
 
   gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
@@ -510,7 +510,7 @@ void initialize_load_data_header(struct db_table *dbt, MYSQL_FIELD *fields, guin
 static
 gboolean write_statement(int load_data_file, float *filessize, GString *statement, struct db_table * dbt){
   if (!real_write_data(load_data_file, filessize, statement)) {
-    g_critical("Could not write out data for %s.%s", dbt->database->name, dbt->table);
+    g_critical("Could not write out data for %s.%s", dbt->database->source_database, dbt->table);
     return FALSE;
   }
   g_mutex_lock(max_statement_size_mutex);
@@ -533,7 +533,7 @@ void write_load_data_statement(struct table_job * tj){
   initialize_sql_statement(statement);
   g_string_append_printf(statement, "%s%s%s", LOAD_DATA_PREFIX, basename, tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
-    g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
+    g_critical("Could not write out data for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
   }
 }
 
@@ -543,13 +543,13 @@ void write_clickhouse_statement(struct table_job * tj){
   initialize_sql_statement(statement);
   g_string_append_printf(statement, "%s INTO %s%s%s FROM INFILE '%s' FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
-    g_critical("Could not write out data for %s.%s", tj->dbt->database->name, tj->dbt->table);
+    g_critical("Could not write out data for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
   }
 }
 
 gboolean write_header(struct table_job * tj){
   if (tj->dbt->load_data_header && !write_data(tj->rows->file, tj->dbt->load_data_header)) {
-    g_critical("Could not write header for %s.%s", tj->dbt->database->name, tj->dbt->table);
+    g_critical("Could not write header for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
     return FALSE;
   }
   return TRUE;
@@ -782,7 +782,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (num_rows_st == 0) {
         g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
         g_string_set_size(tj->td->thread_data_buffers.row, 0);
-        g_warning("Row bigger than statement_size for %s.%s", dbt->database->name,
+        g_warning("Row bigger than statement_size for %s.%s", dbt->database->source_database,
                 dbt->table);
       }
       g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
@@ -872,7 +872,7 @@ void write_table_job_into_file(struct table_job * tj){
       "SELECT %s %s FROM %s%s%s.%s%s%s %s %s %s %s %s %s %s %s %s %s %s",
       is_mysql_like() ? "/*!40001 SQL_NO_CACHE */" : "",
       tj->dbt->select_fields?tj->dbt->select_fields->str:"*",
-      identifier_quote_character_str,tj->dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
+      identifier_quote_character_str,tj->dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, tj->partition?tj->partition:"",
        (tj->where->len || where_option   || tj->dbt->where) ? "WHERE"  : "" , tj->where->len ? tj->where->str : "",
        (tj->where->len && where_option )                    ? "AND"    : "" ,   where_option ?   where_option : "",
       ((tj->where->len || where_option ) && tj->dbt->where) ? "AND"    : "" , tj->dbt->where ? tj->dbt->where : "",
@@ -882,7 +882,7 @@ void write_table_job_into_file(struct table_job * tj){
 
   if (!result){
     if (!it_is_a_consistent_backup){
-      g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table,
+      g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->source_database, tj->dbt->table,
                 mysql_error(conn), query);
 
       if (mysql_ping(tj->td->thrconn)) {
@@ -902,7 +902,7 @@ void write_table_job_into_file(struct table_job * tj){
   write_result_into_file(conn, result, tj);
 
   if (mysql_errno(conn)) {
-    g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->name, tj->dbt->table, tj->rows->filename, tj->filesize,
+    g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->source_database, tj->dbt->table, tj->rows->filename, tj->filesize,
                mysql_error(conn));
     errors++;
     if (mysql_ping(tj->td->thrconn)) {

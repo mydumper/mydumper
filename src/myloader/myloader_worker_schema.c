@@ -21,6 +21,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 #include "myloader_global.h"
+#include "myloader_database.h"
 
 /* refresh_db_queue2 is for schemas creation */
 GAsyncQueue *refresh_db_queue2 = NULL;
@@ -32,25 +33,24 @@ void schema_queue_push(enum file_type current_ft, const gchar * message){
 }
 
 static
-void set_db_schema_created(struct database * real_db_name, struct configuration *conf)
+void set_db_schema_created(struct database * _database, struct configuration *conf)
 {
   struct control_job * cj;
   enum file_type ft;
   GAsyncQueue *queue;
-  GAsyncQueue * object_queue= conf->table_queue;
-  real_db_name->schema_state= CREATED;
+  _database->schema_state= CREATED;
 
   /* Until all sequences processed we requeue only sequences */
   if (sequences_processed < sequences) {
     ft= SCHEMA_SEQUENCE;
-    queue= real_db_name->sequence_queue;
+    queue= _database->sequence_queue;
   } else {
     ft= SCHEMA_TABLE;
-    queue= real_db_name->queue;
+    queue= _database->control_job_queue;
   }
   cj= g_async_queue_try_pop(queue);
   while (cj != NULL){
-    g_async_queue_push(object_queue, cj);
+    g_async_queue_push( conf->table_queue, cj);
     schema_queue_push(ft, " (requeuing from db queue)");
     cj = g_async_queue_try_pop(queue);
   }
@@ -78,7 +78,7 @@ gboolean process_schema(struct thread_data * td){
   enum file_type ft;
   GHashTableIter iter;
   gchar * lkey=NULL;
-  struct database * real_db_name = NULL;
+  struct database * _database = NULL;
   struct control_job *job = NULL;
   gboolean ret=TRUE;
   const gboolean postpone_load= (overwrite_tables && !overwrite_unsafe);
@@ -88,13 +88,13 @@ gboolean process_schema(struct thread_data * td){
 
     case SCHEMA_CREATE:
       job=g_async_queue_pop(td->conf->database_queue);
-      real_db_name=job->data.restore_job->data.srj->database;
-      trace("database_queue -> %s: %s", ft2str(ft), real_db_name->name);
-      g_mutex_lock(real_db_name->mutex);
+      _database=job->data.restore_job->data.srj->database;
+      trace("database_queue -> %s: %s", ft2str(ft), _database->source_database);
+      g_mutex_lock(_database->mutex);
       ret=process_job(td, job, NULL);
-      set_db_schema_created(real_db_name, td->conf);
-      trace("Set DB created: %s", real_db_name->name);
-      g_mutex_unlock(real_db_name->mutex);
+      set_db_schema_created(_database, td->conf);
+      trace("Set DB created: %s", _database->source_database);
+      g_mutex_unlock(_database->mutex);
       break;
     case CJT_RESUME:
       cjt_resume();
@@ -149,24 +149,24 @@ gboolean process_schema(struct thread_data * td){
           return TRUE;
         }
         g_mutex_unlock(&sequences_mutex);
-        g_hash_table_iter_init ( &iter, db_hash );
+        g_hash_table_iter_init ( &iter, database_hash );
         /* Wait while all DB created and go "second round" */
-        while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &real_db_name ) ) {
-          g_mutex_lock(real_db_name->mutex);
-          if (real_db_name->schema_state != CREATED) {
-            trace("INTERMEDIATE_ENDED waits %s created, current state: %s", real_db_name->name, status2str(real_db_name->schema_state));
-            if (real_db_name->schema_state == NOT_FOUND)
-              real_db_name->schema_state=NOT_FOUND_2;
-            else if (real_db_name->schema_state == NOT_FOUND_2){
-              g_warning("Schema file for `%s` not found, continue anyways",real_db_name->name);
-              real_db_name->schema_state=CREATED;
+        while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &_database ) ) {
+          g_mutex_lock(_database->mutex);
+          if (_database->schema_state != CREATED) {
+            trace("INTERMEDIATE_ENDED waits %s created, current state: %s", _database->source_database, status2str(_database->schema_state));
+            if (_database->schema_state == NOT_FOUND)
+              _database->schema_state=NOT_FOUND_2;
+            else if (_database->schema_state == NOT_FOUND_2){
+              g_warning("Schema file for `%s` not found, continue anyways",_database->source_database);
+              _database->schema_state=CREATED;
             }
             enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
-            g_mutex_unlock(real_db_name->mutex);
+            g_mutex_unlock(_database->mutex);
             return TRUE;
           }
-          g_mutex_unlock(real_db_name->mutex);
-          set_db_schema_created(real_db_name, td->conf);
+          g_mutex_unlock(_database->mutex);
+          set_db_schema_created(_database, td->conf);
         }
         message("Schema creation enqueing completed");
         second_round=TRUE;

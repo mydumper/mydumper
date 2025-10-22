@@ -124,14 +124,6 @@ struct function_pointer{
 };
 
 gchar * remove_new_line(gchar *to);
-char * checksum_table_structure(MYSQL *conn, char *database, char *table);
-char * checksum_table(MYSQL *conn, char *database, char *table);
-char * checksum_process_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table);
-char * checksum_view_structure(MYSQL *conn, char *database, char *table);
-char * checksum_database_defaults(MYSQL *conn, char *database, char *table);
-char * checksum_table_indexes(MYSQL *conn, char *database, char *table);
 int write_file(FILE * file, char * buff, int len);
 guint strcount(gchar *text);
 void m_remove0(gchar * directory, const gchar * filename);

@@ -14,26 +14,26 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _src_mydumper_database_h
-#define _src_mydumper_database_h
+#ifndef _src_myloader_database_h
+#define _src_myloader_database_h
 
 struct database {
-  gchar *source_database;
-  gchar *source_database_escaped;
+  gchar *source_database; // aka: the logical schema name, that could be different of the filename.
 
-  gchar *database_name_in_filename;
-//  GMutex *ad_mutex;
-//  gboolean already_dumped;
+  gchar *target_database; // aka: the output schema name this can change when use -B.
+  gchar *database_name_in_filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
+  enum schema_status schema_state;
+  GAsyncQueue *sequence_queue;
+  GAsyncQueue *control_job_queue;
+  GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()
   gchar *schema_checksum;
   gchar *post_checksum;
   gchar *triggers_checksum;
   gchar *events_checksum;
-  gboolean dump_triggers;
 };
 
 void initialize_database();
-//struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
-struct database * get_database(MYSQL *conn, char *database_name, gboolean create_job);
-void free_databases();
-void write_database_on_disk(FILE *mdfile);
+struct database * get_database(gchar *k, gchar *v);
+void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg);
+gboolean execute_use(struct connection_data *cd);
 #endif
