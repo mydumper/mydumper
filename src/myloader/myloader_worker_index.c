@@ -21,7 +21,7 @@
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
 #include "myloader_global.h"
-
+#include "myloader_database.h"
 
 GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
@@ -53,9 +53,9 @@ gboolean process_index(struct thread_data * td){
 
   g_assert(job->type == JOB_RESTORE);
   struct db_table *dbt=job->data.restore_job->dbt;
-  trace("index_queue -> %s: %s.%s", rjtype2str(job->data.restore_job->type), dbt->database->real_database, dbt->table);
+  trace("index_queue -> %s: %s.%s", rjtype2str(job->data.restore_job->type), dbt->database->target_database, dbt->table);
   dbt->start_index_time=g_date_time_new_now_local();
-  g_message("restoring index: %s.%s", dbt->database->name, dbt->table);
+  g_message("restoring index: %s.%s", dbt->database->source_database, dbt->table);
   process_job(td, job, NULL);
   dbt->finish_time=g_date_time_new_now_local();
   g_mutex_lock(dbt->mutex);
@@ -111,9 +111,9 @@ void start_optimize_keys_all_tables(){
 
 static
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
+  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->target_database, dbt->table);
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
-  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
+  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->target_database, dbt->table);
   g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;

@@ -67,7 +67,7 @@ extern gchar *pmm_path;
 extern gchar *pmm_resolution ;
 extern gchar *source_db;
 extern gchar *tables_skiplist_file;
-extern GHashTable *db_hash;
+extern GHashTable *database_hash;
 extern GHashTable *tbl_hash;
 extern GString *set_session;
 extern guint commit_count;
@@ -93,7 +93,6 @@ extern gchar **exec_per_thread_cmd;
 
 //extern guint index_threads_counter;
 extern GMutex *index_mutex;
-extern struct database *database_db;
 extern gchar *optimize_keys_str;
 extern gchar *checksum_str;
 extern gboolean no_stream;

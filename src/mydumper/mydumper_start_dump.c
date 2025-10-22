@@ -676,7 +676,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 // see write_database_on_disk() for db write to metadata
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
-  char *name= newline_protect(dbt->database->name);
+  char *name= newline_protect(dbt->database->source_database);
   char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
@@ -705,7 +705,7 @@ void print_dbt_on_metadata(FILE *mdfile, struct db_table *dbt){
   fprintf(mdfile, "%s", data->str);
   if (check_row_count && !dbt->object_to_export.no_data && (dbt->rows != dbt->rows_total)) {
     m_critical("Row count mismatch found for %s.%s: got %u of %u expected",
-               dbt->database->name, dbt->table, dbt->rows, dbt->rows_total);
+               dbt->database->source_database, dbt->table, dbt->rows, dbt->rows_total);
   }
 }
 
@@ -890,7 +890,7 @@ void start_dump(struct configuration *conf) {
   g_message("Using %u dumper threads", num_threads);
   initialize_start_dump();
   initialize_common();
-
+  initialize_create_jobs(conf);
   initialize_connection(MYDUMPER);
   initialize_masquerade();
 
@@ -1108,14 +1108,14 @@ void start_dump(struct configuration *conf) {
 
   // Create metadata job
   if (is_mysql_like())
-    create_job_to_write_source_and_replica_status(conf, mdfile);
+    create_job_to_write_source_and_replica_status(mdfile);
   else
     g_async_queue_push(conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
   
   trace("Create tablespace jobs");
   // Create tablespace jobs
   if (dump_tablespaces){
-    create_job_to_dump_tablespaces(conf);
+    create_job_to_dump_tablespaces();
   }
 
   // There are 3 ways to dump tables based on the filters
@@ -1126,19 +1126,19 @@ void start_dump(struct configuration *conf) {
   // if tables and db both exists , should not call dump_database_thread
   if (tables && g_strv_length(tables) > 0) {
     trace("Specific tables");
-    create_job_to_dump_table_list(tables, conf);
+    create_job_to_dump_table_list(tables);
   } else if (db_items && g_strv_length(db_items) > 0) {
     trace("Specific databases");
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
-      struct database *this_db=new_database(conn,db_items[i],TRUE);
-      create_job_to_dump_database(this_db, conf);
+      struct database *this_db=get_database(conn,db_items[i],TRUE);
+      create_job_to_dump_database(this_db);
       if (!no_schemas)
-        create_job_to_dump_schema(this_db, conf);
+        create_job_to_dump_schema(this_db);
     }
   } else {
     trace("All databases");
-    create_job_to_dump_all_databases(conf);
+    create_job_to_dump_all_databases();
   }
 
   trace("End Job Creation");

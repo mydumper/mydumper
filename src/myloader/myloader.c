@@ -44,6 +44,7 @@
 #include "myloader_worker_loader.h"
 #include "myloader_worker_post.h"
 #include "myloader_control_job.h"
+#include "myloader_database.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -80,11 +81,12 @@ guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
-extern GHashTable *db_hash;
+extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
+extern struct database *database_db;
 
 const char DIRECTORY[] = "import";
 
@@ -436,6 +438,7 @@ int main(int argc, char *argv[]) {
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
+  initialize_database();
   initialize_common();
   initialize_connection(MYLOADER);
   initialize_regex(NULL);
@@ -542,7 +545,7 @@ int main(int argc, char *argv[]) {
 
   if (database_db){
     if (!no_schemas)
-      create_database(t, database_db->real_database);
+      create_database(t, database_db->target_database);
     database_db->schema_state=CREATED;
   }
   start_worker_schema();
@@ -591,17 +594,20 @@ int main(int argc, char *argv[]) {
   if (checksum_mode != CHECKSUM_SKIP) {
     GHashTableIter iter;
     gchar *lkey;
-    g_hash_table_iter_init(&iter, db_hash);
+    g_hash_table_iter_init(&iter, database_hash);
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
       if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->schema_checksum, conn,
                                   "Schema create checksum", checksum_database_defaults);
       if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->post_checksum, conn,
                                   "Post checksum", checksum_process_structure);
+      if (d->events_checksum != NULL && !skip_post)
+        checksum_ok&=checksum_database_template(d->target_database, d->events_checksum, conn,
+                                  "Events checksum", checksum_events_structure_from_database);
       if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->triggers_checksum, conn,
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
@@ -674,7 +680,7 @@ int main(int argc, char *argv[]) {
     struct db_table * dbt=tl->data;
     GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
     GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
-    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->real_database,dbt->real_table);
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->real_table);
     tl=tl->next;
   }
 */

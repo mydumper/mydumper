@@ -29,6 +29,7 @@
 #include "myloader_intermediate_queue.h"
 #include "myloader_process.h"
 #include "myloader_restore.h"
+#include "myloader_database.h"
 
 struct statement * new_statement();
 guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;

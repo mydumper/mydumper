@@ -94,8 +94,8 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   // first have to pick index, in future should be able to preset in
   //    * configuration too
   gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->name);
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->source_database);
   g_free(query);
 
   if (indexes){
@@ -241,7 +241,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence)
 {
-  gchar * lkey = build_dbt_key(database->name,table);
+  gchar * lkey = build_dbt_key(database->source_database,table);
   g_mutex_lock(all_dbts_mutex);
   struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
   gboolean b;
@@ -264,9 +264,9 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     else{
       dbt->character_set=get_character_set_from_collation(conn, table_collation);
       if ( dbt->character_set == NULL)
-        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->name,table);
+        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->source_database,table);
     }
-    dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
+    dbt->has_json_fields = has_json_fields(conn, dbt->database->source_database, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->rows_total=0;
     dbt->escaped_table = escape_string(conn,dbt->table);
@@ -334,13 +334,13 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     if (columns_on_select){
       dbt->select_fields=g_string_new(columns_on_select);
       if (!dbt->columns_on_insert && complete_insert){
-        g_warning("Ignoring complete-insert on %s.%s due usage of columns_on_select only", dbt->database->name,dbt->table);
+        g_warning("Ignoring complete-insert on %s.%s due usage of columns_on_select only", dbt->database->source_database,dbt->table);
       }
 
     }else if (!dbt->columns_on_insert){
-      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
+      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       if (dbt->complete_insert) {
-        dbt->select_fields = get_selectable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+        dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       }
     }
 

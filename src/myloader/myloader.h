@@ -25,6 +25,7 @@
 #include "../regex.h"
 #include "../server_detect.h"
 #include "../pmm_thread.h"
+#include "../checksum.h"
 
 #ifndef _src_myloader_h
 #define _src_myloader_h
@@ -134,19 +135,6 @@ const char * status2str(enum schema_status status)
   g_assert(0);
   return 0;
 }
-
-struct database {
-  gchar *name; // aka: the logical schema name, that could be different of the filename.
-  char *real_database; // aka: the output schema name this can change when use -B.
-  gchar *filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
-  enum schema_status schema_state;
-  GAsyncQueue *sequence_queue;
-  GAsyncQueue *queue;
-  GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()
-  gchar *schema_checksum;
-  gchar *post_checksum;
-  gchar *triggers_checksum;
-};
 
 struct db_table {
   struct database * database;
