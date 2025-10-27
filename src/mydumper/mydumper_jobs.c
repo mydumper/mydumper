@@ -393,10 +393,18 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_set_size(statement, 0);
   g_string_append_printf(statement, "CREATE TABLE IF NOT EXISTS %c%s%c(\n", identifier_quote_character, dbt->table, identifier_quote_character);
   row = mysql_fetch_row(result);
-  g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, row[0], identifier_quote_character);
+  gchar *escaped_name=escape_string(conn, row[0]);
+//  escaped_name[strlen(escaped_name)]='\0';
+//  m_replace_char_with_char(identifier_quote_character, fields_escaped_by?*fields_escaped_by:'\\', escaped_name, strlen(escaped_name));
+  m_escape_char_with_char(identifier_quote_character, (fields_escaped_by?*fields_escaped_by:(identifier_quote_character==BACKTICK?BACKTICK:'\\')), escaped_name, strlen(escaped_name));
+  g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, escaped_name, identifier_quote_character);
+  g_free(escaped_name);
   while ((row = mysql_fetch_row(result))) {
     g_string_append(statement, ",\n");
-    g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, row[0], identifier_quote_character);
+    escaped_name=escape_string(conn, row[0]);
+    m_escape_char_with_char(identifier_quote_character, (fields_escaped_by?*fields_escaped_by:(identifier_quote_character==BACKTICK?BACKTICK:'\\')), escaped_name, strlen(escaped_name));
+    g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, escaped_name, identifier_quote_character);
+    g_free(escaped_name);
   }
   g_string_append(statement, "\n) ENGINE=");
   g_string_append(statement, table_engine_for_view_dependency);
