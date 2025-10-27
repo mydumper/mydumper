@@ -182,11 +182,16 @@ void determine_columns_on_show_processlist( MYSQL_FIELD *fields, guint num_field
 void *monitor_ftwrl_thread (void *thread_id){
   MYSQL *conn;
   MYSQL_RES *res = NULL;
+  gboolean ftwrl_found_in_processlist = FALSE;
   conn = mysql_init(NULL);
   m_connect(conn);
   gchar *query=NULL;
   while (!ftwrl_completed){
-    sleep(ftwrl_max_wait_time);
+    if (ftwrl_found_in_processlist == TRUE) {
+      sleep(ftwrl_max_wait_time);
+    } else {
+      sleep(1);
+    }
     res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST");
     if (!res){
        break;
@@ -199,8 +204,13 @@ void *monitor_ftwrl_thread (void *thread_id){
       while ((row = mysql_fetch_row(res))) {
         if ((atol(row[id_col]) == *((guint *)(thread_id)))){
            if (!strcasecmp(FLUSH_TABLES_WITH_READ_LOCK, row[info_col]) || !strcasecmp(FLUSH_NO_WRITE_TO_BINLOG_TABLES, row[info_col])){
-             m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
-             g_free(query);
+             if (ftwrl_found_in_processlist == TRUE){
+               m_query_warning(conn, query = g_strdup_printf("KILL QUERY %lu", atol(row[id_col])), "Could not KILL slow query", NULL);
+               g_free(query);
+               ftwrl_found_in_processlist = FALSE;
+             } else {
+               ftwrl_found_in_processlist = TRUE;
+             }
            }
 //            g_message("%s found. KILL %d",row[info_col], id_col);
         }
