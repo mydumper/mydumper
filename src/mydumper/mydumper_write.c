@@ -525,6 +525,7 @@ void initialize_config_on_string(GString *output){
   g_mutex_lock(max_statement_size_mutex);
   g_string_append_printf(output,"[config]\nmax-statement-size = %ld\n", max_statement_size);
   g_mutex_unlock(max_statement_size_mutex);
+  g_string_append_printf(output, "num-sequences = %d\n", num_sequences);
 }
 
 void write_load_data_statement(struct table_job * tj){

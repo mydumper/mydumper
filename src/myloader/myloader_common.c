@@ -351,7 +351,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
   g_mutex_unlock(mutex);
   return eval_regex(db_name, table_name);
 }
-
+/*
 enum file_type get_file_type (const char * filename){
 
   if ((!strcmp(filename,          "metadata") || 
@@ -404,6 +404,7 @@ enum file_type get_file_type (const char * filename){
 
   return IGNORED;
 }
+*/
 
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
   gchar **split_filename = g_strsplit(filename, sufix, 0);

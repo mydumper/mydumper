@@ -83,7 +83,7 @@ void print_help(){
     print_string("tls-version",tls_version);
 #endif
     print_list("regex",regex_list);
-    print_string("database",db);
+    print_string("database",source_db);
     print_string("ignore-engines",ignore_engines_str);
     print_string("where",where_option);
     print_int("updated-since",updated_since);
@@ -210,7 +210,7 @@ int main(int argc, char *argv[]) {
   if (tmpargc > 1 ){
     int pos=0;
     stream=TRUE;
-    db=strdup(tmpargv[1]);
+    source_db=strdup(tmpargv[1]);
     if (tmpargc > 2 ){
       GString *s = g_string_new(tmpargv[2]);
       for (pos=3; pos<tmpargc;pos++){

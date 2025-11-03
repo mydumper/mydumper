@@ -143,7 +143,7 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
      "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
      "An alternative database to restore into", NULL},
     {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
       "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
@@ -222,6 +222,8 @@ static GOptionEntry execution_entries[] = {
       "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
+    {"num-sequences", 0, 0, G_OPTION_ARG_INT, &num_sequences,
+      "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] ={

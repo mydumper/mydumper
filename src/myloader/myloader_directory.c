@@ -22,7 +22,7 @@
 
 #include "myloader.h"
 #include "myloader_control_job.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_process.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
@@ -38,6 +38,11 @@ void wait_directory_to_process_metadata(){
   g_async_queue_unref(metadata_sync_queue);
 }
 
+void release_directory_metadata_lock(){
+  g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
+  g_message("metadata pushed");
+}
+
 void *process_directory(struct configuration *conf){
   GError *error = NULL;
   const gchar *filename = NULL;
@@ -47,9 +52,8 @@ void *process_directory(struct configuration *conf){
     we will get wrong condition (sequences == sequences_processed == 0).
   */
   if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
-    process_metadata_global("metadata", conf->context);
-    g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
-    g_message("metadata pushed");
+    process_metadata_global_filename("metadata", conf->context);
+//    release_directory_metadata_lock(); This has been moved to process_metadata_global_filename and triggered when [config] has been processed
   }else
     g_error("metadata file was not found");
   if (resume){
@@ -67,7 +71,7 @@ void *process_directory(struct configuration *conf){
       for (i=0; i<g_strv_length(split);i++){
         if (strlen(split[i])>2){
           filename=split[i];
-          intermediate_queue_new(g_strdup(filename));
+          process_filename_queue_new(g_strdup(filename));
         }
       }
       g_string_set_size(data, 0);
@@ -77,10 +81,10 @@ void *process_directory(struct configuration *conf){
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
       if (strcmp(filename, "metadata"))
-        intermediate_queue_new(filename);
+        process_filename_queue_new(filename);
     }
   }
-  intermediate_queue_end();
+  process_filename_queue_end();
   guint n=0;
   for (n = 0; n < num_threads ; n++) {
     g_async_queue_push(conf->data_queue,       new_control_job(JOB_SHUTDOWN,NULL,NULL));

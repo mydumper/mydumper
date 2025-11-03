@@ -45,6 +45,7 @@ static gboolean cjt_paused= TRUE;
 
 void cjt_resume()
 {
+  trace("Control Job resuming");
   g_mutex_lock(cjt_mutex);
   cjt_paused= FALSE;
   g_cond_signal(cjt_cond);
@@ -111,6 +112,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   struct db_table * dbt;
   while (iter != NULL){
     dbt = iter->data;
+    trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->real_table, dbt->schema_state, dbt->remaining_jobs);
     if (dbt->database->schema_state == NOT_FOUND){
       iter=iter->next;
       /*
@@ -160,24 +162,25 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         dbt->schema_state = ALL_DONE;
 
       }else{
-      if (dbt->current_threads >= dbt->max_threads ){
-        giveup=FALSE;
-        iter=iter->next;
-        g_mutex_unlock(dbt->mutex);
-        continue;
-      }
-      // We found a job that we can process!
-      job = dbt->restore_job_list->data;
-      GList * current = dbt->restore_job_list;
+        if (dbt->current_threads >= dbt->max_threads ){
+          giveup=FALSE;
+          trace("%s.%s Reached max thread %s", dbt->database->target_database, dbt->real_table, status2str(dbt->schema_state));
+          iter=iter->next;
+          g_mutex_unlock(dbt->mutex);
+          continue;
+        }
+        // We found a job that we can process!
+        job = dbt->restore_job_list->data;
+        GList * current = dbt->restore_job_list;
 //      dbt->restore_job_list = dbt->restore_job_list->next;
-      dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
-      g_list_free_1(current);
-      dbt->current_threads++;
-      g_mutex_unlock(dbt->mutex);
-      giveup=FALSE;
-      trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->real_table,
+        dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
+        g_list_free_1(current);
+        dbt->current_threads++;
+        g_mutex_unlock(dbt->mutex);
+        giveup=FALSE;
+        trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->real_table,
             rjtype2str(job->type), job->filename, dbt->current_threads);
-      break;
+        break;
       }
     }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
@@ -204,7 +207,11 @@ void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft){
     case SCHEMA_SEQUENCE:
       schema_queue_push(current_ft, "");
       break;
-    case INTERMEDIATE_ENDED:
+    case FILE_TYPE_ENDED:
+      schema_queue_push(current_ft, "");
+      control_job_queue_push(current_ft);
+      break;
+    case FILE_TYPE_SCHEMA_ENDED:
       schema_queue_push(current_ft, "");
       control_job_queue_push(current_ft);
       break;
@@ -212,7 +219,18 @@ void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft){
     case DATA:
     case SHUTDOWN:
       control_job_queue_push(current_ft);
-    default:
+      break;
+    case METADATA_GLOBAL:
+    case SCHEMA_TABLESPACE:
+    case LOAD_DATA:
+    case SCHEMA_VIEW:
+    case SCHEMA_TRIGGER:
+    case SCHEMA_POST:
+    case IGNORED:
+    case INIT:
+    case CJT_RESUME:
+    case RESUME:
+    case DO_NOT_ENQUEUE:
       break;
   }
 }
@@ -281,7 +299,7 @@ void *control_job_thread(struct configuration *conf){
         }
       }
       break;
-    case INTERMEDIATE_ENDED:
+    case FILE_TYPE_ENDED:
       enqueue_indexes_if_possible(conf);
       all_jobs_are_enqueued = TRUE;
       wake_threads_waiting(&threads_waiting);
@@ -289,8 +307,25 @@ void *control_job_thread(struct configuration *conf){
     case SHUTDOWN:
       cont=FALSE;
       break;
-    default:
-      trace("Thread control_job_thread: received Default: %d", ft);
+    case FILE_TYPE_SCHEMA_ENDED:
+      wake_threads_waiting(&threads_waiting);
+//      control_job_queue_push(REQUEST_DATA_JOB);
+      break;
+    case METADATA_GLOBAL:
+    case SCHEMA_TABLESPACE:
+    case LOAD_DATA:
+    case SCHEMA_VIEW:
+    case SCHEMA_TRIGGER:
+    case SCHEMA_POST:
+    case IGNORED:
+    case INIT:
+    case CJT_RESUME:
+    case RESUME:
+    case DO_NOT_ENQUEUE:
+    case SCHEMA_SEQUENCE:
+    case SCHEMA_CREATE:
+    case SCHEMA_TABLE:
+      trace("Thread control_job_thread received:  %d", ft);
       break;
     }
   }

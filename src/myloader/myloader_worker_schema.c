@@ -139,12 +139,13 @@ gboolean process_schema(struct thread_data * td){
       }
       break;
     }
-    case INTERMEDIATE_ENDED:
+    case FILE_TYPE_ENDED:
+    case FILE_TYPE_SCHEMA_ENDED:
       if (!second_round){
         g_mutex_lock(&sequences_mutex);
         if (sequences_processed < sequences) {
-          trace("INTERMEDIATE_ENDED waits %d sequences", sequences - sequences_processed);
-          enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
+          trace("FILE_TYPE_SCHEMA_ENDED waits %d sequences", sequences - sequences_processed);
+          enroute_into_the_right_queue_based_on_file_type(FILE_TYPE_SCHEMA_ENDED);
           g_mutex_unlock(&sequences_mutex);
           return TRUE;
         }
@@ -154,14 +155,14 @@ gboolean process_schema(struct thread_data * td){
         while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &_database ) ) {
           g_mutex_lock(_database->mutex);
           if (_database->schema_state != CREATED) {
-            trace("INTERMEDIATE_ENDED waits %s created, current state: %s", _database->source_database, status2str(_database->schema_state));
+            trace("FILE_TYPE_SCHEMA_ENDED waits %s created, current state: %s", _database->source_database, status2str(_database->schema_state));
             if (_database->schema_state == NOT_FOUND)
               _database->schema_state=NOT_FOUND_2;
             else if (_database->schema_state == NOT_FOUND_2){
               g_warning("Schema file for `%s` not found, continue anyways",_database->source_database);
               _database->schema_state=CREATED;
             }
-            enroute_into_the_right_queue_based_on_file_type(INTERMEDIATE_ENDED);
+            enroute_into_the_right_queue_based_on_file_type(FILE_TYPE_SCHEMA_ENDED);
             g_mutex_unlock(_database->mutex);
             return TRUE;
           }
@@ -186,8 +187,19 @@ gboolean process_schema(struct thread_data * td){
           schema_queue_push(CJT_RESUME, "");
       }
       break;
-    default:
-        message("Default in schema: %d", ft);
+    case METADATA_GLOBAL:
+    case SCHEMA_TABLESPACE:
+    case DATA:
+    case LOAD_DATA:
+    case SCHEMA_VIEW:
+    case SCHEMA_TRIGGER:
+    case SCHEMA_POST:
+    case IGNORED:
+    case INIT:
+    case RESUME:
+    case SHUTDOWN:
+    case DO_NOT_ENQUEUE:
+    case REQUEST_DATA_JOB:
       break;
   }
 
@@ -219,6 +231,9 @@ void initialize_worker_schema(struct configuration *conf){
   g_message("Initializing initialize_worker_schema");
   for (n = 0; n < max_threads_for_schema_creation; n++) 
     initialize_thread_data(&(schema_td[n]), conf, WAITING, n + 1 + num_threads, NULL);
+
+  if (stream)
+    schema_queue_push(CJT_RESUME, "");
 }
 
 void start_worker_schema(){

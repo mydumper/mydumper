@@ -36,7 +36,7 @@
 #include "myloader_restore.h"
 #include "myloader_pmm.h"
 #include "myloader_restore_job.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
@@ -67,6 +67,7 @@ gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint num_sequences = 0;
 guint sequences = 0;
 guint sequences_processed = 0;
 GMutex sequences_mutex;
@@ -86,7 +87,6 @@ extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
-extern struct database *database_db;
 
 const char DIRECTORY[] = "import";
 
@@ -180,29 +180,6 @@ void show_dbt(void* _key, void* dbt, void *total){
  //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
   }
 
-void create_database(struct thread_data *td, gchar *database) {
-
-  const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
-  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, database, exec_per_thread_extension);
-
-  if (drop_database)
-    execute_drop_database(td, database);
-  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
-  } else {
-    GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
-    g_string_append_printf(data,"`%s`", database);
-    trace("Creating schema %s", database);
-    if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
-      g_atomic_int_inc(&(detailed_errors.schema_errors));
-    g_string_free(data, TRUE);
-  }
-
-  return;
-}
-
 void print_help(){
     print_string("host", hostname);
     print_string("user", username);
@@ -276,7 +253,7 @@ void print_help(){
     print_string("directory",input_directory);
     print_string("logfile",logfile);
 
-    print_string("database",db);
+    print_string("database",target_db);
     print_string("quote-character",identifier_quote_character_str);
     print_bool("resume",resume);
     print_int("threads",num_threads);
@@ -372,8 +349,8 @@ int main(int argc, char *argv[]) {
 
   g_strfreev(tmpargv);
 
-  if (db == NULL && source_db != NULL) {
-    db = g_strdup(source_db);
+  if (target_db == NULL && source_db != NULL) {
+    target_db = g_strdup(source_db);
   }
 
   if (overwrite_unsafe)
@@ -504,7 +481,7 @@ int main(int argc, char *argv[]) {
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
-  initialize_intermediate_queue(&conf);
+  initialize_process_filename_queue(&conf);
 
   if (stream){
     if (resume){
@@ -542,12 +519,9 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-
-  if (database_db){
-    if (!no_schemas)
-      create_database(t, database_db->target_database);
-    database_db->schema_state=CREATED;
-  }
+  g_message("start_database");
+  start_database(t);
+  g_message("start_worker_schema");
   start_worker_schema();
   initialize_loader_threads(&conf);
 

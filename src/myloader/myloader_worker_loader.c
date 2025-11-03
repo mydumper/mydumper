@@ -90,10 +90,10 @@ void *loader_thread(struct thread_data *td) {
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   set_thread_name("T%02u", td->thread_id);
-  trace("Thread %u: Starting import", td->thread_id);
+  g_message("L-Thread %u: Starting import", td->thread_id);
   process_loader_thread(td);
 
-  trace("Thread %u: ending", td->thread_id);
+  g_message("L-Thread %u: ending", td->thread_id);
   return NULL;
 }
 

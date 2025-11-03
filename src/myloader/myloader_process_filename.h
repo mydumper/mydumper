@@ -16,13 +16,18 @@
 */
 #include "myloader.h"
 
-struct intermediate_filename{
+struct process_filename_filename{
   gchar * filename;
   guint iterations;
 };
 
-void intermediate_queue_incomplete(struct intermediate_filename * iflnm);
-void intermediate_queue_end();
-void intermediate_queue_new(const gchar *filename);
-void initialize_intermediate_queue (struct configuration *c);
-void remove_fifo_file(gchar *fifo_name);
+struct filetype_item{
+  gchar * filename;
+  enum file_type file_type;
+};
+
+
+void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
+void process_filename_queue_end();
+void process_filename_queue_new(const gchar *filename);
+void initialize_process_filename_queue (struct configuration *c);

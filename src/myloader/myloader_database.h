@@ -36,4 +36,6 @@ void initialize_database();
 struct database * get_database(gchar *k, gchar *v);
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg);
 gboolean execute_use(struct connection_data *cd);
+void start_database(struct thread_data *td);
+gboolean has_been_defined_a_target_database();
 #endif

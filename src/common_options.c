@@ -22,7 +22,6 @@
 #include "common.h"
 #include "config.h"
 #include "common_options.h"
-char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 

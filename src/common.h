@@ -126,7 +126,7 @@ struct function_pointer{
 gchar * remove_new_line(gchar *to);
 int write_file(FILE * file, char * buff, int len);
 guint strcount(gchar *text);
-void m_remove0(gchar * directory, const gchar * filename);
+gboolean m_remove0(gchar * directory, const gchar * filename);
 gboolean m_remove(gchar * directory, const gchar * filename);
 GKeyFile * load_config_file(gchar * config_file);
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
@@ -227,3 +227,4 @@ GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, cons
 void *monitor_throttling_thread (void *queue);
 gchar *set_names_statement_template(gchar *_set_names);
 void execute_set_names(MYSQL *conn, gchar *_set_names);
+gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);

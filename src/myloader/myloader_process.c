@@ -34,7 +34,7 @@
 #include "myloader_global.h"
 #include "myloader_arguments.h"
 #include "myloader_database.h"
-
+#include "myloader_directory.h"
 //GString *change_master_statement=NULL;
 struct replication_statements *replication_statements=NULL;
 gboolean append_if_not_exist=FALSE;
@@ -55,54 +55,44 @@ void initialize_process(struct configuration *c){
   fifo_table_mutex = g_mutex_new();
 }
 
-struct db_table* append_new_db_table( struct database *_database, gchar *table, guint64 number_rows, GString *alter_table_statement){
-//  if ( database == NULL || table == NULL){
-//    m_critical("It was not possible to process file: %s, database: %s table: %s",filename, database, table);
-//  }
-//  struct database *_database=get_database(database,database);
-//  if (_database == NULL){
-//    m_error("It was not possible to process file: %s. %s was not found and _database is null. Restore without schema-create files is not supported",filename,database);
-//  }
+static
+gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *table ){ //, guint64 number_rows, GString *alter_table_statement){
+  struct db_table *dbt=NULL;
   gchar *lkey=build_dbt_key(_database->database_name_in_filename, table);
-  struct db_table * dbt=g_hash_table_lookup(conf->table_hash,lkey);
-  if (dbt == NULL){
-//    g_message("Adding new table: `%s`.`%s`", _database->source_database, table);
+  dbt=g_hash_table_lookup(conf->table_hash,lkey);
+  gboolean r = dbt == NULL;
+  if (r){
     g_mutex_lock(conf->table_hash_mutex);
-//struct db_table * dbt=g_hash_table_lookup(table_hash,lkey);
     dbt=g_hash_table_lookup(conf->table_hash,lkey);
-    if (dbt == NULL){
+    r = dbt == NULL;
+    if (r){
       dbt=g_new(struct db_table,1);
-//    dbt->filename=filename;
       dbt->database=_database;
-    // This should be the only place where we should use `db ? db : `
- //     dbt->database->target_database = g_strdup(db ? db : _database->source_database);
       dbt->table=table;
       dbt->real_table=dbt->table;
-      dbt->rows=number_rows;
+//      dbt->rows=number_rows;
+      dbt->rows=0;
       dbt->rows_inserted=0;
       dbt->restore_job_list = NULL;
-//      dbt->queue=g_async_queue_new();
       parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
 			dbt->current_threads=0;
       dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
       dbt->max_connections_per_job=0;
       dbt->retry_count= retry_count;
       dbt->mutex=g_mutex_new();
-      dbt->indexes=alter_table_statement;
+//      dbt->indexes=alter_table_statement;
+      dbt->indexes=NULL;
       dbt->start_data_time=NULL;
       dbt->finish_data_time=NULL;
       dbt->start_index_time=NULL;
       dbt->finish_time=NULL;
-//      dbt->completed=FALSE;
       dbt->schema_state=NOT_FOUND;
-//      dbt->schema_created=FALSE;
       dbt->index_enqueued=FALSE;
       dbt->remaining_jobs = 0;
       dbt->constraints=NULL;
       dbt->count=0;
       g_hash_table_insert(conf->table_hash, lkey, dbt);
       refresh_table_list_without_table_hash_lock(conf, FALSE);
-//      g_message("New db_table: %s", lkey);
       dbt->schema_checksum=NULL;
       dbt->triggers_checksum=NULL;
       dbt->indexes_checksum=NULL;
@@ -110,27 +100,23 @@ struct db_table* append_new_db_table( struct database *_database, gchar *table, 
       dbt->is_view=FALSE;
       dbt->is_sequence=FALSE;
     }else{
-//      g_message("Found db_table: %s", lkey);
       g_free(table);
       g_free(lkey);
-      if (number_rows>0) dbt->rows=number_rows;
-      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
-//    if (real_table != NULL) dbt->real_table=g_strdup(real_table);
+//      if (number_rows>0) dbt->rows=number_rows;
+//      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
     }
     g_mutex_unlock(conf->table_hash_mutex);
   }else{
-//      g_message("Found db_table: %s", lkey);
       g_free(table);
       g_free(lkey);
-      if (number_rows>0) dbt->rows=number_rows;
-      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
+//      if (number_rows>0) dbt->rows=number_rows;
+//      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
   }
-  return dbt;
+  *p_dbt=dbt;
+  return r;
 }
 
 void free_dbt(struct db_table * dbt){
-//  g_free(dbt->database);
-//  g_free(dbt->database->target_database);
   g_free(dbt->table);
 //  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
   dbt->constraints = NULL; // It should be free after constraint is executed
@@ -239,10 +225,14 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
   }
 }
 
+void process_tablespace_filename(char * filename) {
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, TABLESPACE);
+  g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
+}
 
-struct control_job * load_schema(struct db_table *dbt, gchar *filename){
+static
+struct control_job * new_control_job_from_parsing_create_table_from_file(struct db_table *dbt, gchar *filename){
   void *infile;
-//  gboolean is_compressed = FALSE;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
   GString *create_table_statement=g_string_sized_new(512);
@@ -381,8 +371,7 @@ regex_error:
   return cj;
 }
 
-
-
+static
 void get_database_table_part_name_from_filename(const gchar *filename, gchar **database, gchar **table, guint *part, guint *sub_part){
   gchar **split_db_tbl = g_strsplit(filename, ".", 4);
   if (g_strv_length(split_db_tbl)>=2) {
@@ -403,6 +392,7 @@ void get_database_table_part_name_from_filename(const gchar *filename, gchar **d
   g_strfreev(split_db_tbl);
 }
 
+static
 gchar * get_database_name_from_filename(const gchar *filename){
   gchar **split_file = g_strsplit(filename, "-schema-create.sql", 2);
   gchar *db_name=g_strdup(split_file[0]);
@@ -410,20 +400,7 @@ gchar * get_database_name_from_filename(const gchar *filename){
   return db_name;
 }
 
-void get_database_table_name_from_filename(const gchar *filename, const gchar * suffix, gchar **database, gchar **table){
-  gchar **split_file = g_strsplit(filename, suffix, 2);
-  gchar **split_db_tbl = g_strsplit(split_file[0], ".", -1);
-  g_strfreev(split_file);
-  if (g_strv_length(split_db_tbl)==2){
-    *database=g_strdup(split_db_tbl[0]);
-    *table=g_strdup(split_db_tbl[1]);
-  }else{
-    *database=NULL;
-    *table=NULL;
-  }
-  g_strfreev(split_db_tbl);
-}
-
+static
 gchar * get_database_name_from_content(gchar *filename){
   FILE *infile;
 //  enum data_file_type is_compressed = FALSE;
@@ -455,12 +432,6 @@ gchar * get_database_name_from_content(gchar *filename){
   return target_database;
 }
 
-void process_tablespace_filename(char * filename) {
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, TABLESPACE);
-  g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
-}
-
-
 void process_database_filename(char * filename) {
   gchar *db_kname,*db_vname;
   db_vname=db_kname=get_database_name_from_filename(filename);
@@ -476,7 +447,7 @@ void process_database_filename(char * filename) {
 
   trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *_database = get_database(db_kname, db_vname);
-  if (!db){
+  if (!has_been_defined_a_target_database()){
     _database->schema_state=NOT_CREATED;
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
     g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
@@ -485,6 +456,60 @@ void process_database_filename(char * filename) {
   }
 }
 
+gboolean process_schema_sequence_filename(gchar *filename) {
+  gchar *database=NULL, *table_name=NULL;
+  struct database *_database=NULL;
+  struct db_table *dbt;
+  get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
+  if (database == NULL){
+    g_error("Database is null on: %s", filename);
+    return FALSE;
+  }
+  _database=get_database(database,database);
+  if (_database==NULL){
+    g_warning("It was not possible to process file: %s (3) because _database isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
+    return FALSE;
+  }
+  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+    g_warning("File %s has been filter out",filename);
+    return FALSE;
+  }
+  append_new_db_table(&dbt, _database, table_name);//, 0, NULL);
+  dbt->is_sequence= TRUE;
+  dbt->schema_state= NOT_CREATED;
+  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
+  struct control_job *cj= new_control_job(JOB_RESTORE,rj,_database);
+  g_mutex_lock(_database->mutex);
+  if (_database->schema_state != CREATED){
+    trace("%s.sequence_queue <- %s: %s", database, rjtype2str(cj->data.restore_job->type), filename);
+    trace("_database: %p; sequence_queue: %p", _database, _database->sequence_queue);
+    g_async_queue_push(_database->sequence_queue, cj);
+    g_mutex_unlock(_database->mutex);
+    return FALSE;
+  }else{
+    if (cj) {
+      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
+      g_async_queue_push(conf->table_queue, cj);
+    }
+  }
+  g_mutex_unlock(_database->mutex);
+  return TRUE;
+}
+
+static
+void get_database_table_name_from_filename(const gchar *filename, const gchar * suffix, gchar **database, gchar **table){
+  gchar **split_file = g_strsplit(filename, suffix, 2);
+  gchar **split_db_tbl = g_strsplit(split_file[0], ".", -1);
+  g_strfreev(split_file);
+  if (g_strv_length(split_db_tbl)==2){
+    *database=g_strdup(split_db_tbl[0]);
+    *table=g_strdup(split_db_tbl[1]);
+  }else{
+    *database=NULL;
+    *table=NULL;
+  }
+  g_strfreev(split_db_tbl);
+}
 
 /* @return TRUE to enqueue */
 gboolean process_table_filename(char * filename){
@@ -501,9 +526,13 @@ gboolean process_table_filename(char * filename){
     return FALSE;
   }
 
-  dbt=append_new_db_table(_database, table_name,0,NULL);
-  dbt->schema_state=NOT_CREATED;
-  struct control_job * cj = load_schema(dbt, g_build_filename(directory,filename,NULL));
+  append_new_db_table(&dbt, _database, table_name);//,0,NULL);
+  if (dbt->schema_state<NOT_CREATED){
+    dbt->schema_state=NOT_CREATED;
+  }else{
+    return FALSE;
+  }
+  struct control_job * cj = new_control_job_from_parsing_create_table_from_file(dbt, g_build_filename(directory,filename,NULL));
   if (!cj) {
     g_free(dbt);
     return FALSE;
@@ -514,6 +543,7 @@ gboolean process_table_filename(char * filename){
     object queue td->conf->table_queue (see set_db_schema_state_to_created()).
   */
   if (_database->schema_state != CREATED || sequences_processed < sequences){
+    trace("Table schema %s.%s enqueue as database has not been created yet", _database->target_database, table_name);
     g_async_queue_push(_database->control_job_queue, cj);
     g_mutex_unlock(_database->mutex);
     return FALSE;
@@ -528,27 +558,8 @@ gboolean process_table_filename(char * filename){
 //  g_free(filename);
 }
 
-gboolean test;
-/*static GOptionEntry local_entries[] = {
-    {"local-infile", 0, 0, G_OPTION_ARG_NONE, &local_infile,
-     "Enables the ability to use the 'LOAD DATA LOCAL INFILE' statement", NULL},
-    {"quote-character", 'Q', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "Identifier quote character used in INSERT statements. "
-      "Posible values are: BACKTICK, bt, ` for backtick and DOUBLE_QUOTE, dt, \" for double quote. "
-      "Default: detect from dump if possible, otherwise BACKTICK", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-*/
-
-void process_metadata_global(const char *file, GOptionContext * local_context)
+void process_metadata_global_filename(const char *file, GOptionContext * local_context)
 {
-//  GOptionContext * local_context = g_option_context_new("local_context");
-//  GOptionGroup *local_group =
-//      g_option_group_new("local_group", "local group", "local group", NULL, NULL);
-//  g_option_context_add_main_entries(local_context, local_entries, 0);
-//  g_option_context_add_group(local_context, local_group);
-//  g_option_context_set_main_group(local_context, local_group);
-
-//  void *infile;
   gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
   if (kf==NULL)
@@ -563,7 +574,6 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
   gchar **groups=g_key_file_get_groups(kf, &length);
   gchar** database_table=NULL;
   struct db_table *dbt=NULL;
-  //change_master_statement=g_string_new("");
   const char *delim_bt= "`.`";
   const char *delim_dq= "\".\"";
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
@@ -621,6 +631,8 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
         m_critical("Wrong quote_character in metadata");
       }
       trace("metadata: quote character is %c", identifier_quote_character);
+      if (!stream)
+        release_directory_metadata_lock();
     } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {
@@ -629,7 +641,8 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *_database=get_database(database_table[0],database_table[0]);
-          dbt=append_new_db_table(_database, database_table[1],0,NULL);
+          gchar *table_name=g_strdup(database_table[1]);
+          append_new_db_table(&dbt, _database, table_name);//,0,NULL);
           dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,group,"data_checksum");
           dbt->schema_checksum=  dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"schema_checksum");
           dbt->indexes_checksum= dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"indexes_checksum");
@@ -688,7 +701,6 @@ void process_metadata_global(const char *file, GOptionContext * local_context)
   m_remove(directory, file);
 }
 
-
 gboolean process_schema_view_filename(gchar *filename) {
   gchar *database=NULL, *table_name=NULL;
   struct database *_database=NULL;
@@ -701,55 +713,16 @@ gboolean process_schema_view_filename(gchar *filename) {
     g_warning("File %s has been filter out(1)",filename);
     return FALSE;
   }
-  struct db_table *dbt=append_new_db_table(_database, table_name,0, NULL);
+  struct db_table *dbt=NULL;
+  append_new_db_table(&dbt,_database, table_name);//,0, NULL);
   dbt->is_view=TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, VIEW);
   g_async_queue_push(conf->view_queue, new_control_job(JOB_RESTORE,rj,_database));
   return TRUE;
 }
 
-gboolean process_schema_sequence_filename(gchar *filename) {
-  gchar *database=NULL, *table_name=NULL;
-  struct database *_database=NULL;
-  struct db_table *dbt;
-  get_database_table_from_file(filename,"-schema-sequence",&database,&table_name);
-  if (database == NULL){
-    g_error("Database is null on: %s", filename);
-    return FALSE;
-  }
-  _database=get_database(database,database);
-  if (_database==NULL){
-    g_warning("It was not possible to process file: %s (3) because _database isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
-    return FALSE;
-  }
-  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
-    g_warning("File %s has been filter out",filename);
-    return TRUE;
-  }
-  dbt= append_new_db_table(_database, table_name, 0, NULL);
-  dbt->is_sequence= TRUE;
-  dbt->schema_state= NOT_CREATED;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
-  struct control_job *cj= new_control_job(JOB_RESTORE,rj,_database);
-  g_mutex_lock(_database->mutex);
-  if (_database->schema_state != CREATED){
-    trace("%s.sequence_queue <- %s: %s", database, rjtype2str(cj->data.restore_job->type), filename);
-    trace("_database: %p; sequence_queue: %p", _database, _database->sequence_queue);
-    g_async_queue_push(_database->sequence_queue, cj);
-    g_mutex_unlock(_database->mutex);
-    return FALSE;
-  }else{
-    if (cj) {
-      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
-      g_async_queue_push(conf->table_queue, cj);
-    }
-  }
-  g_mutex_unlock(_database->mutex);
-  return TRUE;
-}
-
-
-gboolean process_schema_filename(gchar *filename, enum restore_job_statement_type object) {
+// TRIGGER or POST
+gboolean process_schema_post_filename(gchar *filename, enum restore_job_statement_type object) {
   gchar *database=NULL, *table_name=NULL;
   struct database *_database=NULL;
 	struct db_table *dbt=NULL;
@@ -763,7 +736,7 @@ gboolean process_schema_filename(gchar *filename, enum restore_job_statement_typ
       g_warning("File %s has been filter out(1)",filename);
       return FALSE; 
     }
-		dbt= append_new_db_table(_database, table_name, 0, NULL);
+		append_new_db_table(&dbt, _database, table_name);//, 0, NULL);
   }
   if ( object == TRIGGER || dbt==NULL || !dbt->object_to_export.no_trigger){
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, object); //TRIGGER or POST
@@ -772,6 +745,7 @@ gboolean process_schema_filename(gchar *filename, enum restore_job_statement_typ
   return TRUE; // SCHEMA_VIEW
 }
 
+static
 gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2){
   if (((struct restore_job *)rj1)->data.drj->part != ((struct restore_job *)rj2)->data.drj->part ){
     guint a=((struct restore_job *)rj1)->data.drj->part, b=((struct restore_job *)rj2)->data.drj->part;
@@ -800,7 +774,18 @@ gboolean process_data_filename(char * filename){
     return FALSE;
   }
 
-  struct db_table *dbt=append_new_db_table(_database, table_name,0,NULL);
+  struct db_table *dbt=NULL;
+  if (append_new_db_table(&dbt, _database, table_name)){
+    if (!has_been_defined_a_target_database()){
+      gchar *schema_filename=common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
+      if (g_file_test(schema_filename,G_FILE_TEST_EXISTS)){
+        schema_filename=common_build_schema_table_filename(NULL, _database->database_name_in_filename, table_name, "schema");
+        g_message("TABLE NAME = %s", schema_filename);
+        process_table_filename(schema_filename);
+      }else
+        g_message("TABLE NAME = %s NOT FOUND", schema_filename);
+    }
+  }
 	if (!dbt->object_to_export.no_data){
     struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
     g_mutex_lock(dbt->mutex);
@@ -815,19 +800,3 @@ gboolean process_data_filename(char * filename){
   return TRUE;
 }
 
-gboolean process_checksum_filename(char * filename){
-  gchar *db_name, *table_name;
-  // TODO: check if it is a data file
-  // TODO: we need to count sections of the data file to determine if it is ok.
-  get_database_table_from_file(filename,"-",&db_name,&table_name);
-  if (db_name == NULL){
-    m_critical("It was not possible to process file: %s (4)",filename);
-  }
-  if (table_name != NULL) {
-    struct database *_database=get_database(db_name,db_name);
-    if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
-      return FALSE;
-    }
-  }
-  return TRUE;
-}

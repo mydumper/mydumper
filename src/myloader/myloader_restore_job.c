@@ -278,6 +278,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_TO_CREATE_TABLE:
+
       dbt->schema_state=CREATING;
       if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
@@ -369,8 +370,11 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
           if (dbt)
             dbt->schema_state= CREATING;
 
-          if ( rj->data.srj->object == CREATE_DATABASE && drop_database)
-            execute_drop_database(td, rj->data.srj->database->target_database);
+          if ( rj->data.srj->object == CREATE_DATABASE){
+            rj->data.srj->database->schema_state = CREATING;
+            if (drop_database)
+              execute_drop_database(td, rj->data.srj->database->target_database);
+          }
 
           if ( restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL :rj->data.srj->database ) > 0 ) {
             increse_object_error(rj->data.srj->object);
@@ -378,6 +382,9 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               dbt->schema_state= NOT_CREATED;
           } else if (dbt)
             dbt->schema_state= CREATED;
+
+          if ( rj->data.srj->object == CREATE_DATABASE)
+            rj->data.srj->database->schema_state = CREATED;
         }
       }
       free_schema_restore_job(rj->data.srj);

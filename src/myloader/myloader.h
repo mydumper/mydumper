@@ -186,7 +186,9 @@ enum file_type {
   SHUTDOWN, 
   DO_NOT_ENQUEUE,
   REQUEST_DATA_JOB,
-  INTERMEDIATE_ENDED
+  FILE_TYPE_SCHEMA_ENDED,
+  FILE_TYPE_ENDED
+
 };
 
 static inline
@@ -227,8 +229,10 @@ const char *ft2str(enum file_type ft)
     return "DO_NOT_ENQUEUE";
   case REQUEST_DATA_JOB:
     return "REQUEST_DATA_JOB";
-  case INTERMEDIATE_ENDED:
-    return "INTERMEDIATE_ENDED";
+  case FILE_TYPE_SCHEMA_ENDED:
+    return "FILE_TYPE_SCHEMA_ENDED";
+  case FILE_TYPE_ENDED:
+    return "FILE_TYPE_ENDED";    
   }
   g_assert(0);
   return NULL;
