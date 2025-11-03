@@ -42,6 +42,7 @@ void set_db_schema_created(struct database * _database, struct configuration *co
 
   /* Until all sequences processed we requeue only sequences */
   if (sequences_processed < sequences) {
+//    trace("FT change to SCHEMA_SEQUENCE due %d < %d", sequences_processed, sequences );
     ft= SCHEMA_SEQUENCE;
     queue= _database->sequence_queue;
   } else {

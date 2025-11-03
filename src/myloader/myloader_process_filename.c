@@ -85,7 +85,8 @@ struct filetype_item *file_type_new(gchar * filename,enum file_type file_type){
 
 
 void process_filename_queue_end(){
-  g_mutex_unlock(start_process_filename_thread);
+  if (!stream)
+    g_mutex_unlock(start_process_filename_thread);
   gchar *e=g_strdup("END");
   process_filename_queue_new(e);
   message("Intermediate queue: Sending END job");
