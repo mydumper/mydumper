@@ -86,6 +86,7 @@ gboolean has_mydumper_suffix(gchar *line){
 }
 
 void *process_stream(struct configuration *stream_conf){
+  (void) stream_conf;
   set_thread_name("STT");
   char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
   guint stream_buffer_size=no_stream?STREAM_BUFFER_SIZE_NO_STREAM:STREAM_BUFFER_SIZE;
@@ -419,13 +420,6 @@ read_more:
     g_free(filename);
   }
   process_filename_queue_end();
-  guint n=0;
-  for (n = 0; n < num_threads ; n++) {
-//    g_async_queue_push(stream_conf->data_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->post_table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->post_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->view_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-  }
   return NULL;
 }
 

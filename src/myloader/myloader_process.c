@@ -35,6 +35,9 @@
 #include "myloader_arguments.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"
+#include "myloader_worker_schema.h"
+
+
 //GString *change_master_statement=NULL;
 struct replication_statements *replication_statements=NULL;
 gboolean append_if_not_exist=FALSE;
@@ -66,6 +69,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
     dbt=g_hash_table_lookup(conf->table_hash,lkey);
     r = dbt == NULL;
     if (r){
+      trace("New dbt: %s %s", _database->target_database, table);
       dbt=g_new(struct db_table,1);
       dbt->database=_database;
       dbt->table=table;
@@ -231,7 +235,7 @@ void process_tablespace_filename(char * filename) {
 }
 
 static
-struct control_job * new_control_job_from_parsing_create_table_from_file(struct db_table *dbt, gchar *filename){
+gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filename){
   void *infile;
   gboolean eof = FALSE;
   GString *data=g_string_sized_new(512);
@@ -244,7 +248,7 @@ struct control_job * new_control_job_from_parsing_create_table_from_file(struct 
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
-    return NULL;
+    return FALSE;
   }
 
   while (eof == FALSE) {
@@ -255,7 +259,7 @@ struct control_job * new_control_job_from_parsing_create_table_from_file(struct 
           // We considered that the CREATE TABLE could inlcude the IF NOT EXISTS clause
           if (!g_strstr_len(data->str,30,identifier_quote_character_str)){
             g_error("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
-            return NULL;
+            return FALSE;
           }
           {
             GError *err= NULL;
@@ -284,7 +288,7 @@ struct control_job * new_control_job_from_parsing_create_table_from_file(struct 
 regex_error:
               g_free(expr);
               g_error("Cannot parse real table name from CREATE TABLE statement:\n%s", data->str);
-              return NULL;
+              return FALSE;
             }
             dbt->real_table= g_match_info_fetch(match_info, 1);
             g_regex_unref(regex);
@@ -361,14 +365,38 @@ regex_error:
     g_free(statement);
   }
 
+  g_string_free(data,TRUE);
+  return schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE, dbt->database );
+
+  /*
   struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE);
   struct control_job * cj = new_control_job(JOB_RESTORE,rj,dbt->database);
 //  g_async_queue_push(conf->table_queue, new_control_job(JOB_RESTORE,rj,dbt->database->target_database));
   myl_close(filename,infile,TRUE);
 
+  g_mutex_lock(dbt->database->mutex);
+  
+  //  When processing is possible buffer queues from _database requeued into
+  //  object queue td->conf->table_queue (see set_db_schema_state_to_created()).
+  
+  if (dbt->database->schema_state != CREATED ){ // || sequences_processed < sequences){
+    trace("Table schema %s.%s enqueue as database has not been created yet", dbt->database->target_database, dbt->real_table);
+    g_async_queue_push(dbt->database->table_queue, cj);
+    g_mutex_unlock(dbt->database->mutex);
+    return FALSE;
+  }else{
+//    trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
+//    g_async_queue_push(conf->table_queue, cj);
+    schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, JOB_RESTORE, dbt->database );
+  }
+  g_mutex_unlock(dbt->database->mutex);
+
+
+
   g_string_free(data,TRUE);
 
-  return cj;
+  return TRUE;
+  */
 }
 
 static
@@ -449,8 +477,10 @@ void process_database_filename(char * filename) {
   struct database *_database = get_database(db_kname, db_vname);
   if (!has_been_defined_a_target_database()){
     _database->schema_state=NOT_CREATED;
-    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
-    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
+//    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
+    schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE, NULL );
+//    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
+//    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
   }else{
     _database->schema_state=CREATED;
   }
@@ -477,23 +507,25 @@ gboolean process_schema_sequence_filename(gchar *filename) {
   append_new_db_table(&dbt, _database, table_name);//, 0, NULL);
   dbt->is_sequence= TRUE;
   dbt->schema_state= NOT_CREATED;
-  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
-  struct control_job *cj= new_control_job(JOB_RESTORE,rj,_database);
+/*  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
+  struct schema_job *sj= new_schema_job(JOB_RESTORE,rj,_database);
   g_mutex_lock(_database->mutex);
   if (_database->schema_state != CREATED){
     trace("%s.sequence_queue <- %s: %s", database, rjtype2str(cj->data.restore_job->type), filename);
     trace("_database: %p; sequence_queue: %p", _database, _database->sequence_queue);
-    g_async_queue_push(_database->sequence_queue, cj);
+    g_async_queue_push(_database->sequence_queue, sj);
     g_mutex_unlock(_database->mutex);
     return FALSE;
   }else{
-    if (cj) {
-      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
-      g_async_queue_push(conf->table_queue, cj);
-    }
+//    if (cj) {
+//      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
+//      g_async_queue_push(conf->table_queue, cj);
+      schema_push( SCHEMA_TABLE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, JOB_RESTORE, _database );
+//    }
   }
   g_mutex_unlock(_database->mutex);
-  return TRUE;
+  */
+  return schema_push( SCHEMA_SEQUENCE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE, _database );
 }
 
 static
@@ -530,32 +562,32 @@ gboolean process_table_filename(char * filename){
   if (dbt->schema_state<NOT_CREATED){
     dbt->schema_state=NOT_CREATED;
   }else{
+    // parsing was already done
     return FALSE;
   }
-  struct control_job * cj = new_control_job_from_parsing_create_table_from_file(dbt, g_build_filename(directory,filename,NULL));
+  return parse_create_table_from_file(dbt, g_build_filename(directory,filename,NULL));
+/*
   if (!cj) {
     g_free(dbt);
     return FALSE;
   }
   g_mutex_lock(_database->mutex);
-  /*
-    When processing is possible buffer queues from _database requeued into
-    object queue td->conf->table_queue (see set_db_schema_state_to_created()).
-  */
-  if (_database->schema_state != CREATED || sequences_processed < sequences){
+//    When processing is possible buffer queues from _database requeued into
+//    object queue td->conf->table_queue (see set_db_schema_state_to_created()).
+  if (_database->schema_state != CREATED ){ // || sequences_processed < sequences){
     trace("Table schema %s.%s enqueue as database has not been created yet", _database->target_database, table_name);
-    g_async_queue_push(_database->control_job_queue, cj);
+    g_async_queue_push(_database->table_queue, cj);
     g_mutex_unlock(_database->mutex);
     return FALSE;
   }else{
-    if (cj) {
-      trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
-      g_async_queue_push(conf->table_queue, cj);
-    }
+//    trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
+//    g_async_queue_push(conf->table_queue, cj);
+    schema_push( filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE, JOB_RESTORE, _database );
   }
   g_mutex_unlock(_database->mutex);
   return TRUE;
 //  g_free(filename);
+*/
 }
 
 void process_metadata_global_filename(const char *file, GOptionContext * local_context)
@@ -780,10 +812,9 @@ gboolean process_data_filename(char * filename){
       gchar *schema_filename=common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
       if (g_file_test(schema_filename,G_FILE_TEST_EXISTS)){
         schema_filename=common_build_schema_table_filename(NULL, _database->database_name_in_filename, table_name, "schema");
-        g_message("TABLE NAME = %s", schema_filename);
+        trace("Filename %s detected and send to process", schema_filename);
         process_table_filename(schema_filename);
-      }else
-        g_message("TABLE NAME = %s NOT FOUND", schema_filename);
+      }
     }
   }
 	if (!dbt->object_to_export.no_data){

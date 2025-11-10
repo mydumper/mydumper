@@ -46,7 +46,7 @@ struct database * new_database(gchar *database, gchar *filename){
   _database->database_name_in_filename = filename;
   _database->mutex=g_mutex_new();
   _database->sequence_queue= g_async_queue_new();
-  _database->control_job_queue=g_async_queue_new();
+  _database->table_queue=g_async_queue_new();
   _database->schema_state=target_db?CREATED:NOT_FOUND;
   _database->schema_checksum=NULL;
   _database->post_checksum=NULL;

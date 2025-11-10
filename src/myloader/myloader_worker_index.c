@@ -20,6 +20,7 @@
 #include "myloader_common.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_global.h"
 #include "myloader_database.h"
 
@@ -79,7 +80,8 @@ void *worker_index_thread(struct thread_data *td) {
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
-    enroute_into_the_right_queue_based_on_file_type(REQUEST_DATA_JOB);
+//    enroute_into_the_right_queue_based_on_file_type(REQUEST_DATA_JOB);
+    wake_data_threads();
   }
 
   trace("I-Thread %u: ending", td->thread_id);

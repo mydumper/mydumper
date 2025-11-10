@@ -446,8 +446,10 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     g_mutex_lock(conf->table_list_mutex);
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
+    gboolean _skip_table_sorting= skip_table_sorting || g_hash_table_size(conf->table_hash) > max_number_tables_to_sort_in_table_list;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
+//      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
+      if (_skip_table_sorting)
         table_list=g_list_prepend(table_list,dbt);
       else
         table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);

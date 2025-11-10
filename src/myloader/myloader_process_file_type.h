@@ -16,12 +16,12 @@
 */
 #include "myloader.h"
 
-struct process_filename_filename{
+
+struct filetype_item{
   gchar * filename;
-  guint iterations;
+  enum file_type file_type;
 };
 
-void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
-void process_filename_queue_end();
-void process_filename_queue_new(const gchar *filename);
-void initialize_process_filename (struct configuration *c);
+void initialize_process_file_type(struct configuration *c);
+void file_type_push( enum file_type ft, gchar *filename);
+void wait_file_type_to_complete();

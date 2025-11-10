@@ -45,6 +45,7 @@
 #include "myloader_worker_post.h"
 #include "myloader_control_job.h"
 #include "myloader_database.h"
+#include "myloader_worker_loader_main.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -481,7 +482,7 @@ int main(int argc, char *argv[]) {
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
-  initialize_process_filename_queue(&conf);
+  initialize_process_filename(&conf);
 
   if (stream){
     if (resume){
@@ -543,7 +544,7 @@ int main(int argc, char *argv[]) {
 
   wait_schema_worker_to_finish();
   wait_loader_threads_to_finish();
-  wait_control_job();
+  wait_worker_loader_main();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);

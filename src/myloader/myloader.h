@@ -169,6 +169,7 @@ struct db_table {
 
 enum file_type { 
   METADATA_GLOBAL,
+  RESUME,
   SCHEMA_TABLESPACE, 
   SCHEMA_SEQUENCE,
   SCHEMA_CREATE, 
@@ -179,62 +180,41 @@ enum file_type {
   SCHEMA_TRIGGER, 
   SCHEMA_POST, 
   IGNORED,
-
-  INIT,
-  CJT_RESUME,
-  RESUME, 
-  SHUTDOWN, 
-  DO_NOT_ENQUEUE,
-  REQUEST_DATA_JOB,
-  FILE_TYPE_SCHEMA_ENDED,
-  FILE_TYPE_ENDED
-
+  FILENAME_ENDED
 };
 
 static inline
-const char *ft2str(enum file_type ft)
-{
+const char *ft2str(enum file_type ft){
   switch (ft) {
-  case INIT:
-    return "INIT";
-  case SCHEMA_TABLESPACE:
-    return "SCHEMA_TABLESPACE";
-  case SCHEMA_CREATE:
-    return "SCHEMA_CREATE";
-  case CJT_RESUME:
-    return "CJT_RESUME";
-  case SCHEMA_TABLE:
-    return "SCHEMA_TABLE";
-  case DATA:
-    return "DATA";
-  case SCHEMA_VIEW:
-    return "SCHEMA_VIEW";
-  case SCHEMA_SEQUENCE:
-    return "SCHEMA_SEQUENCE";
-  case SCHEMA_TRIGGER:
-    return "SCHEMA_TRIGGER";
-  case SCHEMA_POST:
-    return "SCHEMA_POST";
   case METADATA_GLOBAL:
     return "METADATA_GLOBAL";
   case RESUME:
     return "RESUME";
-  case IGNORED:
-    return "IGNORED";
+  case SCHEMA_TABLESPACE:
+    return "SCHEMA_TABLESPACE";
+  case SCHEMA_SEQUENCE:
+    return "SCHEMA_SEQUENCE";
+  case SCHEMA_CREATE:
+    return "SCHEMA_CREATE";
+  case SCHEMA_TABLE:
+    return "SCHEMA_TABLE";
+  case DATA:
+    return "DATA";
   case LOAD_DATA:
     return "LOAD_DATA";
-  case SHUTDOWN:
-    return "SHUTDOWN";
-  case DO_NOT_ENQUEUE:
-    return "DO_NOT_ENQUEUE";
-  case REQUEST_DATA_JOB:
-    return "REQUEST_DATA_JOB";
-  case FILE_TYPE_SCHEMA_ENDED:
-    return "FILE_TYPE_SCHEMA_ENDED";
-  case FILE_TYPE_ENDED:
-    return "FILE_TYPE_ENDED";    
+  case SCHEMA_VIEW:
+    return "SCHEMA_VIEW";
+  case SCHEMA_TRIGGER:
+    return "SCHEMA_TRIGGER";
+  case SCHEMA_POST:
+    return "SCHEMA_POST";
+  case IGNORED:
+    return "IGNORED";
+  case FILENAME_ENDED:
+    return "FILENAME_ENDED";
   }
   g_assert(0);
   return NULL;
 }
+
 #endif
