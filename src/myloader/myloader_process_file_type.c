@@ -65,6 +65,7 @@ void *process_file_type_worker(void *data){
   enum file_type ft;
   while (TRUE){
     fti = g_async_queue_pop(process_file_type_queue);
+    trace("process_file_type_queue <- %s", fti->filename);
     ft=fti->file_type;
 //  last_file_type_popped=ft!=FILE_TYPE_ENDED?ft:last_file_type_popped;
     switch (ft){

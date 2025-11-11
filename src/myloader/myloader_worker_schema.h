@@ -24,6 +24,24 @@ struct schema_job{
 //  struct database *use_database;
 };
 
+static inline
+const char *schema_job_type2str(enum schema_job_type ft){
+  switch (ft) {
+  case SCHEMA_CREATE_JOB:
+    return "SCHEMA_CREATE_JOB";
+  case SCHEMA_SEQUENCE_JOB:
+    return "SCHEMA_SEQUENCE_JOB";
+  case SCHEMA_TABLE_JOB:
+    return "SCHEMA_TABLE_JOB";
+  case SCHEMA_PROCESS_ENDED:
+    return "SCHEMA_PROCESS_ENDED";
+  case SCHEMA_ENDED:
+    return "SCHEMA_ENDED";
+  }
+  g_assert(0);
+  return NULL;
+}
+
 void initialize_worker_schema(struct configuration *conf);
 void start_worker_schema();
 void wait_schema_worker_to_finish();

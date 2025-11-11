@@ -65,7 +65,9 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
   struct restore_job *job = NULL;
-  trace("Elements in table_list: %d",g_list_length(conf->table_list));
+//  g_mutex_lock(conf->table_list_mutex);
+//  trace("Elements in table_list: %d",g_list_length(conf->table_list));
+//  g_mutex_unlock(conf->table_list_mutex);
 //  We are going to check every table and see if there is any missing job
   struct db_table * dbt;
   while (iter != NULL){
