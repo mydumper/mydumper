@@ -58,14 +58,14 @@ struct filetype_item *file_type_new(gchar * filename,enum file_type file_type){
   fti->file_type=file_type;
   return fti;
 }
-
+guint amount_of_files=0;
 void *process_file_type_worker(void *data){
   (void) data;
   struct filetype_item* fti=NULL;
   enum file_type ft;
   while (TRUE){
     fti = g_async_queue_pop(process_file_type_queue);
-    trace("process_file_type_queue <- %s", fti->filename);
+    trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
     ft=fti->file_type;
 //  last_file_type_popped=ft!=FILE_TYPE_ENDED?ft:last_file_type_popped;
     switch (ft){
@@ -127,7 +127,8 @@ void *process_file_type_worker(void *data){
       break;
     case FILENAME_ENDED:
       process_filename_ended_send=TRUE;
-      schema_ended();
+//      schema_ended();
+      g_async_queue_push(process_file_type_queue,fti);
       return NULL;
       break;
   }
@@ -139,11 +140,16 @@ gint file_type_cmp (gconstpointer _a, gconstpointer _b, gpointer user_data){
    struct filetype_item *a= (struct filetype_item *) _a;
    struct filetype_item * b = (struct filetype_item *)_b;
    (void)user_data;
-   return a->file_type>b->file_type;
+   trace("comparing %s > %s = %d",ft2str(a->file_type),ft2str(b->file_type), a->file_type > b->file_type);
+   return a->file_type > b->file_type;
 }
 
 void file_type_push( enum file_type ft, gchar *filename){
-  trace("process_file_type_queue <- %s", filename);
+  trace("process_file_type_queue <- %s (%s)", filename, ft2str(ft));
+//  if (ft == FILENAME_ENDED)
+//    g_async_queue_push(process_file_type_queue, file_type_new(filename, ft));
+//  else
+  g_atomic_int_inc(&amount_of_files);
   g_async_queue_push_sorted(process_file_type_queue, file_type_new(filename, ft), &file_type_cmp, NULL);
 }
 
@@ -152,4 +158,5 @@ void wait_file_type_to_complete(){
   for (n = 0; n < process_file_type_num_threads; n++) {
     g_thread_join(process_file_type_workers[n]);
   }
-  }
+  schema_ended();
+}

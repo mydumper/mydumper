@@ -59,16 +59,17 @@ gboolean schema_push( enum schema_job_type schema_worker_job, gchar * filename, 
   struct restore_job *rj = new_schema_restore_job(filename, rj_type, dbt, _database, statement, object);
   struct schema_job *sj = new_schema_job(schema_worker_job, rj, use_database);
   g_mutex_lock(_database->mutex);
+  trace("schema push %s", filename);
   if (_database->schema_state != CREATED && schema_worker_job != SCHEMA_CREATE_JOB){
     if (schema_worker_job == SCHEMA_SEQUENCE_JOB ) {
-      trace("%s.sequence_queue <- %s", _database->target_database, filename);
+      trace("%s.sequence_queue <- %s", _database->target_database, schema_job_type2str(sj->type));
       trace("_database: %p; sequence_queue: %p", _database, _database->sequence_queue);
       g_async_queue_push(_database->sequence_queue, sj);
       g_mutex_unlock(_database->mutex);
       return FALSE;
     }
     if (schema_worker_job == SCHEMA_TABLE_JOB ) {
-      trace("%s.table_queue <- %s", _database->target_database, filename);
+      trace("%s.table_queue <- %s", _database->target_database, schema_job_type2str(sj->type));
       trace("_database: %p; table_queue: %p", _database, _database->table_queue);
       g_async_queue_push(_database->table_queue, sj);
       g_mutex_unlock(_database->mutex);

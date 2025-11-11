@@ -547,6 +547,7 @@ void get_database_table_name_from_filename(const gchar *filename, const gchar * 
 gboolean process_table_filename(char * filename){
   gchar *db_name, *table_name;
   struct db_table *dbt=NULL;
+  trace("Processing table filename: %s", filename);
   get_database_table_name_from_filename(filename,"-schema.sql",&db_name,&table_name);
   if (db_name == NULL || table_name == NULL){
       m_critical("It was not possible to process file: %s (1)",filename);
@@ -563,6 +564,7 @@ gboolean process_table_filename(char * filename){
     dbt->schema_state=NOT_CREATED;
   }else{
     // parsing was already done
+    trace("Processing table filename: %s was already done", filename);
     return FALSE;
   }
   return parse_create_table_from_file(dbt, g_build_filename(directory,filename,NULL));
