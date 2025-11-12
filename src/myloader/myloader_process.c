@@ -42,7 +42,7 @@ struct replication_statements *replication_statements=NULL;
 gboolean append_if_not_exist=FALSE;
 GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
-struct configuration *conf;
+struct configuration *_conf;
 extern gboolean schema_sequence_fix;
 
 void initialize_process(struct configuration *c){
@@ -52,7 +52,7 @@ void initialize_process(struct configuration *c){
   replication_statements->change_replication_source=NULL;
   replication_statements->gtid_purge=NULL;
   replication_statements->start_replica_until=NULL;
-  conf=c;
+  _conf=c;
   fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
   fifo_table_mutex = g_mutex_new();
 }
@@ -143,7 +143,7 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
 
 void process_tablespace_filename(char * filename) {
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, NULL, NULL, TABLESPACE);
-  g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
+  g_async_queue_push(_conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
 }
 
 static
@@ -251,7 +251,7 @@ regex_error:
               }
               if (!skip_constraints && (flag & INCLUDE_CONSTRAINT)){
                 struct restore_job *rj = new_schema_restore_job(strdup(filename),JOB_RESTORE_STRING,dbt, dbt->database, alter_table_constraint_statement, CONSTRAINTS);
-                g_async_queue_push(conf->post_table_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
+                g_async_queue_push(_conf->post_table_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
                 dbt->constraints=alter_table_constraint_statement;
               }else{
                  g_string_free(alter_table_constraint_statement,TRUE);
@@ -413,7 +413,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     g_warning("It was not possible to process file: %s (3) because _database isn't found. We might renqueue it, take into account that restores without schema-create files are not supported",filename);
     return FALSE;
   }
-  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     g_warning("File %s has been filter out",filename);
     return FALSE;
   }
@@ -467,7 +467,7 @@ gboolean process_table_filename(char * filename){
   }
 
   struct database *_database=get_database(db_name,db_name);
-  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
     return FALSE;
   }
@@ -656,7 +656,7 @@ gboolean process_schema_view_filename(gchar *filename) {
     g_critical("Database is null on: %s",filename);
   }
   _database=get_database(database,database);
-  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     g_warning("File %s has been filter out(1)",filename);
     return FALSE;
   }
@@ -664,7 +664,7 @@ gboolean process_schema_view_filename(gchar *filename) {
   append_new_db_table(&dbt,_database, NULL, table_name);//,0, NULL);
   dbt->is_view=TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, VIEW);
-  g_async_queue_push(conf->view_queue, new_control_job(JOB_RESTORE,rj,_database));
+  g_async_queue_push(_conf->view_queue, new_control_job(JOB_RESTORE,rj,_database));
   return TRUE;
 }
 
@@ -679,7 +679,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   }
   _database=get_database(database,database);
   if (table_name != NULL){ 
-	  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
       g_warning("File %s has been filter out(1)",filename);
       return FALSE; 
     }
@@ -687,7 +687,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   }
   if ( object == TRIGGER || dbt==NULL || !dbt->object_to_export.no_trigger){
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, object); //TRIGGER or POST
-    g_async_queue_push(conf->post_queue, new_control_job(JOB_RESTORE,rj,_database));
+    g_async_queue_push(_conf->post_queue, new_control_job(JOB_RESTORE,rj,_database));
 	}
   return TRUE; // SCHEMA_VIEW
 }
@@ -716,7 +716,7 @@ gboolean process_data_filename(char * filename){
   }
 
   struct database *_database=get_database(db_name,db_name);
-  if (!eval_table(_database->source_database, table_name, conf->table_list_mutex)){
+  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
     return FALSE;
   }
