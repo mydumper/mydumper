@@ -114,8 +114,8 @@ void wait_loader_threads_to_finish(){
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
-  restore_job_finish();
-  data_control_queue_push(SHUTDOWN);
+//  restore_job_finish();
+//  data_control_queue_push(SHUTDOWN);
 }
 
 void inform_restore_job_running(){

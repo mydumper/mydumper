@@ -250,7 +250,9 @@ void *worker_loader_main_thread(struct configuration *conf){
     }
   }
 //  data_ended();
+  wait_loader_threads_to_finish();
   start_optimize_keys_all_tables();
+
   trace("Thread worker_loader_main_thread finished");
   return NULL;
 }
