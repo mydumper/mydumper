@@ -212,7 +212,10 @@ regex_error:
             dbt->source_table_name=dbt->create_table_name;
             g_hash_table_insert(tbl_hash, dbt->table_filename, dbt->source_table_name);
           }else{
-            g_hash_table_insert(tbl_hash, dbt->source_table_name, dbt->source_table_name);
+            if (dbt->source_table_name)
+              g_hash_table_insert(tbl_hash, dbt->source_table_name, dbt->source_table_name);
+            else
+              g_hash_table_insert(tbl_hash, dbt->source_table_name, dbt->create_table_name);
           }
           if (append_if_not_exist){
             if ((g_strstr_len(data->str,13,"CREATE TABLE ")) && !(g_strstr_len(data->str,15,"CREATE TABLE IF"))){
