@@ -65,7 +65,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
   struct db_table *dbt=NULL;
   gchar *lkey=build_dbt_key(_database->database_name_in_filename, table_filename);
   trace("Searching for dbt with key: %s", lkey);
-  dbt=g_hash_table_lookup(__conf->table_hash,lkey);
+//  dbt=g_hash_table_lookup(__conf->table_hash,lkey);
   gboolean r = dbt == NULL;
   if (r){
     g_mutex_lock(__conf->table_hash_mutex);
