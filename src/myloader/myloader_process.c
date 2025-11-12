@@ -586,15 +586,16 @@ void process_metadata_global_filename(const char *file, GOptionContext * local_c
     } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {
-      database_table= g_strsplit(group+1, delimiter, 2);
+      database_table= g_strsplit(groups[j]+1, delimiter, 2);
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *_database=get_database(database_table[0],database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
-
-          value= get_value(kf, group, "real_table_name");
+         
+          value= get_value(kf, groups[j], "real_table_name");
           if (value){
+            trace("real_table_name= %s", value);
             real_table_name= newline_unprotect(value);
             g_free(value);
           }
@@ -602,33 +603,33 @@ void process_metadata_global_filename(const char *file, GOptionContext * local_c
 //          if (real_table_name) g_free(real_table_name);
   //        if (table_filename) g_free(table_filename);
           real_table_name=NULL;
-          dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,group,"data_checksum");
-          dbt->schema_checksum=  dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"schema_checksum");
-          dbt->indexes_checksum= dbt->object_to_export.no_schema ?NULL:get_value(kf,group,"indexes_checksum");
-          dbt->triggers_checksum=dbt->object_to_export.no_trigger?NULL:get_value(kf,group,"triggers_checksum");
-          value=get_value(kf,group,"is_view");
+          dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,groups[j],"data_checksum");
+          dbt->schema_checksum=  dbt->object_to_export.no_schema ?NULL:get_value(kf,groups[j],"schema_checksum");
+          dbt->indexes_checksum= dbt->object_to_export.no_schema ?NULL:get_value(kf,groups[j],"indexes_checksum");
+          dbt->triggers_checksum=dbt->object_to_export.no_trigger?NULL:get_value(kf,groups[j],"triggers_checksum");
+          value=get_value(kf,groups[j],"is_view");
           if (value != NULL && g_strcmp0(value,"1")==0){
             dbt->is_view=TRUE;
           }
           if (value) g_free(value);
-          value=get_value(kf, group, "is_sequence");
+          value=get_value(kf, groups[j], "is_sequence");
           if (value != NULL && g_strcmp0(value, "1") == 0){
             dbt->is_sequence= TRUE;
             ++sequences;
           }
           if (value) g_free(value);
-          if (get_value(kf,group,"rows")){
-            dbt->rows=g_ascii_strtoull(get_value(kf,group,"rows"),NULL, 10);
+          if (get_value(kf,groups[j],"rows")){
+            dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
           }
         }
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *database=get_database(database_table[0],database_table[0]);
-          database->schema_checksum=  get_value(kf,group,"schema_checksum");
-          database->post_checksum=    get_value(kf,group,"post_checksum");
-          database->triggers_checksum=get_value(kf,group,"triggers_checksum");
-          database->events_checksum=  get_value(kf,group,"events_checksum");
+          database->schema_checksum=  get_value(kf,groups[j],"schema_checksum");
+          database->post_checksum=    get_value(kf,groups[j],"post_checksum");
+          database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
+          database->events_checksum=  get_value(kf,groups[j],"events_checksum");
         }
       }
     }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
