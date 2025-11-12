@@ -42,7 +42,7 @@ void initialize_database(){
 struct database * new_database(gchar *database, gchar *filename){
   struct database * _database = g_new(struct database, 1);
   _database->source_database=database;
-  _database->target_database = g_strdup(target_db ? target_db : _database->source_database);
+  _database->target_database = target_db ? g_strdup(target_db) : newline_unprotect(_database->source_database);
   _database->database_name_in_filename = filename;
   _database->mutex=g_mutex_new();
   _database->sequence_queue= g_async_queue_new();
