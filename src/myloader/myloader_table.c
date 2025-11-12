@@ -39,8 +39,13 @@
 
 
 //GString *change_master_statement=NULL;
-struct configuration *conf;
+struct configuration *_conf;
 extern gboolean schema_sequence_fix;
+
+
+void initialize_table(struct configuration *c){
+  _conf=c;
+}
 
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
   gchar *a_key=build_dbt_key(((struct db_table *)a)->database->target_database,((struct db_table *)a)->table_filename);
@@ -59,11 +64,12 @@ gint compare_dbt_short(gconstpointer a, gconstpointer b){
 gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename){
   struct db_table *dbt=NULL;
   gchar *lkey=build_dbt_key(_database->database_name_in_filename, table_filename);
-  dbt=g_hash_table_lookup(conf->table_hash,lkey);
+  trace("Searching for dbt with key: %s", lkey);
+  dbt=g_hash_table_lookup(_conf->table_hash,lkey);
   gboolean r = dbt == NULL;
   if (r){
-    g_mutex_lock(conf->table_hash_mutex);
-    dbt=g_hash_table_lookup(conf->table_hash,lkey);
+    g_mutex_lock(_conf->table_hash_mutex);
+    dbt=g_hash_table_lookup(_conf->table_hash,lkey);
     r = dbt == NULL;
     if (r){
       trace("New dbt: %s %s", _database->target_database, source_table_name?source_table_name:"NO TA");
@@ -93,9 +99,9 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->remaining_jobs = 0;
       dbt->constraints=NULL;
       dbt->count=0;
-      g_hash_table_insert(conf->table_hash, lkey, dbt);
+      g_hash_table_insert(_conf->table_hash, lkey, dbt);
       trace("g_hash_table_insert(conf->table_hash, %s", lkey);
-      refresh_table_list_without_table_hash_lock(conf, FALSE);
+      refresh_table_list_without_table_hash_lock(_conf, FALSE);
       dbt->schema_checksum=NULL;
       dbt->triggers_checksum=NULL;
       dbt->indexes_checksum=NULL;
@@ -108,7 +114,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
 //      if (number_rows>0) dbt->rows=number_rows;
 //      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
     }
-    g_mutex_unlock(conf->table_hash_mutex);
+    g_mutex_unlock(_conf->table_hash_mutex);
   }else{
       g_free(source_table_name);
       g_free(lkey);
@@ -133,7 +139,7 @@ void free_dbt(struct db_table * dbt){
 }
 
 void free_table_hash(GHashTable *table_hash){
-  g_mutex_lock(conf->table_hash_mutex);
+  g_mutex_lock(_conf->table_hash_mutex);
   GHashTableIter iter;
   gchar * lkey;
   if (table_hash){
@@ -145,6 +151,6 @@ void free_table_hash(GHashTable *table_hash){
       g_free(dbt);
     }
   } 
-  g_mutex_unlock(conf->table_hash_mutex);
+  g_mutex_unlock(_conf->table_hash_mutex);
 }
 

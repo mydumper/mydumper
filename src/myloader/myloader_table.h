@@ -59,4 +59,5 @@ void free_table_hash(GHashTable *table_hash);
 gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename);
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 gint compare_dbt_short(gconstpointer a, gconstpointer b);
+void initialize_table(struct configuration *c);
 #endif

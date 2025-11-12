@@ -416,6 +416,7 @@ int main(int argc, char *argv[]) {
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
+  initialize_table(&conf);
   initialize_database();
   initialize_common();
   initialize_connection(MYLOADER);
