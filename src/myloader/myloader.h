@@ -26,7 +26,7 @@
 #include "../server_detect.h"
 #include "../pmm_thread.h"
 #include "../checksum.h"
-
+#include "myloader_table.h"
 #ifndef _src_myloader_h
 #define _src_myloader_h
 #include <mysql.h>
@@ -135,37 +135,6 @@ const char * status2str(enum schema_status status)
   g_assert(0);
   return 0;
 }
-
-struct db_table {
-  struct database * database;
-  char *table;
-  char *real_table;
-  struct object_to_export object_to_export;
-	guint64 rows;
-  guint64 rows_inserted;
-  GList * restore_job_list;
-  guint current_threads;
-  guint max_threads;
-  guint max_connections_per_job;
-  guint retry_count;
-  GMutex *mutex;
-  GString *indexes;
-  GString *constraints;
-  guint count;
-  enum schema_status schema_state;
-  gboolean index_enqueued;
-  GDateTime * start_data_time;
-  GDateTime * finish_data_time;
-  GDateTime * start_index_time;
-  GDateTime * finish_time;
-  gint remaining_jobs;
-  gchar *data_checksum;
-  gchar *schema_checksum;
-  gchar *indexes_checksum;
-  gchar *triggers_checksum;
-  gboolean is_view;
-  gboolean is_sequence;
-};
 
 enum file_type { 
   METADATA_GLOBAL,

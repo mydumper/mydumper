@@ -66,7 +66,7 @@ char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
   if (!masquerade_filename && check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
-    return g_strdup(table);
+    return newline_protect(table);
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
     table_number++;

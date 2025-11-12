@@ -66,7 +66,7 @@ void data_ended(){
 gboolean process_loader(struct thread_data * td) {
   struct db_table * dbt = NULL;
   struct data_job *dj= (struct data_job *)g_async_queue_pop(data_job_queue);
-  trace("data_job_queue -> %s", data_job_type2str(dj->type)); // dj->restore_job->dbt->database->target_database, dj->restore_job->dbt->real_table, dj->restore_job->dbt->current_threads);
+  trace("data_job_queue -> %s", data_job_type2str(dj->type)); // dj->restore_job->dbt->database->target_database, dj->restore_job->dbt->source_table_name, dj->restore_job->dbt->current_threads);
 
   switch (dj->type){
     case DATA_JOB:
@@ -75,7 +75,7 @@ gboolean process_loader(struct thread_data * td) {
       process_restore_job(td, dj->restore_job);
       g_mutex_lock(dbt->mutex);
       dbt->current_threads--;
-      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->real_table, dbt->current_threads);
+      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->source_table_name, dbt->current_threads);
       g_mutex_unlock(dbt->mutex);
       break;
     case DATA_PROCESS_ENDED:
@@ -90,47 +90,6 @@ gboolean process_loader(struct thread_data * td) {
 //  process_index(td);
   return TRUE;
 }
-
-
-/*
-void *process_loader_thread(struct thread_data * td) {
-  struct control_job *job = NULL;
-  gboolean cont=TRUE;
-  enum otra_cosa ft=-1;
-  struct restore_job *rj=NULL;
-  struct db_table * dbt = NULL;
-  while (cont){
-    ft=request_restore_data_job();
-    switch (ft){
-    case REQUEST_DATA_JOB:
-      rj = request_next_data_job();
-      dbt = rj->dbt;
-      job=new_control_job(JOB_RESTORE,rj, dbt->database);
-      td->dbt=dbt;
-      cont=process_job(td, job, NULL);
-      g_mutex_lock(dbt->mutex);
-      dbt->current_threads--;
-      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->real_table, dbt->current_threads);
-      g_mutex_unlock(dbt->mutex);
-      break;
-    case SHUTDOWN:
-      cont=FALSE;
-      break;
-    case WAKE_DATA_THREAD:
-    case INIT:
-    case DO_NOT_ENQUEUE:
-    case FILE_TYPE_SCHEMA_ENDED:
-    case CJT_RESUME:
-    case FILE_TYPE_ENDED:
-      break;
-    }
-  }
-  enqueue_indexes_if_possible(td->conf);
-  g_message("Thread %d: Data import ended", td->thread_id);
-//  maybe_shutdown_control_job();
-//  process_index(td);
-  return NULL;
-}*/
 
 void *loader_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;

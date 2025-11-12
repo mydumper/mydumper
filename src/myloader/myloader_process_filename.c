@@ -185,7 +185,6 @@ void *process_filename_worker(void *data){
   g_message("Process filename ended");
   wait_file_type_to_complete();
 //  refresh_table_list(process_filename_conf);
-//  enroute_into_the_right_queue_based_on_file_type(FILE_TYPE_ENDED);
   return NULL;
 }
 

@@ -687,13 +687,13 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->source_database);
-  char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[%s]\n", dbt->key);
+  gchar *lkey=build_dbt_key(dbt->database->database_name_in_filename, dbt->table_filename);
+  g_string_append_printf(data,"\n[%s]\n", lkey);
   g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
-  g_free(table_filename);
+  g_free(lkey);
   g_free(table);
   if (dbt->is_sequence)
     g_string_append_printf(data,"is_sequence = 1\n");

@@ -67,7 +67,6 @@ void *process_file_type_worker(void *data){
     fti = g_async_queue_pop(process_file_type_queue);
     trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
     ft=fti->file_type;
-//  last_file_type_popped=ft!=FILE_TYPE_ENDED?ft:last_file_type_popped;
     switch (ft){
       case METADATA_GLOBAL:
         process_metadata_global_filename(fti->filename, process_file_type_conf->context);

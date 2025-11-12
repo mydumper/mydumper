@@ -20,7 +20,6 @@
 struct database {
   gchar *source_database;
   gchar *source_database_escaped;
-
   gchar *database_name_in_filename;
 //  GMutex *ad_mutex;
 //  gboolean already_dumped;

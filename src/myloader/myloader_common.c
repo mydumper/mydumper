@@ -421,25 +421,13 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
 }
 
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
-  return global_process_create_table_statement(statement, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->real_table, split_indexes);
-}
-
-gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
-  gchar *a_key=build_dbt_key(((struct db_table *)a)->database->target_database,((struct db_table *)a)->table);
-  gchar *b_key=build_dbt_key(((struct db_table *)b)->database->target_database,((struct db_table *)b)->table);
-  struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
-  struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
-  g_free(a_key);
-  g_free(b_key);
-  return a_val->rows < b_val->rows;
-}
-
-gint compare_dbt_short(gconstpointer a, gconstpointer b){
-  return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
+  return global_process_create_table_statement(statement, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name, split_indexes);
 }
 
 void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force){
+  trace("refresh_table_list requested");
   if (force || g_atomic_int_dec_and_test(&refresh_table_list_counter)){
+    trace("refresh_table_list granted");
     GList * table_list=NULL;
     GHashTableIter iter;
     gchar * lkey;
@@ -449,6 +437,7 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     gboolean _skip_table_sorting= skip_table_sorting || g_hash_table_size(conf->table_hash) > max_number_tables_to_sort_in_table_list;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
 //      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
+      trace("table_list inserting: %s", lkey);
       if (_skip_table_sorting)
         table_list=g_list_prepend(table_list,dbt);
       else
@@ -458,6 +447,8 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     conf->table_list=table_list;
     g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
     g_mutex_unlock(conf->table_list_mutex);
+  }else{
+    trace("refresh_table_list denied");
   }
 }
 
@@ -494,10 +485,10 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
 gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
                            const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  const char *checksum= fun(conn, dbt->database->target_database, dbt->real_table);
+  const char *checksum= fun(conn, dbt->database->target_database, dbt->source_table_name);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, dbt->database->target_database, dbt->real_table);
+                    "%s confirmed for %s.%s", message, dbt->database->target_database, dbt->source_table_name);
 }
 
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,

@@ -67,16 +67,19 @@ gboolean schema_push( enum schema_job_type schema_worker_job, gchar * filename, 
       g_async_queue_push(_database->sequence_queue, sj);
       g_mutex_unlock(_database->mutex);
       return FALSE;
-    }
+    }else
     if (schema_worker_job == SCHEMA_TABLE_JOB ) {
       trace("%s.table_queue <- %s", _database->target_database, schema_job_type2str(sj->type));
       trace("_database: %p; table_queue: %p", _database, _database->table_queue);
       g_async_queue_push(_database->table_queue, sj);
       g_mutex_unlock(_database->mutex);
       return FALSE;
+    }else{
+      trace("not enqueuing %s %s", filename, schema_job_type2str(sj->type));
+    
     }
   }else{
-    trace("shema_job_queue <- %s (sorted)", schema_job_type2str(sj->type));
+    trace("schema_job_queue <- %s (sorted)", schema_job_type2str(sj->type));
     g_async_queue_push_sorted(schema_job_queue, sj, &schema_job_cmp, NULL);
   }
   g_mutex_unlock(_database->mutex);

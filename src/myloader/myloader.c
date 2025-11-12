@@ -543,7 +543,6 @@ int main(int argc, char *argv[]) {
   }
 
   wait_schema_worker_to_finish();
-  wait_loader_threads_to_finish();
   wait_worker_loader_main();
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
@@ -655,7 +654,7 @@ int main(int argc, char *argv[]) {
     struct db_table * dbt=tl->data;
     GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
     GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
-    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->real_table);
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->source_table_name);
     tl=tl->next;
   }
 */

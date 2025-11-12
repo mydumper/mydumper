@@ -35,7 +35,6 @@ gboolean process_data_filename(char * filename);
 gboolean process_schema_view_filename(gchar *filename);
 gboolean process_schema_sequence_filename(gchar *filename);
 
-void free_table_hash(GHashTable *table_hash);
 void process_metadata_global_filename(const char *file, GOptionContext * local_context);
 
 FILE * myl_open(char *filename, const char *type);
