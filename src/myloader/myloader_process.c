@@ -173,7 +173,7 @@ gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filename){
             g_error("Identifier quote character (%s) not found on %s. Review file and configure --identifier-quote-character properly", identifier_quote_character_str, filename);
             return FALSE;
           }
-          {
+//          {
             GError *err= NULL;
             GMatchInfo *match_info;
             char *expr= g_strdup_printf("CREATE\\s+TABLE\\s+[^%c]*%c(.+?)%c\\s*\\(", identifier_quote_character, identifier_quote_character, identifier_quote_character);
@@ -207,7 +207,7 @@ regex_error:
             if (!strlen(dbt->create_table_name))
               goto regex_error;
             g_free(expr);
-          }
+//          }
           if ( g_str_has_prefix(dbt->table_filename,"mydumper_") && !dbt->source_table_name){
             dbt->source_table_name=dbt->create_table_name;
 //            g_hash_table_insert(tbl_hash, dbt->table_filename, dbt->source_table_name);

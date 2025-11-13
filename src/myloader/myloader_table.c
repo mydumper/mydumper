@@ -72,7 +72,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
     dbt=g_hash_table_lookup(__conf->table_hash,lkey);
     r = dbt == NULL;
     if (r){
-      trace("New dbt: %s %s", _database->target_database, source_table_name?source_table_name:"NO TA");
+      trace("New dbt: %s %s %s", _database->target_database, table_filename,source_table_name?source_table_name:"NO TA");
       dbt=g_new(struct db_table,1);
       dbt->database=_database;
       dbt->create_table_name=NULL;
@@ -109,22 +109,24 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->is_view=FALSE;
       dbt->is_sequence=FALSE;
     }else{
-      g_free(source_table_name);
+//      g_free(source_table_name);
       g_free(lkey);
 //      if (number_rows>0) dbt->rows=number_rows;
 //      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
     }
     g_mutex_unlock(__conf->table_hash_mutex);
   }else{
-      g_free(source_table_name);
+    //g_free(source_table_name);
       g_free(lkey);
 //      if (number_rows>0) dbt->rows=number_rows;
 //      if (alter_table_statement != NULL) dbt->indexes=alter_table_statement;
   }
-  if (!dbt->source_table_name && source_table_name)
+
+  if (!dbt->source_table_name && source_table_name){
     dbt->source_table_name=g_strdup(source_table_name);
-
-
+    trace("Setting source_table_name on dbt: %s %s %s", _database->target_database, table_filename, dbt->source_table_name);
+  }
+  g_free(source_table_name);
   *p_dbt=dbt;
   return r;
 }
