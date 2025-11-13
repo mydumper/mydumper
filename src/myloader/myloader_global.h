@@ -45,7 +45,6 @@ extern gboolean append_if_not_exist;
 extern gboolean optimize_keys;
 extern gboolean optimize_keys_all_tables;
 extern gboolean optimize_keys_per_table;
-extern gboolean process_filename_queue_ended;
 extern gboolean no_data;
 extern gboolean no_schemas;
 extern gboolean no_delete;

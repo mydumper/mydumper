@@ -181,7 +181,7 @@ read_more:
               filename=NULL;
               // sending previous file for processing
               if(!g_str_has_prefix(new_filename,"mydumper_tmp"))
-                process_filename_queue_new(new_filename);
+                process_filename_push(new_filename);
               new_filename=NULL;
             }
           }
@@ -334,14 +334,14 @@ read_more:
             if (file)
               m_close(file);
             if (previous_filename){
-              process_filename_queue_new(previous_filename);
+              process_filename_push(previous_filename);
               previous_filename=NULL;
             }
             if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
               if (no_stream){
                  if (total_size>0)
                    m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
-                 process_filename_queue_new(filename);
+                 process_filename_push(filename);
               }else{
                 g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
                 file = NULL;
@@ -410,13 +410,13 @@ read_more:
     if (file)
       fclose(file);
     if (!no_stream && filename)
-      process_filename_queue_new(g_strdup(filename));
+      process_filename_push(filename);
     g_free(filename);
   }else{
     if (file) 
       m_close(file);
     if (!no_stream && filename)
-      process_filename_queue_new(g_strdup(filename));
+      process_filename_push(filename);
     g_free(filename);
   }
   process_filename_queue_end();

@@ -23,5 +23,5 @@ struct process_filename_filename{
 
 void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
 void process_filename_queue_end();
-void process_filename_queue_new(const gchar *filename);
+void process_filename_push(const gchar *filename);
 void initialize_process_filename (struct configuration *c);

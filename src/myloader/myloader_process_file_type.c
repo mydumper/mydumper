@@ -62,7 +62,7 @@ struct filetype_item *file_type_new(gchar * filename,enum file_type file_type){
 
 static
 void file_type_free(struct filetype_item * fti){
-  g_free(fti->filename);
+//  g_free(fti->filename); we leave this to be managed by the process_*_filename
   g_free(fti);
 }
 
@@ -83,12 +83,10 @@ void file_type_push( enum file_type ft, gchar *filename){
 void *process_file_type_worker(void *data){
   (void) data;
   struct filetype_item* fti=NULL;
-  enum file_type ft;
   while (TRUE){
     fti = g_async_queue_pop(process_file_type_queue);
     trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
-    ft=fti->file_type;
-    switch (ft){
+    switch (fti->file_type){
       case METADATA_GLOBAL:
         process_metadata_global_filename(fti->filename, process_file_type_conf->context);
         refresh_table_list(process_file_type_conf);
@@ -148,12 +146,13 @@ void *process_file_type_worker(void *data){
       case FILENAME_ENDED:
         process_filename_ended_send=TRUE;
   //      schema_ended();
-        trace("process_file_type_queue <- %s", ft2str(ft));
+        trace("process_file_type_queue <- %s", ft2str(fti->file_type));
         g_async_queue_push(process_file_type_queue,fti);
         return NULL;
         break;
     }
     file_type_free(fti);
+    fti=NULL;
   }
   return NULL;
 }

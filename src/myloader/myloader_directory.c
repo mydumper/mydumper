@@ -71,7 +71,7 @@ void *process_directory(struct configuration *conf){
       for (i=0; i<g_strv_length(split);i++){
         if (strlen(split[i])>2){
           filename=split[i];
-          process_filename_queue_new(g_strdup(filename));
+          process_filename_push(filename);
         }
       }
       g_string_set_size(data, 0);
@@ -81,7 +81,7 @@ void *process_directory(struct configuration *conf){
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
       if (strcmp(filename, "metadata"))
-        process_filename_queue_new(filename);
+        process_filename_push(filename);
     }
   }
   process_filename_queue_end();

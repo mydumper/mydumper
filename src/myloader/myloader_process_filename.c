@@ -67,7 +67,7 @@ void initialize_process_filename (struct configuration *c){
   initialize_worker_loader_main(c);
 }
 
-void process_filename_queue_new(const gchar *filename){
+void process_filename_push(const gchar *filename){
   struct process_filename_filename * iflnm=g_new0(struct process_filename_filename, 1);
   iflnm->filename = g_strdup(filename);
   iflnm->iterations=0;
@@ -79,7 +79,7 @@ void process_filename_queue_end(){
   if (!stream)
     g_mutex_unlock(start_process_filename_thread);
   gchar *e=g_strdup("END");
-  process_filename_queue_new(e);
+  process_filename_push(e);
   message("Intermediate queue: Sending END job");
   g_thread_join(process_filename_thread);
   message("Intermediate thread: SHUTDOWN");
@@ -168,10 +168,10 @@ void *process_filename_worker(void *data){
     ft = get_file_type(iflnm->filename);
     trace("process_filename_queue -> %s (%u)", iflnm->filename, iflnm->iterations);
     if ( ft == FILENAME_ENDED ){
-      if (g_async_queue_length(process_filename_queue)>0){
-        file_type_push(ft, iflnm->filename);
-        continue;
-      }
+//      if (g_async_queue_length(process_filename_queue)>0){
+//        file_type_push(ft, iflnm->filename);
+//        continue;
+//      }
       file_type_push(ft, iflnm->filename);
       iflnm=NULL;
       break;

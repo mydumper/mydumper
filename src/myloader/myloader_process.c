@@ -650,6 +650,7 @@ void process_metadata_global_filename(const char *file, GOptionContext * local_c
     metadata_has_been_processed();
 
   m_remove(directory, file);
+  g_free(file);
 }
 
 gboolean process_schema_view_filename(gchar *filename) {
