@@ -156,7 +156,7 @@ gboolean parse_create_table_from_file(struct db_table *dbt, gchar *filename){
   g_string_set_size(create_table_statement,0);
   guint line=0;
   infile=myl_open(filename,"r");
-
+  trace("parse_create_table_from_file starting on %s", filename);
   if (!infile) {
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
@@ -282,6 +282,7 @@ regex_error:
   }
 
   g_string_free(data,TRUE);
+  trace("parse_create_table_from_file ended on %s", filename); 
   return schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE, dbt->database );
 
   /*
