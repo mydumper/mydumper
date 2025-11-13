@@ -29,5 +29,5 @@ RUN \
   gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C && \
   curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb https://repo.mysql.com/mysql-apt-config.deb && \
   sudo dpkg -i /tmp/mysql-apt-config.deb && \
-  rm -v /tmp/mysql-apt-config.deb && \
+  rm -v /tmp/mysql-apt-config.deb /tmp/fresh.asc && \
   sudo apt-get update
