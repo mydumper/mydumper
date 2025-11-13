@@ -52,7 +52,7 @@ void *process_directory(struct configuration *conf){
     we will get wrong condition (sequences == sequences_processed == 0).
   */
   if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
-    process_metadata_global_filename("metadata", conf->context);
+    process_metadata_global_filename(g_strdup("metadata"), conf->context);
 //    release_directory_metadata_lock(); This has been moved to process_metadata_global_filename and triggered when [config] has been processed
   }else
     g_error("metadata file was not found");

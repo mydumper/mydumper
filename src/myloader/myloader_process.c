@@ -508,7 +508,7 @@ gboolean process_table_filename(char * filename){
 */
 }
 
-void process_metadata_global_filename(const char *file, GOptionContext * local_context)
+void process_metadata_global_filename(gchar *file, GOptionContext * local_context)
 {
   gchar *path = g_build_filename(directory, file, NULL);
   GKeyFile * kf = load_config_file(path);
