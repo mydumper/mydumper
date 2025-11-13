@@ -311,11 +311,12 @@ commands:
           echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
           echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
           sudo rm /usr/share/keyrings/mysql-apt-config.gpg
-          echo "4" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
-          curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
-          gpg --import /tmp/fresh.asc && \
-          rm -f /usr/share/keyrings/mysql-apt-config.gpg && \
-          gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C && \
+          echo "3" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
+          gpg --batch --yes --delete-keys BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
+          curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc
+          gpg --import /tmp/fresh.asc
+          rm -f /usr/share/keyrings/mysql-apt-config.gpg
+          gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
           sudo apt-get update
           sudo apt-get install -y gdb screen time libmysqlclient24 libmysqlclient-dev mysql-client
 
