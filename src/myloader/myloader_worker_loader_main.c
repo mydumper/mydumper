@@ -120,6 +120,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
           current=current->next;
         }
         dbt->schema_state = ALL_DONE;
+        trace("Setting on %s.%s ALL_DONE", dbt->database->target_database, dbt->source_table_name);
 
       }else{
         if (dbt->current_threads >= dbt->max_threads ){
@@ -144,12 +145,13 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       }
     }else{
 // AND CURRENT THREADS IS 0... if not we are seting DATA_DONE to unfinished tables
-      trace("No remaining jobs on %s.%s", dbt->database->target_database, dbt->source_table_name); 
+      trace("No remaining jobs on %s.%s and %d %d %d", dbt->database->target_database, dbt->source_table_name, all_jobs_are_enqueued, dbt->current_threads, dbt->remaining_jobs); 
       if (all_jobs_are_enqueued && dbt->current_threads == 0 && (g_atomic_int_get(&(dbt->remaining_jobs))==0 )){
         dbt->schema_state = DATA_DONE;
         enqueue_index_for_dbt_if_possible(conf,dbt);
         trace("%s.%s queuing indexes, voting for finish", dbt->database->target_database, dbt->source_table_name);
-      }
+      }else
+        giveup=FALSE;
     }
     
     g_mutex_unlock(dbt->mutex);
@@ -232,7 +234,8 @@ void *worker_loader_main_thread(struct configuration *conf){
       enqueue_indexes_if_possible(conf);
       all_jobs_are_enqueued = TRUE;
 //      data_ended();
-      wake_threads_waiting();
+      data_control_queue_push(REQUEST_DATA_JOB);
+//      wake_threads_waiting();
 //      wait_loader_threads_to_finish();
       break;
     case SHUTDOWN:

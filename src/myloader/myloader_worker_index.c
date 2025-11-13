@@ -123,14 +123,20 @@ gboolean create_index_job(struct configuration *conf, struct db_table * dbt, gui
 }
 
 void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+  trace("Checking if index on %s %s is possible to enqueu", dbt->database->target_database, dbt->table_filename);
   if (dbt->schema_state==DATA_DONE){
     if (dbt->indexes == NULL){
+      trace("Table %s %s is all done", dbt->database->target_database, dbt->table_filename);
       dbt->schema_state=ALL_DONE;
 //      return FALSE;
     }else{
 //      return 
-        create_index_job(conf, dbt, 0);
+      trace("Creating index on %s %s ", dbt->database->target_database, dbt->table_filename);
+      create_index_job(conf, dbt, 0);
     }
+  }else{
+    trace("Indexes on %s %s are not possible yet dbt->schema_state %d %d ", dbt->database->target_database, dbt->table_filename,dbt->schema_state, DATA_DONE);
+  
   }
 //  return !(dbt->schema_state == ALL_DONE || dbt->schema_state == INDEX_ENQUEUED ) ;
 }
