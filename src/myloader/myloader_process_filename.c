@@ -169,18 +169,14 @@ void *process_filename_worker(void *data){
     trace("process_filename_queue -> %s (%u)", iflnm->filename, iflnm->iterations);
     if ( ft == FILENAME_ENDED ){
       if (g_async_queue_length(process_filename_queue)>0){
-//        trace("process_filename_queue <- %s (%u)", iflnm->filename, iflnm->iterations);
-//        g_async_queue_push( process_file_type_queue,file_type_new(iflnm->filename, ft));
         file_type_push(ft, iflnm->filename);
         continue;
       }
-//      g_async_queue_push( process_file_type_queue,file_type_new(iflnm->filename, ft));
       file_type_push(ft, iflnm->filename);
       iflnm=NULL;
       break;
     }
     file_type_push(ft, iflnm->filename);
-//    g_async_queue_push_sorted(process_file_type_queue, file_type_new(iflnm->filename, ft), &file_type_cmp, NULL);
   } while (iflnm != NULL);
   g_message("Process filename ended");
   wait_file_type_to_complete();
