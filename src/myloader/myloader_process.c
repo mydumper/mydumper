@@ -509,6 +509,9 @@ gboolean process_table_filename(char * filename){
 */
 }
 
+
+gboolean first_metadata_processed=FALSE;
+
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context)
 {
   gchar *path = g_build_filename(directory, file, NULL);
@@ -578,7 +581,8 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         m_critical("Wrong quote_character in metadata");
       }
       trace("metadata: quote character is %c", identifier_quote_character);  
-  }else{
+      first_metadata_processed=TRUE;
+  }else if (!first_metadata_processed){
     m_error("Section [config] was not found on metadata file");
   }
 
