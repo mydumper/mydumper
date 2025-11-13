@@ -420,10 +420,6 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   g_strfreev(split);
 }
 
-int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
-  return global_process_create_table_statement(statement, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name, split_indexes);
-}
-
 void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force){
   trace("refresh_table_list requested");
   if (force || g_atomic_int_dec_and_test(&refresh_table_list_counter)){

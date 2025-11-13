@@ -101,6 +101,7 @@ void wait_index_worker_to_finish(){
   for (n = 0; n < max_threads_for_index_creation; n++) {
     g_thread_join(index_threads[n]);
   }
+  trace("Indexes completed");
 }
 
 void start_optimize_keys_all_tables(){

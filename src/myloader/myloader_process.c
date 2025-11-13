@@ -236,7 +236,8 @@ regex_error:
             g_string_append(create_table_statement,data->str);
           }else{
             // Processing CREATE TABLE statement
-            int flag = process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
+            int flag = // process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
+                      global_process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->source_table_name?dbt->source_table_name:dbt->create_table_name, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
             if (flag & IS_TRX_TABLE){
               if (flag & IS_ALTER_TABLE_PRESENT){
 //                finish_alter_table(alter_table_statement);
