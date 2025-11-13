@@ -14,7 +14,7 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-
+#define CONFIG "config"
 #include <stdio.h>
 #include "myloader_restore_job.h"
 struct fifo{

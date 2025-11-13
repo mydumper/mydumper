@@ -529,26 +529,22 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   const char *delim_dq= "\".\"";
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
   const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
-  for (j= 0; j < length; j++) {
-    gchar *group= newline_unprotect(groups[j]);
-    if (g_str_has_prefix(group, "config")) {
-// Why it has to be the first always? just on the first one and actually, we don't care.
-//      if (j > 0)
-//        m_critical("Wrong metadata: [config] group must be first");
 
+
+  if (g_key_file_has_group(kf, CONFIG)){
       gsize len=0;
       GError *error = NULL;
-      gchar ** keys=g_key_file_get_keys(kf,group, &len, &error);
+      gchar ** keys=g_key_file_get_keys(kf,CONFIG, &len, &error);
       gsize i=0;
       GSList *list = NULL;
 
       if (error != NULL){
-        g_error("Loading configuration on section %s: %s",group,error->message);
+        g_error("Loading configuration on section %s: %s", CONFIG, error->message);
       }else{
         // Transform the key-value pair to parameters option that the parsing will understand
         for (i=0; i < len; i++){
           list = g_slist_append(list, g_strdup_printf("--%s",keys[i]));
-          value=g_key_file_get_value(kf,group,keys[i],&error);
+          value=g_key_file_get_value(kf,CONFIG,keys[i],&error);
           if ( value != NULL ) list=g_slist_append(list, value);
         }
         gint slen = g_slist_length(list) + 1;
@@ -581,9 +577,26 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       }else{
         m_critical("Wrong quote_character in metadata");
       }
-      trace("metadata: quote character is %c", identifier_quote_character);
-      if (!stream)
-        release_directory_metadata_lock();
+      trace("metadata: quote character is %c", identifier_quote_character);  
+  }else{
+    m_error("Section [config] was not found on metadata file");
+  }
+
+  if (g_key_file_has_group(kf, "myloader_session_variables")){
+    g_message("myloader_session_variables found on metadata");
+    load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
+    refresh_set_session_from_hash(set_session,set_session_hash);
+  }
+
+  if (!stream)
+    release_directory_metadata_lock();
+
+  for (j= 0; j < length; j++) {
+    gchar *group= newline_unprotect(groups[j]);
+    if (g_str_has_prefix(group, "config")) {
+      trace("Ignoring [config] from metadata as it was already processed");
+    }else if (g_strstr_len(group, 26,"myloader_session_variables")){
+      trace("Ignoring [myloader_session_variables] from metadata as it was already processed");
     } else if (g_str_has_prefix(group, wrong_quote))
       g_error("metadata is broken: group %s has wrong quoting: %s; must be: %c", group, wrong_quote, identifier_quote_character);
     else if (g_str_has_prefix(group, identifier_quote_character_str)) {
@@ -637,10 +650,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       change_master(kf, group, replication_statements, &source_data);
     }else if (g_str_has_prefix(group,"replication")){
       change_master(kf, group, replication_statements, &replica_data);
-    }else if (g_strstr_len(group, 26,"myloader_session_variables")){
-      g_message("myloader_session_variables found on metadata");
-      load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
-      refresh_set_session_from_hash(set_session,set_session_hash);
     } else {
       trace("metadata: skipping group %s", group);
     }
