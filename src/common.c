@@ -440,6 +440,13 @@ guint strcount(gchar *text){
   return i;
 }
 
+gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix){
+  GString *filename = g_string_sized_new(20);
+  g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
+  gchar *r = g_build_filename(_directory?_directory:filename->str, _directory?filename->str:NULL, NULL);
+  g_string_free(filename,TRUE);
+  return r;
+}
 
 gchar * remove_new_line(gchar *to){
   if (to==NULL)
@@ -457,17 +464,20 @@ gchar * remove_new_line(gchar *to){
   return to;
 }
 
-void m_remove0(gchar * directory, const gchar * filename){
+gboolean m_remove0(gchar * directory, const gchar * filename){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
-    if (remove(path) < 0)
+    if (remove(path) < 0){
       g_warning("Remove failed: %s (%s)", path, strerror(errno));
+      return FALSE;
+    }
     g_free(path);
+    return TRUE;
 }
 
 gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
-    m_remove0(directory,filename);
+    return m_remove0(directory,filename);
   }
   return TRUE;
 }

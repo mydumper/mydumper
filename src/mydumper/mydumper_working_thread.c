@@ -62,7 +62,7 @@ guint64 max_chunk_step_size = 0;
 gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
-
+guint num_sequences=0;
 extern gchar *initial_source_log;
 extern gchar *initial_source_pos;
 extern gchar *initial_source_gtid;
@@ -290,8 +290,11 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         is_view = 1;
 
       if ((get_product() == SERVER_TYPE_MARIADB) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE")))
+          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE"))){
         is_sequence = 1;
+
+        g_atomic_int_inc(&num_sequences);
+      }
 
       /* Checks skip list on 'database.table' string */
       if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))

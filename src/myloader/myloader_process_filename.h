@@ -14,25 +14,14 @@
 
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
-#ifndef _src_mydumper_database_h
-#define _src_mydumper_database_h
+#include "myloader.h"
 
-struct database {
-  gchar *source_database;
-  gchar *source_database_escaped;
-  gchar *database_name_in_filename;
-//  GMutex *ad_mutex;
-//  gboolean already_dumped;
-  gchar *schema_checksum;
-  gchar *post_checksum;
-  gchar *triggers_checksum;
-  gchar *events_checksum;
-  gboolean dump_triggers;
+struct process_filename_filename{
+  gchar * filename;
+  guint iterations;
 };
 
-void initialize_database();
-//struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
-struct database * get_database(MYSQL *conn, char *database_name, gboolean create_job);
-void free_databases();
-void write_database_on_disk(FILE *mdfile);
-#endif
+void process_filename_queue_incomplete(struct process_filename_filename * iflnm);
+void process_filename_queue_end();
+void process_filename_push(const gchar *filename);
+void initialize_process_filename (struct configuration *c);

@@ -77,7 +77,7 @@ extern gboolean dirty_dumpdir;
 extern gboolean merge_dumpdir;
 extern gboolean use_defer;
 extern gboolean check_row_count;
-extern gchar *db;
+extern gchar *source_db;
 extern gchar *disk_limits;
 extern gchar *dump_directory;
 extern gchar *exec_command;
@@ -145,3 +145,4 @@ extern guint isms;
 
 extern guint64 max_statement_size;
 extern gchar *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;
+extern guint num_sequences;

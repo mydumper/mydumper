@@ -98,8 +98,8 @@ void initialize_start_dump(){
     g_warning("Using --trx-tables options, binlog coordinates will not be "
               "accurate if you are writing to non transactional tables.");
 
-  if (db){
-    db_items=g_strsplit(db,",",0);
+  if (source_db){
+    db_items=g_strsplit(source_db,",",0);
   }
 }
 
@@ -687,13 +687,13 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
 
 void print_dbt_on_metadata_gstring(struct db_table *dbt, GString *data){
   char *name= newline_protect(dbt->database->source_database);
-  char *table_filename= newline_protect(dbt->table_filename);
   char *table= newline_protect(dbt->table);
   g_mutex_lock(dbt->chunks_mutex);
-  g_string_append_printf(data,"\n[%s]\n", dbt->key);
+  gchar *lkey=build_dbt_key(dbt->database->database_name_in_filename, dbt->table_filename);
+  g_string_append_printf(data,"\n[%s]\n", lkey);
   g_string_append_printf(data, "real_table_name=%s\nrows = %"G_GINT64_FORMAT"\n", table, dbt->rows);
   g_free(name);
-  g_free(table_filename);
+  g_free(lkey);
   g_free(table);
   if (dbt->is_sequence)
     g_string_append_printf(data,"is_sequence = 1\n");
@@ -752,10 +752,10 @@ void send_lock_all_tables(MYSQL *conn){
     }
     tables_lock = g_list_reverse(tables_lock);
   } else { 
-    if (db) {
+    if (source_db) {
       GString *db_quoted_list=NULL;
       guint i=0;
-      db_quoted_list=g_string_sized_new(strlen(db));
+      db_quoted_list=g_string_sized_new(strlen(source_db));
       g_string_append_printf(db_quoted_list,"'%s'",db_items[i]);
       i++;
       for (; i<g_strv_length(db_items); i++){
@@ -1340,6 +1340,7 @@ void start_dump(struct configuration *conf) {
   conf->ready_non_transactional_queue=NULL;
 
   fprintf(mdfile, "[config]\nmax-statement-size = %ld\n", max_statement_size);
+  fprintf(mdfile, "num-sequences = %d\n", num_sequences);
 
   datetime = g_date_time_new_now_local();
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");

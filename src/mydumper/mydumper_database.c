@@ -24,6 +24,7 @@
 
 GHashTable *database_hash = NULL;
 static GMutex * database_hash_mutex = NULL;
+gchar *source_db;
 
 void free_database(struct database * _database){
   if (_database->source_database_escaped!=NULL){

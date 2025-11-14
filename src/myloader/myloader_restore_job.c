@@ -65,6 +65,7 @@ struct schema_restore_job * new_schema_restore_job_internal( struct database * d
   return srj;
 }
 
+static
 struct restore_job * new_restore_job( char * filename, struct db_table * dbt, enum restore_job_type type){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->filename  = filename;
@@ -124,12 +125,12 @@ int overwrite_table(struct thread_data *td, struct db_table *dbt){
   switch (purge_mode) {
     case DROP:
       message("Dropping table or view (if exists) %s.%s",
-          dbt->database->target_database, dbt->real_table);
+          dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data,"DROP TABLE IF EXISTS %c%s%c.%c%s%c",
-          q, dbt->database->target_database, q, q, dbt->real_table, q);
-      truncate_or_delete_failed = restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->target_database, dbt->real_table);
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
+      truncate_or_delete_failed = restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data,"DROP VIEW IF EXISTS %c%s%c.%c%s%c",
-          q, dbt->database->target_database, q, q, dbt->real_table, q);
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
       if (restore_data_in_gstring(td, data, TRUE, dbt->database)){
         truncate_or_delete_failed = 1;
         g_critical("Drop view failed");
@@ -137,22 +138,22 @@ int overwrite_table(struct thread_data *td, struct db_table *dbt){
       break;
     case TRUNCATE:
       if (dbt->constraints || dbt->indexes){
-        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->real_table);
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
       }
-      message("Truncating table %s.%s", dbt->database->target_database, dbt->real_table);
+      message("Truncating table %s.%s", dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data,"TRUNCATE TABLE %c%s%c.%c%s%c",
-          q, dbt->database->target_database, q, q, dbt->real_table, q);
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
       truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
       if (truncate_or_delete_failed)
         g_warning("Truncate failed, we are going to try to create table or view");
       break;
     case DELETE:
       if (dbt->constraints || dbt->indexes){
-        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->real_table);
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
       }
-      message("Deleting content of table %s.%s", dbt->database->target_database, dbt->real_table);
+      message("Deleting content of table %s.%s", dbt->database->target_database, dbt->source_table_name);
       g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
-          q, dbt->database->target_database, q, q, dbt->real_table, q);
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
       truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
       if (truncate_or_delete_failed)
         g_warning("Delete failed, we are going to try to create table or view");
@@ -268,7 +269,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
            ){
         get_total_done(td->conf, &total);
           message("Thread %d: restoring %s %s.%s from %s. Tables %d of %d completed", td->thread_id,
-                    rjstmtype2str(rj->data.srj->object), dbt->database->target_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
+                    rjstmtype2str(rj->data.srj->object), dbt->database->target_database, dbt->source_table_name, rj->filename, total , g_hash_table_size(td->conf->table_hash));
           if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, rj->data.srj->database)){
             increse_object_error(rj->data.srj->object);
             message("Failed %s: %s",rjstmtype2str(rj->data.srj->object),rj->data.srj->statement->str);
@@ -278,11 +279,12 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_TO_CREATE_TABLE:
+
       dbt->schema_state=CREATING;
       if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
         message("Thread %d: restoring table %s.%s from %s", td->thread_id,
-                dbt->database->target_database, dbt->real_table, rj->filename);
+                dbt->database->target_database, dbt->source_table_name, rj->filename);
         int overwrite_error= 0;
         if (overwrite_tables) {
           overwrite_error= overwrite_table(td, dbt);
@@ -290,23 +292,23 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             if (dbt->retry_count) {
               dbt->retry_count--;
               dbt->schema_state= NOT_CREATED;
-              m_warning("Drop table %s.%s failed: retry %u of %u", dbt->database->target_database, dbt->real_table, retry_count - dbt->retry_count, retry_count);
+              m_warning("Drop table %s.%s failed: retry %u of %u", dbt->database->target_database, dbt->source_table_name, retry_count - dbt->retry_count, retry_count);
               return 1;
             } else {
-              m_critical("Drop table %s.%s failed: exiting", dbt->database->target_database, dbt->real_table);
+              m_critical("Drop table %s.%s failed: exiting", dbt->database->target_database, dbt->source_table_name);
             }
           } else if (dbt->retry_count < retry_count) {
-              m_warning("Drop table %s.%s succeeded!", dbt->database->target_database, dbt->real_table);
+              m_warning("Drop table %s.%s succeeded!", dbt->database->target_database, dbt->source_table_name);
           }
         }
         if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !overwrite_error) {
-          message("Skipping table creation %s.%s from %s", dbt->database->target_database, dbt->real_table, rj->filename);
+          message("Skipping table creation %s.%s from %s", dbt->database->target_database, dbt->source_table_name, rj->filename);
         }else{
-          message("Thread %d: Creating table %s.%s from content in %s. On db: %s", td->thread_id, dbt->database->target_database, dbt->real_table, rj->filename, dbt->database->source_database);
+          message("Thread %d: Creating table %s.%s from content in %s. On db: %s", td->thread_id, dbt->database->target_database, dbt->source_table_name, rj->filename, dbt->database->source_database);
           if (restore_data_in_gstring(td, rj->data.srj->statement, TRUE, rj->data.srj->database)){
             if (purge_mode == PM_SKIP){
               message("Skipping table or view %s.%s",
-                dbt->database->target_database, dbt->real_table);
+                dbt->database->target_database, dbt->source_table_name);
               detailed_errors.skip_errors++;
               dbt->object_to_export.no_data=TRUE;
               dbt->object_to_export.no_index=TRUE;
@@ -320,7 +322,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             }
           }else{
             get_total_created(td->conf, &total);
-            message("Thread %d: Table %s.%s created. Tables that pass created stage: %d of %d", td->thread_id, dbt->database->target_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
+            message("Thread %d: Table %s.%s created. Tables that pass created stage: %d of %d", td->thread_id, dbt->database->target_database, dbt->source_table_name, total , g_hash_table_size(td->conf->table_hash));
           }
         }
         if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
@@ -334,7 +336,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
           progress++;
           get_total_done(td->conf, &total);
           message("Thread %d: restoring %s.%s part %d of %d from %s | Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
-                    dbt->database->target_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
+                    dbt->database->target_database, dbt->source_table_name, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
           g_mutex_unlock(progress_mutex);
           if (restore_data_from_file(td, rj->filename, FALSE, dbt->database) > 0){
             g_atomic_int_inc(&(detailed_errors.data_errors));
@@ -369,8 +371,11 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
           if (dbt)
             dbt->schema_state= CREATING;
 
-          if ( rj->data.srj->object == CREATE_DATABASE && drop_database)
-            execute_drop_database(td, rj->data.srj->database->target_database);
+          if ( rj->data.srj->object == CREATE_DATABASE){
+            rj->data.srj->database->schema_state = CREATING;
+            if (drop_database)
+              execute_drop_database(td, rj->data.srj->database->target_database);
+          }
 
           if ( restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL :rj->data.srj->database ) > 0 ) {
             increse_object_error(rj->data.srj->object);
@@ -378,6 +383,9 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               dbt->schema_state= NOT_CREATED;
           } else if (dbt)
             dbt->schema_state= CREATED;
+
+          if ( rj->data.srj->object == CREATE_DATABASE)
+            rj->data.srj->database->schema_state = CREATED;
         }
       }
       free_schema_restore_job(rj->data.srj);

@@ -24,7 +24,7 @@ struct database {
   gchar *database_name_in_filename; // aka: the key of the schema. Useful if you have mydumper_ filenames.
   enum schema_status schema_state;
   GAsyncQueue *sequence_queue;
-  GAsyncQueue *control_job_queue;
+  GAsyncQueue *table_queue;
   GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()
   gchar *schema_checksum;
   gchar *post_checksum;
@@ -36,4 +36,6 @@ void initialize_database();
 struct database * get_database(gchar *k, gchar *v);
 void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg);
 gboolean execute_use(struct connection_data *cd);
+void start_database(struct thread_data *td);
+gboolean has_been_defined_a_target_database();
 #endif

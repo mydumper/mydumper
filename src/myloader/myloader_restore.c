@@ -26,7 +26,7 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_process.h"
 #include "myloader_restore.h"
 #include "myloader_database.h"

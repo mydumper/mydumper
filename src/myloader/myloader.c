@@ -36,7 +36,7 @@
 #include "myloader_restore.h"
 #include "myloader_pmm.h"
 #include "myloader_restore_job.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
@@ -45,6 +45,7 @@
 #include "myloader_worker_post.h"
 #include "myloader_control_job.h"
 #include "myloader_database.h"
+#include "myloader_worker_loader_main.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -67,6 +68,7 @@ gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint num_sequences = 0;
 guint sequences = 0;
 guint sequences_processed = 0;
 GMutex sequences_mutex;
@@ -86,7 +88,6 @@ extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
-extern struct database *database_db;
 
 const char DIRECTORY[] = "import";
 
@@ -180,29 +181,6 @@ void show_dbt(void* _key, void* dbt, void *total){
  //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
   }
 
-void create_database(struct thread_data *td, gchar *database) {
-
-  const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
-  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, database, exec_per_thread_extension);
-
-  if (drop_database)
-    execute_drop_database(td, database);
-  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
-  } else {
-    GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
-    g_string_append_printf(data,"`%s`", database);
-    trace("Creating schema %s", database);
-    if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
-      g_atomic_int_inc(&(detailed_errors.schema_errors));
-    g_string_free(data, TRUE);
-  }
-
-  return;
-}
-
 void print_help(){
     print_string("host", hostname);
     print_string("user", username);
@@ -276,7 +254,7 @@ void print_help(){
     print_string("directory",input_directory);
     print_string("logfile",logfile);
 
-    print_string("database",db);
+    print_string("database",target_db);
     print_string("quote-character",identifier_quote_character_str);
     print_bool("resume",resume);
     print_int("threads",num_threads);
@@ -372,8 +350,8 @@ int main(int argc, char *argv[]) {
 
   g_strfreev(tmpargv);
 
-  if (db == NULL && source_db != NULL) {
-    db = g_strdup(source_db);
+  if (target_db == NULL && source_db != NULL) {
+    target_db = g_strdup(source_db);
   }
 
   if (overwrite_unsafe)
@@ -438,6 +416,7 @@ int main(int argc, char *argv[]) {
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
+  initialize_table(&conf);
   initialize_database();
   initialize_common();
   initialize_connection(MYLOADER);
@@ -504,7 +483,7 @@ int main(int argc, char *argv[]) {
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
-  initialize_intermediate_queue(&conf);
+  initialize_process_filename(&conf);
 
   if (stream){
     if (resume){
@@ -542,12 +521,9 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-
-  if (database_db){
-    if (!no_schemas)
-      create_database(t, database_db->target_database);
-    database_db->schema_state=CREATED;
-  }
+  g_message("start_database");
+  start_database(t);
+  g_message("start_worker_schema");
   start_worker_schema();
   initialize_loader_threads(&conf);
 
@@ -568,8 +544,8 @@ int main(int argc, char *argv[]) {
   }
 
   wait_schema_worker_to_finish();
-  wait_loader_threads_to_finish();
-  wait_control_job();
+  wait_worker_loader_main();
+  enqueue_indexes_if_possible(&conf);
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);
@@ -680,7 +656,7 @@ int main(int argc, char *argv[]) {
     struct db_table * dbt=tl->data;
     GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
     GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
-    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->real_table);
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->source_table_name);
     tl=tl->next;
   }
 */
