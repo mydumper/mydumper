@@ -1141,10 +1141,8 @@ void start_dump(struct configuration *conf) {
     trace("Specific databases");
     guint i=0;
     for (i=0;i<g_strv_length(db_items);i++){
-      struct database *this_db=get_database(conn,db_items[i],TRUE);
+      struct database *this_db=get_database(conn,db_items[i],!no_schemas);
       create_job_to_dump_database(this_db);
-      if (!no_schemas)
-        create_job_to_dump_schema(this_db);
     }
   } else {
     trace("All databases");
