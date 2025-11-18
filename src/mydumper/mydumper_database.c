@@ -74,8 +74,6 @@ struct database * get_database(MYSQL *conn, char *database_name, gboolean create
     database=new_database(conn,database_name);
     if (create_job)
       create_job_to_dump_schema(database);
-    g_mutex_unlock(database_hash_mutex);
-    return database;
   }
   g_mutex_unlock(database_hash_mutex);
   return database;
