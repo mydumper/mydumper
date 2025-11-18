@@ -40,8 +40,10 @@ GThread ** process_file_type_workers;
 gboolean process_filename_ended_send = FALSE;
 void *process_file_type_worker(void *data);
 guint amount_of_files=0;
+GMutex *metadata_global_mutex=NULL;
 
 void initialize_process_file_type(struct configuration *c){
+  metadata_global_mutex=g_mutex_new();
   process_file_type_conf=c;
   process_file_type_queue = g_async_queue_new();
   process_file_type_workers = g_new(GThread *, process_file_type_num_threads);
@@ -88,7 +90,9 @@ void *process_file_type_worker(void *data){
     trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
     switch (fti->file_type){
       case METADATA_GLOBAL:
+        g_mutex_lock(metadata_global_mutex);
         process_metadata_global_filename(fti->filename, process_file_type_conf->context);
+        g_mutex_unlock(metadata_global_mutex);
         refresh_table_list(process_file_type_conf);
         break;
       case SCHEMA_TABLESPACE:

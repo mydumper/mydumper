@@ -555,17 +555,18 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         gchar ** gclist = g_new0(gchar *, slen);
         GSList *ilist=list;
         gint j2=0;
+        gclist[j2]=g_strdup("myloader");
         for (j2=1; j2 < slen ; j2++){
-          gclist[j2]=ilist->data;
+          gclist[j2]=g_strdup(ilist->data);
           ilist=ilist->next;
         }
-        g_slist_free(list);
         // Second parse over the options
         if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
           m_critical("option parsing failed: %s, try --help\n", error->message);
         }else{
           g_message("Config file loaded");
         }
+        g_slist_free(list);
         g_strfreev(gclist);
       }
       g_strfreev(keys);
