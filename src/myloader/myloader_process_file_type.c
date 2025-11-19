@@ -37,7 +37,6 @@ GAsyncQueue *process_file_type_queue = NULL;
 struct configuration *process_file_type_conf;
 guint process_file_type_num_threads=4;
 GThread ** process_file_type_workers;
-gboolean process_filename_ended_send = FALSE;
 void *process_file_type_worker(void *data);
 guint amount_of_files=0;
 
@@ -114,10 +113,6 @@ void *process_file_type_worker(void *data){
         }else
           m_remove(directory,fti->filename);
         total_data_sql_files++;
-        if (process_filename_ended_send && g_atomic_int_get(&schema_counter) > 0 &&g_atomic_int_get(&schema_counter) == g_atomic_int_get (&schema_processed_counter)){
-          process_filename_ended_send=FALSE;
-          refresh_table_list(process_file_type_conf);
-        }
         break;
       case LOAD_DATA:
         // LOAD_DATA files are not processed/executed as the DATA filename has the execution statement
@@ -144,7 +139,6 @@ void *process_file_type_worker(void *data){
         }
         break;
       case FILENAME_ENDED:
-        process_filename_ended_send=TRUE;
   //      schema_ended();
         trace("process_file_type_queue <- %s", ft2str(fti->file_type));
         g_async_queue_push(process_file_type_queue,fti);

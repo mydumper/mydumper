@@ -98,6 +98,7 @@ struct configuration {
   GAsyncQueue *pause_resume;
 //  GAsyncQueue *stream_queue;
   GList *table_list;
+  GList *loading_table_list;
   GMutex * table_list_mutex;
   GHashTable *table_hash;
   GMutex *table_hash_mutex;

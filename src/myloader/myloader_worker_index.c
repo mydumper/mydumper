@@ -59,9 +59,9 @@ gboolean process_index(struct thread_data * td){
   g_message("restoring index: %s.%s", dbt->database->source_database, dbt->table_filename);
   process_job(td, job, NULL);
   dbt->finish_time=g_date_time_new_now_local();
-  g_mutex_lock(dbt->mutex);
+  table_lock(dbt);
   dbt->schema_state=ALL_DONE;
-  g_mutex_unlock(dbt->mutex);
+  table_unlock(dbt);
   return TRUE;
 }
 
@@ -148,9 +148,9 @@ void enqueue_indexes_if_possible(struct configuration *conf){
   struct db_table * dbt = NULL;
   while (iter != NULL){
     dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
+    table_lock(dbt);
     enqueue_index_for_dbt_if_possible(conf,dbt);
-    g_mutex_unlock(dbt->mutex);
+    table_unlock(dbt);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);

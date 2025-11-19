@@ -260,9 +260,9 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       transaction_size+=new_insert->len;
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
       g_usleep(throttle_time);
-      g_mutex_lock(dbt->mutex);
+      table_lock(dbt);
       dbt->rows_inserted+=current_rows;
-      g_mutex_unlock(dbt->mutex);
+      table_unlock(dbt);
       if (cd->transaction && *query_counter == commit_count) {
         tr+=m_commit_and_start_transaction(cd,query_counter);
         transaction_size=0;
