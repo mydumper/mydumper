@@ -1410,6 +1410,5 @@ void start_dump(struct configuration *conf) {
 
   free_regex();
   free_common();
-  free_set_names();
 }
 

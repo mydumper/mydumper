@@ -316,6 +316,8 @@ int main(int argc, char *argv[]) {
     start_dump(&conf);
   }
 
+  free_set_names();
+
   if (logoutfile) {
     fclose(logoutfile);
   }
