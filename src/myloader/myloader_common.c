@@ -34,7 +34,7 @@
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_database.h"
-
+#include "myloader_table.h"
 GHashTable *tbl_hash=NULL;
 int (*m_close)(void *file) = NULL;
 guint refresh_table_list_interval=100;
@@ -425,6 +425,7 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
   if (force || g_atomic_int_dec_and_test(&refresh_table_list_counter)){
     trace("refresh_table_list granted");
     GList * table_list=NULL;
+    GList * loading_table_list=NULL;
     GHashTableIter iter;
     gchar * lkey;
     g_mutex_lock(conf->table_list_mutex);
@@ -434,13 +435,25 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
 //      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
       trace("table_list inserting: %s", lkey);
-      if (_skip_table_sorting)
+      if (_skip_table_sorting){
         table_list=g_list_prepend(table_list,dbt);
-      else
-        table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+        table_lock(dbt);
+        if (dbt->schema_state < DATA_DONE)
+          loading_table_list=g_list_prepend(loading_table_list,dbt);
+        table_unlock(dbt);
+      }else{
+//        table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+        table_list=g_list_prepend(table_list,dbt);
+        table_lock(dbt);
+        if (dbt->schema_state < DATA_DONE)
+          loading_table_list=g_list_insert_sorted(loading_table_list,dbt,&compare_dbt_short);
+        table_unlock(dbt);
+      }
     }
     g_list_free(conf->table_list);
     conf->table_list=table_list;
+    g_list_free(conf->loading_table_list);
+    conf->loading_table_list=loading_table_list;
     g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
     g_mutex_unlock(conf->table_list_mutex);
   }else{

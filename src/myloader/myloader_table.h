@@ -60,4 +60,6 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 gint compare_dbt_short(gconstpointer a, gconstpointer b);
 void initialize_table(struct configuration *c);
+void table_lock(struct db_table *dbt);
+void table_unlock(struct db_table *dbt);
 #endif

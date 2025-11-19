@@ -131,6 +131,17 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
   return r;
 }
 
+void table_lock(struct db_table *dbt){
+  trace("table_lock:: %s %s", dbt->database->target_database, dbt->source_table_name);
+  g_mutex_lock(dbt->mutex);
+}
+
+void table_unlock(struct db_table *dbt){
+  trace("table_unlock:: %s %s", dbt->database->target_database, dbt->source_table_name);
+  g_mutex_unlock(dbt->mutex);
+}
+
+
 void free_dbt(struct db_table * dbt){
   g_free(dbt->table_filename);
 //  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);

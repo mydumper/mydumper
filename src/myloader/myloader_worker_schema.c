@@ -137,10 +137,10 @@ void set_table_schema_state_to_created (struct configuration *conf){
   struct db_table * dbt = NULL;
   while (iter != NULL){
     dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
+    table_lock(dbt);
     if (dbt->schema_state == NOT_FOUND )
       dbt->schema_state = CREATED;
-    g_mutex_unlock(dbt->mutex);
+    table_unlock(dbt);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);

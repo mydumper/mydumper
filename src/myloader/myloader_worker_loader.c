@@ -73,10 +73,10 @@ gboolean process_loader(struct thread_data * td) {
       dbt=dj->restore_job->dbt;
       td->dbt=dj->restore_job->dbt;
       process_restore_job(td, dj->restore_job);
-      g_mutex_lock(dbt->mutex);
+      table_lock(dbt);
       dbt->current_threads--;
       trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->source_table_name, dbt->current_threads);
-      g_mutex_unlock(dbt->mutex);
+      table_unlock(dbt);
       break;
     case DATA_PROCESS_ENDED:
       data_job_push(DATA_PROCESS_ENDED, NULL);
