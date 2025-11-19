@@ -141,7 +141,6 @@ void table_unlock(struct db_table *dbt){
   g_mutex_unlock(dbt->mutex);
 }
 
-
 void free_dbt(struct db_table * dbt){
   g_free(dbt->table_filename);
 //  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);

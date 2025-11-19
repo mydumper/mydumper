@@ -87,7 +87,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       continue;
     }
     table_lock(dbt);
-  //    g_message("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
     if (dbt->schema_state >= DATA_DONE ||
         (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
       trace("%s.%s done: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
@@ -95,7 +94,6 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       table_unlock(dbt);
       continue;
     }
-//    g_mutex_lock(dbt->mutex);
     // I could do some job in here, do we have some for me?
     if (!resume && dbt->schema_state<CREATED ){
       giveup=FALSE;
