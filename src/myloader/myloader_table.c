@@ -72,7 +72,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
     dbt=g_hash_table_lookup(__conf->table_hash,lkey);
     r = dbt == NULL;
     if (r){
-      trace("New dbt: %s %s %s", _database->target_database, table_filename,source_table_name?source_table_name:"NO TA");
+      trace("New dbt: %s %s %s", _database->target_database, table_filename,source_table_name);
       dbt=g_new(struct db_table,1);
       dbt->database=_database;
       dbt->create_table_name=NULL;
