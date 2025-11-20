@@ -417,7 +417,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
     }else{
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
-  }else
+  }else if (sync_thread_lock_mode != NO_LOCK)
     m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
