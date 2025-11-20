@@ -471,12 +471,17 @@ void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char *
 
 
 /* Write some stuff we know about snapshot, before it changes */
-void write_snapshot_info(MYSQL *conn, FILE *file) {
+static
+void write_source_info(MYSQL *conn, FILE *file) {
 
   get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
 
   if (initial_source_log) {
     fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    if (initial_source_gtid && strlen(initial_source_gtid)>0)
+      fprintf(file, "# executed_gtid_set = \"%s\"\n", initial_source_gtid);
+    fprintf(file, "# SOURCE_LOG_FILE = \"%s\"\n# SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
+
     if (source_data.enabled){
       fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
       if (source_data.source_ssl)
@@ -494,7 +499,7 @@ void write_snapshot_info(MYSQL *conn, FILE *file) {
       }
       fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
           source_data.exec_reset_replica?1:0 , source_data.exec_change_source?1:0, source_data.exec_start_replica?1:0);
-		}
+    }
     g_message("Written master status");
   }
 
@@ -608,7 +613,7 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
       break;
     case JOB_WRITE_SOURCE_AND_REPLICA_STATUS:
 //      if (source_data.enabled)
-        write_snapshot_info(td->thrconn, job->job_data);
+      write_source_info(td->thrconn, job->job_data);
       // Write replica information
       if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
