@@ -543,7 +543,7 @@ int main(int argc, char *argv[]) {
     tl=tl->next;
   }
 
-  wait_schema_worker_to_finish();
+  wait_schema_worker_to_finish(&conf);
   wait_worker_loader_main();
   enqueue_indexes_if_possible(&conf);
   create_index_shutdown_job(&conf);
