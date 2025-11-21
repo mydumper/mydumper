@@ -96,7 +96,12 @@ void initialize_regex(gchar * partition_regex){
 gboolean check_regex(pcre2_code *tre, char *_database_name, char * _table_name) {
   /* This is not going to be used in threads */
   if (tre){
-    char * p = g_strdup_printf("%s.%s", _database_name, _table_name);
+    g_assert(_database_name);
+    char * p = NULL;
+    if (_table_name)
+      p = g_strdup_printf("%s.%s", _database_name, _table_name);
+    else
+      p = g_strdup_printf("%s", _database_name);
     pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(tre, NULL);
     int rc = pcre2_match(tre, (PCRE2_SPTR)p, strlen(p), 0, 0, match_data, NULL);
   

@@ -54,7 +54,7 @@ struct db_table {
   gboolean is_sequence;
 };
 
-
+struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename);
 void free_table_hash(GHashTable *table_hash);
 gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename);
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
