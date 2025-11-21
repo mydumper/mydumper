@@ -335,20 +335,20 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
 }
 
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
-  if (table_name){
-    g_mutex_lock(mutex);
-    if ( tables ){
-      if (!is_table_in_list( db_name, table_name, tables)){
-        g_mutex_unlock(mutex);
-        return FALSE;
-      }
-    }
-    if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+  if (table_name == NULL)
+    g_error("Table name is null on eval_table()");
+  g_mutex_lock(mutex);
+  if ( tables ){
+    if (!is_table_in_list( db_name, table_name, tables)){
       g_mutex_unlock(mutex);
       return FALSE;
     }
-    g_mutex_unlock(mutex);
   }
+  if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
+    g_mutex_unlock(mutex);
+    return FALSE;
+  }
+  g_mutex_unlock(mutex);
   return eval_regex(db_name, table_name);
 }
 /*

@@ -366,7 +366,7 @@ void process_database_filename(char * filename) {
   struct database *_database = get_database(db_kname, db_vname);
 
   
-  if (!eval_table(_database->source_database, NULL, _conf->table_list_mutex)){
+  if (!eval_regex(_database->source_database, NULL)){
     g_warning("Skipping database: `%s`",_database->source_database);
     _database->schema_checksum = NULL;
     _database->post_checksum = NULL;
