@@ -61,6 +61,13 @@ gint compare_dbt_short(gconstpointer a, gconstpointer b){
   return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
 }
 
+struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename){
+  struct db_table *dbt=NULL;
+  gchar *lkey=build_dbt_key(database_name_in_filename, table_filename);
+  dbt=g_hash_table_lookup(__conf->table_hash,lkey);
+  return dbt;
+}
+
 gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename){
   struct db_table *dbt=NULL;
   gchar *lkey=build_dbt_key(_database->database_name_in_filename, table_filename);

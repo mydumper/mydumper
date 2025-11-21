@@ -286,35 +286,6 @@ regex_error:
   trace("parse_create_table_from_file ended on %s", filename); 
   return schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE, dbt->database );
 
-  /*
-  struct restore_job * rj = new_schema_restore_job(filename,JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE);
-  struct control_job * cj = new_control_job(JOB_RESTORE,rj,dbt->database);
-//  g_async_queue_push(conf->table_queue, new_control_job(JOB_RESTORE,rj,dbt->database->target_database));
-  myl_close(filename,infile,TRUE);
-
-  g_mutex_lock(dbt->database->mutex);
-  
-  //  When processing is possible buffer queues from _database requeued into
-  //  object queue td->conf->table_queue (see set_db_schema_state_to_created()).
-  
-  if (dbt->database->schema_state != CREATED ){ // || sequences_processed < sequences){
-    trace("Table schema %s.%s enqueue as database has not been created yet", dbt->database->target_database, dbt->source_table_name);
-    g_async_queue_push(dbt->database->table_queue, cj);
-    g_mutex_unlock(dbt->database->mutex);
-    return FALSE;
-  }else{
-//    trace("table_queue <- %s: %s", rjtype2str(cj->data.restore_job->type), filename);
-//    g_async_queue_push(conf->table_queue, cj);
-    schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, JOB_RESTORE, dbt->database );
-  }
-  g_mutex_unlock(dbt->database->mutex);
-
-
-
-  g_string_free(data,TRUE);
-
-  return TRUE;
-  */
 }
 
 static
@@ -393,6 +364,17 @@ void process_database_filename(char * filename) {
 
   trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *_database = get_database(db_kname, db_vname);
+
+  
+  if (!eval_regex(_database->source_database, NULL)){
+    g_warning("Skipping database: `%s`",_database->source_database);
+    _database->schema_checksum = NULL;
+    _database->post_checksum = NULL;
+    _database->triggers_checksum = NULL;
+    _database->events_checksum = NULL;
+    return;
+  }
+
   if (!has_been_defined_a_target_database()){
     _database->schema_state=NOT_CREATED;
 //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
@@ -474,6 +456,13 @@ gboolean process_table_filename(char * filename){
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
     g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    dbt=get_table(_database->database_name_in_filename, table_name);
+    if (dbt){
+      dbt->schema_checksum=NULL;
+      dbt->triggers_checksum=NULL;
+      dbt->indexes_checksum=NULL;
+      dbt->data_checksum=NULL;
+    }
     return FALSE;
   }
 
