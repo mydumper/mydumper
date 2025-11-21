@@ -130,7 +130,7 @@ void set_db_schema_created(struct database * _database)
   }
 }
 
-//static
+static
 void set_table_schema_state_to_created (struct configuration *conf){
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->table_list;
@@ -248,12 +248,14 @@ void start_worker_schema(){
 }
 
 
-void wait_schema_worker_to_finish(){
+void wait_schema_worker_to_finish(struct configuration *conf){
   guint n=0;
   trace("Waiting schema worker to finish");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     g_thread_join(schema_threads[n]);
   }
+  // As all schema worker has finished, we need to let the process continue and set all tables as created
+  set_table_schema_state_to_created(conf);
   data_control_queue_push(FILE_TYPE_ENDED);
   trace("Schema worker finished");
 }

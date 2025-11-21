@@ -44,6 +44,6 @@ const char *schema_job_type2str(enum schema_job_type ft){
 
 void initialize_worker_schema(struct configuration *conf);
 void start_worker_schema();
-void wait_schema_worker_to_finish();
+void wait_schema_worker_to_finish(struct configuration *conf);
 gboolean schema_push( enum schema_job_type type, gchar * filename, enum restore_job_type rj_type, struct db_table * dbt, struct database * _database, GString * statement, enum restore_job_statement_type object, struct database *use_database );
 void schema_ended();
