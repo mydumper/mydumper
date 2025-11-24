@@ -39,9 +39,17 @@ endif (PC_GLIB2_VERSION VERSION_GREATER "2.51")
 #endif (PC_GLIB2_VERSION VERSION_LESS "2.68")
 
 option(WITH_SSL "Build SSL support" ON)
+
 if (MARIADB_FOUND AND NOT MARIADB_SSL AND WITH_SSL)
     message(WARNING "MariaDB was not build with SSL so cannot turn SSL on")
     set(WITH_SSL OFF)
+endif()
+
+if (WITH_SSL)
+  FIND_PACKAGE(OpenSSL)
+  if(${OpenSSL_FOUND})
+    include_directories(${OPENSSL_INCLUDE_DIR})
+  endif()
 endif()
 
 set(CMAKE_C_FLAGS "-std=gnu99 -Wall -Wno-deprecated-declarations -Wunused -Wwrite-strings -Wno-strict-aliasing -Wextra -Wshadow -g -Werror ${MYSQL_CFLAGS}")

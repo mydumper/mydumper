@@ -1330,41 +1330,55 @@ static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const
 
 
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_queryv(conn, query, log_fun, NULL, fmt,args);
+  gboolean result = m_queryv(conn, query, log_fun, NULL, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 // Executes the query, if there is an error it send critical stopping the process unless the error is ignored
 gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_queryv(conn, query, m_warning, NULL, fmt,args);
+  gboolean result = m_queryv(conn, query, m_warning, NULL, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 // Executes the query, if there is an error it send critical stopping the process unless the error is ignored
 gboolean m_query_critical(  MYSQL *conn, const gchar *query, const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_queryv(conn, query, m_critical, m_warning, fmt,args);
+  gboolean result = m_queryv(conn, query, m_critical, m_warning, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 
 gboolean m_query_ext(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_queryv(conn, query, log_fun_1, log_fun_2, fmt,args);
+  gboolean result = m_queryv(conn, query, log_fun_1, log_fun_2, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  gboolean res= m_queryv(conn, q, log_fun, NULL, fmt, args);
+  gboolean res = m_queryv(conn, q, log_fun, NULL, fmt, args);
+  if (fmt)
+    va_end(args);
   if (!res)
     g_message("%s: OK", q);
   return res;
@@ -1381,40 +1395,51 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
 }
 
 MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
-  return m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
+  MYSQL_RES *result = m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
+  if (fmt)
+    va_end(args);
+  return result;
 }
 
 struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
   struct M_ROW *mr=g_new0(struct M_ROW,1);
   mr->row=NULL;
   mr->res = m_resultv(mysql_store_result, conn, query, log_fun_1, log_fun_2, fmt, args);
+  if (fmt)
+    va_end(args);
   if (mr->res)
     mr->row= mysql_fetch_row(mr->res);
   return mr;
 }
 
 struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...){
-  va_list args;
+  va_list args = {0};
   if (fmt)
     va_start(args, fmt);
   struct M_ROW *mr=g_new0(struct M_ROW,1);
@@ -1422,10 +1447,11 @@ struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const c
   mr->res = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
   if (mr->res){
     mr->row= mysql_fetch_row(mr->res);
-
-    if (!mr->row)
+    if (!mr->row && fmt)
       m_log(conn, m_critical, m_warning, fmt, args);
   }
+  if (fmt)
+    va_end(args);
   return mr;
 }
 
