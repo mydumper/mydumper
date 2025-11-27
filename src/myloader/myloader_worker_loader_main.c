@@ -72,7 +72,9 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
   struct db_table * dbt;
   while (iter != NULL){
     dbt = iter->data;
-    trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
+    g_debug("[LOADER_MAIN] Checking table: %s.%s schema_state=%s remaining_jobs=%d current_threads=%u",
+            dbt->database->target_database, dbt->source_table_name,
+            status2str(dbt->schema_state), dbt->remaining_jobs, dbt->current_threads);
     if (dbt->database->schema_state == NOT_FOUND){
       iter=iter->next;
       /*
@@ -83,21 +85,35 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         printed. You can also use the special value all. This environment variable only
         affects the default log handler, g_log_default_handler().
       */
-      trace("%s.%s: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
+      g_debug("[LOADER_MAIN] %s.%s: database schema_state=%s, voting for finish",
+              dbt->database->target_database, dbt->source_table_name,
+              status2str(dbt->database->schema_state));
       continue;
     }
     table_lock(dbt);
     if (dbt->schema_state >= DATA_DONE ||
         (dbt->schema_state == CREATED && (dbt->is_view || dbt->is_sequence))){
-      trace("%s.%s done: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
+      g_debug("[LOADER_MAIN] %s.%s done: %s, voting for finish", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
       iter=iter->next;
       table_unlock(dbt);
       continue;
     }
     // I could do some job in here, do we have some for me?
-    if (!resume && dbt->schema_state<CREATED ){
+    // RACE CONDITION FIX: Only dispatch data jobs if schema_state is EXACTLY CREATED
+    // NOT_FOUND, NOT_FOUND_2, NOT_CREATED, CREATING states mean table is not ready
+    if (!resume && dbt->schema_state < CREATED ){
       giveup=FALSE;
-      trace("%s.%s not yet created: %s, waiting", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
+      g_debug("[LOADER_MAIN] %s.%s not yet created: %s (waiting for schema), blocking finish",
+              dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
+      iter=iter->next;
+      table_unlock(dbt);
+      continue;
+    }
+    // Additional safety check: if schema_state is CREATING, we must wait
+    if (dbt->schema_state == CREATING){
+      giveup=FALSE;
+      g_debug("[LOADER_MAIN] %s.%s is still CREATING, must wait before loading data",
+              dbt->database->target_database, dbt->source_table_name);
       iter=iter->next;
       table_unlock(dbt);
       continue;
@@ -120,12 +136,14 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
           current=current->next;
         }
         dbt->schema_state = ALL_DONE;
-        trace("Setting on %s.%s ALL_DONE", dbt->database->target_database, dbt->source_table_name);
+        g_debug("[LOADER_MAIN] Setting on %s.%s ALL_DONE (no_data flag)", dbt->database->target_database, dbt->source_table_name);
 
       }else{
         if (dbt->current_threads >= dbt->max_threads ){
           giveup=FALSE;
-          trace("%s.%s Reached max thread %s", dbt->database->target_database, dbt->source_table_name, status2str(dbt->schema_state));
+          g_debug("[LOADER_MAIN] %s.%s reached max threads (%u/%u), state=%s, blocking finish",
+                  dbt->database->target_database, dbt->source_table_name,
+                  dbt->current_threads, dbt->max_threads, status2str(dbt->schema_state));
           iter=iter->next;
           table_unlock(dbt);
           continue;
@@ -137,10 +155,12 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
         g_list_free_1(current);
         dbt->current_threads++;
+        g_message("[LOADER_MAIN] Dispatching data job for %s.%s file=%s threads=%u/%u remaining_jobs=%d schema_state=%s",
+                  dbt->database->target_database, dbt->source_table_name,
+                  job->filename, dbt->current_threads, dbt->max_threads,
+                  dbt->remaining_jobs, status2str(dbt->schema_state));
         table_unlock(dbt);
         giveup=FALSE;
-        trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->source_table_name,
-            rjtype2str(job->type), job->filename, dbt->current_threads);
         break;
       }
     }else{

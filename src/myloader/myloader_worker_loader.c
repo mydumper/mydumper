@@ -66,23 +66,36 @@ void data_ended(){
 gboolean process_loader(struct thread_data * td) {
   struct db_table * dbt = NULL;
   struct data_job *dj= (struct data_job *)g_async_queue_pop(data_job_queue);
-  trace("data_job_queue -> %s", data_job_type2str(dj->type)); // dj->restore_job->dbt->database->target_database, dj->restore_job->dbt->source_table_name, dj->restore_job->dbt->current_threads);
+  g_debug("[LOADER] Thread %d: Received data job type=%s", td->thread_id, data_job_type2str(dj->type));
 
   switch (dj->type){
     case DATA_JOB:
       dbt=dj->restore_job->dbt;
       td->dbt=dj->restore_job->dbt;
+
+      // Log detailed information before processing
+      g_message("[LOADER] Thread %d: Processing DATA_JOB for %s.%s file=%s schema_state=%s",
+                td->thread_id,
+                dbt->database->target_database,
+                dbt->source_table_name,
+                dj->restore_job->filename ? dj->restore_job->filename : "(null)",
+                status2str(dbt->schema_state));
+
       process_restore_job(td, dj->restore_job);
       table_lock(dbt);
       dbt->current_threads--;
-      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->source_table_name, dbt->current_threads);
+      g_debug("[LOADER] Thread %d: Completed job for %s.%s, threads now %u, remaining_jobs=%d",
+              td->thread_id, dbt->database->target_database, dbt->source_table_name,
+              dbt->current_threads, dbt->remaining_jobs);
       table_unlock(dbt);
       break;
     case DATA_PROCESS_ENDED:
+      g_message("[LOADER] Thread %d: Received DATA_PROCESS_ENDED, propagating and exiting", td->thread_id);
       data_job_push(DATA_PROCESS_ENDED, NULL);
       return FALSE;
       break;
     case DATA_ENDED:
+      g_message("[LOADER] Thread %d: Received DATA_ENDED, exiting", td->thread_id);
       return FALSE;
       break;
     }

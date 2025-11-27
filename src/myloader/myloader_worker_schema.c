@@ -153,24 +153,37 @@ gboolean process_schema(struct thread_data * td){
   struct control_job *job = NULL;
 
   struct schema_job * schema_job = g_async_queue_pop(schema_job_queue);
-  trace("schema_job_queue -> %s", schema_job_type2str(schema_job->type));
+  g_debug("[SCHEMA_WORKER] Thread %d: schema_job_queue -> %s", td->thread_id, schema_job_type2str(schema_job->type));
 
   switch (schema_job->type){
     case SCHEMA_CREATE_JOB:
       _database=schema_job->restore_job->data.srj->database;
-      trace("database_queue -> %s", _database->source_database);
+      g_message("[SCHEMA_WORKER] Thread %d: Creating database schema: %s", td->thread_id, _database->source_database);
       g_mutex_lock(_database->mutex);
       process_restore_job(td, schema_job->restore_job);
       //      ret=process_job(td, job, NULL);
       set_db_schema_created(_database);
-      trace("Set DB created: %s", _database->source_database);
+      g_message("[SCHEMA_WORKER] Thread %d: Database %s schema created successfully, state=CREATED", td->thread_id, _database->source_database);
       g_mutex_unlock(_database->mutex);
       break;
     case SCHEMA_SEQUENCE_JOB:
     case SCHEMA_TABLE_JOB:
+      if (schema_job->restore_job && schema_job->restore_job->dbt) {
+        g_message("[SCHEMA_WORKER] Thread %d: Processing %s for table %s.%s from file %s",
+                  td->thread_id, schema_job_type2str(schema_job->type),
+                  schema_job->restore_job->dbt->database->target_database,
+                  schema_job->restore_job->dbt->source_table_name,
+                  schema_job->restore_job->filename ? schema_job->restore_job->filename : "(null)");
+      }
       if (process_restore_job(td, schema_job->restore_job)){
-        trace("retry_queue <- ");
+        g_warning("[SCHEMA_WORKER] Thread %d: Schema job failed, adding to retry_queue", td->thread_id);
         g_async_queue_push(retry_queue, job);
+      } else if (schema_job->restore_job && schema_job->restore_job->dbt) {
+        g_message("[SCHEMA_WORKER] Thread %d: Table %s.%s created successfully, schema_state=%s",
+                  td->thread_id,
+                  schema_job->restore_job->dbt->database->target_database,
+                  schema_job->restore_job->dbt->source_table_name,
+                  status2str(schema_job->restore_job->dbt->schema_state));
       }
       wake_data_threads();
       break;

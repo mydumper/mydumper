@@ -131,21 +131,66 @@ void reconnect_connection_data(struct connection_data *cd){
   execute_gstring(cd->thrconn, set_session);
 }
 
+// ER_NO_SUCH_TABLE = 1146 - Table doesn't exist
+#define ER_NO_SUCH_TABLE 1146
+// Maximum retries for race condition recovery
+#define MAX_RACE_CONDITION_RETRIES 3
+// Sleep time between retries in microseconds (100ms)
+#define RACE_CONDITION_RETRY_SLEEP 100000
+
 int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
 {
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
   if (en) {
+    guint error_code = mysql_errno(cd->thrconn);
+
     if (is_schema)
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+      g_warning("[RESTORE] Thread %ld conn %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, error_code, mysql_error(cd->thrconn), data->str);
     else{
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+      g_warning("[RESTORE] Thread %ld conn %ld - ERROR %d: %s", cd->thread_id, cd->connection_id, error_code, mysql_error(cd->thrconn));
     }
 
-    if ( mysql_errno(cd->thrconn) != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(cd->thrconn) ))){
+    // Special handling for "Table doesn't exist" error - likely a race condition
+    if (error_code == ER_NO_SUCH_TABLE && !is_schema) {
+      g_warning("[RESTORE] Thread %ld conn %ld: Detected 'Table doesn't exist' error (ER_NO_SUCH_TABLE=1146). This may indicate a race condition between schema creation and data loading.",
+                cd->thread_id, cd->connection_id);
+
+      // Retry with exponential backoff
+      guint retry;
+      for (retry = 0; retry < MAX_RACE_CONDITION_RETRIES; retry++) {
+        guint sleep_time = RACE_CONDITION_RETRY_SLEEP * (1 << retry); // Exponential backoff
+        g_warning("[RESTORE] Thread %ld conn %ld: Waiting %u microseconds before retry %u/%d for table that may not exist yet",
+                  cd->thread_id, cd->connection_id, sleep_time, retry + 1, MAX_RACE_CONDITION_RETRIES);
+        g_usleep(sleep_time);
+
+        g_atomic_int_inc(&(detailed_errors.retries));
+        if (!mysql_real_query(cd->thrconn, data->str, data->len)) {
+          g_message("[RESTORE] Thread %ld conn %ld: Retry %u succeeded - table now exists",
+                    cd->thread_id, cd->connection_id, retry + 1);
+          *query_counter = *query_counter + 1;
+          g_string_set_size(data, 0);
+          return 0;
+        }
+
+        error_code = mysql_errno(cd->thrconn);
+        if (error_code != ER_NO_SUCH_TABLE) {
+          g_warning("[RESTORE] Thread %ld conn %ld: Different error on retry: %d - %s",
+                    cd->thread_id, cd->connection_id, error_code, mysql_error(cd->thrconn));
+          break;
+        }
+      }
+
+      g_critical("[RESTORE] Thread %ld conn %ld: All %d retries failed for 'Table doesn't exist'. RACE CONDITION - schema not created in time.",
+                 cd->thread_id, cd->connection_id, MAX_RACE_CONDITION_RETRIES);
+      errors++;
+      return 1;
+    }
+
+    if ( error_code != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(error_code))){
       if (mysql_ping(cd->thrconn)) {
         reconnect_connection_data(cd);
         if (!is_schema && commit_count > 1) {
-          g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id,  mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+          g_critical("[RESTORE] Thread %ld conn %ld - ERROR %d: Lost connection. %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
           errors++;
           return 2;
         }
@@ -154,9 +199,9 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
       g_atomic_int_inc(&(detailed_errors.retries));
       if (mysql_real_query(cd->thrconn, data->str, data->len)) {
         if (is_schema)
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+          g_critical("[RESTORE] Thread %ld conn %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
         else{
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+          g_critical("[RESTORE] Thread %ld conn %ld - ERROR %d: %s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
         }
         errors++;
         return 1;
