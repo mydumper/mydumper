@@ -10149,9 +10149,8 @@ workflows:
     - compile_and_test_mydumper_in_el9_mariadb1011
     - compile_and_test_mydumper_in_el9_mariadb1006
     - compile_and_test_mydumper_in_el9_mysql84
-    - compile_and_test_mydumper_in_el10_percona80
+    - compile_and_test_mydumper_in_el10_mysql80
     - compile_and_test_mydumper_in_el10_mariadb1011
-    - compile_and_test_mydumper_in_el10_mariadb1006
     - compile_and_test_mydumper_in_el10_mysql84
     - compile_and_test_mydumper_in_bullseye_percona57
     - compile_and_test_mydumper_in_bullseye_percona80
