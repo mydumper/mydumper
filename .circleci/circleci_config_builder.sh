@@ -366,7 +366,7 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 EOF
 
-for os in el7 el9
+for os in el7 el9 el10
 do
     for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
     do
@@ -388,7 +388,7 @@ do
 "
 done
 
-for os in el8 el9
+for os in el8 el9 el10
 do
     for vendor in ${list_mariadb_version[@]}
     do
