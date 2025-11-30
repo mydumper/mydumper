@@ -63,6 +63,7 @@ gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
 guint num_sequences=0;
+char **ignore_engines = NULL;
 extern gchar *initial_source_log;
 extern gchar *initial_source_pos;
 extern gchar *initial_source_gtid;
@@ -70,7 +71,6 @@ extern gchar *initial_source_gtid;
 // Static
 static GMutex *init_mutex = NULL;
 static gchar *binlog_snapshot_gtid_executed = NULL; 
-static char **ignore_engines = NULL;
 static int sync_wait = -1;
 static GMutex *table_schemas_mutex = NULL;
 static GMutex *trigger_schemas_mutex = NULL;
@@ -991,7 +991,6 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
 
-  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -1026,11 +1025,9 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
     if (dump && ignore_engines && !is_view && !is_sequence) {
-      for (i = 0; ignore_engines[i] != NULL; i++) {
-        if (g_ascii_strcasecmp(ignore_engines[i], row[ecol]) == 0) {
-          dump = 0;
-          break;
-        }
+      if (m_pstrstr(ignore_engines, row[ecol])){
+        dump = 0;
+        break;
       }
     }
 

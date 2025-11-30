@@ -439,3 +439,14 @@ guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *sta
   return len;
 }
 
+
+gboolean m_pstrstr(char **str_list, const gchar* needle){
+  if (str_list){
+    guint i=0;
+    for (i = 0; str_list[i] != NULL; i++) {
+      if (!g_ascii_strcasecmp(str_list[i], needle))
+        return TRUE;
+    } 
+  } 
+  return FALSE;
+}
