@@ -589,17 +589,19 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       g_string_append(buffers.column,"0x");
-      mysql_hex_string(buffers.escaped->str,*column,length);
-      g_string_append(buffers.column,buffers.escaped->str);
+      // Perf: Use mysql_hex_string return value to avoid strlen()
+      unsigned long hex_len = mysql_hex_string(buffers.escaped->str,*column,length);
+      g_string_append_len(buffers.column, buffers.escaped->str, hex_len);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
  *        * the beginning */
       g_string_set_size(buffers.escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
+      // Perf: Use mysql_real_escape_string return value to avoid strlen()
+      unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.column, "CONVERT(");
       g_string_append_c(buffers.column, *fields_enclosed_by);
-      g_string_append(buffers.column, buffers.escaped->str);
+      g_string_append_len(buffers.column, buffers.escaped->str, escaped_len);
       g_string_append_c(buffers.column, *fields_enclosed_by);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.column, " USING UTF8MB4)");
@@ -627,7 +629,8 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL
   }else{
     write_column_into_string( conn, &(column), field, rlength, buffers);
   }
-  g_string_append(buffers.row, buffers.column->str);
+  // Perf: Use g_string_append_len with known length to avoid strlen()
+  g_string_append_len(buffers.row, buffers.column->str, buffers.column->len);
   g_string_append(buffers.row, terminated_by);
 
   if (column && column != row)
@@ -800,9 +803,9 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 
   message_dumping_data(tj);
 
-  GDateTime *from = g_date_time_new_now_local();
-  GDateTime *to = NULL;
-  GTimeSpan diff=0;
+  // Perf: Use monotonic time instead of GDateTime to eliminate allocations
+  // g_get_monotonic_time() returns microseconds with zero allocation overhead
+  gint64 last_progress_time = g_get_monotonic_time();
 	while ((row = mysql_fetch_row(result))) {
 // Uncomment next line if you need to simulate a slow read which is useful when calculate the chunk size
 //    g_usleep(1);
@@ -833,15 +836,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
 				g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 			}
-      to = g_date_time_new_now_local();
-      diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-      if (diff > 4){
-        g_date_time_unref(from);
-        from=to;
-        to=NULL;
+      // Perf: Zero-allocation time check using monotonic time
+      gint64 now_time = g_get_monotonic_time();
+      if ((now_time - last_progress_time) / G_TIME_SPAN_SECOND > 4) {
+        last_progress_time = now_time;
         message_dumping_data(tj);
-      }else{
-        g_date_time_unref(to);
       }
 
 			check_pause_resume(tj->td);
@@ -865,7 +864,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		// write row to buffer
     if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
       g_string_append(tj->td->thread_data_buffers.statement, row_delimiter);
-    g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
+    // Perf: Use g_string_append_len with known row->len to avoid strlen()
+    g_string_append_len(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str, tj->td->thread_data_buffers.row->len);
 		if (tj->td->thread_data_buffers.row->len>0)
       num_rows_st++;
     g_string_set_size(tj->td->thread_data_buffers.row, 0);
@@ -882,7 +882,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     }
 		tj->st_in_file++;
   }
-  g_date_time_unref(from);
+  // Note: No cleanup needed - g_get_monotonic_time() has zero allocations
 
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);
