@@ -1,0 +1,11 @@
+# Test case 811: Schema-Data Race Condition
+# High thread count to maximize race between schema and data workers
+# If race condition exists, this will fail with:
+#   ERROR 1146: Table 'race_test.table_XXX' doesn't exist
+
+[myloader]
+directory=/tmp/data
+threads=16
+max-threads-per-table=4
+verbose=4
+overwrite-tables

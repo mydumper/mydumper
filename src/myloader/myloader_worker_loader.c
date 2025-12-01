@@ -72,6 +72,17 @@ gboolean process_loader(struct thread_data * td) {
     case DATA_JOB:
       dbt=dj->restore_job->dbt;
       td->dbt=dj->restore_job->dbt;
+      /* Wait for schema to be created before executing INSERT */
+      if (dbt != NULL) {
+        table_lock(dbt);
+        while (dbt->schema_state < CREATED) {
+          trace("Thread %d: waiting for schema on %s.%s",
+                td->thread_id, dbt->database->target_database,
+                dbt->source_table_name);
+          g_cond_wait(dbt->schema_cond, dbt->mutex);
+        }
+        table_unlock(dbt);
+      }
       process_restore_job(td, dj->restore_job);
       table_lock(dbt);
       dbt->current_threads--;

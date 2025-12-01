@@ -138,8 +138,10 @@ void set_table_schema_state_to_created (struct configuration *conf){
   while (iter != NULL){
     dbt=iter->data;
     table_lock(dbt);
-    if (dbt->schema_state == NOT_FOUND )
+    if (dbt->schema_state == NOT_FOUND ) {
       dbt->schema_state = CREATED;
+      g_cond_broadcast(dbt->schema_cond);
+    }
     table_unlock(dbt);
     iter=iter->next;
   }

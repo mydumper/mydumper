@@ -1,0 +1,1 @@
+DROP DATABASE IF EXISTS race_test;
