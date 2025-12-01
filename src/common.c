@@ -1331,6 +1331,7 @@ static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const
 
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
+  va_start(args, fmt);
   gboolean result = m_queryv(conn, query, log_fun, NULL, fmt, args);
   va_end(args);
   return result;
