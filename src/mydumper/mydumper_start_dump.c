@@ -74,6 +74,7 @@ gchar *initial_source_gtid = NULL;
 // Program options used only on this file 
 extern guint ftwrl_max_wait_time;
 extern guint ftwrl_timeout_retries;
+extern char **ignore_engines;
 
 // static variables
 static GMutex **pause_mutex_per_thread=NULL;
@@ -1058,16 +1059,19 @@ void start_dump(struct configuration *conf) {
   if (get_product() != SERVER_TYPE_MARIADB || server_version < 100300)
     nroutines= 2;
 
+  MYSQL_RES *rest = NULL;
   // tokudb do not support consistent snapshot
-  MYSQL_RES *rest = m_store_result(conn, "SELECT @@tokudb_version", m_message, "@@tokudb_version not found", NULL);
-  if (rest){
-    if (mysql_num_rows(rest)) {
+  if (!m_pstrstr(ignore_engines, "tokudb")){    
+    rest = m_store_result(conn, "SELECT @@tokudb_version", m_message, "@@tokudb_version not found", NULL);
+    if (rest){
+      if (mysql_num_rows(rest)) {
+        mysql_free_result(rest);
+        g_message("TokuDB detected, creating dummy table for CS");
+        m_query_warning(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB", "Not able to create dummy table for TokuDB", NULL);
+        need_dummy_toku_read = 1;
+      }
       mysql_free_result(rest);
-      g_message("TokuDB detected, creating dummy table for CS");
-      m_query_warning(conn, "CREATE TABLE IF NOT EXISTS mysql.tokudbdummy (a INT) ENGINE=TokuDB", "Not able to create dummy table for TokuDB", NULL);
-      need_dummy_toku_read = 1;
     }
-    mysql_free_result(rest);
   }
 
   if (need_dummy_read) {

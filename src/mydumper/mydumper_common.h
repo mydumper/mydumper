@@ -59,4 +59,4 @@ extern guint nroutines;
 extern guint server_version;
 extern const char *routine_type[];
 void initialize_header_in_gstring(GString *statement, gchar *charset);
-
+gboolean m_pstrstr(char **str_list, const gchar* needle);
