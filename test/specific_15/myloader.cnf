@@ -1,0 +1,4 @@
+[myloader]
+drop-database
+fifodir=/tmp/fifodir
+directory=/tmp/data

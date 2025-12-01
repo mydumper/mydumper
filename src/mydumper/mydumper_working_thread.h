@@ -43,6 +43,9 @@ struct thread_data {
   gchar *binlog_snapshot_gtid_executed;
   GMutex *pause_resume_mutex;
   struct thread_data_buffers thread_data_buffers;
+  // Thread-local row counter for batched updates (reduces atomic ops 1000x)
+  guint64 local_row_count;
+  struct db_table *local_row_count_dbt;
 };
 
 #endif
@@ -61,3 +64,4 @@ void build_lock_tables_statement(struct configuration *conf);
 void check_pause_resume( struct thread_data *td );
 void update_estimated_remaining_chunks_on_dbt(struct db_table *dbt);
 void free_db_table(struct db_table * dbt);
+void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid);

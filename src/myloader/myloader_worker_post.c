@@ -19,7 +19,7 @@
 
 #include "myloader_common.h"
 #include "myloader_global.h"
-#include "myloader_control_job.h"
+#include "myloader_restore_job.h"
 
 GThread **post_threads = NULL;
 struct thread_data *post_td = NULL;

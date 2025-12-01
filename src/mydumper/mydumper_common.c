@@ -66,7 +66,7 @@ char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
   if (!masquerade_filename && check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
-    return g_strdup(table);
+    return newline_protect(table);
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
     table_number++;
@@ -93,11 +93,7 @@ char * escape_string(MYSQL *conn, char *str){
 }
 
 gchar * build_schema_table_filename(char *database, char *table, const char *suffix){
-  GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
-  gchar *r = g_build_filename(dump_directory, filename->str, NULL);
-  g_string_free(filename,TRUE);
-  return r;
+  return common_build_schema_table_filename(dump_directory, database, table, suffix);
 }
 
 gchar * build_schema_filename(const char *database, const char *suffix){
@@ -298,9 +294,9 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
 }
 
 void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long length){
-  gchar *from=g_new(char, length);
-  memcpy(from, to, length);
-  gchar *ffrom=from;
+  gchar *ffrom=g_new(char, length);
+  memcpy(ffrom, to, length);
+  gchar *from=ffrom;
   const char *end = from + length;
   for (end = from + length; from < end; from++) {
     if ( *from == neddle ){
@@ -310,6 +306,7 @@ void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long 
     *to=*from;
     to++;
   }
+  *to='\0';
   g_free(ffrom);
 }
 
@@ -367,30 +364,34 @@ void determine_charset_and_coll_columns_from_show(MYSQL_RES *result, guint *char
 }
 
 
-void initialize_headers(){
-  headers=g_string_sized_new(100);
+void initialize_header_in_gstring(GString *_headers, gchar *charset){
   if (is_mysql_like()) {
-    if (set_names_statement)
-      g_string_printf(headers,"%s;\n",set_names_statement);
-    g_string_append(headers, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
+    if (charset)
+      g_string_printf(_headers,"/*!40101 SET NAMES %s*/;\n",charset);
+    g_string_append(_headers, "/*!40014 SET FOREIGN_KEY_CHECKS=0*/;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(headers, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
+      g_string_append_printf(_headers, "/*!40101 SET SQL_MODE=%s*/;\n", sql_mode);
     if (!skip_tz) {
-      g_string_append(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_append(_headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else if (get_product() == SERVER_TYPE_TIDB) {
     if (!skip_tz) {
-      g_string_printf(headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
+      g_string_printf(_headers, "/*!40103 SET TIME_ZONE='+00:00' */;\n");
     }
   } else {
-    g_string_printf(headers, "SET FOREIGN_KEY_CHECKS=0;\n");
+    g_string_printf(_headers, "SET FOREIGN_KEY_CHECKS=0;\n");
     if (sql_mode && !compact)
-      g_string_append_printf(headers, "SET SQL_MODE=%s;\n", sql_mode);
+      g_string_append_printf(_headers, "SET SQL_MODE=%s;\n", sql_mode);
   }
 }
 
 void initialize_sql_statement(GString *statement){
   g_string_printf(statement,"%s",headers->str);
+}
+
+void initialize_headers(){
+   headers=g_string_sized_new(100);
+   initialize_header_in_gstring(headers,set_names_in_file_by_default);
 }
 
 void set_tidb_snapshot(MYSQL *conn){
@@ -438,3 +439,14 @@ guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *sta
   return len;
 }
 
+
+gboolean m_pstrstr(char **str_list, const gchar* needle){
+  if (str_list){
+    guint i=0;
+    for (i = 0; str_list[i] != NULL; i++) {
+      if (!g_ascii_strcasecmp(str_list[i], needle))
+        return TRUE;
+    } 
+  } 
+  return FALSE;
+}

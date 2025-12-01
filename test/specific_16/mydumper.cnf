@@ -1,8 +1,7 @@
 #
-# Testing --no-data
+# Testing tables with special characters or words in comments 
 #
 
 [mydumper]
-database=specific_15
+database=specific_16
 outputdir=/tmp/data
-no-data

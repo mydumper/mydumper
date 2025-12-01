@@ -31,6 +31,7 @@
 #include "myloader_control_job.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_index.h"
+#include "myloader_database.h"
 
 unsigned long long int total_data_sql_files = 0;
 gboolean shutdown_triggered=FALSE;
@@ -56,7 +57,7 @@ struct data_restore_job * new_data_restore_job_internal( guint index, guint part
   return drj;
 }
 
-struct schema_restore_job * new_schema_restore_job_internal( struct database * database, GString * statement, const char *object){
+struct schema_restore_job * new_schema_restore_job_internal( struct database * database, GString * statement, enum restore_job_statement_type object){
   struct schema_restore_job *srj = g_new(struct schema_restore_job, 1);
   srj->database  = database;
   srj->statement = statement;
@@ -64,6 +65,7 @@ struct schema_restore_job * new_schema_restore_job_internal( struct database * d
   return srj;
 }
 
+static
 struct restore_job * new_restore_job( char * filename, struct db_table * dbt, enum restore_job_type type){
   struct restore_job *rj = g_new(struct restore_job, 1);
   rj->filename  = filename;
@@ -78,7 +80,7 @@ struct restore_job * new_data_restore_job( char * filename, enum restore_job_typ
   return rj;
 }
 
-struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, const char *object){
+struct restore_job * new_schema_restore_job( char * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object){
   struct restore_job *srj = new_restore_job(filename, dbt, type);
   srj->data.srj=new_schema_restore_job_internal(database, statement, object);
   return srj;
@@ -115,59 +117,87 @@ void overwrite_table_message(const char *fmt, ...){
 
 }
 
+static
 int overwrite_table(struct thread_data *td, struct db_table *dbt){
   int truncate_or_delete_failed=0;
   GString *data=g_string_new("");
   const char q= identifier_quote_character;
-  if (purge_mode == DROP) {
-    message("Dropping table or view (if exists) %s.%s",
-        dbt->database->real_database, dbt->real_table);
-    g_string_printf(data,"DROP TABLE IF EXISTS %c%s%c.%c%s%c",
-        q, dbt->database->real_database, q, q, dbt->real_table, q);
-    truncate_or_delete_failed = restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->real_database, dbt->real_table);
-    g_string_printf(data,"DROP VIEW IF EXISTS %c%s%c.%c%s%c",
-        q, dbt->database->real_database, q, q, dbt->real_table, q);
-    if (restore_data_in_gstring(td, data, TRUE, dbt->database)){
-      truncate_or_delete_failed = 1;
-      g_critical("Drop view failed");
-    }
-  } else if (purge_mode == TRUNCATE) {
-    message("Truncating table %s.%s", dbt->database->real_database, dbt->real_table);
-    g_string_printf(data,"TRUNCATE TABLE %c%s%c.%c%s%c",
-        q, dbt->database->real_database, q, q, dbt->real_table, q);
-    truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
-    if (truncate_or_delete_failed)
-      g_warning("Truncate failed, we are going to try to create table or view");
-  } else if (purge_mode == DELETE) {
-    message("Deleting content of table %s.%s", dbt->database->real_database, dbt->real_table);
-    g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
-        q, dbt->database->real_database, q, q, dbt->real_table, q);
-    truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
-    if (truncate_or_delete_failed)
-      g_warning("Delete failed, we are going to try to create table or view");
-    restore_data_in_gstring(td, data, TRUE, dbt->database);
+  switch (purge_mode) {
+    case DROP:
+      message("Dropping table or view (if exists) %s.%s",
+          dbt->database->target_database, dbt->source_table_name);
+      g_string_printf(data,"DROP TABLE IF EXISTS %c%s%c.%c%s%c",
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
+      truncate_or_delete_failed = restore_data_in_gstring_extended(td, data, TRUE, dbt->database, overwrite_table_message, "Drop table %s.%s failed", dbt->database->target_database, dbt->source_table_name);
+      g_string_printf(data,"DROP VIEW IF EXISTS %c%s%c.%c%s%c",
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
+      if (restore_data_in_gstring(td, data, TRUE, dbt->database)){
+        truncate_or_delete_failed = 1;
+        g_critical("Drop view failed");
+      }
+      break;
+    case TRUNCATE:
+      if (dbt->constraints || dbt->indexes){
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
+      }
+      message("Truncating table %s.%s", dbt->database->target_database, dbt->source_table_name);
+      g_string_printf(data,"TRUNCATE TABLE %c%s%c.%c%s%c",
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
+      truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
+      if (truncate_or_delete_failed)
+        g_warning("Truncate failed, we are going to try to create table or view");
+      break;
+    case DELETE:
+      if (dbt->constraints || dbt->indexes){
+        g_warning("Indexes and/or contraints were found on %s.%s which might fail during import. Use --skip-constraints and/or --skip-indexes to avoid issues. Triggers might also cause failures.", dbt->database->target_database, dbt->source_table_name);
+      }
+      message("Deleting content of table %s.%s", dbt->database->target_database, dbt->source_table_name);
+      g_string_printf(data,"DELETE FROM %c%s%c.%c%s%c ;\nCOMMIT",
+          q, dbt->database->target_database, q, q, dbt->source_table_name, q);
+      truncate_or_delete_failed=restore_data_in_gstring(td, data, TRUE, dbt->database);
+      if (truncate_or_delete_failed)
+        g_warning("Delete failed, we are going to try to create table or view");
+      restore_data_in_gstring(td, data, TRUE, dbt->database);
+      break;
+    default:
+      g_warning("This should not happen");
+      break;
   }
   return truncate_or_delete_failed;
 }
 
-void increse_object_error(const gchar *object){
-        if (!g_strcmp0(object,SEQUENCE))
-          g_atomic_int_inc(&(detailed_errors.sequence_errors));
-        else if (!g_strcmp0(object,TRIGGER))
-          g_atomic_int_inc(&(detailed_errors.trigger_errors));
-        else if (!g_strcmp0(object,TABLESPACE))
-          g_atomic_int_inc(&(detailed_errors.tablespace_errors));
-        else if (!g_strcmp0(object,CREATE_DATABASE))
-          g_atomic_int_inc(&(detailed_errors.schema_errors));
-        else if (!g_strcmp0(object,VIEW))
-          g_atomic_int_inc(&(detailed_errors.view_errors));
-        else if (!g_strcmp0(object,POST))
-          g_atomic_int_inc(&(detailed_errors.post_errors));
-        else if (!g_strcmp0(object,INDEXES))
-          g_atomic_int_inc(&(detailed_errors.index_errors));
-        else if (!g_strcmp0(object,CONSTRAINTS))
-          g_atomic_int_inc(&(detailed_errors.constraints_errors));
-        else message("Failed object %s no place to save", object);
+void increse_object_error(enum restore_job_statement_type object){
+  switch (object){
+    case SEQUENCE:
+      g_atomic_int_inc(&(detailed_errors.sequence_errors));
+      break;
+    case TRIGGER:
+      g_atomic_int_inc(&(detailed_errors.trigger_errors));
+      break;
+    case TABLESPACE:
+      g_atomic_int_inc(&(detailed_errors.tablespace_errors));
+      break;
+    case CREATE_DATABASE:
+      g_atomic_int_inc(&(detailed_errors.schema_errors));
+      break;
+    case CREATE_TABLE:
+      g_atomic_int_inc(&(detailed_errors.schema_errors));
+      break;
+    case VIEW:
+      g_atomic_int_inc(&(detailed_errors.view_errors));
+      break;
+    case POST:
+      g_atomic_int_inc(&(detailed_errors.post_errors));
+      break;
+    case INDEXES:
+      g_atomic_int_inc(&(detailed_errors.index_errors));
+      break;
+    case CONSTRAINTS:
+      g_atomic_int_inc(&(detailed_errors.constraints_errors));
+      break;
+    default:
+      message("Failed object %s no place to save", rjstmtype2str(object));
+  }
 }
 
 void schema_state_increment(gchar* _key, struct db_table* dbt, guint *total, enum schema_status schema_state){
@@ -208,6 +238,7 @@ void execute_drop_database(struct thread_data *td, gchar *database) {
 }
 
 int process_restore_job(struct thread_data *td, struct restore_job *rj){
+  trace("Restoring %s", rj->filename);
   if (td->conf->pause_resume != NULL){
     GMutex *resume_mutex = (GMutex *)g_async_queue_try_pop(td->conf->pause_resume);
     if (resume_mutex != NULL){
@@ -229,23 +260,31 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
   td->status=STARTED;
   switch (rj->type) {
     case JOB_RESTORE_STRING:
-      if (!source_db || g_strcmp0(dbt->database->name,source_db)==0){
-          get_total_done(td->conf, &total);
+// INDEXES
+// CONSTRAINTS
+      if (!source_db || g_strcmp0(dbt->database->source_database,source_db)==0){
+        if ( !no_schemas && (
+             (rj->data.srj->object==INDEXES && !dbt->object_to_export.no_index ) ||
+             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ))
+           ){
+        get_total_done(td->conf, &total);
           message("Thread %d: restoring %s %s.%s from %s. Tables %d of %d completed", td->thread_id,
-                    rj->data.srj->object, dbt->database->real_database, dbt->real_table, rj->filename, total , g_hash_table_size(td->conf->table_hash));
+                    rjstmtype2str(rj->data.srj->object), dbt->database->target_database, dbt->source_table_name, rj->filename, total , g_hash_table_size(td->conf->table_hash));
           if (restore_data_in_gstring(td, rj->data.srj->statement, FALSE, rj->data.srj->database)){
             increse_object_error(rj->data.srj->object);
-            message("Failed %s: %s",rj->data.srj->object,rj->data.srj->statement->str);
+            message("Failed %s: %s",rjstmtype2str(rj->data.srj->object),rj->data.srj->statement->str);
           }
+        }
       }
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_TO_CREATE_TABLE:
+
       dbt->schema_state=CREATING;
-      if ((!source_db || g_strcmp0(dbt->database->name,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
+      if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
         message("Thread %d: restoring table %s.%s from %s", td->thread_id,
-                dbt->database->real_database, dbt->real_table, rj->filename);
+                dbt->database->target_database, dbt->source_table_name, rj->filename);
         int overwrite_error= 0;
         if (overwrite_tables) {
           overwrite_error= overwrite_table(td, dbt);
@@ -253,28 +292,37 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             if (dbt->retry_count) {
               dbt->retry_count--;
               dbt->schema_state= NOT_CREATED;
-              m_warning("Drop table %s.%s failed: retry %u of %u", dbt->database->real_database, dbt->real_table, retry_count - dbt->retry_count, retry_count);
+              m_warning("Drop table %s.%s failed: retry %u of %u", dbt->database->target_database, dbt->source_table_name, retry_count - dbt->retry_count, retry_count);
               return 1;
             } else {
-              m_critical("Drop table %s.%s failed: exiting", dbt->database->real_database, dbt->real_table);
+              m_critical("Drop table %s.%s failed: exiting", dbt->database->target_database, dbt->source_table_name);
             }
           } else if (dbt->retry_count < retry_count) {
-              m_warning("Drop table %s.%s succeeded!", dbt->database->real_database, dbt->real_table);
+              m_warning("Drop table %s.%s succeeded!", dbt->database->target_database, dbt->source_table_name);
           }
         }
         if ((purge_mode == TRUNCATE || purge_mode == DELETE) && !overwrite_error) {
-          message("Skipping table creation %s.%s from %s", dbt->database->real_database, dbt->real_table, rj->filename);
+          message("Skipping table creation %s.%s from %s", dbt->database->target_database, dbt->source_table_name, rj->filename);
         }else{
-          message("Thread %d: Creating table %s.%s from content in %s. On db: %s", td->thread_id, dbt->database->real_database, dbt->real_table, rj->filename, dbt->database->name);
+          message("Thread %d: Creating table %s.%s from content in %s. On db: %s", td->thread_id, dbt->database->target_database, dbt->source_table_name, rj->filename, dbt->database->source_database);
           if (restore_data_in_gstring(td, rj->data.srj->statement, TRUE, rj->data.srj->database)){
-            g_atomic_int_inc(&(detailed_errors.schema_errors));
-            if (purge_mode == FAIL)
-              g_error("Thread %d: issue restoring %s",td->thread_id,rj->filename);
-            else 
-              g_critical("Thread %d: issue restoring %s",td->thread_id,rj->filename);
+            if (purge_mode == PM_SKIP){
+              message("Skipping table or view %s.%s",
+                dbt->database->target_database, dbt->source_table_name);
+              detailed_errors.skip_errors++;
+              dbt->object_to_export.no_data=TRUE;
+              dbt->object_to_export.no_index=TRUE;
+              dbt->object_to_export.no_constraint=TRUE;
+            }else{
+              g_atomic_int_inc(&(detailed_errors.schema_errors));
+              if (purge_mode == FAIL)
+                g_error("Thread %d: issue restoring %s",td->thread_id,rj->filename);
+              else 
+                g_critical("Thread %d: issue restoring %s",td->thread_id,rj->filename);
+            }
           }else{
             get_total_created(td->conf, &total);
-            message("Thread %d: Table %s.%s created. Tables that pass created stage: %d of %d", td->thread_id, dbt->database->real_database, dbt->real_table, total , g_hash_table_size(td->conf->table_hash));
+            message("Thread %d: Table %s.%s created. Tables that pass created stage: %d of %d", td->thread_id, dbt->database->target_database, dbt->source_table_name, total , g_hash_table_size(td->conf->table_hash));
           }
         }
         if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
@@ -283,12 +331,12 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
-      if (!source_db || g_strcmp0(dbt->database->name,source_db)==0){
+      if (!source_db || g_strcmp0(dbt->database->source_database,source_db)==0){
           g_mutex_lock(progress_mutex);
           progress++;
           get_total_done(td->conf, &total);
           message("Thread %d: restoring %s.%s part %d of %d from %s | Progress %llu of %llu. Tables %d of %d completed", td->thread_id,
-                    dbt->database->real_database, dbt->real_table, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
+                    dbt->database->target_database, dbt->source_table_name, rj->data.drj->index, dbt->count, rj->filename, progress,total_data_sql_files, total , g_hash_table_size(td->conf->table_hash));
           g_mutex_unlock(progress_mutex);
           if (restore_data_from_file(td, rj->filename, FALSE, dbt->database) > 0){
             g_atomic_int_inc(&(detailed_errors.data_errors));
@@ -299,23 +347,45 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       g_free(rj->data.drj);
       break;
     case JOB_RESTORE_SCHEMA_FILENAME:
-      if (!source_db || g_strcmp0(rj->data.srj->database->name,source_db)==0){
-        if ( g_strcmp0(rj->data.srj->object,VIEW) || !no_schemas){
+// TABLESPACE
+// CREATE_DATABASE
+// VIEW
+// SEQUENCE
+// TRIGGER
+// POST
+      trace("Thread %d: Restoring JOB_RESTORE_SCHEMA_FILENAME %s", td->thread_id, rj->filename);
+      if (!source_db || g_strcmp0(rj->data.srj->database->source_database,source_db)==0){
+        if ( !no_schemas && (
+             (rj->data.srj->object==TABLESPACE) ||
+             (rj->data.srj->object==CREATE_DATABASE) ||
+             (rj->data.srj->object==VIEW && !dbt->object_to_export.no_view ) ||
+             (rj->data.srj->object==SEQUENCE) ||
+             (rj->data.srj->object==TRIGGER) ||
+             (rj->data.srj->object==POST)
+             
+             )
+           ){
           get_total_done(td->conf, &total); 
-          message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rj->data.srj->object,
-                    rj->data.srj->database->real_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
+          message("Thread %d: restoring %s on `%s` from %s. Tables %d of %d completed", td->thread_id, rjstmtype2str(rj->data.srj->object),
+                    rj->data.srj->database->target_database, rj->filename, total , g_hash_table_size(td->conf->table_hash));
           if (dbt)
             dbt->schema_state= CREATING;
 
-          if (!g_strcmp0(rj->data.srj->object, CREATE_DATABASE) && drop_database)
-            execute_drop_database(td, rj->data.srj->database->real_database);
+          if ( rj->data.srj->object == CREATE_DATABASE){
+            rj->data.srj->database->schema_state = CREATING;
+            if (drop_database)
+              execute_drop_database(td, rj->data.srj->database->target_database);
+          }
 
-          if ( restore_data_from_file(td, rj->filename, TRUE, g_strcmp0(rj->data.srj->object, CREATE_DATABASE) ? rj->data.srj->database : NULL ) > 0 ) {
+          if ( restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL :rj->data.srj->database ) > 0 ) {
             increse_object_error(rj->data.srj->object);
             if (dbt)
               dbt->schema_state= NOT_CREATED;
           } else if (dbt)
             dbt->schema_state= CREATED;
+
+          if ( rj->data.srj->object == CREATE_DATABASE)
+            rj->data.srj->database->schema_state = CREATED;
         }
       }
       free_schema_restore_job(rj->data.srj);
@@ -428,3 +498,27 @@ void restore_job_finish(){
     g_async_queue_push(file_list_to_do, g_strdup("NO_MORE_FILES"));
 }
 
+
+gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry)
+{
+  switch (job->type) {
+    case JOB_RESTORE: {
+      trace("Thread %d: Restoring Job", td->thread_id);
+      gboolean res= process_restore_job(td, job->data.restore_job);
+      if (retry)
+        *retry= res;
+      return TRUE;
+    }
+    case JOB_SHUTDOWN: // TODO: do we need JOB_SHUTDOWN for data_queue as it is done in data_job_queue queue?
+      trace("Thread %d: Shutting down", td->thread_id);
+      g_free(job);
+      return FALSE;
+      break;
+    default:
+      g_free(job);
+      g_critical("Something very bad happened!(1)");
+      exit(EXIT_FAILURE);
+  }
+  g_free(job);
+  return TRUE;
+}

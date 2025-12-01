@@ -89,7 +89,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                         is_mysql_like()? "/*!40001 SQL_NO_CACHE */":"",
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
                         identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where_option || (prefix && prefix->len>0) ? "WHERE" : "", where_option ? where_option : "", where_option && (prefix && prefix->len>0) ? "AND" : "", prefix && prefix->len>0 ? prefix->str : ""),
                         m_message, NULL, "It is NONE with minmax == NULL", NULL);
 //  g_message("Query: %s", query);
@@ -117,7 +117,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_LONGLONG:
     case MYSQL_TYPE_INT24:
-      trace("Integer PK found on `%s`.`%s`",dbt->database->name, dbt->table);
+      trace("Integer PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
       unmin = strtoull(mr->row[0], NULL, 10);
       unmax = strtoull(mr->row[1], NULL, 10);
       nmin  = strtoll (mr->row[0], NULL, 10);
@@ -143,7 +143,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         }
         guint64 _starting_chunk_step_size=0;
         guint percentage_of_fragmentation = diff_btwn_max_min / rows;
-        g_message("percentage_of_fragmentation of `%s`.`%s` %f", dbt->database->name, dbt->table, log(percentage_of_fragmentation ));
+        trace("percentage_of_fragmentation of `%s`.`%s` %f", dbt->database->source_database, dbt->table, log(percentage_of_fragmentation ));
         if (dbt->starting_chunk_step_size == 0){
 
           _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
@@ -175,7 +175,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
         return csi;
       }else{
         if (position==0){
-          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->name, dbt->table);
+          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->source_database, dbt->table);
           return new_none_chunk_step();
         }
       }
@@ -210,7 +210,7 @@ guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where
                         "EXPLAIN SELECT %s %s%s%s FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         field?identifier_quote_character_str:"", field?field:"*", field?identifier_quote_character_str:"",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where?" WHERE ":"",where?where->str:"");
   /* Get minimum/maximum */
   trace("EXPLAIN: %s", query);
@@ -243,7 +243,7 @@ guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where)
   struct M_ROW *mr = m_store_result_row(conn, query= g_strdup_printf(
                         "SELECT %s COUNT(*) FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where?" WHERE ":"",where?where->str:""),
                         m_critical, m_warning, "Failed to get count", NULL);
   g_free(query);
@@ -266,7 +266,7 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
     rows= get_rows_from_count(conn, dbt, NULL);
   } else
     rows= get_rows_from_explain(conn, dbt, NULL ,NULL);
-  g_message("%s.%s has %s%"G_GINT64_FORMAT" rows", dbt->database->name, dbt->table,
+  g_message("%s.%s has %s%"G_GINT64_FORMAT" rows", dbt->database->source_database, dbt->table,
             (check_row_count ? "": "~"), rows);
   dbt->rows_total= rows;
   if (rows > dbt->min_chunk_step_size){
@@ -310,11 +310,11 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
     while (iter && !finish){
       dbt=iter->data;
       g_mutex_lock(dbt->chunks_mutex);
-//    g_message("Checking table: %s.%s", d->database->name, d->table);
+//    g_message("Checking table: %s.%s", d->database->source_database, d->table);
       if (dbt->status != DEFINING){
 
         if (dbt->status == UNDEFINED){
-//        g_message("Checking table: %s.%s DEFINING NOW", d->database->name, d->table);
+//        g_message("Checking table: %s.%s DEFINING NOW", d->database->source_database, d->table);
           *dbt_pointer=iter->data;
           dbt->status = DEFINING;
           are_there_jobs_defining=TRUE;

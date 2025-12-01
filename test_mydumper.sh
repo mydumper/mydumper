@@ -95,7 +95,7 @@ export G_DEBUG=fatal-criticals
 > $myloader_log
 
 optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare,directories:,retry:"
-optstring_short="c:LDd"
+optstring_short="ce:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
@@ -106,6 +106,8 @@ unset case_num
 unset case_repeat
 unset rr_myloader
 unset rr_mydumper
+unset case_min
+unset case_max
 log_level="--verbose 4"
 
 while true
@@ -122,6 +124,23 @@ do
     case_num=${case_num###}
     echo "Executing test case: #${case_num}${case_repeat:+ for $case_repeat times}  "
     case_repeat=${case_repeat:-1}
+    shift 2;;
+  -e)
+    if [[ "$2" == *:* ]]
+    then
+      case_max=${2##*:}
+      [[ case_max -lt 1 ]] &&
+        case_max=$(printf "%u/2\n" -2 | bc)
+    fi
+    case_min=${2%%:*}
+    case_min=${case_min###}
+
+    if (( ${case_max} < ${case_min} ))
+    then
+      echo "Error setting the max case (${case_max}) and the starting case (${case_min})"
+      exit
+    fi
+    echo "Executing test case: #${case_min} up to case ${case_max}"
     shift 2;;
   -L|--rr-myloader)
     myloader="rr record $myloader"
@@ -196,6 +215,14 @@ backtrace ()
    done
 }
 
+prepare_database_in_directory(){
+  prepare_database="test/${1}.sql"
+  if [ -f ${prepare_database} ]
+  then
+    mysql < ${prepare_database}
+  fi
+}
+
 test_case_dir (){
 
   echo "Case #${number}${case_cycle:+:$case_cycle}"
@@ -231,6 +258,8 @@ test_case_dir (){
   if [ -f $mydumper_prepare_database ]
   then
     mysql < $mydumper_prepare_database
+  else
+    prepare_database_in_directory ${DIR}
   fi
 
   if (( ${mydumper_execute} > 0 ))
@@ -312,8 +341,8 @@ test_case_dir (){
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
-      cat $tmp_mydumper_log
-      cat $tmp_myloader_log
+#      cat $tmp_mydumper_log
+#      cat $tmp_myloader_log
       mv $tmp_mydumper_log $mydumper_stor_dir
       mv $tmp_myloader_log $mydumper_stor_dir
       backtrace
@@ -324,6 +353,16 @@ test_case_dir (){
 
 do_case()
 {
+  
+  if [[ -n "$case_min"  ]]
+  then
+    number=$( echo "$2" | cut -d'_' -f2 )
+    if (( $number > $case_min  )) && (( $number < $case_max ))
+    then
+        "$@" || exit
+    fi
+    return
+  fi
   if [[ -n "$case_num"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
@@ -353,38 +392,35 @@ prepare_full_test()
   fi
   tar xzf sakila-db.tar.gz
   sed -i 's/last_update TIMESTAMP/last_update TIMESTAMP NOT NULL/g;s/NOT NULL NOT NULL/NOT NULL/g' sakila-db/sakila-schema.sql
-  mysql < sakila-db/sakila-schema.sql
-  mysql < sakila-db/sakila-data.sql
 
-  echo "Import testing database"
-  DATABASE=myd_test
-  mysql < test/mydumper_testing_db.sql
-
-  # export -- import
-  # 1000 rows -- database must not exist
-  if [[ -n "$prepare_only"  ]]; then
-    exit
-  fi
 }
 
 full_test_global(){
 
   for t in $directories 
   do
-    prepare_full_test
+    mysql < test/clean_databases.sql
+    prepare_database_in_directory ${t}
     for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
     do
       echo "Executing test: $dir"
       do_case test_case_dir ${dir}
     done
-done
+  done
 }
 
-full_test(){
-  full_test_global
-}
+prepare_full_test
 
-full_test &&
+if [[ -n "$prepare_only"  ]]; then
+  for dir in $directories
+  do
+    prepare_database_in_directory ${dir}
+  done
+
+  exit
+fi
+
+full_test_global &&
   finish
 
 #cat $mydumper_log

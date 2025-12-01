@@ -26,7 +26,7 @@
 extern char identifier_quote_character;
 extern const char *identifier_quote_character_str;
 extern guint max_threads_per_table;
-extern gchar *set_names_str;
+extern gchar *set_names_in_conn_by_default;
 extern gchar *set_names_statement;
 extern gboolean no_stream;
 extern gboolean stream;
@@ -41,3 +41,25 @@ extern gboolean no_sync;
 extern gchar *throttle_variable;
 extern guint throttle_value;
 extern guint throttle_time;
+extern gchar *pmm_resolution;
+extern gchar *pmm_path;
+
+extern GOptionEntry common_filter_entries[];
+extern GOptionEntry common_connection_entries[];
+extern GOptionEntry common_entries[];
+extern GOptionEntry pmm_entries[]; 
+
+#ifndef _src_common_options_h
+#define _src_common_options_h
+struct replication_settings{
+  gboolean enabled;
+  gboolean exec_start_replica;
+  gboolean exec_reset_replica;
+  gboolean exec_change_source;
+  gboolean auto_position;
+  gboolean source_ssl;
+  gboolean exec_start_replica_until;
+};
+#endif
+
+gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);

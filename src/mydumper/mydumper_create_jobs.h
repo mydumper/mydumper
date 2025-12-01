@@ -44,7 +44,7 @@ enum job_type {
   JOB_DUMP_DATABASE,
   JOB_DUMP_ALL_DATABASES,
   JOB_DUMP_TABLE_LIST,
-  JOB_WRITE_MASTER_STATUS
+  JOB_WRITE_SOURCE_AND_REPLICA_STATUS
 };
 
 struct dump_table_job{
@@ -108,6 +108,8 @@ struct table_job {
 
 #endif
 
+void initialize_create_jobs(struct configuration *_conf);
+
 struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item);
 void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 part, struct chunk_step_item *chunk_step_item, void f(), GAsyncQueue *queue);
 void create_job_defer(struct db_table *dbt, GAsyncQueue *queue);
@@ -116,17 +118,17 @@ void create_job_to_determine_chunk_type(struct db_table *dbt, void f(), GAsyncQu
 void free_table_job(struct table_job *tj);
 struct job * create_job_to_dump_chunk_without_enqueuing(struct db_table *dbt, char *partition, guint64 part, char *order_by, struct chunk_step_item *chunk_step_item);
 
-void create_job_to_dump_metadata(struct configuration *conf, FILE *mdfile);
-void create_job_to_dump_tablespaces(struct configuration *conf);
-void create_job_to_dump_post(struct database *database, struct configuration *conf);
-void create_job_to_dump_table_schema(struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_view(struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_sequence(struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_checksum(struct db_table * dbt, struct configuration *conf);
-void create_job_to_dump_all_databases(struct configuration *conf);
-void create_job_to_dump_database(struct database *database, struct configuration *conf);
-void create_job_to_dump_schema(struct database* database, struct configuration *conf);
-void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt, struct configuration *conf);
-void create_job_to_dump_schema_triggers(struct database *database, struct configuration *conf);
-void create_job_to_dump_table(struct configuration *conf, gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine);
-void create_job_to_dump_table_list(gchar **table_list, struct configuration *conf);
+void create_job_to_write_source_and_replica_status(FILE *mdfile);
+void create_job_to_dump_tablespaces();
+void create_job_to_dump_post(struct database *database);
+void create_job_to_dump_table_schema(struct db_table *dbt);
+void create_job_to_dump_view(struct db_table *dbt);
+void create_job_to_dump_sequence(struct db_table *dbt);
+void create_job_to_dump_checksum(struct db_table * dbt);
+void create_job_to_dump_all_databases();
+void create_job_to_dump_database(struct database *database);
+void create_job_to_dump_schema(struct database* database);
+void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt);
+void create_job_to_dump_schema_triggers(struct database *database);
+void create_job_to_dump_table(gboolean is_view, gboolean is_sequence, struct database *database, gchar *table, gchar *collation, gchar *engine);
+void create_job_to_dump_table_list(gchar **table_list);

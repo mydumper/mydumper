@@ -62,11 +62,15 @@ guint64 max_chunk_step_size = 0;
 gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
+guint num_sequences=0;
+char **ignore_engines = NULL;
+extern gchar *initial_source_log;
+extern gchar *initial_source_pos;
+extern gchar *initial_source_gtid;
 
 // Static
 static GMutex *init_mutex = NULL;
 static gchar *binlog_snapshot_gtid_executed = NULL; 
-static char **ignore_engines = NULL;
 static int sync_wait = -1;
 static GMutex *table_schemas_mutex = NULL;
 static GMutex *trigger_schemas_mutex = NULL;
@@ -76,7 +80,7 @@ static GThread **threads=NULL;
 static struct thread_data *thread_data;
 
 static
-void dump_database_thread(MYSQL *, struct configuration*, struct database *);
+void dump_database_thread(MYSQL *, struct database *);
 static
 void *working_thread(struct thread_data *td);
 
@@ -141,6 +145,8 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].binlog_snapshot_gtid_executed = NULL;
     thread_data[n].pause_resume_mutex=NULL;
     thread_data[n].table_name=NULL;
+    thread_data[n].local_row_count = 0;
+    thread_data[n].local_row_count_dbt = NULL;
     thread_data[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
     thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
@@ -190,7 +196,6 @@ void finalize_working_thread(){
   if (binlog_snapshot_gtid_executed!=NULL)
     g_free(binlog_snapshot_gtid_executed);
 
-  finalize_chunk();
   g_free(thread_data);
   g_free(threads);
   finalize_table();
@@ -208,16 +213,16 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
         !strcasecmp(row[0], "data_dictionary") ||
         (tables_skiplist_file && check_skiplist(row[0], NULL)))
       continue;
-    struct database * db_tmp=NULL;
-    if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
+    struct database * db_tmp=get_database(td->thrconn,row[0],!no_schemas && (eval_regex(row[0], NULL)));
+/*    if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
       g_mutex_lock(db_tmp->ad_mutex);
       if (!db_tmp->already_dumped){
         create_job_to_dump_schema(db_tmp, td->conf);
         db_tmp->already_dumped=TRUE;
       }
       g_mutex_unlock(db_tmp->ad_mutex);
-    }
-    create_job_to_dump_database(db_tmp, td->conf);
+    }*/
+    create_job_to_dump_database(db_tmp);
   }
   if (g_atomic_int_dec_and_test(&database_counter)) {
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
@@ -230,8 +235,8 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
 void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
   g_message("Thread %d: dumping db information for `%s`", td->thread_id,
-            ddj->database->name);
-  dump_database_thread(td->thrconn, td->conf, ddj->database);
+            ddj->database->source_database);
+  dump_database_thread(td->thrconn, ddj->database);
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -240,6 +245,7 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   }
 }
 
+static
 void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
 
   gchar **dt = NULL;
@@ -259,8 +265,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
     guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
     determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
-    struct database * database=NULL;
-    if (get_database(conn, dt[0], &database)){
+    struct database * database=get_database(conn, dt[0], TRUE);
+/*    if (get_database(conn, dt[0], &database)){
       if (!database->already_dumped){
         g_mutex_lock(database->ad_mutex);
         if (!database->already_dumped){
@@ -270,7 +276,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_mutex_unlock(database->ad_mutex);
 //        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
       }
-    }
+    }*/
 
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(result))) {
@@ -286,23 +292,26 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         is_view = 1;
 
       if ((get_product() == SERVER_TYPE_MARIADB) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE")))
+          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE"))){
         is_sequence = 1;
 
+        g_atomic_int_inc(&num_sequences);
+      }
+
       /* Checks skip list on 'database.table' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[0]))
+      if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))
         continue;
 
       /* Special tables */
-      if (is_mysql_special_tables(database->name, row[0])) {
+      if (is_mysql_special_tables(database->source_database, row[0])) {
         continue;
       }
 
       /* Checks PCRE expressions on 'database.table' string */
-      if (!eval_regex(database->name, row[0]))
+      if (!eval_regex(database->source_database, row[0]))
         continue;
 
-      create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
+      create_job_to_dump_table(is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -410,7 +419,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
     }else{
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
-  }else
+  }else if (sync_thread_lock_mode != NO_LOCK)
     m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
@@ -439,60 +448,63 @@ void check_connection_status(struct thread_data *td){
 }
 
 
-/* Write some stuff we know about snapshot, before it changes */
-void write_snapshot_info(MYSQL *conn, FILE *file) {
-  char *masterlog = NULL;
-  char *masterpos = NULL;
-  char *mastergtid = NULL;
-
-  
+void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
   struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
   if ( mr->row ) {
-    masterlog = g_strdup(mr->row[0]);
-    masterpos = g_strdup(mr->row[1]);
-    /* Oracle/Percona GTID */
+    *masterlog = g_strdup(mr->row[0]);
+    *masterpos = g_strdup(mr->row[1]);
+    // Oracle/Percona GTID
     if (mysql_num_fields(mr->res) == 5) {
-      mastergtid = g_strdup(remove_new_line(mr->row[4]));
+      *mastergtid = g_strdup(remove_new_line(mr->row[4]));
     } else {
-      /* Let's try with MariaDB 10.x */
-      /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
- *        * cluster, gtid_binlog_pos works as well with normal mariadb server
- *               * https://jira.mariadb.org/browse/MDEV-10279 */
+      // Let's try with MariaDB 10.x
+      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
+      // cluster, gtid_binlog_pos works as well with normal mariadb server
+      // https://jira.mariadb.org/browse/MDEV-10279      
       m_store_result_row_free(mr);
       mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
       if (mr->row){
-        mastergtid = g_strdup(remove_new_line(mr->row[0]));
+        *mastergtid = g_strdup(remove_new_line(mr->row[0]));
       }
     }
   }
   m_store_result_row_free(mr);
+}
 
-  if (masterlog) {
-    fprintf(file, "[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
-    if (source_data >= 0){
+
+/* Write some stuff we know about snapshot, before it changes */
+static
+void write_source_info(MYSQL *conn, FILE *file) {
+
+  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+  if (initial_source_log) {
+    fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    if (initial_source_gtid && strlen(initial_source_gtid)>0)
+      fprintf(file, "# executed_gtid_set = \"%s\"\n", initial_source_gtid);
+    fprintf(file, "# SOURCE_LOG_FILE = \"%s\"\n# SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
+
+    if (source_data.enabled){
       fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
-      if (((source_data) & (1<<(3)))>0)
+      if (source_data.source_ssl)
         fprintf(file, "SOURCE_SSL = 1\n");
       else
         fprintf(file, "#SOURCE_SSL = {0|1}\n");
-      if (mastergtid && strlen(mastergtid)>0)
-        fprintf(file, "executed_gtid_set = \"%s\"\n", mastergtid);
-      if (((source_data) & (1<<(4)))>0){
-        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", masterlog, masterpos);
+      if (initial_source_gtid && strlen(initial_source_gtid)>0)
+        fprintf(file, "executed_gtid_set = \"%s\"\n", initial_source_gtid);
+      if (source_data.auto_position){
+        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
       }else{
-        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", masterlog, masterpos);
+        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
       }
       fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
-          ((source_data) & (1<<(0))) , ((source_data) & (1<<(1)))>0?1:0, ((source_data) & (1<<(2)))>0?1:0);
-		}
+          source_data.exec_reset_replica?1:0 , source_data.exec_change_source?1:0, source_data.exec_start_replica?1:0);
+    }
     g_message("Written master status");
   }
 
-  g_free(masterlog);
-  g_free(masterpos);
-  g_free(mastergtid);
   fflush(file);
 }
 
@@ -552,11 +564,27 @@ void write_replica_info(MYSQL *conn, FILE *file) {
     }
     if (slavehost) {
       slave_count++;
-      fprintf(file, "[replication%s%s]", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
-      fprintf(file, "\n# relay_master_log_file = \'%s\'\n# exec_master_log_pos = %s\n# %s = %s\n",
-              slavelog, slavepos, gtid_title, slavegtid);
+      fprintf(file, "\n[replication%s%s]\n", channel_name!=NULL?".":"", channel_name!=NULL?channel_name:"");
+
+      if (slavegtid && strlen(slavegtid)>0)
+        fprintf(file, "%s = \"%s\"\n", gtid_title, slavegtid);
+
+      if (replica_data.auto_position){
+        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", slavelog, slavepos);
+        fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
+      }else{
+        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", slavelog, slavepos);
+        fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
+      }
+
       fprintf(file,"%s",replication_section_str->str);
-      fprintf(file,"# myloader_exec_reset_slave = 0 # 1 means execute the command\n# myloader_exec_change_master = 0 # 1 means execute the command\n# myloader_exec_start_slave = 0 # 1 means execute the command\n");
+      if (replica_data.source_ssl)
+        fprintf(file, "SOURCE_SSL = 1\n");
+      else
+        fprintf(file, "#SOURCE_SSL = {0|1}\n");
+
+      fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
+          replica_data.exec_reset_replica?1:0 , replica_data.exec_change_source?1:0, replica_data.exec_start_replica?1:0);
       g_message("Written slave status");
     }
   }
@@ -585,16 +613,13 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_TABLE:
       thd_JOB_TABLE(td, job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
-      write_snapshot_info(td->thrconn, job->job_data);
+    case JOB_WRITE_SOURCE_AND_REPLICA_STATUS:
+//      if (source_data.enabled)
+      write_source_info(td->thrconn, job->job_data);
       // Write replica information
-      if (get_product() != SERVER_TYPE_TIDB) {
-        if (source_data >=0 )
+      if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
-      }
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:
@@ -648,17 +673,18 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_SCHEMA_POST:
       do_JOB_SCHEMA_POST(td,job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
+/*    case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
+      */
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
       break;
     default:
-      m_error("Something very bad happened!");
+      m_error("Something very bad happened! %d", job->type);
     }
   return TRUE;
 }
@@ -675,6 +701,7 @@ void check_pause_resume( struct thread_data *td ){
   }
 }
 
+static
 void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_builder, GAsyncQueue *chunk_step_queue){
   struct job *job = NULL;
   for (;;) {
@@ -707,12 +734,12 @@ void build_lock_tables_statement(struct configuration *conf){
     dbt = (struct db_table *)iter->data;
     conf->lock_tables_statement = g_string_sized_new(30);
     g_string_printf(conf->lock_tables_statement, "LOCK TABLES %s%s%s.%s%s%s READ LOCAL",
-                    identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+                    identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     iter = iter->next;
     for (; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       g_string_append_printf(conf->lock_tables_statement, ", %s%s%s.%s%s%s READ LOCAL",
-                             identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+                             identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     }
   }
   g_mutex_unlock(non_transactional_table->mutex);
@@ -819,234 +846,6 @@ void *working_thread(struct thread_data *td) {
   mysql_thread_end();
   return NULL;
 }
-/*
-static
-GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
-  MYSQL_ROW row;
-
-  GString *field_list = g_string_new("");
-
-  gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
-                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and extra "
-                      "not like '%%VIRTUAL GENERATED%%' and extra not like '%%STORED GENERATED%%' ORDER BY ORDINAL_POSITION ASC",
-                      database, table);
-  MYSQL_RES *res=m_store_result_critical(conn, query, "Failed to get Selectable Fields", NULL);
-  g_free(query);
-
-  gboolean first = TRUE;
-  while ((row = mysql_fetch_row(res))) {
-    if (first) {
-      first = FALSE;
-    } else {
-      g_string_append(field_list, ",");
-    }
-
-    char *field_name= identifier_quote_character_protect(row[0]);
-    gchar *tb = g_strdup_printf("%s%s%s", identifier_quote_character_str, field_name, identifier_quote_character_str);
-    g_free(field_name);
-    g_string_append(field_list, tb);
-    g_free(tb);
-  }
-
-  mysql_free_result(res);
-
-  return field_list;
-}
-
-static
-gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
-  gchar *query =
-      g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
-                      "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
-                      "COLUMN_TYPE ='json'",
-                      database, table);
-  struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get JSON fields on %s.%s: %s", database, table, query);
-  g_free(query);
-  if (mr->row){
-    m_store_result_row_free(mr);
-    return TRUE;
-  }
-  m_store_result_row_free(mr);
-  return FALSE;
-}
-
-static
-gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
-  gboolean result = FALSE;
-  if (ignore_generated_fields)
-    return FALSE;
-
-  gchar *query = g_strdup_printf(
-      "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
-      "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
-      "LIMIT 1",
-      database, table);
-
-  struct M_ROW *mr = m_store_result_row(conn, query, m_warning, m_message, "Failed to detect generated fields", NULL);
-  g_free(query);
-  result=mr->row!=NULL;
-  m_store_result_row_free(mr);
-  return result;
-}
-
-static
-gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
-  g_mutex_lock(character_set_hash_mutex);
-  gchar *character_set = g_hash_table_lookup(character_set_hash, collation);
-  if (character_set == NULL){
-    gchar *query =
-      g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS "
-                      "WHERE collation_name='%s'",
-                      collation);
-    struct M_ROW *mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
-    g_free(query);
-    if (mr->row)
-      g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
-    m_store_result_row_free(mr);
-  }
-  g_mutex_unlock(character_set_hash_mutex);
-  return character_set;
-}
-
-static
-void get_primary_key_separated_by_comma(struct db_table * dbt) {
-  GString *field_list = g_string_new(""); 
-  GList *list=dbt->primary_key;
-  gboolean first = TRUE;
-  while (list){
-    if (first) {
-      first = FALSE;
-    }else{
-      g_string_append(field_list, ",");
-    }
-    char *field_name= identifier_quote_character_protect((char*) list->data);
-    gchar *tb = g_strdup_printf("%s%s%s", identifier_quote_character_str, field_name, identifier_quote_character_str);
-    g_free(field_name);
-    g_string_append(field_list, tb);
-    list=list->next;
-  }
-  if (field_list->len>0)
-    dbt->primary_key_separated_by_comma = g_string_free(field_list, FALSE); 
-}
-
-static
-gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
-                      struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence)
-{
-  gchar * lkey = build_dbt_key(database->name,table);
-	g_mutex_lock(all_dbts_mutex);
-  struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
-  gboolean b;
-  if (dbt){
-    g_free(lkey);
-    b=FALSE;
-    g_mutex_unlock(all_dbts_mutex);
-  }else{
-    dbt = g_new(struct db_table, 1);
-		dbt->key=lkey;
-    dbt->status = UNDEFINED;
-    g_hash_table_insert(all_dbts, lkey, dbt);
-    g_mutex_unlock(all_dbts_mutex);
-    dbt->database = database;
-    dbt->table = identifier_quote_character_protect(table);
-    dbt->table_filename = get_ref_table(dbt->table);
-    dbt->is_sequence= is_sequence;
-    if (table_collation==NULL)
-      dbt->character_set = NULL;
-    else{
-      dbt->character_set=get_character_set_from_collation(conn, table_collation);
-      if ( dbt->character_set == NULL)
-        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->name,table);
-    }
-    dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
-    dbt->rows_lock= g_mutex_new();
-    dbt->escaped_table = escape_string(conn,dbt->table);
-    dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, lkey);
-    dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
-    parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
-
-    dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
-    dbt->max_threads_per_table=max_threads_per_table;
-    dbt->current_threads_running=0;
-
-    // Load chunk step size values
-    gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
-    if (rows_p_chunk )
-      dbt->split_integer_tables=parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size),"Invalid option on rows in configuration file");
-    else{
-      dbt->split_integer_tables=split_integer_tables;
-      dbt->min_chunk_step_size=min_chunk_step_size;
-      dbt->starting_chunk_step_size=starting_chunk_step_size;
-      dbt->max_chunk_step_size=max_chunk_step_size;
-    }
-    if (dbt->min_chunk_step_size == 1 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size != dbt->max_chunk_step_size ){
-      dbt->min_chunk_step_size = 2;
-      dbt->starting_chunk_step_size = 2;
-      g_warning("Setting min and start rows per file to 2 on %s", lkey);
-    }
-    dbt->is_fixed_length=dbt->min_chunk_step_size != 0 && dbt->min_chunk_step_size == dbt->starting_chunk_step_size && dbt->starting_chunk_step_size == dbt->max_chunk_step_size;
-    // We are disabling the file size limit when the user set a specific --rows size
-    dbt->chunk_filesize=dbt->is_fixed_length?0:chunk_filesize;
-
-    if ( dbt->min_chunk_step_size==0)
-      dbt->min_chunk_step_size=MIN_CHUNK_STEP_SIZE;
-
-    // honor --rows-hard
-    if ( max_integer_chunk_step_size != 0 && (dbt->max_chunk_step_size > max_integer_chunk_step_size || dbt->max_chunk_step_size == 0 ))
-      dbt->max_chunk_step_size=max_integer_chunk_step_size;
-    if ( min_integer_chunk_step_size != 0 && (dbt->min_chunk_step_size < min_integer_chunk_step_size ))
-      dbt->min_chunk_step_size=min_integer_chunk_step_size;
-
-
-    dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey), NULL, 10):num_threads;
-    dbt->estimated_remaining_steps=1;
-    dbt->min=NULL;
-    dbt->max=NULL;
-    dbt->chunks=NULL;
-    dbt->load_data_header=NULL;
-    dbt->load_data_suffix=NULL;
-    dbt->insert_statement=NULL;
-    dbt->chunks_mutex=g_mutex_new();
-    dbt->chunks_queue=g_async_queue_new();
-    dbt->chunks_completed=g_new(int,1);
-    *(dbt->chunks_completed)=0;
-    get_primary_key(conn,dbt,conf);
-    dbt->primary_key_separated_by_comma = NULL;
-    if (order_by_primary_key)
-      get_primary_key_separated_by_comma(dbt);
-    dbt->multicolumn = !use_single_column && g_list_length(dbt->primary_key) > 1;
-
-    gchar *columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
-
-    dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
-
-    dbt->select_fields=NULL;
-
-    if (columns_on_select){
-      dbt->select_fields=g_string_new(columns_on_select);
-    }else if (!dbt->columns_on_insert){
-      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
-      if (dbt->complete_insert) {
-        dbt->select_fields = get_selectable_fields(conn, dbt->database->escaped, dbt->escaped_table);
-      }
-    }
-
-//    dbt->anonymized_function=get_anonymized_function_for(conn, dbt);
-    dbt->anonymized_function=NULL;
-    dbt->indexes_checksum=NULL;
-    dbt->data_checksum=NULL;
-    dbt->schema_checksum=NULL;
-    dbt->triggers_checksum=NULL;
-    dbt->rows=0;
- // dbt->chunk_functions.process=NULL;
-    b=TRUE;
-  }
-  *d=dbt;
-  return b; 
-}
-*/
 
 static
 void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view,
@@ -1054,12 +853,14 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
                        char *collation, gchar *ecol)
 {
     /* Green light! */
+/*
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
     create_job_to_dump_schema(database, conf);
     database->already_dumped=TRUE;
   }
   g_mutex_unlock(database->ad_mutex);
+*/
 
   struct db_table *dbt=NULL;
   gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence);
@@ -1072,15 +873,15 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       g_mutex_lock(table_schemas_mutex);
       table_schemas=g_list_prepend( table_schemas, dbt) ;
       g_mutex_unlock(table_schemas_mutex);
-      create_job_to_dump_table_schema( dbt, conf);
+      create_job_to_dump_table_schema( dbt);
     }
     if (dump_triggers && !database->dump_triggers && !dbt->object_to_export.no_trigger) {
-      create_job_to_dump_triggers(conn, dbt, conf);
+      create_job_to_dump_triggers(conn, dbt);
     }
     if (!no_data && !dbt->object_to_export.no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
-          create_job_to_dump_checksum(dbt, conf);
+          create_job_to_dump_checksum(dbt);
         }
         if (trx_tables ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
@@ -1106,11 +907,11 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
   } else if (is_view) {
     if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_view(dbt, conf);
+      create_job_to_dump_view(dbt);
     }
   } else { // is_sequence
     if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_sequence(dbt, conf);
+      create_job_to_dump_sequence(dbt);
     }
   }
   }
@@ -1131,18 +932,18 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   if (dump_routines) {
     g_assert(nroutines > 0);
     for (guint r= 0; r < nroutines; r++) {
-      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
-      result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->name);
+      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->source_database_escaped);
+      result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->source_database);
       g_free(query);
       if (!result)
         return FALSE;
       while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
-        if (tables_skiplist_file && check_skiplist(database->name, row[1]))
+        if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
           continue;
 
         /* Checks PCRE expressions on 'database.sp' string */
-        if (!eval_regex(database->name, row[1]))
+        if (!eval_regex(database->source_database, row[1]))
           continue;
 
         mysql_free_result(result);
@@ -1154,17 +955,17 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
   if (dump_events) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->name, identifier_quote_character_str);
-    result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->name);
+    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->source_database, identifier_quote_character_str);
+    result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->source_database);
     g_free(query);
     if (!result)
       return FALSE;
     while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
+      if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if ( !eval_regex(database->name, row[1]))
+      if ( !eval_regex(database->source_database, row[1]))
         continue;
 
       mysql_free_result(result);
@@ -1176,23 +977,22 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 }
 
 static
-void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
+void dump_database_thread(MYSQL *conn, struct database *database) {
 
-  if (mysql_select_db(conn, database->name)) {
-    g_critical("Could not select database: %s (%s)", database->name, mysql_error(conn));
+  if (mysql_select_db(conn, database->source_database)) {
+    g_critical("Could not select database: %s (%s)", database->source_database, mysql_error(conn));
     errors++;
     return;
   }
 
   const char *query= "SHOW TABLE STATUS";
-  MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->name);
+  MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->source_database);
   if (!result)
     return;
 
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
 
-  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -1217,7 +1017,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
     if (!is_view && row[ecol] == NULL) {
-      g_warning("Broken table detected, please review: %s.%s", database->name,
+      g_warning("Broken table detected, please review: %s.%s", database->source_database,
                 row[0]);
       if (exit_if_broken_table_found)
         m_error("Broken table detected");
@@ -1227,11 +1027,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
     if (dump && ignore_engines && !is_view && !is_sequence) {
-      for (i = 0; ignore_engines[i] != NULL; i++) {
-        if (g_ascii_strcasecmp(ignore_engines[i], row[ecol]) == 0) {
-          dump = 0;
-          break;
-        }
+      if (m_pstrstr(ignore_engines, row[ecol])){
+        dump = 0;
+        break;
       }
     }
 
@@ -1248,21 +1046,21 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     /* In case of table-list option is enabled, check if table is part of the
      * list */
     /* if tables and db both exists , should not call dump_database_thread */
-    if (tables && !is_table_in_list(database->name, row[0], tables))
+    if (tables && !is_table_in_list(database->source_database, row[0], tables))
       continue;
 
     /* Special tables */
-    if (is_mysql_special_tables(database->name, row[0])) {
+    if (is_mysql_special_tables(database->source_database, row[0])) {
       dump = 0;
       continue;
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist_file && check_skiplist(database->name, row[0]))
+    if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (!eval_regex(database->name, row[0]))
+    if (!eval_regex(database->source_database, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -1270,8 +1068,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       GList *iter;
       for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
         if (g_ascii_strcasecmp(
-                iter->data, g_strdup_printf("%s.%s", database->name, row[0])) == 0) {
-          g_message("NO UPDATED TABLE: %s.%s", database->name, row[0]);
+                iter->data, g_strdup_printf("%s.%s", database->source_database, row[0])) == 0) {
+          g_message("NO UPDATED TABLE: %s.%s", database->source_database, row[0]);
           dump = 0;
         }
       }
@@ -1279,16 +1077,16 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     if (!dump)
       continue;
-    create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
+    create_job_to_dump_table(is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
   }
 
   mysql_free_result(result);
 
   if (determine_if_schema_is_elected_to_dump_post(conn,database))
-    create_job_to_dump_post(database, conf);
+    create_job_to_dump_post(database);
 
   if (dump_triggers && database->dump_triggers)
-    create_job_to_dump_schema_triggers(database, conf);
+    create_job_to_dump_schema_triggers(database);
 
   return;
 }

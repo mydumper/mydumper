@@ -26,16 +26,21 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_process.h"
 #include "myloader_restore.h"
+#include "myloader_database.h"
 
 struct statement * new_statement();
+guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean skip_definer = FALSE;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
+
+GMutex *load_data_list_mutex=NULL;
+GHashTable * load_data_list = NULL;
 
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
@@ -44,6 +49,11 @@ struct io_restore_result end_restore_thread = { NULL, NULL};
 GThread **restore_threads=NULL;
 
 extern gchar *ignore_errors;
+
+void initialize_restore(){
+  load_data_list_mutex=g_mutex_new();
+  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+}
 
 struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
@@ -223,8 +233,9 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
   guint tr=0,current_offset_line=offset_line-1;
   gchar *current_line=next_line;
   next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
+  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix) + 65536);
   guint current_rows=0;
+  guint64 transaction_size=0;
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
@@ -242,13 +253,19 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       current_offset_line++;
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
+      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size) )){ //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
+        tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
+      }
+      transaction_size+=new_insert->len;
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
       g_usleep(throttle_time);
-      g_mutex_lock(dbt->mutex);
+      table_lock(dbt);
       dbt->rows_inserted+=current_rows;
-      g_mutex_unlock(dbt->mutex);
+      table_unlock(dbt);
       if (cd->transaction && *query_counter == commit_count) {
         tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
       }
 
       if (tr > 0){
@@ -256,6 +273,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       }
       if (mysql_warning_count(cd->thrconn)){
         g_warning("Connection %ld: Warnings found during INSERT between lines: %d and %d: %s",cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
+        detailed_errors.data_warnings+=mysql_warning_count(cd->thrconn);
       }
     }else
       tr=0;
@@ -422,7 +440,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");
@@ -499,7 +517,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");

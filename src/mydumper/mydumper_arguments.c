@@ -44,7 +44,6 @@ const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
 
-
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
   if (g_strstr_len(option_name,10,"--compress") || g_strstr_len(option_name,2,"-c")){
@@ -75,8 +74,15 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     return FALSE;
   }
-  if (!strcmp(option_name,"--trx-tables")){
-    trx_tables=atoi(value);
+  if (!g_strcmp0(option_name,"--no-trx-tables")){
+    trx_tables=0;
+    return TRUE;
+  }
+  if (!g_strcmp0(option_name,"--trx-tables")){
+    if (value)
+      trx_tables=atoi(value);
+    else
+      trx_tables=1;
     return TRUE;
   }
   if (g_strstr_len(option_name,6,"--rows") || g_strstr_len(option_name,2,"-r")){
@@ -110,19 +116,19 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (!strcmp(option_name,"--trx-consistency-only")){
+  if (!g_strcmp0(option_name,"--trx-consistency-only")){
     m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
   }
-  if (!strcmp(option_name,"--less-locking")){
+  if (!g_strcmp0(option_name,"--less-locking")){
     m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
   }
-  if (!strcmp(option_name,"--lock-all-tables")){
+  if (!g_strcmp0(option_name,"--lock-all-tables")){
     m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--no-locks")){
+  if (!g_strcmp0(option_name,"--no-locks")){
     m_critical("--no-locks is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--sync-thread-lock-mode")){
+  if (!g_strcmp0(option_name,"--sync-thread-lock-mode")){
     if (!g_ascii_strcasecmp(value,"AUTO")){
       sync_thread_lock_mode=AUTO;
       return TRUE;
@@ -143,9 +149,38 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       sync_thread_lock_mode=NO_LOCK;
       return TRUE;
     }
+    if (!g_ascii_strcasecmp(value,"SAFE_NO_LOCK")){
+      sync_thread_lock_mode=SAFE_NO_LOCK;
+      return TRUE;
+    }
   }
-  if (!strcmp(option_name,"--success-on-1146")){
+  if (!g_strcmp0(option_name,"--success-on-1146")){
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
+  }
+
+  if (!g_strcmp0(option_name,"--default-character-set")){
+    gchar ** value_split=g_strsplit(value, ",", 2);
+    if (!value_split)
+      return FALSE;
+    set_names_in_conn_for_sct=g_strdup(value_split[0]);
+    if (g_strv_length(value_split)>1)
+      set_names_in_conn_by_default=g_strdup(value_split[1]);
+    else
+      set_names_in_conn_by_default=set_names_in_conn_for_sct;
+    g_strfreev(value_split);
+    return TRUE;
+  }
+  if (!g_strcmp0(option_name,"--set-names")){
+    gchar ** value_split=g_strsplit(value, ",", 2);
+    if (!value_split)
+      return FALSE;
+    set_names_in_file_for_sct=g_strdup(value_split[0]);
+    if (g_strv_length(value_split)>1)
+      set_names_in_file_by_default=g_strdup(value_split[1]);
+    else
+      set_names_in_file_by_default=set_names_in_file_for_sct;
+    g_strfreev(value_split);
+    return TRUE;
   }
 
   return common_arguments_callback(option_name, value, data, error);
@@ -178,6 +213,8 @@ static GOptionEntry entries[] = {
       "Sets the max time that we are going to wait before kill the FLUSH TABLES related commands. Default: 60", NULL},
     {"ftwrl-timeout-retries", 0, 0, G_OPTION_ARG_INT, &ftwrl_timeout_retries,
       "Sets the amount of retries before give up acquiring FLUSH TABLES. Default: 0, never gives up.", NULL},
+    {"replica-data", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
+      "Includes the replica information", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry extra_entries[] = {
@@ -213,7 +250,7 @@ static GOptionEntry lock_entries[] = {
     {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. "
+      "There are 4 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL and GTID. "
       "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
       "Default: AUTO which uses the best option depending on the database vendor", NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
@@ -226,6 +263,9 @@ static GOptionEntry lock_entries[] = {
       "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
+    {"no-trx-tables", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Indicates that some or all are not transactional tables. "
+      "Locks will take longer to be released, as it needs to determine which tables are not transactional and export them before releasing global lock", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
       "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -250,13 +290,6 @@ static GOptionEntry exec_entries[] = {
       "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
       "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry pmm_entries[] = {
-    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry daemon_entries[] = {
@@ -295,7 +328,7 @@ static GOptionEntry checksum_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &source_db,
       "Comma delimited list of databases to dump", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines_str,
       "Comma delimited list of storage engines to ignore", NULL},
@@ -379,8 +412,10 @@ static GOptionEntry statement_entries[] = {
       "--skip-tz-utc to disable.", NULL},
     {"skip-tz-utc", 0, 0, G_OPTION_ARG_NONE, &skip_tz,
       "Doesn't add SET TIMEZONE on the backup files", NULL},
-    {"set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
-      "Sets the names, use it at your own risk, default binary", NULL },
+    {"set-names",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item is used for the schema files and the second item is used for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
+    {"default-character-set",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item is used when executes SHOW CREATE TABLE and the second item is used for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
       "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

@@ -15,49 +15,49 @@
         Authors:    David Ducos, Percona (david dot ducos at percona dot com)
 */
 
-#include <mysql.h>
 #include <glib.h>
 
-#include "mydumper.h"
 #include "mydumper_common.h"
 #include "mydumper_database.h"
 #include "mydumper_global.h"
+#include "mydumper_create_jobs.h"
 
 GHashTable *database_hash = NULL;
-GMutex * database_hash_mutex = NULL;
+static GMutex * database_hash_mutex = NULL;
+gchar *source_db;
 
-void free_database(struct database * d);
+void free_database(struct database * _database){
+  if (_database->source_database_escaped!=NULL){
+    g_free(_database->source_database_escaped);
+    _database->source_database_escaped=NULL;
+  }
+//  if (_database->ad_mutex){
+//    g_mutex_free(_database->ad_mutex);
+//    _database->ad_mutex=NULL;
+//  }
+  g_free(_database);
+}
 
 void initialize_database(){
   database_hash=g_hash_table_new_full( g_str_hash, g_str_equal,  &g_free, (GDestroyNotify) &free_database );
   database_hash_mutex=g_mutex_new();
 }
 
-struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped){
-  struct database * d=g_new(struct database,1);
-  d->name = backtick_protect(database_name);
-  d->filename = get_ref_table(d->name);
-  d->escaped = escape_string(conn,d->name);
-  d->already_dumped = already_dumped;
-  d->ad_mutex=g_mutex_new();
-  d->schema_checksum=NULL;
-  d->post_checksum=NULL;
-  d->triggers_checksum=NULL;
-  d->dump_triggers= !is_regex_being_used() && tables_list == NULL && g_hash_table_size(conf_per_table.all_object_to_export)==0;
-  g_hash_table_insert(database_hash, d->name,d);
-  return d;
-}
-
-void free_database(struct database * d){
-  if (d->escaped!=NULL){
-    g_free(d->escaped);
-    d->escaped=NULL;
-  }
-  if (d->ad_mutex){
-    g_mutex_free(d->ad_mutex);
-    d->ad_mutex=NULL;
-  }
-  g_free(d);
+static
+struct database * new_database(MYSQL *conn, char *database_name){
+  struct database * _database=g_new(struct database,1);
+  _database->source_database = backtick_protect(database_name);
+  _database->database_name_in_filename = get_ref_table(_database->source_database);
+  _database->source_database_escaped = escape_string(conn,_database->source_database);
+//  _database->already_dumped = already_dumped;
+//  _database->ad_mutex=g_mutex_new();
+  _database->schema_checksum=NULL;
+  _database->post_checksum=NULL;
+  _database->triggers_checksum=NULL;
+  _database->events_checksum=NULL;
+  _database->dump_triggers= !is_regex_being_used() && tables_list == NULL && g_hash_table_size(conf_per_table.all_object_to_export)==0;
+  g_hash_table_insert(database_hash, _database->source_database,_database);
+  return _database;
 }
 
 void free_databases(){
@@ -67,35 +67,37 @@ void free_databases(){
   g_mutex_free(database_hash_mutex);
 }
 
-gboolean get_database(MYSQL *conn, char *database_name, struct database ** database){
+struct database * get_database(MYSQL *conn, char *database_name, gboolean create_job){
   g_mutex_lock(database_hash_mutex);
-  *database=g_hash_table_lookup(database_hash,database_name);
-  if (*database == NULL){
-    *database=new_database(conn,database_name,FALSE);
-    g_mutex_unlock(database_hash_mutex);
-    return TRUE;
+  struct database *database=g_hash_table_lookup(database_hash,database_name);
+  if (database == NULL){
+    database=new_database(conn,database_name);
+    if (create_job)
+      create_job_to_dump_schema(database);
   }
   g_mutex_unlock(database_hash_mutex);
-  return FALSE;
+  return database;
 }
 
 // see print_dbt_on_metadata_gstring() for table write to metadata
 void write_database_on_disk(FILE *mdfile){
   const char q= identifier_quote_character;
-  struct database *d;
+  struct database *_database;
   GList *keys= g_hash_table_get_keys(database_hash);
   keys= g_list_sort(keys, key_strcmp);
   for (GList *it= keys; it; it= g_list_next(it)) {
-    d= (struct database *) g_hash_table_lookup(database_hash, it->data);
-    g_assert(d);
-    if (d->schema_checksum != NULL || d->post_checksum != NULL || d->triggers_checksum)
-      fprintf(mdfile, "\n[%c%s%c]\n", q, d->name, q);
-    if (d->schema_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "schema_checksum", d->schema_checksum);
-    if (d->post_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "post_checksum", d->post_checksum);
-    if (d->triggers_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "triggers_checksum", d->triggers_checksum);
+    _database= (struct database *) g_hash_table_lookup(database_hash, it->data);
+    g_assert(_database);
+    if (_database->schema_checksum != NULL || _database->post_checksum != NULL || _database->triggers_checksum)
+      fprintf(mdfile, "\n[%c%s%c]\n", q, _database->source_database, q);
+    if (_database->schema_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "schema_checksum", _database->schema_checksum);
+    if (_database->post_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "post_checksum", _database->post_checksum);
+    if (_database->events_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "events_checksum", _database->events_checksum);
+    if (_database->triggers_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "triggers_checksum", _database->triggers_checksum);
   }
   g_list_free(keys);
 }

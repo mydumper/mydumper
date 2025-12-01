@@ -34,86 +34,91 @@ GList *ignore_set_list=NULL;
 gboolean mysqldump = FALSE;
 gboolean drop_database = FALSE;
 extern gboolean local_infile;
+extern guint64 max_transaction_size;
+guint64 max_statement_size;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!strcmp(option_name, "--innodb-optimize-keys")) {
+  if (!g_strcmp0(option_name, "--innodb-optimize-keys")) {
     m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
-  }else if (!strcmp(option_name, "--optimize-keys")) {
+  }else if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
-    if (value==NULL || !strcmp(value,"1")){
+    if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, SKIP)) {
+    if (!g_ascii_strcasecmp(value, SKIP)) {
       optimize_keys = FALSE;
       optimize_keys_per_table = FALSE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_PER_TABLE)) {
       optimize_keys_per_table = TRUE;
       optimize_keys_all_tables = FALSE;
       return TRUE;
     }
-    if (!strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
+    if (!g_ascii_strcasecmp(value, AFTER_IMPORT_ALL_TABLES)) {
       optimize_keys_all_tables = TRUE;
       optimize_keys_per_table = FALSE;
       return TRUE;
     }
     g_critical("--optimize-keys accepts: after_import_per_table (default value), after_import_all_tables");
-  } else if (!strcmp(option_name, "--quote-character")) {
-    if (!strcasecmp(value, "BACKTICK") || !strcasecmp(value, "BT") || !strcmp(value, "`")) {
+  } else if (!g_strcmp0(option_name, "--quote-character")) {
+    if (!g_ascii_strcasecmp(value, "BACKTICK") || !g_ascii_strcasecmp(value, "BT") || !g_strcmp0(value, "`")) {
       identifier_quote_character= BACKTICK;
       return TRUE;
     }
-    if (!strcasecmp(value, "DOUBLE_QUOTE") || !strcasecmp(value, "DQ") || !strcmp(value, "\"")) {
+    if (!g_ascii_strcasecmp(value, "DOUBLE_QUOTE") || !g_ascii_strcasecmp(value, "DQ") || !g_strcmp0(value, "\"")) {
       identifier_quote_character= DOUBLE_QUOTE;
       return TRUE;
     }
-    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dt, \"");
-  } else if (!strcmp(option_name, "--checksum")) {
+    g_critical("--quote-character accepts: backtick, bt, `, double_quote, dq, \"");
+  } else if (!g_strcmp0(option_name, "--checksum")) {
     checksum_str=g_strdup(value);
-    if (value == NULL || !strcasecmp(value, "FAIL")) {
+    if (value == NULL || !g_ascii_strcasecmp(value, "FAIL")) {
       checksum_mode= CHECKSUM_FAIL;
       return TRUE;
     }
-    if (!strcasecmp(value, "WARN")) {
+    if (!g_ascii_strcasecmp(value, "WARN")) {
       checksum_mode= CHECKSUM_WARN;
       return TRUE;
     }
-    if (!strcasecmp(value, "SKIP")) {
+    if (!g_ascii_strcasecmp(value, SKIP)) {
       checksum_mode= CHECKSUM_SKIP;
       return TRUE;
     }
     g_critical("--checksum accepts: fail (default), warn, skip");
-  } else if (!strcmp(option_name, "--ignore-set")){
+  } else if (!g_strcmp0(option_name, "--ignore-set")){
     gchar** ignore_set_items= g_strsplit(value, ",", 0);
     guint i=0;
     for (i=0; g_strv_length(ignore_set_items)>i; i++)
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
-  } else if (!strcmp(option_name, "--overwrite-tables")){
+  } else if (!g_strcmp0(option_name, "--overwrite-tables")){
     m_error("Option --overwrite-tables has been deprecated. User -o/--drop-table instead");
     return FALSE;
-  } else if (!strcmp(option_name, "--purge-mode")){
+  } else if (!g_strcmp0(option_name, "--purge-mode")){
     m_error("Option --purge-mode has been deprecated. User -o/--drop-table instead");
     return FALSE;
-  } else if (!strcmp(option_name, "--drop-table") || !strcmp(option_name, "-o")){
+  } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
     overwrite_tables=TRUE;
     if (value){
-      if (!strcmp(value,"TRUNCATE")){
+      if (!g_strcmp0(value,"TRUNCATE")){
         purge_mode=TRUNCATE;
-      } else if (!strcmp(value,"DROP") || !strcmp(value,"") || !strcmp(value,"1")){
+      } else if (!g_ascii_strcasecmp(value,"DROP") || !g_strcmp0(value,"") || !g_strcmp0(value,"1")){
         purge_mode=DROP;
-      } else if (!strcmp(value,"DELETE")){
+      } else if (!g_ascii_strcasecmp(value,"DELETE")){
         purge_mode=DELETE;
-      } else if (!strcmp(value,"NONE")){
+      } else if (!g_ascii_strcasecmp(value,"NONE")){
         purge_mode=NONE;
-      } else if (!strcmp(value,"FAIL")){
+      } else if (!g_ascii_strcasecmp(value,"FAIL")){
         purge_mode=FAIL;
+      } else if (!g_ascii_strcasecmp(value,SKIP)){
+        overwrite_tables=FALSE;
+        purge_mode=PM_SKIP;
       } else {
         m_error("Purge mode unknown: %s", value);
         return FALSE;
@@ -121,7 +126,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }else
       purge_mode=DROP;
     return TRUE;
-  } else if (!strcmp(option_name, "--enable-binlog") || !strcmp(option_name, "-e")){
+  } else if (!g_strcmp0(option_name, "--enable-binlog") || !g_strcmp0(option_name, "-e")){
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
     return FALSE;
   }
@@ -138,7 +143,7 @@ static GOptionEntry entries[] = {
      "Log file name to use, by default stdout is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
      "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
      "An alternative database to restore into", NULL},
     {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
       "If enabled, during INSERT IGNORE the warnings will be printed", NULL},
@@ -196,8 +201,8 @@ static GOptionEntry execution_entries[] = {
       "Executes a DROP DATABASE if the schema database file is found. ", NULL},
     {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
-      "This option accepts no parameter which set default to: DROP. "
-      "If this option is not used, the default is set to: FAIL", NULL},
+      "If the option is not set, the default is set to: FAIL. "
+      "If the option is used without a parameter, the default is: DROP.", NULL},
     {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
       "Option --overwrite-tables has been deprecated. User -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
@@ -217,29 +222,23 @@ static GOptionEntry execution_entries[] = {
       "Starting with largest table is better, but this can be ignored due performance impact when you have high amount of tables", NULL},
     {"set-gtid-purged", 0, 0, G_OPTION_ARG_NONE, &set_gtid_purge,
       "After import, it will execute the SET GLOBAL gtid_purged with the value found on source section of the metadata file", NULL},
+    {"num-sequences", 0, 0, G_OPTION_ARG_INT, &num_sequences,
+      "Amount of sequences in the backup. It is read from [config] in the metadata file. Default: 0 ", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry pmm_entries[] = {
-    { "pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    { "pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
 
 static GOptionEntry filter_entries[] ={
     {"source-db", 's', 0, G_OPTION_ARG_STRING, &source_db,
      "Database to restore", NULL},
-    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers, "Do not import triggers. By default, it imports triggers",
-     NULL},
+    {"skip-triggers", 0, 0, G_OPTION_ARG_NONE, &skip_triggers,
+      "Do not import triggers. By default, it imports triggers", NULL},
     {"skip-post", 0, 0, G_OPTION_ARG_NONE, &skip_post,
      "Do not import events, stored procedures and functions. By default, it imports events, stored procedures or functions", NULL},
-    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, "Do not import constraints. By default, it imports constraints",
-     NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, "Do not import secondary indexes on InnoDB tables. By default, it import the indexes",
-     NULL},
-    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, "Do not dump or import table data",
-     NULL},
+    {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
+      "Do not import constraints. By default, it imports constraints", NULL },
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
+      "Do not import secondary indexes on InnoDB tables. By default, it import the indexes", NULL},
+    {"no-data", 0, 0, G_OPTION_ARG_NONE, &no_data, 
+      "Do not dump or import table data", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry statement_entries[] ={
@@ -247,13 +246,17 @@ static GOptionEntry statement_entries[] ={
      "Split the INSERT statement into this many rows.", NULL},
     {"queries-per-transaction", 'q', 0, G_OPTION_ARG_INT, &commit_count,
      "Number of queries per transaction, default 1000", NULL},
+    {"max-statement-size", 0, 0, G_OPTION_ARG_INT, &max_statement_size,
+     "Informs what is the max statement size. Currently not being used.", NULL},
+    {"max-transaction-size", 0, 0, G_OPTION_ARG_INT, &max_transaction_size,
+     "Set the max size of the transaction in megabytes, default 1000", NULL},
     {"append-if-not-exist", 0, 0, G_OPTION_ARG_NONE,&append_if_not_exist,
       "Appends IF NOT EXISTS to the create table statements. This will be removed when https://bugs.mysql.com/bug.php?id=103791 has been implemented", NULL},
-    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_str,
+    { "set-names",0, 0, G_OPTION_ARG_STRING, &set_names_in_conn_by_default,
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
-    { "ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
+    {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 

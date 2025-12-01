@@ -34,17 +34,43 @@ jobs:
       
       - name: Extract metadata (tags, labels) for Docker
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: mydumper/mydumper
-      
+
+      - name: Filter out 'latest' tag
+        id: filtered_tags
+        run: |
+          # Get the raw tags output
+          RAW_TAGS="${{ steps.meta.outputs.tags }}"
+          RAW_VERSION="${{ steps.meta.outputs.version }}"
+          # Initialize an empty array for filtered tags
+          FILTERED_TAG_ARRAY=()
+          
+          # Split the raw tags by newline and iterate
+          for tag in $RAW_TAGS; do
+            # Trim whitespace and check if not 'latest'
+            if [ $(($(echo "$RAW_VERSION" | cut -d"." -f3 | cut -d"-" -f1)%2)) -eq 1 ] || [[ "$tag" != *"latest" ]]; then
+              FILTERED_TAG_ARRAY+=("$tag")
+            fi
+          done
+          
+          # Join the filtered tags with a comma for the build-push-action
+          JOINED_TAGS=$(IFS=,; echo "${FILTERED_TAG_ARRAY[*]}")
+          echo "tags=$JOINED_TAGS" >> "$GITHUB_OUTPUT"
+
       - name: Build and push Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: docker
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.filtered_tags.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             "tags=${{ github.ref_name }}"
+
+
+
+
+

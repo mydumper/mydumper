@@ -60,17 +60,18 @@ const gchar * get_product_name(){
     case SERVER_TYPE_TIDB:      return "TiDB"; break;
     case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
     case SERVER_TYPE_DOLT:      return "Dolt"; break;
+    case SERVER_TYPE_RDS:       return "RDS"; break;
     case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
     default: return "";
   }
 }
 
 gboolean is_mysql_like(){
-  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN;
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN || get_product() == SERVER_TYPE_RDS;
 }
 
 gboolean server_support_tablespaces(){ 
-  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN;
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_UNKNOWN || get_product() == SERVER_TYPE_RDS;
 }
 
 static
@@ -106,33 +107,50 @@ void detect_version(gchar ** sver){
 static
 void detect_server_version(MYSQL * conn) {
   struct M_ROW *mr = m_store_result_row(conn, "SELECT @@version_comment, @@version",m_warning, m_message, "Not able to determine database version", NULL);
-//  struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
+  //struct M_ROW *mr = m_store_result_row(conn, "SELECT '4f582c03', '8.4.42' ",m_warning, m_message, "Not able to determine database version", NULL);
+  //struct M_ROW *mr = m_store_result_row(conn, "SELECT 'Source distribution', '8.0.40-azure' ",m_warning, m_message, "Not able to determine database version", NULL);
 
   gchar *ascii_version_comment=NULL;
-
+  gchar *_version=NULL;
   if (mr->row){
     ascii_version_comment=g_ascii_strdown(mr->row[0],-1);
     detect_product(mr->row[0],mr->row[1]);
+    _version=g_strdup(mr->row[1]);
   }
 
 	gchar ** sver=NULL;
   if (product == SERVER_TYPE_UNKNOWN){
     m_store_result_row_free(mr);
-    mr = m_store_result_row(conn, "SELECT value FROM system.build_options where name='VERSION_FULL' LIMIT 1",m_warning,m_message,"Not able to determine database version", NULL);
+
+    mr = m_store_result_row(conn, "SHOW DATABASES LIKE 'system'",m_warning,m_message,"Not able to show database 'system'", NULL);
     if (mr->row){
-      gchar * ascii_version=g_ascii_strdown(mr->row[0],-1);
-      gchar ** psver=g_strsplit(ascii_version," ",2);
-      if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
-        product = SERVER_TYPE_CLICKHOUSE;
-      sver=g_strsplit(psver[1],".",4);
+      m_store_result_row_free(mr);
+
+      mr = m_store_result_row(conn, "SELECT value FROM system.build_options where name='VERSION_FULL' LIMIT 1",m_warning,m_message,"Not able to determine database version", NULL);
+      if (mr->row){
+        gchar * ascii_version=g_ascii_strdown(mr->row[0],-1);
+        gchar ** psver=g_strsplit(ascii_version," ",2);
+        if (g_strstr_len(ascii_version, -1, "clickhouse") || g_strstr_len(ascii_version_comment, -1, "clickhouse")){
+          product = SERVER_TYPE_CLICKHOUSE;
+        sver=g_strsplit(psver[1],".",4);
+        }
+        g_strfreev(psver);
+        g_free(ascii_version);
+        goto cleanup;
       }
-      g_strfreev(psver);
-      g_free(ascii_version);
-	}else
+    }
+    m_store_result_row_free(mr);
+    mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'aurora_version'",m_warning, m_message, "Not able to determine if it is an Aurora database", NULL);
+//    mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'version'",m_warning, m_message, "Not able to determine if it is an Aurora database", NULL);
+    if (mr->row){
+       product=SERVER_TYPE_RDS;
+       sver=g_strsplit(_version,".",3);
+    }else
       sver=g_strsplit("0.0.0",".",3);
-	}else
+  }else
     sver=g_strsplit(mr->row[1],".",3);
-  m_store_result_row_free(mr);
+  g_free(_version);
+cleanup:  m_store_result_row_free(mr);
 
   detect_version(sver);
 
@@ -190,6 +208,7 @@ void detect_replica() {
         } 
         break;
       case SERVER_TYPE_MYSQL:
+      case SERVER_TYPE_RDS:
       case SERVER_TYPE_PERCONA:
       case SERVER_TYPE_UNKNOWN:
         if (get_major()>=8 && (get_secondary()>0 || (get_secondary()==0 && get_revision()>=22))) {
@@ -230,9 +249,15 @@ void detect_replica() {
 void server_detect(MYSQL * conn){
   if (server_version_arg){
     gchar ** _product=g_strsplit(server_version_arg,"-",2);
+    if (g_strv_length(_product) != 2){
+      m_error("Not able to correctly determine the product and version which should be <product>-<version> where version will 3 number delimited by dots");
+    }
     detect_product(_product[0],_product[1]);
     if (_product[1]){
       gchar ** sver=g_strsplit(_product[1],".",3);
+      if (g_strv_length(sver) != 3){
+        m_error("Not able to correctly determine the product and version which should be <product>-<version> where version will 3 number delimited by dots");
+      }
       detect_version(sver);
       g_strfreev(sver);
     }

@@ -21,19 +21,42 @@
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_control_job.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_global.h"
 
 GThread *stream_thread = NULL;
 void *process_stream(struct configuration *stream_conf);
 
+static GMutex *metadata_header_mutex=NULL;
+static gboolean metadata_header_done=FALSE;
+static GCond *metadata_header_cond= NULL;
+
 void initialize_stream (struct configuration *c){
   stream_thread = m_thread_new("myloader_stream",(GThreadFunc)process_stream, c, "Stream thread could not be created");
+  metadata_header_mutex=g_mutex_new();
+  metadata_header_cond= g_cond_new();
 }
 
 void wait_stream_to_finish(){
   g_thread_join(stream_thread);
 }
+
+void wait_stream_to_process_metadata_header(){
+  g_mutex_lock(metadata_header_mutex);
+  while(!metadata_header_done)
+    g_cond_wait (metadata_header_cond, metadata_header_mutex);
+  g_mutex_unlock(metadata_header_mutex);
+}
+
+
+void metadata_has_been_processed(){
+  g_mutex_lock(metadata_header_mutex);
+  metadata_header_done=TRUE;
+  g_cond_signal(metadata_header_cond);
+  g_mutex_unlock(metadata_header_mutex);
+}
+
+
 
 size_t read_stream_line(char *buffer, int c_to_read){
     size_t bytes = fread(buffer, sizeof(char), c_to_read, stdin);
@@ -63,6 +86,7 @@ gboolean has_mydumper_suffix(gchar *line){
 }
 
 void *process_stream(struct configuration *stream_conf){
+  (void) stream_conf;
   set_thread_name("STT");
   char * filename=NULL,*real_filename=NULL,* previous_filename=NULL;
   guint stream_buffer_size=no_stream?STREAM_BUFFER_SIZE_NO_STREAM:STREAM_BUFFER_SIZE;
@@ -76,7 +100,7 @@ void *process_stream(struct configuration *stream_conf){
   GString *set_buffer=g_string_new_len("", 1000);
   g_string_set_size(set_buffer,0);
   gboolean writing_set=TRUE;
-  gchar *database_name=db?g_strdup(db):NULL;
+  gchar *database_name=target_db?g_strdup(target_db):NULL;
   gchar *table_name=NULL;
   for(i=0;i<stream_buffer_size;i++){
     buffer[i]='\0';
@@ -157,7 +181,7 @@ read_more:
               filename=NULL;
               // sending previous file for processing
               if(!g_str_has_prefix(new_filename,"mydumper_tmp"))
-                intermediate_queue_new(new_filename);
+                process_filename_push(new_filename);
               new_filename=NULL;
             }
           }
@@ -310,14 +334,14 @@ read_more:
             if (file)
               m_close(file);
             if (previous_filename){
-              intermediate_queue_new(previous_filename);
+              process_filename_push(previous_filename);
               previous_filename=NULL;
             }
             if (g_file_test(real_filename, G_FILE_TEST_EXISTS)){
               if (no_stream){
                  if (total_size>0)
                    m_critical("Different file size in %s. Should be: 0 | Written: %d", filename, total_size);
-                 intermediate_queue_new(filename);
+                 process_filename_push(filename);
               }else{
                 g_warning("Stream Thread: File %s exists in datadir, we are not replacing", real_filename);
                 file = NULL;
@@ -386,23 +410,16 @@ read_more:
     if (file)
       fclose(file);
     if (!no_stream && filename)
-      intermediate_queue_new(g_strdup(filename));
+      process_filename_push(filename);
     g_free(filename);
   }else{
     if (file) 
       m_close(file);
     if (!no_stream && filename)
-      intermediate_queue_new(g_strdup(filename));
+      process_filename_push(filename);
     g_free(filename);
   }
-  intermediate_queue_end();
-  guint n=0;
-  for (n = 0; n < num_threads ; n++) {
-//    g_async_queue_push(stream_conf->data_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->post_table_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->post_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-    g_async_queue_push(stream_conf->view_queue, new_control_job(JOB_SHUTDOWN,NULL,NULL));
-  }
+  process_filename_queue_end();
   return NULL;
 }
 

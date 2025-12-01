@@ -53,8 +53,8 @@
 #define EMPTY_STRING ""
 #define CAST "CAST("
 #define AS_BINARY "AS BINARY)"
-
-
+#define BINARY_CHARSET "binary"
+#define AUTO_CHARSET "auto"
 extern GList *ignore_errors_list;
 extern const gchar *start_replica;
 extern const gchar *stop_replica;
@@ -75,7 +75,10 @@ void initialize_gzip_cmd();
 struct object_to_export{
   gboolean no_data;
   gboolean no_schema;
+  gboolean no_view;
   gboolean no_trigger;
+  gboolean no_index;
+  gboolean no_constraint;
 };
 
 struct configuration_per_table{
@@ -121,17 +124,9 @@ struct function_pointer{
 };
 
 gchar * remove_new_line(gchar *to);
-char * checksum_table_structure(MYSQL *conn, char *database, char *table);
-char * checksum_table(MYSQL *conn, char *database, char *table);
-char * checksum_process_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table);
-char * checksum_view_structure(MYSQL *conn, char *database, char *table);
-char * checksum_database_defaults(MYSQL *conn, char *database, char *table);
-char * checksum_table_indexes(MYSQL *conn, char *database, char *table);
 int write_file(FILE * file, char * buff, int len);
 guint strcount(gchar *text);
-void m_remove0(gchar * directory, const gchar * filename);
+gboolean m_remove0(gchar * directory, const gchar * filename);
 gboolean m_remove(gchar * directory, const gchar * filename);
 GKeyFile * load_config_file(gchar * config_file);
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
@@ -215,7 +210,6 @@ void initialize_conf_per_table(struct configuration_per_table *cpt);
 void parse_object_to_export(struct object_to_export *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
 
-gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
@@ -231,3 +225,7 @@ gboolean create_dir(gchar *directory);
 gchar *build_tmp_dir_name();
 GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, const gchar* error_text);
 void *monitor_throttling_thread (void *queue);
+gchar *set_names_statement_template(gchar *_set_names);
+void execute_set_names(MYSQL *conn, gchar *_set_names);
+gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
+void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int product, int major, int secondary, int revision);

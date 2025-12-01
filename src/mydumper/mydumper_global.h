@@ -6,9 +6,6 @@
 extern gchar *defaults_file;
 extern char *defaults_extra_file;
 extern GHashTable *all_dbts;
-extern GOptionEntry common_filter_entries[];
-extern GOptionEntry common_connection_entries[];
-extern GOptionEntry common_entries[];
 extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
@@ -80,7 +77,7 @@ extern gboolean dirty_dumpdir;
 extern gboolean merge_dumpdir;
 extern gboolean use_defer;
 extern gboolean check_row_count;
-extern gchar *db;
+extern gchar *source_db;
 extern gchar *disk_limits;
 extern gchar *dump_directory;
 extern gchar *exec_command;
@@ -89,7 +86,7 @@ extern gchar *output_directory;
 extern gchar *output_directory_str;
 extern gchar *pmm_path;
 extern gchar *pmm_resolution ;
-extern gchar *set_names_str;
+extern gchar *set_names_in_conn_by_default;
 extern gchar *tables_skiplist_file;
 extern gchar *tidb_snapshot;
 extern gchar *where_option;
@@ -133,7 +130,10 @@ extern guint64 max_chunk_step_size;
 extern gboolean compact;
 extern gboolean split_integer_tables;
 extern const gchar *rows_file_extension;
-extern gint source_data;
+
+extern struct replication_settings replica_data;
+extern struct replication_settings source_data;
+
 extern guint output_format;
 extern struct function_pointer identity_function_pointer;
 extern GAsyncQueue *stream_queue;
@@ -142,3 +142,7 @@ extern enum sync_thread_lock_mode sync_thread_lock_mode;
 extern guint trx_tables;
 extern gboolean replica_stopped;
 extern guint isms;
+
+extern guint64 max_statement_size;
+extern gchar *set_names_in_conn_for_sct, *set_names_in_file_for_sct, *set_names_in_file_by_default;
+extern guint num_sequences;
