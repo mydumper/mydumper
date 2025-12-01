@@ -233,7 +233,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
   guint tr=0,current_offset_line=offset_line-1;
   gchar *current_line=next_line;
   next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
+  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix) + 65536);
   guint current_rows=0;
   guint64 transaction_size=0;
   do {
@@ -440,7 +440,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");
@@ -517,7 +517,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");

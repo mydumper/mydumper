@@ -441,7 +441,7 @@ guint strcount(gchar *text){
 }
 
 gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix){
-  GString *filename = g_string_sized_new(20);
+  GString *filename = g_string_sized_new(128);
   g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
   gchar *r = g_build_filename(_directory?_directory:filename->str, _directory?filename->str:NULL, NULL);
   g_string_free(filename,TRUE);
@@ -846,7 +846,7 @@ GRecMutex * g_rec_mutex_new(){
 */
 gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
-  char buffer[4096];
+  char buffer[65536];
   size_t l;
 
   while (fgets(buffer, sizeof(buffer), file)) {
