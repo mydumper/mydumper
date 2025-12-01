@@ -130,9 +130,12 @@ GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(res))) {
     if ( (!dbt->partition_regex && eval_partition_regex(row[0])) || (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, row[0]) ) )
-      partition_list = g_list_append(partition_list, strdup(row[0]));
+      // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+      // For tables with many partitions, this saves n*(n-1)/2 pointer traversals
+      partition_list = g_list_prepend(partition_list, strdup(row[0]));
   }
   mysql_free_result(res);
 
-  return partition_list;
+  // Perf: Reverse to restore original order (still O(n) total vs O(n²) with append)
+  return g_list_reverse(partition_list);
 }

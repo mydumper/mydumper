@@ -19,6 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <stdlib.h>
+#include <string.h>
 #include <mysql.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -65,7 +66,8 @@ void free_common(){
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
-  if (!masquerade_filename && check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
+  // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+  if (!masquerade_filename && check_filename_regex(table) && !strchr(table, '.') && !g_str_has_prefix(table,"mydumper_") )
     return newline_protect(table);
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
@@ -87,8 +89,11 @@ gchar *get_ref_table(gchar *k){
 }
 
 char * escape_string(MYSQL *conn, char *str){
-  char * r=g_new(char, strlen(str) * 2 + 1);
-  mysql_real_escape_string(conn, r, str, strlen(str));
+  // Perf: Cache strlen result - called 2x in original code
+  // This function is called for every non-numeric column during dump
+  gulong len = strlen(str);
+  char * r = g_new(char, len * 2 + 1);
+  mysql_real_escape_string(conn, r, str, len);
   return r;
 }
 

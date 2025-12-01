@@ -666,8 +666,10 @@ struct function_pointer * init_function_pointer(gchar *value){
 //    fp->is_pre=TRUE;
     parse_regex_function(fp, g_strdup(&(fp->value[6])));
   }else{
-    if (g_strstr_len(fp->value,-1," "))
-      parse_basic(fp, g_strdup(g_strstr_len(fp->value,-1," ")));
+    // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+    gchar *space = strchr(fp->value, ' ');
+    if (space)
+      parse_basic(fp, g_strdup(space));
   }
   return fp;
 }
