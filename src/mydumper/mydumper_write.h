@@ -32,3 +32,11 @@ void finalize_write();
 void write_table_job_into_file(struct table_job *tj);
 gboolean write_data(int file, GString *data);
 void close_files(struct table_job * tj);
+
+// Thread-local row batching: accumulates rows locally, flushes every 10K rows
+// update_dbt_rows_batched: Thread-local batching (call during processing)
+// flush_dbt_rows: Force flush thread-local count (call at end of table chunk)
+struct thread_data;
+struct db_table;
+void update_dbt_rows_batched(struct thread_data *td, struct db_table *dbt, guint64 num_rows);
+void flush_dbt_rows(struct thread_data *td);
