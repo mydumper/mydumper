@@ -1,0 +1,7 @@
+[myloader]
+threads=8
+max-threads-for-schema-creation=4
+max-threads-for-index-creation=2
+max-threads-for-post-actions=2
+drop-table
+directory=/tmp/data
