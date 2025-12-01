@@ -925,6 +925,10 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   second_conn = conn;
   conf->use_any_index= 1;
 
+  // Prefetch table metadata if --bulk-metadata-prefetch is enabled
+  if (bulk_metadata_prefetch)
+    prefetch_table_metadata(conn);
+
   if (disk_limits!=NULL){
     conf->pause_resume = g_async_queue_new();
     disk_check_thread = m_thread_new("mon_disk",monitor_disk_space_thread, conf->pause_resume, "Monitor thread could not be created");

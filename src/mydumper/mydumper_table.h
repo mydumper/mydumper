@@ -79,6 +79,7 @@ struct db_table {
 #endif
 void initialize_table();
 void finalize_table();
+void prefetch_table_metadata(MYSQL *conn);
 void free_db_table(struct db_table * dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
