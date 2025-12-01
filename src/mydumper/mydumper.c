@@ -50,6 +50,7 @@ gboolean no_delete = FALSE;
 
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
+gboolean skip_metadata_sorting = FALSE;
 
 //gboolean no_stream = FALSE;
 // For daemon mode

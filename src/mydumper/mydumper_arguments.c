@@ -355,8 +355,11 @@ static GOptionEntry objects_entries[] = {
      "Dump stored procedures and functions. By default, it does not dump stored procedures nor functions", NULL},
     {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
       "Remove the constraints from the CREATE TABLE statement. By default, the statement is not modified", NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, 
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
       "Remove the indexes from the CREATE TABLE statement. By default, the statement is not modified", NULL},
+    {"skip-metadata-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_metadata_sorting,
+      "Skip sorting tables/databases in metadata file. Saves 30-60s on 250K+ tables. "
+      "Only affects metadata file readability, not restore functionality", NULL},
     {"views-as-tables", 0, 0, G_OPTION_ARG_NONE, &views_as_tables, 
       "Export VIEWs as they were tables", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, 

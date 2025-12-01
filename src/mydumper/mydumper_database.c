@@ -102,3 +102,26 @@ void write_database_on_disk(FILE *mdfile){
   g_list_free(keys);
 }
 
+// OPTIMIZATION: Unsorted version - skips O(n*log(n)) sort for large database counts
+void write_database_on_disk_unsorted(FILE *mdfile){
+  const char q= identifier_quote_character;
+  struct database *_database;
+  GList *keys= g_hash_table_get_keys(database_hash);
+  // Skip sorting - saves time on 1000+ databases
+  for (GList *it= keys; it; it= g_list_next(it)) {
+    _database= (struct database *) g_hash_table_lookup(database_hash, it->data);
+    g_assert(_database);
+    if (_database->schema_checksum != NULL || _database->post_checksum != NULL || _database->triggers_checksum)
+      fprintf(mdfile, "\n[%c%s%c]\n", q, _database->source_database, q);
+    if (_database->schema_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "schema_checksum", _database->schema_checksum);
+    if (_database->post_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "post_checksum", _database->post_checksum);
+    if (_database->events_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "events_checksum", _database->events_checksum);
+    if (_database->triggers_checksum != NULL)
+      fprintf(mdfile, "%s = %s\n", "triggers_checksum", _database->triggers_checksum);
+  }
+  g_list_free(keys);
+}
+

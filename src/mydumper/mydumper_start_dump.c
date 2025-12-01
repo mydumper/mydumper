@@ -1306,13 +1306,21 @@ void start_dump(struct configuration *conf) {
   wait_close_files();
 
   GList *keys= g_hash_table_get_keys(all_dbts);
-  keys= g_list_sort(keys, key_strcmp);
+  // Skip sorting when --skip-metadata-sorting is specified
+  // Sorting 250K keys takes O(n*log(n)) = ~4.5M comparisons
+  if (!skip_metadata_sorting) {
+    keys= g_list_sort(keys, key_strcmp);
+  }
   for (GList *it= keys; it; it= g_list_next(it)) {
     dbt= (struct db_table *) g_hash_table_lookup(all_dbts, it->data);
     g_assert(dbt);
     print_dbt_on_metadata(mdfile, dbt);
   }
-  write_database_on_disk(mdfile);
+  if (skip_metadata_sorting) {
+    write_database_on_disk_unsorted(mdfile);
+  } else {
+    write_database_on_disk(mdfile);
+  }
   g_list_free(table_schemas);
   table_schemas=NULL;
   g_async_queue_unref(conf->transactional.defer);
