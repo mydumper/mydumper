@@ -1337,7 +1337,7 @@ void start_dump(struct configuration *conf) {
   g_async_queue_unref(conf->ready_non_transactional_queue);
   conf->ready_non_transactional_queue=NULL;
 
-  fprintf(mdfile, "[config]\nmax-statement-size = %ld\n", max_statement_size);
+  fprintf(mdfile, "[config]\nmax-statement-size = %" G_GUINT64_FORMAT "\n", max_statement_size);
   fprintf(mdfile, "num-sequences = %d\n", num_sequences);
 
   datetime = g_date_time_new_now_local();
