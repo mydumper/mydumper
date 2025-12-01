@@ -322,7 +322,9 @@ static GOptionEntry checksum_entries[] = {
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
       "Dump table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
-      "Dump schema table and view creation checksums", NULL},
+      "Dump schema table and view creation checksums (enabled by default)", NULL},
+    {"no-schema-checksums", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &schema_checksums,
+      "Disable schema checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
       "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
