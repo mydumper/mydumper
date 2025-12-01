@@ -45,6 +45,12 @@ GMutex *fifo_table_mutex=NULL;
 struct configuration *_conf;
 extern gboolean schema_sequence_fix;
 
+// Decompression throttle: limit concurrent decompressor processes
+static GCond *decompress_cond = NULL;
+static GMutex *decompress_mutex = NULL;
+static guint active_decompressors = 0;
+static guint max_decompressors = 0;
+
 void initialize_process(struct configuration *c){
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
@@ -55,6 +61,22 @@ void initialize_process(struct configuration *c){
   _conf=c;
   fifo_hash=g_hash_table_new(g_direct_hash,g_direct_equal);
   fifo_table_mutex = g_mutex_new();
+
+  // Initialize decompression throttle
+  decompress_cond = g_cond_new();
+  decompress_mutex = g_mutex_new();
+  // Limit concurrent decompressors to num_threads, capped at 32
+  max_decompressors = num_threads;
+  if (max_decompressors > 32) max_decompressors = 32;
+  if (max_decompressors < 4) max_decompressors = 4;
+}
+
+// Release a decompressor slot
+static void release_decompressor_slot(void){
+  g_mutex_lock(decompress_mutex);
+  active_decompressors--;
+  g_cond_signal(decompress_cond);
+  g_mutex_unlock(decompress_mutex);
 }
 
 FILE * myl_open(char *filename, const char *type){
@@ -65,7 +87,13 @@ FILE * myl_open(char *filename, const char *type){
   gchar **command=NULL;
   struct stat a;
   if (get_command_and_basename(filename, &command,&basename)){
-
+    // Acquire decompressor slot (throttle concurrent processes)
+    g_mutex_lock(decompress_mutex);
+    while (active_decompressors >= max_decompressors) {
+      g_cond_wait(decompress_cond, decompress_mutex);
+    }
+    active_decompressors++;
+    g_mutex_unlock(decompress_mutex);
 
     fifoname=basename;
     if (fifo_directory != NULL){
@@ -85,7 +113,7 @@ FILE * myl_open(char *filename, const char *type){
       }
     }
     if (mkfifo(fifoname,0666)){
-      g_critical("cannot create named pipe %s (%d)", fifoname, errno); 
+      g_critical("cannot create named pipe %s (%d)", fifoname, errno);
     }
 
     child_proc = execute_file_per_thread(filename, fifoname, command);
@@ -98,6 +126,7 @@ FILE * myl_open(char *filename, const char *type){
       f->pid = child_proc;
       f->filename=g_strdup(filename);
       f->stdout_filename=fifoname;
+      f->uses_decompressor=TRUE;
     }else{
       f=g_new0(struct fifo, 1);
       f->mutex=g_mutex_new();
@@ -105,6 +134,7 @@ FILE * myl_open(char *filename, const char *type){
       f->pid = child_proc;
       f->filename=g_strdup(filename);
       f->stdout_filename=fifoname;
+      f->uses_decompressor=TRUE;
       g_hash_table_insert(fifo_hash,file,f);
       g_mutex_unlock(fifo_table_mutex);
     }
@@ -135,6 +165,11 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
     g_mutex_unlock(fifo_table_mutex);
 
     remove(f->stdout_filename);
+
+    // Release decompressor slot
+    if (f->uses_decompressor){
+      release_decompressor_slot();
+    }
   }
   if (rm){
     m_remove(NULL,filename);
@@ -283,7 +318,8 @@ regex_error:
   }
 
   g_string_free(data,TRUE);
-  trace("parse_create_table_from_file ended on %s", filename); 
+  myl_close(filename, infile, FALSE);  // Close file to release decompressor slot
+  trace("parse_create_table_from_file ended on %s", filename);
   return schema_push( SCHEMA_TABLE_JOB, filename, JOB_TO_CREATE_TABLE, dbt, dbt->database, create_table_statement, CREATE_TABLE, dbt->database );
 
 }
