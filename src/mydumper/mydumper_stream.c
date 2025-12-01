@@ -59,12 +59,12 @@ void *process_stream(void *data){
   char *buf=g_new(gchar, STREAM_BUFFER_SIZE);
   int buflen;
   guint64 total_size=0;
-  GDateTime *total_start_time=g_date_time_new_now_local();
+  // Perf: Use g_get_monotonic_time() instead of GDateTime to eliminate allocations
+  gint64 total_start_time = g_get_monotonic_time();
   GTimeSpan diff=0,total_diff=0;
 //  gboolean not_compressed = FALSE;
 //  guint sz=0;
   ssize_t len=0;
-  GDateTime *datetime;
   struct filename_queue_element *sf = NULL;
   for(;;){
     sf = g_async_queue_pop(stream_queue);
@@ -118,7 +118,8 @@ void *process_stream(void *data){
         g_free(c);
 
         guint total_len=0;
-        GDateTime *start_time=g_date_time_new_now_local();
+        // Perf: Use g_get_monotonic_time() - zero allocation timing
+        gint64 start_time = g_get_monotonic_time();
         buflen = read(f, buf, STREAM_BUFFER_SIZE);
         while(buflen > 0){
           len=write(fileno(stdout), buf, buflen);
@@ -128,11 +129,9 @@ void *process_stream(void *data){
           buflen = read(f, buf, STREAM_BUFFER_SIZE);
         }
 //        g_message("Bytes readed of %s is %d", filename, total_len);
-        datetime = g_date_time_new_now_local();
-        diff=g_date_time_difference(datetime,start_time)/G_TIME_SPAN_SECOND;
-        g_date_time_unref(start_time);
-        total_diff=g_date_time_difference(datetime,total_start_time)/G_TIME_SPAN_SECOND;
-        g_date_time_unref(datetime);
+        gint64 end_time = g_get_monotonic_time();
+        diff = (end_time - start_time) / G_TIME_SPAN_SECOND;
+        total_diff = (end_time - total_start_time) / G_TIME_SPAN_SECOND;
         if (diff > 0){
           g_message("File %s transferred in %" G_GINT64_FORMAT " seconds at %" G_GINT64_FORMAT " MB/s | Global: %" G_GINT64_FORMAT " MB/s",sf->filename,diff,total_len/1024/1024/diff,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
         }else{
@@ -151,10 +150,8 @@ void *process_stream(void *data){
     g_free(sf->filename);
     g_free(sf);
   }
-  datetime = g_date_time_new_now_local();
-  total_diff=g_date_time_difference(datetime,total_start_time)/G_TIME_SPAN_SECOND;
-  g_date_time_unref(total_start_time);
-  g_date_time_unref(datetime);
+  // Perf: Zero-allocation final timing
+  total_diff = (g_get_monotonic_time() - total_start_time) / G_TIME_SPAN_SECOND;
   g_message("All data transferred was %" G_GINT64_FORMAT " at a rate of %" G_GINT64_FORMAT " MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
   metadata_partial_writer_alive = FALSE;
   metadata_partial_queue_push(GINT_TO_POINTER(1));
@@ -178,6 +175,8 @@ void *metadata_partial_writer(void *data){
   (void) data;
   struct db_table *dbt=NULL;
   GList *dbt_list = NULL;
+  // Perf: Use GHashTable for O(1) deduplication instead of O(n) g_list_find
+  GHashTable *dbt_set = g_hash_table_new(g_direct_hash, g_direct_equal);
   GString *output=g_string_sized_new(256);
   guint i=0;
   gchar *filename = NULL;
@@ -185,9 +184,10 @@ void *metadata_partial_writer(void *data){
   for(i=0;i<num_threads;i++){
     g_async_queue_pop(initial_metadata_queue);
   }
-  dbt=g_async_queue_try_pop(metadata_partial_queue);   
+  dbt=g_async_queue_try_pop(metadata_partial_queue);
   while (dbt != NULL ){
     dbt_list=g_list_prepend(dbt_list,dbt);
+    g_hash_table_add(dbt_set, dbt);
     dbt=g_async_queue_try_pop(metadata_partial_queue);
   }
   g_string_set_size(output,0);
@@ -200,20 +200,24 @@ void *metadata_partial_writer(void *data){
   }
 
   i=1;
-  GDateTime *prev_datetime = g_date_time_new_now_local();
-  GDateTime *current_datetime = NULL;
+  // Perf: Use g_get_monotonic_time() instead of GDateTime
+  gint64 prev_time = g_get_monotonic_time();
   GTimeSpan diff=0;
   g_string_set_size(output,0);
   filename=NULL;
   dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   while (metadata_partial_writer_alive){
-    if (dbt != NULL && g_list_find(dbt_list, dbt)==NULL){
+    // Perf: O(1) hash table lookup instead of O(n) g_list_find
+    if (dbt != NULL && !g_hash_table_contains(dbt_set, dbt)){
       dbt_list=g_list_prepend(dbt_list,dbt);
+      g_hash_table_add(dbt_set, dbt);
     }
-    current_datetime = g_date_time_new_now_local();
-    diff=g_date_time_difference(current_datetime,prev_datetime)/G_TIME_SPAN_SECOND;
+    // Perf: Zero-allocation time check
+    gint64 current_time = g_get_monotonic_time();
+    diff = (current_time - prev_time) / G_TIME_SPAN_SECOND;
     if (diff > METADATA_PARTIAL_INTERVAL){
-      if (g_list_length(dbt_list) > 0){  
+      // Perf: O(1) hash table size instead of O(n) g_list_length
+      if (g_hash_table_size(dbt_set) > 0){
         filename= make_partial_filename(i);
         i++;
         initialize_config_on_string(output);
@@ -222,15 +226,14 @@ void *metadata_partial_writer(void *data){
         stream_queue_push(NULL, filename);
         filename = NULL;
         g_string_set_size(output,0);
-        dbt_list=NULL;        
+        dbt_list=NULL;
+        g_hash_table_remove_all(dbt_set);  // Clear the set when list is cleared
       }
-      g_date_time_unref(prev_datetime);
-      prev_datetime=current_datetime;
-    }else{
-      g_date_time_unref(current_datetime);
+      prev_time = current_time;
     }
     dbt=g_async_queue_timeout_pop(metadata_partial_queue, METADATA_PARTIAL_INTERVAL * 1000000);
   }
+  g_hash_table_destroy(dbt_set);
   return NULL;
 }
 

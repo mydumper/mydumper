@@ -765,15 +765,15 @@ retry:
       trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
       write_table_job_into_file(tj);
     }else{
-      GDateTime *from = g_date_time_new_now_local();
+      // Perf: Use g_get_monotonic_time() instead of GDateTime to eliminate allocations
+      // Both return microseconds - direct subtraction works
+      gint64 from_time = g_get_monotonic_time();
       write_table_job_into_file(tj);
-      GDateTime *to = g_date_time_new_now_local();
+      gint64 to_time = g_get_monotonic_time();
 
 // Step 3.1: Updating Step length
 
-      GTimeSpan diff=g_date_time_difference(to,from);
-      g_date_time_unref(from);
-      g_date_time_unref(to);
+      GTimeSpan diff = to_time - from_time;  // Zero allocation, same precision
       g_mutex_lock(csi->mutex);
 
 
