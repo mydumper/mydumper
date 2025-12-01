@@ -86,14 +86,21 @@ SET( MYLOADER_SRCS src/myloader/myloader.c ${SHARED_SRCS} src/myloader/myloader_
 add_executable(mydumper ${MYDUMPER_SRCS})
 add_executable(myloader ${MYLOADER_SRCS})
 
+# Find OpenSSL - use modern imported targets if available (CMake 3.4+), otherwise fall back to variables
 find_package(OpenSSL REQUIRED)
+if (TARGET OpenSSL::SSL)
+  set(OPENSSL_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
+else ()
+  set(OPENSSL_LINK_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+  include_directories(${OPENSSL_INCLUDE_DIR})
+endif ()
 
 if (NOT JEMALLOC_FOUND)
-  target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m OpenSSL::SSL OpenSSL::Crypto)
-  target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ OpenSSL::SSL OpenSSL::Crypto)
+  target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ${OPENSSL_LINK_LIBRARIES})
+  target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ${OPENSSL_LINK_LIBRARIES})
 else ()
-  target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m OpenSSL::SSL OpenSSL::Crypto)
-  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ OpenSSL::SSL OpenSSL::Crypto)
+  target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ${OPENSSL_LINK_LIBRARIES})
+  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ${OPENSSL_LINK_LIBRARIES})
 
 endif ()
 
