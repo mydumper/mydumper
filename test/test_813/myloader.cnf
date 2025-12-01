@@ -1,4 +1,4 @@
 [myloader]
 threads=4
-overwrite-tables
+drop-table
 directory=/tmp/data
