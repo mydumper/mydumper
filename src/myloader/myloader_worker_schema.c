@@ -150,7 +150,6 @@ gboolean second_round=FALSE;
 /* @return TRUE: continue worker_schema_thread() loop */
 gboolean process_schema(struct thread_data * td){
   struct database * _database = NULL;
-  struct control_job *job = NULL;
 
   struct schema_job * schema_job = g_async_queue_pop(schema_job_queue);
   trace("schema_job_queue -> %s", schema_job_type2str(schema_job->type));
@@ -169,8 +168,8 @@ gboolean process_schema(struct thread_data * td){
     case SCHEMA_SEQUENCE_JOB:
     case SCHEMA_TABLE_JOB:
       if (process_restore_job(td, schema_job->restore_job)){
-        trace("retry_queue <- ");
-        g_async_queue_push(retry_queue, job);
+        trace("retry_queue <- %s", schema_job_type2str(schema_job->type));
+        g_async_queue_push(retry_queue, schema_job);
       }
       wake_data_threads();
       break;
