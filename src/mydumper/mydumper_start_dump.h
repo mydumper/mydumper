@@ -39,6 +39,7 @@ enum sync_thread_lock_mode {
 struct MList{
   GList *list;
   GMutex *mutex;
+  guint count;  // Cached list length for O(1) access in hot paths
 };
 
 struct table_queuing {

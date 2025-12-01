@@ -90,11 +90,12 @@ gboolean update_files_on_table_job(struct table_job *tj)
 }
 
 void message_dumping_data_short(struct table_job *tj){
+  // Use cached count for O(1) access instead of O(n) g_list_length()
   g_mutex_lock(transactional_table->mutex);
-  guint transactional_table_size = g_list_length(transactional_table->list);
+  guint transactional_table_size = transactional_table->count;
   g_mutex_unlock(transactional_table->mutex);
   g_mutex_lock(non_transactional_table->mutex);
-  guint non_transactional_table_size = g_list_length(non_transactional_table->list);
+  guint non_transactional_table_size = non_transactional_table->count;
   g_mutex_unlock(non_transactional_table->mutex);
   g_message("Thread %d: %s%s%s.%s%s%s [ %"G_GINT64_FORMAT"%% ] | Tables: %u/%u",
                     tj->td->thread_id,
@@ -104,11 +105,12 @@ void message_dumping_data_short(struct table_job *tj){
 }
 
 void message_dumping_data_long(struct table_job *tj){
+  // Use cached count for O(1) access instead of O(n) g_list_length()
   g_mutex_lock(transactional_table->mutex);
-  guint transactional_table_size = g_list_length(transactional_table->list);
+  guint transactional_table_size = transactional_table->count;
   g_mutex_unlock(transactional_table->mutex);
   g_mutex_lock(non_transactional_table->mutex);
-  guint non_transactional_table_size = g_list_length(non_transactional_table->list);
+  guint non_transactional_table_size = non_transactional_table->count;
   g_mutex_unlock(non_transactional_table->mutex);
   g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% | Remaining tables: %u / %u",
                     tj->td->thread_id,
