@@ -3,10 +3,10 @@
 # This simulates the first phase of two-phase loading
 # Then the main myloader run will test --no-schema mode (Phase 2)
 
-mysql --user root -e "DROP DATABASE IF EXISTS test_812"
-mysql --user root -e "CREATE DATABASE test_812"
+mysql --user root -e "DROP DATABASE IF EXISTS test_815"
+mysql --user root -e "CREATE DATABASE test_815"
 mysql --user root -e "
-USE test_812;
+USE test_815;
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,

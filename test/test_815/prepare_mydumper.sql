@@ -2,9 +2,9 @@
 -- Tests two-phase loading: Phase 1 creates schemas, Phase 2 loads data only
 -- Without the fix, Phase 2 would fail because database->schema_state is never CREATED
 
-DROP DATABASE IF EXISTS test_812;
-CREATE DATABASE test_812;
-USE test_812;
+DROP DATABASE IF EXISTS test_815;
+CREATE DATABASE test_815;
+USE test_815;
 
 CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
