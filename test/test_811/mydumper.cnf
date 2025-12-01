@@ -1,0 +1,10 @@
+# Test case 811: Schema-Data Race Condition
+# This test uses high thread count to maximize race window
+# between schema creation and data loading
+
+[mydumper]
+database=race_test
+outputdir=/tmp/data
+threads=8
+rows=1
+verbose=4
