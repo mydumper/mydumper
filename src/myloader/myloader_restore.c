@@ -354,6 +354,10 @@ gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
   gchar * orig_key=NULL;
   if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
     *mutex=g_mutex_new();
+    /* IMPORTANT: Must lock here BEFORE inserting into hash table.
+     * This prevents a race condition where another thread could find
+     * and unlock this mutex before we've locked it.
+     * The caller should NOT lock again (see line 573 change). */
     g_mutex_lock(*mutex);
     g_hash_table_insert(load_data_list, g_strdup(filename), *mutex);
     g_mutex_unlock(load_data_list_mutex);
@@ -567,8 +571,10 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           gchar *to = g_strstr_len(from, -1, "'");
           load_data_filename=g_strndup(from, to-from);
           GMutex * mutex=NULL;
-          if (load_data_mutex_locate(load_data_filename, &mutex))
-            g_mutex_lock(mutex);
+          /* FIX: load_data_mutex_locate now locks the mutex internally before
+           * returning TRUE. Caller should NOT lock again to avoid double-lock
+           * undefined behavior. The mutex is already held when we return. */
+          load_data_mutex_locate(load_data_filename, &mutex);
 	      // TODO we need to free filename and mutex from the hash.
           gchar **command=NULL;
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
