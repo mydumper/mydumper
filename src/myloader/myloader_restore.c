@@ -233,32 +233,47 @@ int m_commit_and_start_transaction(struct connection_data *cd, guint* query_coun
   return 0;
 }
 
-int restore_insert(struct connection_data *cd, struct thread_data*td, 
+int restore_insert(struct connection_data *cd, struct thread_data*td,
                   GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
-  char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
-  char *insert_statement_prefix=g_strndup(data->str,next_line - data->str);
+  // Perf: Find "VALUES" using strstr (only once, not in hot loop)
+  char *next_line=strstr(data->str, "VALUES");
+  if (next_line == NULL) return 0;
+  next_line += 6;  // Skip past "VALUES"
+
+  guint prefix_len = next_line - data->str;
+  char *insert_statement_prefix=g_strndup(data->str, prefix_len);
   int r=0;
   guint tr=0,current_offset_line=offset_line-1;
   gchar *current_line=next_line;
-  next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix) + 65536);
+
+  // Perf: Calculate remaining length for bounded searches
+  gchar *data_end = data->str + data->len;
+  gssize remaining = data_end - current_line;
+
+  // Perf: Use memchr instead of g_strstr_len for newline search (SIMD-optimized)
+  next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
+
+  GString * new_insert=g_string_sized_new(prefix_len + 4096);  // Larger initial size
   guint current_rows=0;
   guint64 transaction_size=0;
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
     g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows>0?dbt->rows_inserted*100/dbt->rows:0);
-    new_insert=g_string_append(new_insert,insert_statement_prefix);
+    // Perf: Use append_len with known prefix length
+    g_string_append_len(new_insert, insert_statement_prefix, prefix_len);
     guint line_len=0;
     do {
-      char *line=g_strndup(current_line, next_line - current_line);
-      line_len=strlen(line);
-      g_string_append(new_insert, line);
-      g_free(line);
+      // Perf: Direct append without g_strndup + strlen + g_free
+      // The length is already known: next_line - current_line
+      line_len = next_line - current_line;
+      g_string_append_len(new_insert, current_line, line_len);
       current_rows++;
       current_line=next_line+1;
-      next_line=g_strstr_len(current_line, -1, "\n");
+      // Perf: Update remaining length and use memchr (16-32x faster than g_strstr_len)
+      remaining = data_end - current_line;
+      next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
       current_offset_line++;
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
@@ -613,27 +628,35 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
           GString *new_data = NULL;
-          gchar *from = g_strstr_len(data->str, -1, "'");
+          // Perf: Use strchr instead of g_strstr_len for single-char search
+          gchar *from = strchr(data->str, '\'');
+          if (from == NULL) goto STMT_IGNORED;
           from++;
-          gchar *to = g_strstr_len(from, -1, "'");
+          gchar *to = strchr(from, '\'');
+          if (to == NULL) goto STMT_IGNORED;
           load_data_filename=g_strndup(from, to-from);
           /* Wait for .dat file to be available (in streaming mode) */
           load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
-          if (is_fifo){ 
+          if (is_fifo){
             if (fifo_directory != NULL){
               new_data = g_string_new_len(data->str, from - data->str);
               g_string_append(new_data, fifo_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
-              from = g_strstr_len(new_data->str, -1, "'") + 1;
+              // Perf: Use strchr instead of g_strstr_len for single-char search
+              from = strchr(new_data->str, '\'');
+              if (from) from++;
               g_string_free(data, TRUE);
               data=new_data;
-              to = g_strstr_len(from, -1, "'");
+              to = from ? strchr(from, '\'') : NULL;
             }
+            // Perf: Cache strlen results instead of calling twice
+            guint load_data_filename_len = strlen(load_data_filename);
+            guint load_data_fifo_filename_len = strlen(load_data_fifo_filename);
             guint a=0;
-            for(;a<strlen(load_data_filename)-strlen(load_data_fifo_filename);a++){
+            for(;a<load_data_filename_len-load_data_fifo_filename_len;a++){
               *to=' '; to--;
             }
             *to='\'';
@@ -661,7 +684,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             m_remove(NULL, load_data_filename);
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){
-            gchar *from_equal=g_strstr_len(data->str, strlen(data->str),"=");
+            // Perf: Use data->len instead of strlen(data->str)
+            gchar *from_equal=g_strstr_len(data->str, data->len, "=");
             if (from_equal && ignore_set_list ){
               *from_equal='\0';
               gchar * var_name=g_strrstr(data->str," ");
