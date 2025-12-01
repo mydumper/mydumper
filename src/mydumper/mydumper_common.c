@@ -87,8 +87,10 @@ gchar *get_ref_table(gchar *k){
 }
 
 char * escape_string(MYSQL *conn, char *str){
-  char * r=g_new(char, strlen(str) * 2 + 1);
-  mysql_real_escape_string(conn, r, str, strlen(str));
+  // Perf: Cache strlen result instead of calling twice
+  gulong len = strlen(str);
+  char * r=g_new(char, len * 2 + 1);
+  mysql_real_escape_string(conn, r, str, len);
   return r;
 }
 
