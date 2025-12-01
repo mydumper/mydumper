@@ -523,7 +523,7 @@ gboolean write_statement(int load_data_file, float *filessize, GString *statemen
 
 void initialize_config_on_string(GString *output){
   g_mutex_lock(max_statement_size_mutex);
-  g_string_append_printf(output,"[config]\nmax-statement-size = %ld\n", max_statement_size);
+  g_string_append_printf(output,"[config]\nmax-statement-size = %" G_GUINT64_FORMAT "\n", max_statement_size);
   g_mutex_unlock(max_statement_size_mutex);
   g_string_append_printf(output, "num-sequences = %d\n", num_sequences);
 }
@@ -589,17 +589,19 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
     } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
       g_string_append(buffers.column,"0x");
-      mysql_hex_string(buffers.escaped->str,*column,length);
-      g_string_append(buffers.column,buffers.escaped->str);
+      // Perf: Use mysql_hex_string return value to avoid strlen()
+      unsigned long hex_len = mysql_hex_string(buffers.escaped->str,*column,length);
+      g_string_append_len(buffers.column, buffers.escaped->str, hex_len);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
  *        * the beginning */
       g_string_set_size(buffers.escaped, length * 2 + 1);
-      mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
+      // Perf: Use mysql_real_escape_string return value to avoid strlen()
+      unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.column, "CONVERT(");
       g_string_append_c(buffers.column, *fields_enclosed_by);
-      g_string_append(buffers.column, buffers.escaped->str);
+      g_string_append_len(buffers.column, buffers.escaped->str, escaped_len);
       g_string_append_c(buffers.column, *fields_enclosed_by);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.column, " USING UTF8MB4)");
@@ -627,7 +629,8 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL
   }else{
     write_column_into_string( conn, &(column), field, rlength, buffers);
   }
-  g_string_append(buffers.row, buffers.column->str);
+  // Perf: Use g_string_append_len with known length to avoid strlen()
+  g_string_append_len(buffers.row, buffers.column->str, buffers.column->len);
   g_string_append(buffers.row, terminated_by);
 
   if (column && column != row)
@@ -645,10 +648,43 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], lines_terminated_by);
 }
 
+// Use atomic operation instead of mutex for lock-free row counting
+// __sync_fetch_and_add compiles to LOCK XADD on x86_64 or LDXR/STXR on ARM64
 void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
-  g_mutex_lock(dbt->rows_lock);
-  dbt->rows+=num_rows;
-  g_mutex_unlock(dbt->rows_lock);
+  __sync_fetch_and_add(&dbt->rows, num_rows);
+}
+
+// Thread-local batched row counter update
+// Accumulates rows in thread-local storage and flushes every 10K rows
+// This reduces atomic operations from millions to thousands
+#define ROW_BATCH_FLUSH_THRESHOLD 10000
+
+void update_dbt_rows_batched(struct thread_data *td, struct db_table *dbt, guint64 num_rows){
+  // If switching tables, flush previous table's count first
+  if (td->local_row_count_dbt != NULL && td->local_row_count_dbt != dbt) {
+    if (td->local_row_count > 0) {
+      __sync_fetch_and_add(&td->local_row_count_dbt->rows, td->local_row_count);
+      td->local_row_count = 0;
+    }
+  }
+
+  td->local_row_count_dbt = dbt;
+  td->local_row_count += num_rows;
+
+  // Flush to shared counter when threshold reached
+  if (td->local_row_count >= ROW_BATCH_FLUSH_THRESHOLD) {
+    __sync_fetch_and_add(&dbt->rows, td->local_row_count);
+    td->local_row_count = 0;
+  }
+}
+
+// Flush any remaining thread-local row count (call at end of table processing)
+void flush_dbt_rows(struct thread_data *td){
+  if (td->local_row_count_dbt != NULL && td->local_row_count > 0) {
+    __sync_fetch_and_add(&td->local_row_count_dbt->rows, td->local_row_count);
+    td->local_row_count = 0;
+    td->local_row_count_dbt = NULL;
+  }
 }
 
 void close_file(struct table_job * tj, struct table_job_file *tjf){
@@ -767,9 +803,9 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 
   message_dumping_data(tj);
 
-  GDateTime *from = g_date_time_new_now_local();
-  GDateTime *to = NULL;
-  GTimeSpan diff=0;
+  // Perf: Use monotonic time instead of GDateTime to eliminate allocations
+  // g_get_monotonic_time() returns microseconds with zero allocation overhead
+  gint64 last_progress_time = g_get_monotonic_time();
 	while ((row = mysql_fetch_row(result))) {
 // Uncomment next line if you need to simulate a slow read which is useful when calculate the chunk size
 //    g_usleep(1);
@@ -791,7 +827,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         g_critical("Fail to write on %s", tj->rows->filename);
         return;
       }
-			update_dbt_rows(dbt, num_rows);
+			update_dbt_rows_batched(tj->td, dbt, num_rows);
       tj->num_rows_of_last_run+=num_rows;
 			num_rows=0;
 			num_rows_st=0;
@@ -800,15 +836,11 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (output_format == SQL_INSERT || output_format == CLICKHOUSE){
 				g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
 			}
-      to = g_date_time_new_now_local();
-      diff=g_date_time_difference(to,from)/G_TIME_SPAN_SECOND;
-      if (diff > 4){
-        g_date_time_unref(from);
-        from=to;
-        to=NULL;
+      // Perf: Zero-allocation time check using monotonic time
+      gint64 now_time = g_get_monotonic_time();
+      if ((now_time - last_progress_time) / G_TIME_SPAN_SECOND > 4) {
+        last_progress_time = now_time;
         message_dumping_data(tj);
-      }else{
-        g_date_time_unref(to);
       }
 
 			check_pause_resume(tj->td);
@@ -832,12 +864,14 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 		// write row to buffer
     if (num_rows_st && (output_format == SQL_INSERT || output_format == CLICKHOUSE))
       g_string_append(tj->td->thread_data_buffers.statement, row_delimiter);
-    g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
+    // Perf: Use g_string_append_len with known row->len to avoid strlen()
+    g_string_append_len(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str, tj->td->thread_data_buffers.row->len);
 		if (tj->td->thread_data_buffers.row->len>0)
       num_rows_st++;
     g_string_set_size(tj->td->thread_data_buffers.row, 0);
   }
-  update_dbt_rows(dbt, num_rows);
+  update_dbt_rows_batched(tj->td, dbt, num_rows);
+  flush_dbt_rows(tj->td);  // Flush remaining count at end of table chunk
   tj->num_rows_of_last_run+=num_rows;
   if (num_rows_st > 0 && tj->td->thread_data_buffers.statement->len > 0){
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
@@ -848,7 +882,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     }
 		tj->st_in_file++;
   }
-  g_date_time_unref(from);
+  // Note: No cleanup needed - g_get_monotonic_time() has zero allocations
 
 //  g_string_free(statement, TRUE);
 //  g_string_free(escaped, TRUE);

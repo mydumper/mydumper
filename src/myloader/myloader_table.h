@@ -36,6 +36,7 @@ struct db_table {
   guint max_connections_per_job;
   guint retry_count;
   GMutex *mutex;
+  GCond *schema_cond;   /* Condition variable for schema-wait synchronization */
   GString *indexes;
   GString *constraints;
   guint count;

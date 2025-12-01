@@ -63,6 +63,7 @@ gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
 guint num_sequences=0;
+char **ignore_engines = NULL;
 extern gchar *initial_source_log;
 extern gchar *initial_source_pos;
 extern gchar *initial_source_gtid;
@@ -70,7 +71,6 @@ extern gchar *initial_source_gtid;
 // Static
 static GMutex *init_mutex = NULL;
 static gchar *binlog_snapshot_gtid_executed = NULL; 
-static char **ignore_engines = NULL;
 static int sync_wait = -1;
 static GMutex *table_schemas_mutex = NULL;
 static GMutex *trigger_schemas_mutex = NULL;
@@ -145,6 +145,8 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].binlog_snapshot_gtid_executed = NULL;
     thread_data[n].pause_resume_mutex=NULL;
     thread_data[n].table_name=NULL;
+    thread_data[n].local_row_count = 0;
+    thread_data[n].local_row_count_dbt = NULL;
     thread_data[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
     thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
@@ -991,7 +993,6 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
 
-  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -1026,11 +1027,9 @@ void dump_database_thread(MYSQL *conn, struct database *database) {
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
     if (dump && ignore_engines && !is_view && !is_sequence) {
-      for (i = 0; ignore_engines[i] != NULL; i++) {
-        if (g_ascii_strcasecmp(ignore_engines[i], row[ecol]) == 0) {
-          dump = 0;
-          break;
-        }
+      if (m_pstrstr(ignore_engines, row[ecol])){
+        dump = 0;
+        break;
       }
     }
 

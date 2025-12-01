@@ -138,8 +138,10 @@ void set_table_schema_state_to_created (struct configuration *conf){
   while (iter != NULL){
     dbt=iter->data;
     table_lock(dbt);
-    if (dbt->schema_state == NOT_FOUND )
+    if (dbt->schema_state == NOT_FOUND ) {
       dbt->schema_state = CREATED;
+      g_cond_broadcast(dbt->schema_cond);
+    }
     table_unlock(dbt);
     iter=iter->next;
   }
@@ -150,7 +152,6 @@ gboolean second_round=FALSE;
 /* @return TRUE: continue worker_schema_thread() loop */
 gboolean process_schema(struct thread_data * td){
   struct database * _database = NULL;
-  struct control_job *job = NULL;
 
   struct schema_job * schema_job = g_async_queue_pop(schema_job_queue);
   trace("schema_job_queue -> %s", schema_job_type2str(schema_job->type));
@@ -169,8 +170,8 @@ gboolean process_schema(struct thread_data * td){
     case SCHEMA_SEQUENCE_JOB:
     case SCHEMA_TABLE_JOB:
       if (process_restore_job(td, schema_job->restore_job)){
-        trace("retry_queue <- ");
-        g_async_queue_push(retry_queue, job);
+        trace("retry_queue <- %s", schema_job_type2str(schema_job->type));
+        g_async_queue_push(retry_queue, schema_job);
       }
       wake_data_threads();
       break;
@@ -250,6 +251,18 @@ void start_worker_schema(){
 
 void wait_schema_worker_to_finish(struct configuration *conf){
   guint n=0;
+
+  // In --no-data mode, index threads are started but never receive JOB_SHUTDOWN
+  // because no data workers exist to send it. Send shutdown here to prevent deadlock.
+  if (no_data && conf->index_queue != NULL) {
+    guint num_idx_threads = max_threads_for_index_creation > 0
+                          ? max_threads_for_index_creation
+                          : num_threads;
+    for (n = 0; n < num_idx_threads; n++) {
+      g_async_queue_push(conf->index_queue, new_control_job(JOB_SHUTDOWN, NULL, NULL));
+    }
+  }
+
   trace("Waiting schema worker to finish");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     g_thread_join(schema_threads[n]);
