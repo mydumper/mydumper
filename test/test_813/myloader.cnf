@@ -1,0 +1,4 @@
+[myloader]
+threads=4
+overwrite-tables
+directory=/tmp/data
