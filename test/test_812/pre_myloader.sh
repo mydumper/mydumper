@@ -25,5 +25,12 @@ CREATE TABLE items (
     quantity INT,
     FOREIGN KEY (order_id) REFERENCES orders(id)
 );
+-- TRUNCATE tables to ensure clean state (required for --no-schema mode)
+-- Disable FK checks since tables have foreign key relationships
+SET FOREIGN_KEY_CHECKS=0;
+TRUNCATE TABLE items;
+TRUNCATE TABLE orders;
+TRUNCATE TABLE users;
+SET FOREIGN_KEY_CHECKS=1;
 "
-echo "Phase 1: Schemas created, ready for --no-schema data load"
+echo "Phase 1: Schemas created and tables truncated, ready for --no-schema data load"
