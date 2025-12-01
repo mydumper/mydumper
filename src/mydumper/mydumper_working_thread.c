@@ -96,6 +96,8 @@ void initialize_working_thread(){
   non_transactional_table=g_new(struct MList, 1);
   transactional_table->list=NULL;
   non_transactional_table->list=NULL;
+  transactional_table->count=0;
+  non_transactional_table->count=0;
   non_transactional_table->mutex = g_mutex_new();
   transactional_table->mutex = g_mutex_new();
 
@@ -888,12 +890,14 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           dbt->is_transactional=TRUE;
           g_mutex_lock(transactional_table->mutex);
           transactional_table->list=g_list_prepend(transactional_table->list,dbt);
+          transactional_table->count++;
           g_mutex_unlock(transactional_table->mutex);
 
         } else {
           dbt->is_transactional=FALSE;
           g_mutex_lock(non_transactional_table->mutex);
           non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          non_transactional_table->count++;
           g_mutex_unlock(non_transactional_table->mutex);
         }
       }else{
@@ -901,6 +905,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           dbt->is_transactional=FALSE;
           g_mutex_lock(non_transactional_table->mutex);
           non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          non_transactional_table->count++;
           g_mutex_unlock(non_transactional_table->mutex);
         }
       }
