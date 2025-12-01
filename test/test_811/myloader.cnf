@@ -9,3 +9,8 @@ threads=16
 max-threads-per-table=4
 verbose=4
 overwrite-tables
+
+# Use READ COMMITTED isolation so data workers see CREATE TABLE commits immediately
+# This helps avoid race conditions where data workers can't see newly created tables
+[myloader_global_variables]
+TRANSACTION_ISOLATION='READ-COMMITTED'
