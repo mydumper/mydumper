@@ -651,6 +651,39 @@ void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
   __sync_fetch_and_add(&dbt->rows, num_rows);
 }
 
+// Thread-local batched row counter update
+// Accumulates rows in thread-local storage and flushes every 10K rows
+// This reduces atomic operations from millions to thousands
+#define ROW_BATCH_FLUSH_THRESHOLD 10000
+
+void update_dbt_rows_batched(struct thread_data *td, struct db_table *dbt, guint64 num_rows){
+  // If switching tables, flush previous table's count first
+  if (td->local_row_count_dbt != NULL && td->local_row_count_dbt != dbt) {
+    if (td->local_row_count > 0) {
+      __sync_fetch_and_add(&td->local_row_count_dbt->rows, td->local_row_count);
+      td->local_row_count = 0;
+    }
+  }
+
+  td->local_row_count_dbt = dbt;
+  td->local_row_count += num_rows;
+
+  // Flush to shared counter when threshold reached
+  if (td->local_row_count >= ROW_BATCH_FLUSH_THRESHOLD) {
+    __sync_fetch_and_add(&dbt->rows, td->local_row_count);
+    td->local_row_count = 0;
+  }
+}
+
+// Flush any remaining thread-local row count (call at end of table processing)
+void flush_dbt_rows(struct thread_data *td){
+  if (td->local_row_count_dbt != NULL && td->local_row_count > 0) {
+    __sync_fetch_and_add(&td->local_row_count_dbt->rows, td->local_row_count);
+    td->local_row_count = 0;
+    td->local_row_count_dbt = NULL;
+  }
+}
+
 void close_file(struct table_job * tj, struct table_job_file *tjf){
   if (tjf->file >= 0){
     m_close(tj->td->thread_id, tjf->file, tjf->filename, 1, tj->dbt);
@@ -791,7 +824,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         g_critical("Fail to write on %s", tj->rows->filename);
         return;
       }
-			update_dbt_rows(dbt, num_rows);
+			update_dbt_rows_batched(tj->td, dbt, num_rows);
       tj->num_rows_of_last_run+=num_rows;
 			num_rows=0;
 			num_rows_st=0;
@@ -837,7 +870,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       num_rows_st++;
     g_string_set_size(tj->td->thread_data_buffers.row, 0);
   }
-  update_dbt_rows(dbt, num_rows);
+  update_dbt_rows_batched(tj->td, dbt, num_rows);
+  flush_dbt_rows(tj->td);  // Flush remaining count at end of table chunk
   tj->num_rows_of_last_run+=num_rows;
   if (num_rows_st > 0 && tj->td->thread_data_buffers.statement->len > 0){
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)

@@ -145,6 +145,8 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].binlog_snapshot_gtid_executed = NULL;
     thread_data[n].pause_resume_mutex=NULL;
     thread_data[n].table_name=NULL;
+    thread_data[n].local_row_count = 0;
+    thread_data[n].local_row_count_dbt = NULL;
     thread_data[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
     thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
