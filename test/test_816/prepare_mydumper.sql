@@ -2,9 +2,9 @@
 -- Creates 100 tables to stress the schema creation pipeline
 -- With multiple threads, without the fix, some tables would be silently lost
 
-DROP DATABASE IF EXISTS test_811;
-CREATE DATABASE test_811;
-USE test_811;
+DROP DATABASE IF EXISTS test_816;
+CREATE DATABASE test_816;
+USE test_816;
 
 -- Generate 100 tables with simple schema
 -- Each table has an id and some data to ensure data files are created

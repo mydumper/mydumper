@@ -1,4 +1,4 @@
 [mydumper]
 threads=8
 outputdir=/tmp/data
-database=test_811
+database=test_816
