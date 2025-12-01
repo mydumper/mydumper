@@ -1,0 +1,8 @@
+#
+# Testing --no-data
+#
+
+[mydumper]
+database=specific_22
+outputdir=/tmp/data
+no-data
