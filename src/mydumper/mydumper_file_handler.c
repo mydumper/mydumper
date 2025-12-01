@@ -39,7 +39,8 @@ static GHashTable *fifo_hash=NULL;
 static GMutex *fifo_table_mutex=NULL;
 static GMutex *pipe_creation=NULL;
 // Multiple close_file_threads for parallel fsync (improved throughput on high-latency storage)
-#define NUM_CLOSE_FILE_THREADS 16
+// Use 4 threads as a conservative default (original was 1)
+#define NUM_CLOSE_FILE_THREADS 4
 static GThread *cft[NUM_CLOSE_FILE_THREADS] = {NULL};
 static guint open_pipe=0;
 static gboolean is_pipe=FALSE;
