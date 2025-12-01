@@ -893,7 +893,7 @@ gboolean read_data(FILE *file, GString *data,
     // Perf: Use memchr to find newline - SIMD optimized, O(n/16) vs O(n)
     // This is faster than strlen() which must scan to NUL terminator
     char *newline = memchr(buffer, '\n', sizeof(buffer));
-    size_t l;
+
     if (newline) {
       // Found newline - calculate exact length
       l = newline - buffer + 1;
