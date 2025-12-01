@@ -645,10 +645,10 @@ void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MY
   write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], lines_terminated_by);
 }
 
+// Use atomic operation instead of mutex for lock-free row counting
+// __sync_fetch_and_add compiles to LOCK XADD on x86_64 or LDXR/STXR on ARM64
 void update_dbt_rows(struct db_table * dbt, guint64 num_rows){
-  g_mutex_lock(dbt->rows_lock);
-  dbt->rows+=num_rows;
-  g_mutex_unlock(dbt->rows_lock);
+  __sync_fetch_and_add(&dbt->rows, num_rows);
 }
 
 void close_file(struct table_job * tj, struct table_job_file *tjf){
