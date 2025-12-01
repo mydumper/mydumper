@@ -249,6 +249,18 @@ void start_worker_schema(){
 
 void wait_schema_worker_to_finish(struct configuration *conf){
   guint n=0;
+
+  // In --no-data mode, index threads are started but never receive JOB_SHUTDOWN
+  // because no data workers exist to send it. Send shutdown here to prevent deadlock.
+  if (no_data && conf->index_queue != NULL) {
+    guint num_idx_threads = max_threads_for_index_creation > 0
+                          ? max_threads_for_index_creation
+                          : num_threads;
+    for (n = 0; n < num_idx_threads; n++) {
+      g_async_queue_push(conf->index_queue, new_control_job(JOB_SHUTDOWN, NULL, NULL));
+    }
+  }
+
   trace("Waiting schema worker to finish");
   for (n = 0; n < max_threads_for_schema_creation; n++) {
     g_thread_join(schema_threads[n]);
