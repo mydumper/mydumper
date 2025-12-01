@@ -42,6 +42,15 @@ int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , st
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
 
+/* Structure for synchronizing LOAD DATA file processing.
+ * When .sql file (with LOAD DATA statement) arrives before .dat file,
+ * the processor must wait until .dat file is ready. */
+struct load_data_sync {
+  GMutex *mutex;
+  GCond *cond;
+  gboolean ready;  /* TRUE when .dat file has been received */
+};
+
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
 struct io_restore_result end_restore_thread = { NULL, NULL};
@@ -349,36 +358,74 @@ void *restore_thread(MYSQL *thrconn){
 
 
 
-gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
+/* Wait for LOAD DATA file (.dat) to be ready before processing.
+ * Called when processing .sql file that contains LOAD DATA statement.
+ *
+ * Returns TRUE if we had to wait (new sync object created).
+ * Returns FALSE if .dat file was already received (no wait needed).
+ *
+ * Thread-safe: Uses condition variable for proper waiting semantics.
+ */
+void load_data_mutex_locate( gchar * filename ){
   g_mutex_lock(load_data_list_mutex);
-  gchar * orig_key=NULL;
-  if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
-    *mutex=g_mutex_new();
-    /* IMPORTANT: Must lock here BEFORE inserting into hash table.
-     * This prevents a race condition where another thread could find
-     * and unlock this mutex before we've locked it.
-     * The caller should NOT lock again (see line 573 change). */
-    g_mutex_lock(*mutex);
-    g_hash_table_insert(load_data_list, g_strdup(filename), *mutex);
+  struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
+
+  if (sync == NULL) {
+    /* First time seeing this filename - create sync object and wait */
+    sync = g_new0(struct load_data_sync, 1);
+    sync->mutex = g_mutex_new();
+    sync->cond = g_cond_new();
+    sync->ready = FALSE;
+    g_hash_table_insert(load_data_list, g_strdup(filename), sync);
     g_mutex_unlock(load_data_list_mutex);
-    return TRUE;
+
+    /* Wait for .dat file to arrive */
+    g_mutex_lock(sync->mutex);
+    while (!sync->ready) {
+      g_cond_wait(sync->cond, sync->mutex);
+    }
+    g_mutex_unlock(sync->mutex);
+    return;
   }
-  if (orig_key!=NULL){
-    g_hash_table_remove(load_data_list, orig_key);
-//    g_mutex_free(*mutex);
+
+  if (sync->ready) {
+    /* .dat file already received - no need to wait */
+    g_mutex_unlock(load_data_list_mutex);
+    return;
   }
+
+  /* Sync object exists but not ready yet - wait on existing cond */
   g_mutex_unlock(load_data_list_mutex);
-  return FALSE;
+  g_mutex_lock(sync->mutex);
+  while (!sync->ready) {
+    g_cond_wait(sync->cond, sync->mutex);
+  }
+  g_mutex_unlock(sync->mutex);
 }
 
+/* Signal that LOAD DATA file (.dat) is now available.
+ * Called when .dat file is received in streaming mode.
+ */
 void release_load_data_as_it_is_close( gchar * filename ){
   g_mutex_lock(load_data_list_mutex);
-  GMutex *mutex = g_hash_table_lookup(load_data_list,filename);
-  if (mutex == NULL){
-    g_hash_table_insert(load_data_list,g_strdup(filename), NULL);
-  }else{
-    g_mutex_unlock(mutex);
+  struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
+
+  if (sync == NULL) {
+    /* .dat arrived before .sql - create sync object marked as ready */
+    sync = g_new0(struct load_data_sync, 1);
+    sync->mutex = g_mutex_new();
+    sync->cond = g_cond_new();
+    sync->ready = TRUE;
+    g_hash_table_insert(load_data_list, g_strdup(filename), sync);
+    g_mutex_unlock(load_data_list_mutex);
+    return;
   }
+
+  /* Signal any waiting threads that .dat is ready */
+  g_mutex_lock(sync->mutex);
+  sync->ready = TRUE;
+  g_cond_broadcast(sync->cond);
+  g_mutex_unlock(sync->mutex);
   g_mutex_unlock(load_data_list_mutex);
 }
 
@@ -570,12 +617,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           from++;
           gchar *to = g_strstr_len(from, -1, "'");
           load_data_filename=g_strndup(from, to-from);
-          GMutex * mutex=NULL;
-          /* FIX: load_data_mutex_locate now locks the mutex internally before
-           * returning TRUE. Caller should NOT lock again to avoid double-lock
-           * undefined behavior. The mutex is already held when we return. */
-          load_data_mutex_locate(load_data_filename, &mutex);
-	      // TODO we need to free filename and mutex from the hash.
+          /* Wait for .dat file to be available (in streaming mode) */
+          load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
           if (is_fifo){ 
