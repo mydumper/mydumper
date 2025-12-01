@@ -357,6 +357,18 @@ int main(int argc, char *argv[]) {
   if (overwrite_unsafe)
     overwrite_tables= TRUE;
 
+  // Auto-scale schema/index threads based on CPU count
+  // Only auto-scale if user hasn't explicitly set these values (default is 4)
+  guint cpu_count = g_get_num_processors();
+  if (max_threads_for_schema_creation == 4 && cpu_count > 4) {
+    guint auto_schema_threads = cpu_count > 8 ? 8 : cpu_count;
+    max_threads_for_schema_creation = auto_schema_threads;
+  }
+  if (max_threads_for_index_creation == 4 && cpu_count > 4) {
+    guint auto_index_threads = cpu_count > 8 ? 8 : cpu_count;
+    max_threads_for_index_creation = auto_index_threads;
+  }
+
   check_num_threads();
 
   if (num_threads > max_threads_per_table)
