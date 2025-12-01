@@ -44,8 +44,10 @@ GHashTable *fifo_hash=NULL;
 GMutex *fifo_table_mutex=NULL;
 struct configuration *_conf;
 extern gboolean schema_sequence_fix;
+GAsyncQueue *partial_metadata_queue = NULL;
 
 void initialize_process(struct configuration *c){
+  partial_metadata_queue=g_async_queue_new();
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
   replication_statements->start_replica=NULL;
@@ -573,6 +575,10 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       trace("metadata: quote character is %c", identifier_quote_character);  
       first_metadata_processed=TRUE;
   }else if (!first_metadata_processed){
+    if (g_strstr_len(file,-1,"partial")){
+      g_async_queue_push(partial_metadata_queue,file);
+      return;
+    }
     m_error("Section [config] was not found on metadata file");
   }
 
@@ -655,6 +661,11 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
 
   m_remove(directory, file);
   g_free(file);
+
+  file=g_async_queue_try_pop(partial_metadata_queue);
+  if (file)
+    process_metadata_global_filename(file, local_context);
+
 }
 
 gboolean process_schema_view_filename(gchar *filename) {
