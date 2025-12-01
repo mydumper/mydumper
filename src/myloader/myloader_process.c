@@ -120,6 +120,15 @@ FILE * myl_open(char *filename, const char *type){
 
     child_proc = execute_file_per_thread(filename, fifoname, command);
     file=g_fopen(fifoname,type);
+
+    // Issue #2075: Unlink FIFO immediately after both ends are connected.
+    // Once fopen succeeds, both our process and the subprocess have the FIFO open.
+    // The pipe remains usable through the open file descriptors.
+    // This ensures automatic cleanup on crash (no stale FIFOs left behind).
+    if (file != NULL) {
+      remove(fifoname);
+    }
+
     g_mutex_lock(fifo_table_mutex);
     struct fifo *f=g_hash_table_lookup(fifo_hash,file);
     if (f!=NULL){
@@ -166,7 +175,8 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
     g_mutex_unlock(f->mutex);
     g_mutex_unlock(fifo_table_mutex);
 
-    remove(f->stdout_filename);
+    // Issue #2075: FIFO is already unlinked in myl_open() after both ends connect.
+    // No need to remove here - the FIFO name no longer exists on filesystem.
 
     // Release decompressor slot
     if (f->uses_decompressor){
