@@ -89,8 +89,7 @@ gboolean run_snapshot(gpointer *data) {
 }
 
 
-void *exec_thread(void *data) {
-  (void)data;
+void *exec_thread(GOptionContext *context) {
 
   struct configuration conf;
   start_pmm_thread((void *)&conf);
@@ -100,7 +99,7 @@ void *exec_thread(void *data) {
     dump_directory = g_build_path("/", output_directory, dump_number_str, NULL);
     g_free(dump_number_str);
     g_assert(clear_dumpdir);
-    start_dump(&conf);
+    start_dump(&conf, context);
     // start_dump already closes mysql
 
     // Don't switch the symlink on shutdown because the dump is probably
@@ -129,7 +128,7 @@ void *exec_thread(void *data) {
 
 void run_daemon(){
     start_scheduled_dump = g_async_queue_new();
-    m_thread_new("daemon", exec_thread, NULL, "Daemon thread could not be created");
+    m_thread_new("daemon", (GThreadFunc)exec_thread, NULL, "Daemon thread could not be created");
     // Run initial snapshot
     run_snapshot(NULL);
 #if GLIB_MINOR_VERSION < 14

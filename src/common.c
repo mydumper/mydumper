@@ -259,6 +259,44 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
   load_hash_from_key_file(kf,set_session_hash,s->str);
 }
 
+// This function is like g_key_file_has_group but is case insensitive
+gboolean m_key_file_has_group (GKeyFile* kf, const gchar* group_name){
+  gchar **groups=g_key_file_get_groups(kf, NULL);
+  guint i=0;
+  while (groups[i]){
+    if (!g_ascii_strcasecmp(groups[i],group_name)){
+      g_strfreev(groups);
+      return TRUE;
+    }
+    i++;
+  }
+  g_strfreev(groups);
+  return FALSE;
+}
+
+void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int product, int major, int secondary, int revision){
+  GString *group=g_string_sized_new(50);
+  g_string_append(group, app);
+  g_string_append(group, "_");
+  g_string_append(group, g_ascii_strdown(get_product_name(product),-1));
+  g_message("searching group group %s",group->str);
+  if (g_key_file_has_group(kf,group->str)){
+    g_message("group found %s",group->str);
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", major);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", secondary);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", revision);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+}
 
 void free_hash_table(GHashTable * hash){
   GHashTableIter iter;

@@ -390,16 +390,17 @@ void detect_sql_mode(MYSQL *conn){
 }
 
 static
-MYSQL *create_main_connection() {
+MYSQL *create_main_connection(GOptionContext *context) {
   MYSQL *conn;
   conn = mysql_init(NULL);
 
-  m_connect(conn); //, db_items!=NULL?db_items[0]:db);
+  m_connect(conn);
 
   set_session = g_string_new(NULL);
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   server_detect(conn);
+  load_options_for_product_from_key_file(key_file, context, "mydumper", get_product(), get_major(), get_secondary(), get_revision());
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
@@ -871,7 +872,7 @@ cleanup:
 
 // Here is where the backup process start
 
-void start_dump(struct configuration *conf) {
+void start_dump(struct configuration *conf, GOptionContext *context) {
   memset(conf, 0, sizeof(struct configuration));
 
   MYSQL *conn = NULL, *second_conn = NULL;
@@ -898,10 +899,13 @@ void start_dump(struct configuration *conf) {
 
   check_num_threads();
   g_message("Using %u dumper threads", num_threads);
+
+  initialize_connection(MYDUMPER);
+  conn = create_main_connection(context);
+
   initialize_start_dump();
   initialize_common();
   initialize_create_jobs(conf);
-  initialize_connection(MYDUMPER);
   initialize_masquerade();
 
   /* Give ourselves an array of tables to dump */
@@ -915,7 +919,7 @@ void start_dump(struct configuration *conf) {
   initialize_regex(partition_regex);
 
   // Connecting to the database
-  conn = create_main_connection();
+//  conn = create_main_connection(context);
   main_connection = conn;
   second_conn = conn;
   conf->use_any_index= 1;

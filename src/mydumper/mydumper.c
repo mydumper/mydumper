@@ -313,7 +313,7 @@ int main(int argc, char *argv[]) {
     dump_directory = output_directory;
     struct configuration conf;
     start_pmm_thread((void *)&conf);
-    start_dump(&conf);
+    start_dump(&conf, context);
   }
 
   free_set_names();
