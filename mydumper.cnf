@@ -43,3 +43,19 @@ SQL_LOG_BIN=0
 SQL_MODE='NO_AUTO_VALUE_ON_ZERO' /*!40101
 UNIQUE_CHECKS=1 /*!40114
 FOREIGN_KEY_CHECKS=0 /*!40114
+
+[mydumper_percona_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+
+[mydumper_mysql_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+
+[mydumper_mariadb_11]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+
+[mydumper_mariadb_12]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
