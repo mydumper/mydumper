@@ -52,6 +52,8 @@ struct db_table {
   gchar *triggers_checksum;
   gboolean is_view;
   gboolean is_sequence;
+  // O(1) ready queue flag: prevents duplicate enqueuing
+  gboolean in_ready_queue;
 };
 
 struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename);

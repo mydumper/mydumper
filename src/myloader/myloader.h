@@ -106,6 +106,8 @@ struct configuration {
   GList *checksum_list;
   GMutex *mutex;
   GAsyncQueue *index_queue;
+  // O(1) ready table queue: tables with pending jobs ready for dispatch
+  GAsyncQueue *ready_table_queue;
   int done;
   GOptionContext * context;
 };

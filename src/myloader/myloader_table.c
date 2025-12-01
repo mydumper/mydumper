@@ -115,6 +115,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->data_checksum=NULL;
       dbt->is_view=FALSE;
       dbt->is_sequence=FALSE;
+      dbt->in_ready_queue=FALSE;
     }else{
 //      g_free(source_table_name);
       g_free(lkey);
