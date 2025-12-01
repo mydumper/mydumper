@@ -53,8 +53,14 @@ void write_mydumper_pmm_entries(const gchar* filename, GString *content, struct 
   append_pmm_entry(content,"queueu", "stream",            get_stream_queue_length());
   append_pmm_entry(content,"object", "all_tables",        g_hash_table_size(all_dbts));
   // Use cached count for O(1) access instead of O(n) g_list_length()
-  append_pmm_entry(content,"object", "transactional_tables",     transactional_table->count);
-  append_pmm_entry(content,"object", "non_transactional_tables", non_transactional_table->count);
+  g_mutex_lock(transactional_table->mutex);
+  guint trans_count = transactional_table->count;
+  g_mutex_unlock(transactional_table->mutex);
+  g_mutex_lock(non_transactional_table->mutex);
+  guint non_trans_count = non_transactional_table->count;
+  g_mutex_unlock(non_transactional_table->mutex);
+  append_pmm_entry(content,"object", "transactional_tables",     trans_count);
+  append_pmm_entry(content,"object", "non_transactional_tables", non_trans_count);
   append_pmm_entry_all_tables(content);
   g_file_set_contents( filename , content->str, content->len, NULL);
 }
