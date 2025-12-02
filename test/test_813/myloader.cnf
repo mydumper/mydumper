@@ -1,0 +1,4 @@
+[myloader]
+threads=4
+drop-table
+directory=/tmp/data

@@ -58,6 +58,7 @@ extern gboolean dump_routines;
 extern gboolean dump_tablespaces;
 extern gboolean dump_triggers;
 extern gboolean ignore_generated_fields;
+extern gboolean bulk_metadata_prefetch;
 extern gboolean load_data;
 extern gboolean no_data;
 extern gboolean no_delete;

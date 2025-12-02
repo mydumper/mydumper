@@ -33,6 +33,7 @@
 /* Program options */
 gboolean dump_triggers = FALSE;
 gboolean ignore_generated_fields = FALSE;
+gboolean bulk_metadata_prefetch = FALSE;
 gboolean skip_definer = FALSE;
 
 extern gchar *table_engine_for_view_dependency;

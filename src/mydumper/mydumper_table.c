@@ -35,16 +35,95 @@ static GMutex *all_dbts_mutex=NULL;
 static GMutex *character_set_hash_mutex = NULL;
 static GHashTable *character_set_hash=NULL;
 
+// Bulk metadata prefetch caches (populated when --bulk-metadata-prefetch is used)
+static GHashTable *json_fields_cache = NULL;       // "db.table" -> GINT_TO_POINTER(1) if has json
+static GHashTable *generated_fields_cache = NULL;  // "db.table" -> GINT_TO_POINTER(1) if has generated
+static gboolean metadata_prefetch_done = FALSE;
+
 void initialize_table(){
   all_dbts_mutex = g_mutex_new();
   character_set_hash_mutex = g_mutex_new();
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
+  // Initialize metadata caches (populated by prefetch_table_metadata when --bulk-metadata-prefetch)
+  json_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
+  generated_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
 }
 
 void finalize_table(){
   g_hash_table_destroy(character_set_hash);
   g_mutex_free(all_dbts_mutex);
   g_mutex_free(character_set_hash_mutex);
+  // Clean up metadata caches
+  if (json_fields_cache) g_hash_table_destroy(json_fields_cache);
+  if (generated_fields_cache) g_hash_table_destroy(generated_fields_cache);
+}
+
+// Prefetch JSON and generated column metadata in bulk queries
+// Called once at startup when --bulk-metadata-prefetch is used
+void prefetch_table_metadata(MYSQL *conn) {
+  if (metadata_prefetch_done)
+    return;
+
+  g_message("Prefetching table metadata (collations, JSON fields, generated columns)...");
+  GTimer *timer = g_timer_new();
+
+  // Prefetch ALL collation->charset mappings in one query
+  // This prevents per-table collation lookups later
+  const char *collation_query =
+      "SELECT COLLATION_NAME, CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS";
+  MYSQL_RES *result = m_store_result(conn, collation_query, m_warning, "Failed to prefetch collation metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint collation_count = 0;
+    g_mutex_lock(character_set_hash_mutex);
+    while ((row = mysql_fetch_row(result))) {
+      if (row[0] && row[1] && !g_hash_table_contains(character_set_hash, row[0])) {
+        g_hash_table_insert(character_set_hash, g_strdup(row[0]), g_strdup(row[1]));
+        collation_count++;
+      }
+    }
+    g_mutex_unlock(character_set_hash_mutex);
+    mysql_free_result(result);
+    g_message("Prefetched %u collation->charset mappings", collation_count);
+  }
+
+  // Prefetch all tables with JSON columns - single query for ALL tables
+  const char *json_query =
+      "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
+      "WHERE COLUMN_TYPE = 'json'";
+  result = m_store_result(conn, json_query, m_warning, "Failed to prefetch JSON column metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint json_count = 0;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      g_hash_table_insert(json_fields_cache, cache_key, GINT_TO_POINTER(1));
+      json_count++;
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u tables with JSON columns", json_count);
+  }
+
+  // Prefetch all tables with generated columns - single query for ALL tables
+  const char *generated_query =
+      "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
+      "WHERE extra LIKE '%GENERATED%' AND extra NOT LIKE '%DEFAULT_GENERATED%'";
+  result = m_store_result(conn, generated_query, m_warning, "Failed to prefetch generated column metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint generated_count = 0;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      g_hash_table_insert(generated_fields_cache, cache_key, GINT_TO_POINTER(1));
+      generated_count++;
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u tables with generated columns", generated_count);
+  }
+
+  metadata_prefetch_done = TRUE;
+  g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
+  g_timer_destroy(timer);
 }
 
 void free_db_table(struct db_table * dbt){
@@ -207,6 +286,15 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   if (ignore_generated_fields)
     return FALSE;
 
+  // Use prefetched cache if available (--bulk-metadata-prefetch)
+  if (metadata_prefetch_done) {
+    gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+    result = g_hash_table_contains(generated_fields_cache, cache_key);
+    g_free(cache_key);
+    return result;
+  }
+
+  // Fall back to per-table query
   gchar *query = g_strdup_printf(
       "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
       "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
@@ -222,6 +310,15 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
 
 static
 gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
+  // Use prefetched cache if available (--bulk-metadata-prefetch)
+  if (metadata_prefetch_done) {
+    gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+    gboolean result = g_hash_table_contains(json_fields_cache, cache_key);
+    g_free(cache_key);
+    return result;
+  }
+
+  // Fall back to per-table query
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "

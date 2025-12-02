@@ -327,7 +327,11 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
         }
         if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
       }
+      /* Signal waiting data workers that schema is ready */
+      table_lock(dbt);
       dbt->schema_state=CREATED;
+      g_cond_broadcast(dbt->schema_cond);
+      table_unlock(dbt);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
@@ -381,8 +385,13 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             increse_object_error(rj->data.srj->object);
             if (dbt)
               dbt->schema_state= NOT_CREATED;
-          } else if (dbt)
+          } else if (dbt) {
+            /* Signal waiting data workers that schema is ready */
+            table_lock(dbt);
             dbt->schema_state= CREATED;
+            g_cond_broadcast(dbt->schema_cond);
+            table_unlock(dbt);
+          }
 
           if ( rj->data.srj->object == CREATE_DATABASE)
             rj->data.srj->database->schema_state = CREATED;

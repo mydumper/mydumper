@@ -95,6 +95,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->max_connections_per_job=0;
       dbt->retry_count= retry_count;
       dbt->mutex=g_mutex_new();
+      dbt->schema_cond=g_cond_new();
 //      dbt->indexes=alter_table_statement;
       dbt->indexes=NULL;
       dbt->start_data_time=NULL;
@@ -153,6 +154,7 @@ void free_dbt(struct db_table * dbt){
 //  if (dbt->constraints!=NULL) g_string_free(dbt->constraints,TRUE);
   dbt->constraints = NULL; // It should be free after constraint is executed
 //  g_async_queue_unref(dbt->queue);
+  g_cond_clear(dbt->schema_cond);
   g_mutex_clear(dbt->mutex); 
   
 }

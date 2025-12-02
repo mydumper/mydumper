@@ -229,6 +229,9 @@ static GOptionEntry extra_entries[] = {
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
+    { "bulk-metadata-prefetch", 0, 0, G_OPTION_ARG_NONE, &bulk_metadata_prefetch,
+      "Prefetch JSON and generated column metadata in bulk at startup. "
+      "Significantly faster for dumping many tables, but slower for small dumps with -T", NULL },
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
       "Sort the data by Primary Key or Unique key if no primary key exists", NULL},
     {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, 
@@ -322,7 +325,9 @@ static GOptionEntry checksum_entries[] = {
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
       "Dump table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
-      "Dump schema table and view creation checksums", NULL},
+      "Dump schema table and view creation checksums (enabled by default)", NULL},
+    {"no-schema-checksums", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &schema_checksums,
+      "Disable schema checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
       "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

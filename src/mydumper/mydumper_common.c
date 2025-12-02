@@ -293,30 +293,64 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
-void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long length){
-  gchar *ffrom=g_new(char, length);
-  memcpy(ffrom, to, length);
-  gchar *from=ffrom;
-  const char *end = from + length;
-  for (end = from + length; from < end; from++) {
-    if ( *from == neddle ){
-      *to = repl;
-      to++;
-    }
-    *to=*from;
-    to++;
+// SIMD-optimized escape function using memchr
+// memchr is SIMD-optimized in glibc (SSE4.2/AVX2) and musl (word-at-a-time)
+// This avoids the allocation and works backwards to insert escapes in-place
+void m_escape_char_with_char(gchar needle, gchar repl, gchar *str, unsigned long length){
+  if (length == 0) return;
+
+  // Count how many escapes we need to insert using memchr (SIMD-optimized)
+  unsigned long escape_count = 0;
+  const gchar *scan = str;
+  const gchar *end = str + length;
+  while (scan < end) {
+    const gchar *found = memchr(scan, needle, end - scan);
+    if (!found) break;
+    escape_count++;
+    scan = found + 1;
   }
-  *to='\0';
-  g_free(ffrom);
+
+  // Fast path: no escapes needed
+  if (escape_count == 0) {
+    str[length] = '\0';
+    return;
+  }
+
+  // Work backwards: final length = original + escape_count
+  // Each needle becomes: repl + needle (2 chars instead of 1)
+  unsigned long new_length = length + escape_count;
+  gchar *write_ptr = str + new_length;
+  *write_ptr = '\0';  // Null terminate
+
+  const gchar *read_ptr = str + length - 1;
+  write_ptr--;
+
+  // Copy backwards, inserting escape chars as we go
+  while (read_ptr >= str) {
+    *write_ptr = *read_ptr;
+    if (*read_ptr == needle) {
+      write_ptr--;
+      *write_ptr = repl;
+    }
+    write_ptr--;
+    read_ptr--;
+  }
 }
 
-void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned long length){
-  const char *end = from + length;
-  for (end = from + length; from < end; from++) {
-    if ( *from == neddle ){
-      *from = repl;
-      from++;
-    }
+// SIMD-optimized replace function using memchr
+// memchr scans 16-32 bytes at a time on modern CPUs
+void m_replace_char_with_char(gchar needle, gchar repl, gchar *str, unsigned long length){
+  if (length == 0) return;
+
+  gchar *ptr = str;
+  const gchar *end = str + length;
+
+  // Use memchr to jump to each needle location
+  while (ptr < end) {
+    gchar *found = memchr(ptr, needle, end - ptr);
+    if (!found) break;
+    *found = repl;
+    ptr = found + 1;
   }
 }
 
@@ -439,3 +473,14 @@ guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *sta
   return len;
 }
 
+
+gboolean m_pstrstr(char **str_list, const gchar* needle){
+  if (str_list){
+    guint i=0;
+    for (i = 0; str_list[i] != NULL; i++) {
+      if (!g_ascii_strcasecmp(str_list[i], needle))
+        return TRUE;
+    } 
+  } 
+  return FALSE;
+}

@@ -89,7 +89,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       checksum_mode= CHECKSUM_SKIP;
       return TRUE;
     }
-    g_critical("--checksum accepts: fail (default), warn, skip");
+    g_critical("--checksum accepts: fail, warn (default), skip");
   } else if (!g_strcmp0(option_name, "--ignore-set")){
     gchar** ignore_set_items= g_strsplit(value, ",", 0);
     guint i=0;
@@ -196,7 +196,7 @@ static GOptionEntry execution_entries[] = {
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Treat checksums: skip, fail(default), warn.", NULL },
+      "Treat checksums: skip, fail, warn(default).", NULL },
     {"drop-database", 0, 0, G_OPTION_ARG_NONE, &drop_database,
       "Executes a DROP DATABASE if the schema database file is found. ", NULL},
     {"drop-table", 'o', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
