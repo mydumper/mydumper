@@ -70,6 +70,7 @@ extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gboolean skip_constraints;
 extern gboolean skip_indexes;
+extern gboolean skip_metadata_sorting;
 extern gboolean stream;
 extern gboolean use_fifo;
 extern gboolean use_savepoints;
