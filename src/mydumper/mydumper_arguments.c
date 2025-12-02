@@ -43,6 +43,7 @@ gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
+gchar *load_data_character_set=NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -424,6 +425,8 @@ static GOptionEntry statement_entries[] = {
       "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item is used for the schema files and the second item is used for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
     {"default-character-set",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item is used when executes SHOW CREATE TABLE and the second item is used for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
+    {"load-data-character-set",0, 0, G_OPTION_ARG_STRING, &load_data_character_set,
+      "Sets the character that will be added to the CHARACTER SET clause in the LOAD DATA statement. Use it at your own risk as it might cause inconsistencies. By default CHARACTER SET will not be added", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
       "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
