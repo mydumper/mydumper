@@ -395,6 +395,10 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
 
           if ( rj->data.srj->object == CREATE_DATABASE)
             rj->data.srj->database->schema_state = CREATED;
+        } else if (no_schemas && rj->data.srj->object == CREATE_DATABASE) {
+          // In --no-schema mode, skip SQL execution but still mark database as CREATED
+          // so data loading can proceed
+          rj->data.srj->database->schema_state = CREATED;
         }
       }
       free_schema_restore_job(rj->data.srj);
