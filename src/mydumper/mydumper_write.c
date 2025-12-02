@@ -42,7 +42,7 @@
 /* Program options */
 gchar *where_option=NULL;
 
-
+extern gchar *load_data_character_set;
 
 
 const gchar *insert_statement=INSERT;
@@ -428,11 +428,11 @@ gboolean write_data(int file, GString *data) {
 }
 
 void initialize_load_data_statement_suffix(struct db_table *dbt, MYSQL_FIELD * fields, guint num_fields){
-  gchar *character_set=set_names_in_conn_by_default != NULL ? set_names_in_conn_by_default : dbt->character_set /* "BINARY"*/;
+//  gchar *character_set=set_names_in_conn_by_default != NULL ? set_names_in_conn_by_default : dbt->character_set /* "BINARY"*/;
   GString *load_data_suffix=g_string_sized_new(statement_size);
   g_string_append_printf(load_data_suffix, "%s' INTO TABLE %s%s%s ", exec_per_thread_extension, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  if (character_set && strlen(character_set)!=0)
-    g_string_append_printf(load_data_suffix, "CHARACTER SET %s ",character_set);
+  if (load_data_character_set)
+    g_string_append_printf(load_data_suffix, "CHARACTER SET %s ",load_data_character_set);
   if (fields_terminated_by_ld)
     g_string_append_printf(load_data_suffix, "FIELDS TERMINATED BY '%s' ",fields_terminated_by_ld);
   if (fields_enclosed_by_ld)
