@@ -47,15 +47,19 @@ FOREIGN_KEY_CHECKS=0 /*!40114
 [mydumper_percona_8]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
 
 [mydumper_mysql_8]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
 
 [mydumper_mariadb_11]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
 
 [mydumper_mariadb_12]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
