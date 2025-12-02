@@ -34,6 +34,7 @@
 extern gboolean help;
 guint errors=0;
 GList *ignore_errors_list=NULL;
+GHashTable *ignore_errors_set=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
@@ -1353,10 +1354,15 @@ void discard_mysql_output(MYSQL *conn){
   }
 }
 
+gboolean should_ignore_error_code(guint error_code) {
+  if (ignore_errors_set == NULL) return FALSE;
+  return g_hash_table_contains(ignore_errors_set, GINT_TO_POINTER(error_code));
+}
+
 static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (fmt && log_fun_1){
     gchar *c=g_strdup_vprintf(fmt,args);
-    if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
+    if (log_fun_2 && should_ignore_error_code(mysql_errno(conn)))
       log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
     else{
       if (mysql_errno(conn)){

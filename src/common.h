@@ -56,6 +56,7 @@
 #define BINARY_CHARSET "binary"
 #define AUTO_CHARSET "auto"
 extern GList *ignore_errors_list;
+extern GHashTable *ignore_errors_set;
 extern const gchar *start_replica;
 extern const gchar *stop_replica;
 extern const gchar *start_replica_sql_thread;
@@ -169,6 +170,7 @@ void m_message(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
+gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
 
 void print_int(const char*_key, int val);

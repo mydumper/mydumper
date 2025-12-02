@@ -150,7 +150,7 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
       g_warning("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
     }
 
-    if ( mysql_errno(cd->thrconn) != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(cd->thrconn) ))){
+    if ( mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn))){
       if (mysql_ping(cd->thrconn)) {
         reconnect_connection_data(cd);
         if (!is_schema && commit_count > 1) {
