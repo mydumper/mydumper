@@ -210,7 +210,7 @@ regex_error:
               goto regex_error;
             g_free(expr);
 //          }
-          if ( g_str_has_prefix(dbt->table_filename,"mydumper_") && !dbt->source_table_name){
+          if ( g_str_has_prefix(dbt->table_filename,"mydumper_") || !dbt->source_table_name){
             dbt->source_table_name=dbt->create_table_name;
 //            g_hash_table_insert(tbl_hash, dbt->table_filename, dbt->source_table_name);
 //          }else{
