@@ -714,15 +714,20 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
 
 static
 gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2){
-  if (((struct restore_job *)rj1)->data.drj->part != ((struct restore_job *)rj2)->data.drj->part ){
-    guint a=((struct restore_job *)rj1)->data.drj->part, b=((struct restore_job *)rj2)->data.drj->part;
-    while ( a%2 == b%2 ){
-      a=a>>1;
-      b=b>>1;
-    }
-    return a%2 > b%2;
+  guint a = ((struct restore_job *)rj1)->data.drj->part;
+  guint b = ((struct restore_job *)rj2)->data.drj->part;
+  if (a != b) {
+    // Perf: Use __builtin_clz (single CPU instruction) instead of bit-shift loop
+    // Find the highest differing bit between a and b using XOR
+    guint diff = a ^ b;
+    // Count leading zeros to find the position of the highest set bit in diff
+    // Then compare that bit in a and b to determine ordering
+    int bit_pos = (sizeof(guint) * 8 - 1) - __builtin_clz(diff);
+    return ((a >> bit_pos) & 1) > ((b >> bit_pos) & 1) ? 1 : -1;
   }
-  return ((struct restore_job *)rj1)->data.drj->sub_part > ((struct restore_job *)rj2)->data.drj->sub_part;
+  guint sub_a = ((struct restore_job *)rj1)->data.drj->sub_part;
+  guint sub_b = ((struct restore_job *)rj2)->data.drj->sub_part;
+  return (sub_a > sub_b) ? 1 : (sub_a < sub_b) ? -1 : 0;
 }
 
 gboolean process_data_filename(char * filename){

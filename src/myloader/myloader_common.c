@@ -446,14 +446,17 @@ void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboo
         table_list=g_list_prepend(table_list,dbt);
         table_lock(dbt);
         if (dbt->schema_state < DATA_DONE)
-          loading_table_list=g_list_insert_sorted(loading_table_list,dbt,&compare_dbt_short);
+          // Perf: Use g_list_prepend (O(1)) instead of g_list_insert_sorted (O(n))
+          // We'll sort the entire list once after the loop - O(n log n) total instead of O(n²)
+          loading_table_list=g_list_prepend(loading_table_list,dbt);
         table_unlock(dbt);
       }
     }
     g_list_free(conf->table_list);
     conf->table_list=table_list;
     g_list_free(conf->loading_table_list);
-    conf->loading_table_list=loading_table_list;
+    // Perf: Single O(n log n) sort instead of O(n²) insert_sorted in loop
+    conf->loading_table_list=g_list_sort(loading_table_list, &compare_dbt_short);
     g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
     g_mutex_unlock(conf->table_list_mutex);
   }else{
