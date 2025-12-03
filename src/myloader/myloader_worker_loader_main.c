@@ -60,16 +60,61 @@ void data_control_queue_push(enum data_control_type current_ft){
   g_async_queue_push(data_control_queue, GINT_TO_POINTER(current_ft));
 }
 
+// O(1) ready table queue: enqueue table if it has pending jobs and is ready
+// Must be called with dbt->mutex held
+static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_table *dbt){
+  if (dbt->schema_state == CREATED &&
+      g_list_length(dbt->restore_job_list) > 0 &&
+      dbt->current_threads < dbt->max_threads &&
+      !dbt->in_ready_queue &&
+      !dbt->object_to_export.no_data &&
+      !dbt->is_view &&
+      !dbt->is_sequence) {
+    dbt->in_ready_queue = TRUE;
+    g_async_queue_push(conf->ready_table_queue, dbt);
+  }
+}
+
 gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_job ** rj){
   gboolean giveup = TRUE;
+  struct restore_job *job = NULL;
+  struct db_table * dbt;
+
+  // O(1) dispatch: try ready_table_queue first
+  while ((dbt = g_async_queue_try_pop(conf->ready_table_queue)) != NULL) {
+    table_lock(dbt);
+    dbt->in_ready_queue = FALSE;  // Mark as removed from queue
+
+    // Re-validate readiness (state may have changed since enqueue)
+    if (dbt->schema_state == CREATED &&
+        g_list_length(dbt->restore_job_list) > 0 &&
+        dbt->current_threads < dbt->max_threads &&
+        !dbt->object_to_export.no_data &&
+        !dbt->is_view &&
+        !dbt->is_sequence) {
+      // Dispatch job from this table
+      job = dbt->restore_job_list->data;
+      GList *current = dbt->restore_job_list;
+      dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
+      g_list_free_1(current);
+      dbt->current_threads++;
+
+      // Re-enqueue if more jobs remain
+      enqueue_table_if_ready_locked(conf, dbt);
+      table_unlock(dbt);
+      *rj = job;
+      return FALSE;  // giveup = FALSE, we have a job
+    }
+    table_unlock(dbt);
+  }
+
+  // Fallback: O(n) scan of table list
   g_mutex_lock(conf->table_list_mutex);
   GList * iter=conf->loading_table_list;
-  struct restore_job *job = NULL;
 //  g_mutex_lock(conf->table_list_mutex);
 //  trace("Elements in table_list: %d",g_list_length(conf->table_list));
 //  g_mutex_unlock(conf->table_list_mutex);
 //  We are going to check every table and see if there is any missing job
-  struct db_table * dbt;
   while (iter != NULL){
     dbt = iter->data;
     trace("DB: %s Table: %s Schema State: %d remaining_jobs: %d", dbt->database->target_database,dbt->source_table_name, dbt->schema_state, dbt->remaining_jobs);
@@ -137,6 +182,8 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
         dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
         g_list_free_1(current);
         dbt->current_threads++;
+        // Re-enqueue if more jobs remain (O(1) optimization)
+        enqueue_table_if_ready_locked(conf, dbt);
         table_unlock(dbt);
         giveup=FALSE;
         trace("%s.%s sending %s: %s, threads: %u, prohibiting finish", dbt->database->target_database, dbt->source_table_name,
