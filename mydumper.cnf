@@ -18,6 +18,12 @@ ignore-engines=tokudb
 [mydumper_session_variables]
 # These are examples of variables that you might want to change
 # wait_timeout = 300
+#
+# If you do not set SQL_MODE in this section, mydumper will detect it from the server.
+# In mydumper_start_dump.c::detect_sql_mode will modify the detected SQL_MODE in this way:
+# - it will add NO_AUTO_VALUE_ON_ZERO if not found
+# - it will remove NO_BACKSLASH_ESCAPES, PIPES_AS_CONCAT, NO_KEY_OPTIONS, NO_TABLE_OPTIONS, NO_FIELD_OPTIONS and STRICT_TRANS_TABLES if present
+#
 # sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
 # sql_mode='ANSI_QUOTES';
 CHARACTER_SET_RESULTS = NULL
