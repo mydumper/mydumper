@@ -44,6 +44,7 @@ void release_directory_metadata_lock(){
 }
 
 void *process_directory(struct configuration *conf){
+  (void) conf;
   GError *error = NULL;
   const gchar *filename = NULL;
   /*
@@ -52,7 +53,10 @@ void *process_directory(struct configuration *conf){
     we will get wrong condition (sequences == sequences_processed == 0).
   */
   if (g_file_test("metadata", G_FILE_TEST_IS_REGULAR)){
-    process_metadata_global_filename(g_strdup("metadata"), conf->context);
+    // metadata needs to be processed at the begining, that is why we are pushing into the queue
+    // before reading the whole directory and excluding it after.
+    process_filename_push(g_strdup("metadata"));
+//    process_metadata_global_filename(g_strdup("metadata"), conf->context);
 //    release_directory_metadata_lock(); This has been moved to process_metadata_global_filename and triggered when [config] has been processed
   }else
     g_error("metadata file was not found");
