@@ -292,7 +292,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     if (source_gtid){
       g_string_append_printf(rs->start_replica_until,"SQL_AFTER_GTIDS = %s",source_gtid);
     }else{
-      g_string_append_printf(rs->start_replica_until,"SOURCE_LOG_FILE = '%s', SOURCE_LOG_POS = %"G_GINT64_FORMAT, source_log_file, source_log_pos);
+      g_string_append_printf(rs->start_replica_until,"SOURCE_LOG_FILE = %s, SOURCE_LOG_POS = %"G_GINT64_FORMAT, source_log_file, source_log_pos);
     }
     g_string_append(rs->start_replica_until," FOR CHANNEL '");
     if (channel_name!=NULL)
