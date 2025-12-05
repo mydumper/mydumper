@@ -671,6 +671,10 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
           if (get_value(kf,groups[j],"rows")){
             dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
           }
+          if (value) g_free(value);
+          if (get_value(kf,groups[j],"is_view")){
+            dbt->is_view=g_ascii_strtoull(get_value(kf,groups[j],"is_view"),NULL, 10);
+          }
         }
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';

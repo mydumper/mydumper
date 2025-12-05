@@ -42,6 +42,7 @@ struct db_table {
   GString *load_data_suffix;
   gboolean is_transactional;
   gboolean is_sequence;
+  gboolean is_view;
   gboolean has_json_fields;
   char *character_set;
   guint64 rows_total;
@@ -83,5 +84,5 @@ void prefetch_table_metadata(MYSQL *conn);
 void free_db_table(struct db_table * dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence);
+                      gboolean is_sequence, gboolean is_view);
 
