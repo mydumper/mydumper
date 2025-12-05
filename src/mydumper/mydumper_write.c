@@ -602,6 +602,8 @@ void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD fiel
       unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
       if (field.type == MYSQL_TYPE_JSON)
         g_string_append(buffers.column, "CONVERT(");
+      else if (field.flags & BINARY_FLAG)
+        g_string_append(buffers.column, "_binary ");
       g_string_append_c(buffers.column, *fields_enclosed_by);
       g_string_append_len(buffers.column, buffers.escaped->str, escaped_len);
       g_string_append_c(buffers.column, *fields_enclosed_by);
