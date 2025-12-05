@@ -336,7 +336,7 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence)
+                      gboolean is_sequence, gboolean is_view)
 {
   gchar * lkey = build_dbt_key(database->source_database,table);
   g_mutex_lock(all_dbts_mutex);
@@ -356,6 +356,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->table = identifier_quote_character_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->is_sequence= is_sequence;
+    dbt->is_view=is_view;
     if (table_collation==NULL)
       dbt->character_set = NULL;
     else{

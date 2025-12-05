@@ -865,7 +865,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
 */
 
   struct db_table *dbt=NULL;
-  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence);
+  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence, is_view);
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
