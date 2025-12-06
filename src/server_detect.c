@@ -52,7 +52,7 @@ int get_revision(){
       return revision;
 }
 
-const gchar * get_product_name(){
+const gchar * get_product_name(void){
   switch (get_product()){
     case SERVER_TYPE_PERCONA:   return "Percona"; break;
     case SERVER_TYPE_MYSQL:     return "MySQL";   break;
