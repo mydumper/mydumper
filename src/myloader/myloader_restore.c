@@ -613,27 +613,32 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
           GString *new_data = NULL;
-          gchar *from = g_strstr_len(data->str, -1, "'");
+          // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+          gchar *from = strchr(data->str, '\'');
           from++;
-          gchar *to = g_strstr_len(from, -1, "'");
+          gchar *to = strchr(from, '\'');
           load_data_filename=g_strndup(from, to-from);
           /* Wait for .dat file to be available (in streaming mode) */
           load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
-          if (is_fifo){ 
+          if (is_fifo){
             if (fifo_directory != NULL){
               new_data = g_string_new_len(data->str, from - data->str);
               g_string_append(new_data, fifo_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
-              from = g_strstr_len(new_data->str, -1, "'") + 1;
+              // Perf: Use strchr instead of g_strstr_len for single character search
+              from = strchr(new_data->str, '\'') + 1;
               g_string_free(data, TRUE);
               data=new_data;
-              to = g_strstr_len(from, -1, "'");
+              to = strchr(from, '\'');
             }
+            // Perf: Cache strlen results outside loop
+            guint load_data_filename_len = strlen(load_data_filename);
+            guint load_data_fifo_filename_len = strlen(load_data_fifo_filename);
             guint a=0;
-            for(;a<strlen(load_data_filename)-strlen(load_data_fifo_filename);a++){
+            for(;a<load_data_filename_len-load_data_fifo_filename_len;a++){
               *to=' '; to--;
             }
             *to='\'';
