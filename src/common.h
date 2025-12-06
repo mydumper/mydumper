@@ -230,4 +230,4 @@ void *monitor_throttling_thread (void *queue);
 gchar *set_names_statement_template(gchar *_set_names);
 void execute_set_names(MYSQL *conn, gchar *_set_names);
 gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
-void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int product, int major, int secondary, int revision);
+void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision);
