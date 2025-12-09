@@ -324,14 +324,31 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
+  // Perf: Cache strlen results to avoid calling strlen 9x per invocation
+  // This function is called for every file in dump directory (~750K+ files for 250K tables)
+  gsize str_len = strlen(str);
+  gsize suffix_len = strlen(suffix);
+
   if (has_exec_per_thread_extension(str)){
-    return g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL;
+    gsize ext_len = strlen(exec_per_thread_extension);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+    }
+    return FALSE;
   }else if ( g_str_has_suffix(str, GZIP_EXTENSION) ){
-    return g_strstr_len(&(str[strlen(str)-strlen(GZIP_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(GZIP_EXTENSION),suffix) != NULL;
+    gsize ext_len = strlen(GZIP_EXTENSION);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+    }
+    return FALSE;
   }else if ( g_str_has_suffix(str, ZSTD_EXTENSION) ){
-    return g_strstr_len(&(str[strlen(str)-strlen(ZSTD_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(ZSTD_EXTENSION),suffix) != NULL;
+    gsize ext_len = strlen(ZSTD_EXTENSION);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+    }
+    return FALSE;
   }
-  return g_str_has_suffix(str,suffix);
+  return g_str_has_suffix(str, suffix);
 }
 
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
