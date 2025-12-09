@@ -332,19 +332,19 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
   if (has_exec_per_thread_extension(str)){
     gsize ext_len = strlen(exec_per_thread_extension);
     if (str_len > ext_len + suffix_len) {
-      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
     }
     return FALSE;
   }else if ( g_str_has_suffix(str, GZIP_EXTENSION) ){
     gsize ext_len = strlen(GZIP_EXTENSION);
     if (str_len > ext_len + suffix_len) {
-      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
     }
     return FALSE;
   }else if ( g_str_has_suffix(str, ZSTD_EXTENSION) ){
     gsize ext_len = strlen(ZSTD_EXTENSION);
     if (str_len > ext_len + suffix_len) {
-      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), ext_len, suffix) != NULL;
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
     }
     return FALSE;
   }
