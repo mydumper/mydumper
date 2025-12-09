@@ -617,7 +617,8 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
   if (!c_min && !c_max){
     trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
-    close_files(tj);
+    if (csi->position==0)
+      close_files(tj);
     g_mutex_unlock(csi->mutex);
     goto update_min;
 //    goto end_process; 
@@ -772,8 +773,8 @@ retry:
       gint64 to_time = g_get_monotonic_time();
 
 // Step 3.1: Updating Step length
-
-      GTimeSpan diff = to_time - from_time;  // Zero allocation, same precision
+      // g_get_monotonic_time is in microseconds, that is why we need to divide by G_TIME_SPAN_SECOND, as we compare in seconds
+      GTimeSpan diff = (to_time - from_time) / G_TIME_SPAN_SECOND;  // Zero allocation, same precision
       g_mutex_lock(csi->mutex);
 
 
@@ -790,9 +791,8 @@ retry:
         cs->integer_step.rows_in_explain-=tj->num_rows_of_last_run;
       else
         cs->integer_step.rows_in_explain=0;
-
       if (diff>0 && tj->num_rows_of_last_run>0){
-        cs->integer_step.step=tj->num_rows_of_last_run*max_time_per_select*G_TIME_SPAN_SECOND/diff;
+        cs->integer_step.step=tj->num_rows_of_last_run*max_time_per_select/diff;
         trace("Thread %d: I-Chunk 3: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->source_database, tj->dbt->table, cs->integer_step.step, tj->num_rows_of_last_run, diff);
       }else{
         cs->integer_step.step*=2;
