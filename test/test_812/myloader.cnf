@@ -1,4 +1,7 @@
 [myloader]
-threads=4
-no-schema
-directory=/tmp/data
+directory=/tmp/test_812_data
+threads=16
+overwrite-tables
+fifodir=/tmp/test_812_fifo
+[myloader_global_variables]
+local_infile=ON
