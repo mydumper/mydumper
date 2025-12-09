@@ -617,7 +617,8 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
   }
   if (!c_min && !c_max){
     trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
-    close_files(tj);
+    if (csi->position==0)
+      close_files(tj);
     g_mutex_unlock(csi->mutex);
     goto update_min;
 //    goto end_process; 
