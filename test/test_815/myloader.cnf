@@ -1,4 +1,5 @@
 [myloader]
 threads=4
 no-schema
+drop-table=TRUNCATE
 directory=/tmp/test_815_data
