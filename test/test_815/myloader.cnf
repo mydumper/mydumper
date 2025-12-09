@@ -1,4 +1,4 @@
 [myloader]
 threads=4
 no-schema
-directory=/tmp/data
+directory=/tmp/test_815_data
