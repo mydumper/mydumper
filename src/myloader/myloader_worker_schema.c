@@ -189,7 +189,9 @@ gboolean process_schema(struct thread_data * td){
       gpointer _key;
       g_hash_table_iter_init (&iter, database_hash);
       while (g_hash_table_iter_next (&iter, &_key, (gpointer) &_database)){
+        g_mutex_lock(_database->mutex);
         set_db_schema_created(_database);
+        g_mutex_unlock(_database->mutex);
       }
       
       schema_job_queue_push(new_schema_job(SCHEMA_ENDED, NULL, NULL));
