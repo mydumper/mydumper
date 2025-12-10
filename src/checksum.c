@@ -18,7 +18,7 @@
 
 char *generic_checksum(MYSQL *conn, char *database, char *table, const gchar *query_template, int column_number){
   char *query = g_strdup_printf(query_template, database, table);
-  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s)", database, table);
+  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s) %s", database, table, query);
   g_free(query);
   char * r=NULL;
   if (mr->row)
@@ -56,7 +56,7 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
 }
 
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
+  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A", 0);
 }
 
 char * checksum_events_structure_from_database(MYSQL *conn, char *database, char *table){
