@@ -1,0 +1,4 @@
+[myloader]
+threads=4
+no-schema
+directory=/tmp/test_815_data

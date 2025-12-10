@@ -7,7 +7,7 @@ mydumper_stor_dir="/tmp/data"
 mysqldumplog=/tmp/mysqldump.sql
 retries=1
 directories="specific test"
-mysql_user=root
+export mysql_user=root
 
 die()
 {
@@ -39,6 +39,7 @@ mysqldump_exe=`which mysqldump` ||
 mysql_exe=`which mariadb` ||
 mysql_exe=`which mysql` ||
   die "mysql client not found!"
+export mysql_exe=${mysql_exe}
 
 if [ -z "$MYSQLX_UNIX_PORT" -a -z "$MYSQL_UNIX_PORT" ]
 then
