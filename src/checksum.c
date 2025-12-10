@@ -18,7 +18,7 @@
 
 char *generic_checksum(MYSQL *conn, char *database, char *table, const gchar *query_template, int column_number){
   char *query = g_strdup_printf(query_template, database, table);
-  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s) %s", database, table, query);
+  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s)", database, table);
   g_free(query);
   char * r=NULL;
   if (mr->row)
