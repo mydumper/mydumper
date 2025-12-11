@@ -38,7 +38,14 @@ static GHashTable *character_set_hash=NULL;
 // Bulk metadata prefetch caches (populated when --bulk-metadata-prefetch is used)
 static GHashTable *json_fields_cache = NULL;       // "db.table" -> GINT_TO_POINTER(1) if has json
 static GHashTable *generated_fields_cache = NULL;  // "db.table" -> GINT_TO_POINTER(1) if has generated
+static GHashTable *partition_cache = NULL;         // "db.table" -> GList* of partition names
 static gboolean metadata_prefetch_done = FALSE;
+
+// Free a GList of partition names (for hash table value destructor)
+static void free_partition_list(gpointer data) {
+  GList *list = (GList *)data;
+  g_list_free_full(list, g_free);
+}
 
 void initialize_table(){
   all_dbts_mutex = g_mutex_new();
@@ -47,6 +54,7 @@ void initialize_table(){
   // Initialize metadata caches (populated by prefetch_table_metadata when --bulk-metadata-prefetch)
   json_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
   generated_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
+  partition_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, &free_partition_list);
 }
 
 void finalize_table(){
@@ -56,6 +64,7 @@ void finalize_table(){
   // Clean up metadata caches
   if (json_fields_cache) g_hash_table_destroy(json_fields_cache);
   if (generated_fields_cache) g_hash_table_destroy(generated_fields_cache);
+  if (partition_cache) g_hash_table_destroy(partition_cache);
 }
 
 // Prefetch JSON and generated column metadata in bulk queries
@@ -121,9 +130,79 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with generated columns", generated_count);
   }
 
+  // Prefetch all partition names - single query for ALL partitioned tables
+  // This eliminates per-table PARTITIONS queries during chunk building
+  const char *partition_query =
+      "SELECT TABLE_SCHEMA, TABLE_NAME, PARTITION_NAME FROM information_schema.PARTITIONS "
+      "WHERE PARTITION_NAME IS NOT NULL ORDER BY TABLE_SCHEMA, TABLE_NAME, PARTITION_ORDINAL_POSITION";
+  result = m_store_result(conn, partition_query, m_warning, "Failed to prefetch partition metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint partition_count = 0;
+    guint table_count = 0;
+    gchar *last_key = NULL;
+    GList *current_list = NULL;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      // Check if we've moved to a new table
+      if (last_key == NULL || g_strcmp0(last_key, cache_key) != 0) {
+        // Save previous table's partition list
+        if (last_key != NULL && current_list != NULL) {
+          g_hash_table_insert(partition_cache, last_key, g_list_reverse(current_list));
+          table_count++;
+        } else if (last_key != NULL) {
+          g_free(last_key);
+        }
+        last_key = cache_key;
+        current_list = NULL;
+      } else {
+        g_free(cache_key);  // Duplicate key, free it
+      }
+      // Append partition name to current table's list
+      current_list = g_list_prepend(current_list, g_strdup(row[2]));
+      partition_count++;
+    }
+    // Don't forget the last table
+    if (last_key != NULL && current_list != NULL) {
+      g_hash_table_insert(partition_cache, last_key, g_list_reverse(current_list));
+      table_count++;
+    } else if (last_key != NULL) {
+      g_free(last_key);
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u partitions across %u tables", partition_count, table_count);
+  }
+
   metadata_prefetch_done = TRUE;
   g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
   g_timer_destroy(timer);
+}
+
+// Get cached partition list for a table (returns NULL if not in cache or prefetch not done)
+// Caller must NOT free the returned list (it's owned by the cache)
+// Returns a deep copy if cache hit, NULL if cache miss
+GList *get_cached_partitions(const gchar *database, const gchar *table) {
+  if (!metadata_prefetch_done || !partition_cache)
+    return NULL;
+
+  gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+  GList *cached = g_hash_table_lookup(partition_cache, cache_key);
+  g_free(cache_key);
+
+  if (cached == NULL)
+    return NULL;
+
+  // Return a deep copy so caller can modify/filter/free it
+  GList *copy = NULL;
+  for (GList *l = cached; l != NULL; l = l->next) {
+    copy = g_list_prepend(copy, g_strdup(l->data));
+  }
+  return g_list_reverse(copy);
+}
+
+// Check if metadata prefetch has been done
+gboolean is_metadata_prefetch_done(void) {
+  return metadata_prefetch_done;
 }
 
 void free_db_table(struct db_table * dbt){
