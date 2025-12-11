@@ -67,6 +67,32 @@ void finalize_table(){
   if (partition_cache) g_hash_table_destroy(partition_cache);
 }
 
+// Build schema filter clause for bulk prefetch queries
+// Returns empty string if no filter, or " AND TABLE_SCHEMA IN (...)" if -B is used
+static gchar *build_schema_filter(const gchar *column_name) {
+  if (source_db == NULL || strlen(source_db) == 0)
+    return g_strdup("");
+
+  // Split by comma for multiple databases
+  gchar **schemas = g_strsplit(source_db, ",", -1);
+  GString *filter = g_string_new(" AND ");
+  g_string_append(filter, column_name);
+
+  guint count = g_strv_length(schemas);
+  if (count == 1) {
+    g_string_append_printf(filter, " = '%s'", schemas[0]);
+  } else {
+    g_string_append(filter, " IN (");
+    for (guint i = 0; schemas[i] != NULL; i++) {
+      if (i > 0) g_string_append(filter, ", ");
+      g_string_append_printf(filter, "'%s'", schemas[i]);
+    }
+    g_string_append(filter, ")");
+  }
+  g_strfreev(schemas);
+  return g_string_free(filter, FALSE);
+}
+
 // Prefetch JSON and generated column metadata in bulk queries
 // Called once at startup when --bulk-metadata-prefetch is used
 void prefetch_table_metadata(MYSQL *conn) {
@@ -75,6 +101,12 @@ void prefetch_table_metadata(MYSQL *conn) {
 
   g_message("Prefetching table metadata (collations, JSON fields, generated columns)...");
   GTimer *timer = g_timer_new();
+
+  // Build schema filter once (empty string if no -B flag, otherwise "AND TABLE_SCHEMA IN (...)")
+  gchar *schema_filter = build_schema_filter("TABLE_SCHEMA");
+  if (source_db != NULL && strlen(source_db) > 0) {
+    g_message("Filtering prefetch to schema(s): %s", source_db);
+  }
 
   // Prefetch ALL collation->charset mappings in one query
   // This prevents per-table collation lookups later
@@ -96,11 +128,12 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u collation->charset mappings", collation_count);
   }
 
-  // Prefetch all tables with JSON columns - single query for ALL tables
-  const char *json_query =
+  // Prefetch all tables with JSON columns - single query (filtered by schema if -B used)
+  gchar *json_query = g_strdup_printf(
       "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
-      "WHERE COLUMN_TYPE = 'json'";
+      "WHERE COLUMN_TYPE = 'json'%s", schema_filter);
   result = m_store_result(conn, json_query, m_warning, "Failed to prefetch JSON column metadata", NULL);
+  g_free(json_query);
   if (result) {
     MYSQL_ROW row;
     guint json_count = 0;
@@ -113,11 +146,12 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with JSON columns", json_count);
   }
 
-  // Prefetch all tables with generated columns - single query for ALL tables
-  const char *generated_query =
+  // Prefetch all tables with generated columns - single query (filtered by schema if -B used)
+  gchar *generated_query = g_strdup_printf(
       "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
-      "WHERE extra LIKE '%GENERATED%' AND extra NOT LIKE '%DEFAULT_GENERATED%'";
+      "WHERE extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%'%s", schema_filter);
   result = m_store_result(conn, generated_query, m_warning, "Failed to prefetch generated column metadata", NULL);
+  g_free(generated_query);
   if (result) {
     MYSQL_ROW row;
     guint generated_count = 0;
@@ -130,12 +164,13 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with generated columns", generated_count);
   }
 
-  // Prefetch all partition names - single query for ALL partitioned tables
+  // Prefetch all partition names - single query (filtered by schema if -B used)
   // This eliminates per-table PARTITIONS queries during chunk building
-  const char *partition_query =
+  gchar *partition_query = g_strdup_printf(
       "SELECT TABLE_SCHEMA, TABLE_NAME, PARTITION_NAME FROM information_schema.PARTITIONS "
-      "WHERE PARTITION_NAME IS NOT NULL ORDER BY TABLE_SCHEMA, TABLE_NAME, PARTITION_ORDINAL_POSITION";
+      "WHERE PARTITION_NAME IS NOT NULL%s ORDER BY TABLE_SCHEMA, TABLE_NAME, PARTITION_ORDINAL_POSITION", schema_filter);
   result = m_store_result(conn, partition_query, m_warning, "Failed to prefetch partition metadata", NULL);
+  g_free(partition_query);
   if (result) {
     MYSQL_ROW row;
     guint partition_count = 0;
@@ -173,6 +208,7 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u partitions across %u tables", partition_count, table_count);
   }
 
+  g_free(schema_filter);
   metadata_prefetch_done = TRUE;
   g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
   g_timer_destroy(timer);
