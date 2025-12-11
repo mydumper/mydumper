@@ -77,6 +77,32 @@ void finalize_table(){
   if (selectable_columns_cache) g_hash_table_destroy(selectable_columns_cache);
 }
 
+// Build schema filter clause for bulk prefetch queries
+// Returns empty string if no filter, or " AND TABLE_SCHEMA IN (...)" if -B is used
+static gchar *build_schema_filter(const gchar *column_name) {
+  if (source_db == NULL || strlen(source_db) == 0)
+    return g_strdup("");
+
+  // Split by comma for multiple databases
+  gchar **schemas = g_strsplit(source_db, ",", -1);
+  GString *filter = g_string_new(" AND ");
+  g_string_append(filter, column_name);
+
+  guint count = g_strv_length(schemas);
+  if (count == 1) {
+    g_string_append_printf(filter, " = '%s'", schemas[0]);
+  } else {
+    g_string_append(filter, " IN (");
+    for (guint i = 0; schemas[i] != NULL; i++) {
+      if (i > 0) g_string_append(filter, ", ");
+      g_string_append_printf(filter, "'%s'", schemas[i]);
+    }
+    g_string_append(filter, ")");
+  }
+  g_strfreev(schemas);
+  return g_string_free(filter, FALSE);
+}
+
 // Prefetch JSON and generated column metadata in bulk queries
 // Called once at startup when --bulk-metadata-prefetch is used
 void prefetch_table_metadata(MYSQL *conn) {
@@ -85,6 +111,12 @@ void prefetch_table_metadata(MYSQL *conn) {
 
   g_message("Prefetching table metadata (collations, JSON fields, generated columns)...");
   GTimer *timer = g_timer_new();
+
+  // Build schema filter once (empty string if no -B flag, otherwise "AND TABLE_SCHEMA IN (...)")
+  gchar *schema_filter = build_schema_filter("TABLE_SCHEMA");
+  if (source_db != NULL && strlen(source_db) > 0) {
+    g_message("Filtering prefetch to schema(s): %s", source_db);
+  }
 
   // Prefetch ALL collation->charset mappings in one query
   // This prevents per-table collation lookups later
@@ -106,11 +138,12 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u collation->charset mappings", collation_count);
   }
 
-  // Prefetch all tables with JSON columns - single query for ALL tables
-  const char *json_query =
+  // Prefetch all tables with JSON columns - single query (filtered by schema if -B used)
+  gchar *json_query = g_strdup_printf(
       "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
-      "WHERE COLUMN_TYPE = 'json'";
+      "WHERE COLUMN_TYPE = 'json'%s", schema_filter);
   result = m_store_result(conn, json_query, m_warning, "Failed to prefetch JSON column metadata", NULL);
+  g_free(json_query);
   if (result) {
     MYSQL_ROW row;
     guint json_count = 0;
@@ -123,11 +156,12 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with JSON columns", json_count);
   }
 
-  // Prefetch all tables with generated columns - single query for ALL tables
-  const char *generated_query =
+  // Prefetch all tables with generated columns - single query (filtered by schema if -B used)
+  gchar *generated_query = g_strdup_printf(
       "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
-      "WHERE extra LIKE '%GENERATED%' AND extra NOT LIKE '%DEFAULT_GENERATED%'";
+      "WHERE extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%'%s", schema_filter);
   result = m_store_result(conn, generated_query, m_warning, "Failed to prefetch generated column metadata", NULL);
+  g_free(generated_query);
   if (result) {
     MYSQL_ROW row;
     guint generated_count = 0;
@@ -140,14 +174,15 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with generated columns", generated_count);
   }
 
-  // Prefetch primary key / unique index columns from STATISTICS
+  // Prefetch primary key / unique index columns from STATISTICS (filtered by schema if -B used)
   // Groups by table, stores column list for PRIMARY index (or first UNIQUE if no PRIMARY)
-  const char *index_query =
+  gchar *index_query = g_strdup_printf(
       "SELECT TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, NON_UNIQUE "
       "FROM information_schema.STATISTICS "
-      "WHERE NON_UNIQUE = 0 "
-      "ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX";
+      "WHERE NON_UNIQUE = 0%s "
+      "ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX", schema_filter);
   result = m_store_result(conn, index_query, m_warning, "Failed to prefetch index metadata", NULL);
+  g_free(index_query);
   if (result) {
     MYSQL_ROW row;
     guint pk_count = 0;
@@ -207,10 +242,14 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched primary/unique keys for %u tables", pk_count);
   }
 
-  // Prefetch triggers - just need to know which tables have triggers
-  const char *trigger_query =
-      "SELECT DISTINCT TRIGGER_SCHEMA, EVENT_OBJECT_TABLE FROM information_schema.TRIGGERS";
+  // Prefetch triggers - just need to know which tables have triggers (filtered by schema if -B used)
+  gchar *trigger_schema_filter = build_schema_filter("TRIGGER_SCHEMA");
+  gchar *trigger_query = g_strdup_printf(
+      "SELECT DISTINCT TRIGGER_SCHEMA, EVENT_OBJECT_TABLE FROM information_schema.TRIGGERS WHERE 1=1%s",
+      trigger_schema_filter);
+  g_free(trigger_schema_filter);
   result = m_store_result(conn, trigger_query, m_warning, "Failed to prefetch trigger metadata", NULL);
+  g_free(trigger_query);
   if (result) {
     MYSQL_ROW row;
     guint trigger_count = 0;
@@ -223,14 +262,15 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with triggers", trigger_count);
   }
 
-  // Prefetch selectable columns (excluding virtual/stored generated)
+  // Prefetch selectable columns (excluding virtual/stored generated) - filtered by schema if -B used
   // This eliminates per-table COLUMNS queries in get_selectable_fields()
-  const char *columns_query =
+  gchar *columns_query = g_strdup_printf(
       "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS "
-      "WHERE (extra NOT LIKE '%VIRTUAL GENERATED%' AND extra NOT LIKE '%STORED GENERATED%') "
-      "OR extra IS NULL "
-      "ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
+      "WHERE ((extra NOT LIKE '%%VIRTUAL GENERATED%%' AND extra NOT LIKE '%%STORED GENERATED%%') "
+      "OR extra IS NULL)%s "
+      "ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION", schema_filter);
   result = m_store_result(conn, columns_query, m_warning, "Failed to prefetch column metadata", NULL);
+  g_free(columns_query);
   if (result) {
     MYSQL_ROW row;
     guint table_count = 0;
@@ -276,6 +316,7 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched column lists for %u tables", table_count);
   }
 
+  g_free(schema_filter);
   metadata_prefetch_done = TRUE;
   g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
   g_timer_destroy(timer);
