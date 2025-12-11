@@ -31,6 +31,7 @@ struct db_table {
   guint64 rows;
   guint64 rows_inserted;
   GList * restore_job_list;
+  gboolean restore_job_list_sorted;  // Perf: lazy sorting flag
   guint current_threads;
   guint max_threads;
   guint max_connections_per_job;
