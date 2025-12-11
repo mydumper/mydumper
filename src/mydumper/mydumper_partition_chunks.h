@@ -26,6 +26,7 @@
 
 struct partition_step{
   GList *list;
+  guint count;  // Cached list length for O(1) access (avoids O(n) g_list_length)
   gchar *current_partition;
 };
 

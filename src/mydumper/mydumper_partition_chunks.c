@@ -60,16 +60,23 @@ void process_partition_chunk(struct table_job *tj, struct chunk_step_item *csi){
   }
 }
 
-union chunk_step *new_real_partition_step(GList *partition){
+// Internal helper: create partition step with pre-calculated count (avoids O(n) g_list_length)
+static union chunk_step *new_real_partition_step_with_count(GList *partition, guint count){
   union chunk_step * cs = g_new0(union chunk_step, 1);
   cs->partition_step.list = partition;
+  cs->partition_step.count = count;
   return cs;
 }
 
-struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint part){
+union chunk_step *new_real_partition_step(GList *partition){
+  return new_real_partition_step_with_count(partition, g_list_length(partition));
+}
+
+// Internal helper: create partition step item with pre-calculated count
+static struct chunk_step_item *new_real_partition_step_item_with_count(GList *partition, guint deep, guint part, guint count){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item, 1);
   csi->chunk_type=PARTITION;
-  csi->chunk_step = new_real_partition_step(partition);
+  csi->chunk_step = new_real_partition_step_with_count(partition, count);
   csi->chunk_functions.process = &process_partition_chunk;
   csi->chunk_functions.get_next = &get_next_partition_chunk;
   csi->chunk_functions.free=NULL;
@@ -78,6 +85,10 @@ struct chunk_step_item *new_real_partition_step_item(GList *partition, guint dee
   csi->deep = deep;
   csi->part = part;
   return csi;
+}
+
+struct chunk_step_item *new_real_partition_step_item(GList *partition, guint deep, guint part){
+  return new_real_partition_step_item_with_count(partition, deep, part, g_list_length(partition));
 }
 
 
@@ -95,15 +106,23 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
       return csi;
     }
 
-    if (g_list_length (csi->chunk_step->partition_step.list) > 3 ){
-      guint pos=g_list_length (csi->chunk_step->partition_step.list) / 2;
+    // Perf: Use cached count (O(1)) instead of g_list_length (O(n))
+    // This avoids O(n²) behavior when splitting many partitions
+    guint partition_count = csi->chunk_step->partition_step.count;
+    if (partition_count > 3) {
+      guint pos = partition_count / 2;
       GList *new_list=g_list_nth(csi->chunk_step->partition_step.list,pos);
       new_list->prev->next=NULL;
       new_list->prev=NULL;
-      struct chunk_step_item * new_csi = new_real_partition_step_item(new_list, csi->deep+1, csi->part+pow(2,csi->deep));
+      // Update cached count for original (first half has pos elements)
+      csi->chunk_step->partition_step.count = pos;
+      // Create new chunk with pre-calculated count (second half has partition_count - pos elements)
+      struct chunk_step_item * new_csi = new_real_partition_step_item_with_count(
+          new_list, csi->deep+1, csi->part+pow(2,csi->deep), partition_count - pos);
       csi->deep++;
       new_csi->status=ASSIGNED;
-      dbt->chunks=g_list_append(dbt->chunks,new_csi);
+      // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+      dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
 
       g_mutex_unlock(csi->mutex);
  //     g_mutex_unlock(dbt->chunks_mutex);
