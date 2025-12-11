@@ -39,3 +39,4 @@ gboolean process_schema_sequence_filename(gchar *filename);
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context);
 FILE * myl_open(char *filename, const char *type);
 void myl_close(const char *filename, FILE *file, gboolean rm);
+gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2);
