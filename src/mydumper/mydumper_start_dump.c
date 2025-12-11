@@ -793,11 +793,13 @@ void send_lock_all_tables(MYSQL *conn){
       }
     }
   }
-  if (g_list_length(tables_lock) > 0) {
+  // Perf: Cache list length to avoid O(n) g_list_length() calls in loop
+  guint tables_lock_count = g_list_length(tables_lock);
+  if (tables_lock_count > 0) {
   // Try three times to get the lock, this is in case of tmp tables
   // disappearing
     g_message("Initialing Lock All tables");
-    while (g_list_length(tables_lock) > 0 && !success && retry < 4 ) {
+    while (tables_lock_count > 0 && !success && retry < 4 ) {
       g_string_set_size(query,0);
       g_string_append(query, "LOCK TABLE ");
       for (iter = tables_lock; iter != NULL; iter = iter->next) {
@@ -812,10 +814,20 @@ void send_lock_all_tables(MYSQL *conn){
         tmp_fail = g_strsplit(mysql_error(conn), "'", 0);
         tmp_fail = g_strsplit(tmp_fail[1], ".", 0);
         failed_table = g_strdup_printf("`%s`.`%s`", tmp_fail[0], tmp_fail[1]);
+        // Perf: Find the failed table and remove with O(1) g_list_delete_link
+        // instead of O(n) g_list_remove. Also break after finding to avoid
+        // continuing iteration after list modification.
+        GList *found = NULL;
         for (iter = tables_lock; iter != NULL; iter = iter->next) {
           if (strcmp(iter->data, failed_table) == 0) {
-            tables_lock = g_list_remove(tables_lock, iter->data);
+            found = iter;
+            break;
           }
+        }
+        if (found) {
+          g_free(found->data);
+          tables_lock = g_list_delete_link(tables_lock, found);
+          tables_lock_count--;
         }
         g_free(tmp_fail);
         g_free(failed_table);
