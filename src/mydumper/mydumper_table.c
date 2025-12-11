@@ -38,7 +38,20 @@ static GHashTable *character_set_hash=NULL;
 // Bulk metadata prefetch caches (populated when --bulk-metadata-prefetch is used)
 static GHashTable *json_fields_cache = NULL;       // "db.table" -> GINT_TO_POINTER(1) if has json
 static GHashTable *generated_fields_cache = NULL;  // "db.table" -> GINT_TO_POINTER(1) if has generated
+static GHashTable *primary_key_cache = NULL;       // "db.table" -> GList* of column names (PRIMARY or first UNIQUE)
+static GHashTable *trigger_cache = NULL;           // "db.table" -> GINT_TO_POINTER(1) if has triggers
+static GHashTable *selectable_columns_cache = NULL; // "db.table" -> GString* of comma-separated columns
 static gboolean metadata_prefetch_done = FALSE;
+
+// Free function for GList* values in primary_key_cache
+static void free_primary_key_list(gpointer data) {
+  g_list_free_full((GList *)data, g_free);
+}
+
+// Free function for GString* values in selectable_columns_cache
+static void free_gstring(gpointer data) {
+  g_string_free((GString *)data, TRUE);
+}
 
 void initialize_table(){
   all_dbts_mutex = g_mutex_new();
@@ -47,6 +60,9 @@ void initialize_table(){
   // Initialize metadata caches (populated by prefetch_table_metadata when --bulk-metadata-prefetch)
   json_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
   generated_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
+  primary_key_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, &free_primary_key_list);
+  trigger_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
+  selectable_columns_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, &free_gstring);
 }
 
 void finalize_table(){
@@ -56,6 +72,9 @@ void finalize_table(){
   // Clean up metadata caches
   if (json_fields_cache) g_hash_table_destroy(json_fields_cache);
   if (generated_fields_cache) g_hash_table_destroy(generated_fields_cache);
+  if (primary_key_cache) g_hash_table_destroy(primary_key_cache);
+  if (trigger_cache) g_hash_table_destroy(trigger_cache);
+  if (selectable_columns_cache) g_hash_table_destroy(selectable_columns_cache);
 }
 
 // Prefetch JSON and generated column metadata in bulk queries
@@ -121,6 +140,142 @@ void prefetch_table_metadata(MYSQL *conn) {
     g_message("Prefetched %u tables with generated columns", generated_count);
   }
 
+  // Prefetch primary key / unique index columns from STATISTICS
+  // Groups by table, stores column list for PRIMARY index (or first UNIQUE if no PRIMARY)
+  const char *index_query =
+      "SELECT TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME, NON_UNIQUE "
+      "FROM information_schema.STATISTICS "
+      "WHERE NON_UNIQUE = 0 "
+      "ORDER BY TABLE_SCHEMA, TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX";
+  result = m_store_result(conn, index_query, m_warning, "Failed to prefetch index metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint pk_count = 0;
+    gchar *last_key = NULL;
+    gchar *last_index = NULL;
+    GList *current_pk = NULL;
+    gboolean is_primary = FALSE;
+
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      gchar *index_name = row[2];
+
+      // Check if we've moved to a new table
+      if (last_key == NULL || g_strcmp0(last_key, cache_key) != 0) {
+        // Save previous table's primary key (if we found one)
+        if (last_key != NULL && current_pk != NULL) {
+          g_hash_table_insert(primary_key_cache, last_key, g_list_reverse(current_pk));
+          pk_count++;
+        } else if (last_key != NULL) {
+          g_free(last_key);
+        }
+        last_key = cache_key;
+        last_index = NULL;
+        current_pk = NULL;
+        is_primary = FALSE;
+      } else {
+        g_free(cache_key);
+      }
+
+      // Prefer PRIMARY index, otherwise take first unique index encountered
+      gboolean this_is_primary = (g_strcmp0(index_name, "PRIMARY") == 0);
+      if (this_is_primary || (!is_primary && current_pk == NULL)) {
+        // Starting a new index or continuing current one
+        if (last_index == NULL || g_strcmp0(last_index, index_name) != 0) {
+          // New index - if we were building a non-primary and found primary, switch
+          if (this_is_primary && !is_primary && current_pk != NULL) {
+            g_list_free_full(current_pk, g_free);
+            current_pk = NULL;
+          }
+          last_index = index_name;
+          is_primary = this_is_primary;
+        }
+        // Only add columns from the index we're tracking
+        if (g_strcmp0(last_index, index_name) == 0) {
+          current_pk = g_list_prepend(current_pk, g_strdup(row[4]));
+        }
+      }
+    }
+    // Don't forget the last table
+    if (last_key != NULL && current_pk != NULL) {
+      g_hash_table_insert(primary_key_cache, last_key, g_list_reverse(current_pk));
+      pk_count++;
+    } else if (last_key != NULL) {
+      g_free(last_key);
+    }
+    mysql_free_result(result);
+    g_message("Prefetched primary/unique keys for %u tables", pk_count);
+  }
+
+  // Prefetch triggers - just need to know which tables have triggers
+  const char *trigger_query =
+      "SELECT DISTINCT TRIGGER_SCHEMA, EVENT_OBJECT_TABLE FROM information_schema.TRIGGERS";
+  result = m_store_result(conn, trigger_query, m_warning, "Failed to prefetch trigger metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint trigger_count = 0;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      g_hash_table_insert(trigger_cache, cache_key, GINT_TO_POINTER(1));
+      trigger_count++;
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u tables with triggers", trigger_count);
+  }
+
+  // Prefetch selectable columns (excluding virtual/stored generated)
+  // This eliminates per-table COLUMNS queries in get_selectable_fields()
+  const char *columns_query =
+      "SELECT TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS "
+      "WHERE (extra NOT LIKE '%VIRTUAL GENERATED%' AND extra NOT LIKE '%STORED GENERATED%') "
+      "OR extra IS NULL "
+      "ORDER BY TABLE_SCHEMA, TABLE_NAME, ORDINAL_POSITION";
+  result = m_store_result(conn, columns_query, m_warning, "Failed to prefetch column metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint table_count = 0;
+    gchar *last_key = NULL;
+    GString *current_fields = NULL;
+
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+
+      // Check if we've moved to a new table
+      if (last_key == NULL || g_strcmp0(last_key, cache_key) != 0) {
+        // Save previous table's column list
+        if (last_key != NULL && current_fields != NULL) {
+          g_hash_table_insert(selectable_columns_cache, last_key, current_fields);
+          table_count++;
+        } else if (last_key != NULL) {
+          g_free(last_key);
+        }
+        last_key = cache_key;
+        current_fields = g_string_new("");
+      } else {
+        g_free(cache_key);
+      }
+
+      // Append column to current table's field list
+      if (current_fields->len > 0) {
+        g_string_append(current_fields, ",");
+      }
+      // Quote the column name
+      char *field_name = identifier_quote_character_protect(row[2]);
+      g_string_append_printf(current_fields, "%s%s%s",
+                            identifier_quote_character_str, field_name, identifier_quote_character_str);
+      g_free(field_name);
+    }
+    // Don't forget the last table
+    if (last_key != NULL && current_fields != NULL) {
+      g_hash_table_insert(selectable_columns_cache, last_key, current_fields);
+      table_count++;
+    } else if (last_key != NULL) {
+      g_free(last_key);
+    }
+    mysql_free_result(result);
+    g_message("Prefetched column lists for %u tables", table_count);
+  }
+
   metadata_prefetch_done = TRUE;
   g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
   g_timer_destroy(timer);
@@ -170,8 +325,26 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   MYSQL_RES *indexes = NULL;
   MYSQL_ROW row;
   dbt->primary_key=NULL;
-  // first have to pick index, in future should be able to preset in
-  //    * configuration too
+
+  // Check prefetched cache first (--bulk-metadata-prefetch)
+  if (metadata_prefetch_done) {
+    gchar *cache_key = g_strdup_printf("%s.%s", dbt->database->source_database, dbt->table);
+    GList *cached_pk = g_hash_table_lookup(primary_key_cache, cache_key);
+    g_free(cache_key);
+    if (cached_pk != NULL) {
+      // Deep copy the cached primary key list
+      for (GList *l = cached_pk; l != NULL; l = l->next) {
+        dbt->primary_key = g_list_append(dbt->primary_key, g_strdup(l->data));
+      }
+      return;
+    }
+    // No cached PK means no unique index found - fall through to try use_any_index
+    if (!conf->use_any_index) {
+      return;
+    }
+  }
+
+  // Fall back to per-table SHOW INDEX query
   gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
                         identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
   indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->source_database);
@@ -247,7 +420,20 @@ void get_primary_key_separated_by_comma(struct db_table * dbt) {
 }
 
 static
-GString *get_selectable_fields(MYSQL *conn, char *database, char *table) {
+GString *get_selectable_fields(MYSQL *conn, char *database, char *table, char *raw_db, char *raw_table) {
+  // Check prefetched cache first (--bulk-metadata-prefetch)
+  // Cache key uses raw db.table names (same format as information_schema returns)
+  if (metadata_prefetch_done && raw_db != NULL && raw_table != NULL) {
+    gchar *cache_key = g_strdup_printf("%s.%s", raw_db, raw_table);
+    GString *cached_fields = g_hash_table_lookup(selectable_columns_cache, cache_key);
+    g_free(cache_key);
+    if (cached_fields != NULL) {
+      // Return a copy of the cached GString
+      return g_string_new(cached_fields->str);
+    }
+  }
+
+  // Fall back to per-table query
   MYSQL_ROW row;
 
   GString *field_list = g_string_new("");
@@ -332,6 +518,18 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   }
   m_store_result_row_free(mr);
   return FALSE;
+}
+
+// Check if table has triggers (used to skip per-table SHOW TRIGGERS query)
+// Returns: -1 = prefetch not done (use SHOW TRIGGERS), 0 = no triggers, 1 = has triggers
+int table_has_triggers_cached(char *database, char *table) {
+  if (!metadata_prefetch_done) {
+    return -1;  // Fall back to SHOW TRIGGERS
+  }
+  gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+  gboolean has = g_hash_table_contains(trigger_cache, cache_key);
+  g_free(cache_key);
+  return has ? 1 : 0;
 }
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
@@ -438,7 +636,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     }else if (!dbt->columns_on_insert){
       dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       if (dbt->complete_insert) {
-        dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
+        dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table,
+                                                   dbt->database->source_database, dbt->table);
       }
     }
 
