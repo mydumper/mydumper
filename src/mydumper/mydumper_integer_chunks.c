@@ -351,7 +351,9 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
         new_csi->part+=pow(2,csi->deep);
         update_where_on_integer_step(new_csi);
 
-        dbt->chunks=g_list_append(dbt->chunks,new_csi);
+        // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+        // Order doesn't matter since chunks are processed via async queue
+        dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
         // should I push them again? isn't it pointless?
 //        g_async_queue_push(dbt->chunks_queue, csi);
 //        g_async_queue_push(dbt->chunks_queue, new_csi);
@@ -395,7 +397,8 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
               new_csi->next=new_csi_next;
 
               new_csi->next->prefix = new_csi->where;
-              dbt->chunks=g_list_append(dbt->chunks,new_csi);
+              // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+              dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
               g_async_queue_push(dbt->chunks_queue, csi);
               g_async_queue_push(dbt->chunks_queue, new_csi);
               g_mutex_unlock(csi->next->mutex);
@@ -419,7 +422,8 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
           trace("Multicolumn table splited min: %lld max: %lld ", new_csi->chunk_step->integer_step.type.unsign.min, new_csi->chunk_step->integer_step.type.unsign.max);
         else
           trace("Multicolumn table splited min: %lld max: %lld ", new_csi->chunk_step->integer_step.type.sign.min, new_csi->chunk_step->integer_step.type.sign.max);
-        dbt->chunks=g_list_append(dbt->chunks,new_csi);
+        // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+        dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
         g_async_queue_push(dbt->chunks_queue, csi);
         g_async_queue_push(dbt->chunks_queue, new_csi);
         g_mutex_unlock(csi->mutex);
