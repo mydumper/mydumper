@@ -279,8 +279,10 @@ regex_error:
           GString *alter_table_constraint_statement=g_string_sized_new(512);
           // Check if it is a /*!40  SET
           if (g_strrstr(data->str,"/*!40")){
-            g_string_append(alter_table_statement,data->str);
-            g_string_append(create_table_statement,data->str);
+            if (!should_ignore_set_statement(data)){
+              g_string_append(alter_table_statement,data->str);
+              g_string_append(create_table_statement,data->str);
+            }
           }else{
             // Processing CREATE TABLE statement
             int flag = // process_create_table_statement(data->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt, (dbt->rows == 0 || dbt->rows >= 1000000 || skip_constraints || skip_indexes));
