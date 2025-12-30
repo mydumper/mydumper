@@ -103,10 +103,21 @@ void remove_ignore_set_session_from_hash(){
     g_hash_table_remove(set_session_hash,l->data);
     l=l->next;
   }
-
-
 }
 
+gboolean should_ignore_set_statement(GString *data){
+  gboolean r=FALSE;
+  // Perf: Use data->len instead of strlen(data->str)
+  gchar *from_equal=g_strstr_len(data->str, data->len, "=");
+  if (from_equal && ignore_set_list ){
+    *from_equal='\0';
+    gchar * var_name=g_strrstr(data->str," ");
+    var_name++;
+    r=is_in_ignore_set_list(var_name);
+    *from_equal='=';
+  }
+  return r;
+}
 
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
   GError *error=NULL;
