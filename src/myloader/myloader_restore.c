@@ -738,9 +738,11 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           */
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-          if (is_fifo) 
+          if (is_fifo){
+            if (stream && !no_delete) 
+              g_unlink(load_data_filename);
             m_remove0(NULL, load_data_fifo_filename);
-          else
+          }else
             m_remove(NULL, load_data_filename);
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){
