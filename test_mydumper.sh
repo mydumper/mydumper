@@ -338,7 +338,7 @@ test_case_dir (){
       fi
       if (( $myloader_stream >= 1 ))
       then
-        if [ $(ls /tmp/data | wc -l ) > 0 ]
+        if (( $(ls /tmp/data | wc -l ) > 0 ))
         then
           echo "Files found on streaming backup dir"
           error=1
@@ -350,6 +350,7 @@ test_case_dir (){
     done
     if (( $error > 0 )) && (( $iter > $retries ))
     then
+      mkdir -p $mydumper_stor_dir
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
