@@ -96,8 +96,10 @@ void *process_file_type_worker(void *data){
       case SCHEMA_CREATE:
         process_database_filename(fti->filename);  // pushed to database_queue
         g_atomic_int_inc(&schema_processed_counter);
-        if (has_been_defined_a_target_database())
-         m_remove(directory,fti->filename);
+        if (has_been_defined_a_target_database()){
+          trace("tryging to remove: %s", fti->filename);
+          m_remove(directory,fti->filename);
+        }
         break;
       case SCHEMA_SEQUENCE:
         process_schema_sequence_filename(fti->filename); // pushed to table_queue if database is created, _database->sequence_queue otherwise 

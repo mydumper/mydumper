@@ -88,7 +88,7 @@ FILE * myl_open(char *filename, const char *type){
   (void) child_proc;
   gchar **command=NULL;
   struct stat a;
-  if (get_command_and_basename(filename, &command,&basename)){
+  if (get_command_and_basename(filename, &command, &basename)){
     // Acquire decompressor slot (throttle concurrent processes)
     g_mutex_lock(decompress_mutex);
     while (active_decompressors >= max_decompressors) {
@@ -126,9 +126,14 @@ FILE * myl_open(char *filename, const char *type){
     // The pipe remains usable through the open file descriptors.
     // This ensures automatic cleanup on crash (no stale FIFOs left behind).
     if (file != NULL) {
-      remove(fifoname);
+      g_unlink(fifoname);
+//      m_remove0(fifo_directory,fifoname);
     }
-
+    g_unlink(filename);
+/*    gchar *tmpbasename=g_path_get_basename(filename);
+    m_remove(directory,tmpbasename);
+    g_free(tmpbasename);
+*/
     g_mutex_lock(fifo_table_mutex);
     struct fifo *f=g_hash_table_lookup(fifo_hash,file);
     if (f!=NULL){
@@ -183,9 +188,11 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
       release_decompressor_slot();
     }
   }
-  if (rm){
-    m_remove(NULL,filename);
-  }
+  (void) rm;
+  (void) filename;
+//  if (rm){
+//    m_remove(NULL,filename);
+//  }
 }
 
 void process_tablespace_filename(char * filename) {
@@ -552,13 +559,18 @@ gboolean first_metadata_processed=FALSE;
 
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context)
 {
+  set_thread_name("MDT");
+
   gchar *path = g_build_filename(directory, file, NULL);
+  trace("Reading metadata: %s", path);
   GKeyFile * kf = load_config_file(path);
+  g_free(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
-  set_thread_name("MDT");
-  message("Reading metadata: %s", file);
+  m_remove(directory, file);
+  g_free(file);
+
   guint j=0;
   gchar *value=NULL;
   gchar *real_table_name=NULL;
@@ -708,9 +720,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
 
   if (stream)
     metadata_has_been_processed();
-
-  m_remove(directory, file);
-  g_free(file);
 
   file=g_async_queue_try_pop(partial_metadata_queue);
   if (file)
