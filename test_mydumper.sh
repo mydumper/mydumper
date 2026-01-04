@@ -328,6 +328,7 @@ test_case_dir (){
         "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
       else
         "${time2[@]}" $myloader ${myloader_parameters} 
+        error=$?
       fi
       error=$?
       cat $tmp_myloader_log >> $myloader_log
@@ -335,6 +336,16 @@ test_case_dir (){
       then
         print_core
       fi
+      if (( $myloader_stream >= 1 ))
+      then
+        if [ $((ls /tmp/data | wc -l )) > 0 ]
+        then
+          echo "Files found on streaming backup dir"
+          error=1
+        fi
+      fi
+
+
       iter=$(( $iter + 1 ))
     done
     if (( $error > 0 )) && (( $iter > $retries ))
