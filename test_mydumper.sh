@@ -338,7 +338,7 @@ test_case_dir (){
       fi
       if (( $myloader_stream >= 1 ))
       then
-        if [ $((ls /tmp/data | wc -l )) > 0 ]
+        if [ $(ls /tmp/data | wc -l ) > 0 ]
         then
           echo "Files found on streaming backup dir"
           error=1

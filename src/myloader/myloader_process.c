@@ -162,6 +162,7 @@ FILE * myl_open(char *filename, const char *type){
       file=NULL;
     }else{
       file=g_fopen(filename, type);
+      g_unlink(filename);
     }
   }
   return file;
