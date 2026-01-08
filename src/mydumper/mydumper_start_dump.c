@@ -903,13 +903,12 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   check_num_threads();
   g_message("Using %u dumper threads", num_threads);
 
-  initialize_connection(MYDUMPER);
-  conn = create_main_connection(context);
-
   initialize_start_dump();
   initialize_common();
   initialize_create_jobs(conf);
+  initialize_connection(MYDUMPER);
   initialize_masquerade();
+  conn = create_main_connection(context);
 
   /* Give ourselves an array of tables to dump */
   if (tables_list)
