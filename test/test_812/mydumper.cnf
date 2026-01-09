@@ -1,7 +1,0 @@
-[mydumper]
-database=test_load_data
-outputdir=/tmp/test_812_data
-load-data=1
-compress=zstd
-threads=8
-chunk-filesize=1

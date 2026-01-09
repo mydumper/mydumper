@@ -1,0 +1,7 @@
+[myloader]
+directory=/tmp/data
+threads=16
+overwrite-tables
+fifodir=/tmp/fifodir
+[myloader_global_variables]
+local_infile=ON

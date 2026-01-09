@@ -1,0 +1,4 @@
+[myloader]
+threads=4
+no-schema
+directory=/tmp/specific_28_data

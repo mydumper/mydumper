@@ -1,4 +1,0 @@
-[mydumper]
-threads=4
-outputdir=/tmp/test_815_data
-database=test_815

@@ -1,0 +1,4 @@
+[mydumper]
+threads=4
+outputdir=/tmp/specific_28_data
+database=specific_28

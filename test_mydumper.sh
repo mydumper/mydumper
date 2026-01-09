@@ -6,7 +6,7 @@ tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 mysqldumplog=/tmp/mysqldump.sql
 retries=1
-directories="specific test"
+directories="specific"
 export mysql_user=root
 
 die()
@@ -422,6 +422,95 @@ full_test_global(){
   done
 }
 
+
+full_dynamic_tests(){
+i=1
+# mydumper
+mysql < test/clean_databases.sql
+#prepare_database_in_directory dynamic
+
+for compress in "" "compress=GZIP" "compress=ZSTD";
+do
+  for format in "" "csv=1" "load-data=1"
+  do
+    for rows in "" "rows=1000" "rows=10:100:10000"
+    do
+      for file in "" "chunk-filesize=10"
+      do
+        for extra in "" "statement-size=2000000" "use-savepoints=1"
+        do
+# myloader
+          for keys in "" "optimize-keys=AFTER_IMPORT_ALL_TABLES" "optimize-keys=AFTER_IMPORT_PER_TABLE"
+          do
+# Both
+            for type in "" "stream=1"
+            do
+              dir=dynamic_${i}
+              mkdir -p $dir
+              dynamic_mydumper=${dir}/mydumper.cnf
+              echo "[mydumper]" > ${dynamic_mydumper}
+              if [ "$compress" != "" ]
+              then
+                echo $compress >> ${dynamic_mydumper}
+              fi
+              if [ "$format" != "" ]
+              then
+                echo $format >> ${dynamic_mydumper}
+              fi
+              if [ "$rows" != "" ]
+              then
+                echo $rows >> ${dynamic_mydumper}
+              fi
+              if [ "$file" != "" ]
+              then
+                echo $file >> ${dynamic_mydumper}
+              fi
+              if [ "$extra" != "" ]
+              then
+                echo $extra >> ${dynamic_mydumper}
+              fi
+              if [ "$type" != "" ]
+              then
+                echo $type >> ${dynamic_mydumper}
+              fi
+              echo "routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))" >> ${dynamic_mydumper}
+              dynamic_myloader=${dir}/myloader.cnf
+              echo "[myloader]
+drop-table
+max-threads-for-index-creation=1
+max-threads-for-post-actions=1
+fifodir=/tmp/fifodir
+directory=/tmp/data
+serialized-table-creation=1" > ${dynamic_myloader}
+              if [ "$keys" != "" ]
+              then
+                echo $keys >> ${dynamic_myloader}
+              fi
+              if [ "$type" != "" ]
+              then
+                echo $type >> ${dynamic_myloader}
+                echo "rm -rf /tmp/data" > ${dir}/pre_myloader.sh
+                chmod u+x ${dir}/pre_myloader.sh
+              fi
+
+              echo "Executing test: $dir"
+              do_case test_case_dir ${dir}
+              rm -rf ${dir}
+              i=$(( $i + 1))
+            done
+          done
+        done
+      done
+    done
+  done
+done
+
+}
+
 prepare_full_test
 
 if [[ -n "$prepare_only"  ]]; then
@@ -433,7 +522,7 @@ if [[ -n "$prepare_only"  ]]; then
   exit
 fi
 
-full_test_global &&
+full_dynamic_tests && full_test_global &&
   finish
 
 #cat $mydumper_log
