@@ -639,8 +639,9 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         m_critical("Wrong quote_character in metadata");
       }
       trace("metadata: quote character is %c", identifier_quote_character);  
+      if (!first_metadata_processed)
+        g_mutex_unlock(metadata_global_mutex);
       first_metadata_processed=TRUE;
-      g_mutex_unlock(metadata_global_mutex);
   }else if (!first_metadata_processed){
     if (g_strstr_len(file,-1,"partial")){
       g_async_queue_push(partial_metadata_queue,file);
