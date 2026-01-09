@@ -638,7 +638,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       g_async_queue_push(partial_metadata_queue,file);
       return;
     }
-    m_error("Section [config] was not found on metadata file");
+    m_error("Section [config] was not found on metadata file: %s", file);
   }
 
   if (g_key_file_has_group(kf, "myloader_session_variables")){
