@@ -108,6 +108,14 @@ enum file_type get_file_type (const char * filename){
          has_exec_per_thread_extension(filename)))
     return METADATA_GLOBAL;
 
+  if ((
+       g_str_has_prefix(filename, "metadata.partial"))
+      &&
+      !( g_str_has_suffix(filename, ".sql") ||
+         has_exec_per_thread_extension(filename)))
+    return METADATA_PARTIAL;
+
+
   if (source_db && !(g_str_has_prefix(filename, source_db) && strlen(filename) > strlen(source_db) && (filename[strlen(source_db)] == '.' || filename[strlen(source_db)] == '-') ) && !g_str_has_prefix(filename, "mydumper_"))
     return IGNORED;
 

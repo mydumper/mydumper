@@ -87,7 +87,11 @@ void *process_file_type_worker(void *data){
     trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
     switch (fti->file_type){
       case METADATA_GLOBAL:
-        process_metadata_global_filename(fti->filename, process_file_type_conf->context);
+        process_metadata_global_filename(fti->filename, process_file_type_conf->context, TRUE);
+        refresh_table_list(process_file_type_conf);
+        break;
+      case METADATA_PARTIAL:
+        process_metadata_global_filename(fti->filename, process_file_type_conf->context, FALSE);
         refresh_table_list(process_file_type_conf);
         break;
       case SCHEMA_TABLESPACE:
