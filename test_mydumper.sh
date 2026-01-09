@@ -427,7 +427,7 @@ full_dynamic_tests(){
 i=1
 # mydumper
 mysql < test/clean_databases.sql
-#prepare_database_in_directory dynamic
+prepare_database_in_directory dynamic
 
 for compress in "" "compress=GZIP" "compress=ZSTD";
 do
