@@ -36,6 +36,7 @@
 #include "mydumper_jobs.h"
 #include "mydumper_global.h"
 #include "mydumper_write.h"
+#include "mydumper_table.h"
 
 
 gboolean split_partitions = FALSE;
@@ -117,7 +118,24 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
 }
 
 GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
+  GList *partition_list = NULL;
 
+  // Try to get from bulk prefetch cache first (avoids per-table query)
+  GList *cached = get_cached_partitions(dbt->database->source_database, dbt->table);
+  if (cached != NULL) {
+    // Filter cached partitions with regex (same logic as DB query path)
+    for (GList *l = cached; l != NULL; l = l->next) {
+      gchar *partition_name = l->data;
+      if ((!dbt->partition_regex && eval_partition_regex(partition_name)) ||
+          (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, partition_name))) {
+        partition_list = g_list_prepend(partition_list, g_strdup(partition_name));
+      }
+    }
+    g_list_free_full(cached, g_free);  // Free the copy from cache
+    return g_list_reverse(partition_list);
+  }
+
+  // Fall back to per-table query if not in cache
   gchar *query = g_strdup_printf("select DISTINCT PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->source_database, dbt->table);
   MYSQL_RES *res=m_store_result(conn,query, NULL,"Partitioning is not supported", NULL);
   g_free(query);
@@ -126,7 +144,6 @@ GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
     //partitioning is not supported
     return NULL;
 
-  GList *partition_list = NULL;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(res))) {
     if ( (!dbt->partition_regex && eval_partition_regex(row[0])) || (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, row[0]) ) )
