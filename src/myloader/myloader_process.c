@@ -570,7 +570,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     g_error("Global metadata file processing was not possible");
 
   m_remove(directory, file);
-  g_free(file);
 
   guint j=0;
   gchar *value=NULL;
@@ -640,6 +639,8 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     }
     m_error("Section [config] was not found on metadata file: %s", file);
   }
+
+  g_free(file);
 
   if (g_key_file_has_group(kf, "myloader_session_variables")){
     g_message("myloader_session_variables found on metadata");
