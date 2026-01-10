@@ -100,16 +100,14 @@ enum file_type get_file_type (const char * filename){
   if ( !g_strcmp0(filename,"END"))
     return FILENAME_ENDED; 
 
-  if ((!strcmp(filename,          "metadata") ||
-       !strcmp(filename,          "metadata.header"))
-      &&
-       !g_str_has_prefix(filename, "metadata.partial")
+  if (
+       !strcmp(filename,          "metadata.header")
       &&
       !( g_str_has_suffix(filename, ".sql") ||
          has_exec_per_thread_extension(filename)))
     return METADATA_GLOBAL;
 
-  if ((
+  if ((!strcmp(filename,          "metadata") ||
        g_str_has_prefix(filename, "metadata.partial"))
       &&
       !( g_str_has_suffix(filename, ".sql") ||
