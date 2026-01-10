@@ -107,7 +107,19 @@ enum file_type get_file_type (const char * filename){
          has_exec_per_thread_extension(filename)))
     return METADATA_GLOBAL;
 
-  if ((!strcmp(filename,          "metadata") ||
+  if (
+      !strcmp(filename,          "metadata") 
+      &&
+      !( g_str_has_suffix(filename, ".sql") ||
+         has_exec_per_thread_extension(filename))){
+    if (stream)
+      return METADATA_PARTIAL;
+    else
+      return METADATA_GLOBAL;
+  }
+
+
+  if ((
        g_str_has_prefix(filename, "metadata.partial"))
       &&
       !( g_str_has_suffix(filename, ".sql") ||
