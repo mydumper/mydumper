@@ -569,8 +569,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
-  m_remove(directory, file);
-
   guint j=0;
   gchar *value=NULL;
   gchar *real_table_name=NULL;
@@ -584,6 +582,8 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
 
   if (is_global){
+    m_remove(directory, file);
+
     if (g_key_file_has_group(kf, CONFIG)){
       gsize len=0;
       GError *error = NULL;
@@ -635,9 +635,12 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     }else{
       m_error("Section [config] was not found on metadata file: %s", file);
     }
-  }else if (!first_metadata_processed){
-    g_async_queue_push(partial_metadata_queue,file);
-    return;
+  }else{
+    if (!first_metadata_processed){
+      g_async_queue_push(partial_metadata_queue,file);
+      return;
+    }
+    m_remove(directory, file);
   }
 
   g_free(file);
