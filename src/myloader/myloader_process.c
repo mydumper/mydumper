@@ -52,11 +52,7 @@ static GMutex *decompress_mutex = NULL;
 static guint active_decompressors = 0;
 static guint max_decompressors = 0;
 
-static GMutex *metadata_global_mutex=NULL;
-
 void initialize_process(struct configuration *c){
-  metadata_global_mutex=g_mutex_new();
-  g_mutex_lock(metadata_global_mutex);
   partial_metadata_queue=g_async_queue_new();
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
@@ -565,10 +561,6 @@ gboolean first_metadata_processed=FALSE;
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context, gboolean is_global)
 {
   set_thread_name("MDT");
-  if (!is_global){
-    g_mutex_lock(metadata_global_mutex);
-    g_mutex_unlock(metadata_global_mutex);
-  }
 
   gchar *path = g_build_filename(directory, file, NULL);
   trace("Reading metadata: %s", path);
@@ -591,8 +583,8 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
   const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
 
-
-  if (g_key_file_has_group(kf, CONFIG)){
+  if (is_global){
+    if (g_key_file_has_group(kf, CONFIG)){
       gsize len=0;
       GError *error = NULL;
       gchar ** keys=g_key_file_get_keys(kf,CONFIG, &len, &error);
@@ -638,16 +630,14 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       }else{
         m_critical("Wrong quote_character in metadata");
       }
-      trace("metadata: quote character is %c", identifier_quote_character);  
-      if (!first_metadata_processed)
-        g_mutex_unlock(metadata_global_mutex);
+      trace("metadata: quote character is %c", identifier_quote_character);
       first_metadata_processed=TRUE;
-  }else if (!first_metadata_processed){
-    if (g_strstr_len(file,-1,"partial")){
-      g_async_queue_push(partial_metadata_queue,file);
-      return;
+    }else{
+      m_error("Section [config] was not found on metadata file: %s", file);
     }
-    m_error("Section [config] was not found on metadata file: %s", file);
+  }else if (!first_metadata_processed){
+    g_async_queue_push(partial_metadata_queue,file);
+    return;
   }
 
   g_free(file);
