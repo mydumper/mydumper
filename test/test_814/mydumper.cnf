@@ -1,5 +1,0 @@
-[mydumper]
-database=test_814
-threads=4
-skip-metadata-sorting
-outputdir=/tmp/data

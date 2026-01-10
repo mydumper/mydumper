@@ -61,7 +61,7 @@ struct io_restore_result end_restore_thread = { NULL, NULL};
 GThread **restore_threads=NULL;
 
 extern gchar *ignore_errors;
-
+/*
 // Issue #2075: Structure for background FIFO unlink thread
 struct fifo_unlink_data {
   gchar *fifo_filename;
@@ -97,6 +97,7 @@ static void *load_data_fifo_unlink_thread(void *data) {
   return NULL;
 }
 
+
 // Issue #2075: Start background thread to unlink LOAD DATA FIFO
 static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child_pid) {
   struct fifo_unlink_data *fud = g_new0(struct fifo_unlink_data, 1);
@@ -106,6 +107,7 @@ static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child
   // Spawn detached thread - it will clean itself up
   g_thread_new("fifo_unlink", load_data_fifo_unlink_thread, fud);
 }
+*/
 
 void initialize_restore(){
   load_data_list_mutex=g_mutex_new();
@@ -686,7 +688,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           /* Wait for .dat file to be available (in streaming mode) */
           load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
-          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
+//          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
           if (is_fifo){
             if (fifo_directory != NULL){
@@ -718,7 +720,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             if (mkfifo(load_data_fifo_filename,0666)){
               g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
             }
-            load_data_child_pid = execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
+            //load_data_child_pid = 
+            execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
             release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
           }
@@ -726,16 +729,20 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           assign_statement(ir, td, td->dbt, data->str, preline, FALSE, OTHER);
           g_async_queue_push(cd->queue->restore,ir);
 
+          /*
           // Issue #2075: Schedule background thread to unlink FIFO after MySQL connects
           // This ensures automatic cleanup on crash without affecting LOAD DATA operation
           if (is_fifo) {
             schedule_load_data_fifo_unlink(load_data_fifo_filename, load_data_child_pid);
           }
+          */
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-          if (is_fifo) 
+          if (is_fifo){
+            if (stream && !no_delete) 
+              g_unlink(load_data_filename);
             m_remove0(NULL, load_data_fifo_filename);
-          else
+          }else
             m_remove(NULL, load_data_filename);
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){

@@ -36,7 +36,6 @@
 #include "myloader_database.h"
 #include "myloader_table.h"
 GHashTable *tbl_hash=NULL;
-int (*m_close)(void *file) = NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gboolean skip_table_sorting = FALSE;

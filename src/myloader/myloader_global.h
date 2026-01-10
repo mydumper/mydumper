@@ -84,7 +84,6 @@ extern guint sequences;
 extern guint sequences_processed;
 extern GMutex sequences_mutex;
 extern unsigned long long int total_data_sql_files;
-extern int (*m_close)(void *file);
 extern GHashTable * set_session_hash;
 
 extern gchar *exec_per_thread;

@@ -1,0 +1,7 @@
+[mydumper]
+database=specific_25
+outputdir=/tmp/data
+load-data=1
+compress=zstd
+threads=8
+chunk-filesize=1

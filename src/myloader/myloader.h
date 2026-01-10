@@ -141,6 +141,7 @@ const char * status2str(enum schema_status status)
 
 enum file_type { 
   METADATA_GLOBAL,
+  METADATA_PARTIAL,
   RESUME,
   SCHEMA_TABLESPACE, 
   SCHEMA_SEQUENCE,
@@ -160,6 +161,8 @@ const char *ft2str(enum file_type ft){
   switch (ft) {
   case METADATA_GLOBAL:
     return "METADATA_GLOBAL";
+  case METADATA_PARTIAL:
+    return "METADATA_PARTIAL";
   case RESUME:
     return "RESUME";
   case SCHEMA_TABLESPACE:
