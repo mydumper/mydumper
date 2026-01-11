@@ -259,7 +259,7 @@ struct connection_data *wait_for_available_restore_thread(struct thread_data *td
 
 extern gboolean control_job_ended;
 gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header){
-  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && g_list_length(td->dbt->restore_job_list)==0 ){
+  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && td->dbt->count == 0 ){  // Perf: Use cached count
     g_assert(header);
     struct connection_data *cd=g_async_queue_try_pop(connection_pool);
     if(cd){

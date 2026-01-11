@@ -28,6 +28,7 @@
 #include "myloader_worker_index.h"
 #include "myloader_worker_schema.h"
 #include "myloader_database.h"
+#include "myloader_process.h"
 
 gboolean control_job_ended=FALSE;
 gboolean all_jobs_are_enqueued=FALSE;
@@ -60,11 +61,20 @@ void data_control_queue_push(enum data_control_type current_ft){
   g_async_queue_push(data_control_queue, GINT_TO_POINTER(current_ft));
 }
 
+// Perf: Lazy sort restore_job_list if needed (O(n log n) once vs O(n²) insert_sorted)
+// Must be called with dbt->mutex held
+static void ensure_restore_job_list_sorted(struct db_table *dbt) {
+  if (!dbt->restore_job_list_sorted && dbt->restore_job_list != NULL) {
+    dbt->restore_job_list = g_list_sort(dbt->restore_job_list, cmp_restore_job);
+    dbt->restore_job_list_sorted = TRUE;
+  }
+}
+
 // O(1) ready table queue: enqueue table if it has pending jobs and is ready
 // Must be called with dbt->mutex held
 static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_table *dbt){
   if (dbt->schema_state == CREATED &&
-      g_list_length(dbt->restore_job_list) > 0 &&
+      dbt->count > 0 &&  // Perf: Use cached count instead of O(n) g_list_length()
       dbt->current_threads < dbt->max_threads &&
       !dbt->in_ready_queue &&
       !dbt->object_to_export.no_data &&
@@ -87,16 +97,19 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
 
     // Re-validate readiness (state may have changed since enqueue)
     if (dbt->schema_state == CREATED &&
-        g_list_length(dbt->restore_job_list) > 0 &&
+        dbt->count > 0 &&  // Perf: Use cached count instead of O(n) g_list_length()
         dbt->current_threads < dbt->max_threads &&
         !dbt->object_to_export.no_data &&
         !dbt->is_view &&
         !dbt->is_sequence) {
+      // Perf: Lazy sort before first access (O(n log n) once vs O(n²) insert_sorted)
+      ensure_restore_job_list_sorted(dbt);
       // Dispatch job from this table
       job = dbt->restore_job_list->data;
       GList *current = dbt->restore_job_list;
       dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
       g_list_free_1(current);
+      dbt->count--;  // Perf: Maintain cached count
       dbt->current_threads++;
 
       // Re-enqueue if more jobs remain
@@ -157,7 +170,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       continue;
     }
 
-    if (dbt->schema_state == CREATED && g_list_length(dbt->restore_job_list) > 0){
+    if (dbt->schema_state == CREATED && dbt->count > 0){  // Perf: Use cached count
       if (dbt->object_to_export.no_data){
         GList * current = dbt->restore_job_list;
         while (current){
@@ -175,12 +188,14 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
           table_unlock(dbt);
           continue;
         }
+        // Perf: Lazy sort before first access (O(n log n) once vs O(n²) insert_sorted)
+        ensure_restore_job_list_sorted(dbt);
         // We found a job that we can process!
         job = dbt->restore_job_list->data;
         GList * current = dbt->restore_job_list;
-//      dbt->restore_job_list = dbt->restore_job_list->next;
         dbt->restore_job_list = g_list_remove_link(dbt->restore_job_list, current);
         g_list_free_1(current);
+        dbt->count--;  // Perf: Maintain cached count
         dbt->current_threads++;
         // Re-enqueue if more jobs remain (O(1) optimization)
         enqueue_table_if_ready_locked(conf, dbt);

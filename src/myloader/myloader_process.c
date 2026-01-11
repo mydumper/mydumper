@@ -780,7 +780,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   return TRUE; // SCHEMA_VIEW
 }
 
-static
+// Perf: Made non-static for lazy sorting in myloader_worker_loader_main.c
 gint cmp_restore_job(gconstpointer rj1, gconstpointer rj2){
   guint a = ((struct restore_job *)rj1)->data.drj->part;
   guint b = ((struct restore_job *)rj2)->data.drj->part;
@@ -829,9 +829,10 @@ gboolean process_data_filename(char * filename){
     struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
     table_lock(dbt);
     g_atomic_int_add(&(dbt->remaining_jobs), 1);
-    dbt->count++; 
-    dbt->restore_job_list=g_list_insert_sorted(dbt->restore_job_list,rj,&cmp_restore_job);
-//  dbt->restore_job_list=g_list_append(dbt->restore_job_list,rj);
+    dbt->count++;
+    // Perf: Use O(1) prepend instead of O(n) insert_sorted. Sort lazily before consumption.
+    dbt->restore_job_list=g_list_prepend(dbt->restore_job_list, rj);
+    dbt->restore_job_list_sorted = FALSE;
     table_unlock(dbt);
 	}else{
     g_warning("Ignoring file %s on `%s`.`%s`",filename, dbt->database->source_database, dbt->table_filename);
