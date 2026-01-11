@@ -87,7 +87,11 @@ void *process_file_type_worker(void *data){
     trace("process_file_type_queue -> %s (%s)", fti->filename, ft2str(fti->file_type));
     switch (fti->file_type){
       case METADATA_GLOBAL:
-        process_metadata_global_filename(fti->filename, process_file_type_conf->context);
+        process_metadata_global_filename(fti->filename, process_file_type_conf->context, TRUE);
+        refresh_table_list(process_file_type_conf);
+        break;
+      case METADATA_PARTIAL:
+        process_metadata_global_filename(fti->filename, process_file_type_conf->context, FALSE);
         refresh_table_list(process_file_type_conf);
         break;
       case SCHEMA_TABLESPACE:
@@ -96,8 +100,10 @@ void *process_file_type_worker(void *data){
       case SCHEMA_CREATE:
         process_database_filename(fti->filename);  // pushed to database_queue
         g_atomic_int_inc(&schema_processed_counter);
-        if (has_been_defined_a_target_database())
-         m_remove(directory,fti->filename);
+        if (has_been_defined_a_target_database()){
+          trace("tryging to remove: %s", fti->filename);
+          m_remove(directory,fti->filename);
+        }
         break;
       case SCHEMA_SEQUENCE:
         process_schema_sequence_filename(fti->filename); // pushed to table_queue if database is created, _database->sequence_queue otherwise 

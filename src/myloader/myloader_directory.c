@@ -56,8 +56,6 @@ void *process_directory(struct configuration *conf){
     // metadata needs to be processed at the begining, that is why we are pushing into the queue
     // before reading the whole directory and excluding it after.
     process_filename_push(g_strdup("metadata"));
-//    process_metadata_global_filename(g_strdup("metadata"), conf->context);
-//    release_directory_metadata_lock(); This has been moved to process_metadata_global_filename and triggered when [config] has been processed
   }else
     g_error("metadata file was not found");
   if (resume){

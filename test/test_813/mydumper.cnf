@@ -1,5 +1,0 @@
-[mydumper]
-database=test_813
-threads=4
-bulk-metadata-prefetch
-outputdir=/tmp/data

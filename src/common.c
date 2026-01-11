@@ -159,7 +159,7 @@ void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * g
     if (!g_option_context_parse(context, &slen, &gclist, &error)) {
       m_critical("option parsing failed: %s, try --help\n", error->message);
     }else{
-      g_message("Config file loaded");
+      trace("Config file loaded");
     }
     g_strfreev(gclist);
   }

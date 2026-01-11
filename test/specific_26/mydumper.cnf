@@ -1,0 +1,5 @@
+[mydumper]
+database=specific_26
+threads=4
+bulk-metadata-prefetch
+outputdir=/tmp/data

@@ -332,7 +332,7 @@ read_more:
             // sending previous file for processing
             real_filename = g_build_filename(directory,filename,NULL);
             if (file)
-              m_close(file);
+              fclose(file);
             if (previous_filename){
               process_filename_push(previous_filename);
               previous_filename=NULL;
@@ -351,7 +351,6 @@ read_more:
                 m_critical("File %s not found in backup dir when using NO_STREAM.", filename);
               }
               file = g_fopen(real_filename, "w");
-              m_close=(void *) &fclose;
             }
             if (!has_mydumper_suffix(filename)){
               g_debug("Not a mydumper file: %s", filename);
@@ -414,7 +413,7 @@ read_more:
     g_free(filename);
   }else{
     if (file) 
-      m_close(file);
+      fclose(file);
     if (!no_stream && filename)
       process_filename_push(filename);
     g_free(filename);

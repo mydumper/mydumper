@@ -88,7 +88,7 @@ FILE * myl_open(char *filename, const char *type){
   (void) child_proc;
   gchar **command=NULL;
   struct stat a;
-  if (get_command_and_basename(filename, &command,&basename)){
+  if (get_command_and_basename(filename, &command, &basename)){
     // Acquire decompressor slot (throttle concurrent processes)
     g_mutex_lock(decompress_mutex);
     while (active_decompressors >= max_decompressors) {
@@ -126,9 +126,15 @@ FILE * myl_open(char *filename, const char *type){
     // The pipe remains usable through the open file descriptors.
     // This ensures automatic cleanup on crash (no stale FIFOs left behind).
     if (file != NULL) {
-      remove(fifoname);
+      g_unlink(fifoname);
+//      m_remove0(fifo_directory,fifoname);
     }
-
+    if (stream && !no_delete)
+      g_unlink(filename);
+/*    gchar *tmpbasename=g_path_get_basename(filename);
+    m_remove(directory,tmpbasename);
+    g_free(tmpbasename);
+*/
     g_mutex_lock(fifo_table_mutex);
     struct fifo *f=g_hash_table_lookup(fifo_hash,file);
     if (f!=NULL){
@@ -157,6 +163,8 @@ FILE * myl_open(char *filename, const char *type){
       file=NULL;
     }else{
       file=g_fopen(filename, type);
+      if (stream && !no_delete)
+        g_unlink(filename);
     }
   }
   return file;
@@ -183,9 +191,11 @@ void myl_close(const char *filename, FILE *file, gboolean rm){
       release_decompressor_slot();
     }
   }
-  if (rm){
-    m_remove(NULL,filename);
-  }
+  (void) rm;
+  (void) filename;
+//  if (rm){
+//    m_remove(NULL,filename);
+//  }
 }
 
 void process_tablespace_filename(char * filename) {
@@ -550,15 +560,17 @@ gboolean process_table_filename(char * filename){
 
 gboolean first_metadata_processed=FALSE;
 
-void process_metadata_global_filename(gchar *file, GOptionContext * local_context)
+void process_metadata_global_filename(gchar *file, GOptionContext * local_context, gboolean is_global)
 {
+  set_thread_name("MDT");
+
   gchar *path = g_build_filename(directory, file, NULL);
+  trace("Reading metadata: %s", path);
   GKeyFile * kf = load_config_file(path);
+  g_free(path);
   if (kf==NULL)
     g_error("Global metadata file processing was not possible");
 
-  set_thread_name("MDT");
-  message("Reading metadata: %s", file);
   guint j=0;
   gchar *value=NULL;
   gchar *real_table_name=NULL;
@@ -571,8 +583,10 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   const char *delimiter=    identifier_quote_character == BACKTICK ? delim_bt : delim_dq;
   const char *wrong_quote=  identifier_quote_character == BACKTICK ? "\"" : "`";
 
+  if (is_global){
+    m_remove(directory, file);
 
-  if (g_key_file_has_group(kf, CONFIG)){
+    if (g_key_file_has_group(kf, CONFIG)){
       gsize len=0;
       GError *error = NULL;
       gchar ** keys=g_key_file_get_keys(kf,CONFIG, &len, &error);
@@ -601,7 +615,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
           m_critical("option parsing failed: %s, try --help\n", error->message);
         }else{
-          g_message("Config file loaded");
+          trace("Config file loaded");
         }
         g_strfreev(gclist);
       }
@@ -618,15 +632,20 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       }else{
         m_critical("Wrong quote_character in metadata");
       }
-      trace("metadata: quote character is %c", identifier_quote_character);  
+      trace("metadata: quote character is %c", identifier_quote_character);
       first_metadata_processed=TRUE;
-  }else if (!first_metadata_processed){
-    if (g_strstr_len(file,-1,"partial")){
+    }else{
+      m_error("Section [config] was not found on metadata file: %s", file);
+    }
+  }else{
+    if (!first_metadata_processed){
       g_async_queue_push(partial_metadata_queue,file);
       return;
     }
-    m_error("Section [config] was not found on metadata file");
+    m_remove(directory, file);
   }
+
+  g_free(file);
 
   if (g_key_file_has_group(kf, "myloader_session_variables")){
     g_message("myloader_session_variables found on metadata");
@@ -709,12 +728,9 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   if (stream)
     metadata_has_been_processed();
 
-  m_remove(directory, file);
-  g_free(file);
-
   file=g_async_queue_try_pop(partial_metadata_queue);
   if (file)
-    process_metadata_global_filename(file, local_context);
+    process_metadata_global_filename(file, local_context, FALSE);
 
 }
 

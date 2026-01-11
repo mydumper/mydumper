@@ -6,7 +6,7 @@ tmp_myloader_log="/tmp/test_myloader.log.tmp"
 mydumper_stor_dir="/tmp/data"
 mysqldumplog=/tmp/mysqldump.sql
 retries=1
-directories="specific test"
+directories="specific"
 export mysql_user=root
 
 die()
@@ -328,6 +328,7 @@ test_case_dir (){
         "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
       else
         "${time2[@]}" $myloader ${myloader_parameters} 
+        error=$?
       fi
       error=$?
       cat $tmp_myloader_log >> $myloader_log
@@ -335,10 +336,21 @@ test_case_dir (){
       then
         print_core
       fi
+      if (( $myloader_stream >= 1 ))
+      then
+        if (( $(ls /tmp/data | wc -l ) > 0 ))
+        then
+          echo "Files found on streaming backup dir"
+          error=1
+        fi
+      fi
+
+
       iter=$(( $iter + 1 ))
     done
     if (( $error > 0 )) && (( $iter > $retries ))
     then
+      mkdir -p $mydumper_stor_dir
       mv $mysqldumplog $mydumper_stor_dir
       echo "Error running: $myloader ${myloader_parameters}"
       echo "Error running myloader with mydumper: $mydumper ${mydumper_parameters}"
@@ -358,7 +370,7 @@ do_case()
   if [[ -n "$case_min"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
-    if (( $number > $case_min  )) && (( $number < $case_max ))
+    if (( $number >= $case_min  )) && (( $number <= $case_max ))
     then
         "$@" || exit
     fi
@@ -402,12 +414,138 @@ full_test_global(){
   do
     mysql < test/clean_databases.sql
     prepare_database_in_directory ${t}
-    for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
+
+    local_case_max=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | tail -1)
+    local_case_min=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -r -n | tail -1)
+
+    if (( $case_max < $local_case_max ))
+    then
+      local_case_max=$case_max
+    fi
+
+    if (( $case_min > $local_case_min ))
+    then
+      local_case_min=$case_min
+    fi
+    egrep_text=$( echo $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | awk '{print "_"$1"$"}') | sed 's/ /|/g' )
+
+    for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | egrep ${egrep_text})
     do
       echo "Executing test: $dir"
       do_case test_case_dir ${dir}
     done
   done
+}
+
+
+full_dynamic_tests(){
+i=1
+
+# mydumper
+mysql < test/clean_databases.sql
+prepare_database_in_directory dynamic
+
+for compress in "" "compress=GZIP" "compress=ZSTD";
+do
+  for format in "" "csv=1" "load-data=1"
+  do
+    for rows in "" "rows=1000" "rows=10:100:10000"
+    do
+      for file in "" "chunk-filesize=10"
+      do
+        for extra in "" "statement-size=2000000" "use-savepoints=1"
+        do
+# myloader
+          for keys in "" "optimize-keys=AFTER_IMPORT_ALL_TABLES" "optimize-keys=AFTER_IMPORT_PER_TABLE"
+          do
+# Both
+            for type in "" "stream=1"
+            do
+              dir=dynamic_${i}
+              mkdir -p $dir
+              dynamic_mydumper=${dir}/mydumper.cnf
+              echo "[mydumper]" > ${dynamic_mydumper}
+              if [ "$compress" != "" ]
+              then
+                echo $compress >> ${dynamic_mydumper}
+              fi
+              if [ "$format" != "" ]
+              then
+                echo $format >> ${dynamic_mydumper}
+              fi
+              if [ "$rows" != "" ]
+              then
+                echo $rows >> ${dynamic_mydumper}
+              fi
+              if [ "$file" != "" ]
+              then
+                echo $file >> ${dynamic_mydumper}
+              fi
+              if [ "$extra" != "" ]
+              then
+                echo $extra >> ${dynamic_mydumper}
+              fi
+              if [ "$type" != "" ]
+              then
+                echo $type >> ${dynamic_mydumper}
+              fi
+              echo "routines=1
+events=1
+triggers=1
+outputdir=/tmp/data
+regex=^(?!(mysql\.|sys\.))" >> ${dynamic_mydumper}
+              dynamic_myloader=${dir}/myloader.cnf
+              echo "[myloader]
+drop-table
+max-threads-for-index-creation=1
+max-threads-for-post-actions=1
+fifodir=/tmp/fifodir
+directory=/tmp/data
+serialized-table-creation=1" > ${dynamic_myloader}
+              if [ "$keys" != "" ]
+              then
+                echo $keys >> ${dynamic_myloader}
+              fi
+
+              if [ "$type" != "" ]
+              then
+                echo $type >> ${dynamic_myloader}
+                echo "rm -rf /tmp/data" > ${dir}/pre_myloader.sh
+                chmod u+x ${dir}/pre_myloader.sh
+              fi
+
+              if [ "$format" != "" ]
+              then
+                echo "[myloader_global_variables]
+local_infile=ON" >> ${dynamic_myloader}
+              fi
+
+              echo "Executing test: $dir"
+              do_case test_case_dir ${dir}
+
+
+                if [[ ! -n "$case_min"  ]]
+                then
+              if [ "$type" == "" ]
+              then
+                if (( $(ls /tmp/data | wc -l ) < 10 ))
+                then
+                  echo "The amount of files in backup dir is less than 10"
+                  exit 1
+                fi
+              fi
+                fi
+
+              rm -rf ${dir}
+              i=$(( $i + 1))
+            done
+          done
+        done
+      done
+    done
+  done
+done
+
 }
 
 prepare_full_test
@@ -421,7 +559,7 @@ if [[ -n "$prepare_only"  ]]; then
   exit
 fi
 
-full_test_global &&
+full_dynamic_tests && full_test_global &&
   finish
 
 #cat $mydumper_log
