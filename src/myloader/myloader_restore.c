@@ -747,6 +747,12 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){
             // Perf: Use data->len instead of strlen(data->str)
+            if (should_ignore_set_statement(data)){
+              goto STMT_IGNORED;
+            }else{
+              g_string_append(header,data->str);
+            }
+            /*
             gchar *from_equal=g_strstr_len(data->str, data->len, "=");
             if (from_equal && ignore_set_list ){
               *from_equal='\0';
@@ -762,6 +768,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             }else{
               g_string_append(header,data->str);
             }
+            */
           }else{
             header=NULL;
           }
