@@ -499,6 +499,17 @@ serialized-table-creation=1" > ${dynamic_myloader}
 
               echo "Executing test: $dir"
               do_case test_case_dir ${dir}
+
+              if [ "$type" == "" ]
+              then
+                if (( $(ls /tmp/data | wc -l ) < 10 ))
+                then
+                  echo "The amount of files in backup dir is less than 10"
+                  exit 1
+                fi
+              fi
+
+
               rm -rf ${dir}
               i=$(( $i + 1))
             done

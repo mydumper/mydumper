@@ -371,11 +371,6 @@ int main(int argc, char *argv[]) {
 
   check_num_threads();
 
-  if (num_threads > max_threads_per_table)
-    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
-  else
-    g_message("Using %u loader threads", num_threads);
-
   initialize_set_names();
 
   if (debug) {
@@ -400,6 +395,11 @@ int main(int argc, char *argv[]) {
   set_verbose(verbose);
 
   g_message("MyDumper restore version: %s", VERSION);
+
+  if (num_threads > max_threads_per_table)
+    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
+  else
+    g_message("Using %u loader threads", num_threads);
 
   // Starts modifying file in disk, creating objects and restore
 

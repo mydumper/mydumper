@@ -129,7 +129,8 @@ FILE * myl_open(char *filename, const char *type){
       g_unlink(fifoname);
 //      m_remove0(fifo_directory,fifoname);
     }
-    g_unlink(filename);
+    if (stream && !no_delete)
+      g_unlink(filename);
 /*    gchar *tmpbasename=g_path_get_basename(filename);
     m_remove(directory,tmpbasename);
     g_free(tmpbasename);
@@ -162,7 +163,8 @@ FILE * myl_open(char *filename, const char *type){
       file=NULL;
     }else{
       file=g_fopen(filename, type);
-      g_unlink(filename);
+      if (stream && !no_delete)
+        g_unlink(filename);
     }
   }
   return file;
@@ -613,7 +615,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
         if (!g_option_context_parse(local_context, &slen, &gclist, &error)) {
           m_critical("option parsing failed: %s, try --help\n", error->message);
         }else{
-          g_message("Config file loaded");
+          trace("Config file loaded");
         }
         g_strfreev(gclist);
       }
