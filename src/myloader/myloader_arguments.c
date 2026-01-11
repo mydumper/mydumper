@@ -98,10 +98,10 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     g_strfreev(ignore_set_items);
     return TRUE;
   } else if (!g_strcmp0(option_name, "--overwrite-tables")){
-    m_error("Option --overwrite-tables has been deprecated. User -o/--drop-table instead");
+    m_error("Option --overwrite-tables has been deprecated. Use -o/--drop-table instead");
     return FALSE;
   } else if (!g_strcmp0(option_name, "--purge-mode")){
-    m_error("Option --purge-mode has been deprecated. User -o/--drop-table instead");
+    m_error("Option --purge-mode has been deprecated. Use -o/--drop-table instead");
     return FALSE;
   } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
     overwrite_tables=TRUE;
@@ -204,7 +204,7 @@ static GOptionEntry execution_entries[] = {
       "If the option is not set, the default is set to: FAIL. "
       "If the option is used without a parameter, the default is: DROP.", NULL},
     {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
-      "Option --overwrite-tables has been deprecated. User -o/--drop-table instead.", NULL},
+      "Option --overwrite-tables has been deprecated. Use -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
       "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
