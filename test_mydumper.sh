@@ -370,7 +370,7 @@ do_case()
   if [[ -n "$case_min"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
-    if (( $number > $case_min  )) && (( $number < $case_max ))
+    if (( $number >= $case_min  )) && (( $number <= $case_max ))
     then
         "$@" || exit
     fi
@@ -414,7 +414,22 @@ full_test_global(){
   do
     mysql < test/clean_databases.sql
     prepare_database_in_directory ${t}
-    for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n )
+
+    local_case_max=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | tail -1)
+    local_case_min=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -r -n | tail -1)
+
+    if (( $case_max < $local_case_max ))
+    then
+      local_case_max=$case_max
+    fi
+
+    if (( $case_min > $local_case_min ))
+    then
+      local_case_min=$case_min
+    fi
+    egrep_text=$( echo $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | awk '{print "_"$1"$"}') | sed 's/ /|/g' )
+
+    for dir in $(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | egrep ${egrep_text})
     do
       echo "Executing test: $dir"
       do_case test_case_dir ${dir}
@@ -425,6 +440,7 @@ full_test_global(){
 
 full_dynamic_tests(){
 i=1
+
 # mydumper
 mysql < test/clean_databases.sql
 prepare_database_in_directory dynamic
@@ -490,6 +506,7 @@ serialized-table-creation=1" > ${dynamic_myloader}
               then
                 echo $keys >> ${dynamic_myloader}
               fi
+
               if [ "$type" != "" ]
               then
                 echo $type >> ${dynamic_myloader}
@@ -497,9 +514,18 @@ serialized-table-creation=1" > ${dynamic_myloader}
                 chmod u+x ${dir}/pre_myloader.sh
               fi
 
+              if [ "$format" != "" ]
+              then
+                echo "[myloader_global_variables]
+local_infile=ON" >> ${dynamic_myloader}
+              fi
+
               echo "Executing test: $dir"
               do_case test_case_dir ${dir}
 
+
+                if [[ ! -n "$case_min"  ]]
+                then
               if [ "$type" == "" ]
               then
                 if (( $(ls /tmp/data | wc -l ) < 10 ))
@@ -508,7 +534,7 @@ serialized-table-creation=1" > ${dynamic_myloader}
                   exit 1
                 fi
               fi
-
+                fi
 
               rm -rf ${dir}
               i=$(( $i + 1))
