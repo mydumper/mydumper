@@ -159,8 +159,11 @@ void *process_file_type_worker(void *data){
 
 void wait_file_type_to_complete(){
   guint n;
+  trace("wait_file_type_to_complete :: Starting");
   for (n = 0; n < process_file_type_num_threads; n++) {
     g_thread_join(process_file_type_workers[n]);
   }
+  trace("wait_file_type_to_complete :: All threads joined");
   schema_ended();
+  trace("wait_file_type_to_complete :: Completed");
 }
