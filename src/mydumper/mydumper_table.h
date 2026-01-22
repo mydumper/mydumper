@@ -81,6 +81,8 @@ struct db_table {
 void initialize_table();
 void finalize_table();
 void prefetch_table_metadata(MYSQL *conn);
+GList *get_cached_partitions(const gchar *database, const gchar *table);
+gboolean is_metadata_prefetch_done(void);
 void free_db_table(struct db_table * dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
