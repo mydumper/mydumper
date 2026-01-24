@@ -24,7 +24,7 @@ RUN \
   yum clean all
 
 RUN \
-  yum install gpg && \
+  yum -y install gpg && \
   rpm -e gpg-pubkey-a8d3785c-6536acda && \
   curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
   gpg --import /tmp/fresh.asc && \
