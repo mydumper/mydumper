@@ -22,3 +22,11 @@ RUN \
   yum -y install https://repo.mysql.com/mysql84-community-release-el10.rpm && \
   rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 && \
   yum clean all
+
+RUN \
+  yum -y install gpg && \
+  rpm -e gpg-pubkey-a8d3785c-6536acda && \
+  curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
+  gpg --import /tmp/fresh.asc && \
+  rm /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2023 && \
+  gpg --output /etc/pki/rpm-gpg/RPM-GPG-KEY-mysql-2023 --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
