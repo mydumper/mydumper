@@ -366,7 +366,7 @@ commands:
     - run: sudo yum install -y libasan gdb screen time MariaDB-compat || true
 EOF
 
-for os in el7 el9 el10
+for os in el7 el9
 do
     for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
     do
@@ -387,6 +387,17 @@ do
     - prepare_el_mysql80
 "
 done
+
+for vendor in ${list_mysql_version[@]} ${list_percona_version[@]}
+do
+  echo "
+  prepare_el10_${all_vendors[${vendor}_0]}:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+"
+done
+
 
 for os in el8 el9 el10
 do

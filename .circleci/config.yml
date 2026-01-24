@@ -1739,36 +1739,6 @@ commands:
     - prepare_el_percona80
 
 
-  prepare_el10_mysql80:
-    steps:
-    - prepare_el_mysql80
-
-
-  prepare_el10_mysql84:
-    steps:
-    - prepare_el_mysql84
-
-
-  prepare_el10_debian_default:
-    steps:
-    - prepare_el_debian_default
-
-
-  prepare_el10_ubuntu_default:
-    steps:
-    - prepare_el_ubuntu_default
-
-
-  prepare_el10_percona57:
-    steps:
-    - prepare_el_percona57
-
-
-  prepare_el10_percona80:
-    steps:
-    - prepare_el_percona80
-
-
   prepare_el8_mysql80:
     steps:
     - run: sudo dnf module disable mysql -y
@@ -1802,6 +1772,42 @@ commands:
   prepare_el8_percona80:
     steps:
     - run: sudo dnf module disable mysql -y
+    - prepare_el_mysql80
+
+
+  prepare_el10_mysql80:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+
+
+  prepare_el10_mysql84:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+
+
+  prepare_el10_debian_default:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+
+
+  prepare_el10_ubuntu_default:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+
+
+  prepare_el10_percona57:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
+    - prepare_el_mysql80
+
+
+  prepare_el10_percona80:
+    steps:
+    - run: sudo rpm -e gpg-pubkey-a8d3785c-6536acda 
     - prepare_el_mysql80
 
 
