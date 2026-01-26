@@ -300,7 +300,7 @@ commands:
 
   prepare_apt_percona80:
     steps:
-    - run: sudo percona-release enable tools
+    - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
@@ -451,7 +451,7 @@ cat <<EOF
 
   prepare_el_percona80:
     steps:
-    - run: percona-release enable tools
+    - run: echo 'REPOSITORIES="tools"' > /etc/default/percona-release
     - run: percona-release setup -y ps80
     - run: yum -y install libasan gdb screen time percona-server-devel percona-server-client
 
