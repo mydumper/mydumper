@@ -85,4 +85,5 @@ void free_db_table(struct db_table * dbt);
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence, gboolean is_view);
+int table_has_triggers_cached(char *database, char *table);
 

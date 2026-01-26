@@ -28,6 +28,7 @@
 #include "mydumper_arguments.h"
 #include "mydumper_create_jobs.h"
 #include "mydumper_chunks.h"
+#include "mydumper_table.h"
 //
 // Enqueueing in initial_queue
 //
@@ -142,6 +143,29 @@ void create_job_to_dump_post(struct database *database) {
 //
 
 void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt) {
+  // Check prefetched cache first (--bulk-metadata-prefetch)
+  // Returns: -1 = not prefetched, 0 = no triggers, 1 = has triggers
+  int cached = table_has_triggers_cached(dbt->database->source_database, dbt->table);
+
+  if (cached == 0) {
+    // Prefetch confirmed no triggers - skip SHOW TRIGGERS query
+    return;
+  }
+
+  if (cached == 1) {
+    // Prefetch confirmed triggers exist - create job without querying
+    struct job *t = g_new0(struct job, 1);
+    struct schema_job *st = g_new0(struct schema_job, 1);
+    t->job_data = (void *)st;
+    t->type = JOB_TRIGGERS;
+    st->dbt = dbt;
+    st->filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-triggers");
+    st->checksum_filename=routine_checksums;
+    g_async_queue_push(local_conf->post_data_queue, t);
+    return;
+  }
+
+  // Fall back to per-table SHOW TRIGGERS query
   gchar *query = g_strdup_printf("SHOW TRIGGERS FROM %c%s%c LIKE '%s'", identifier_quote_character, dbt->database->source_database, identifier_quote_character, dbt->escaped_table);
 
   MYSQL_RES *result = m_store_result(conn, query, m_critical, "Error Checking triggers for %s.%s. St: %s", dbt->database->source_database, dbt->table, query);
