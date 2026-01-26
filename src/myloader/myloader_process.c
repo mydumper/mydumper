@@ -71,12 +71,13 @@ void initialize_process(struct configuration *c){
   max_decompressors = num_threads;
   if (max_decompressors > 32) max_decompressors = 32;
   if (max_decompressors < 4) max_decompressors = 4;
+  max_decompressors=max_decompressors;
 }
 
 // Release a decompressor slot
 static void release_decompressor_slot(void){
   g_mutex_lock(decompress_mutex);
-  active_decompressors--;
+  g_atomic_int_inc(&active_decompressors);
   g_cond_signal(decompress_cond);
   g_mutex_unlock(decompress_mutex);
 }
@@ -88,13 +89,14 @@ FILE * myl_open(char *filename, const char *type){
   (void) child_proc;
   gchar **command=NULL;
   struct stat a;
+  trace("myl_open %s", filename);
   if (get_command_and_basename(filename, &command, &basename)){
     // Acquire decompressor slot (throttle concurrent processes)
     g_mutex_lock(decompress_mutex);
-    while (active_decompressors >= max_decompressors) {
+    while (g_atomic_int_dec_and_test(&active_decompressors)){
+      g_atomic_int_inc(&active_decompressors);
       g_cond_wait(decompress_cond, decompress_mutex);
     }
-    active_decompressors++;
     g_mutex_unlock(decompress_mutex);
 
     fifoname=basename;
@@ -171,6 +173,7 @@ FILE * myl_open(char *filename, const char *type){
 }
 
 void myl_close(const char *filename, FILE *file, gboolean rm){
+  trace("myl_close %s", filename);
   g_mutex_lock(fifo_table_mutex);
   struct fifo *f=g_hash_table_lookup(fifo_hash,file);
   g_mutex_unlock(fifo_table_mutex);
