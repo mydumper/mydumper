@@ -551,7 +551,7 @@ done
 prepare_full_test
 
 if [[ -n "$prepare_only"  ]]; then
-  for dir in $directories
+  for dir in dynamic
   do
     prepare_database_in_directory ${dir}
   done
