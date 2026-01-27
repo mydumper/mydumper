@@ -709,6 +709,42 @@ void remove_definer(GString * data){
   remove_definer_from_gchar(data->str);
 }
 
+void replace_definer_from_string(GString * data, char * _replace){
+  char * from = g_strstr_len(data->str,50," DEFINER=");
+  if (from){
+    from++;
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      gchar *_find=g_strndup(from, to-from);
+      g_string_replace(data,_find,_replace,1);
+      g_free(_find);
+    }
+  }
+}
+
+void update_definer(GString *statement, gchar *replace_definer_str, gboolean skip_definer){
+  if (g_str_has_prefix(statement->str,"CREATE")){
+    if ( skip_definer )
+      remove_definer(statement);
+    else if (replace_definer_str)
+      replace_definer_from_string(statement,replace_definer_str);
+  }
+}
+
+
+void replace_definer_from_gchar (GString * output_data, char * str, char * _replace){
+  char * from = g_strstr_len(str,50," DEFINER=") + 10;
+  if (from){
+    g_string_append_len(output_data, str, from - str - 1);
+    g_string_append(output_data,_replace);
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      g_string_append(output_data, to);
+    }
+  }
+}
+
+
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
     g_string_append_printf(str, " v%s, built against %s %s", VERSION, DB_LIBRARY, MYSQL_VERSION_STR);

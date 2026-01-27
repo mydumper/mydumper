@@ -54,6 +54,7 @@ extern gboolean resume;
 extern gboolean serial_tbl_creation;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
+extern gchar *replace_definer;
 extern gboolean skip_post;
 extern gboolean skip_triggers;
 extern gboolean skip_constraints;

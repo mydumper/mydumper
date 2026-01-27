@@ -256,6 +256,8 @@ static GOptionEntry statement_entries[] ={
       "Sets the names, use it at your own risk, default binary", NULL },
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
      "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+    {"replace-definer", 0, 0, G_OPTION_ARG_STRING, &replace_definer,
+     "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
     {"ignore-set", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "List of variables that will be ignored from the header of SET", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

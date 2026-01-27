@@ -138,6 +138,7 @@ void print_help(){
     print_bool("complete-insert",complete_insert);
     print_bool("hex-blob",hex_blob);
     print_bool("skip-definer",skip_definer);
+    print_string("replace-definer",replace_definer);
     print_int("statement-size",statement_size);
     print_bool("tz-utc",skip_tz);
     print_bool("skip-tz-utc",skip_tz);

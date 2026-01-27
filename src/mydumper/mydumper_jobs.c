@@ -35,6 +35,8 @@ gboolean dump_triggers = FALSE;
 gboolean ignore_generated_fields = FALSE;
 gboolean bulk_metadata_prefetch = FALSE;
 gboolean skip_definer = FALSE;
+gchar *replace_definer = NULL;
+static gchar * replace_definer_str = NULL;
 
 extern gchar *table_engine_for_view_dependency;
 extern gchar *case_sensitive_prefix;
@@ -47,6 +49,8 @@ void initialize_jobs(){
   if (ignore_generated_fields)
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
 
+  if (replace_definer)
+    replace_definer_str=g_strdup_printf("DEFINER=%s",replace_definer);
 }
 
 static
@@ -271,12 +275,13 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
                         "Failed to execute SHOW CREATE TRIGGER %s.%s",database->source_database, row[0] );
     g_free(query);
     if (mr->row){
-      if ( skip_definer && g_str_has_prefix(mr->row[2],"CREATE"))
-        remove_definer_from_gchar(mr->row[2]);
       g_string_append_printf(statement, "DROP TRIGGER IF EXISTS %c%s%c;\n",
                         identifier_quote_character, row[0], identifier_quote_character);
       g_string_set_size(create_trigger, 0);
       g_string_append_printf(create_trigger, "%s", mr->row[2]);
+
+      update_definer(create_trigger, replace_definer_str, skip_definer);
+
       splited_st = g_strsplit(create_trigger->str, ";\n", 0);
       g_string_printf(create_trigger, "%s", g_strjoinv("; \n", splited_st));
       g_strfreev(splited_st);
@@ -454,10 +459,11 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_set_size(statement, 0);
 
   set_charset(statement, mr->row[2], mr->row[3]);
-  if ( skip_definer && g_str_has_prefix(mr->row[1],"CREATE")){
-    remove_definer_from_gchar(mr->row[1]);
-  }
-  g_string_append(statement, mr->row[1]);
+  
+  g_string_append_printf(statement, "%s", mr->row[1]);
+
+  update_definer(statement, replace_definer_str, skip_definer);
+
   g_string_append(statement, ";\n");
   restore_charset(statement);
   if (!write_data(outfile, statement)) {
@@ -512,10 +518,8 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   g_string_set_size(statement, 0);
 
   /* There should never be more than one row */
-  if ( skip_definer && g_str_has_prefix(mr->row[1],"CREATE")){
-    remove_definer_from_gchar(mr->row[1]);
-  }
   g_string_append(statement, mr->row[1]);
+  update_definer(statement, replace_definer_str, skip_definer);
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);

@@ -37,11 +37,12 @@
 struct statement * new_statement();
 guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean skip_definer = FALSE;
+gchar *replace_definer = NULL;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
-
+gchar *replace_definer_str = NULL;
 GMutex *load_data_list_mutex=NULL;
 GHashTable * load_data_list = NULL;
 
@@ -112,6 +113,8 @@ static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child
 void initialize_restore(){
   load_data_list_mutex=g_mutex_new();
   load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+  if (replace_definer)
+    replace_definer_str=g_strdup_printf("DEFINER=%s",replace_definer);
 }
 
 struct connection_data *new_connection_data(MYSQL *thrconn){
@@ -584,9 +587,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
         preline=line+1;
         g_string_set_size(data, 0);
       }else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter)) {
-        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          remove_definer(data);
-        }
+        update_definer(data, replace_definer_str, skip_definer);
         assign_statement(ir,td, td->dbt,data->str, preline, is_schema, OTHER);
         g_async_queue_push(cd->queue->restore,ir);
         ir=NULL;
@@ -659,8 +660,11 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          remove_definer(data);
+        if (g_str_has_prefix(data->str,"CREATE")){
+          if ( skip_definer)
+            remove_definer(data);
+          if ( replace_definer_str )
+            replace_definer_from_string(data, replace_definer_str);
         }
         if ( g_strrstr_len(data->str,6,"INSERT")){
           request_another_connection(td, cd->queue, cd->transaction, use_database, header);
