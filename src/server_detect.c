@@ -36,7 +36,7 @@ const gchar *show_binary_log_status=NULL;
 const gchar *change_replication_source=NULL;
 const gchar *case_sensitive_prefix=NULL;
 const gchar *case_sensitive_suffix=NULL;
-
+gboolean for_channel_incompatibility=FALSE;
 extern gchar *server_version_arg;
 
 int get_product(){
@@ -189,6 +189,7 @@ void detect_replica() {
     switch (get_product()){
       case SERVER_TYPE_MARIADB:
         if (get_major()<10){
+          for_channel_incompatibility=TRUE;
           show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
           if (get_secondary()>=5)
             if (get_revision()>=2)
@@ -197,6 +198,8 @@ void detect_replica() {
           if (get_secondary()<=5){
             show_all_replicas_status=SHOW_ALL_SLAVES_STATUS;
           }else{
+            if (get_secondary()<7)
+              for_channel_incompatibility=TRUE;
             start_replica=START_REPLICA;
             stop_replica=STOP_REPLICA;
             start_replica_sql_thread=START_REPLICA_SQL_THREAD;

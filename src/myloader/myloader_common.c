@@ -43,6 +43,8 @@ gchar ** zstd_decompress_cmd = NULL;
 gchar ** gzip_decompress_cmd = NULL;
 guint max_number_tables_to_sort_in_table_list = 100000;
 
+extern gboolean for_channel_incompatibility;
+
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -253,11 +255,12 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
 
   g_strfreev(keys);
-  g_string_append(traditional_change_source," FOR CHANNEL '");
-  if (channel_name!=NULL)
-    g_string_append(traditional_change_source,channel_name);
-  g_string_append(traditional_change_source,"';\n");
-
+  if (!for_channel_incompatibility){
+    g_string_append(traditional_change_source," FOR CHANNEL '");
+    if (channel_name!=NULL)
+      g_string_append(traditional_change_source,channel_name);
+    g_string_append(traditional_change_source,"';\n");
+  }
   if (set_gtid_purge){
     if (! rs->gtid_purge)
       rs->gtid_purge=g_string_new("");

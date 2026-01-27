@@ -664,13 +664,15 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
       }
       break;
     case SERVER_TYPE_MARIADB:
-      if ((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) {
+      if (((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) && sync_thread_lock_mode!=FTWRL && !skip_ddl_locks ) {
+
         *acquire_ddl_lock_function = &send_mariadb_backup_locks;
 //            *release_ddl_lock_function = &send_backup_stage_end;
         *release_ddl_lock_function = NULL;
 
         *acquire_global_lock_function = &send_backup_stage_on_block_commit;
         *release_global_lock_function = &send_backup_stage_end;
+
       }else{
         default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
       }
