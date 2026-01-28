@@ -412,6 +412,8 @@ static GOptionEntry statement_entries[] = {
       "Dump binary columns using hexadecimal notation", NULL},
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
       "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+    {"replace-definer", 0, 0, G_OPTION_ARG_STRING, &replace_definer,
+     "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
       "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,

@@ -85,7 +85,6 @@ gboolean no_delete = FALSE;
 
 extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
-extern gboolean skip_definer;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
 
@@ -249,6 +248,7 @@ void print_help(){
     print_string("set-names",set_names_in_conn_by_default);
 
     print_bool("skip-definer",skip_definer);
+    print_string("replace-definer",replace_definer);
     print_bool("help",help);
 
     print_string("directory",input_directory);

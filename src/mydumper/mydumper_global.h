@@ -68,6 +68,7 @@ extern gboolean routine_checksums;
 extern gboolean schema_checksums;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
+extern gchar *replace_definer;
 extern gboolean skip_constraints;
 extern gboolean skip_indexes;
 extern gboolean skip_metadata_sorting;
