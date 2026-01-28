@@ -176,7 +176,8 @@ list_build=(
   "el10_mysql84_x86_64"         "el10_mysql84_aarch64"
   "bullseye_percona57_amd64"
   "bookworm_mysql84_amd64"      "bookworm_mariadb1011_arm64"
-  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
+#  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
+  "trixie_percona84_amd64"      "trixie_percona84_arm64"
 )
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"

@@ -11474,7 +11474,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_trixie_debian_default_amd64:
+    - build_trixie_percona84_amd64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -11482,7 +11482,7 @@ workflows:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_trixie_debian_default_arm64:
+    - build_trixie_percona84_arm64:
         requires:
           - build_jammy_mysql80_amd64
         filters:
@@ -11508,8 +11508,8 @@ workflows:
           - build_bullseye_percona57_amd64
           - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
-          - build_trixie_debian_default_amd64
-          - build_trixie_debian_default_arm64
+          - build_trixie_percona84_amd64
+          - build_trixie_percona84_arm64
         filters:
           branches:
             ignore: /.*/
