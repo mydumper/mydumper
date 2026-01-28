@@ -27,6 +27,12 @@ all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
+vendor=percona80
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="percona:84"
+all_vendors[${vendor}_3]="perconaserverclient"
+all_vendors[${vendor}_4]="perconaserverclient"
+
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.6"
@@ -65,7 +71,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 
 
 list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
-list_percona_version=( "percona57" "percona80" )
+list_percona_version=( "percona57" "percona80" "percona84")
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
 list_arch=( "arm" "amd" )
