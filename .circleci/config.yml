@@ -79,7 +79,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -238,7 +238,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -397,7 +397,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -556,7 +556,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -715,7 +715,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -874,7 +874,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1033,7 +1033,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1192,7 +1192,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1351,7 +1351,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1510,7 +1510,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1669,7 +1669,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona-server:8.4
+    - image: percona/percona-server:8.4
       command: mysqld
       environment:
         MYSQL_USER: root
