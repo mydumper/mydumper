@@ -192,7 +192,7 @@ list_compile=(
                        "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
-                       "trixie_percona80"   "trixie_percona84"                                               "trixie_debian_default"
+                                            "trixie_percona84"                                               "trixie_debian_default"
 
 )
 
