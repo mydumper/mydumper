@@ -9,17 +9,13 @@ RUN \
   apt-get install -y sudo lsb-release cmake g++ git make libglib2.0-dev zlib1g-dev libssl-dev libzstd-dev wget gnupg curl && \
   apt-get clean
 
-#
-# Percona doesn't support trixie yet
-#
-#RUN \
-#  . /etc/os-release && \
-#  curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
-#    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb && \
-#  dpkg -i /tmp/percona-release.deb && \
-#  rm -v /tmp/percona-release.deb && \
-#  apt-get update 
-
+RUN \
+  . /etc/os-release && \
+  curl --fail --location --show-error --silent --output /tmp/percona-release.deb \
+    https://repo.percona.com/apt/percona-release_latest.${VERSION_CODENAME}_all.deb && \
+  dpkg -i /tmp/percona-release.deb && \
+  rm -v /tmp/percona-release.deb && \
+  apt-get update 
 
 #
 # MariaDB doesn't support trixie yet
