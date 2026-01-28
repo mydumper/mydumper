@@ -313,8 +313,8 @@ commands:
   prepare_apt_percona84:
     steps:
     - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
-    - run: sudo percona-release setup -y ps84
-    - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
+    - run: sudo percona-release setup -y ps-84-lts
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient22 libperconaserverclient22-dev percona-server-client
 
   prepare_apt_mysql80:
     steps:
