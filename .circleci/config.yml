@@ -63,14 +63,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bionic_:
+  bionic_percona84:
     docker:
     - image: mydumper/mydumper-builder-bionic
       environment:
@@ -79,7 +79,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -222,14 +222,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  focal_:
+  focal_percona84:
     docker:
     - image: mydumper/mydumper-builder-focal
       environment:
@@ -238,7 +238,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -381,14 +381,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  jammy_:
+  jammy_percona84:
     docker:
     - image: mydumper/mydumper-builder-jammy
       environment:
@@ -397,7 +397,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -540,14 +540,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  noble_:
+  noble_percona84:
     docker:
     - image: mydumper/mydumper-builder-noble
       environment:
@@ -556,7 +556,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -699,14 +699,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el7_:
+  el7_percona84:
     docker:
     - image: mydumper/mydumper-builder-el7
       environment:
@@ -715,7 +715,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -858,14 +858,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el8_:
+  el8_percona84:
     docker:
     - image: mydumper/mydumper-builder-el8
       environment:
@@ -874,7 +874,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1017,14 +1017,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el9_:
+  el9_percona84:
     docker:
     - image: mydumper/mydumper-builder-el9
       environment:
@@ -1033,7 +1033,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1176,14 +1176,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  el10_:
+  el10_percona84:
     docker:
     - image: mydumper/mydumper-builder-el10
       environment:
@@ -1192,7 +1192,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1335,14 +1335,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bullseye_:
+  bullseye_percona84:
     docker:
     - image: mydumper/mydumper-builder-bullseye
       environment:
@@ -1351,7 +1351,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1494,14 +1494,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  bookworm_:
+  bookworm_percona84:
     docker:
     - image: mydumper/mydumper-builder-bookworm
       environment:
@@ -1510,7 +1510,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1653,14 +1653,14 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: percona:84
+    - image: percona:8
       command: mysqld
       environment:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
     working_directory: /tmp/src/mydumper
 
-  trixie_:
+  trixie_percona84:
     docker:
     - image: mydumper/mydumper-builder-trixie
       environment:
@@ -1669,7 +1669,7 @@ executors:
         MYSQL_USER: root
         MYSQL_ALLOW_EMPTY_PASSWORD: true
         MYSQL_PASSWORD:
-    - image: 
+    - image: percona:84
       command: mysqld
       environment:
         MYSQL_USER: root
@@ -1886,9 +1886,9 @@ commands:
     - prepare_el_percona80
 
 
-  prepare_el7_:
+  prepare_el7_percona84:
     steps:
-    - prepare_el_
+    - prepare_el_percona84
 
 
   prepare_el9_mysql80:
@@ -1921,9 +1921,9 @@ commands:
     - prepare_el_percona80
 
 
-  prepare_el9_:
+  prepare_el9_percona84:
     steps:
-    - prepare_el_
+    - prepare_el_percona84
 
 
   prepare_el10_mysql80:
@@ -1956,9 +1956,9 @@ commands:
     - prepare_el_percona80
 
 
-  prepare_el10_:
+  prepare_el10_percona84:
     steps:
-    - prepare_el_
+    - prepare_el_percona84
 
 
   prepare_el8_mysql80:
@@ -1997,7 +1997,7 @@ commands:
     - prepare_el_mysql80
 
 
-  prepare_el8_:
+  prepare_el8_percona84:
     steps:
     - run: sudo dnf module disable mysql -y
     - prepare_el_mysql80
@@ -2051,10 +2051,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_bionic_:
+  prepare_bionic_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_bionic_mysql80:
@@ -2113,10 +2113,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_focal_:
+  prepare_focal_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_focal_mysql80:
@@ -2175,10 +2175,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_jammy_:
+  prepare_jammy_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_jammy_mysql80:
@@ -2237,10 +2237,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_noble_:
+  prepare_noble_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_noble_mysql80:
@@ -2299,10 +2299,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_bullseye_:
+  prepare_bullseye_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_bullseye_mysql80:
@@ -2361,10 +2361,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_bookworm_:
+  prepare_bookworm_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_bookworm_mysql80:
@@ -2423,10 +2423,10 @@ commands:
     - prepare_apt_percona80
 
 
-  prepare_trixie_:
+  prepare_trixie_percona84:
     steps:
     - run: sudo apt-get update
-    - prepare_apt_
+    - prepare_apt_percona84
 
 
   prepare_trixie_mysql80:
@@ -2652,19 +2652,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bionic_:
+  compile_and_test_mydumper_in_bionic_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bionic_
+        default: bionic_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bionic_
+    - prepare_bionic_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -2852,19 +2852,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_focal_:
+  compile_and_test_mydumper_in_focal_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: focal_
+        default: focal_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_focal_
+    - prepare_focal_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3052,19 +3052,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_jammy_:
+  compile_and_test_mydumper_in_jammy_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: jammy_
+        default: jammy_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_jammy_
+    - prepare_jammy_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3252,19 +3252,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_noble_:
+  compile_and_test_mydumper_in_noble_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: noble_
+        default: noble_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_noble_
+    - prepare_noble_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3452,19 +3452,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bullseye_:
+  compile_and_test_mydumper_in_bullseye_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bullseye_
+        default: bullseye_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bullseye_
+    - prepare_bullseye_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3652,19 +3652,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_bookworm_:
+  compile_and_test_mydumper_in_bookworm_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: bookworm_
+        default: bookworm_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_bookworm_
+    - prepare_bookworm_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -3852,19 +3852,19 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_trixie_:
+  compile_and_test_mydumper_in_trixie_percona84:
     parameters:
       test:
         type: boolean
         default: false
       e:
         type: string
-        default: trixie_
+        default: trixie_percona84
     executor: << parameters.e >>
     resource_class: large
     steps:
     - checkout
-    - prepare_trixie_
+    - prepare_trixie_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4052,7 +4052,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el7_:
+  compile_and_test_mydumper_in_el7_percona84:
     parameters:
       test:
         type: boolean
@@ -4064,7 +4064,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el7_
+    - prepare_el7_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4252,7 +4252,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el8_:
+  compile_and_test_mydumper_in_el8_percona84:
     parameters:
       test:
         type: boolean
@@ -4264,7 +4264,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el8_
+    - prepare_el8_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4452,7 +4452,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el9_:
+  compile_and_test_mydumper_in_el9_percona84:
     parameters:
       test:
         type: boolean
@@ -4464,7 +4464,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el9_
+    - prepare_el9_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4652,7 +4652,7 @@ jobs:
          paths:
            - .
 
-  compile_and_test_mydumper_in_el10_:
+  compile_and_test_mydumper_in_el10_percona84:
     parameters:
       test:
         type: boolean
@@ -4664,7 +4664,7 @@ jobs:
     resource_class: large
     steps:
     - checkout
-    - prepare_el10_
+    - prepare_el10_percona84
     - compile_and_test_mydumper:
         test: << parameters.test >>
     - persist_to_workspace:
@@ -4858,7 +4858,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7__aarch64:
+  build_el7_percona84_aarch64:
     executor: el7
     resource_class: arm.medium
     steps:
@@ -4866,15 +4866,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el7_
+    - prepare_el7_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el7_percona84_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5047,7 +5047,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8__aarch64:
+  build_el8_percona84_aarch64:
     executor: el8
     resource_class: arm.medium
     steps:
@@ -5055,15 +5055,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el8_
+    - prepare_el8_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el8_percona84_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5236,7 +5236,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9__aarch64:
+  build_el9_percona84_aarch64:
     executor: el9
     resource_class: arm.medium
     steps:
@@ -5244,15 +5244,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el9_
+    - prepare_el9_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el9_percona84_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5425,7 +5425,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el10__aarch64:
+  build_el10_percona84_aarch64:
     executor: el10
     resource_class: arm.medium
     steps:
@@ -5433,15 +5433,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el10_
+    - prepare_el10_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el10__aarch64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10__aarch64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el10__aarch64 aarch64
+    - run: mkdir -p /tmp/src/mydumper/el10_percona84_aarch64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_aarch64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el10_percona84_aarch64 aarch64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5614,7 +5614,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el7__x86_64:
+  build_el7_percona84_x86_64:
     executor: el7
     resource_class: large
     steps:
@@ -5622,15 +5622,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el7_
+    - prepare_el7_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el7__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el7_percona84_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el7_percona84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el7_percona84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5803,7 +5803,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el8__x86_64:
+  build_el8_percona84_x86_64:
     executor: el8
     resource_class: large
     steps:
@@ -5811,15 +5811,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el8_
+    - prepare_el8_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el8__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el8_percona84_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el8_percona84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el8_percona84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -5992,7 +5992,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el9__x86_64:
+  build_el9_percona84_x86_64:
     executor: el9
     resource_class: large
     steps:
@@ -6000,15 +6000,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el9_
+    - prepare_el9_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el9__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el9_percona84_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el9_percona84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el9_percona84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6181,7 +6181,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_el10__x86_64:
+  build_el10_percona84_x86_64:
     executor: el10
     resource_class: large
     steps:
@@ -6189,15 +6189,15 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_el10_
+    - prepare_el10_percona84
     - run: mkdir -p /tmp/package
     - run: yum -y install rpmdevtools
     - compile:
         CMAKED: "-DMYSQL_LIBRARIES_mysqlclient:FILEPATH=/usr/lib64/mysql/libmysqlclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
-    - run: mkdir -p /tmp/src/mydumper/el10__x86_64
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10__x86_64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el10__x86_64 x86_64
+    - run: mkdir -p /tmp/src/mydumper/el10_percona84_x86_64
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz mydumper.cnf mydumper myloader /tmp/src/mydumper/el10_percona84_x86_64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} rpm el10_percona84_x86_64 x86_64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6478,7 +6478,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic__arm64:
+  build_bionic_percona84_arm64:
     executor: bionic
     resource_class: arm.medium
     parameters:
@@ -6491,11 +6491,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bionic_
+    - prepare_bionic_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6510,9 +6510,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bionic__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bionic_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -6829,7 +6829,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal__arm64:
+  build_focal_percona84_arm64:
     executor: focal
     resource_class: arm.medium
     parameters:
@@ -6842,11 +6842,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_focal_
+    - prepare_focal_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -6861,9 +6861,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/focal__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/focal_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7180,7 +7180,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy__arm64:
+  build_jammy_percona84_arm64:
     executor: jammy
     resource_class: arm.medium
     parameters:
@@ -7193,11 +7193,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_jammy_
+    - prepare_jammy_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7212,9 +7212,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/jammy__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/jammy_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7531,7 +7531,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble__arm64:
+  build_noble_percona84_arm64:
     executor: noble
     resource_class: arm.medium
     parameters:
@@ -7544,11 +7544,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_
+    - prepare_noble_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7563,9 +7563,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -7882,7 +7882,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye__arm64:
+  build_bullseye_percona84_arm64:
     executor: bullseye
     resource_class: arm.medium
     parameters:
@@ -7895,11 +7895,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bullseye_
+    - prepare_bullseye_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -7914,9 +7914,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bullseye__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8233,7 +8233,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm__arm64:
+  build_bookworm_percona84_arm64:
     executor: bookworm
     resource_class: arm.medium
     parameters:
@@ -8246,11 +8246,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bookworm_
+    - prepare_bookworm_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8265,9 +8265,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bookworm__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8584,7 +8584,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_trixie__arm64:
+  build_trixie_percona84_arm64:
     executor: trixie
     resource_class: arm.medium
     parameters:
@@ -8597,11 +8597,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_trixie_
+    - prepare_trixie_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/aarch64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/aarch64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8616,9 +8616,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/trixie__arm64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie__arm64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie__arm64 arm64
+    - run: mkdir -p /tmp/src/mydumper/trixie_percona84_arm64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona84_arm64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona84_arm64 arm64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -8935,7 +8935,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bionic__amd64:
+  build_bionic_percona84_amd64:
     executor: bionic
     resource_class: large
     parameters:
@@ -8948,11 +8948,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bionic_
+    - prepare_bionic_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -8967,9 +8967,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bionic__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bionic_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bionic_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bionic_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9286,7 +9286,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_focal__amd64:
+  build_focal_percona84_amd64:
     executor: focal
     resource_class: large
     parameters:
@@ -9299,11 +9299,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_focal_
+    - prepare_focal_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9318,9 +9318,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/focal__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/focal_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/focal_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb focal_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9639,7 +9639,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_jammy__amd64:
+  build_jammy_percona84_amd64:
     executor: jammy
     resource_class: large
     parameters:
@@ -9652,11 +9652,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_jammy_
+    - prepare_jammy_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -9671,9 +9671,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/jammy__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/jammy_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/jammy_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb jammy_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -9990,7 +9990,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_noble__amd64:
+  build_noble_percona84_amd64:
     executor: noble
     resource_class: large
     parameters:
@@ -10003,11 +10003,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_noble_
+    - prepare_noble_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10022,9 +10022,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/noble__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/noble_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/noble_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb noble_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -10341,7 +10341,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bullseye__amd64:
+  build_bullseye_percona84_amd64:
     executor: bullseye
     resource_class: large
     parameters:
@@ -10354,11 +10354,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bullseye_
+    - prepare_bullseye_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10373,9 +10373,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bullseye__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bullseye_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bullseye_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bullseye_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -10692,7 +10692,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_bookworm__amd64:
+  build_bookworm_percona84_amd64:
     executor: bookworm
     resource_class: large
     parameters:
@@ -10705,11 +10705,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_bookworm_
+    - prepare_bookworm_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -10724,9 +10724,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/bookworm__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/bookworm_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/bookworm_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb bookworm_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:
@@ -11043,7 +11043,7 @@ jobs:
          root: /tmp/package
          paths:
            - .
-  build_trixie__amd64:
+  build_trixie_percona84_amd64:
     executor: trixie
     resource_class: large
     parameters:
@@ -11056,11 +11056,11 @@ jobs:
     - attach_workspace:
         at: /tmp/man
     - set_env_vars
-    - prepare_trixie_
+    - prepare_trixie_percona84
     - run: sudo apt install -y fakeroot
     - run: mkdir -p /tmp/man/
     - compile:
-        CMAKED: "-DMYSQL_LIBRARIES_:FILEPATH=/usr/lib/x86_64-linux-gnu/lib.a"
+        CMAKED: "-DMYSQL_LIBRARIES_perconaserverclient:FILEPATH=/usr/lib/x86_64-linux-gnu/libperconaserverclient.a"
     - run: if (( $(nm ./mydumper | grep -i mysql | grep " T " | wc -l) < 50 )); then false; fi
     - when:
         condition: << parameters.build_man >>
@@ -11075,9 +11075,9 @@ jobs:
               make
               gzip man/mydumper.1 man/myloader.1
               cp man/mydumper.1.gz  man/myloader.1.gz /tmp/man/
-    - run: mkdir -p /tmp/src/mydumper/trixie__amd64/etc
-    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie__amd64/
-    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie__amd64 amd64
+    - run: mkdir -p /tmp/src/mydumper/trixie_percona84_amd64/etc
+    - run: cp /tmp/man/mydumper.1.gz /tmp/man/myloader.1.gz  mydumper.cnf mydumper myloader /tmp/src/mydumper/trixie_percona84_amd64/
+    - run: ./package/build.sh ${MYDUMPER_VERSION} ${MYDUMPER_REVISION} deb trixie_percona84_amd64 amd64
     - persist_to_workspace:
          root: /tmp/package
          paths:

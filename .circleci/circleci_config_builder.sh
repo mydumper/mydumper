@@ -27,7 +27,7 @@ all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
-vendor=percona80
+vendor=percona84
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="percona:84"
 all_vendors[${vendor}_3]="perconaserverclient"
