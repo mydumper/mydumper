@@ -27,6 +27,6 @@ RUN \
   . /etc/os-release && \
   curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb \
     https://repo.mysql.com/mysql-apt-config.deb && \
-  sudo dpkg -i /tmp/mysql-apt-config.deb && \
+  DEBIAN_FRONTEND=noninteractive APT_LISTCHANGES_FRONTEND=none sudo dpkg -i /tmp/mysql-apt-config.deb && \
   rm -v /tmp/mysql-apt-config.deb && \
   sudo apt-get update
