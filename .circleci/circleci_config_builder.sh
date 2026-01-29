@@ -27,6 +27,12 @@ all_vendors[${vendor}_1]="percona:8"
 all_vendors[${vendor}_3]="perconaserverclient"
 all_vendors[${vendor}_4]="perconaserverclient"
 
+vendor=percona84
+all_vendors[${vendor}_0]="$vendor"
+all_vendors[${vendor}_1]="percona/percona-server:8.4"
+all_vendors[${vendor}_3]="perconaserverclient"
+all_vendors[${vendor}_4]="perconaserverclient"
+
 vendor=mariadb1006
 all_vendors[${vendor}_0]="$vendor"
 all_vendors[${vendor}_1]="mariadb:10.6"
@@ -65,7 +71,7 @@ all_vendors[${vendor}_4]="mysqlclient"
 
 
 list_mysql_version=( "mysql80" "mysql84" "debian_default" "ubuntu_default")
-list_percona_version=( "percona57" "percona80" )
+list_percona_version=( "percona57" "percona80" "percona84")
 list_mariadb_version=( "mariadb1011" "mariadb1006")
 list_all_vendors=( "${list_mysql_version[@]}" "${list_percona_version[@]}" "${list_mariadb_version[@]}" )
 list_arch=( "arm" "amd" )
@@ -170,7 +176,7 @@ list_build=(
   "el10_mysql84_x86_64"         "el10_mysql84_aarch64"
   "bullseye_percona57_amd64"
   "bookworm_mysql84_amd64"      "bookworm_mariadb1011_arm64"
-  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
+  "trixie_mysql84_amd64" "trixie_debian_default_arm64"
 )
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
@@ -186,7 +192,7 @@ list_compile=(
                        "el10_mysql80"       "el10_mariadb1011"                            "el10_mysql84"
   "bullseye_percona57" "bullseye_percona80" "bullseye_mariadb1011" "bullseye_mariadb1006"
   "bookworm_percona57" "bookworm_percona80" "bookworm_mariadb1011"                        "bookworm_mysql84"
-                                                                                                             "trixie_debian_default"
+                                            "trixie_percona84"                                               "trixie_debian_default"
 
 )
 
@@ -304,6 +310,12 @@ commands:
     - run: sudo percona-release setup -y ps80
     - run: sudo apt-get install -y gdb screen time libperconaserverclient21 libperconaserverclient21-dev percona-server-client
 
+  prepare_apt_percona84:
+    steps:
+    - run: echo 'REPOSITORIES="tools"' | sudo tee /etc/default/percona-release
+    - run: sudo percona-release setup -y ps-84-lts
+    - run: sudo apt-get install -y gdb screen time libperconaserverclient22 libperconaserverclient22-dev percona-server-client
+
   prepare_apt_mysql80:
     steps:
     - run: echo "mysql-apt-config mysql-apt-config/select-product string Ok" | sudo debconf-set-selections
@@ -321,7 +333,7 @@ commands:
           echo "mysql-apt-config mysql-apt-config/select-server string mysql-8.4-lts" | sudo debconf-set-selections
           sudo rm /usr/share/keyrings/mysql-apt-config.gpg
           echo "3" | DEBIAN_FRONTEND=noninteractive sudo dpkg-reconfigure mysql-apt-config
-          gpg --batch --yes --delete-keys BCA43417C3B485DD128EC6D4B7B3B788A8D3785C
+          gpg --batch --yes --delete-keys BCA43417C3B485DD128EC6D4B7B3B788A8D3785C || true
           curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc
           gpg --import /tmp/fresh.asc
           rm -f /usr/share/keyrings/mysql-apt-config.gpg
@@ -822,13 +834,20 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
-echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+
+if [ "build" = "$1" ]
+then
+
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
 # Decomment next 5 lines if you want to ignore compilation and add : to previous line
-#echo '        filters:
-#          branches:
-#            ignore: /.*/
-#          tags:
-#            only: /^v\d+\.\d+\.\d+-\d+$/'
+echo '        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/'
+else
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+fi
 done
 
 for lt in ${!list_test[@]}
@@ -837,12 +856,15 @@ echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
         e: ${list_test[${lt}]}"
 # Decomment next 5 lines if you want to ignore compilation
-#echo '        filters:
-#          branches:
-#            ignore: /.*/
-#          tags:
-#            only: /^v\d+\.\d+\.\d+-\d+$/'
+if [ "build" = "$1" ]
+then
+echo '        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/'
 
+fi
 done
 
 for os in ${list_build[@]}
@@ -857,11 +879,14 @@ echo "        requires:
 fi
 
 # Comment next 5 lines if you want to build
+if [ "build" != "$1" ]
+then
 echo '        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
+fi
 done
 
 echo '

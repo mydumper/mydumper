@@ -130,7 +130,7 @@ set(CIRCLECI_CONFIG_FILE "config.yml")
 
 IF(WITH_CIRCLECI)
   add_custom_target( circleci_config_file_build ALL
-    COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
+    COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh ${CIRCLECI_EXTRA_CONFIG} > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
     COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
   )
 ENDIF(WITH_CIRCLECI)
