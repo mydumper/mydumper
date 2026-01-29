@@ -176,8 +176,7 @@ list_build=(
   "el10_mysql84_x86_64"         "el10_mysql84_aarch64"
   "bullseye_percona57_amd64"
   "bookworm_mysql84_amd64"      "bookworm_mariadb1011_arm64"
-#  "trixie_debian_default_amd64" "trixie_debian_default_arm64"
-  "trixie_mysql84_amd64"
+  "trixie_mysql84_amd64" "trixie_debian_default_arm64"
 )
 
 #   "noble_percona57"    "noble_percona80"    "noble_mariadb1011"    "noble_mariadb1006"
@@ -835,6 +834,10 @@ workflows:
 
 for lc in ${!list_compile[@]}
 do
+
+if [ "build" = "$1" ]
+then
+
 echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}:"
 # Decomment next 5 lines if you want to ignore compilation and add : to previous line
 echo '        filters:
@@ -842,6 +845,9 @@ echo '        filters:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
+else
+echo "    - compile_and_test_mydumper_in_${list_compile[${lc}]}"
+fi
 done
 
 for lt in ${!list_test[@]}
@@ -850,12 +856,15 @@ echo "    - compile_and_test_mydumper_in_${list_test[${lt}]}:
         test: true
         e: ${list_test[${lt}]}"
 # Decomment next 5 lines if you want to ignore compilation
+if [ "build" = "$1" ]
+then
 echo '        filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/'
 
+fi
 done
 
 for os in ${list_build[@]}
@@ -870,11 +879,14 @@ echo "        requires:
 fi
 
 # Comment next 5 lines if you want to build
-#echo '        filters:
-#          branches:
-#            ignore: /.*/
-#          tags:
-#            only: /^v\d+\.\d+\.\d+-\d+$/'
+if [ "build" != "$1" ]
+then
+echo '        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/'
+fi
 done
 
 echo '

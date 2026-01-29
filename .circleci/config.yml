@@ -11311,277 +11311,185 @@ workflows:
 
   mydumper:
     jobs:
-    - compile_and_test_mydumper_in_bionic_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bionic_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_focal_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_focal_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_noble_ubuntu_default:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el7_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el7_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el7_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el7_mariadb1006:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el7_mysql84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el8_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el8_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el8_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el8_mariadb1006:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el8_mysql84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el9_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el9_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el9_mariadb1006:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el9_mysql84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el10_mysql80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el10_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_el10_mysql84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bullseye_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bullseye_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bullseye_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bullseye_mariadb1006:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bookworm_percona57:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bookworm_percona80:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bookworm_mariadb1011:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_bookworm_mysql84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_trixie_percona84:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
-    - compile_and_test_mydumper_in_trixie_debian_default:
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
+    - compile_and_test_mydumper_in_bionic_percona57
+    - compile_and_test_mydumper_in_bionic_percona80
+    - compile_and_test_mydumper_in_focal_percona57
+    - compile_and_test_mydumper_in_focal_percona80
+    - compile_and_test_mydumper_in_noble_ubuntu_default
+    - compile_and_test_mydumper_in_el7_percona57
+    - compile_and_test_mydumper_in_el7_percona80
+    - compile_and_test_mydumper_in_el7_mariadb1011
+    - compile_and_test_mydumper_in_el7_mariadb1006
+    - compile_and_test_mydumper_in_el7_mysql84
+    - compile_and_test_mydumper_in_el8_percona57
+    - compile_and_test_mydumper_in_el8_percona80
+    - compile_and_test_mydumper_in_el8_mariadb1011
+    - compile_and_test_mydumper_in_el8_mariadb1006
+    - compile_and_test_mydumper_in_el8_mysql84
+    - compile_and_test_mydumper_in_el9_percona80
+    - compile_and_test_mydumper_in_el9_mariadb1011
+    - compile_and_test_mydumper_in_el9_mariadb1006
+    - compile_and_test_mydumper_in_el9_mysql84
+    - compile_and_test_mydumper_in_el10_mysql80
+    - compile_and_test_mydumper_in_el10_mariadb1011
+    - compile_and_test_mydumper_in_el10_mysql84
+    - compile_and_test_mydumper_in_bullseye_percona57
+    - compile_and_test_mydumper_in_bullseye_percona80
+    - compile_and_test_mydumper_in_bullseye_mariadb1011
+    - compile_and_test_mydumper_in_bullseye_mariadb1006
+    - compile_and_test_mydumper_in_bookworm_percona57
+    - compile_and_test_mydumper_in_bookworm_percona80
+    - compile_and_test_mydumper_in_bookworm_mariadb1011
+    - compile_and_test_mydumper_in_bookworm_mysql84
+    - compile_and_test_mydumper_in_trixie_percona84
+    - compile_and_test_mydumper_in_trixie_debian_default
     - compile_and_test_mydumper_in_jammy_percona57:
         test: true
         e: jammy_percona57
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - compile_and_test_mydumper_in_jammy_percona80:
         test: true
         e: jammy_percona80
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - compile_and_test_mydumper_in_jammy_mariadb1011:
         test: true
         e: jammy_mariadb1011
-        filters:
-          branches:
-            ignore: /.*/
-          tags:
-            only: /^v\d+\.\d+\.\d+-\d+$/
     - compile_and_test_mydumper_in_noble_mysql84:
         test: true
         e: noble_mysql84
+    - build_bionic_percona80_amd64:
+        requires:
+          - build_jammy_mysql80_amd64
         filters:
           branches:
             ignore: /.*/
           tags:
             only: /^v\d+\.\d+\.\d+-\d+$/
-    - build_bionic_percona80_amd64:
-        requires:
-          - build_jammy_mysql80_amd64
     - build_focal_mysql80_amd64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_jammy_mysql80_amd64:
         build_man: true
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_mysql84_amd64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_noble_ubuntu_default_arm64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el7_percona57_x86_64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql84_x86_64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el8_mysql84_aarch64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql84_x86_64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el9_mysql84_aarch64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el10_mysql84_x86_64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_el10_mysql84_aarch64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bullseye_percona57_amd64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mysql84_amd64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_bookworm_mariadb1011_arm64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
     - build_trixie_mysql84_amd64:
         requires:
           - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
+    - build_trixie_debian_default_arm64:
+        requires:
+          - build_jammy_mysql80_amd64
+        filters:
+          branches:
+            ignore: /.*/
+          tags:
+            only: /^v\d+\.\d+\.\d+-\d+$/
 
     - publish-github-release:
         requires:
@@ -11601,6 +11509,7 @@ workflows:
           - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
           - build_trixie_mysql84_amd64
+          - build_trixie_debian_default_arm64
         filters:
           branches:
             ignore: /.*/
