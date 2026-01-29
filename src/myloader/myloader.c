@@ -90,7 +90,7 @@ extern guint64 max_transaction_size;
 
 const char DIRECTORY[] = "import";
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable * set_session_hash=NULL;
 
 GHashTable * myloader_initialize_hash_of_session_variables(){

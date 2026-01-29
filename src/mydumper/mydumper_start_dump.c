@@ -62,7 +62,7 @@ GList *schema_post = NULL;
 gboolean it_is_a_consistent_backup = FALSE;
 GHashTable *all_dbts=NULL;
 char * (*identifier_quote_character_protect)(char *r);
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 gboolean replica_stopped = FALSE;
 gboolean merge_dumpdir= FALSE;
 gboolean clear_dumpdir= FALSE;

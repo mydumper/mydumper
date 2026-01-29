@@ -219,6 +219,22 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"columns_on_select_replace") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            gchar **value_list=g_strsplit(value,",`",0);
+            guint ii=0;
+            GHashTable *column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+            for(ii=0; ii< g_strv_length(value_list);ii++){
+              gchar **kv=g_strsplit(value_list[ii],":",2);
+              if (ii>0)
+                g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
+              else
+                g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
+              g_strfreev(kv);
+            }
+            g_hash_table_insert(cpt->all_columns_on_select_replace_per_table, g_strdup(groups[i]), column_replace_hash);
+            g_strfreev(value_list);
+          }
           if (g_strcmp0(keys[j],"columns_on_insert") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
@@ -1189,9 +1205,11 @@ void print_list(const char*_key, GList *list){
 }
 
 void append_alter_table(GString * alter_table_statement, char *table){
-  g_string_append(alter_table_statement,"ALTER TABLE `");
+  g_string_append(alter_table_statement,"ALTER TABLE ");
+  g_string_append_c(alter_table_statement,identifier_quote_character);
   g_string_append(alter_table_statement,table);
-  g_string_append(alter_table_statement,"` ");
+  g_string_append_c(alter_table_statement,identifier_quote_character);
+  g_string_append(alter_table_statement," ");
 }
 
 void finish_alter_table(GString * alter_table_statement){
@@ -1241,8 +1259,8 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
         g_string_append(alter_table_constraint_statement, split_file[i]);
       }else{
         if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
-          gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
-          autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+          gchar** autoinc_split=g_strsplit(split_file[i],identifier_quote_character_str,3);
+          autoinc_column=g_strdup_printf("(%c%s%c", identifier_quote_character, autoinc_split[1], identifier_quote_character);
         }
         g_string_append(create_table_statement, split_file[i]);
         g_string_append_c(create_table_statement,'\n');
@@ -1270,6 +1288,7 @@ void initialize_conf_per_table(struct configuration_per_table *cpt){
   cpt->all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_columns_on_select_replace_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   cpt->all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );

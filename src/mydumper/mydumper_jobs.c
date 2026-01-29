@@ -217,9 +217,9 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
       g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
       errors++;
     }
-    if (!skip_indexes)
+    if (!skip_indexes && (flag & IS_ALTER_TABLE_PRESENT))
       write_data(outfile, alter_table_statement );
-    if (!skip_constraints)
+    if (!skip_constraints && (flag & INCLUDE_CONSTRAINT))
       write_data(outfile, alter_table_constraint_statement);
   }else{
 

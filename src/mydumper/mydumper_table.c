@@ -334,6 +334,25 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   return FALSE;
 }
 
+static
+void replace_select_fields(GString * select_fields,GHashTable *column_replace_hash){
+  if (column_replace_hash){
+    gchar **select_fields_list=g_strsplit(select_fields->str, ",", 0);
+    g_string_set_size(select_fields,0);
+    guint i=0;
+    gchar *val=NULL;
+    for(i=0; i< g_strv_length(select_fields_list);i++){
+      if (i>0)
+        g_string_append_c(select_fields,',');
+      val=g_hash_table_lookup(column_replace_hash, select_fields_list[i]);
+      if (val)
+        g_string_append_printf(select_fields,"%s AS %s",val,select_fields_list[i]);
+      else
+        g_string_append(select_fields,select_fields_list[i]);
+    }
+  }
+}
+
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
                       gboolean is_sequence, gboolean is_view)
@@ -429,6 +448,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 
     dbt->select_fields=NULL;
 
+    GHashTable *column_replace_hash = g_hash_table_lookup(conf_per_table.all_columns_on_select_replace_per_table, lkey);
+
     if (columns_on_select){
       dbt->select_fields=g_string_new(columns_on_select);
       if (!dbt->columns_on_insert && complete_insert){
@@ -437,10 +458,14 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 
     }else if (!dbt->columns_on_insert){
       dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
-      if (dbt->complete_insert) {
+      if (dbt->complete_insert || column_replace_hash) {
+//        trace("Complete insert detecting on %s", lkey);
         dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       }
     }
+
+    replace_select_fields(dbt->select_fields, column_replace_hash);
+
 
 //    dbt->anonymized_function=get_anonymized_function_for(conn, dbt);
     dbt->anonymized_function=NULL;
