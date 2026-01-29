@@ -11579,10 +11579,7 @@ workflows:
     - build_bookworm_mariadb1011_arm64:
         requires:
           - build_jammy_mysql80_amd64
-    - build_trixie_percona84_amd64:
-        requires:
-          - build_jammy_mysql80_amd64
-    - build_trixie_percona84_arm64:
+    - build_trixie_mysql84_amd64:
         requires:
           - build_jammy_mysql80_amd64
 
@@ -11603,8 +11600,7 @@ workflows:
           - build_bullseye_percona57_amd64
           - build_bookworm_mysql84_amd64
           - build_bookworm_mariadb1011_arm64
-          - build_trixie_percona84_amd64
-          - build_trixie_percona84_arm64
+          - build_trixie_mysql84_amd64
         filters:
           branches:
             ignore: /.*/
