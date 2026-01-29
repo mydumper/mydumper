@@ -225,7 +225,7 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             guint ii=0;
             GHashTable *column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
             for(ii=0; ii< g_strv_length(value_list);ii++){
-              gchar **kv=g_strsplit(value_list[ii],":",0);
+              gchar **kv=g_strsplit(value_list[ii],":",2);
               if (ii>0)
                 g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
               else
