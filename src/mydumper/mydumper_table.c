@@ -334,7 +334,7 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   return FALSE;
 }
 
-
+static
 void replace_select_fields(GString * select_fields,GHashTable *column_replace_hash){
   if (column_replace_hash){
     gchar **select_fields_list=g_strsplit(select_fields->str, ",", 0);
@@ -346,13 +346,12 @@ void replace_select_fields(GString * select_fields,GHashTable *column_replace_ha
         g_string_append_c(select_fields,',');
       val=g_hash_table_lookup(column_replace_hash, select_fields_list[i]);
       if (val)
-        g_string_append(select_fields,val);
+        g_string_append_printf(select_fields,"%s AS %s",val,select_fields_list[i]);
       else
         g_string_append(select_fields,select_fields_list[i]);
     }
   }
 }
-
 
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
@@ -458,10 +457,9 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
       }
 
     }else if (!dbt->columns_on_insert){
-      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table) || column_replace_hash!=NULL;
-      g_message("column_replace_hash: %p lkey: %s", column_replace_hash, lkey);
-      if (dbt->complete_insert) {
-        g_message("complete insert detecting");
+      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
+      if (dbt->complete_insert || column_replace_hash) {
+//        trace("Complete insert detecting on %s", lkey);
         dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       }
     }

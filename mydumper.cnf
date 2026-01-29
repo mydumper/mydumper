@@ -69,3 +69,13 @@ load-data-character-set=binary
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+
+#[`schema`.`table`]
+# where = column > 20
+# limit = 1000
+# object_to_export = SCHEMA
+# columns_on_select = qty,price+20
+# columns_on_insert = qty,price
+# rows = 1000000
+# columns_on_select_replace=`country_id`:2*`country_id`,`country`:left(`country`,4)
+
