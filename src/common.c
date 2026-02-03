@@ -192,7 +192,7 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
   gchar *value=NULL;
   gchar **keys=NULL;
   for (i=0; i < len; i++){
-    if (g_strstr_len(groups[i],strlen(groups[i]),"`.`") && g_str_has_prefix(groups[i],"`") && g_str_has_suffix(groups[i],"`")){
+    if (g_str_has_prefix(groups[i],"`") && g_strstr_len(groups[i],strlen(groups[i]),"`.`") &&  g_str_has_suffix(groups[i],"`")){
       ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
@@ -1348,6 +1348,11 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
 gchar *build_dbt_key(gchar *a, gchar *b){
   return g_strdup_printf("%c%s%c.%c%s%c", identifier_quote_character, a, identifier_quote_character, identifier_quote_character, b, identifier_quote_character);
 }
+
+gchar *build_config_file_dbt_key(const gchar *a, const gchar *b){
+  return g_strdup_printf("`%s`.`%s`", a, b);
+}
+
 /*
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
