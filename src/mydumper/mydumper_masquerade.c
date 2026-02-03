@@ -93,7 +93,7 @@ void identity_function(GString *str, gchar * row, gulong* length,  struct functi
 
 void random_basic_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp, void (*random_funtion)(gchar *, guint) ){
   gchar *new_r=NULL;
-
+  guint max_length=0;
   if (fp && fp->memory && row){
     new_r=g_hash_table_lookup(fp->memory, row);
     if (new_r){
@@ -109,7 +109,7 @@ void random_basic_function(GString *str, gchar *row, gulong* length, struct func
       _key=g_strdup(row);
 
 retry:
-    guint max_length=fp->max_length>0 && *length>fp->max_length?fp->max_length:*length;
+    max_length=fp->max_length>0 && *length>fp->max_length?fp->max_length:*length;
     g_string_set_size(str, max_length);
     random_funtion(str->str, max_length);
 
