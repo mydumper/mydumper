@@ -264,9 +264,12 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   if (set_gtid_purge){
     if (! rs->gtid_purge)
       rs->gtid_purge=g_string_new("");
-    if (source_control_command == TRADITIONAL)
+    if (source_control_command == TRADITIONAL){
+      if (get_product()==SERVER_TYPE_MARIADB)
+        g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_slave_pos=%s;\n", reset_replica, source_gtid);
+      else
       g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_purged=%s;\n", reset_replica, source_gtid);
-    else
+    }else
       g_string_append_printf(rs->gtid_purge, "CALL mysql.rds_gtid_purged (%s);\n", source_gtid);
   }
   if (_exec_reset_replica){

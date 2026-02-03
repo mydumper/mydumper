@@ -451,6 +451,7 @@ void check_connection_status(struct thread_data *td){
 
 
 void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
+  trace("Getting binary log position");
   struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
   if ( mr->row ) {
     *masterlog = g_strdup(mr->row[0]);
@@ -811,6 +812,7 @@ void *working_thread(struct thread_data *td) {
       // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL){
         g_message("Thread %d: Locking non-transactional tables", td->thread_id);
+        trace("Thread %d: sending: %s", td->thread_id, td->conf->lock_tables_statement->str);
         m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
       }
 
