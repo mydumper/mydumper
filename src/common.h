@@ -215,7 +215,7 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
 void initialize_conf_per_table(struct configuration_per_table *cpt);
 void parse_object_to_export(struct object_to_export *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
-
+gchar *build_config_file_dbt_key(const gchar *a, const gchar *b);
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
