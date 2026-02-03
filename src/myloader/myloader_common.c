@@ -164,7 +164,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
   guint _exec_change_source=0, _exec_reset_replica=0, _exec_start_replica=0, _exec_start_replica_until=0;
 
-  gboolean _auto_position = FALSE;
+  gint _auto_position = -1;
   gboolean _source_ssl = FALSE;
   gchar *source_host = NULL;
   guint source_port = 3306;
@@ -194,7 +194,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
         g_string_append_printf(traditional_change_source,", ");
       }
       if (!g_ascii_strcasecmp(keys[i], "SOURCE_AUTO_POSITION")){
-        _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
+        _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
 //        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_SSL")){
         _source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
@@ -241,15 +241,16 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   if (_source_ssl)
     g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
 
-  if (_auto_position){
+  if (_auto_position>=0){
     g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
-    g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
+    if (_auto_position>0)
+      g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
   }else
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master");
   
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
-  if (!_auto_position)
+  if (_auto_position>0)
     g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, _source_ssl);
   else
     g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
