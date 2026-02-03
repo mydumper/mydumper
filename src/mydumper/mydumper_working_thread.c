@@ -153,6 +153,8 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
+    thread_data[n].thread_data_buffers.target_column = thread_data[n].thread_data_buffers.column;
+    thread_data[n].thread_data_buffers.column_mask = g_string_sized_new(statement_size);
     threads[n] =
         m_thread_new("data", (GThreadFunc)working_thread, &thread_data[n], "Data thread could not be created");
   }

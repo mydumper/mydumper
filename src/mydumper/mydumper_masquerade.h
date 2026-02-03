@@ -55,7 +55,7 @@ struct regex_item{
 };
 
 void initialize_masquerade();
-gchar * identity_function(gchar ** r, gulong* length, struct function_pointer *fp);
+void identity_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp);
 //fun_ptr get_function_pointer_for (gchar *function_char);
 void finalize_masquerade();
 struct function_pointer * init_function_pointer(gchar *value);

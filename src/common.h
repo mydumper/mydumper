@@ -104,7 +104,7 @@ struct M_ROW{
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
-typedef gchar * (*fun_ptr)(gchar **,gulong*, struct function_pointer*);
+typedef void (*fun_ptr)(GString *,gchar*,gulong*, struct function_pointer*);
 
 struct function_pointer{
   // use when writing

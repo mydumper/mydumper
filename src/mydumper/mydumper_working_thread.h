@@ -33,6 +33,8 @@ struct thread_data_buffers {
   GString *row;
   GString *escaped;
   GString *column;
+  GString *column_mask;
+  GString *target_column;
 };
 
 struct thread_data {
