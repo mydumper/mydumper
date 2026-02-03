@@ -345,8 +345,8 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
   }
 }
-
-
+/*
+static
 void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
   gchar *database=dbt->database->source_database;
   gchar *table=dbt->table;
@@ -372,6 +372,15 @@ void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, gu
     dbt->anonymized_function=anonymized_function_list;
   }
 }
+*/
+
+static
+void set_anonymized_function_hash(struct db_table * dbt){
+  // It is correct to use backticks in this case, as we are using the config file, not the identifier_quote_character:
+  gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->source_database,dbt->table);
+  dbt->anonymized_function = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
+  g_free(k);
+}
 
 void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
   GString * i_s=g_string_new(insert_statement);
@@ -379,7 +388,8 @@ void build_insert_statement(struct db_table * dbt, MYSQL_FIELD *fields, guint nu
   g_string_append_c(i_s, identifier_quote_character);
   g_string_append(i_s, dbt->table);
   g_string_append_c(i_s, identifier_quote_character);
-  set_anonymized_function_list(dbt,fields,num_fields);
+  //set_anonymized_function_list(dbt,fields,num_fields);
+  set_anonymized_function_hash(dbt);
   if (dbt->columns_on_insert){
     g_string_append(i_s, " (");
     g_string_append(i_s, dbt->columns_on_insert);
@@ -559,98 +569,110 @@ gboolean write_header(struct table_job * tj){
   return TRUE;
 }
 
-void write_load_data_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
-    if (!*column) {
-      g_string_append(buffers.column, "\\N");
+static
+void write_load_data_column_into_string( MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
+    if (!column) {
+      g_string_append(buffers.target_column, "\\N");
     } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
-      mysql_hex_string(buffers.escaped->str,*column,length);
-      g_string_append(buffers.column,buffers.escaped->str);
+      mysql_hex_string(buffers.escaped->str,column,length);
+      g_string_append(buffers.target_column,buffers.escaped->str);
     }else if (field.type != MYSQL_TYPE_LONG && field.type != MYSQL_TYPE_LONGLONG  && field.type != MYSQL_TYPE_INT24  && field.type != MYSQL_TYPE_SHORT ){
-      g_string_append(buffers.column,fields_enclosed_by);
+      g_string_append(buffers.target_column,fields_enclosed_by);
       // this will reserve the memory needed if the current size is not enough.
       g_string_set_size(buffers.escaped, length * 2 + 1);
-      unsigned long new_length = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
+      unsigned long new_length = mysql_real_escape_string(conn, buffers.escaped->str, column, length);
       new_length++;
       //g_string_set_size(escaped, new_length);
       m_replace_char_with_char('\\',*fields_escaped_by,buffers.escaped->str, new_length);
       m_escape_char_with_char(*fields_terminated_by, *fields_escaped_by, buffers.escaped->str, new_length);
-      g_string_append(buffers.column,buffers.escaped->str);
-      g_string_append(buffers.column,fields_enclosed_by);
+      g_string_append(buffers.target_column,buffers.escaped->str);
+      g_string_append(buffers.target_column,fields_enclosed_by);
     }else
-      g_string_append(buffers.column, *column);
+      g_string_append(buffers.target_column, column);
 }
 
-void write_sql_column_into_string( MYSQL *conn, gchar **column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
-    if (!*column) {
-      g_string_append(buffers.column, "NULL");
+static
+void write_sql_column_into_string( MYSQL *conn, gchar *column, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers){
+    if (!column) {
+      g_string_append(buffers.target_column, "NULL");
     } else if (field.flags & NUM_FLAG) {
-      g_string_append(buffers.column, *column);
+      g_string_append(buffers.target_column, column);
     } else if ( length == 0){
-      g_string_append_c(buffers.column,*fields_enclosed_by);
-      g_string_append_c(buffers.column,*fields_enclosed_by);
+      g_string_append_c(buffers.target_column,*fields_enclosed_by);
+      g_string_append_c(buffers.target_column,*fields_enclosed_by);
     } else if ( is_hex_blob(field) ) {
       g_string_set_size(buffers.escaped, length * 2 + 1);
-      g_string_append(buffers.column,"0x");
+      g_string_append(buffers.target_column,"0x");
       // Perf: Use mysql_hex_string return value to avoid strlen()
-      unsigned long hex_len = mysql_hex_string(buffers.escaped->str,*column,length);
-      g_string_append_len(buffers.column, buffers.escaped->str, hex_len);
+      unsigned long hex_len = mysql_hex_string(buffers.escaped->str,column,length);
+      g_string_append_len(buffers.target_column, buffers.escaped->str, hex_len);
     } else {
       /* We reuse buffers for string escaping, growing is expensive just at
  *        * the beginning */
       g_string_set_size(buffers.escaped, length * 2 + 1);
       // Perf: Use mysql_real_escape_string return value to avoid strlen()
-      unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, *column, length);
+      unsigned long escaped_len = mysql_real_escape_string(conn, buffers.escaped->str, column, length);
       if (field.type == MYSQL_TYPE_JSON)
-        g_string_append(buffers.column, "CONVERT(");
+        g_string_append(buffers.target_column, "CONVERT(");
       else if (field.flags & BINARY_FLAG)
-        g_string_append(buffers.column, "_binary ");
-      g_string_append_c(buffers.column, *fields_enclosed_by);
-      g_string_append_len(buffers.column, buffers.escaped->str, escaped_len);
-      g_string_append_c(buffers.column, *fields_enclosed_by);
+        g_string_append(buffers.target_column, "_binary ");
+      g_string_append_c(buffers.target_column, *fields_enclosed_by);
+      g_string_append_len(buffers.target_column, buffers.escaped->str, escaped_len);
+      g_string_append_c(buffers.target_column, *fields_enclosed_by);
       if (field.type == MYSQL_TYPE_JSON)
-        g_string_append(buffers.column, " USING UTF8MB4)");
+        g_string_append(buffers.target_column, " USING UTF8MB4)");
     }
 }
 
 
-
-void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * row, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong ,struct thread_data_buffers), struct function_pointer * f, gchar * terminated_by){
-  gchar *column=NULL;
+static
+void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * column_i, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD , gulong ,struct thread_data_buffers), GList *anonymized_function_list, gchar * terminated_by){
+  struct function_pointer * f=anonymized_function_list?anonymized_function_list->data:NULL;
+//  gchar *column=NULL;
   gulong rlength=length;
   g_string_set_size(buffers.column,0);
-  if (row)
-    column=row;
+  g_string_set_size(buffers.column_mask,0);
+//  if (row)
+//    column=row;
   if (f){
-   if (f->is_pre){
-     // apply and constant as they alter the data
-     write_column_into_string( conn, &(column), field, rlength, buffers);
-     column=f->function(&(buffers.column->str), &rlength, f);
-     g_string_printf(buffers.column,"%s",column);
-   }else{
-     column=f->function(&(column), &rlength, f);
-     write_column_into_string( conn, &(column), field, rlength, buffers);
-   }
+    while (f){
+      if (f->is_pre){
+
+      // apply and constant as they alter the data
+        write_column_into_string( conn, column_i, field, rlength, buffers);
+        trace("Buffer.column initial: %s with column_i: %s", buffers.column->str, column_i);
+        f->function(buffers.column_mask, buffers.column->str, &rlength, f);
+        trace("Buffer.column_mask changed: %s", buffers.column_mask->str);
+//      g_string_printf(buffers.column,"%s",column);
+        g_string_assign(buffers.column,buffers.column_mask->str);      
+        trace("Buffer.column final: %s", buffers.column->str);
+      }else{
+        f->function(buffers.column_mask, column_i, &rlength, f);
+        write_column_into_string( conn, buffers.column_mask->str, field, buffers.column_mask->len /*rlength*/, buffers);
+      }
+      anonymized_function_list=anonymized_function_list->next;
+      f=anonymized_function_list?anonymized_function_list->data:NULL;
+    }
   }else{
-    write_column_into_string( conn, &(column), field, rlength, buffers);
+    write_column_into_string( conn, column_i, field, rlength, buffers);
   }
   // Perf: Use g_string_append_len with known length to avoid strlen()
   g_string_append_len(buffers.row, buffers.column->str, buffers.column->len);
   g_string_append(buffers.row, terminated_by);
 
-  if (column && column != row)
-    g_free(column);
+//  if (column && column != row)
+//    g_free(column);
 }
 
-void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers)){
+void write_row_into_string(MYSQL *conn, struct db_table * dbt, MYSQL_ROW row, MYSQL_FIELD *fields, gulong *lengths, guint num_fields, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD , gulong , struct thread_data_buffers)){
   guint i = 0;
   g_string_append(buffers.row, lines_starting_by);
-  struct function_pointer ** f = dbt->anonymized_function;
 
   for (i = 0; i < num_fields-1; i++) {
-    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], fields_terminated_by);
+    write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,dbt->anonymized_function?g_hash_table_lookup(dbt->anonymized_function,fields[i].name):NULL, fields_terminated_by);
   }
-  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,f==NULL?NULL:f[i], lines_terminated_by);
+  write_column_into_string_with_terminated_by(conn, row[i], fields[i], lengths[i], buffers, write_column_into_string,dbt->anonymized_function?g_hash_table_lookup(dbt->anonymized_function,fields[i].name):NULL, lines_terminated_by);
 }
 
 // Use atomic operation instead of mutex for lock-free row counting
@@ -749,7 +771,7 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
   gulong *lengths = NULL;
   guint64 num_rows=0;
   guint64 num_rows_st = 0;
-  void (*write_column_into_string)(MYSQL *, gchar **, MYSQL_FIELD , gulong , struct thread_data_buffers) = write_sql_column_into_string;
+  void (*write_column_into_string)(MYSQL *, gchar *, MYSQL_FIELD , gulong , struct thread_data_buffers) = write_sql_column_into_string;
   switch (output_format){
     case LOAD_DATA:
     case CSV:

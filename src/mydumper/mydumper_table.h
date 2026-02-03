@@ -49,7 +49,8 @@ struct db_table {
   guint64 rows;
   guint64 estimated_remaining_steps;
   GMutex *rows_lock;
-  struct function_pointer ** anonymized_function;
+//  struct function_pointer ** anonymized_function;
+  GHashTable *anonymized_function; 
   gchar *where;
   gchar *limit;
   gchar *columns_on_insert;

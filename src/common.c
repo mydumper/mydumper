@@ -193,14 +193,19 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
   gchar **keys=NULL;
   for (i=0; i < len; i++){
     if (g_strstr_len(groups[i],strlen(groups[i]),"`.`") && g_str_has_prefix(groups[i],"`") && g_str_has_suffix(groups[i],"`")){
-      ht=g_hash_table_new ( g_str_hash, g_str_equal );
+      ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
         if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
+          // keys contains a masquerade column
           if (init_function_pointer){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             struct function_pointer *fp = init_function_pointer(value);
-            g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
+            gchar *column_key=g_strndup(keys[j]+1,strlen(keys[j])-2);
+            GList *column_key_list = g_hash_table_lookup(ht, column_key);
+            column_key_list=g_list_append(column_key_list,fp);
+            trace("Inserting function into %s in %s", groups[i], keys[j]);
+            g_hash_table_insert(ht,column_key, column_key_list);
 					}
         }else{
           if (g_strcmp0(keys[j],"where") == 0){

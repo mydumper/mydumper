@@ -468,7 +468,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
 
 
 //    dbt->anonymized_function=get_anonymized_function_for(conn, dbt);
-    dbt->anonymized_function=NULL;
+    dbt->anonymized_function=g_hash_table_new(g_str_hash, g_str_equal);
     dbt->indexes_checksum=NULL;
     dbt->data_checksum=NULL;
     dbt->schema_checksum=NULL;
