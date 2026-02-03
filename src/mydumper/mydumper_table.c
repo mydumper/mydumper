@@ -160,6 +160,19 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
     if (mr->row)
       g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
     m_store_result_row_free(mr);
+
+    if (!character_set){
+      query =
+        g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATION_CHARACTER_SET_APPLICABILITY "
+                      "WHERE full_collation_name='%s'",
+                      collation);
+      mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
+      g_free(query);
+      if (mr->row)
+        g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
+      m_store_result_row_free(mr);
+    }
+
   }
   g_mutex_unlock(character_set_hash_mutex);
   return character_set;
