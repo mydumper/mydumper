@@ -627,6 +627,11 @@ int main(int argc, char *argv[]) {
     execute_replication_commands(conn,replication_statements->change_replication_source->str);
   }
 
+  if (replication_statements->gtid_purge){
+    g_message("Sending GTID Purge");
+    execute_replication_commands(conn,replication_statements->gtid_purge->str);
+  }
+
   if (replication_statements->start_replica){
     g_message("Sending start replica");
     execute_replication_commands(conn,replication_statements->start_replica->str);

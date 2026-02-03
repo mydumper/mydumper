@@ -401,7 +401,8 @@ MYSQL *create_main_connection(GOptionContext *context) {
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   server_detect(conn);
-  load_options_for_product_from_key_file(key_file, context, "mydumper", get_major(), get_secondary(), get_revision());
+  if (key_file)
+    load_options_for_product_from_key_file(key_file, context, "mydumper", get_major(), get_secondary(), get_revision());
   GHashTable * set_session_hash = mydumper_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
