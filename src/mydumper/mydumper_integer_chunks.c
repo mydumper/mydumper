@@ -275,6 +275,24 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (( csi->chunk_s
 ) );
 }
 
+
+static
+gboolean is_last_step(struct chunk_step_item *csi){
+return (  
+      ( csi->chunk_step->integer_step.is_unsigned 
+        && (
+             ( csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.unsign.max == csi->chunk_step->integer_step.type.unsign.cursor 
+             )
+           )
+    ) ||
+      ( ! csi->chunk_step->integer_step.is_unsigned
+        && (
+             ( csi->status == DUMPING_CHUNK && csi->chunk_step->integer_step.type.sign.max == csi->chunk_step->integer_step.type.sign.cursor
+             )
+           )
+         )
+) ;
+/*
 static
 gboolean is_last_step(struct chunk_step_item *csi){
 return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (
@@ -290,7 +308,8 @@ return ( !csi->chunk_step->integer_step.is_step_fixed_length  && (
              )
            )
          )
-)) ); 
+)) );
+*/
   /*
   || ( csi->chunk_step->integer_step.is_step_fixed_length && csi->chunk_step->integer_step.step > 0 && (
 (
@@ -311,9 +330,9 @@ struct chunk_step_item *clone_chunk_step_item(struct chunk_step_item *csi){
   return new_integer_step_item(csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, csi->deep, csi->chunk_step->integer_step.is_step_fixed_length, csi->chunk_step->integer_step.step, csi->chunk_step->integer_step.min_chunk_step_size, csi->chunk_step->integer_step.max_chunk_step_size, csi->part, csi->chunk_step->integer_step.check_min, csi->chunk_step->integer_step.check_max, NULL, csi->position, csi->multicolumn, 0);
 }
 
-
 // dbt->chunks_mutex is LOCKED
 struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
+  trace("Evaluating if chunk is available on `%s`.`%s`", dbt->database->source_database, dbt->table);
   struct chunk_step_item *csi=NULL, *new_csi=NULL, *new_csi_next=NULL;
   if (dbt->chunks!=NULL){
     csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);      
@@ -333,38 +352,11 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
       if (csi->status==COMPLETED){
         goto end;
       }
-      if (is_last_step(csi)){
-        trace("Last chunk on step in `%s`.`%s` assigned", dbt->database->source_database, dbt->table);
-        csi->status=UNSPLITTABLE;
-        csi->deep=csi->deep+1;
-        new_csi=clone_chunk_step_item(csi);
-        new_csi->status=ASSIGNED;
-
-        if (csi->chunk_step->integer_step.is_unsigned){
-          csi->chunk_step->integer_step.type.unsign.max=csi->chunk_step->integer_step.type.unsign.cursor;
-          new_csi->chunk_step->integer_step.type.unsign.min=csi->chunk_step->integer_step.type.unsign.cursor+1;
-        }else{
-          csi->chunk_step->integer_step.type.sign.max=csi->chunk_step->integer_step.type.sign.cursor;
-          new_csi->chunk_step->integer_step.type.sign.min=csi->chunk_step->integer_step.type.sign.cursor+1;
-        }
-
-        new_csi->part+=pow(2,csi->deep);
-        update_where_on_integer_step(new_csi);
-
-        // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
-        // Order doesn't matter since chunks are processed via async queue
-        dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
-        // should I push them again? isn't it pointless?
-//        g_async_queue_push(dbt->chunks_queue, csi);
-//        g_async_queue_push(dbt->chunks_queue, new_csi);
-        //
-        g_mutex_unlock(csi->mutex);
-        return new_csi;
-      
-      }
-      if (!is_splitable(csi)){
+      if (is_last_step(csi) || !is_splitable(csi)){
+        trace("Last chunk on step in `%s`.`%s` assigned with where: %s", dbt->database->source_database, dbt->table, csi->where->str);
         if (csi->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
           trace("Multicolumn table checking next");
+
           g_mutex_lock(csi->next->mutex);
           if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){
             trace("Multicolumn table is not splittable: %d Ref: COMPLETED=%d", csi->next->status, COMPLETED);
@@ -379,38 +371,32 @@ struct chunk_step_item *get_next_integer_chunk(struct db_table *dbt){
             goto end;
           }
 
-//          if (has_only_one_level(csi)){
+          new_csi_next=split_chunk_step(csi->next);
 
-            new_csi_next=split_chunk_step(csi->next);
+          if (new_csi_next){
+            trace("Multicolumn table is splittable");
+            new_csi_next->multicolumn=FALSE;
+            csi->deep=csi->deep+1;
+            new_csi=clone_chunk_step_item(csi);
+            new_csi->status=ASSIGNED;
+            new_csi->part+=pow(2,csi->deep);
+            update_where_on_integer_step(new_csi);
 
-            if (new_csi_next){
-              trace("Multicolumn table is splittable");
-              new_csi_next->multicolumn=FALSE;
-              csi->deep=csi->deep+1;
-              new_csi=clone_chunk_step_item(csi);
-              new_csi->status=ASSIGNED;
-//              if ( csi->chunk_step->integer_step.is_step_fixed_length ){
-                new_csi->part+=pow(2,csi->deep);
-//              }
-              update_where_on_integer_step(new_csi);
- 
-              new_csi->next=new_csi_next;
+            new_csi->next=new_csi_next;
 
-              new_csi->next->prefix = new_csi->where;
-              // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
-              dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
-              g_async_queue_push(dbt->chunks_queue, csi);
-              g_async_queue_push(dbt->chunks_queue, new_csi);
-              g_mutex_unlock(csi->next->mutex);
-              g_mutex_unlock(csi->mutex);
-              return new_csi;
-            }else{
-              trace("Multicolumn table: not able to split?");
-            }
-//          }
+            new_csi->next->prefix = new_csi->where;
+            // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+            dbt->chunks=g_list_prepend(dbt->chunks,new_csi);
+            g_async_queue_push(dbt->chunks_queue, csi);
+            g_async_queue_push(dbt->chunks_queue, new_csi);
+            g_mutex_unlock(csi->next->mutex);
+            g_mutex_unlock(csi->mutex);
+            return new_csi;
+          }else{
+            trace("Multicolumn table: not able to split?");
+          }
           g_mutex_unlock(csi->next->mutex);
         }
-
         csi->status=UNSPLITTABLE;
         goto end;
       }
