@@ -338,7 +338,7 @@ test_case_dir (){
       fi
       if (( $myloader_stream >= 1 ))
       then
-        if (( $(ls /tmp/data | wc -l ) > 0 ))
+        if [ -d "/tmp/data" ]
         then
           echo "Files found on streaming backup dir"
           error=1
@@ -528,7 +528,7 @@ local_infile=ON" >> ${dynamic_myloader}
                 then
               if [ "$type" == "" ]
               then
-                if (( $(ls /tmp/data | wc -l ) < 10 ))
+                if [ -d "/tmp/data" ] && (( $(ls /tmp/data | wc -l ) < 10 ))
                 then
                   echo "The amount of files in backup dir is less than 10"
                   exit 1

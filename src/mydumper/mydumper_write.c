@@ -89,6 +89,7 @@ gboolean update_files_on_table_job(struct table_job *tj)
   return FALSE;
 }
 
+static
 void message_dumping_data_short(struct table_job *tj){
   // Use cached count for O(1) access instead of O(n) g_list_length()
   g_mutex_lock(transactional_table->mutex);
@@ -104,6 +105,7 @@ void message_dumping_data_short(struct table_job *tj){
                     tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, non_transactional_table_size+transactional_table_size, g_hash_table_size(all_dbts));
 }
 
+static
 void message_dumping_data_long(struct table_job *tj){
   // Use cached count for O(1) access instead of O(n) g_list_length()
   g_mutex_lock(transactional_table->mutex);
@@ -112,7 +114,7 @@ void message_dumping_data_long(struct table_job *tj){
   g_mutex_lock(non_transactional_table->mutex);
   guint non_transactional_table_size = non_transactional_table->count;
   g_mutex_unlock(non_transactional_table->mutex);
-  g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% | Remaining tables: %u / %u",
+  g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% (%"G_GUINT64_FORMAT"/%"G_GUINT64_FORMAT") | Remaining tables: %u / %u",
                     tj->td->thread_id,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str, 
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str,
@@ -122,7 +124,8 @@ void message_dumping_data_long(struct table_job *tj){
                     ((tj->where->len || where_option ) && tj->dbt->where) ? " AND "   : "" , tj->dbt->where ? tj->dbt->where : "",
                     order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? " ORDER BY " : "", order_by_primary_key && tj->dbt->primary_key_separated_by_comma ? tj->dbt->primary_key_separated_by_comma : "",
                     tj->rows->filename,
-                    tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, non_transactional_table_size+transactional_table_size,g_hash_table_size(all_dbts));
+                    tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, tj->dbt->rows,tj->dbt->rows_total<tj->dbt->rows?tj->dbt->rows:tj->dbt->rows_total,
+                    non_transactional_table_size+transactional_table_size,g_hash_table_size(all_dbts));
 }
 
 void (*message_dumping_data)(struct table_job *tj);
