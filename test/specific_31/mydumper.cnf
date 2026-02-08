@@ -1,0 +1,7 @@
+#
+# Testing large multi primary key tables
+#
+
+[mydumper]
+database=specific_31
+outputdir=/tmp/data
