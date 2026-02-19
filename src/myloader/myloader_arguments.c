@@ -191,7 +191,7 @@ static GOptionEntry execution_entries[] = {
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
       "Options: AFTER_IMPORT_PER_TABLE, AFTER_IMPORT_ALL_TABLES and SKIP. Default: AFTER_IMPORT_PER_TABLE", NULL},
     {"optimize-keys-batchsize", 0, 0, G_OPTION_ARG_INT, &optimize_keys_batchsize,
-      "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimit)", NULL},
+      "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
       "Do not import table schemas and triggers ", NULL},
     {"purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
