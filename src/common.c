@@ -32,6 +32,8 @@
 //#include "mydumper_global.h"
 
 extern gboolean help;
+
+guint optimize_keys_batchsize=0;
 guint errors=0;
 GList *ignore_errors_list=NULL;
 GHashTable *ignore_errors_set=NULL;
@@ -1235,6 +1237,7 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
   int fulltext_counter=0;
   int i=0;
   gchar *engine_pos=NULL;
+  guint index_in_alter_counter=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
     if (split_indexes &&( g_strstr_len(split_file[i],5,"  KEY")
       || g_strstr_len(split_file[i],8,"  UNIQUE")
@@ -1247,12 +1250,18 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
         g_string_append(create_table_statement, split_file[i]);
         g_string_append_c(create_table_statement,'\n');
       }else{
+        index_in_alter_counter++;
         flag|=IS_ALTER_TABLE_PRESENT;
         if (g_strrstr(split_file[i],"  FULLTEXT")) fulltext_counter++;
         if (fulltext_counter>1){
           fulltext_counter=1;
           finish_alter_table(alter_table_statement);
           append_alter_table(alter_table_statement,real_table);
+          index_in_alter_counter=1;
+        }else if (optimize_keys_batchsize>0 && index_in_alter_counter>optimize_keys_batchsize){
+          finish_alter_table(alter_table_statement);
+          append_alter_table(alter_table_statement,real_table);
+          index_in_alter_counter=1;
         }
         g_string_append(alter_table_statement,"\n ADD");
         g_string_append(alter_table_statement, split_file[i]);
