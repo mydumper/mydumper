@@ -87,6 +87,7 @@ extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
+extern guint optimize_keys_batchsize;
 
 const char DIRECTORY[] = "import";
 
@@ -223,7 +224,7 @@ void print_help(){
       print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
     }else
       print_string("optimize-keys",NULL);
-
+    print_int("optimize-keys-batchsize",optimize_keys_batchsize);
     print_bool("no-schemas",no_schemas);
 
     print_bool("local-infile", local_infile);
