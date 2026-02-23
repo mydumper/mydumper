@@ -61,13 +61,14 @@ const gchar * get_product_name(void){
     case SERVER_TYPE_CLICKHOUSE:return "Clickhouse"; break;
     case SERVER_TYPE_DOLT:      return "Dolt"; break;
     case SERVER_TYPE_RDS:       return "RDS"; break;
+    case SERVER_TYPE_GOOGLE:    return "Google"; break;
     case SERVER_TYPE_UNKNOWN:   return "unknown"; break;
     default: return "";
   }
 }
 
 gboolean is_mysql_like(){
-  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN || get_product() == SERVER_TYPE_RDS;
+  return get_product() == SERVER_TYPE_PERCONA || get_product() == SERVER_TYPE_MARIADB || get_product() == SERVER_TYPE_MYSQL || get_product() == SERVER_TYPE_DOLT || get_product() == SERVER_TYPE_UNKNOWN || get_product() == SERVER_TYPE_RDS || get_product() == SERVER_TYPE_GOOGLE;
 }
 
 gboolean server_support_tablespaces(){ 
@@ -91,8 +92,11 @@ void detect_product(gchar *_ascii_version_comment, gchar *_ascii_version){
   if ( (ascii_version && g_strstr_len(ascii_version, -1, "dolt"))    || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "dolt"))){
     product = SERVER_TYPE_DOLT;
   }else
-  if ( (ascii_version && g_strstr_len(ascii_version, -1, "mysql"))   || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "mysql")) || 
-       (ascii_version && g_strstr_len(ascii_version, -1, "source"))  || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "source"))){
+    if ( (ascii_version && g_strstr_len(ascii_version, -1, "google"))    || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "google"))){
+    product = SERVER_TYPE_GOOGLE;
+  }else
+    if ( (ascii_version && g_strstr_len(ascii_version, -1, "mysql"))   || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "mysql")) || 
+       (ascii_version && g_strstr_len(ascii_version, -1, "source"))  || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "source")) ){
     product = SERVER_TYPE_MYSQL;
   }
 }
@@ -213,6 +217,7 @@ void detect_replica() {
       case SERVER_TYPE_MYSQL:
       case SERVER_TYPE_RDS:
       case SERVER_TYPE_PERCONA:
+      case SERVER_TYPE_GOOGLE:
       case SERVER_TYPE_UNKNOWN:
         if (get_major()>=8 && (get_secondary()>0 || (get_secondary()==0 && get_revision()>=22))) {
             start_replica=START_REPLICA;

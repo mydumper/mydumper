@@ -651,6 +651,7 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
       m_critical("We support LOCK_ALL and SAFE_NO_LOCK modes for RDS/Aurora. Select one of them to configure --sync-thread-lock-mode");
       break;
     case SERVER_TYPE_MYSQL: 
+    case SERVER_TYPE_GOOGLE:
       switch (get_major()) {
         case 8:
           *acquire_ddl_lock_function = &send_ddl_lock_instance_backup;
