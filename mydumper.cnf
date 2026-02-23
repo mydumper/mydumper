@@ -70,6 +70,14 @@ set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
 
+
+[mydumper_google_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+skip-ddl-locks=1
+table-engine-for-view-dependency=InnoDB
+
 #[`schema`.`table`]
 # where = column > 20
 # limit = 1000

@@ -664,6 +664,17 @@ void determine_ddl_lock_function(MYSQL ** conn, void(**acquire_global_lock_funct
           break;
       }
       break;
+    case SERVER_TYPE_GOOGLE:
+      switch (get_major()) {
+        case 8:
+          *acquire_global_lock_function = &send_flush_table_with_read_lock;
+          *release_global_lock_function = &send_unlock_tables;
+          break;
+        default:
+          default_locking( acquire_global_lock_function, release_global_lock_function, acquire_ddl_lock_function, release_ddl_lock_function, release_binlog_function);
+          break;
+      }
+      break;
     case SERVER_TYPE_MARIADB:
       if (((get_major() == 10 && get_secondary() >= 5) || get_major() > 10) && sync_thread_lock_mode!=FTWRL && !skip_ddl_locks ) {
 
