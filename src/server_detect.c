@@ -92,7 +92,8 @@ void detect_product(gchar *_ascii_version_comment, gchar *_ascii_version){
     product = SERVER_TYPE_DOLT;
   }else
   if ( (ascii_version && g_strstr_len(ascii_version, -1, "mysql"))   || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "mysql")) || 
-       (ascii_version && g_strstr_len(ascii_version, -1, "source"))  || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "source"))){
+       (ascii_version && g_strstr_len(ascii_version, -1, "source"))  || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "source")) ||
+       (ascii_version && g_strstr_len(ascii_version, -1, "google"))   || (ascii_version_comment && g_strstr_len(ascii_version_comment, -1, "google")) ){
     product = SERVER_TYPE_MYSQL;
   }
 }
