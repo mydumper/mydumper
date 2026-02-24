@@ -168,6 +168,16 @@ void initialize_directories(){
     // Set fifo temporary director
     fifo_directory=build_tmp_dir_name();
   }
+
+  if (load_data_tmp_directory){
+    if (fifo_directory[0] != '/' ){
+      gchar *tmp_load_data_tmp_directory=load_data_tmp_directory;
+      load_data_tmp_directory=g_strdup_printf("%s/%s", current_dir, tmp_load_data_tmp_directory);
+    }
+  }else{
+    load_data_tmp_directory=build_tmp_dir_name();
+  }
+
   g_free(current_dir);
 }
 
@@ -265,6 +275,7 @@ void print_help(){
     print_string("defaults-file",defaults_file);
     print_string("defaults-extra-file",defaults_extra_file);
     print_string("fifodir",fifo_directory);
+    print_string("load-data-tmp-directory",load_data_tmp_directory);
     exit(EXIT_SUCCESS);
 }
 
@@ -419,8 +430,9 @@ int main(int argc, char *argv[]) {
   if(stream && !no_stream)
     create_dir(directory);
   create_dir(fifo_directory);
+  create_dir(load_data_tmp_directory);
 
-  g_message("Using %s as FIFO directory, please remove it if restoration fails", fifo_directory);
+  g_message("Using %s as FIFO directory and %s as LOAD DATA temporary directory, please remove them if restoration fails", fifo_directory, load_data_tmp_directory);
 
   start_pmm_thread((void *)&conf);
 
@@ -682,6 +694,7 @@ int main(int argc, char *argv[]) {
 
   if (key_file)  g_key_file_free(key_file);
   g_remove(fifo_directory);
+  g_remove(load_data_tmp_directory);
   g_message("Restore completed");
 
   if (logoutfile) {

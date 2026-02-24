@@ -695,9 +695,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 //          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
           if (is_fifo){
-            if (fifo_directory != NULL){
+            if (load_data_tmp_directory != NULL){
               new_data = g_string_new_len(data->str, from - data->str);
-              g_string_append(new_data, fifo_directory);
+              g_string_append(new_data, load_data_tmp_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
               // Perf: Use strchr instead of g_strstr_len for single-char search
@@ -716,8 +716,8 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             }
             *to='\'';
 
-            if (fifo_directory != NULL){
-              new_load_data_fifo_filename=g_strdup_printf("%s/%s", fifo_directory, load_data_fifo_filename);
+            if (load_data_tmp_directory != NULL){
+              new_load_data_fifo_filename=g_strdup_printf("%s/%s", load_data_tmp_directory, load_data_fifo_filename);
               g_free(load_data_fifo_filename);
               load_data_fifo_filename=new_load_data_fifo_filename;
             }

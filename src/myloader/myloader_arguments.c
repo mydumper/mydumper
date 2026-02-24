@@ -29,6 +29,7 @@ gchar *optimize_keys_str=NULL;
 gchar *checksum_str=NULL;
 gboolean set_gtid_purge = FALSE;
 gchar *fifo_directory = NULL;
+gchar *load_data_tmp_directory=NULL;
 gboolean show_warnings=FALSE;
 GList *ignore_set_list=NULL;
 gboolean mysqldump = FALSE;
@@ -143,7 +144,9 @@ static GOptionEntry entries[] = {
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
      "Log file name to use, by default stdout is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
-     "Directory where the FIFO files will be created when needed. Default: Same as backup", NULL},
+     "Directory where the FIFO files will be created when needed. Default: temporary directoy will be created", NULL},
+    {"load-data-tmp-dir", 0, 0, G_OPTION_ARG_FILENAME, &load_data_tmp_directory,
+     "Directory where the FIFO temporary files will be created when needed for LOAD DATA statements. Default: temporary directoy will be created", NULL},
     {"database", 'B', 0, G_OPTION_ARG_STRING, &target_db,
      "An alternative database to restore into", NULL},
     {"show-warnings", 0,0, G_OPTION_ARG_NONE, &show_warnings, 
