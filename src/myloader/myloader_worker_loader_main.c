@@ -77,7 +77,7 @@ static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_
       dbt->count > 0 &&  // Perf: Use cached count instead of O(n) g_list_length()
       dbt->current_threads < dbt->max_threads &&
       !dbt->in_ready_queue &&
-      !dbt->object_to_export.no_data &&
+      !dbt->object_to_import.no_data &&
       !dbt->is_view &&
       !dbt->is_sequence) {
     dbt->in_ready_queue = TRUE;
@@ -99,7 +99,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     if (dbt->schema_state == CREATED &&
         dbt->count > 0 &&  // Perf: Use cached count instead of O(n) g_list_length()
         dbt->current_threads < dbt->max_threads &&
-        !dbt->object_to_export.no_data &&
+        !dbt->object_to_import.no_data &&
         !dbt->is_view &&
         !dbt->is_sequence) {
       // Perf: Lazy sort before first access (O(n log n) once vs O(n²) insert_sorted)
@@ -171,7 +171,7 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
     }
 
     if (dbt->schema_state == CREATED && dbt->count > 0){  // Perf: Use cached count
-      if (dbt->object_to_export.no_data){
+      if (dbt->object_to_import.no_data){
         GList * current = dbt->restore_job_list;
         while (current){
           g_free(((struct restore_job *)current->data)->data.drj);

@@ -34,7 +34,7 @@ struct db_table {
   char *escaped_table;
   char *min;
   char *max;
-  struct object_to_export object_to_export;
+  struct object_scope object_to_export;
   GString *select_fields;
   gboolean complete_insert;
   GString *insert_statement;

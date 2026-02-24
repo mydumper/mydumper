@@ -264,8 +264,8 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
 // CONSTRAINTS
       if (!source_db || g_strcmp0(dbt->database->source_database,source_db)==0){
         if ( !no_schemas && (
-             (rj->data.srj->object==INDEXES && !dbt->object_to_export.no_index ) ||
-             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_export.no_constraint ))
+             (rj->data.srj->object==INDEXES && !dbt->object_to_import.no_index ) ||
+             (rj->data.srj->object==CONSTRAINTS && !dbt->object_to_import.no_constraint ))
            ){
         get_total_done(td->conf, &total);
           message("Thread %d: restoring %s %s.%s from %s. Tables %d of %d completed", td->thread_id,
@@ -281,7 +281,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
     case JOB_TO_CREATE_TABLE:
 
       dbt->schema_state=CREATING;
-      if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_export.no_schema ){
+      if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_import.no_schema ){
         if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
         message("Thread %d: restoring table %s.%s from %s", td->thread_id,
                 dbt->database->target_database, dbt->source_table_name, rj->filename);
@@ -310,9 +310,9 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               message("Skipping table or view %s.%s",
                 dbt->database->target_database, dbt->source_table_name);
               detailed_errors.skip_errors++;
-              dbt->object_to_export.no_data=TRUE;
-              dbt->object_to_export.no_index=TRUE;
-              dbt->object_to_export.no_constraint=TRUE;
+              dbt->object_to_import.no_data=TRUE;
+              dbt->object_to_import.no_index=TRUE;
+              dbt->object_to_import.no_constraint=TRUE;
             }else{
               g_atomic_int_inc(&(detailed_errors.schema_errors));
               if (purge_mode == FAIL)
@@ -362,7 +362,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
         if ( !no_schemas && (
              (rj->data.srj->object==TABLESPACE) ||
              (rj->data.srj->object==CREATE_DATABASE) ||
-             (rj->data.srj->object==VIEW && !dbt->object_to_export.no_view ) ||
+             (rj->data.srj->object==VIEW && !dbt->object_to_import.no_view ) ||
              (rj->data.srj->object==SEQUENCE) ||
              (rj->data.srj->object==TRIGGER) ||
              (rj->data.srj->object==POST)

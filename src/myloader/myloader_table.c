@@ -90,7 +90,7 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->rows_inserted=0;
       dbt->restore_job_list = NULL;
       dbt->restore_job_list_sorted = TRUE;  // Empty list is trivially sorted
-      parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
+      parse_object_scope(&(dbt->object_to_import),g_hash_table_lookup(conf_per_table.all_object_to_import, lkey));
 			dbt->current_threads=0;
       dbt->max_threads=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
       dbt->max_connections_per_job=0;
