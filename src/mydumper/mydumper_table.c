@@ -414,7 +414,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->escaped_table = escape_string(conn,dbt->table);
     dbt->where=m_coalesce_hash(conf_per_table.all_where_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     dbt->limit=m_coalesce_hash(conf_per_table.all_limit_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
-    parse_object_to_export(&(dbt->object_to_export), m_coalesce_hash(conf_per_table.all_object_to_export, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
+    parse_object_scope(&(dbt->object_to_export), m_coalesce_hash(conf_per_table.all_object_to_export, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
 
     dbt->partition_regex=m_coalesce_hash(conf_per_table.all_partition_regex_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     dbt->max_threads_per_table=max_threads_per_table;

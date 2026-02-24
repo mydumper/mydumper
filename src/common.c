@@ -250,6 +250,10 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_object_to_export, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"object_to_import") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(cpt->all_object_to_import, g_strdup(groups[i]), g_strdup(value));
+          }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             pcre2_code *r=NULL; 
@@ -1306,6 +1310,7 @@ void initialize_conf_per_table(struct configuration_per_table *cpt){
   cpt->all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_object_to_import=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
@@ -1322,34 +1327,34 @@ gboolean str_list_has_str(gchar ** str_list, const gchar* str){
   return FALSE;
 }
 
-void parse_object_to_export(struct object_to_export *object_to_export,gchar *val){
-  object_to_export->no_data=FALSE;
-  object_to_export->no_schema=FALSE;
-  object_to_export->no_view=FALSE;
-  object_to_export->no_trigger=FALSE;
-  object_to_export->no_index=FALSE;
-  object_to_export->no_constraint=FALSE;
+void parse_object_scope(struct object_scope *object_scope,gchar *val){
+  object_scope->no_data=FALSE;
+  object_scope->no_schema=FALSE;
+  object_scope->no_view=FALSE;
+  object_scope->no_trigger=FALSE;
+  object_scope->no_index=FALSE;
+  object_scope->no_constraint=FALSE;
   if (!val)
     return;
   gchar **split_option = g_strsplit(val, ",", 4);
-  object_to_export->no_data=!str_list_has_str(split_option,"DATA");
-  object_to_export->no_schema=!str_list_has_str(split_option,"SCHEMA");
-  object_to_export->no_trigger=!str_list_has_str(split_option,"TRIGGER");
+  object_scope->no_data=!str_list_has_str(split_option,"DATA");
+  object_scope->no_schema=!str_list_has_str(split_option,"SCHEMA");
+  object_scope->no_trigger=!str_list_has_str(split_option,"TRIGGER");
   if (str_list_has_str(split_option,"ALL")){
-    object_to_export->no_data=FALSE;
-    object_to_export->no_schema=FALSE;
-    object_to_export->no_view=FALSE;
-    object_to_export->no_index=FALSE;
-    object_to_export->no_constraint=FALSE;
-    object_to_export->no_trigger=FALSE;
+    object_scope->no_data=FALSE;
+    object_scope->no_schema=FALSE;
+    object_scope->no_view=FALSE;
+    object_scope->no_index=FALSE;
+    object_scope->no_constraint=FALSE;
+    object_scope->no_trigger=FALSE;
   }
   if (str_list_has_str(split_option,"NONE")){
-    object_to_export->no_data=TRUE;
-    object_to_export->no_schema=TRUE;
-    object_to_export->no_view=TRUE;
-    object_to_export->no_index=TRUE;
-    object_to_export->no_constraint=TRUE;
-    object_to_export->no_trigger=TRUE;
+    object_scope->no_data=TRUE;
+    object_scope->no_schema=TRUE;
+    object_scope->no_view=TRUE;
+    object_scope->no_index=TRUE;
+    object_scope->no_constraint=TRUE;
+    object_scope->no_trigger=TRUE;
   }
   g_strfreev(split_option);
 }

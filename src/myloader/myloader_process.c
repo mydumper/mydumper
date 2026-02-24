@@ -687,10 +687,10 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
 //          if (real_table_name) g_free(real_table_name);
   //        if (table_filename) g_free(table_filename);
           real_table_name=NULL;
-          dbt->data_checksum=    dbt->object_to_export.no_data   ?NULL:get_value(kf,groups[j],"data_checksum");
-          dbt->schema_checksum=  dbt->object_to_export.no_schema ?NULL:get_value(kf,groups[j],"schema_checksum");
-          dbt->indexes_checksum= dbt->object_to_export.no_schema ?NULL:get_value(kf,groups[j],"indexes_checksum");
-          dbt->triggers_checksum=dbt->object_to_export.no_trigger?NULL:get_value(kf,groups[j],"triggers_checksum");
+          dbt->data_checksum=    dbt->object_to_import.no_data   ?NULL:get_value(kf,groups[j],"data_checksum");
+          dbt->schema_checksum=  dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"schema_checksum");
+          dbt->indexes_checksum= dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"indexes_checksum");
+          dbt->triggers_checksum=dbt->object_to_import.no_trigger?NULL:get_value(kf,groups[j],"triggers_checksum");
           value=get_value(kf,groups[j],"is_view");
           if (value != NULL && g_strcmp0(value,"1")==0){
             dbt->is_view=TRUE;
@@ -776,7 +776,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
     }
 		append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
   }
-  if ( object == TRIGGER || dbt==NULL || !dbt->object_to_export.no_trigger){
+  if ( object == TRIGGER || dbt==NULL || !dbt->object_to_import.no_trigger){
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, object); //TRIGGER or POST
     g_async_queue_push(_conf->post_queue, new_control_job(JOB_RESTORE,rj,_database));
 	}
@@ -828,7 +828,7 @@ gboolean process_data_filename(char * filename){
       }
     }
   }
-	if (!dbt->object_to_export.no_data){
+	if (!dbt->object_to_import.no_data){
     struct restore_job *rj = new_data_restore_job( g_strdup(filename), JOB_RESTORE_FILENAME, dbt, part, sub_part);
     table_lock(dbt);
     g_atomic_int_add(&(dbt->remaining_jobs), 1);
