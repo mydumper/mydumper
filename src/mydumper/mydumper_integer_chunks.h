@@ -18,9 +18,6 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#define MAX_TIME_PER_QUERY 2
-
-
 #if !defined(mydumper_mydumper_interger_chunks)
 #define mydumper_mydumper_interger_chunks
 

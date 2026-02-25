@@ -18,17 +18,21 @@
                     Max Bubenick, Percona RDBA (max dot bubenick at percona dot com)
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
-#define INSERT_ARG "INSERT"
-#define LOAD_DATA_ARG "LOAD_DATA"
-#define CSV_ARG "CSV"
-#define CLICKHOUSE_ARG "CLICKHOUSE"
-#define SQL_INSERT 0
-#define LOAD_DATA 1
-#define CSV 2
-#define CLICKHOUSE 3
-#define SQL "sql"
-#define DAT "dat"
-#define MEMORY "MEMORY"
-#define MAX_TIME_PER_QUERY 2
+#if !defined(mydumper_mydumper_string_chunks)
+#define mydumper_mydumper_string_chunks
 
-GOptionContext * load_contex_entries();
+#include "mydumper_chunks.h"
+
+struct string_step {
+  gboolean is_step_fixed_length;
+  guint64 step;
+  guint64 estimated_remaining_steps;
+  guint64 rows_in_explain;
+  gboolean check_max;
+  gboolean check_min;
+};
+#endif 
+
+guint process_string_chunk_step(struct table_job *tj, struct chunk_step_item *csi);
+void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi);
+struct chunk_step_item *get_next_string_chunk(struct db_table *dbt);
