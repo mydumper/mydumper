@@ -125,6 +125,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 unmin, unmax;
   gint64 nmin, nmax;
+  gchar *str_min, *str_max;
 //    union chunk_step *cs = NULL;
   switch (fields[0].type) {
     case MYSQL_TYPE_TINY:
@@ -199,6 +200,9 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     case MYSQL_TYPE_VAR_STRING:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       trace("String type %d", position);
+      str_min = g_strdup(mr->row[2]);
+      str_max = g_strdup(mr->row[3]);
+      trace("String min: %s | max: %s", str_min, str_max);
       m_store_result_row_free(mr);
       if (position>0)
         dbt->multicolumn=FALSE;
