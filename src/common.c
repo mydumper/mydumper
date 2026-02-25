@@ -32,8 +32,11 @@
 //#include "mydumper_global.h"
 
 extern gboolean help;
+
+guint optimize_keys_batchsize=0;
 guint errors=0;
 GList *ignore_errors_list=NULL;
+GHashTable *ignore_errors_set=NULL;
 GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
@@ -82,50 +85,6 @@ void free_set_names(){
   g_free(set_names_in_conn_by_default);
   set_names_in_conn_by_default=NULL;
   g_free(set_names_statement);
-}
-
-char *generic_checksum(MYSQL *conn, char *database, char *table, const gchar *query_template, int column_number){
-  char *query = g_strdup_printf(query_template, database, table);
-  struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s)", database, table);
-  g_free(query);
-  char * r=NULL;
-  if (mr->row)
-    r=g_strdup_printf("%s",mr->row[column_number]);
-  m_store_result_row_free(mr);
-  return r;
-}
-
-char * checksum_table(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "CHECKSUM TABLE `%s`.`%s`", 1);
-}
-
-
-char * checksum_table_structure(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 0);
-}
-
-char * checksum_process_structure(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 0);
-}
-
-char * checksum_trigger_structure(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",0);
-}
-
-char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s';",0);
-}
-
-char * checksum_view_structure(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table,"SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",0);
-}
-
-char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",0);
-}
-
-char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
-  return generic_checksum(conn, database, table, "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME", 0);
 }
 
 GKeyFile * load_config_file(gchar * config_file){
@@ -202,7 +161,7 @@ void parse_key_file_group(GKeyFile *kf, GOptionContext *context, const gchar * g
     if (!g_option_context_parse(context, &slen, &gclist, &error)) {
       m_critical("option parsing failed: %s, try --help\n", error->message);
     }else{
-      g_message("Config file loaded");
+      trace("Config file loaded");
     }
     g_strfreev(gclist);
   }
@@ -235,15 +194,20 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
   gchar *value=NULL;
   gchar **keys=NULL;
   for (i=0; i < len; i++){
-    if (g_strstr_len(groups[i],strlen(groups[i]),"`.`") && g_str_has_prefix(groups[i],"`") && g_str_has_suffix(groups[i],"`")){
-      ht=g_hash_table_new ( g_str_hash, g_str_equal );
+    if (g_str_has_prefix(groups[i],"`") && g_strstr_len(groups[i],strlen(groups[i]),"`.`") &&  g_str_has_suffix(groups[i],"`")){
+      ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
         if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
+          // keys contains a masquerade column
           if (init_function_pointer){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             struct function_pointer *fp = init_function_pointer(value);
-            g_hash_table_insert(ht,g_strndup(keys[j]+1,strlen(keys[j])-2), fp);
+            gchar *column_key=g_strndup(keys[j]+1,strlen(keys[j])-2);
+            GList *column_key_list = g_hash_table_lookup(ht, column_key);
+            column_key_list=g_list_append(column_key_list,fp);
+            trace("Inserting function into %s in %s", groups[i], keys[j]);
+            g_hash_table_insert(ht,column_key, column_key_list);
 					}
         }else{
           if (g_strcmp0(keys[j],"where") == 0){
@@ -262,6 +226,22 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
           }
+          if (g_strcmp0(keys[j],"columns_on_select_replace") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            gchar **value_list=g_strsplit(value,",`",0);
+            guint ii=0;
+            GHashTable *column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+            for(ii=0; ii< g_strv_length(value_list);ii++){
+              gchar **kv=g_strsplit(value_list[ii],":",2);
+              if (ii>0)
+                g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
+              else
+                g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
+              g_strfreev(kv);
+            }
+            g_hash_table_insert(cpt->all_columns_on_select_replace_per_table, g_strdup(groups[i]), column_replace_hash);
+            g_strfreev(value_list);
+          }
           if (g_strcmp0(keys[j],"columns_on_insert") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
@@ -269,6 +249,10 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
           if (g_strcmp0(keys[j],"object_to_export") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             g_hash_table_insert(cpt->all_object_to_export, g_strdup(groups[i]), g_strdup(value));
+          }
+          if (g_strcmp0(keys[j],"object_to_import") == 0){
+            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+            g_hash_table_insert(cpt->all_object_to_import, g_strdup(groups[i]), g_strdup(value));
           }
           if (g_strcmp0(keys[j],"partition_regex") == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
@@ -303,6 +287,44 @@ void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTabl
   load_hash_from_key_file(kf,set_session_hash,s->str);
 }
 
+// This function is like g_key_file_has_group but is case insensitive
+gboolean m_key_file_has_group (GKeyFile* kf, const gchar* group_name){
+  gchar **groups=g_key_file_get_groups(kf, NULL);
+  guint i=0;
+  while (groups[i]){
+    if (!g_ascii_strcasecmp(groups[i],group_name)){
+      g_strfreev(groups);
+      return TRUE;
+    }
+    i++;
+  }
+  g_strfreev(groups);
+  return FALSE;
+}
+
+void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision){
+  GString *group=g_string_sized_new(50);
+  g_string_append(group, app);
+  g_string_append(group, "_");
+  g_string_append(group, g_ascii_strdown(get_product_name(),-1));
+  g_message("searching group group %s",group->str);
+  if (g_key_file_has_group(kf,group->str)){
+    g_message("group found %s",group->str);
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", major);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", secondary);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+  g_string_append_printf(group, "_%d", revision);
+  if (g_key_file_has_group(kf,group->str)){
+    parse_key_file_group(kf, context, group->str);
+  }
+}
 
 void free_hash_table(GHashTable * hash){
   GHashTableIter iter;
@@ -484,6 +506,13 @@ guint strcount(gchar *text){
   return i;
 }
 
+gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix){
+  GString *filename = g_string_sized_new(128);
+  g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
+  gchar *r = g_build_filename(_directory?_directory:filename->str, _directory?filename->str:NULL, NULL);
+  g_string_free(filename,TRUE);
+  return r;
+}
 
 gchar * remove_new_line(gchar *to){
   if (to==NULL)
@@ -501,17 +530,20 @@ gchar * remove_new_line(gchar *to){
   return to;
 }
 
-void m_remove0(gchar * directory, const gchar * filename){
+gboolean m_remove0(gchar * directory, const gchar * filename){
     gchar *path = g_build_filename(directory == NULL?"":directory, filename, NULL);
     g_message("Removing file: %s", path);
-    if (remove(path) < 0)
+    if (remove(path) < 0){
       g_warning("Remove failed: %s (%s)", path, strerror(errno));
+      return FALSE;
+    }
     g_free(path);
+    return TRUE;
 }
 
 gboolean m_remove(gchar * directory, const gchar * filename){
   if (stream && no_delete == FALSE){
-    m_remove0(directory,filename);
+    return m_remove0(directory,filename);
   }
   return TRUE;
 }
@@ -614,7 +646,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     }
   }else{
     if (defaults_file == NULL){
-      g_message("Using no configuration file");
+      trace("Using no configuration file");
       return;
     }
   }
@@ -624,7 +656,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
     defaults_extra_file=NULL;
   }
 
-//  g_message("Using default file: %s %s", defaults_file, defaults_extra_file);
+  trace("Using default file: %s %s", defaults_file, defaults_extra_file);
 
   gchar *new_defaults_file=NULL;
   if (!g_path_is_absolute(defaults_file)){
@@ -659,7 +691,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
 
   if (extra_key_file!=NULL){ 
     if (g_key_file_has_group(extra_key_file, group )){
-      g_message("Parsing extra key file");
+      trace("Parsing extra key file");
       parse_key_file_group(extra_key_file, context, group);
       set_connection_defaults_file_and_group(defaults_extra_file, group);
     } 
@@ -669,7 +701,7 @@ void initialize_common_options(GOptionContext *context, const gchar *group){
   }else
     set_connection_defaults_file_and_group(defaults_extra_file, NULL);
 
-  g_message("Merging config files user: ");
+  trace("Merging config files user");
 
   m_key_file_merge(key_file, extra_key_file);
 
@@ -703,6 +735,42 @@ void remove_definer_from_gchar(char * str){
 void remove_definer(GString * data){
   remove_definer_from_gchar(data->str);
 }
+
+void replace_definer_from_string(GString * data, char * _replace){
+  char * from = g_strstr_len(data->str,50," DEFINER=");
+  if (from){
+    from++;
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      gchar *_find=g_strndup(from, to-from);
+      g_string_replace(data,_find,_replace,1);
+      g_free(_find);
+    }
+  }
+}
+
+void update_definer(GString *statement, gchar *replace_definer_str, gboolean skip_definer){
+  if (g_str_has_prefix(statement->str,"CREATE")){
+    if ( skip_definer )
+      remove_definer(statement);
+    else if (replace_definer_str)
+      replace_definer_from_string(statement,replace_definer_str);
+  }
+}
+
+
+void replace_definer_from_gchar (GString * output_data, char * str, char * _replace){
+  char * from = g_strstr_len(str,50," DEFINER=") + 10;
+  if (from){
+    g_string_append_len(output_data, str, from - str - 1);
+    g_string_append(output_data,_replace);
+    char * to=g_strstr_len(from,110," ");
+    if (to){
+      g_string_append(output_data, to);
+    }
+  }
+}
+
 
 void print_version(const gchar *program){
     GString *str=g_string_new(program);
@@ -880,14 +948,26 @@ GRecMutex * g_rec_mutex_new(){
 */
 gboolean read_data(FILE *file, GString *data,
                    gboolean *eof, guint *line) {
-  char buffer[4096];
+
+  // Perf: Larger buffer reduces syscalls (16KB vs 4KB)
+  char buffer[65536];
   size_t l;
 
   while (fgets(buffer, sizeof(buffer), file)) {
-    l= strlen(buffer);
-    //g_assert(l > 0 && l < sizeof(buffer));
-    g_string_append(data, buffer);
-    if (buffer[l - 1] == '\n') {
+    // Perf: Use memchr to find newline - SIMD optimized, O(n/16) vs O(n)
+    // This is faster than strlen() which must scan to NUL terminator
+    char *newline = memchr(buffer, '\n', sizeof(buffer));
+
+    if (newline) {
+      // Found newline - calculate exact length
+      l = newline - buffer + 1;
+    } else {
+      // No newline found - use strlen for partial line
+      l = strlen(buffer);
+    }
+    // Perf: Use g_string_append_len with known length (avoids strlen inside append)
+    g_string_append_len(data, buffer, l);
+    if (newline) {
       (*line)++;
       *eof= FALSE;
       return TRUE;
@@ -1136,9 +1216,11 @@ void print_list(const char*_key, GList *list){
 }
 
 void append_alter_table(GString * alter_table_statement, char *table){
-  g_string_append(alter_table_statement,"ALTER TABLE `");
+  g_string_append(alter_table_statement,"ALTER TABLE ");
+  g_string_append_c(alter_table_statement,identifier_quote_character);
   g_string_append(alter_table_statement,table);
-  g_string_append(alter_table_statement,"` ");
+  g_string_append_c(alter_table_statement,identifier_quote_character);
+  g_string_append(alter_table_statement," ");
 }
 
 void finish_alter_table(GString * alter_table_statement){
@@ -1159,6 +1241,7 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
   int fulltext_counter=0;
   int i=0;
   gchar *engine_pos=NULL;
+  guint index_in_alter_counter=0;
   for (i=0; i < (int)g_strv_length(split_file);i++){
     if (split_indexes &&( g_strstr_len(split_file[i],5,"  KEY")
       || g_strstr_len(split_file[i],8,"  UNIQUE")
@@ -1171,12 +1254,18 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
         g_string_append(create_table_statement, split_file[i]);
         g_string_append_c(create_table_statement,'\n');
       }else{
+        index_in_alter_counter++;
         flag|=IS_ALTER_TABLE_PRESENT;
         if (g_strrstr(split_file[i],"  FULLTEXT")) fulltext_counter++;
         if (fulltext_counter>1){
           fulltext_counter=1;
           finish_alter_table(alter_table_statement);
           append_alter_table(alter_table_statement,real_table);
+          index_in_alter_counter=1;
+        }else if (optimize_keys_batchsize>0 && index_in_alter_counter>optimize_keys_batchsize){
+          finish_alter_table(alter_table_statement);
+          append_alter_table(alter_table_statement,real_table);
+          index_in_alter_counter=1;
         }
         g_string_append(alter_table_statement,"\n ADD");
         g_string_append(alter_table_statement, split_file[i]);
@@ -1188,8 +1277,8 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
         g_string_append(alter_table_constraint_statement, split_file[i]);
       }else{
         if (g_strrstr(split_file[i],"AUTO_INCREMENT")){
-          gchar** autoinc_split=g_strsplit(split_file[i],"`",3);
-          autoinc_column=g_strdup_printf("(`%s`", autoinc_split[1]);
+          gchar** autoinc_split=g_strsplit(split_file[i],identifier_quote_character_str,3);
+          autoinc_column=g_strdup_printf("(%c%s%c", identifier_quote_character, autoinc_split[1], identifier_quote_character);
         }
         g_string_append(create_table_statement, split_file[i]);
         g_string_append_c(create_table_statement,'\n');
@@ -1217,9 +1306,11 @@ void initialize_conf_per_table(struct configuration_per_table *cpt){
   cpt->all_num_threads_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_columns_on_select_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_columns_on_select_replace_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   cpt->all_columns_on_insert_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_object_to_export=g_hash_table_new ( g_str_hash, g_str_equal );
+  cpt->all_object_to_import=g_hash_table_new ( g_str_hash, g_str_equal );
 
   cpt->all_partition_regex_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 
@@ -1236,26 +1327,34 @@ gboolean str_list_has_str(gchar ** str_list, const gchar* str){
   return FALSE;
 }
 
-void parse_object_to_export(struct object_to_export *object_to_export,gchar *val){
-  if (!val){
-    object_to_export->no_data=FALSE;
-    object_to_export->no_schema=FALSE;
-    object_to_export->no_trigger=FALSE;
+void parse_object_scope(struct object_scope *object_scope,gchar *val){
+  object_scope->no_data=FALSE;
+  object_scope->no_schema=FALSE;
+  object_scope->no_view=FALSE;
+  object_scope->no_trigger=FALSE;
+  object_scope->no_index=FALSE;
+  object_scope->no_constraint=FALSE;
+  if (!val)
     return;
-  }
   gchar **split_option = g_strsplit(val, ",", 4);
-  object_to_export->no_data=!str_list_has_str(split_option,"DATA");
-  object_to_export->no_schema=!str_list_has_str(split_option,"SCHEMA");
-  object_to_export->no_trigger=!str_list_has_str(split_option,"TRIGGER");
+  object_scope->no_data=!str_list_has_str(split_option,"DATA");
+  object_scope->no_schema=!str_list_has_str(split_option,"SCHEMA");
+  object_scope->no_trigger=!str_list_has_str(split_option,"TRIGGER");
   if (str_list_has_str(split_option,"ALL")){
-    object_to_export->no_data=FALSE;
-    object_to_export->no_schema=FALSE;
-    object_to_export->no_trigger=FALSE;
+    object_scope->no_data=FALSE;
+    object_scope->no_schema=FALSE;
+    object_scope->no_view=FALSE;
+    object_scope->no_index=FALSE;
+    object_scope->no_constraint=FALSE;
+    object_scope->no_trigger=FALSE;
   }
   if (str_list_has_str(split_option,"NONE")){
-    object_to_export->no_data=TRUE;
-    object_to_export->no_schema=TRUE;
-    object_to_export->no_trigger=TRUE;
+    object_scope->no_data=TRUE;
+    object_scope->no_schema=TRUE;
+    object_scope->no_view=TRUE;
+    object_scope->no_index=TRUE;
+    object_scope->no_constraint=TRUE;
+    object_scope->no_trigger=TRUE;
   }
   g_strfreev(split_option);
 }
@@ -1263,6 +1362,11 @@ void parse_object_to_export(struct object_to_export *object_to_export,gchar *val
 gchar *build_dbt_key(gchar *a, gchar *b){
   return g_strdup_printf("%c%s%c.%c%s%c", identifier_quote_character, a, identifier_quote_character, identifier_quote_character, b, identifier_quote_character);
 }
+
+gchar *build_config_file_dbt_key(const gchar *a, const gchar *b){
+  return g_strdup_printf("`%s`.`%s`", a, b);
+}
+
 /*
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -1329,10 +1433,15 @@ void discard_mysql_output(MYSQL *conn){
   }
 }
 
+gboolean should_ignore_error_code(guint error_code) {
+  if (ignore_errors_set == NULL) return FALSE;
+  return g_hash_table_contains(ignore_errors_set, GINT_TO_POINTER(error_code));
+}
+
 static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (fmt && log_fun_1){
     gchar *c=g_strdup_vprintf(fmt,args);
-    if (log_fun_2 && g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(conn))))
+    if (log_fun_2 && should_ignore_error_code(mysql_errno(conn)))
       log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
     else{
       if (mysql_errno(conn)){
@@ -1357,40 +1466,44 @@ static gboolean m_queryv(  MYSQL *conn, const gchar *query, void log_fun_1(const
 
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_queryv(conn, query, log_fun, NULL, fmt,args);
+  va_start(args, fmt);
+  gboolean result = m_queryv(conn, query, log_fun, NULL, fmt, args);
+  va_end(args);
+  return result;
 }
 
 // Executes the query, if there is an error it send critical stopping the process unless the error is ignored
 gboolean m_query_warning(  MYSQL *conn, const gchar *query, const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_queryv(conn, query, m_warning, NULL, fmt,args);
+  va_start(args, fmt);
+  gboolean result = m_queryv(conn, query, m_warning, NULL, fmt, args);
+  va_end(args);
+  return result;
 }
 
 // Executes the query, if there is an error it send critical stopping the process unless the error is ignored
 gboolean m_query_critical(  MYSQL *conn, const gchar *query, const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_queryv(conn, query, m_critical, m_warning, fmt,args);
+  va_start(args, fmt);
+  gboolean result = m_queryv(conn, query, m_critical, m_warning, fmt, args);
+  va_end(args);
+  return result;
 }
 
 
 gboolean m_query_ext(  MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_queryv(conn, query, log_fun_1, log_fun_2, fmt,args);
+  va_start(args, fmt);
+  gboolean result = m_queryv(conn, query, log_fun_1, log_fun_2, fmt, args);
+  va_end(args);
+  return result;
 }
 
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  gboolean res= m_queryv(conn, q, log_fun, NULL, fmt, args);
+  va_start(args, fmt);
+  gboolean res = m_queryv(conn, q, log_fun, NULL, fmt, args);
+  va_end(args);
   if (!res)
     g_message("%s: OK", q);
   return res;
@@ -1408,32 +1521,35 @@ MYSQL_RES *m_resultv(MYSQL_RES * m_result(MYSQL *), MYSQL *conn, const gchar *qu
 
 MYSQL_RES *m_store_result_critical(MYSQL *conn, const gchar *query, const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  va_start(args, fmt);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
+  va_end(args);
+  return result;
 }
 
 MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  va_start(args, fmt);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  va_end(args);
+  return result;
 }
 
 MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
-  return m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
+  va_start(args, fmt);
+  MYSQL_RES *result = m_resultv(mysql_use_result, conn, query, log_fun, NULL, fmt, args);
+  va_end(args);
+  return result;
 }
 
 struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
+  va_start(args, fmt);
   struct M_ROW *mr=g_new0(struct M_ROW,1);
   mr->row=NULL;
   mr->res = m_resultv(mysql_store_result, conn, query, log_fun_1, log_fun_2, fmt, args);
+  va_end(args);
   if (mr->res)
     mr->row= mysql_fetch_row(mr->res);
   return mr;
@@ -1441,8 +1557,7 @@ struct M_ROW* m_store_result_row(MYSQL *conn, const gchar *query, void log_fun_1
 
 struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const char *fmt, ...){
   va_list args;
-  if (fmt)
-    va_start(args, fmt);
+  va_start(args, fmt);
   struct M_ROW *mr=g_new0(struct M_ROW,1);
   mr->row=NULL;
   mr->res = m_resultv(mysql_store_result, conn, query, m_critical, m_warning, fmt, args);
@@ -1452,6 +1567,7 @@ struct M_ROW* m_store_result_single_row(MYSQL *conn, const gchar *query, const c
     if (!mr->row)
       m_log(conn, m_critical, m_warning, fmt, args);
   }
+  va_end(args);
   return mr;
 }
 

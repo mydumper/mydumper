@@ -35,16 +35,95 @@ static GMutex *all_dbts_mutex=NULL;
 static GMutex *character_set_hash_mutex = NULL;
 static GHashTable *character_set_hash=NULL;
 
+// Bulk metadata prefetch caches (populated when --bulk-metadata-prefetch is used)
+static GHashTable *json_fields_cache = NULL;       // "db.table" -> GINT_TO_POINTER(1) if has json
+static GHashTable *generated_fields_cache = NULL;  // "db.table" -> GINT_TO_POINTER(1) if has generated
+static gboolean metadata_prefetch_done = FALSE;
+
 void initialize_table(){
   all_dbts_mutex = g_mutex_new();
   character_set_hash_mutex = g_mutex_new();
   character_set_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, &g_free, &g_free);
+  // Initialize metadata caches (populated by prefetch_table_metadata when --bulk-metadata-prefetch)
+  json_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
+  generated_fields_cache = g_hash_table_new_full(g_str_hash, g_str_equal, &g_free, NULL);
 }
 
 void finalize_table(){
   g_hash_table_destroy(character_set_hash);
   g_mutex_free(all_dbts_mutex);
   g_mutex_free(character_set_hash_mutex);
+  // Clean up metadata caches
+  if (json_fields_cache) g_hash_table_destroy(json_fields_cache);
+  if (generated_fields_cache) g_hash_table_destroy(generated_fields_cache);
+}
+
+// Prefetch JSON and generated column metadata in bulk queries
+// Called once at startup when --bulk-metadata-prefetch is used
+void prefetch_table_metadata(MYSQL *conn) {
+  if (metadata_prefetch_done)
+    return;
+
+  g_message("Prefetching table metadata (collations, JSON fields, generated columns)...");
+  GTimer *timer = g_timer_new();
+
+  // Prefetch ALL collation->charset mappings in one query
+  // This prevents per-table collation lookups later
+  const char *collation_query =
+      "SELECT COLLATION_NAME, CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATIONS";
+  MYSQL_RES *result = m_store_result(conn, collation_query, m_warning, "Failed to prefetch collation metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint collation_count = 0;
+    g_mutex_lock(character_set_hash_mutex);
+    while ((row = mysql_fetch_row(result))) {
+      if (row[0] && row[1] && !g_hash_table_contains(character_set_hash, row[0])) {
+        g_hash_table_insert(character_set_hash, g_strdup(row[0]), g_strdup(row[1]));
+        collation_count++;
+      }
+    }
+    g_mutex_unlock(character_set_hash_mutex);
+    mysql_free_result(result);
+    g_message("Prefetched %u collation->charset mappings", collation_count);
+  }
+
+  // Prefetch all tables with JSON columns - single query for ALL tables
+  const char *json_query =
+      "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
+      "WHERE COLUMN_TYPE = 'json'";
+  result = m_store_result(conn, json_query, m_warning, "Failed to prefetch JSON column metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint json_count = 0;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      g_hash_table_insert(json_fields_cache, cache_key, GINT_TO_POINTER(1));
+      json_count++;
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u tables with JSON columns", json_count);
+  }
+
+  // Prefetch all tables with generated columns - single query for ALL tables
+  const char *generated_query =
+      "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM information_schema.COLUMNS "
+      "WHERE extra LIKE '%GENERATED%' AND extra NOT LIKE '%DEFAULT_GENERATED%'";
+  result = m_store_result(conn, generated_query, m_warning, "Failed to prefetch generated column metadata", NULL);
+  if (result) {
+    MYSQL_ROW row;
+    guint generated_count = 0;
+    while ((row = mysql_fetch_row(result))) {
+      gchar *cache_key = g_strdup_printf("%s.%s", row[0], row[1]);
+      g_hash_table_insert(generated_fields_cache, cache_key, GINT_TO_POINTER(1));
+      generated_count++;
+    }
+    mysql_free_result(result);
+    g_message("Prefetched %u tables with generated columns", generated_count);
+  }
+
+  metadata_prefetch_done = TRUE;
+  g_message("Metadata prefetch completed in %.2f seconds", g_timer_elapsed(timer, NULL));
+  g_timer_destroy(timer);
 }
 
 void free_db_table(struct db_table * dbt){
@@ -81,6 +160,19 @@ gchar *get_character_set_from_collation(MYSQL *conn, gchar *collation){
     if (mr->row)
       g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
     m_store_result_row_free(mr);
+
+    if (!character_set){
+      query =
+        g_strdup_printf("SELECT CHARACTER_SET_NAME FROM INFORMATION_SCHEMA.COLLATION_CHARACTER_SET_APPLICABILITY "
+                      "WHERE full_collation_name='%s'",
+                      collation);
+      mr = m_store_result_row(conn, query, m_critical, m_warning, "Failed to get CHARACTER_SET from collation %s", collation);
+      g_free(query);
+      if (mr->row)
+        g_hash_table_insert(character_set_hash, g_strdup(collation), character_set=g_strdup(mr->row[0]));
+      m_store_result_row_free(mr);
+    }
+
   }
   g_mutex_unlock(character_set_hash_mutex);
   return character_set;
@@ -94,8 +186,8 @@ void get_primary_key(MYSQL *conn, struct db_table * dbt, struct configuration *c
   // first have to pick index, in future should be able to preset in
   //    * configuration too
   gchar *query = g_strdup_printf("SHOW INDEX FROM %s%s%s.%s%s%s",
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
-  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->name);
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+  indexes = m_store_result(conn, query, m_warning, "Failed to execute SHOW INDEX over %s", dbt->database->source_database);
   g_free(query);
 
   if (indexes){
@@ -207,6 +299,15 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
   if (ignore_generated_fields)
     return FALSE;
 
+  // Use prefetched cache if available (--bulk-metadata-prefetch)
+  if (metadata_prefetch_done) {
+    gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+    result = g_hash_table_contains(generated_fields_cache, cache_key);
+    g_free(cache_key);
+    return result;
+  }
+
+  // Fall back to per-table query
   gchar *query = g_strdup_printf(
       "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
       "WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' AND extra LIKE '%%GENERATED%%' AND extra NOT LIKE '%%DEFAULT_GENERATED%%' "
@@ -222,6 +323,15 @@ gboolean detect_generated_fields(MYSQL *conn, gchar *database, gchar* table) {
 
 static
 gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
+  // Use prefetched cache if available (--bulk-metadata-prefetch)
+  if (metadata_prefetch_done) {
+    gchar *cache_key = g_strdup_printf("%s.%s", database, table);
+    gboolean result = g_hash_table_contains(json_fields_cache, cache_key);
+    g_free(cache_key);
+    return result;
+  }
+
+  // Fall back to per-table query
   gchar *query =
       g_strdup_printf("select COLUMN_NAME from information_schema.COLUMNS "
                       "where TABLE_SCHEMA='%s' and TABLE_NAME='%s' and "
@@ -237,11 +347,39 @@ gboolean has_json_fields(MYSQL *conn, char *database, char *table) {
   return FALSE;
 }
 
+static
+void replace_select_fields(GString * select_fields,GHashTable *column_replace_hash){
+  if (column_replace_hash){
+    gchar **select_fields_list=g_strsplit(select_fields->str, ",", 0);
+    g_string_set_size(select_fields,0);
+    guint i=0;
+    gchar *val=NULL;
+    for(i=0; i< g_strv_length(select_fields_list);i++){
+      if (i>0)
+        g_string_append_c(select_fields,',');
+      val=g_hash_table_lookup(column_replace_hash, select_fields_list[i]);
+      if (val)
+        g_string_append_printf(select_fields,"%s AS %s",val,select_fields_list[i]);
+      else
+        g_string_append(select_fields,select_fields_list[i]);
+    }
+  }
+}
+
+void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key, gchar *any_table_key ){
+  void * r = g_hash_table_lookup(ht, db_table_key);
+  if (r) return r;
+  r = g_hash_table_lookup(ht, any_db_key);
+  if (r) return r;
+  r = g_hash_table_lookup(ht, any_table_key);
+  return r;
+}
+
 gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *conf,
                       struct database *database, char *table, char *table_collation,
-                      gboolean is_sequence)
+                      gboolean is_sequence, gboolean is_view)
 {
-  gchar * lkey = build_dbt_key(database->name,table);
+  gchar * lkey = build_dbt_key(database->source_database,table);
   g_mutex_lock(all_dbts_mutex);
   struct db_table *dbt = g_hash_table_lookup(all_dbts, lkey);
   gboolean b;
@@ -250,6 +388,9 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     b=FALSE;
     g_mutex_unlock(all_dbts_mutex);
   }else{
+    gchar * config_file_dbt_key = build_config_file_dbt_key(database->source_database,table);
+    gchar * any_db_config_file_dbt_key = build_config_file_dbt_key("",table);
+    gchar * any_table_config_file_dbt_key = build_config_file_dbt_key(database->source_database,"");
     dbt = g_new(struct db_table, 1);
     dbt->key=lkey;
     dbt->status = UNDEFINED;
@@ -259,27 +400,28 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->table = identifier_quote_character_protect(table);
     dbt->table_filename = get_ref_table(dbt->table);
     dbt->is_sequence= is_sequence;
+    dbt->is_view=is_view;
     if (table_collation==NULL)
       dbt->character_set = NULL;
     else{
       dbt->character_set=get_character_set_from_collation(conn, table_collation);
       if ( dbt->character_set == NULL)
-        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->name,table);
+        g_warning("Collation '%s' not found on INFORMATION_SCHEMA.COLLATIONS used by `%s`.`%s`",table_collation,database->source_database,table);
     }
-    dbt->has_json_fields = has_json_fields(conn, dbt->database->name, dbt->table);
+    dbt->has_json_fields = has_json_fields(conn, dbt->database->source_database, dbt->table);
     dbt->rows_lock= g_mutex_new();
     dbt->rows_total=0;
     dbt->escaped_table = escape_string(conn,dbt->table);
-    dbt->where=g_hash_table_lookup(conf_per_table.all_where_per_table, lkey);
-    dbt->limit=g_hash_table_lookup(conf_per_table.all_limit_per_table, lkey);
-    parse_object_to_export(&(dbt->object_to_export),g_hash_table_lookup(conf_per_table.all_object_to_export, lkey));
+    dbt->where=m_coalesce_hash(conf_per_table.all_where_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
+    dbt->limit=m_coalesce_hash(conf_per_table.all_limit_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
+    parse_object_scope(&(dbt->object_to_export), m_coalesce_hash(conf_per_table.all_object_to_export, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key));
 
-    dbt->partition_regex=g_hash_table_lookup(conf_per_table.all_partition_regex_per_table, lkey);
+    dbt->partition_regex=m_coalesce_hash(conf_per_table.all_partition_regex_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     dbt->max_threads_per_table=max_threads_per_table;
     dbt->current_threads_running=0;
 
     // Load chunk step size values
-    gchar *rows_p_chunk=g_hash_table_lookup(conf_per_table.all_rows_per_table, lkey);
+    gchar *rows_p_chunk=m_coalesce_hash(conf_per_table.all_rows_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
     if (rows_p_chunk )
       dbt->split_integer_tables=parse_rows_per_chunk(rows_p_chunk, &(dbt->min_chunk_step_size), &(dbt->starting_chunk_step_size), &(dbt->max_chunk_step_size),"Invalid option on rows in configuration file");
     else{
@@ -307,7 +449,8 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
       dbt->min_chunk_step_size=min_integer_chunk_step_size;
 
 
-    dbt->num_threads=g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey)?strtoul(g_hash_table_lookup(conf_per_table.all_num_threads_per_table, lkey), NULL, 10):num_threads;
+    void *tmp= m_coalesce_hash(conf_per_table.all_num_threads_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
+    dbt->num_threads=tmp?strtoul(tmp, NULL, 10):num_threads;
     dbt->estimated_remaining_steps=1;
     dbt->min=NULL;
     dbt->max=NULL;
@@ -325,23 +468,33 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
       get_primary_key_separated_by_comma(dbt);
     dbt->multicolumn = !use_single_column && g_list_length(dbt->primary_key) > 1;
 
-    gchar *columns_on_select=g_hash_table_lookup(conf_per_table.all_columns_on_select_per_table, lkey);
+    gchar *columns_on_select=m_coalesce_hash(conf_per_table.all_columns_on_select_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
 
-    dbt->columns_on_insert=g_hash_table_lookup(conf_per_table.all_columns_on_insert_per_table, lkey);
+    dbt->columns_on_insert=m_coalesce_hash(conf_per_table.all_columns_on_insert_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
 
     dbt->select_fields=NULL;
 
+    GHashTable *column_replace_hash = m_coalesce_hash(conf_per_table.all_columns_on_select_replace_per_table, config_file_dbt_key, any_db_config_file_dbt_key, any_table_config_file_dbt_key);
+
     if (columns_on_select){
       dbt->select_fields=g_string_new(columns_on_select);
+      if (!dbt->columns_on_insert && complete_insert){
+        g_warning("Ignoring complete-insert on %s.%s due usage of columns_on_select only", dbt->database->source_database,dbt->table);
+      }
+
     }else if (!dbt->columns_on_insert){
-      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->escaped, dbt->escaped_table);
-      if (dbt->complete_insert) {
-        dbt->select_fields = get_selectable_fields(conn, dbt->database->escaped, dbt->escaped_table);
+      dbt->complete_insert = complete_insert || detect_generated_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
+      if (dbt->complete_insert || column_replace_hash) {
+//        trace("Complete insert detecting on %s", lkey);
+        dbt->select_fields = get_selectable_fields(conn, dbt->database->source_database_escaped, dbt->escaped_table);
       }
     }
 
+    replace_select_fields(dbt->select_fields, column_replace_hash);
+
+
 //    dbt->anonymized_function=get_anonymized_function_for(conn, dbt);
-    dbt->anonymized_function=NULL;
+    dbt->anonymized_function=g_hash_table_new(g_str_hash, g_str_equal);
     dbt->indexes_checksum=NULL;
     dbt->data_checksum=NULL;
     dbt->schema_checksum=NULL;
@@ -349,6 +502,9 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->rows=0;
  // dbt->chunk_functions.process=NULL;
     b=TRUE;
+    g_free(config_file_dbt_key);
+    g_free(any_db_config_file_dbt_key);
+    g_free(any_table_config_file_dbt_key);
   }
   *d=dbt;
   return b;

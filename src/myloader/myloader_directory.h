@@ -17,3 +17,4 @@
 void initialize_directory();
 void *process_directory(struct configuration *conf);
 void wait_directory_to_process_metadata();
+void release_directory_metadata_lock();

@@ -38,7 +38,10 @@ static GAsyncQueue *available_pids=NULL;
 static GHashTable *fifo_hash=NULL;
 static GMutex *fifo_table_mutex=NULL;
 static GMutex *pipe_creation=NULL;
-static GThread * cft = NULL;
+// Multiple close_file_threads for parallel fsync (improved throughput on high-latency storage)
+// Use 4 threads as a conservative default (original was 1)
+#define NUM_CLOSE_FILE_THREADS 4
+static GThread *cft[NUM_CLOSE_FILE_THREADS] = {NULL};
 static guint open_pipe=0;
 static gboolean is_pipe=FALSE;
 // FILE open/close without pipe
@@ -223,12 +226,21 @@ void * close_file_thread(void *data){
 
 void wait_close_files(){
   if (is_pipe){
-    struct fifo f;
-    f.gpid=-10;
-    f.child_pid=-10;
-    f.filename=NULL;
-    close_file_queue_push(&f);
-    g_thread_join(cft);
+    // Send shutdown signal to all close_file_threads
+    guint i;
+    for (i = 0; i < NUM_CLOSE_FILE_THREADS; i++) {
+      struct fifo *f = g_new0(struct fifo, 1);
+      f->gpid = -10;
+      f->child_pid = -10;
+      f->filename = NULL;
+      g_async_queue_push(close_file_queue, f);
+    }
+    // Wait for all threads to finish
+    for (i = 0; i < NUM_CLOSE_FILE_THREADS; i++) {
+      if (cft[i]) {
+        g_thread_join(cft[i]);
+      }
+    }
   }
 }
 
@@ -253,7 +265,12 @@ void initialize_file_handler(){
     fifo_hash=g_hash_table_new(g_str_hash, g_str_equal);
     fifo_table_mutex = g_mutex_new();
 
-    cft=m_thread_new("close_file", (GThreadFunc)close_file_thread, NULL, "Close file thread could not be created");
+    // Create multiple close_file_threads for parallel fsync
+    gchar thread_name[32];
+    for (i = 0; i < NUM_CLOSE_FILE_THREADS; i++) {
+      g_snprintf(thread_name, sizeof(thread_name), "close_file_%u", i);
+      cft[i] = m_thread_new(thread_name, (GThreadFunc)close_file_thread, NULL, "Close file thread could not be created");
+    }
   }
 }
 

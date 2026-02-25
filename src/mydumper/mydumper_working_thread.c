@@ -47,7 +47,7 @@ gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
 gboolean dump_checksums = FALSE;
 gboolean data_checksums = FALSE;
-gboolean schema_checksums = FALSE;
+gboolean schema_checksums = TRUE;  // Issue #1975: Enable schema checksums by default
 gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
@@ -62,11 +62,15 @@ guint64 max_chunk_step_size = 0;
 gchar *exec_per_thread = NULL;
 const gchar *exec_per_thread_extension = NULL;
 gchar **exec_per_thread_cmd=NULL;
+guint num_sequences=0;
+char **ignore_engines = NULL;
+extern gchar *initial_source_log;
+extern gchar *initial_source_pos;
+extern gchar *initial_source_gtid;
 
 // Static
 static GMutex *init_mutex = NULL;
 static gchar *binlog_snapshot_gtid_executed = NULL; 
-static char **ignore_engines = NULL;
 static int sync_wait = -1;
 static GMutex *table_schemas_mutex = NULL;
 static GMutex *trigger_schemas_mutex = NULL;
@@ -76,7 +80,7 @@ static GThread **threads=NULL;
 static struct thread_data *thread_data;
 
 static
-void dump_database_thread(MYSQL *, struct configuration*, struct database *);
+void dump_database_thread(MYSQL *, struct database *);
 static
 void *working_thread(struct thread_data *td);
 
@@ -92,6 +96,8 @@ void initialize_working_thread(){
   non_transactional_table=g_new(struct MList, 1);
   transactional_table->list=NULL;
   non_transactional_table->list=NULL;
+  transactional_table->count=0;
+  non_transactional_table->count=0;
   non_transactional_table->mutex = g_mutex_new();
   transactional_table->mutex = g_mutex_new();
 
@@ -141,10 +147,14 @@ void start_working_thread(struct configuration *conf ){
     thread_data[n].binlog_snapshot_gtid_executed = NULL;
     thread_data[n].pause_resume_mutex=NULL;
     thread_data[n].table_name=NULL;
+    thread_data[n].local_row_count = 0;
+    thread_data[n].local_row_count_dbt = NULL;
     thread_data[n].thread_data_buffers.statement = g_string_sized_new(2*statement_size);
     thread_data[n].thread_data_buffers.row = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.column = g_string_sized_new(statement_size);
     thread_data[n].thread_data_buffers.escaped = g_string_sized_new(statement_size);
+    thread_data[n].thread_data_buffers.target_column = thread_data[n].thread_data_buffers.column;
+    thread_data[n].thread_data_buffers.column_mask = g_string_sized_new(statement_size);
     threads[n] =
         m_thread_new("data", (GThreadFunc)working_thread, &thread_data[n], "Data thread could not be created");
   }
@@ -207,16 +217,16 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
         !strcasecmp(row[0], "data_dictionary") ||
         (tables_skiplist_file && check_skiplist(row[0], NULL)))
       continue;
-    struct database * db_tmp=NULL;
-    if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
+    struct database * db_tmp=get_database(td->thrconn,row[0],!no_schemas && (eval_regex(row[0], NULL)));
+/*    if (get_database(td->thrconn,row[0],&db_tmp) && !no_schemas && (eval_regex(row[0], NULL))){
       g_mutex_lock(db_tmp->ad_mutex);
       if (!db_tmp->already_dumped){
         create_job_to_dump_schema(db_tmp, td->conf);
         db_tmp->already_dumped=TRUE;
       }
       g_mutex_unlock(db_tmp->ad_mutex);
-    }
-    create_job_to_dump_database(db_tmp, td->conf);
+    }*/
+    create_job_to_dump_database(db_tmp);
   }
   if (g_atomic_int_dec_and_test(&database_counter)) {
 //    g_rec_mutex_unlock(ready_database_dump_mutex);
@@ -229,8 +239,8 @@ void thd_JOB_DUMP_ALL_DATABASES( struct thread_data *td, struct job *job){
 void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   struct dump_database_job * ddj = (struct dump_database_job *)job->job_data;
   g_message("Thread %d: dumping db information for `%s`", td->thread_id,
-            ddj->database->name);
-  dump_database_thread(td->thrconn, td->conf, ddj->database);
+            ddj->database->source_database);
+  dump_database_thread(td->thrconn, ddj->database);
   g_free(ddj);
   g_free(job);
   if (g_atomic_int_dec_and_test(&database_counter)) {
@@ -239,6 +249,7 @@ void thd_JOB_DUMP_DATABASE(struct thread_data *td, struct job *job){
   }
 }
 
+static
 void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf, gchar ** table_list) {
 
   gchar **dt = NULL;
@@ -258,8 +269,8 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
 
     guint ecol = -1, ccol = -1, collcol = -1, rowscol = 0;
     determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
-    struct database * database=NULL;
-    if (get_database(conn, dt[0], &database)){
+    struct database * database=get_database(conn, dt[0], TRUE);
+/*    if (get_database(conn, dt[0], &database)){
       if (!database->already_dumped){
         g_mutex_lock(database->ad_mutex);
         if (!database->already_dumped){
@@ -269,7 +280,7 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         g_mutex_unlock(database->ad_mutex);
 //        g_async_queue_push(conf->ready_database_dump, GINT_TO_POINTER(1));
       }
-    }
+    }*/
 
     MYSQL_ROW row;
     while ((row = mysql_fetch_row(result))) {
@@ -285,23 +296,26 @@ void get_table_info_to_process_from_list(MYSQL *conn, struct configuration *conf
         is_view = 1;
 
       if ((get_product() == SERVER_TYPE_MARIADB) &&
-          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE")))
+          (row[ccol] == NULL || !strcmp(row[ccol], "SEQUENCE"))){
         is_sequence = 1;
 
+        g_atomic_int_inc(&num_sequences);
+      }
+
       /* Checks skip list on 'database.table' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[0]))
+      if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))
         continue;
 
       /* Special tables */
-      if (is_mysql_special_tables(database->name, row[0])) {
+      if (is_mysql_special_tables(database->source_database, row[0])) {
         continue;
       }
 
       /* Checks PCRE expressions on 'database.table' string */
-      if (!eval_regex(database->name, row[0]))
+      if (!eval_regex(database->source_database, row[0]))
         continue;
 
-      create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
+      create_job_to_dump_table(is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
     }
     mysql_free_result(result);
     g_strfreev(dt);
@@ -409,7 +423,7 @@ void initialize_consistent_snapshot(struct thread_data *td){
     }else{
       m_critical("We were not able to sync all threads. We unsuccessfully tried %d times. Reducing the amount of threads might help.", MAX_START_TRANSACTION_RETRIES);
     }
-  }else
+  }else if (sync_thread_lock_mode != NO_LOCK)
     m_query_critical(td->thrconn,"START TRANSACTION /*!40108 WITH CONSISTENT SNAPSHOT */", "Failed to start consistent snapshot", NULL);
 }
 
@@ -438,60 +452,64 @@ void check_connection_status(struct thread_data *td){
 }
 
 
-/* Write some stuff we know about snapshot, before it changes */
-void write_snapshot_info(MYSQL *conn, FILE *file) {
-  char *masterlog = NULL;
-  char *masterpos = NULL;
-  char *mastergtid = NULL;
-
-  
+void get_binlog_position(MYSQL *conn, char **masterlog, char **masterpos, char **mastergtid){
+  trace("Getting binary log position");
   struct M_ROW *mr = m_store_result_row(conn, show_binary_log_status, m_warning, m_message, "Couldn't get master position", NULL);
   if ( mr->row ) {
-    masterlog = g_strdup(mr->row[0]);
-    masterpos = g_strdup(mr->row[1]);
-    /* Oracle/Percona GTID */
+    *masterlog = g_strdup(mr->row[0]);
+    *masterpos = g_strdup(mr->row[1]);
+    // Oracle/Percona GTID
     if (mysql_num_fields(mr->res) == 5) {
-      mastergtid = g_strdup(remove_new_line(mr->row[4]));
+      *mastergtid = g_strdup(remove_new_line(mr->row[4]));
     } else {
-      /* Let's try with MariaDB 10.x */
-      /* Use gtid_binlog_pos due to issue with gtid_current_pos with galera
- *        * cluster, gtid_binlog_pos works as well with normal mariadb server
- *               * https://jira.mariadb.org/browse/MDEV-10279 */
+      // Let's try with MariaDB 10.x
+      // Use gtid_binlog_pos due to issue with gtid_current_pos with galera
+      // cluster, gtid_binlog_pos works as well with normal mariadb server
+      // https://jira.mariadb.org/browse/MDEV-10279      
       m_store_result_row_free(mr);
       mr = m_store_result_row(conn, "SELECT @@gtid_binlog_pos", NULL, NULL, "Failed to get @@gtid_binlog_pos", NULL);
       if (mr->row){
-        mastergtid = g_strdup(remove_new_line(mr->row[0]));
+        *mastergtid = g_strdup(remove_new_line(mr->row[0]));
       }
     }
   }
   m_store_result_row_free(mr);
+}
 
-  if (masterlog) {
+
+/* Write some stuff we know about snapshot, before it changes */
+static
+void write_source_info(MYSQL *conn, FILE *file) {
+
+  get_binlog_position(conn, &initial_source_log, &initial_source_pos, &initial_source_gtid);
+
+  if (initial_source_log) {
     fprintf(file, "\n[source]\n# Channel_Name = '' # It can be use to setup replication FOR CHANNEL\n");
+    if (initial_source_gtid && strlen(initial_source_gtid)>0)
+      fprintf(file, "# executed_gtid_set = \"%s\"\n", initial_source_gtid);
+    fprintf(file, "# SOURCE_LOG_FILE = \"%s\"\n# SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
+
     if (source_data.enabled){
       fprintf(file, "#SOURCE_HOST = \"%s\"\n#SOURCE_PORT = \n#SOURCE_USER = \"\"\n#SOURCE_PASSWORD = \"\"\n", hostname?hostname:"");
       if (source_data.source_ssl)
         fprintf(file, "SOURCE_SSL = 1\n");
       else
         fprintf(file, "#SOURCE_SSL = {0|1}\n");
-      if (mastergtid && strlen(mastergtid)>0)
-        fprintf(file, "executed_gtid_set = \"%s\"\n", mastergtid);
+      if (initial_source_gtid && strlen(initial_source_gtid)>0)
+        fprintf(file, "executed_gtid_set = \"%s\"\n", initial_source_gtid);
       if (source_data.auto_position){
-        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", masterlog, masterpos);
+        fprintf(file, "#SOURCE_LOG_FILE = \"%s\"\n#SOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "SOURCE_AUTO_POSITION = 1\n");
       }else{
-        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", masterlog, masterpos);
+        fprintf(file, "SOURCE_LOG_FILE = \"%s\"\nSOURCE_LOG_POS = %s\n", initial_source_log, initial_source_pos);
         fprintf(file, "#SOURCE_AUTO_POSITION = {0|1}\n");
       }
       fprintf(file, "myloader_exec_reset_replica = %d\nmyloader_exec_change_source = %d\nmyloader_exec_start_replica = %d\n",
           source_data.exec_reset_replica?1:0 , source_data.exec_change_source?1:0, source_data.exec_start_replica?1:0);
-		}
+    }
     g_message("Written master status");
   }
 
-  g_free(masterlog);
-  g_free(masterpos);
-  g_free(mastergtid);
   fflush(file);
 }
 
@@ -600,14 +618,13 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
     case JOB_TABLE:
       thd_JOB_TABLE(td, job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
-      write_snapshot_info(td->thrconn, job->job_data);
+    case JOB_WRITE_SOURCE_AND_REPLICA_STATUS:
+//      if (source_data.enabled)
+      write_source_info(td->thrconn, job->job_data);
       // Write replica information
       if ((get_product() != SERVER_TYPE_TIDB) && replica_data.enabled)
           write_replica_info(td->thrconn, job->job_data);
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
     case JOB_SHUTDOWN:
@@ -661,17 +678,18 @@ gboolean process_job(struct thread_data *td, struct job *job){
     case JOB_SCHEMA_POST:
       do_JOB_SCHEMA_POST(td,job);
       break;
-    case JOB_WRITE_MASTER_STATUS:
+/*    case JOB_WRITE_MASTER_STATUS:
       write_snapshot_info(td->thrconn, job->job_data);
-      g_async_queue_push(td->conf->binlog_ready,GINT_TO_POINTER(1));
+      g_async_queue_push(td->conf->source_and_replica_status_queue,GINT_TO_POINTER(1));
       g_free(job);
       break;
+      */
     case JOB_SHUTDOWN:
       g_free(job);
       return FALSE;
       break;
     default:
-      m_error("Something very bad happened!");
+      m_error("Something very bad happened! %d", job->type);
     }
   return TRUE;
 }
@@ -688,6 +706,7 @@ void check_pause_resume( struct thread_data *td ){
   }
 }
 
+static
 void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_builder, GAsyncQueue *chunk_step_queue){
   struct job *job = NULL;
   for (;;) {
@@ -720,12 +739,12 @@ void build_lock_tables_statement(struct configuration *conf){
     dbt = (struct db_table *)iter->data;
     conf->lock_tables_statement = g_string_sized_new(30);
     g_string_printf(conf->lock_tables_statement, "LOCK TABLES %s%s%s.%s%s%s READ LOCAL",
-                    identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+                    identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     iter = iter->next;
     for (; iter != NULL; iter = iter->next) {
       dbt = (struct db_table *)iter->data;
       g_string_append_printf(conf->lock_tables_statement, ", %s%s%s.%s%s%s READ LOCAL",
-                             identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
+                             identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str);
     }
   }
   g_mutex_unlock(non_transactional_table->mutex);
@@ -795,6 +814,7 @@ void *working_thread(struct thread_data *td) {
       // Sending LOCK TABLE over all non-transactional tables
       if (td->conf->lock_tables_statement!=NULL){
         g_message("Thread %d: Locking non-transactional tables", td->thread_id);
+        trace("Thread %d: sending: %s", td->thread_id, td->conf->lock_tables_statement->str);
         m_query_critical(td->thrconn, td->conf->lock_tables_statement->str, "Error locking non-transactional tables", NULL);
       }
 
@@ -839,15 +859,17 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
                        char *collation, gchar *ecol)
 {
     /* Green light! */
+/*
   g_mutex_lock(database->ad_mutex);
   if (!database->already_dumped){
     create_job_to_dump_schema(database, conf);
     database->already_dumped=TRUE;
   }
   g_mutex_unlock(database->ad_mutex);
+*/
 
   struct db_table *dbt=NULL;
-  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence);
+  gboolean b= new_db_table(&dbt, conn, conf, database, table, collation, is_sequence, is_view);
   if (b){
   // if a view or sequence we care only about schema
   if ((!is_view || views_as_tables ) && !is_sequence) {
@@ -857,27 +879,29 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
       g_mutex_lock(table_schemas_mutex);
       table_schemas=g_list_prepend( table_schemas, dbt) ;
       g_mutex_unlock(table_schemas_mutex);
-      create_job_to_dump_table_schema( dbt, conf);
+      create_job_to_dump_table_schema( dbt);
     }
     if (dump_triggers && !database->dump_triggers && !dbt->object_to_export.no_trigger) {
-      create_job_to_dump_triggers(conn, dbt, conf);
+      create_job_to_dump_triggers(conn, dbt);
     }
     if (!no_data && !dbt->object_to_export.no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
         if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
-          create_job_to_dump_checksum(dbt, conf);
+          create_job_to_dump_checksum(dbt);
         }
         if (trx_tables ||
           (ecol != NULL && (!g_ascii_strcasecmp("InnoDB", ecol) || !g_ascii_strcasecmp("TokuDB", ecol)))) {
           dbt->is_transactional=TRUE;
           g_mutex_lock(transactional_table->mutex);
           transactional_table->list=g_list_prepend(transactional_table->list,dbt);
+          transactional_table->count++;
           g_mutex_unlock(transactional_table->mutex);
 
         } else {
           dbt->is_transactional=FALSE;
           g_mutex_lock(non_transactional_table->mutex);
           non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          non_transactional_table->count++;
           g_mutex_unlock(non_transactional_table->mutex);
         }
       }else{
@@ -885,17 +909,18 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
           dbt->is_transactional=FALSE;
           g_mutex_lock(non_transactional_table->mutex);
           non_transactional_table->list = g_list_prepend(non_transactional_table->list, dbt);
+          non_transactional_table->count++;
           g_mutex_unlock(non_transactional_table->mutex);
         }
       }
     }
   } else if (is_view) {
     if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_view(dbt, conf);
+      create_job_to_dump_view(dbt);
     }
   } else { // is_sequence
     if (!no_schemas && !dbt->object_to_export.no_schema) {
-      create_job_to_dump_sequence(dbt, conf);
+      create_job_to_dump_sequence(dbt);
     }
   }
   }
@@ -916,18 +941,18 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
   if (dump_routines) {
     g_assert(nroutines > 0);
     for (guint r= 0; r < nroutines; r++) {
-      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->escaped);
-      result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->name);
+      query= g_strdup_printf("SHOW %s STATUS WHERE CAST(Db AS BINARY) = '%s'", routine_type[r], database->source_database_escaped);
+      result=m_store_result(conn, query, m_critical, "Error showing procedure on: %s - Could not execute query", database->source_database);
       g_free(query);
       if (!result)
         return FALSE;
       while ((row= mysql_fetch_row(result))) {
         /* Checks skip list on 'database.sp' string */
-        if (tables_skiplist_file && check_skiplist(database->name, row[1]))
+        if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
           continue;
 
         /* Checks PCRE expressions on 'database.sp' string */
-        if (!eval_regex(database->name, row[1]))
+        if (!eval_regex(database->source_database, row[1]))
           continue;
 
         mysql_free_result(result);
@@ -939,17 +964,17 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 
   if (dump_events) {
     // EVENTS
-    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->name, identifier_quote_character_str);
-    result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->name);
+    query = g_strdup_printf("SHOW EVENTS FROM %s%s%s", identifier_quote_character_str, database->source_database, identifier_quote_character_str);
+    result=m_store_result(conn, query, m_critical, "Error showing events on: %s - Could not execute query", database->source_database);
     g_free(query);
     if (!result)
       return FALSE;
     while ((row = mysql_fetch_row(result))) {
       /* Checks skip list on 'database.sp' string */
-      if (tables_skiplist_file && check_skiplist(database->name, row[1]))
+      if (tables_skiplist_file && check_skiplist(database->source_database, row[1]))
         continue;
       /* Checks PCRE expressions on 'database.sp' string */
-      if ( !eval_regex(database->name, row[1]))
+      if ( !eval_regex(database->source_database, row[1]))
         continue;
 
       mysql_free_result(result);
@@ -961,23 +986,22 @@ gboolean determine_if_schema_is_elected_to_dump_post(MYSQL *conn, struct databas
 }
 
 static
-void dump_database_thread(MYSQL *conn, struct configuration *conf, struct database *database) {
+void dump_database_thread(MYSQL *conn, struct database *database) {
 
-  if (mysql_select_db(conn, database->name)) {
-    g_critical("Could not select database: %s (%s)", database->name, mysql_error(conn));
+  if (mysql_select_db(conn, database->source_database)) {
+    g_critical("Could not select database: %s (%s)", database->source_database, mysql_error(conn));
     errors++;
     return;
   }
 
   const char *query= "SHOW TABLE STATUS";
-  MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->name);
+  MYSQL_RES *result = m_store_result(conn, query,m_critical, "Error showing tables on: %s - Could not execute query", database->source_database);
   if (!result)
     return;
 
   guint ecol= -1, ccol= -1, collcol= -1, rowscol= 0;
   determine_show_table_status_columns(result, &ecol, &ccol, &collcol, &rowscol);
 
-  guint i=0;
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(result))) {
 
@@ -1002,7 +1026,7 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     /* Check for broken tables, i.e. mrg with missing source tbl */
     if (!is_view && row[ecol] == NULL) {
-      g_warning("Broken table detected, please review: %s.%s", database->name,
+      g_warning("Broken table detected, please review: %s.%s", database->source_database,
                 row[0]);
       if (exit_if_broken_table_found)
         m_error("Broken table detected");
@@ -1012,11 +1036,9 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     /* Skip ignored engines, handy for avoiding Merge, Federated or Blackhole
      * :-) dumps */
     if (dump && ignore_engines && !is_view && !is_sequence) {
-      for (i = 0; ignore_engines[i] != NULL; i++) {
-        if (g_ascii_strcasecmp(ignore_engines[i], row[ecol]) == 0) {
-          dump = 0;
-          break;
-        }
+      if (m_pstrstr(ignore_engines, row[ecol])){
+        dump = 0;
+        break;
       }
     }
 
@@ -1033,21 +1055,21 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
     /* In case of table-list option is enabled, check if table is part of the
      * list */
     /* if tables and db both exists , should not call dump_database_thread */
-    if (tables && !is_table_in_list(database->name, row[0], tables))
+    if (tables && !is_table_in_list(database->source_database, row[0], tables))
       continue;
 
     /* Special tables */
-    if (is_mysql_special_tables(database->name, row[0])) {
+    if (is_mysql_special_tables(database->source_database, row[0])) {
       dump = 0;
       continue;
     }
 
     /* Checks skip list on 'database.table' string */
-    if (tables_skiplist_file && check_skiplist(database->name, row[0]))
+    if (tables_skiplist_file && check_skiplist(database->source_database, row[0]))
       continue;
 
     /* Checks PCRE expressions on 'database.table' string */
-    if (!eval_regex(database->name, row[0]))
+    if (!eval_regex(database->source_database, row[0]))
       continue;
 
     /* Check if the table was recently updated */
@@ -1055,8 +1077,8 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
       GList *iter;
       for (iter = no_updated_tables; iter != NULL; iter = iter->next) {
         if (g_ascii_strcasecmp(
-                iter->data, g_strdup_printf("%s.%s", database->name, row[0])) == 0) {
-          g_message("NO UPDATED TABLE: %s.%s", database->name, row[0]);
+                iter->data, g_strdup_printf("%s.%s", database->source_database, row[0])) == 0) {
+          g_message("NO UPDATED TABLE: %s.%s", database->source_database, row[0]);
           dump = 0;
         }
       }
@@ -1064,16 +1086,16 @@ void dump_database_thread(MYSQL *conn, struct configuration *conf, struct databa
 
     if (!dump)
       continue;
-    create_job_to_dump_table(conf, is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
+    create_job_to_dump_table(is_view, is_sequence, database, g_strdup(row[tablecol]), g_strdup(row[collcol]), g_strdup(row[ecol]));
   }
 
   mysql_free_result(result);
 
   if (determine_if_schema_is_elected_to_dump_post(conn,database))
-    create_job_to_dump_post(database, conf);
+    create_job_to_dump_post(database);
 
   if (dump_triggers && database->dump_triggers)
-    create_job_to_dump_schema_triggers(database, conf);
+    create_job_to_dump_schema_triggers(database);
 
   return;
 }

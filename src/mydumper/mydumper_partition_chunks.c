@@ -118,7 +118,7 @@ struct chunk_step_item *get_next_partition_chunk(struct db_table *dbt){
 
 GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
 
-  gchar *query = g_strdup_printf("select PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->name, dbt->table);
+  gchar *query = g_strdup_printf("select DISTINCT PARTITION_NAME from information_schema.PARTITIONS where PARTITION_NAME is not null and TABLE_SCHEMA='%s' and TABLE_NAME='%s'", dbt->database->source_database, dbt->table);
   MYSQL_RES *res=m_store_result(conn,query, NULL,"Partitioning is not supported", NULL);
   g_free(query);
 
@@ -130,9 +130,12 @@ GList * get_partitions_for_table(MYSQL *conn, struct db_table *dbt){
   MYSQL_ROW row;
   while ((row = mysql_fetch_row(res))) {
     if ( (!dbt->partition_regex && eval_partition_regex(row[0])) || (dbt->partition_regex && eval_pcre_regex(dbt->partition_regex, row[0]) ) )
-      partition_list = g_list_append(partition_list, strdup(row[0]));
+      // Perf: Use g_list_prepend (O(1)) instead of g_list_append (O(n))
+      // For tables with many partitions, this saves n*(n-1)/2 pointer traversals
+      partition_list = g_list_prepend(partition_list, strdup(row[0]));
   }
   mysql_free_result(res);
 
-  return partition_list;
+  // Perf: Reverse to restore original order (still O(n) total vs O(n²) with append)
+  return g_list_reverse(partition_list);
 }

@@ -23,13 +23,17 @@
 #include "myloader_worker_loader.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
+#include "myloader_database.h"
+#include "myloader_worker_loader_main.h"
 
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
 void *loader_thread(struct thread_data *td);
+GAsyncQueue *data_job_queue = NULL;
 
 void initialize_loader_threads(struct configuration *conf){
   guint n=0;
+  data_job_queue = g_async_queue_new();
   threads = g_new(GThread *, num_threads);
   loader_td = g_new(struct thread_data, num_threads);
   max_threads_per_table=max_threads_per_table>num_threads?num_threads:max_threads_per_table;
@@ -43,56 +47,75 @@ void initialize_loader_threads(struct configuration *conf){
   }
 }
 
-void *process_loader_thread(struct thread_data * td) {
-  struct control_job *job = NULL;
-  gboolean cont=TRUE;
-  enum file_type ft=-1;
-//  enum file_type ft;
-//  int remaining_shutdown_pass=2*num_threads;
-  struct restore_job *rj=NULL;
-//  guint pass=0;
-  struct db_table * dbt = NULL;
-  while (cont){
-    ft=request_restore_data_job();
-    switch (ft){
-    case DATA:
-      rj = request_next_data_job();
-      dbt = rj->dbt;
-      job=new_control_job(JOB_RESTORE,rj, dbt->database);
-      td->dbt=dbt;
-      cont=process_job(td, job, NULL);
-      g_mutex_lock(dbt->mutex);
-      dbt->current_threads--;
-      trace("%s.%s: done job, threads %u", dbt->database->real_database, dbt->real_table, dbt->current_threads);
-      g_mutex_unlock(dbt->mutex);
-      break;
-    case SHUTDOWN:
-      cont=FALSE;
-      break;
-    case IGNORED:
-      usleep(1000);
-      break;
-    default:
-      NULL;
-    }
-  }
-  enqueue_indexes_if_possible(td->conf);
-  g_message("Thread %d: Data import ended", td->thread_id);
-  maybe_shutdown_control_job();
-//  process_index(td);
-  return NULL;
+struct data_job * new_data_job(enum data_job_type type, struct restore_job *rj){
+  struct data_job * dj = g_new0(struct data_job, 1);
+  dj->type = type;
+  dj->restore_job = rj;
+  return dj;
 }
 
+void data_job_push(enum data_job_type type, struct restore_job *rj){
+  trace("data_job_queue <- %s", data_job_type2str(type));
+  g_async_queue_push(data_job_queue, new_data_job(type, rj) );
+}
+
+void data_ended(){
+  data_job_push(DATA_PROCESS_ENDED, NULL);
+}
+
+gboolean process_loader(struct thread_data * td) {
+  struct db_table * dbt = NULL;
+  struct data_job *dj= (struct data_job *)g_async_queue_pop(data_job_queue);
+  trace("data_job_queue -> %s", data_job_type2str(dj->type)); // dj->restore_job->dbt->database->target_database, dj->restore_job->dbt->source_table_name, dj->restore_job->dbt->current_threads);
+
+  switch (dj->type){
+    case DATA_JOB:
+      dbt=dj->restore_job->dbt;
+      td->dbt=dj->restore_job->dbt;
+      /* Wait for schema to be created before executing INSERT */
+      if (dbt != NULL) {
+        table_lock(dbt);
+        while (dbt->schema_state < CREATED) {
+          trace("Thread %d: waiting for schema on %s.%s",
+                td->thread_id, dbt->database->target_database,
+                dbt->source_table_name);
+          g_cond_wait(dbt->schema_cond, dbt->mutex);
+        }
+        table_unlock(dbt);
+      }
+      process_restore_job(td, dj->restore_job);
+      table_lock(dbt);
+      dbt->current_threads--;
+      trace("%s.%s: done job, threads %u", dbt->database->target_database, dbt->source_table_name, dbt->current_threads);
+      table_unlock(dbt);
+      break;
+    case DATA_PROCESS_ENDED:
+      data_job_push(DATA_PROCESS_ENDED, NULL);
+      return FALSE;
+      break;
+    case DATA_ENDED:
+      return FALSE;
+      break;
+    }
+//  maybe_shutdown_control_job();
+//  process_index(td);
+  return TRUE;
+}
 
 void *loader_thread(struct thread_data *td) {
   struct configuration *conf = td->conf;
+  gboolean cont=TRUE;
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   set_thread_name("T%02u", td->thread_id);
-  trace("Thread %u: Starting import", td->thread_id);
-  process_loader_thread(td);
-
-  trace("Thread %u: ending", td->thread_id);
+  g_message("L-Thread %u: Starting import", td->thread_id);
+  while (cont){
+    data_control_queue_push(REQUEST_DATA_JOB);
+    cont=process_loader(td);
+  }
+//  process_loader_thread(td);
+  enqueue_indexes_if_possible(td->conf);
+  g_message("L-Thread %u: ending", td->thread_id);
   return NULL;
 }
 
@@ -102,7 +125,8 @@ void wait_loader_threads_to_finish(){
   for (n = 0; n < num_threads; n++) {
     g_thread_join(threads[n]);
   }
-  restore_job_finish();
+//  restore_job_finish();
+//  data_control_queue_push(SHUTDOWN);
 }
 
 void inform_restore_job_running(){

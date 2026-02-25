@@ -56,6 +56,7 @@
 #define BINARY_CHARSET "binary"
 #define AUTO_CHARSET "auto"
 extern GList *ignore_errors_list;
+extern GHashTable *ignore_errors_set;
 extern const gchar *start_replica;
 extern const gchar *stop_replica;
 extern const gchar *start_replica_sql_thread;
@@ -72,10 +73,13 @@ extern guint throttle_max_usleep_limit;
 void initialize_zstd_cmd();
 void initialize_gzip_cmd();
 
-struct object_to_export{
+struct object_scope{
   gboolean no_data;
   gboolean no_schema;
+  gboolean no_view;
   gboolean no_trigger;
+  gboolean no_index;
+  gboolean no_constraint;
 };
 
 struct configuration_per_table{
@@ -84,8 +88,10 @@ struct configuration_per_table{
   GHashTable *all_limit_per_table;
   GHashTable *all_num_threads_per_table;
   GHashTable *all_columns_on_select_per_table;
+  GHashTable *all_columns_on_select_replace_per_table;
   GHashTable *all_columns_on_insert_per_table;
   GHashTable *all_object_to_export;
+  GHashTable *all_object_to_import;
   GHashTable *all_partition_regex_per_table;
   GHashTable *all_rows_per_table;
 };
@@ -99,7 +105,7 @@ struct M_ROW{
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
-typedef gchar * (*fun_ptr)(gchar **,gulong*, struct function_pointer*);
+typedef void (*fun_ptr)(GString *,gchar*,gulong*, struct function_pointer*);
 
 struct function_pointer{
   // use when writing
@@ -121,17 +127,9 @@ struct function_pointer{
 };
 
 gchar * remove_new_line(gchar *to);
-char * checksum_table_structure(MYSQL *conn, char *database, char *table);
-char * checksum_table(MYSQL *conn, char *database, char *table);
-char * checksum_process_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure(MYSQL *conn, char *database, char *table);
-char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table);
-char * checksum_view_structure(MYSQL *conn, char *database, char *table);
-char * checksum_database_defaults(MYSQL *conn, char *database, char *table);
-char * checksum_table_indexes(MYSQL *conn, char *database, char *table);
 int write_file(FILE * file, char * buff, int len);
 guint strcount(gchar *text);
-void m_remove0(gchar * directory, const gchar * filename);
+gboolean m_remove0(gchar * directory, const gchar * filename);
 gboolean m_remove(gchar * directory, const gchar * filename);
 GKeyFile * load_config_file(gchar * config_file);
 void load_config_group(GKeyFile *kf, GOptionContext *context, const gchar * group);
@@ -154,6 +152,9 @@ gchar **get_table_list(gchar *tables_list);
 void free_hash_table(GHashTable * hash);
 void remove_definer(GString * data);
 void remove_definer_from_gchar(char * str);
+void replace_definer_from_string(GString * data, char * _replace);
+void replace_definer_from_gchar (GString * output_data, char * str, char * _replace);
+void update_definer(GString *statement, gchar *replace_definer_str, gboolean skip_definer);
 void print_version(const gchar *program);
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
 void initialize_set_names();
@@ -174,6 +175,7 @@ void m_message(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
+gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
 
 void print_int(const char*_key, int val);
@@ -212,9 +214,9 @@ extern guint g_get_num_processors (void);
 char *show_warnings_if_possible(MYSQL *conn);
 int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);
 void initialize_conf_per_table(struct configuration_per_table *cpt);
-void parse_object_to_export(struct object_to_export *object_to_export,gchar *val);
+void parse_object_scope(struct object_scope *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
-
+gchar *build_config_file_dbt_key(const gchar *a, const gchar *b);
 void discard_mysql_output(MYSQL *conn);
 gboolean m_query(  MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...);
 gboolean m_query_verbose(MYSQL *conn, const char *q, void log_fun(const char *, ...) , const char *fmt, ...);
@@ -232,3 +234,5 @@ GThread * m_thread_new(const gchar* title, GThreadFunc func, gpointer data, cons
 void *monitor_throttling_thread (void *queue);
 gchar *set_names_statement_template(gchar *_set_names);
 void execute_set_names(MYSQL *conn, gchar *_set_names);
+gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
+void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision);

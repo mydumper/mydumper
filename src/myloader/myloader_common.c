@@ -33,12 +33,9 @@
 #include "myloader_control_job.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
-
-static GMutex *db_hash_mutex = NULL;
-GHashTable *db_hash=NULL;
+#include "myloader_database.h"
+#include "myloader_table.h"
 GHashTable *tbl_hash=NULL;
-int (*m_close)(void *file) = NULL;
-struct database *database_db=NULL;
 guint refresh_table_list_interval=100;
 guint refresh_table_list_counter=1;
 gboolean skip_table_sorting = FALSE;
@@ -46,14 +43,11 @@ gchar ** zstd_decompress_cmd = NULL;
 gchar ** gzip_decompress_cmd = NULL;
 guint max_number_tables_to_sort_in_table_list = 100000;
 
+extern gboolean for_channel_incompatibility;
+
 void initialize_common(){
   refresh_table_list_counter=refresh_table_list_interval;
-  db_hash_mutex=g_mutex_new();
   tbl_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-  db_hash=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, g_free );
-  if (db){
-    database_db=get_db_hash(g_strdup(db), g_strdup(db));
-  }
 
   if ((exec_per_thread_extension==NULL) && (exec_per_thread != NULL))
     m_critical("--exec-per-thread-extension needs to be set when --exec-per-thread (%s) is used", exec_per_thread);
@@ -110,10 +104,21 @@ void remove_ignore_set_session_from_hash(){
     g_hash_table_remove(set_session_hash,l->data);
     l=l->next;
   }
-
-
 }
 
+gboolean should_ignore_set_statement(GString *data){
+  gboolean r=FALSE;
+  // Perf: Use data->len instead of strlen(data->str)
+  gchar *from_equal=g_strstr_len(data->str, data->len, "=");
+  if (from_equal && ignore_set_list ){
+    *from_equal='\0';
+    gchar * var_name=g_strrstr(data->str," ");
+    var_name++;
+    r=is_in_ignore_set_list(var_name);
+    *from_equal='=';
+  }
+  return r;
+}
 
 gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
   GError *error=NULL;
@@ -159,7 +164,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   gchar **keys=g_key_file_get_keys(kf,group, &len, &error);
   guint _exec_change_source=0, _exec_reset_replica=0, _exec_start_replica=0, _exec_start_replica_until=0;
 
-  gboolean _auto_position = FALSE;
+  gint _auto_position = -1;
   gboolean _source_ssl = FALSE;
   gchar *source_host = NULL;
   guint source_port = 3306;
@@ -189,7 +194,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
         g_string_append_printf(traditional_change_source,", ");
       }
       if (!g_ascii_strcasecmp(keys[i], "SOURCE_AUTO_POSITION")){
-        _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
+        _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
 //        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_SSL")){
         _source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
@@ -236,31 +241,36 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   if (_source_ssl)
     g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
 
-  if (_auto_position){
+  if (_auto_position>=0){
     g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
-    g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
+    if (_auto_position>0)
+      g_string_append(aws_change_source,"CALL mysql.rds_set_external_master_with_auto_position");
   }else
     g_string_append(aws_change_source,"CALL mysql.rds_set_external_master");
   
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
-  if (!_auto_position)
+  if (_auto_position>0)
     g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d, );\n", source_log_file, source_log_pos, _source_ssl);
   else
     g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
 
   g_strfreev(keys);
-  g_string_append(traditional_change_source," FOR CHANNEL '");
-  if (channel_name!=NULL)
-    g_string_append(traditional_change_source,channel_name);
-  g_string_append(traditional_change_source,"';\n");
-
+  if (!for_channel_incompatibility){
+    g_string_append(traditional_change_source," FOR CHANNEL '");
+    if (channel_name!=NULL)
+      g_string_append(traditional_change_source,channel_name);
+    g_string_append(traditional_change_source,"';\n");
+  }
   if (set_gtid_purge){
     if (! rs->gtid_purge)
       rs->gtid_purge=g_string_new("");
-    if (source_control_command == TRADITIONAL)
+    if (source_control_command == TRADITIONAL){
+      if (get_product()==SERVER_TYPE_MARIADB)
+        g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_slave_pos=%s;\n", reset_replica, source_gtid);
+      else
       g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_purged=%s;\n", reset_replica, source_gtid);
-    else
+    }else
       g_string_append_printf(rs->gtid_purge, "CALL mysql.rds_gtid_purged (%s);\n", source_gtid);
   }
   if (_exec_reset_replica){
@@ -299,7 +309,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     if (source_gtid){
       g_string_append_printf(rs->start_replica_until,"SQL_AFTER_GTIDS = %s",source_gtid);
     }else{
-      g_string_append_printf(rs->start_replica_until,"SOURCE_LOG_FILE = '%s', SOURCE_LOG_POS = %"G_GINT64_FORMAT, source_log_file, source_log_pos);
+      g_string_append_printf(rs->start_replica_until,"SOURCE_LOG_FILE = %s, SOURCE_LOG_POS = %"G_GINT64_FORMAT, source_log_file, source_log_pos);
     }
     g_string_append(rs->start_replica_until," FOR CHANNEL '");
     if (channel_name!=NULL)
@@ -331,59 +341,33 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
+  // Perf: Cache strlen results to avoid calling strlen 9x per invocation
+  // This function is called for every file in dump directory (~750K+ files for 250K tables)
+  gsize str_len = strlen(str);
+  gsize suffix_len = strlen(suffix);
+
   if (has_exec_per_thread_extension(str)){
-    return g_strstr_len(&(str[strlen(str)-strlen(exec_per_thread_extension)-strlen(suffix)]), strlen(str)-strlen(exec_per_thread_extension),suffix) != NULL;
-  }else if ( g_str_has_suffix(str, GZIP_EXTENSION) ){
-    return g_strstr_len(&(str[strlen(str)-strlen(GZIP_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(GZIP_EXTENSION),suffix) != NULL;
-  }else if ( g_str_has_suffix(str, ZSTD_EXTENSION) ){
-    return g_strstr_len(&(str[strlen(str)-strlen(ZSTD_EXTENSION)-strlen(suffix)]), strlen(str)-strlen(ZSTD_EXTENSION),suffix) != NULL;
-  }
-
-  return g_str_has_suffix(str,suffix);
-}
-struct database * new_database(gchar *database, gchar *filename){
-  struct database * d = g_new(struct database, 1);
-  d->name=database;
-  d->real_database = g_strdup(db ? db : d->name);
-  d->filename = filename;
-  d->mutex=g_mutex_new();
-  d->sequence_queue= g_async_queue_new();
-  d->queue=g_async_queue_new();;
-  d->schema_state=NOT_FOUND;
-  d->schema_checksum=NULL;
-  d->post_checksum=NULL;
-  d->triggers_checksum=NULL;
-  return d;
-}
-
-struct database * get_db_hash(gchar *filename, gchar *name){
-  g_mutex_lock(db_hash_mutex);
-  struct database * d=g_hash_table_lookup(db_hash, filename);
-  if (d==NULL){
-    d=new_database(g_strdup(name), filename);
-    g_hash_table_insert(db_hash, filename, d);
-    if (g_strcmp0(filename,name))
-      g_hash_table_insert(db_hash, g_strdup(name), d);
-    d=g_hash_table_lookup(db_hash, name);
-  }else{
-    if (filename != name){
-      d->name=g_strdup(name);
-      d->real_database = g_strdup(db ? db : d->name);
+    gsize ext_len = strlen(exec_per_thread_extension);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
     }
+    return FALSE;
+  }else if ( g_str_has_suffix(str, GZIP_EXTENSION) ){
+    gsize ext_len = strlen(GZIP_EXTENSION);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
+    }
+    return FALSE;
+  }else if ( g_str_has_suffix(str, ZSTD_EXTENSION) ){
+    gsize ext_len = strlen(ZSTD_EXTENSION);
+    if (str_len > ext_len + suffix_len) {
+      return g_strstr_len(&(str[str_len - ext_len - suffix_len]), str_len - ext_len, suffix) != NULL;
+    }
+    return FALSE;
   }
-  g_mutex_unlock(db_hash_mutex);
-  return d;
+  return g_str_has_suffix(str, suffix);
 }
 
-/*
-struct database * db_hash_lookup(gchar *database){
-  struct database *r=NULL;
-  g_mutex_lock(db_hash_mutex);
-  r=g_hash_table_lookup(db_hash,database);
-  g_mutex_unlock(db_hash_mutex);
-  return r;
-}
-*/
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
   if (table_name == NULL)
     g_error("Table name is null on eval_table()");
@@ -401,32 +385,7 @@ gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
   g_mutex_unlock(mutex);
   return eval_regex(db_name, table_name);
 }
-
-gboolean execute_use(struct connection_data *cd){
-  if (cd->current_database){
-    gchar *query = g_strdup_printf("USE `%s`", cd->current_database->real_database);
-    if (m_query_warning(cd->thrconn, query, "Thread %d: Error switching to database `%s`", cd->thread_id, cd->current_database)) {
-      g_free(query);
-      return TRUE;
-    }
-    g_free(query);
-  }else{
-    g_warning("Thread %ld with connection %ld: Not able to switch database",cd->thread_id, cd->connection_id);
-  }
-  return FALSE;
-}
-
-void execute_use_if_needs_to(struct connection_data *cd, struct database *database, const gchar * msg){
-  if ( database != NULL && (db == NULL || cd->current_database==NULL)){
-    if (cd->current_database==NULL || g_strcmp0(database->real_database, cd->current_database->real_database) != 0){
-      cd->current_database=database;
-      if (execute_use(cd)){
-        m_critical("Thread %ld with connection %ld: Error switching to database `%s` %s: %s", cd->thread_id, cd->connection_id, cd->current_database->real_database, msg, mysql_error(cd->thrconn));
-      }
-    }
-  }
-}
-
+/*
 enum file_type get_file_type (const char * filename){
 
   if ((!strcmp(filename,          "metadata") || 
@@ -479,6 +438,7 @@ enum file_type get_file_type (const char * filename){
 
   return IGNORED;
 }
+*/
 
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table){
   gchar **split_filename = g_strsplit(filename, sufix, 0);
@@ -494,42 +454,47 @@ void get_database_table_from_file(const gchar *filename,const char *sufix,gchar 
   g_strfreev(split);
 }
 
-int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes){
-  return global_process_create_table_statement(statement, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->real_table, split_indexes);
-}
-
-gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
-  gchar *a_key=build_dbt_key(((struct db_table *)a)->database->real_database,((struct db_table *)a)->table);
-  gchar *b_key=build_dbt_key(((struct db_table *)b)->database->real_database,((struct db_table *)b)->table);
-  struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
-  struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
-  g_free(a_key);
-  g_free(b_key);
-  return a_val->rows < b_val->rows;
-}
-
-gint compare_dbt_short(gconstpointer a, gconstpointer b){
-  return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
-}
-
 void refresh_table_list_without_table_hash_lock(struct configuration *conf, gboolean force){
+  trace("refresh_table_list requested");
   if (force || g_atomic_int_dec_and_test(&refresh_table_list_counter)){
+    trace("refresh_table_list granted");
     GList * table_list=NULL;
+    GList * loading_table_list=NULL;
     GHashTableIter iter;
     gchar * lkey;
     g_mutex_lock(conf->table_list_mutex);
     g_hash_table_iter_init ( &iter, conf->table_hash );
     struct db_table *dbt=NULL;
+    gboolean _skip_table_sorting= skip_table_sorting || g_hash_table_size(conf->table_hash) > max_number_tables_to_sort_in_table_list;
     while ( g_hash_table_iter_next ( &iter, (gpointer *) &lkey, (gpointer *) &dbt ) ) {
-      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
+//      if (skip_table_sorting || g_list_length(table_list) > max_number_tables_to_sort_in_table_list)
+      trace("table_list inserting: %s", lkey);
+      if (_skip_table_sorting){
         table_list=g_list_prepend(table_list,dbt);
-      else
-        table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+        table_lock(dbt);
+        if (dbt->schema_state < DATA_DONE)
+          loading_table_list=g_list_prepend(loading_table_list,dbt);
+        table_unlock(dbt);
+      }else{
+//        table_list=g_list_insert_sorted(table_list,dbt,&compare_dbt_short);
+        table_list=g_list_prepend(table_list,dbt);
+        table_lock(dbt);
+        if (dbt->schema_state < DATA_DONE)
+          // Perf: Use g_list_prepend (O(1)) instead of g_list_insert_sorted (O(n))
+          // We'll sort the entire list once after the loop - O(n log n) total instead of O(n²)
+          loading_table_list=g_list_prepend(loading_table_list,dbt);
+        table_unlock(dbt);
+      }
     }
     g_list_free(conf->table_list);
     conf->table_list=table_list;
+    g_list_free(conf->loading_table_list);
+    // Perf: Single O(n log n) sort instead of O(n²) insert_sorted in loop
+    conf->loading_table_list=g_list_sort(loading_table_list, &compare_dbt_short);
     g_atomic_int_set(&refresh_table_list_counter,refresh_table_list_interval);
     g_mutex_unlock(conf->table_list_mutex);
+  }else{
+    trace("refresh_table_list denied");
   }
 }
 
@@ -566,10 +531,10 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
 gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
                            const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  const char *checksum= fun(conn, dbt->database->real_database, dbt->real_table);
+  const char *checksum= fun(conn, dbt->database->target_database, dbt->source_table_name);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, dbt->database->real_database, dbt->real_table);
+                    "%s confirmed for %s.%s", message, dbt->database->target_database, dbt->source_table_name);
 }
 
 gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,

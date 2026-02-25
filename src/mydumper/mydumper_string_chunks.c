@@ -290,7 +290,7 @@ struct chunk_step_item *get_next_string_chunk(struct db_table *dbt){
         goto end;
       }
       if (is_last_step(csi)){
-        trace("Last chunk on step in `%s`.`%s` assigned", dbt->database->name, dbt->table);
+        trace("Last chunk on step in `%s`.`%s` assigned", dbt->database->source_database, dbt->table);
         csi->status=UNSPLITTABLE;
         csi->deep=csi->deep+1;
         new_csi=clone_string_chunk_step_item(csi);
@@ -398,7 +398,7 @@ gboolean refresh_string_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_
                         "SELECT %s MIN(%s%s%s),MAX(%s%s%s) FROM %s%s%s.%s%s%s%s%s",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str, identifier_quote_character_str, csi->field, identifier_quote_character_str,
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         csi->prefix?" WHERE ":"", csi->prefix?csi->prefix->str:""), NULL, "Query to get a new min and max failed", NULL);
   trace("refresh_string_min_max: %s", query);
   g_free(query);
@@ -433,7 +433,7 @@ gboolean update_string_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s ASC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where->str, 
                         identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
   g_string_free(where,TRUE);
@@ -467,7 +467,7 @@ gboolean update_string_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_i
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s DESC LIMIT 1",
                         is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
-                        identifier_quote_character_str, dbt->database->name, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where->str,
                         identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new max failed", NULL);
   g_string_free(where,TRUE);
@@ -648,7 +648,7 @@ retry:
       close_files(tj);
       write_table_job_into_file(tj);
     }else if (is_last(csi)) {
-      trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->name, tj->dbt->table);
+      trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
       write_table_job_into_file(tj);
     }else{
       GDateTime *from = g_date_time_new_now_local();
@@ -679,7 +679,7 @@ retry:
 
       if (diff>0 && tj->num_rows_of_last_run>0){
         cs->string_step.step=tj->num_rows_of_last_run*max_time_per_select*G_TIME_SPAN_SECOND/diff;
-        trace("Thread %d: I-Chunk 3: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->name, tj->dbt->table, cs->string_step.step, tj->num_rows_of_last_run, diff);
+        trace("Thread %d: I-Chunk 3: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->source_database, tj->dbt->table, cs->string_step.step, tj->num_rows_of_last_run, diff);
       }else{
         cs->string_step.step*=2;
         cs->string_step.check_min=TRUE;

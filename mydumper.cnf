@@ -6,6 +6,9 @@
 #
 #############################################################################
 
+[mydumper]
+ignore-engines=tokudb
+
 [mydumper_global_variables]
 # The global variables changed in this section are rolled back after execution unless QUIT signal is sent.
 
@@ -15,6 +18,12 @@
 [mydumper_session_variables]
 # These are examples of variables that you might want to change
 # wait_timeout = 300
+#
+# If you do not set SQL_MODE in this section, mydumper will detect it from the server.
+# In mydumper_start_dump.c::detect_sql_mode will modify the detected SQL_MODE in this way:
+# - it will add NO_AUTO_VALUE_ON_ZERO if not found
+# - it will remove NO_BACKSLASH_ESCAPES, PIPES_AS_CONCAT, NO_KEY_OPTIONS, NO_TABLE_OPTIONS, NO_FIELD_OPTIONS and STRICT_TRANS_TABLES if present
+#
 # sql_mode = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'
 # sql_mode='ANSI_QUOTES';
 CHARACTER_SET_RESULTS = NULL
@@ -40,3 +49,41 @@ SQL_LOG_BIN=0
 SQL_MODE='NO_AUTO_VALUE_ON_ZERO' /*!40101
 UNIQUE_CHECKS=1 /*!40114
 FOREIGN_KEY_CHECKS=0 /*!40114
+
+[mydumper_percona_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+
+[mydumper_mysql_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+
+[mydumper_mariadb_11]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+
+[mydumper_mariadb_12]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+
+
+[mydumper_google_8]
+set-names=utf8mb4,utf8mb4
+default-character-set=utf8mb4,utf8mb4
+load-data-character-set=binary
+skip-ddl-locks=1
+table-engine-for-view-dependency=InnoDB
+
+#[`schema`.`table`]
+# where = column > 20
+# limit = 1000
+# object_to_export = SCHEMA
+# columns_on_select = qty,price+20
+# columns_on_insert = qty,price
+# rows = 1000000
+# columns_on_select_replace=`country_id`:2*`country_id`,`country`:left(`country`,4)
+

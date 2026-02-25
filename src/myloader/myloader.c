@@ -34,9 +34,9 @@
 #include "myloader_common.h"
 #include "myloader_directory.h"
 #include "myloader_restore.h"
-#include "myloader_pmm_thread.h"
+#include "myloader_pmm.h"
 #include "myloader_restore_job.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
@@ -44,6 +44,8 @@
 #include "myloader_worker_loader.h"
 #include "myloader_worker_post.h"
 #include "myloader_control_job.h"
+#include "myloader_database.h"
+#include "myloader_worker_loader_main.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -58,7 +60,7 @@ gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
-enum checksum_modes checksum_mode= CHECKSUM_FAIL;
+enum checksum_modes checksum_mode= CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
@@ -66,13 +68,14 @@ gboolean skip_post = FALSE;
 gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
+guint num_sequences = 0;
 guint sequences = 0;
 guint sequences_processed = 0;
 GMutex sequences_mutex;
 gchar *source_db = NULL;
 extern guint errors;
 guint max_errors= 0;
-struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+struct restore_errors detailed_errors = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 guint max_threads_for_schema_creation=4;
 guint max_threads_for_index_creation=4;
 guint max_threads_for_post_creation= 1;
@@ -80,24 +83,16 @@ guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
-GMutex *load_data_list_mutex=NULL;
-GHashTable * load_data_list = NULL;
-//unsigned long long int total_data_sql_files = 0;
-//unsigned long long int progress = 0;
-//GHashTable *db_hash=NULL;
-extern GHashTable *db_hash;
+extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
-extern gboolean skip_definer;
 extern gboolean local_infile;
+extern guint64 max_transaction_size;
+extern guint optimize_keys_batchsize;
 
 const char DIRECTORY[] = "import";
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
 GHashTable * set_session_hash=NULL;
-
-gchar *pmm_resolution = NULL;
-gchar *pmm_path = NULL;
-gboolean pmm = FALSE;
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
   GHashTable * _set_session_hash=initialize_hash_of_session_variables();
@@ -108,6 +103,15 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
   return _set_session_hash;
 }
 
+static
+void detect_group_replication_transaction_size_limit(MYSQL * conn) {
+  guint64 _max_transaction_size=0;
+  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@group_replication_transaction_size_limit / 1024 / 1024",m_message, m_message, "Using default transaction limit", NULL);
+  if (mr->row)
+    _max_transaction_size=strtoll(mr->row[0], NULL, 10);
+  max_transaction_size=_max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
+  m_store_result_row_free(mr);
+}
 
 gchar * print_time(GTimeSpan timespan){
   GTimeSpan days   = timespan/G_TIME_SPAN_DAY;
@@ -125,6 +129,58 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
 }
 
 
+void initialize_directories(){
+  char *current_dir=g_get_current_dir();
+  if (!input_directory) {
+    if (stream){
+      GDateTime * datetime = g_date_time_new_now_local();
+      char *datetimestr;
+      datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
+
+      directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
+      g_date_time_unref(datetime);
+      g_free(datetimestr);
+    }else{
+      if(!help)
+        m_critical("a directory needs to be specified, see --help\n");
+    }
+  } else {
+    directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
+    if (stream){
+      if (g_file_test(input_directory,G_FILE_TEST_IS_DIR) && !no_stream)
+          m_critical("Backup directory (-d) must not exist when --stream / --stream=TRADITIONAL");
+    }else{
+      if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR))
+        m_critical("the specified directory doesn't exists\n");
+      char *p = g_strdup_printf("%s/metadata", directory);
+      if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
+        m_critical("the specified directory %s is not a mydumper backup as metadata file was not found in it",directory);
+      }
+    }
+  }
+
+  if (fifo_directory){
+    if (fifo_directory[0] != '/' ){
+      gchar *tmp_fifo_directory=fifo_directory;
+      fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
+    }
+  }else{
+    // Set fifo temporary director
+    fifo_directory=build_tmp_dir_name();
+  }
+
+  if (load_data_tmp_directory){
+    if (fifo_directory[0] != '/' ){
+      gchar *tmp_load_data_tmp_directory=load_data_tmp_directory;
+      load_data_tmp_directory=g_strdup_printf("%s/%s", current_dir, tmp_load_data_tmp_directory);
+    }
+  }else{
+    load_data_tmp_directory=build_tmp_dir_name();
+  }
+
+  g_free(current_dir);
+}
+
 void show_dbt(void* _key, void* dbt, void *total){
   (void) dbt;
   (void) total;
@@ -135,203 +191,7 @@ void show_dbt(void* _key, void* dbt, void *total){
  //        //*((guint *)total) + 2+ ((struct db_table*)dbt)->schema_state >= CREATED /*ALL_DONE*/ ? 1 : 0;
   }
 
-void create_database(struct thread_data *td, gchar *database) {
-
-  const gchar *filename =
-      g_strdup_printf("%s-schema-create.sql%s", database, exec_per_thread_extension);
-  const gchar *filepath = g_strdup_printf("%s/%s-schema-create.sql%s",
-                                            directory, database, exec_per_thread_extension);
-
-  if (drop_database)
-    execute_drop_database(td, database);
-  if (g_file_test(filepath, G_FILE_TEST_EXISTS)) {
-    g_atomic_int_add(&(detailed_errors.schema_errors), restore_data_from_mydumper_file(td, filename, TRUE, NULL));
-  } else {
-    GString *data = g_string_new("CREATE DATABASE IF NOT EXISTS ");
-    g_string_append_printf(data,"`%s`", database);
-    trace("Creating schema %s", database);
-    if (restore_data_in_gstring_extended(td, data , TRUE, NULL, m_critical, "Failed to create database: %s", database) )
-      g_atomic_int_inc(&(detailed_errors.schema_errors));
-    g_string_free(data, TRUE);
-  }
-
-  return;
-}
-
-
-void print_errors(){
-  if (detailed_errors.tablespace_errors ||
-    detailed_errors.schema_errors ||
-    detailed_errors.data_errors ||
-    detailed_errors.view_errors ||
-    detailed_errors.sequence_errors ||
-    detailed_errors.index_errors ||
-    detailed_errors.trigger_errors ||
-    detailed_errors.constraints_errors ||
-    detailed_errors.post_errors ||
-    detailed_errors.retries)
-    g_message(
-    "Errors found:\n"
-    "- Tablespace:\t%d\n"
-    "- Schema:    \t%d\n"
-    "- Data:      \t%d\n"
-    "- View:      \t%d\n"
-    "- Sequence:  \t%d\n"
-    "- Index:     \t%d\n"
-    "- Trigger:   \t%d\n"
-    "- Constraint:\t%d\n"
-    "- Post:      \t%d\n"
-    "Warnings found:\n"
-    "- Data:\t%d\n"
-    "Retries:\t%d",
-    detailed_errors.tablespace_errors,
-    detailed_errors.schema_errors,
-    detailed_errors.data_errors,
-    detailed_errors.view_errors,
-    detailed_errors.sequence_errors,
-    detailed_errors.index_errors,
-    detailed_errors.trigger_errors,
-    detailed_errors.constraints_errors,
-    detailed_errors.post_errors,
-    detailed_errors.data_warnings,
-    detailed_errors.retries);
-
-
-}
-
-int main(int argc, char *argv[]) {
-  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
-
-  GError *error = NULL;
-  GOptionContext *context;
-
-  setlocale(LC_ALL, "");
-  g_thread_init(NULL);
-  set_thread_name("MNT");
-
-  signal(SIGCHLD, SIG_IGN);
-
-  context = load_contex_entries();
-
-  gchar ** tmpargv=g_strdupv(argv);
-  int tmpargc=argc;
-  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
-    m_critical("option parsing failed: %s, try --help\n", error->message);
-  }
-  g_strfreev(tmpargv);
-
-  if (db == NULL && source_db != NULL) {
-    db = g_strdup(source_db);
-  }
-
-  if (help){
-    printf("%s", g_option_context_get_help (context, FALSE, NULL));
-  }
-
-  if (debug) {
-    set_debug();
-    verbose=3;
-  }
-  set_verbose(verbose);
-
-  if (overwrite_unsafe)
-    overwrite_tables= TRUE;
-
-  check_num_threads();
-
-  if (num_threads > max_threads_per_table)
-    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
-  else
-    g_message("Using %u loader threads", num_threads);
-
-  initialize_common_options(context, "myloader");
-//  g_option_context_free(context);
-  conf.context=context;  
-
-  hide_password(argc, argv);
-  ask_password();
-
-  if (program_version) {
-    print_version("myloader");
-    exit(EXIT_SUCCESS);
-  }
-
-  initialize_set_names();
-
-
-  load_data_list_mutex=g_mutex_new();
-  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
-
-  if (pmm_path){
-    pmm=TRUE;
-    if (!pmm_resolution){
-      pmm_resolution=g_strdup("high");
-    }
-  }else if (pmm_resolution){
-    pmm=TRUE;
-    pmm_path=g_strdup_printf("/usr/local/percona/pmm2/collectors/textfile-collector/%s-resolution",pmm_resolution);
-  }
-
-  GThread *pmmthread = NULL;
-  if (pmm){
-
-    g_message("Using PMM resolution %s at %s", pmm_resolution, pmm_path);
-    pmmthread =
-        m_thread_new("myloader_pmm",pmm_thread, &conf, "PMM thread could not be created");
-    if (pmmthread == NULL) {
-      m_critical("Could not create pmm thread");
-    }
-  }
-  initialize_restore_job();
-  char *current_dir=g_get_current_dir();
-  if (!input_directory) {
-    if (stream){
-      GDateTime * datetime = g_date_time_new_now_local();
-      char *datetimestr;
-      datetimestr=g_date_time_format(datetime,"\%Y\%m\%d-\%H\%M\%S");
-
-      directory = g_strdup_printf("%s/%s-%s",current_dir, DIRECTORY, datetimestr);
-      create_dir(directory);
-      g_date_time_unref(datetime);
-      g_free(datetimestr); 
-    }else{
-      if(!help)
-        m_critical("a directory needs to be specified, see --help\n");
-    }
-  } else {
-    directory=g_str_has_prefix(input_directory,"/")?input_directory:g_strdup_printf("%s/%s", current_dir, input_directory);
-    if (stream){
-      if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
-        create_dir(directory);
-      }else{
-        if (!no_stream){
-          m_critical("Backup directory (-d) must not exist when --stream / --stream=TRADITIONAL");
-        }
-      }
-    }else{
-      if (!g_file_test(input_directory,G_FILE_TEST_IS_DIR)){
-        m_critical("the specified directory doesn't exists\n");
-      }
-      char *p = g_strdup_printf("%s/metadata", directory);
-      if (!g_file_test(p, G_FILE_TEST_EXISTS)) {
-        m_critical("the specified directory %s is not a mydumper backup as metadata file was not found in it",directory);
-      }
-//      initialize_directory();
-    }
-  }
-  if (fifo_directory){
-    if (fifo_directory[0] != '/' ){
-      gchar *tmp_fifo_directory=fifo_directory;
-      fifo_directory=g_strdup_printf("%s/%s", current_dir, tmp_fifo_directory);
-    }
-  }else{
-    // Create temporary director
-    fifo_directory=build_tmp_dir_name();
-  }
-  create_dir(fifo_directory);
-  g_message("Using %s as FIFO directory, please remove it if restoration fails", fifo_directory);
-
-  if (help){
+void print_help(){
     print_string("host", hostname);
     print_string("user", username);
     print_string("password", password);
@@ -374,7 +234,7 @@ int main(int argc, char *argv[]) {
       print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
     }else
       print_string("optimize-keys",NULL);
-
+    print_int("optimize-keys-batchsize",optimize_keys_batchsize);
     print_bool("no-schemas",no_schemas);
 
     print_bool("local-infile", local_infile);
@@ -399,12 +259,13 @@ int main(int argc, char *argv[]) {
     print_string("set-names",set_names_in_conn_by_default);
 
     print_bool("skip-definer",skip_definer);
+    print_string("replace-definer",replace_definer);
     print_bool("help",help);
 
     print_string("directory",input_directory);
     print_string("logfile",logfile);
 
-    print_string("database",db);
+    print_string("database",target_db);
     print_string("quote-character",identifier_quote_character_str);
     print_bool("resume",resume);
     print_int("threads",num_threads);
@@ -414,15 +275,174 @@ int main(int argc, char *argv[]) {
     print_string("defaults-file",defaults_file);
     print_string("defaults-extra-file",defaults_extra_file);
     print_string("fifodir",fifo_directory);
+    print_string("load-data-tmp-directory",load_data_tmp_directory);
     exit(EXIT_SUCCESS);
+}
+
+
+void print_errors(){
+  if (detailed_errors.tablespace_errors ||
+    detailed_errors.schema_errors ||
+    detailed_errors.data_errors ||
+    detailed_errors.data_warnings ||
+    detailed_errors.view_errors ||
+    detailed_errors.sequence_errors ||
+    detailed_errors.index_errors ||
+    detailed_errors.trigger_errors ||
+    detailed_errors.constraints_errors ||
+    detailed_errors.post_errors ||
+    detailed_errors.skip_errors ||
+    detailed_errors.retries)
+    g_message(
+    "Errors found:\n"
+    "- Tablespace:\t%d\n"
+    "- Schema:    \t%d\n"
+    "- Data:      \t%d\n"
+    "- View:      \t%d\n"
+    "- Sequence:  \t%d\n"
+    "- Index:     \t%d\n"
+    "- Trigger:   \t%d\n"
+    "- Constraint:\t%d\n"
+    "- Post:      \t%d\n"
+    "Warnings found:\n"
+    "- Data:\t%d\n"
+    "- Skip Schema:\t%d\n"
+    "Retries:\t%d",
+    detailed_errors.tablespace_errors,
+    detailed_errors.schema_errors,
+    detailed_errors.data_errors,
+    detailed_errors.view_errors,
+    detailed_errors.sequence_errors,
+    detailed_errors.index_errors,
+    detailed_errors.trigger_errors,
+    detailed_errors.constraints_errors,
+    detailed_errors.post_errors,
+    detailed_errors.data_warnings,
+    detailed_errors.skip_errors,
+    detailed_errors.retries);
+
+
+}
+
+int main(int argc, char *argv[]) {
+  struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
+
+  GError *error = NULL;
+  GOptionContext *context;
+
+  setlocale(LC_ALL, "");
+  g_thread_init(NULL);
+  set_thread_name("MNT");
+
+  signal(SIGCHLD, SIG_IGN);
+
+  context = load_contex_entries();
+
+  gchar ** tmpargv=g_strdupv(argv);
+  int tmpargc=argc;
+  if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
+    m_critical("option parsing failed: %s, try --help\n", error->message);
   }
 
-  g_free(current_dir);
+  // Loading the defaults file:
+  initialize_common_options(context, "myloader");
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  g_strfreev(tmpargv);
+
+  if (target_db == NULL && source_db != NULL) {
+    target_db = g_strdup(source_db);
+  }
+
+  if (overwrite_unsafe)
+    overwrite_tables= TRUE;
+
+  // Auto-scale schema/index threads based on CPU count
+  // Only auto-scale if user hasn't explicitly set these values (default is 4)
+  guint cpu_count = g_get_num_processors();
+  if (max_threads_for_schema_creation == 4 && cpu_count > 4) {
+    guint auto_schema_threads = cpu_count > 8 ? 8 : cpu_count;
+    max_threads_for_schema_creation = auto_schema_threads;
+  }
+  if (max_threads_for_index_creation == 4 && cpu_count > 4) {
+    guint auto_index_threads = cpu_count > 8 ? 8 : cpu_count;
+    max_threads_for_index_creation = auto_index_threads;
+  }
+
+  check_num_threads();
+
+  initialize_set_names();
+
+  if (debug) {
+    set_debug();
+    verbose=3;
+  }
+
+  if (help){
+    printf("%s", g_option_context_get_help (context, FALSE, NULL));
+  }
+
+  if (program_version) {
+    print_version("myloader");
+    if (!help)
+      exit(EXIT_SUCCESS);
+    printf("\n");
+  }
+
+  if (help)
+    print_help();
+
+  set_verbose(verbose);
+
+  g_message("MyDumper restore version: %s", VERSION);
+
+  if (num_threads > max_threads_per_table)
+    g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
+  else
+    g_message("Using %u loader threads", num_threads);
+
+  // Starts modifying file in disk, creating objects and restore
+
+  hide_password(argc, argv);
+  ask_password();
+
+  initialize_pmm();
+
+  initialize_restore_job();
+  initialize_directories();
+
+  conf.context=context;
+
+  initialize_restore();
+
+  if(stream && !no_stream)
+    create_dir(directory);
+  create_dir(fifo_directory);
+  create_dir(load_data_tmp_directory);
+
+  g_message("Using %s as FIFO directory and %s as LOAD DATA temporary directory, please remove them if restoration fails", fifo_directory, load_data_tmp_directory);
+
+  start_pmm_thread((void *)&conf);
+
   g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
     read_tables_skiplist(tables_skiplist_file, &errors);
   initialize_process(&conf);
+  initialize_table(&conf);
+  initialize_database();
   initialize_common();
   initialize_connection(MYLOADER);
   initialize_regex(NULL);
@@ -446,6 +466,8 @@ int main(int argc, char *argv[]) {
   }
 	initialize_conf_per_table(&conf_per_table);
   load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
+  if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
+    detect_group_replication_transaction_size_limit(conn);
 
   // To here.
   conf.database_queue = g_async_queue_new();
@@ -455,6 +477,7 @@ int main(int argc, char *argv[]) {
   conf.post_table_queue = g_async_queue_new();
   conf.post_queue = g_async_queue_new();
   conf.index_queue = g_async_queue_new();
+  conf.ready_table_queue = g_async_queue_new();
   conf.view_queue = g_async_queue_new();
   conf.ready = g_async_queue_new();
   conf.pause_resume = g_async_queue_new();
@@ -486,7 +509,7 @@ int main(int argc, char *argv[]) {
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
-  initialize_intermediate_queue(&conf);
+  initialize_process_filename(&conf);
 
   if (stream){
     if (resume){
@@ -524,12 +547,9 @@ int main(int argc, char *argv[]) {
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-
-  if (database_db){
-    if (!no_schemas)
-      create_database(t, database_db->real_database);
-    database_db->schema_state=CREATED;
-  }
+  g_message("start_database");
+  start_database(t);
+  g_message("start_worker_schema");
   start_worker_schema();
   initialize_loader_threads(&conf);
 
@@ -549,9 +569,9 @@ int main(int argc, char *argv[]) {
     tl=tl->next;
   }
 
-  wait_schema_worker_to_finish();
-  wait_loader_threads_to_finish();
-  wait_control_job();
+  wait_schema_worker_to_finish(&conf);
+  wait_worker_loader_main();
+  enqueue_indexes_if_possible(&conf);
   create_index_shutdown_job(&conf);
   wait_index_worker_to_finish();
   initialize_post_loding_threads(&conf);
@@ -576,17 +596,20 @@ int main(int argc, char *argv[]) {
   if (checksum_mode != CHECKSUM_SKIP) {
     GHashTableIter iter;
     gchar *lkey;
-    g_hash_table_iter_init(&iter, db_hash);
+    g_hash_table_iter_init(&iter, database_hash);
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
       if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->real_database, d->schema_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->schema_checksum, conn,
                                   "Schema create checksum", checksum_database_defaults);
       if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->real_database, d->post_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->post_checksum, conn,
                                   "Post checksum", checksum_process_structure);
+      if (d->events_checksum != NULL && !skip_post)
+        checksum_ok&=checksum_database_template(d->target_database, d->events_checksum, conn,
+                                  "Events checksum", checksum_events_structure_from_database);
       if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->real_database, d->triggers_checksum, conn,
+        checksum_ok&=checksum_database_template(d->target_database, d->triggers_checksum, conn,
                                   "Triggers checksum", checksum_trigger_structure_from_database);
     }
   }
@@ -617,6 +640,11 @@ int main(int argc, char *argv[]) {
     execute_replication_commands(conn,replication_statements->change_replication_source->str);
   }
 
+  if (replication_statements->gtid_purge){
+    g_message("Sending GTID Purge");
+    execute_replication_commands(conn,replication_statements->gtid_purge->str);
+  }
+
   if (replication_statements->start_replica){
     g_message("Sending start replica");
     execute_replication_commands(conn,replication_statements->start_replica->str);
@@ -638,10 +666,7 @@ int main(int argc, char *argv[]) {
   g_free(directory);
   free_loader_threads();
 
-  if (pmm){
-    kill_pmm_thread();
-//    g_thread_join(pmmthread);
-  }
+  stop_pmm_thread();
 
 //  g_hash_table_foreach(conf.table_hash,&show_dbt, NULL);
   free_table_hash(conf.table_hash);
@@ -662,13 +687,14 @@ int main(int argc, char *argv[]) {
     struct db_table * dbt=tl->data;
     GTimeSpan diff1=g_date_time_difference(dbt->start_index_time,dbt->start_time);
     GTimeSpan diff2=g_date_time_difference(dbt->finish_time,dbt->start_index_time);
-    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->real_database,dbt->real_table);
+    g_message("%s\t| %s\t| %s\t| `%s`.`%s`",print_time(diff1),print_time(diff2),print_time(diff1+diff2),dbt->target_database,dbt->source_table_name);
     tl=tl->next;
   }
 */
 
   if (key_file)  g_key_file_free(key_file);
   g_remove(fifo_directory);
+  g_remove(load_data_tmp_directory);
   g_message("Restore completed");
 
   if (logoutfile) {

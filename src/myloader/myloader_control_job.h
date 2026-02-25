@@ -41,16 +41,10 @@ union control_job_data {
 struct control_job {
   enum control_job_type type;
   union control_job_data data;
-  struct database* use_database;
+//  struct database* use_database;
 };
 
 struct control_job * new_control_job (enum control_job_type type, void *job_data, struct database *use_database);
-//gboolean process_job(struct thread_data *td, struct control_job *job, gboolean *retry);
-void enroute_into_the_right_queue_based_on_file_type(enum file_type current_ft);
-void cjt_resume();
 void initialize_control_job (struct configuration *conf);
 void wait_control_job();
-void maybe_shutdown_control_job();
-enum file_type request_restore_data_job();
-struct restore_job * request_next_data_job();
 #endif

@@ -22,7 +22,6 @@
 #include "common.h"
 #include "config.h"
 #include "common_options.h"
-char *db = NULL;
 char *defaults_file = NULL;
 char *defaults_extra_file = NULL;
 
@@ -138,8 +137,13 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
   } else if (!strcmp(option_name, "--ignore-errors")){
     guint n=0;
     gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
+    if (ignore_errors_set == NULL) {
+      ignore_errors_set = g_hash_table_new(g_direct_hash, g_direct_equal);
+    }
     while(tmp_ignore_errors_list[n]!=NULL){
-      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
+      gint error_code = atoi(tmp_ignore_errors_list[n]);
+      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(error_code));
+      g_hash_table_add(ignore_errors_set, GINT_TO_POINTER(error_code));
       n++;
     }
     return TRUE;
@@ -189,4 +193,11 @@ GOptionEntry common_filter_entries[] = {
     {"tables-list", 'T', 0, G_OPTION_ARG_STRING, &tables_list,
       "Comma delimited table list to dump (does not exclude regex option). "
       "Table name must include database name. For instance: test.t1,test.t2", NULL},
+    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+GOptionEntry pmm_entries[] = {
+    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
+      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
+    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
+      "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

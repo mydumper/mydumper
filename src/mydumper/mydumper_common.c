@@ -19,6 +19,7 @@
                     David Ducos, Percona (david dot ducos at percona dot com)
 */
 #include <stdlib.h>
+#include <string.h>
 #include <mysql.h>
 #include <glib.h>
 #include <glib/gstdio.h>
@@ -65,8 +66,9 @@ void free_common(){
 char * determine_filename (char * table){
   // https://stackoverflow.com/questions/11794144/regular-expression-for-valid-filename
   // We might need to define a better filename alternatives
-  if (!masquerade_filename && check_filename_regex(table) && !g_strstr_len(table,-1,".") && !g_str_has_prefix(table,"mydumper_") )
-    return g_strdup(table);
+  // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+  if (!masquerade_filename && check_filename_regex(table) && !strchr(table, '.') && !g_str_has_prefix(table,"mydumper_") )
+    return newline_protect(table);
   else{
     char *r = g_strdup_printf("mydumper_%d",table_number);
     table_number++;
@@ -87,17 +89,16 @@ gchar *get_ref_table(gchar *k){
 }
 
 char * escape_string(MYSQL *conn, char *str){
-  char * r=g_new(char, strlen(str) * 2 + 1);
-  mysql_real_escape_string(conn, r, str, strlen(str));
+  // Perf: Cache strlen result - called 2x in original code
+  // This function is called for every non-numeric column during dump
+  gulong len = strlen(str);
+  char * r = g_new(char, len * 2 + 1);
+  mysql_real_escape_string(conn, r, str, len);
   return r;
 }
 
 gchar * build_schema_table_filename(char *database, char *table, const char *suffix){
-  GString *filename = g_string_sized_new(20);
-  g_string_append_printf(filename, "%s.%s-%s.sql", database, table, suffix);
-  gchar *r = g_build_filename(dump_directory, filename->str, NULL);
-  g_string_free(filename,TRUE);
-  return r;
+  return common_build_schema_table_filename(dump_directory, database, table, suffix);
 }
 
 gchar * build_schema_filename(const char *database, const char *suffix){
@@ -297,29 +298,64 @@ unsigned long m_real_escape_string(MYSQL *conn, char *to, const gchar *from, uns
          (size_t)(to - to_start);
 }
 
-void m_escape_char_with_char(gchar neddle, gchar repl, gchar *to, unsigned long length){
-  gchar *from=g_new(char, length);
-  memcpy(from, to, length);
-  gchar *ffrom=from;
-  const char *end = from + length;
-  for (end = from + length; from < end; from++) {
-    if ( *from == neddle ){
-      *to = repl;
-      to++;
-    }
-    *to=*from;
-    to++;
+// SIMD-optimized escape function using memchr
+// memchr is SIMD-optimized in glibc (SSE4.2/AVX2) and musl (word-at-a-time)
+// This avoids the allocation and works backwards to insert escapes in-place
+void m_escape_char_with_char(gchar needle, gchar repl, gchar *str, unsigned long length){
+  if (length == 0) return;
+
+  // Count how many escapes we need to insert using memchr (SIMD-optimized)
+  unsigned long escape_count = 0;
+  const gchar *scan = str;
+  const gchar *end = str + length;
+  while (scan < end) {
+    const gchar *found = memchr(scan, needle, end - scan);
+    if (!found) break;
+    escape_count++;
+    scan = found + 1;
   }
-  g_free(ffrom);
+
+  // Fast path: no escapes needed
+  if (escape_count == 0) {
+    str[length] = '\0';
+    return;
+  }
+
+  // Work backwards: final length = original + escape_count
+  // Each needle becomes: repl + needle (2 chars instead of 1)
+  unsigned long new_length = length + escape_count;
+  gchar *write_ptr = str + new_length;
+  *write_ptr = '\0';  // Null terminate
+
+  const gchar *read_ptr = str + length - 1;
+  write_ptr--;
+
+  // Copy backwards, inserting escape chars as we go
+  while (read_ptr >= str) {
+    *write_ptr = *read_ptr;
+    if (*read_ptr == needle) {
+      write_ptr--;
+      *write_ptr = repl;
+    }
+    write_ptr--;
+    read_ptr--;
+  }
 }
 
-void m_replace_char_with_char(gchar neddle, gchar repl, gchar *from, unsigned long length){
-  const char *end = from + length;
-  for (end = from + length; from < end; from++) {
-    if ( *from == neddle ){
-      *from = repl;
-      from++;
-    }
+// SIMD-optimized replace function using memchr
+// memchr scans 16-32 bytes at a time on modern CPUs
+void m_replace_char_with_char(gchar needle, gchar repl, gchar *str, unsigned long length){
+  if (length == 0) return;
+
+  gchar *ptr = str;
+  const gchar *end = str + length;
+
+  // Use memchr to jump to each needle location
+  while (ptr < end) {
+    gchar *found = memchr(ptr, needle, end - ptr);
+    if (!found) break;
+    *found = repl;
+    ptr = found + 1;
   }
 }
 
@@ -442,3 +478,14 @@ guint parse_rows_per_chunk(const gchar *rows_p_chunk, guint64 *min, guint64 *sta
   return len;
 }
 
+
+gboolean m_pstrstr(char **str_list, const gchar* needle){
+  if (str_list){
+    guint i=0;
+    for (i = 0; str_list[i] != NULL; i++) {
+      if (!g_ascii_strcasecmp(str_list[i], needle))
+        return TRUE;
+    } 
+  } 
+  return FALSE;
+}

@@ -20,8 +20,9 @@
 #include "myloader_common.h"
 #include "myloader_restore_job.h"
 #include "myloader_control_job.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_global.h"
-
+#include "myloader_database.h"
 
 GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
@@ -53,14 +54,14 @@ gboolean process_index(struct thread_data * td){
 
   g_assert(job->type == JOB_RESTORE);
   struct db_table *dbt=job->data.restore_job->dbt;
-  trace("index_queue -> %s: %s.%s", rjtype2str(job->data.restore_job->type), dbt->database->real_database, dbt->table);
+  trace("index_queue -> %s: %s.%s", rjtype2str(job->data.restore_job->type), dbt->database->target_database, dbt->table_filename);
   dbt->start_index_time=g_date_time_new_now_local();
-  g_message("restoring index: %s.%s", dbt->database->name, dbt->table);
+  g_message("restoring index: %s.%s", dbt->database->source_database, dbt->table_filename);
   process_job(td, job, NULL);
   dbt->finish_time=g_date_time_new_now_local();
-  g_mutex_lock(dbt->mutex);
+  table_lock(dbt);
   dbt->schema_state=ALL_DONE;
-  g_mutex_unlock(dbt->mutex);
+  table_unlock(dbt);
   return TRUE;
 }
 
@@ -79,7 +80,8 @@ void *worker_index_thread(struct thread_data *td) {
   gboolean cont=TRUE;
   while (cont){
     cont=process_index(td);
-    enroute_into_the_right_queue_based_on_file_type(REQUEST_DATA_JOB);
+//    enroute_into_the_right_queue_based_on_file_type(REQUEST_DATA_JOB);
+    wake_data_threads();
   }
 
   trace("I-Thread %u: ending", td->thread_id);
@@ -99,6 +101,7 @@ void wait_index_worker_to_finish(){
   for (n = 0; n < max_threads_for_index_creation; n++) {
     g_thread_join(index_threads[n]);
   }
+  trace("Indexes completed");
 }
 
 void start_optimize_keys_all_tables(){
@@ -111,23 +114,29 @@ void start_optimize_keys_all_tables(){
 
 static
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->real_database, dbt->table);
+  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->target_database, dbt->table_filename);
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
-  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->real_database, dbt->table);
+  trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->target_database, dbt->table_filename);
   g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));
   dbt->schema_state=INDEX_ENQUEUED;
   return TRUE;
 }
 
 void enqueue_index_for_dbt_if_possible(struct configuration *conf, struct db_table * dbt){
+  trace("Checking if index on %s %s is possible to enqueu", dbt->database->target_database, dbt->table_filename);
   if (dbt->schema_state==DATA_DONE){
     if (dbt->indexes == NULL){
+      trace("Table %s %s is all done", dbt->database->target_database, dbt->table_filename);
       dbt->schema_state=ALL_DONE;
 //      return FALSE;
     }else{
 //      return 
-        create_index_job(conf, dbt, 0);
+      trace("Creating index on %s %s ", dbt->database->target_database, dbt->table_filename);
+      create_index_job(conf, dbt, 0);
     }
+  }else{
+    trace("Indexes on %s %s are not possible yet dbt->schema_state %d %d ", dbt->database->target_database, dbt->table_filename,dbt->schema_state, DATA_DONE);
+  
   }
 //  return !(dbt->schema_state == ALL_DONE || dbt->schema_state == INDEX_ENQUEUED ) ;
 }
@@ -139,9 +148,9 @@ void enqueue_indexes_if_possible(struct configuration *conf){
   struct db_table * dbt = NULL;
   while (iter != NULL){
     dbt=iter->data;
-    g_mutex_lock(dbt->mutex);
+    table_lock(dbt);
     enqueue_index_for_dbt_if_possible(conf,dbt);
-    g_mutex_unlock(dbt->mutex);
+    table_unlock(dbt);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);

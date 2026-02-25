@@ -17,20 +17,7 @@
 
 */
 
-
-#define SEQUENCE "sequence"
-#define TRIGGER "trigger"
-#define POST "post"
-#define TABLESPACE "tablespace"
-#define CREATE_DATABASE "create database"
-#define VIEW "view"
-#define INDEXES "indexes"
-#define CONSTRAINTS "constraints"
-
 extern struct restore_errors detailed_errors;
-extern GOptionEntry common_filter_entries[];
-extern GOptionEntry common_connection_entries[];
-extern GOptionEntry common_entries[];
 extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
@@ -51,6 +38,7 @@ extern char *defaults_extra_file;
 extern GKeyFile * key_file;
 extern gchar *input_directory;
 extern gchar *fifo_directory;
+extern gchar *load_data_tmp_directory;
 extern gchar *tables_list;
 extern gboolean help;
 extern char **tables;
@@ -58,7 +46,6 @@ extern gboolean append_if_not_exist;
 extern gboolean optimize_keys;
 extern gboolean optimize_keys_all_tables;
 extern gboolean optimize_keys_per_table;
-extern gboolean intermediate_queue_ended;
 extern gboolean no_data;
 extern gboolean no_schemas;
 extern gboolean no_delete;
@@ -68,22 +55,21 @@ extern gboolean resume;
 extern gboolean serial_tbl_creation;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
+extern gchar *replace_definer;
 extern gboolean skip_post;
 extern gboolean skip_triggers;
 extern gboolean skip_constraints;
 extern gboolean skip_indexes;
 extern gboolean stream;
 extern gchar *compress_extension;
-extern gchar *db;
+extern gchar *target_db;
 extern gchar *directory;
 extern gchar *pmm_path;
 extern gchar *pmm_resolution ;
 extern gchar *source_db;
 extern gchar *tables_skiplist_file;
-extern GHashTable *db_hash;
-extern GHashTable * load_data_list;
+extern GHashTable *database_hash;
 extern GHashTable *tbl_hash;
-extern GMutex *load_data_list_mutex;
 extern GString *set_session;
 extern guint commit_count;
 extern guint errors;
@@ -95,11 +81,11 @@ extern guint max_threads_per_table;
 extern guint retry_count;
 extern guint num_threads;
 extern guint rows;
+extern guint num_sequences;
 extern guint sequences;
 extern guint sequences_processed;
 extern GMutex sequences_mutex;
 extern unsigned long long int total_data_sql_files;
-extern int (*m_close)(void *file);
 extern GHashTable * set_session_hash;
 
 extern gchar *exec_per_thread;
@@ -108,7 +94,6 @@ extern gchar **exec_per_thread_cmd;
 
 //extern guint index_threads_counter;
 extern GMutex *index_mutex;
-extern struct database *database_db;
 extern gchar *optimize_keys_str;
 extern gchar *checksum_str;
 extern gboolean no_stream;

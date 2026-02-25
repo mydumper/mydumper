@@ -79,19 +79,28 @@ endif (NOT CMAKE_INSTALL_PREFIX)
 MARK_AS_ADVANCED(CMAKE)
 
 CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/config.h.in ${CMAKE_CURRENT_SOURCE_DIR}/src/config.h )
-SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/regex.c src/common_options.c)
-SET( MYDUMPER_SRCS src/mydumper/mydumper.c ${SHARED_SRCS} src/mydumper/mydumper_pmm_thread.c src/mydumper/mydumper_start_dump.c src/mydumper/mydumper_jobs.c src/mydumper/mydumper_common.c src/mydumper/mydumper_stream.c src/mydumper/mydumper_database.c src/mydumper/mydumper_table.c src/mydumper/mydumper_working_thread.c src/mydumper/mydumper_daemon_thread.c src/mydumper/mydumper_exec_command.c src/mydumper/mydumper_masquerade.c src/mydumper/mydumper_chunks.c src/mydumper/mydumper_write.c src/mydumper/mydumper_arguments.c src/mydumper/mydumper_integer_chunks.c src/mydumper/mydumper_string_chunks.c src/mydumper/mydumper_partition_chunks.c src/mydumper/mydumper_file_handler.c src/mydumper/mydumper_create_jobs.c)
-SET( MYLOADER_SRCS src/myloader/myloader.c ${SHARED_SRCS} src/myloader/myloader_pmm_thread.c src/myloader/myloader_stream.c src/myloader/myloader_stream.c src/myloader/myloader_process.c src/myloader/myloader_common.c src/myloader/myloader_directory.c src/myloader/myloader_restore.c src/myloader/myloader_restore_job.c src/myloader/myloader_control_job.c src/myloader/myloader_intermediate_queue.c src/myloader/myloader_arguments.c src/myloader/myloader_worker_index.c src/myloader/myloader_worker_schema.c src/myloader/myloader_worker_loader.c src/myloader/myloader_worker_post.c )
+SET( SHARED_SRCS src/server_detect.c src/connection.c src/logging.c src/set_verbose.c src/common.c src/tables_skiplist.c src/regex.c src/common_options.c src/pmm_thread.c src/checksum.c )
+SET( MYDUMPER_SRCS src/mydumper/mydumper.c ${SHARED_SRCS} src/mydumper/mydumper_pmm.c src/mydumper/mydumper_start_dump.c src/mydumper/mydumper_jobs.c src/mydumper/mydumper_common.c src/mydumper/mydumper_stream.c src/mydumper/mydumper_database.c src/mydumper/mydumper_table.c src/mydumper/mydumper_working_thread.c src/mydumper/mydumper_daemon_thread.c src/mydumper/mydumper_exec_command.c src/mydumper/mydumper_masquerade.c src/mydumper/mydumper_chunks.c src/mydumper/mydumper_write.c src/mydumper/mydumper_arguments.c src/mydumper/mydumper_integer_chunks.c src/mydumper/mydumper_string_chunks.c src/mydumper/mydumper_partition_chunks.c src/mydumper/mydumper_file_handler.c src/mydumper/mydumper_create_jobs.c )
+SET( MYLOADER_SRCS src/myloader/myloader.c ${SHARED_SRCS} src/myloader/myloader_pmm.c src/myloader/myloader_stream.c src/myloader/myloader_stream.c src/myloader/myloader_process.c src/myloader/myloader_common.c src/myloader/myloader_directory.c src/myloader/myloader_restore.c src/myloader/myloader_restore_job.c src/myloader/myloader_control_job.c src/myloader/myloader_process_filename.c src/myloader/myloader_process_file_type.c src/myloader/myloader_arguments.c src/myloader/myloader_worker_index.c src/myloader/myloader_worker_schema.c src/myloader/myloader_worker_loader.c src/myloader/myloader_worker_post.c src/myloader/myloader_database.c src/myloader/myloader_worker_loader_main.c src/myloader/myloader_table.c)
 
 add_executable(mydumper ${MYDUMPER_SRCS})
 add_executable(myloader ${MYLOADER_SRCS})
 
-if (NOT JEMALLOC_FOUND)
-  target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ssl crypto)
-  target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ssl crypto)
+# Find OpenSSL - use modern imported targets if available (CMake 3.4+), otherwise fall back to variables
+find_package(OpenSSL REQUIRED)
+if (TARGET OpenSSL::SSL)
+  set(OPENSSL_LINK_LIBRARIES OpenSSL::SSL OpenSSL::Crypto)
 else ()
-  target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ssl crypto)
-  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ssl crypto)
+  set(OPENSSL_LINK_LIBRARIES ${OPENSSL_SSL_LIBRARY} ${OPENSSL_CRYPTO_LIBRARY})
+  include_directories(${OPENSSL_INCLUDE_DIR})
+endif ()
+
+if (NOT JEMALLOC_FOUND)
+  target_link_libraries(mydumper ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ${OPENSSL_LINK_LIBRARIES})
+  target_link_libraries(myloader ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ${OPENSSL_LINK_LIBRARIES})
+else ()
+  target_link_libraries(mydumper ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${GIO2_LIBRARIES} ${GOBJECT2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ m ${OPENSSL_LINK_LIBRARIES})
+  target_link_libraries(myloader ${JEMALLOC_LIBRARIES} ${MYSQL_LIBRARIES} ${GLIB2_LIBRARIES} ${GTHREAD2_LIBRARIES} ${PCRE2_LIBRARY} ${ZLIB_LIBRARIES} stdc++ ${OPENSSL_LINK_LIBRARIES})
 
 endif ()
 
@@ -121,7 +130,7 @@ set(CIRCLECI_CONFIG_FILE "config.yml")
 
 IF(WITH_CIRCLECI)
   add_custom_target( circleci_config_file_build ALL
-    COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
+    COMMAND ${mydumper_BINARY_DIR}/.circleci/circleci_config_builder.sh ${CIRCLECI_EXTRA_CONFIG} > ${mydumper_BINARY_DIR}/.circleci/${CIRCLECI_CONFIG_FILE}
     COMMENT "Creating ${CIRCLECI_CONFIG_FILE}"
   )
 ENDIF(WITH_CIRCLECI)

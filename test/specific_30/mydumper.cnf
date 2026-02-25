@@ -1,0 +1,8 @@
+#
+# Testing MyISAM tables
+#
+
+[mydumper]
+database=specific_30
+outputdir=/tmp/data
+trx-tables=0

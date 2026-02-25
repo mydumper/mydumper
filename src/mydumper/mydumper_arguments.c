@@ -43,6 +43,7 @@ gboolean use_single_column=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
+gchar *load_data_character_set=NULL;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
@@ -74,7 +75,11 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     }
     return FALSE;
   }
-  if (!strcmp(option_name,"--trx-tables")){
+  if (!g_strcmp0(option_name,"--no-trx-tables")){
+    trx_tables=0;
+    return TRUE;
+  }
+  if (!g_strcmp0(option_name,"--trx-tables")){
     if (value)
       trx_tables=atoi(value);
     else
@@ -112,19 +117,19 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (!strcmp(option_name,"--trx-consistency-only")){
+  if (!g_strcmp0(option_name,"--trx-consistency-only")){
     m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
   }
-  if (!strcmp(option_name,"--less-locking")){
+  if (!g_strcmp0(option_name,"--less-locking")){
     m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
   }
-  if (!strcmp(option_name,"--lock-all-tables")){
+  if (!g_strcmp0(option_name,"--lock-all-tables")){
     m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--no-locks")){
+  if (!g_strcmp0(option_name,"--no-locks")){
     m_critical("--no-locks is deprecated use --sync-thread-lock-mode instead");
   }
-  if (!strcmp(option_name,"--sync-thread-lock-mode")){
+  if (!g_strcmp0(option_name,"--sync-thread-lock-mode")){
     if (!g_ascii_strcasecmp(value,"AUTO")){
       sync_thread_lock_mode=AUTO;
       return TRUE;
@@ -145,8 +150,12 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       sync_thread_lock_mode=NO_LOCK;
       return TRUE;
     }
+    if (!g_ascii_strcasecmp(value,"SAFE_NO_LOCK")){
+      sync_thread_lock_mode=SAFE_NO_LOCK;
+      return TRUE;
+    }
   }
-  if (!strcmp(option_name,"--success-on-1146")){
+  if (!g_strcmp0(option_name,"--success-on-1146")){
     m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
   }
 
@@ -221,6 +230,9 @@ static GOptionEntry extra_entries[] = {
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
       "Queries related to generated fields are not going to be executed."
       "It will lead to restoration issues if you have generated columns", NULL },
+    { "bulk-metadata-prefetch", 0, 0, G_OPTION_ARG_NONE, &bulk_metadata_prefetch,
+      "Prefetch JSON and generated column metadata in bulk at startup. "
+      "Significantly faster for dumping many tables, but slower for small dumps with -T", NULL },
     {"order-by-primary", 0, 0, G_OPTION_ARG_NONE, &order_by_primary_key,
       "Sort the data by Primary Key or Unique key if no primary key exists", NULL},
     {"compact", 0, 0, G_OPTION_ARG_NONE, &compact, 
@@ -242,7 +254,7 @@ static GOptionEntry lock_entries[] = {
     {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "There are 3 modes that can be use to sync: FTWRL, LOCK_ALL and GTID. "
+      "There are 4 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL and GTID. "
       "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
       "Default: AUTO which uses the best option depending on the database vendor", NULL},
     {"use-savepoints", 0, 0, G_OPTION_ARG_NONE, &use_savepoints,
@@ -255,6 +267,9 @@ static GOptionEntry lock_entries[] = {
       "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
+    {"no-trx-tables", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+      "Indicates that some or all are not transactional tables. "
+      "Locks will take longer to be released, as it needs to determine which tables are not transactional and export them before releasing global lock", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
       "Do not send DDL locks when possible", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
@@ -279,13 +294,6 @@ static GOptionEntry exec_entries[] = {
       "Set the command that will receive by STDIN and write in the STDOUT into the output file", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
       "Set the extension for the STDOUT file when --exec-per-thread is used", NULL},
-    {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-
-static GOptionEntry pmm_entries[] = {
-    {"pmm-path", 0, 0, G_OPTION_ARG_STRING, &pmm_path,
-      "which default value will be /usr/local/percona/pmm2/collectors/textfile-collector/high-resolution", NULL },
-    {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
-      "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry daemon_entries[] = {
@@ -318,13 +326,15 @@ static GOptionEntry checksum_entries[] = {
     {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
       "Dump table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
-      "Dump schema table and view creation checksums", NULL},
+      "Dump schema table and view creation checksums (enabled by default)", NULL},
+    {"no-schema-checksums", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &schema_checksums,
+      "Disable schema checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
       "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry filter_entries[] = {
-    {"database", 'B', 0, G_OPTION_ARG_STRING, &db,
+    {"database", 'B', 0, G_OPTION_ARG_STRING, &source_db,
       "Comma delimited list of databases to dump", NULL},
     {"ignore-engines", 'i', 0, G_OPTION_ARG_STRING, &ignore_engines_str,
       "Comma delimited list of storage engines to ignore", NULL},
@@ -351,8 +361,11 @@ static GOptionEntry objects_entries[] = {
      "Dump stored procedures and functions. By default, it does not dump stored procedures nor functions", NULL},
     {"skip-constraints", 0, 0, G_OPTION_ARG_NONE, &skip_constraints, 
       "Remove the constraints from the CREATE TABLE statement. By default, the statement is not modified", NULL },
-    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes, 
+    {"skip-indexes", 0, 0, G_OPTION_ARG_NONE, &skip_indexes,
       "Remove the indexes from the CREATE TABLE statement. By default, the statement is not modified", NULL},
+    {"skip-metadata-sorting", 0, 0, G_OPTION_ARG_NONE, &skip_metadata_sorting,
+      "Skip sorting tables/databases in metadata file. Saves 30-60s on 250K+ tables. "
+      "Only affects metadata file readability, not restore functionality", NULL},
     {"views-as-tables", 0, 0, G_OPTION_ARG_NONE, &views_as_tables, 
       "Export VIEWs as they were tables", NULL},
     {"no-views", 'W', 0, G_OPTION_ARG_NONE, &no_dump_views, 
@@ -399,6 +412,8 @@ static GOptionEntry statement_entries[] = {
       "Dump binary columns using hexadecimal notation", NULL},
     {"skip-definer", 0, 0, G_OPTION_ARG_NONE, &skip_definer,
       "Removes DEFINER from the CREATE statement. By default, statements are not modified", NULL},
+    {"replace-definer", 0, 0, G_OPTION_ARG_STRING, &replace_definer,
+     "Replaces the user in the DEFINER by the new string. By default, statements are not modified", NULL},
     {"statement-size", 's', 0, G_OPTION_ARG_INT, &statement_size,
       "Attempted size of INSERT statement in bytes, default 1000000", NULL},
     {"tz-utc", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &skip_tz,
@@ -412,6 +427,8 @@ static GOptionEntry statement_entries[] = {
       "Accepts a list of up to 2 charsets, and adds 'SET NAMES' with the proper charset from the list, where the first item is used for the schema files and the second item is used for the data files. Use it at your own risk as it might cause inconsistencies #1974. Default: binary,binary", NULL },
     {"default-character-set",0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Accepts a list of up to 2 charsets, and executes 'SET NAMES' with the proper charset from the list, where the first item is used when executes SHOW CREATE TABLE and the second item is used for the rest. Use it at your own risk as it might cause inconsistencies #1974. Default: auto,binary. auto means that it is going to use the table character set.", NULL },
+    {"load-data-character-set",0, 0, G_OPTION_ARG_STRING, &load_data_character_set,
+      "Sets the character that will be added to the CHARACTER SET clause in the LOAD DATA statement. Use it at your own risk as it might cause inconsistencies. By default CHARACTER SET will not be added", NULL },
     {"table-engine-for-view-dependency", 0, 0, G_OPTION_ARG_STRING, &table_engine_for_view_dependency, 
       "Table engine to be used for the CREATE TABLE statement for temporary tables when using views",NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

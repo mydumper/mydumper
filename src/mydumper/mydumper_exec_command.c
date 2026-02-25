@@ -17,6 +17,7 @@
 #include <mysql.h>
 #include <glib/gstdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <glib.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -83,7 +84,8 @@ void exec_queue_push(struct db_table *dbt, gchar *filename){
 void *process_exec_command(void *data){
   (void)data;
   char * filename=NULL;
-  gchar *space=g_strstr_len(exec_command,-1," ");
+  // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+  gchar *space=strchr(exec_command, ' ');
   gchar ** arguments=g_strsplit(space," ", 0);
   gchar ** volatile c_arg=NULL;
   guint i=0;
@@ -123,12 +125,14 @@ void initialize_exec_command(){
   exec_queue = g_async_queue_new();
   exec_mutex=g_mutex_new();
   exec_command_thread=g_new(GThread * , num_exec_threads) ;
-  gchar *space=g_strstr_len(exec_command,-1," ");
-  guint len = strlen(exec_command) - strlen(space);
+  // Perf: Use strchr instead of g_strstr_len for single character search (SIMD optimized)
+  gchar *space=strchr(exec_command, ' ');
+  // Perf: Use pointer arithmetic instead of strlen(exec_command) - strlen(space)
+  guint len = space ? (guint)(space - exec_command) : 0;
   while (len==0){
     exec_command++;
-    space=g_strstr_len(exec_command,-1," ");
-    len = strlen(exec_command) - strlen(space);
+    space=strchr(exec_command, ' ');
+    len = space ? (guint)(space - exec_command) : 0;
   }
   global_bin=g_strndup(exec_command,len);
   if (!g_file_test(global_bin, G_FILE_TEST_EXISTS)){

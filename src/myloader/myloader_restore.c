@@ -22,20 +22,38 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <sys/wait.h>
 
 #include "myloader.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
-#include "myloader_intermediate_queue.h"
+#include "myloader_process_filename.h"
 #include "myloader_process.h"
 #include "myloader_restore.h"
+#include "myloader_database.h"
 
 struct statement * new_statement();
+guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean skip_definer = FALSE;
+gchar *replace_definer = NULL;
 GAsyncQueue *connection_pool = NULL;
 GAsyncQueue *restore_queues=NULL;
 GAsyncQueue *free_results_queue=NULL;
 int (*restore_data_from_file) (struct thread_data *, const char *, gboolean , struct database *) = NULL;
+gchar *replace_definer_str = NULL;
+GMutex *load_data_list_mutex=NULL;
+GHashTable * load_data_list = NULL;
+
+/* Structure for synchronizing LOAD DATA file processing.
+ * When .sql file (with LOAD DATA statement) arrives before .dat file,
+ * the processor must wait until .dat file is ready. */
+struct load_data_sync {
+  GMutex *mutex;
+  GCond *cond;
+  gboolean ready;  /* TRUE when .dat file has been received */
+};
 
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
@@ -44,6 +62,60 @@ struct io_restore_result end_restore_thread = { NULL, NULL};
 GThread **restore_threads=NULL;
 
 extern gchar *ignore_errors;
+/*
+// Issue #2075: Structure for background FIFO unlink thread
+struct fifo_unlink_data {
+  gchar *fifo_filename;
+  int child_pid;
+};
+
+// Issue #2075: Background thread that unlinks FIFO after confirming data is flowing
+// This ensures automatic cleanup on crash without affecting LOAD DATA operation
+static void *load_data_fifo_unlink_thread(void *data) {
+  struct fifo_unlink_data *fud = (struct fifo_unlink_data *)data;
+
+  // Wait a bit for MySQL to process the LOAD DATA statement and open the FIFO
+  // The decompressor subprocess blocks on write-open until MySQL opens for read
+  g_usleep(100000);  // 100ms - should be enough for MySQL to start processing
+
+  // Check if subprocess is still alive (means MySQL connected and data is flowing)
+  int status = 0;
+  pid_t result = waitpid(fud->child_pid, &status, WNOHANG);
+
+  if (result == 0) {
+    // Subprocess still running = MySQL must have connected (otherwise child would be blocked)
+    // Safe to unlink - the pipe stays usable through open file descriptors
+    if (remove(fud->fifo_filename) == 0) {
+      g_debug("Issue #2075: Unlinked LOAD DATA FIFO %s after MySQL connected", fud->fifo_filename);
+    }
+  } else {
+    // Subprocess already finished - MySQL read all data, FIFO will be cleaned up normally
+    g_debug("Issue #2075: Subprocess for %s already finished", fud->fifo_filename);
+  }
+
+  g_free(fud->fifo_filename);
+  g_free(fud);
+  return NULL;
+}
+
+
+// Issue #2075: Start background thread to unlink LOAD DATA FIFO
+static void schedule_load_data_fifo_unlink(const gchar *fifo_filename, int child_pid) {
+  struct fifo_unlink_data *fud = g_new0(struct fifo_unlink_data, 1);
+  fud->fifo_filename = g_strdup(fifo_filename);
+  fud->child_pid = child_pid;
+
+  // Spawn detached thread - it will clean itself up
+  g_thread_new("fifo_unlink", load_data_fifo_unlink_thread, fud);
+}
+*/
+
+void initialize_restore(){
+  load_data_list_mutex=g_mutex_new();
+  load_data_list = g_hash_table_new ( g_str_hash, g_str_equal );
+  if (replace_definer)
+    replace_definer_str=g_strdup_printf("DEFINER=%s",replace_definer);
+}
 
 struct connection_data *new_connection_data(MYSQL *thrconn){
   struct connection_data *cd=g_new(struct connection_data,1);
@@ -131,7 +203,7 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
       g_warning("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
     }
 
-    if ( mysql_errno(cd->thrconn) != 0 && !g_list_find(ignore_errors_list, GINT_TO_POINTER(mysql_errno(cd->thrconn) ))){
+    if ( mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn))){
       if (mysql_ping(cd->thrconn)) {
         reconnect_connection_data(cd);
         if (!is_schema && commit_count > 1) {
@@ -190,7 +262,7 @@ struct connection_data *wait_for_available_restore_thread(struct thread_data *td
 
 extern gboolean control_job_ended;
 gboolean request_another_connection(struct thread_data *td, struct io_restore_result *io_restore_result, gboolean start_transaction, struct database *use_database, GString *header){
-  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && g_list_length(td->dbt->restore_job_list)==0 ){
+  if ( control_job_ended && td->granted_connections < td->dbt->max_threads && td->dbt->count == 0 ){  // Perf: Use cached count
     g_assert(header);
     struct connection_data *cd=g_async_queue_try_pop(connection_pool);
     if(cd){
@@ -214,48 +286,70 @@ int m_commit_and_start_transaction(struct connection_data *cd, guint* query_coun
   return 0;
 }
 
-int restore_insert(struct connection_data *cd, struct thread_data*td, 
+int restore_insert(struct connection_data *cd, struct thread_data*td,
                   GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
-  char *next_line=g_strstr_len(data->str,-1,"VALUES") + 6;
-  char *insert_statement_prefix=g_strndup(data->str,next_line - data->str);
+  // Perf: Find "VALUES" using strstr (only once, not in hot loop)
+  char *next_line=strstr(data->str, "VALUES");
+  if (next_line == NULL) return 0;
+  next_line += 6;  // Skip past "VALUES"
+
+  guint prefix_len = next_line - data->str;
+  char *insert_statement_prefix=g_strndup(data->str, prefix_len);
   int r=0;
   guint tr=0,current_offset_line=offset_line-1;
   gchar *current_line=next_line;
-  next_line=g_strstr_len(current_line, -1, "\n");
-  GString * new_insert=g_string_sized_new(strlen(insert_statement_prefix));
+
+  // Perf: Calculate remaining length for bounded searches
+  gchar *data_end = data->str + data->len;
+  gssize remaining = data_end - current_line;
+
+  // Perf: Use memchr instead of g_strstr_len for newline search (SIMD-optimized)
+  next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
+
+  GString * new_insert=g_string_sized_new(prefix_len + 4096);  // Larger initial size
   guint current_rows=0;
+  guint64 transaction_size=0;
   do {
     current_rows=0;
     g_string_set_size(new_insert, 0);
     g_string_printf(new_insert,"/* Completed: %"G_GUINT64_FORMAT"%% */ ", dbt->rows>0?dbt->rows_inserted*100/dbt->rows:0);
-    new_insert=g_string_append(new_insert,insert_statement_prefix);
+    // Perf: Use append_len with known prefix length
+    g_string_append_len(new_insert, insert_statement_prefix, prefix_len);
     guint line_len=0;
     do {
-      char *line=g_strndup(current_line, next_line - current_line);
-      line_len=strlen(line);
-      g_string_append(new_insert, line);
-      g_free(line);
+      // Perf: Direct append without g_strndup + strlen + g_free
+      // The length is already known: next_line - current_line
+      line_len = next_line - current_line;
+      g_string_append_len(new_insert, current_line, line_len);
       current_rows++;
       current_line=next_line+1;
-      next_line=g_strstr_len(current_line, -1, "\n");
+      // Perf: Update remaining length and use memchr (16-32x faster than g_strstr_len)
+      remaining = data_end - current_line;
+      next_line = (remaining > 0) ? memchr(current_line, '\n', remaining) : NULL;
       current_offset_line++;
     } while ((rows == 0 || current_rows < rows) && next_line != NULL);
     if (current_rows > 1 || (current_rows==1 && line_len>0) ){
+      if (cd->transaction && ((max_transaction_size * 1024 * 1024 < new_insert->len + transaction_size) )){ //|| (max_transaction_size * 1024 * 1024 < transaction_size + max_statement_size ))){
+        tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
+      }
+      transaction_size+=new_insert->len;
       tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
       g_usleep(throttle_time);
-      g_mutex_lock(dbt->mutex);
+      table_lock(dbt);
       dbt->rows_inserted+=current_rows;
-      g_mutex_unlock(dbt->mutex);
+      table_unlock(dbt);
       if (cd->transaction && *query_counter == commit_count) {
         tr+=m_commit_and_start_transaction(cd,query_counter);
+        transaction_size=0;
       }
 
       if (tr > 0){
         g_error("Thread %d with connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line,mysql_error(cd->thrconn));
       }
       if (mysql_warning_count(cd->thrconn)){
-        g_warning("Connection %ld: Warnings found during INSERT between lines: %d and %d: %s",cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
+        g_warning("Thread %d with connection %ld: Warnings found during INSERT between lines: %d and %d: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
         detailed_errors.data_warnings+=mysql_warning_count(cd->thrconn);
       }
     }else
@@ -332,32 +426,74 @@ void *restore_thread(MYSQL *thrconn){
 
 
 
-gboolean load_data_mutex_locate( gchar * filename , GMutex ** mutex){
+/* Wait for LOAD DATA file (.dat) to be ready before processing.
+ * Called when processing .sql file that contains LOAD DATA statement.
+ *
+ * Returns TRUE if we had to wait (new sync object created).
+ * Returns FALSE if .dat file was already received (no wait needed).
+ *
+ * Thread-safe: Uses condition variable for proper waiting semantics.
+ */
+void load_data_mutex_locate( gchar * filename ){
   g_mutex_lock(load_data_list_mutex);
-  gchar * orig_key=NULL;
-  if (!g_hash_table_lookup_extended(load_data_list,filename, (gpointer*) orig_key, (gpointer*) *mutex)){
-    *mutex=g_mutex_new();
-    g_mutex_lock(*mutex);
-    g_hash_table_insert(load_data_list, g_strdup(filename), *mutex);
+  struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
+
+  if (sync == NULL) {
+    /* First time seeing this filename - create sync object and wait */
+    sync = g_new0(struct load_data_sync, 1);
+    sync->mutex = g_mutex_new();
+    sync->cond = g_cond_new();
+    sync->ready = FALSE;
+    g_hash_table_insert(load_data_list, g_strdup(filename), sync);
     g_mutex_unlock(load_data_list_mutex);
-    return TRUE;
+
+    /* Wait for .dat file to arrive */
+    g_mutex_lock(sync->mutex);
+    while (!sync->ready) {
+      g_cond_wait(sync->cond, sync->mutex);
+    }
+    g_mutex_unlock(sync->mutex);
+    return;
   }
-  if (orig_key!=NULL){
-    g_hash_table_remove(load_data_list, orig_key);
-//    g_mutex_free(*mutex);
+
+  if (sync->ready) {
+    /* .dat file already received - no need to wait */
+    g_mutex_unlock(load_data_list_mutex);
+    return;
   }
+
+  /* Sync object exists but not ready yet - wait on existing cond */
   g_mutex_unlock(load_data_list_mutex);
-  return FALSE;
+  g_mutex_lock(sync->mutex);
+  while (!sync->ready) {
+    g_cond_wait(sync->cond, sync->mutex);
+  }
+  g_mutex_unlock(sync->mutex);
 }
 
+/* Signal that LOAD DATA file (.dat) is now available.
+ * Called when .dat file is received in streaming mode.
+ */
 void release_load_data_as_it_is_close( gchar * filename ){
   g_mutex_lock(load_data_list_mutex);
-  GMutex *mutex = g_hash_table_lookup(load_data_list,filename);
-  if (mutex == NULL){
-    g_hash_table_insert(load_data_list,g_strdup(filename), NULL);
-  }else{
-    g_mutex_unlock(mutex);
+  struct load_data_sync *sync = g_hash_table_lookup(load_data_list, filename);
+
+  if (sync == NULL) {
+    /* .dat arrived before .sql - create sync object marked as ready */
+    sync = g_new0(struct load_data_sync, 1);
+    sync->mutex = g_mutex_new();
+    sync->cond = g_cond_new();
+    sync->ready = TRUE;
+    g_hash_table_insert(load_data_list, g_strdup(filename), sync);
+    g_mutex_unlock(load_data_list_mutex);
+    return;
   }
+
+  /* Signal any waiting threads that .dat is ready */
+  g_mutex_lock(sync->mutex);
+  sync->ready = TRUE;
+  g_cond_broadcast(sync->cond);
+  g_mutex_unlock(sync->mutex);
   g_mutex_unlock(load_data_list_mutex);
 }
 
@@ -423,7 +559,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");
@@ -451,9 +587,7 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
         preline=line+1;
         g_string_set_size(data, 0);
       }else if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], delimiter)) {
-        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          remove_definer(data);
-        }
+        update_definer(data, replace_definer_str, skip_definer);
         assign_statement(ir,td, td->dbt,data->str, preline, is_schema, OTHER);
         g_async_queue_push(cd->queue->restore,ir);
         ir=NULL;
@@ -500,7 +634,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
   FILE *infile=NULL;
   gboolean eof = FALSE;
-  GString *data = g_string_sized_new(256);
+  GString *data = g_string_sized_new(is_schema ? 4096 : 65536);
   guint line=0,preline=0;
   gchar *path = g_build_filename(directory, filename, NULL);
   infile=myl_open(path,"r");
@@ -526,8 +660,11 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   while (eof == FALSE) {
     if (read_data(infile, data, &eof, &line)) {
       if (g_strrstr(&data->str[data->len >= 5 ? data->len - 5 : 0], ";\n")) {
-        if ( skip_definer && g_str_has_prefix(data->str,"CREATE")){
-          remove_definer(data);
+        if (g_str_has_prefix(data->str,"CREATE")){
+          if ( skip_definer)
+            remove_definer(data);
+          if ( replace_definer_str )
+            replace_definer_from_string(data, replace_definer_str);
         }
         if ( g_strrstr_len(data->str,6,"INSERT")){
           request_another_connection(td, cd->queue, cd->transaction, use_database, header);
@@ -545,41 +682,49 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
         }else if (g_strrstr_len(data->str,10,"LOAD DATA ")){
           GString *new_data = NULL;
-          gchar *from = g_strstr_len(data->str, -1, "'");
+          // Perf: Use strchr instead of g_strstr_len for single-char search
+          gchar *from = strchr(data->str, '\'');
+          if (from == NULL) goto STMT_IGNORED;
           from++;
-          gchar *to = g_strstr_len(from, -1, "'");
+          gchar *to = strchr(from, '\'');
+          if (to == NULL) goto STMT_IGNORED;
           load_data_filename=g_strndup(from, to-from);
-          GMutex * mutex=NULL;
-          if (load_data_mutex_locate(load_data_filename, &mutex))
-            g_mutex_lock(mutex);
-	      // TODO we need to free filename and mutex from the hash.
+          /* Wait for .dat file to be available (in streaming mode) */
+          load_data_mutex_locate(load_data_filename);
           gchar **command=NULL;
+//          int load_data_child_pid = 0;  // Issue #2075: Track subprocess for FIFO unlink
           gboolean is_fifo = get_command_and_basename(load_data_filename, &command, &load_data_fifo_filename);
-          if (is_fifo){ 
-            if (fifo_directory != NULL){
+          if (is_fifo){
+            if (load_data_tmp_directory != NULL){
               new_data = g_string_new_len(data->str, from - data->str);
-              g_string_append(new_data, fifo_directory);
+              g_string_append(new_data, load_data_tmp_directory);
               g_string_append_c(new_data, '/');
               g_string_append(new_data, from);
-              from = g_strstr_len(new_data->str, -1, "'") + 1;
+              // Perf: Use strchr instead of g_strstr_len for single-char search
+              from = strchr(new_data->str, '\'');
+              if (from) from++;
               g_string_free(data, TRUE);
               data=new_data;
-              to = g_strstr_len(from, -1, "'");
+              to = from ? strchr(from, '\'') : NULL;
             }
+            // Perf: Cache strlen results instead of calling twice
+            guint load_data_filename_len = strlen(load_data_filename);
+            guint load_data_fifo_filename_len = strlen(load_data_fifo_filename);
             guint a=0;
-            for(;a<strlen(load_data_filename)-strlen(load_data_fifo_filename);a++){
+            for(;a<load_data_filename_len-load_data_fifo_filename_len;a++){
               *to=' '; to--;
             }
             *to='\'';
 
-            if (fifo_directory != NULL){
-              new_load_data_fifo_filename=g_strdup_printf("%s/%s", fifo_directory, load_data_fifo_filename);
+            if (load_data_tmp_directory != NULL){
+              new_load_data_fifo_filename=g_strdup_printf("%s/%s", load_data_tmp_directory, load_data_fifo_filename);
               g_free(load_data_fifo_filename);
               load_data_fifo_filename=new_load_data_fifo_filename;
             }
             if (mkfifo(load_data_fifo_filename,0666)){
               g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
             }
+            //load_data_child_pid = 
             execute_file_per_thread(load_data_filename, load_data_fifo_filename, command );
             release_load_data_as_it_is_close(load_data_fifo_filename);
 //              g_free(fifo_name);
@@ -587,15 +732,32 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 
           assign_statement(ir, td, td->dbt, data->str, preline, FALSE, OTHER);
           g_async_queue_push(cd->queue->restore,ir);
+
+          /*
+          // Issue #2075: Schedule background thread to unlink FIFO after MySQL connects
+          // This ensures automatic cleanup on crash without affecting LOAD DATA operation
+          if (is_fifo) {
+            schedule_load_data_fifo_unlink(load_data_fifo_filename, load_data_child_pid);
+          }
+          */
           ir=NULL;
           process_result_statement(cd->queue->result, &ir, m_critical, "(2)Error occurs processing file %s", filename);
-          if (is_fifo) 
+          if (is_fifo){
+            if (stream && !no_delete) 
+              g_unlink(load_data_filename);
             m_remove0(NULL, load_data_fifo_filename);
-          else
+          }else
             m_remove(NULL, load_data_filename);
         }else{
           if (g_strrstr_len(data->str,3,"/*!")){
-            gchar *from_equal=g_strstr_len(data->str, strlen(data->str),"=");
+            // Perf: Use data->len instead of strlen(data->str)
+            if (should_ignore_set_statement(data)){
+              goto STMT_IGNORED;
+            }else{
+              g_string_append(header,data->str);
+            }
+            /*
+            gchar *from_equal=g_strstr_len(data->str, data->len, "=");
             if (from_equal && ignore_set_list ){
               *from_equal='\0';
               gchar * var_name=g_strrstr(data->str," ");
@@ -610,6 +772,7 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
             }else{
               g_string_append(header,data->str);
             }
+            */
           }else{
             header=NULL;
           }
