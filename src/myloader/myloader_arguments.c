@@ -130,7 +130,7 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     return TRUE;
   } else if (!g_strcmp0(option_name, "--enable-binlog") || !g_strcmp0(option_name, "-e")){
     m_warning("Option --enable-binlog / -e is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead");
-    return FALSE;
+    return TRUE;
   }
   
   return common_arguments_callback(option_name, value, data, error);
