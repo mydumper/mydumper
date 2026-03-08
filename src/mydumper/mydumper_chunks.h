@@ -100,4 +100,3 @@ void build_where_clause_on_table_job(struct table_job *tj);
 guint64 get_rows_from_explain(MYSQL * conn, struct db_table *dbt, GString *where, gchar *field);
 guint64 get_rows_from_count(MYSQL * conn, struct db_table *dbt, GString *where);
 GString * get_where_from_csi(struct chunk_step_item * csi);
-

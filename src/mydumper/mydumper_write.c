@@ -765,7 +765,7 @@ void reopen_files(struct table_job * tj){
 
 void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * tj){
 	struct db_table * dbt = tj->dbt;
-	guint num_fields = mysql_num_fields(result);
+  guint num_fields = mysql_num_fields(result);
   MYSQL_FIELD *fields = mysql_fetch_fields(result);
   MYSQL_ROW row;
   g_string_set_size(tj->td->thread_data_buffers.statement,0);
@@ -780,13 +780,13 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     case CSV:
   		write_column_into_string=write_load_data_column_into_string;
     	if (dbt->load_data_suffix==NULL){
-        g_mutex_lock(dbt->chunks_mutex);
+        g_mutex_lock(dbt->write_mutex);
         if (dbt->load_data_suffix==NULL){
           initialize_load_data_statement_suffix(tj->dbt, fields, num_fields);
         if (include_header)
           initialize_load_data_header(tj->dbt, fields, num_fields);
         }
-        g_mutex_unlock(dbt->chunks_mutex);
+        g_mutex_unlock(dbt->write_mutex);
       }
       if (update_files_on_table_job(tj)){
         write_load_data_statement(tj);
@@ -798,16 +798,16 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         update_files_on_table_job(tj);
       }
 			if (dbt->load_data_suffix==NULL){
-        g_mutex_lock(dbt->chunks_mutex);
+        g_mutex_lock(dbt->write_mutex);
         if (dbt->load_data_suffix==NULL)
           initialize_clickhouse_statement_suffix(tj->dbt, fields, num_fields);
-  			g_mutex_unlock(dbt->chunks_mutex);
+  			g_mutex_unlock(dbt->write_mutex);
       }
 			if (dbt->insert_statement==NULL){
-        g_mutex_lock(dbt->chunks_mutex);
+        g_mutex_lock(dbt->write_mutex);
         if (dbt->insert_statement==NULL)
           build_insert_statement(dbt, fields, num_fields);
-        g_mutex_unlock(dbt->chunks_mutex);
+        g_mutex_unlock(dbt->write_mutex);
       }
       if (!tj->st_in_file){
         initialize_sql_statement(tj->td->thread_data_buffers.statement);
@@ -820,10 +820,10 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         update_files_on_table_job(tj);
   		}
       if (dbt->insert_statement==NULL){
-        g_mutex_lock(dbt->chunks_mutex);
+        g_mutex_lock(dbt->write_mutex);
         if (dbt->insert_statement==NULL)
           build_insert_statement(dbt, fields, num_fields);
-        g_mutex_unlock(dbt->chunks_mutex);
+        g_mutex_unlock(dbt->write_mutex);
       }
 	  	if (!tj->st_in_file)
   	  	initialize_sql_statement(tj->td->thread_data_buffers.statement);
@@ -832,7 +832,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
 	}
 
   message_dumping_data(tj);
-
   // Perf: Use monotonic time instead of GDateTime to eliminate allocations
   // g_get_monotonic_time() returns microseconds with zero allocation overhead
   gint64 last_progress_time = g_get_monotonic_time();

@@ -357,7 +357,7 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
 
 void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   struct table_job *tj = (struct table_job *)job->job_data;
-
+//  trace("Thread %d: thd_JOB_DUMP", td->thread_id);
   if (use_savepoints){
     if (td->table_name!=NULL){
       if (tj->dbt->table != td->table_name){
@@ -371,12 +371,13 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     }
   }
   tj->td=td;
-
+//  trace("Thread %d: thd_JOB_DUMP about to process", td->thread_id);
   tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
+//  trace("Thread %d: thd_JOB_DUMP processed", td->thread_id);
   g_mutex_lock(tj->dbt->chunks_mutex);
   tj->dbt->current_threads_running--;
   g_mutex_unlock(tj->dbt->chunks_mutex);
-
+//  trace("Thread %d: thd_JOB_DUMP done", td->thread_id);
   free_table_job(tj);
   g_free(job);
 }
@@ -628,6 +629,7 @@ gboolean process_job_builder_job(struct thread_data *td, struct job *job){
       g_free(job);
       break;
     case JOB_SHUTDOWN:
+      trace("JOB_SHUTDOWN");
       g_free(job);
       return FALSE;
       break;
@@ -685,6 +687,7 @@ gboolean process_job(struct thread_data *td, struct job *job){
       break;
       */
     case JOB_SHUTDOWN:
+      trace("JOB_SHUTDOWN");
       g_free(job);
       return FALSE;
       break;
@@ -714,7 +717,9 @@ void process_queue(GAsyncQueue * queue, struct thread_data *td, gboolean do_buil
     if (chunk_step_queue) {
       g_async_queue_push(chunk_step_queue, GINT_TO_POINTER(1));
     }
+//    trace("Thread %d: g_async_queue_pop",td->thread_id);
     job = (struct job *)g_async_queue_pop(queue);
+//    trace("Thread %d: g_async_queue_pop done %p",td->thread_id, job);
     if (shutdown_triggered && (job->type != JOB_SHUTDOWN)) {
       g_message("Thread %d: Process has been cacelled",td->thread_id);
       return;

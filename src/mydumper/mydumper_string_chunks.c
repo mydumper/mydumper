@@ -39,32 +39,53 @@
 #include "mydumper_common.h"
 #include "mydumper_chunks.h"
 
+extern guint max_items_per_string_chunk;
 extern guint max_time_per_select;
+extern guint max_char_size;
 
 static
-void initialize_string_step(union chunk_step *cs, gboolean is_step_fixed_length, guint64 step, gboolean check_min, gboolean check_max, guint64 rows_in_explain){
+void initialize_string_step(union chunk_step *cs, 
+    gboolean is_step_fixed_length, 
+    guint left_length, 
+    gchar *str_min, gchar *str_max, 
+    guint64 step, 
+    gboolean check_min, gboolean check_max, 
+    guint64 rows_in_explain){
   cs->string_step.step = step;
   cs->string_step.is_step_fixed_length = is_step_fixed_length;
   cs->string_step.check_max=check_max;
   cs->string_step.check_min=check_min;
   cs->string_step.rows_in_explain=rows_in_explain;
+  cs->string_step.str_min=str_min;
+  cs->string_step.str_max=str_max;
+  cs->string_step.left_length=left_length;
+  cs->string_step.cond=g_cond_new();
+  cs->string_step.cond_mutex=g_mutex_new();
 }
 
 static
-union chunk_step *new_string_step(gboolean is_step_fixed_length, guint64 step, gboolean check_min, gboolean check_max, guint64 rows_in_explain){
+union chunk_step *new_string_step(gboolean is_step_fixed_length, guint left_length, gchar *str_min, gchar *str_max, guint64 step, gboolean check_min, gboolean check_max, guint64 rows_in_explain){
   union chunk_step * cs = g_new0(union chunk_step, 1);
-  initialize_string_step(cs, is_step_fixed_length, step, check_min, check_max, rows_in_explain);
+  initialize_string_step(cs, is_step_fixed_length, left_length, str_min, str_max, step, check_min, check_max, rows_in_explain);
   return cs;
 }
 
 void free_string_step_item(struct chunk_step_item * csi);
 
 static
-void initialize_string_step_item(
-    struct chunk_step_item *csi, gboolean include_null, GString *prefix, gchar *field, guint deep, gboolean is_step_fixed_length, 
-    guint64 step, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, 
-    gboolean multicolumn, guint64 rows_in_explain){
-  csi->chunk_step = new_string_step( is_step_fixed_length, step, check_min, check_max, rows_in_explain);
+void initialize_string_step_item(struct chunk_step_item *csi, 
+    gboolean include_null, GString *prefix, gchar *field, 
+    guint deep, 
+    gboolean is_step_fixed_length, 
+    guint left_length, 
+    gchar *str_min, gchar *str_max,
+    guint64 step, guint64 part, 
+    gboolean check_min, gboolean check_max, 
+    struct chunk_step_item * next, 
+    guint position, 
+    gboolean multicolumn, 
+    guint64 rows_in_explain){
+  csi->chunk_step = new_string_step( is_step_fixed_length, left_length, str_min, str_max, step, check_min, check_max, rows_in_explain);
   csi->chunk_type=STRING;
   csi->position=position;
   csi->next=next;
@@ -85,18 +106,24 @@ void initialize_string_step_item(
 }
 
 struct chunk_step_item *new_string_step_item(
-    gboolean include_null, GString *prefix, gchar *field, guint deep, gboolean is_step_fixed_length, 
-    guint64 step, guint64 part, gboolean check_min, gboolean check_max, struct chunk_step_item * next, guint position, 
-    gboolean multicolumn, guint64 rows_in_explain){
+    gboolean include_null, GString *prefix, gchar *field, 
+    guint deep, 
+    gboolean is_step_fixed_length, 
+    guint left_length,
+    gchar *str_min, gchar *str_max, 
+    guint64 step, guint64 part,
+    gboolean check_min, gboolean check_max,
+    struct chunk_step_item * next,
+    guint position, 
+    gboolean multicolumn,
+    guint64 rows_in_explain){
   struct chunk_step_item *csi = g_new0(struct chunk_step_item,1);
   initialize_string_step_item(
-      csi, include_null, prefix, field, deep, is_step_fixed_length, 
+      csi, include_null, prefix, field, deep, is_step_fixed_length, left_length, str_min, str_max,
       step, part, check_min, check_max, next, position, 
       multicolumn, rows_in_explain);
   return csi;
 }
-
-
 
 void free_string_step(union chunk_step * cs){
   if (cs)
@@ -128,45 +155,20 @@ void free_string_step_item(struct chunk_step_item * csi){
 struct chunk_step_item * split_string_chunk_step(struct chunk_step_item * csi){
   struct chunk_step_item * new_csi = NULL;
   guint64 part=csi->part;
-  struct string_step *ics=&(csi->chunk_step->string_step);
-/*
-    type.unsign.max = ics->type.unsign.max;
-    if (csi->status == DUMPING_CHUNK)
-      type.unsign.min=ics->type.unsign.cursor;
-    else
-      type.unsign.min=ics->type.unsign.min;
-*/
+  part+=pow(2,csi->deep);
+  new_csi = new_string_step_item(FALSE, NULL, csi->field, csi->deep + 1, csi->chunk_step->string_step.is_step_fixed_length, csi->chunk_step->string_step.left_length, 
+      csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, 
+      csi->chunk_step->string_step.step, part, FALSE, FALSE, NULL, csi->position, csi->multicolumn, 0);
+  new_csi->status = UNASSIGNED;
+  new_csi->chunk_step->string_step.str_max=csi->chunk_step->string_step.str_max;
+  new_csi->chunk_step->string_step.str_min=csi->chunk_step->string_step.str_cur;
 
-  if ( ics->is_step_fixed_length ){
-    /*
-    if (ics->is_unsigned){
-      new_minmax_unsigned = (type.unsign.min/ics->step)*ics->step +          ics->step    *
-                  (((( ics->type.unsign.max /          ics->step )  -
-                      (     type.unsign.min /          ics->step )) / 2 ) + 1);
+  csi->chunk_step->string_step.str_max=csi->chunk_step->string_step.str_prev_cur;
 
-      if ((type.unsign.min / ics->step) == (new_minmax_unsigned / ics->step))
-        return NULL;
+  csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+  new_csi->chunk_step->string_step.str_cur=new_csi->chunk_step->string_step.str_max;
 
-      if (new_minmax_unsigned == type.unsign.min)
-        return NULL;
-      
-      type.unsign.min = new_minmax_unsigned;
-      part= type.unsign.min / csi->chunk_step->string_step.step + 1;
-    }*/
-  }else{
-    part+=pow(2,csi->deep);
-    /*
-      new_minmax_unsigned = type.unsign.min + ics->type.unsign.max/2 - type.unsign.min/2 ;
-      if ( new_minmax_unsigned == type.unsign.min )
-        new_minmax_unsigned++;
-      type.unsign.min = new_minmax_unsigned;
-      */
-  }
-  // print_type(&type, ics->is_unsigned);
-  new_csi = new_string_step_item(FALSE, NULL, csi->field, csi->deep + 1, csi->chunk_step->string_step.is_step_fixed_length, csi->chunk_step->string_step.step, part, TRUE, TRUE, NULL, csi->position, csi->multicolumn, 0);
-  new_csi->status=ASSIGNED;
 
-  csi->chunk_step->string_step.check_max=TRUE;
   csi->deep=csi->deep+1;
 
 
@@ -174,7 +176,7 @@ struct chunk_step_item * split_string_chunk_step(struct chunk_step_item * csi){
 }
 
 
-
+/*
 static
 gboolean is_last_step(struct chunk_step_item *csi){
   (void)csi;
@@ -187,6 +189,7 @@ gboolean is_splitable(struct chunk_step_item *csi){
   (void)csi;
   return FALSE;
 }
+*/
 
 /*
 gboolean has_only_one_level(struct chunk_step_item *csi){
@@ -262,7 +265,9 @@ void update_where_on_string_step(struct chunk_step_item * csi);
 
 struct chunk_step_item *clone_string_chunk_step_item(struct chunk_step_item *csi){
   return new_string_step_item(
-      csi->include_null, csi->prefix, csi->field, csi->deep, csi->chunk_step->string_step.is_step_fixed_length, csi->chunk_step->string_step.step, 
+      csi->include_null, csi->prefix, csi->field, csi->deep, csi->chunk_step->string_step.is_step_fixed_length, 
+      csi->chunk_step->string_step.left_length, 
+      csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->chunk_step->string_step.step, 
       csi->part, 
       csi->chunk_step->string_step.check_min, csi->chunk_step->string_step.check_max, NULL, csi->position, csi->multicolumn, 0);
 }
@@ -270,12 +275,16 @@ struct chunk_step_item *clone_string_chunk_step_item(struct chunk_step_item *csi
 
 // dbt->chunks_mutex is LOCKED
 struct chunk_step_item *get_next_string_chunk(struct db_table *dbt){
-  struct chunk_step_item *csi=NULL, *new_csi=NULL, *new_csi_next=NULL;
-  if (dbt->chunks!=NULL){
-    csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);      
+  struct chunk_step_item *csi=NULL;
+
+//  if (dbt->chunks!=NULL){
+
+    csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);
+    trace("get_next_string_chunk"); 
     while (csi!=NULL){
       g_mutex_lock(csi->mutex);
       if (csi->status==UNASSIGNED){
+        trace("get_next_string_chunk ASSIGNED");
         csi->status=ASSIGNED;
         g_async_queue_push(dbt->chunks_queue, csi);
         g_mutex_unlock(csi->mutex);
@@ -286,106 +295,39 @@ struct chunk_step_item *get_next_string_chunk(struct db_table *dbt){
           g_async_queue_push(dbt->chunks_queue, csi);
         goto end;
       }
-      if (csi->status==COMPLETED){
+      if (csi->status==COMPLETED && csi->status==DUMPING_CHUNK){
         goto end;
       }
-      if (is_last_step(csi)){
-        trace("Last chunk on step in `%s`.`%s` assigned", dbt->database->source_database, dbt->table);
-        csi->status=UNSPLITTABLE;
-        csi->deep=csi->deep+1;
-        new_csi=clone_string_chunk_step_item(csi);
-        new_csi->status=ASSIGNED;
-
-/*        if (csi->chunk_step->string_step.is_unsigned){
-          csi->chunk_step->string_step.type.unsign.max=csi->chunk_step->string_step.type.unsign.cursor;
-          new_csi->chunk_step->string_step.type.unsign.min=csi->chunk_step->string_step.type.unsign.cursor+1;
-        }else{
-          csi->chunk_step->string_step.type.sign.max=csi->chunk_step->string_step.type.sign.cursor;
-          new_csi->chunk_step->string_step.type.sign.min=csi->chunk_step->string_step.type.sign.cursor+1;
-        }
-*/
-
-        new_csi->part+=pow(2,csi->deep);
-        update_where_on_string_step(new_csi);
-
-        dbt->chunks=g_list_append(dbt->chunks,new_csi);
-        // should I push them again? isn't it pointless?
-//        g_async_queue_push(dbt->chunks_queue, csi);
-//        g_async_queue_push(dbt->chunks_queue, new_csi);
-        //
-        g_mutex_unlock(csi->mutex);
-        return new_csi;
       
-      }
-      if (!is_splitable(csi)){
-        if (csi->multicolumn && csi->next && csi->next->chunk_type==INTEGER){
-          trace("Multicolumn table checking next");
-          g_mutex_lock(csi->next->mutex);
-          if (csi->next->status==UNSPLITTABLE || csi->next->status==COMPLETED){
-            trace("Multicolumn table is not splittable: %d Ref: COMPLETED=%d", csi->next->status, COMPLETED);
-            csi->status=UNSPLITTABLE;
-            g_mutex_unlock(csi->next->mutex);
-            goto end;
-          }
-          if (!is_splitable(csi->next)){
-            trace("Multicolumn table is not splittable");
-            csi->next->status=UNSPLITTABLE;
-            g_mutex_unlock(csi->next->mutex);
-            goto end;
-          }
-
-//          if (has_only_one_level(csi)){
-
-            new_csi_next=split_string_chunk_step(csi->next);
-
-            if (new_csi_next){
-              trace("Multicolumn table is splittable");
-              new_csi_next->multicolumn=FALSE;
-              csi->deep=csi->deep+1;
-              new_csi=clone_string_chunk_step_item(csi);
-              new_csi->status=ASSIGNED;
-//              if ( csi->chunk_step->string_step.is_step_fixed_length ){
-                new_csi->part+=pow(2,csi->deep);
-//              }
-              update_where_on_string_step(new_csi);
- 
-              new_csi->next=new_csi_next;
-
-              new_csi->next->prefix = new_csi->where;
-              dbt->chunks=g_list_append(dbt->chunks,new_csi);
-              g_async_queue_push(dbt->chunks_queue, csi);
-              g_async_queue_push(dbt->chunks_queue, new_csi);
-              g_mutex_unlock(csi->next->mutex);
-              g_mutex_unlock(csi->mutex);
-              return new_csi;
-            }else{
-              trace("Multicolumn table: not able to split?");
-            }
-//          }
-          g_mutex_unlock(csi->next->mutex);
-        }
-
-        csi->status=UNSPLITTABLE;
-        goto end;
-      }
-
-      // it should be splittable, let's do it
-      new_csi = split_string_chunk_step(csi);
-      if (new_csi){
-  //        trace("Multicolumn table splited min: %lld max: %lld ", new_csi->chunk_step->string_step.type.sign.min, new_csi->chunk_step->string_step.type.sign.max);
-        dbt->chunks=g_list_append(dbt->chunks,new_csi);
-        g_async_queue_push(dbt->chunks_queue, csi);
-        g_async_queue_push(dbt->chunks_queue, new_csi);
+      g_mutex_lock(csi->chunk_step->string_step.cond_mutex);
+      //g_mutex_unlock(dbt->chunks_mutex);
+      trace("Waiting cond");
+      while (csi->status == ASSIGNED){
         g_mutex_unlock(csi->mutex);
-        return new_csi;
+        g_cond_wait(csi->chunk_step->string_step.cond, csi->chunk_step->string_step.cond_mutex);
+        g_mutex_lock(csi->mutex);
       }
-  
+      trace("Waiting cond ended");
+      //g_mutex_lock(dbt->chunks_mutex);
+      g_mutex_unlock(csi->chunk_step->string_step.cond_mutex);
+      //
+      // csi->status == ASSIGNED
+      //
+
+//      if (g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_max)){
+//        g_async_queue_push(dbt->chunks_queue, csi);
+//       }
+
+
+
 end:
       g_mutex_unlock(csi->mutex);
       csi = (struct chunk_step_item *)g_async_queue_try_pop(dbt->chunks_queue);
     }
-  }
-  return NULL;
+
+
+//  }
+  return csi;
 }
 
 
@@ -421,7 +363,7 @@ gboolean refresh_string_min_max(MYSQL *conn, struct db_table *dbt, struct chunk_
   mysql_free_result(minmax);
   return TRUE;
 }
-
+/*
 static
 gboolean update_string_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_item *csi ){
 //  struct string_step * ics = &(csi->chunk_step->string_step);
@@ -431,11 +373,12 @@ gboolean update_string_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_
 
   MYSQL_RES *min = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s ASC LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "!40001 SQL_NO_CACHE ": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
                         identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
-                        where->str, 
-                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
+                        csi->where->str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new max failed", NULL);
+
   g_string_free(where,TRUE);
   g_free(query);
 
@@ -455,7 +398,167 @@ gboolean update_string_min(MYSQL *conn, struct db_table *dbt, struct chunk_step_
   mysql_free_result(min);
   return TRUE;
 }
+*/
 
+static
+gboolean set_next_min(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi){
+  gchar *query = NULL;
+
+  MYSQL_RES *max = m_store_result(conn, query = g_strdup_printf(
+                        "SELECT %s LEFT(%s%s%s,%d) FROM %s%s%s.%s%s%s WHERE %s%s%s > '%s' AND %s%s%s NOT LIKE '%s%%' AND  %s%s%s < '%s' ORDER BY %s%s%s ASC LIMIT 1",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.left_length,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_min,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_min,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_max,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
+  trace("set_next_min: %s", query);
+  g_free(query);
+
+  if (!max)
+    goto cleanup;
+
+  MYSQL_ROW row = mysql_fetch_row(max);
+  if (row==NULL || row[0]==NULL){
+cleanup:
+    if (max)
+      mysql_free_result(max);
+    return FALSE;
+  }
+
+  g_free(csi->chunk_step->string_step.str_min);
+  csi->chunk_step->string_step.str_min=g_strdup(row[0]);
+
+  mysql_free_result(max);
+  return TRUE;
+}
+
+static
+gboolean set_next_cur(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi){
+  gchar *query = NULL;
+
+  MYSQL_RES *max = m_store_result(conn, query = g_strdup_printf(
+                        "SELECT %s LEFT(%s%s%s,%d) FROM %s%s%s.%s%s%s WHERE %s%s%s > '%s' AND %s%s%s NOT LIKE '%s%%' AND  %s%s%s < '%s' ORDER BY %s%s%s ASC LIMIT 1",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.left_length,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_cur,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_cur,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_max,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
+  trace("set_next_cur: %s", query);
+  g_free(query);
+
+  if (csi->chunk_step->string_step.str_prev_cur) g_free(csi->chunk_step->string_step.str_prev_cur);
+  csi->chunk_step->string_step.str_prev_cur=csi->chunk_step->string_step.str_cur;
+
+  if (!max)
+    goto cleanup;
+
+  MYSQL_ROW row = mysql_fetch_row(max);
+  if (row==NULL || row[0]==NULL){
+cleanup:
+    if (max)
+      mysql_free_result(max);
+    csi->chunk_step->string_step.str_cur=NULL;
+    return FALSE;
+  }
+  csi->chunk_step->string_step.str_cur=g_strdup(row[0]);
+
+  mysql_free_result(max);
+  return TRUE;
+}
+
+gboolean set_prev_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi){
+  gchar *query = NULL;
+
+  MYSQL_RES *max = m_store_result(conn, query = g_strdup_printf(
+                        "SELECT %s LEFT(%s%s%s,1) FROM %s%s%s.%s%s%s WHERE %s%s%s < '%s' AND %s%s%s NOT LIKE '%s%%' AND  %s%s%s > '%s' ORDER BY %s%s%s DESC LIMIT 1",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_max,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_max,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_min,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str), NULL, "Query to get a new min failed", NULL);
+  trace("set_prev_max: %s", query);
+  g_free(query);
+
+  if (!max)
+    goto cleanup;
+
+  MYSQL_ROW row = mysql_fetch_row(max);
+  if (row==NULL || row[0]==NULL){
+cleanup:
+//      ics->type.sign.max = ics->type.sign.min;
+
+    if (max)
+      mysql_free_result(max);
+    return FALSE;
+  }
+
+//    gint64 nmax = strtoll(row[0], NULL, 10);
+//    ics->type.sign.max = nmax;
+
+  g_free(csi->chunk_step->string_step.str_max);
+  csi->chunk_step->string_step.str_max=g_strdup(row[0]);
+
+  mysql_free_result(max);
+  return TRUE;
+
+}
+
+static
+gboolean renew_min_and_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi){
+
+  MYSQL_RES *max = m_store_result_free_query(conn, g_strdup_printf(
+                        "SELECT %s LEFT(MIN(%s%s%s),%d), LEFT(MAX(%s%s%s),%d) FROM %s%s%s.%s%s%s WHERE  %s%s%s LIKE '%s%%'",
+                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.left_length,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.left_length,
+                        identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
+                        identifier_quote_character_str, csi->field, identifier_quote_character_str,
+                        csi->chunk_step->string_step.str_min), NULL, "Query to get a new min failed", NULL);
+
+  if (!max)
+    goto cleanup;
+
+  MYSQL_ROW row = mysql_fetch_row(max);
+  if (row==NULL || row[0]==NULL){
+cleanup:
+//      ics->type.sign.max = ics->type.sign.min;
+
+    if (max)
+      mysql_free_result(max);
+    return FALSE;
+  }
+
+//    gint64 nmax = strtoll(row[0], NULL, 10);
+//    ics->type.sign.max = nmax;
+
+  g_free(csi->chunk_step->string_step.str_max);
+  csi->chunk_step->string_step.str_min=g_strdup(row[0]);
+  csi->chunk_step->string_step.str_max=g_strdup(row[1]);
+
+  mysql_free_result(max);
+  return TRUE;
+
+}
+/*
 static
 gboolean update_string_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_item *csi ){
 //  struct string_step * ics = &(csi->chunk_step->string_step);
@@ -465,7 +568,7 @@ gboolean update_string_max(MYSQL *conn,struct db_table *dbt, struct chunk_step_i
 
   MYSQL_RES *max = m_store_result(conn, query = g_strdup_printf(
                         "SELECT %s %s%s%s FROM %s%s%s.%s%s%s WHERE %s ORDER BY %s%s%s DESC LIMIT 1",
-                        is_mysql_like() ? "/*!40001 SQL_NO_CACHE */": "",
+                        is_mysql_like() ? "!40001 SQL_NO_CACHE ": "",
                         identifier_quote_character_str, csi->field, identifier_quote_character_str,
                         identifier_quote_character_str, dbt->database->source_database, identifier_quote_character_str, identifier_quote_character_str, dbt->table, identifier_quote_character_str,
                         where->str,
@@ -492,6 +595,7 @@ cleanup:
   mysql_free_result(max);
   return TRUE;
 }
+*/
 
 static
 gboolean is_last(struct chunk_step_item *csi){
@@ -513,40 +617,213 @@ guint process_string_chunk_step(struct table_job *tj, struct chunk_step_item *cs
     return 1;
   }
 
+// Stage 1: Update min
+
+// main chunk
+// Tengo que calcular el min? hay situaciones en la que el chunk viene con el min que ya le corresponde a otro chunk y por lo tanto no debe ser tenido en cuenta, asi que debe ser recalculado.
+  trace("Thread %d: I-Chunk 0: locking mutex", td->thread_id);
+  g_mutex_lock(csi->mutex);
+  trace("Thread %d: I-Chunk 0: locking mutex done", td->thread_id);
+  csi->status=ASSIGNED;
+  // check_min will tell us if the value of str_min is valid, if not, we need to recalculate
+  if (cs->string_step.check_min /*&& tj->dbt->max_chunk_step_size!=0 && !cs->string_step.is_step_fixed_length */){
+    set_next_min(td->thrconn, tj->dbt, csi);
+    cs->string_step.check_min=FALSE;
+    GString *_where;
+    _where=get_where_from_csi(csi);
+    trace("Thread %d: I-Chunk 0: Calculating rows from explain with where: %s", td->thread_id, _where->str);
+    cs->string_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field);
+    g_string_free(_where, TRUE);
+  }
+
+
+// Stage 1: Can I split current level based in the amount of rows?
+//  g_mutex_lock(csi->mutex);
+
+
+// puedo hacerlo yo?
+// check if step es mayor al explain
+// si puedo, lo hago como un range string
+// si no puedo  porque el step es menor al explain, que significa que el chunk se debe partir debo:
+//    partir el chunk y ejectuarlo
+//    partir el chunk implica count expalin primer caracter
+//    check if step es mayor al explain
+//    si es menor, entonces agarro otro caracter y ya seria un range string chunk, continuo iterando agarrando char hasta llegar al step, contar tambien remaining rows en explain, esta iteracion termina cuando el ultimo genera que sea mayor, este char va a ser el proximo str_min, que dicho y sea de paso, lo podria crear y encolar, total? si hay alguien esperando lo puede agarrar  || TENGO EL NEXT MIN
+//    si es mayor, entonces tengo que ir deep (un char mas en el length) y creo el siguiente chunk clonando el actual a partir del siguiente char que va a ser calculado despues, tengo explain asi que lo guardo y tambien calculo el explain de lo queda, y encolo || NO TENGO EL NEXT MIN
+//
+
+
+  
+retry_split_chunk:
+//  csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_min);
+//  csi->chunk_step->string_step.str_prev_cur=NULL;
+
+  trace("Thread %d: I-Chunk 0: Initiaing process of CSI ['%s','%s'] Est. Rows: %d", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, cs->string_step.rows_in_explain);
+
+  if (cs->string_step.step > cs->string_step.rows_in_explain){
+    csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+    goto execute_string_chunk;
+  }
+
+  if (!g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_max)){
+    // str_min == str_max . Can I go deeper?
+    if (csi->chunk_step->string_step.left_length >= max_char_size ){
+      csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+      goto execute_string_chunk;
+    } 
+    csi->chunk_step->string_step.left_length++;
+    renew_min_and_max(td->thrconn, tj->dbt, csi);
+    goto retry_split_chunk;
+  }
+  
+  // range string
+
+
+
+//max_items_per_string_chunk
+
+  trace("Thread %d: I-Chunk 0: Should be splited ['%s','%s'] Step %d < %d rows reported in explain", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, cs->string_step.step, cs->string_step.rows_in_explain);
+  guint64 prev_rows_in_explain=0,rows_in_explain=0;
+  guint i=0;
+
+    
+  csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_min);
+  do {
+    get_where_from_csi(csi);
+    trace("Thread %d: I-Chunk 0: Calculating rows from explain ['%s','%s']. Where: %s", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->where->str);
+    prev_rows_in_explain=rows_in_explain;
+    rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
+    set_next_cur(td->thrconn, tj->dbt, csi);
+    i++;
+
+  } while ( i < max_items_per_string_chunk &&
+            cs->string_step.step > rows_in_explain  && 
+            csi->chunk_step->string_step.str_cur
+//          remaining_rows > 0
+            );
+  csi->chunk_step->string_step.rows_in_explain=prev_rows_in_explain;
+  if (!g_strcmp0(csi->chunk_step->string_step.str_max,csi->chunk_step->string_step.str_cur)){
+    goto execute_string_chunk;
+  }
+  g_assert(csi->chunk_step->string_step.str_prev_cur);
+  if (!csi->chunk_step->string_step.str_prev_cur){
+    trace("Thread %d: I-Chunk 2: as str_prev_cur is null using min: %s", td->thread_id, csi->chunk_step->string_step.str_min);
+    csi->chunk_step->string_step.str_prev_cur=g_strdup(csi->chunk_step->string_step.str_min);
+  }
+  if (!csi->chunk_step->string_step.str_cur){
+    trace("Thread %d: I-Chunk 2: as str_cur is null using max: %s", td->thread_id, csi->chunk_step->string_step.str_max);
+    csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_max);
+  }
+  trace("Thread %d: I-Chunk 2: Cloning into ['%s','%s'] ['%s','%s']", 
+      td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur, 
+      csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
+  struct chunk_step_item *new_csi=split_string_chunk_step(csi);
+  get_where_from_csi(new_csi);
+  new_csi->chunk_step->string_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, new_csi->where, new_csi->field);
+  trace("Thread %d: I-Chunk 2: Exe CSI ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max);
+  trace("Thread %d: I-Chunk 2: New CSI ['%s','%s'] with estimated rows: %d", td->thread_id, new_csi->chunk_step->string_step.str_min, new_csi->chunk_step->string_step.str_max, new_csi->chunk_step->string_step.rows_in_explain);
+  g_async_queue_push(tj->dbt->chunks_queue, new_csi);
+  goto execute_string_chunk;
+
+
+/*      if (cs->string_step.rows_in_explain > _rows_in_explain)
+        remaining_rows=cs->string_step.rows_in_explain - _rows_in_explain;
+      else 
+        remaining_rows=0;
+      trace("Thread %d: I-Chunk 0: Calculated rows %"G_GUINT64_FORMAT" and remaining rows: %d", td->thread_id, _rows_in_explain, remaining_rows);
+      g_string_free(_where, TRUE);
+      csi->chunk_step->string_step.str_prev_cur=csi->chunk_step->string_step.str_cur;
+      set_next_cur(td->thrconn, tj->dbt, csi);
+      if (!csi->chunk_step->string_step.str_cur)
+        csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+      trace("Thread %d: I-Chunk 0: Subsets ['%s','%s'] ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur, csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
+      i++;
+    }
+    csi->chunk_step->string_step.rows_in_explain=prev_rows_in_explain;
+
+    if (!csi->chunk_step->string_step.str_cur){
+      csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+      goto process;
+    }
+
+    if (!g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_prev_cur) && g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_cur) && g_strcmp0(csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max)){
+      // MIN == CUR
+      csi->chunk_step->string_step.rows_in_explain=_rows_in_explain;
+      trace("Thread %d: I-Chunk 1: Cloning due MIN == CUR into ['%s','%s'] ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur, csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
+      struct chunk_step_item *new_csi=split_string_chunk_step(csi);
+      if (!new_csi->chunk_step->string_step.str_min) new_csi->chunk_step->string_step.str_min=new_csi->chunk_step->string_step.str_max;
+      if (!remaining_rows){
+        new_csi->chunk_step->string_step.str_cur=new_csi->chunk_step->string_step.str_max;
+        _where=get_where_from_csi(new_csi);
+        remaining_rows=get_rows_from_explain(td->thrconn, tj->dbt, _where, new_csi->field);
+        g_string_free(_where, TRUE);
+      }
+      new_csi->chunk_step->string_step.rows_in_explain=remaining_rows;
+      trace("Thread %d: I-Chunk 1: Exe CSI ['%s','%s'] Est. Rows: %d", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->chunk_step->string_step.rows_in_explain);
+      trace("Thread %d: I-Chunk 1: New CSI ['%s','%s'] Est. Rows: %d", td->thread_id, new_csi->chunk_step->string_step.str_min, new_csi->chunk_step->string_step.str_max, new_csi->chunk_step->string_step.rows_in_explain);
+//      m_error("MIN == CUR this shouldn't happen");
+      g_async_queue_push(tj->dbt->chunks_queue, new_csi);
+      if (!csi->chunk_step->string_step.rows_in_explain){
+        _where=get_where_from_csi(csi);
+        csi->chunk_step->string_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field);
+        trace("Thread %d: I-Chunk 1: We calculated rows %"G_GUINT64_FORMAT" and the step is %d for %s | Left_lenght %d", td->thread_id, csi->chunk_step->string_step.rows_in_explain, cs->string_step.step, _where->str, csi->chunk_step->string_step.left_length);
+        g_string_free(_where, TRUE);
+      }
+
+      if (((2*cs->string_step.step) < csi->chunk_step->string_step.rows_in_explain) && (csi->chunk_step->string_step.left_length < 2)){
+        trace("Trying to split");
+        csi->chunk_step->string_step.left_length++;
+        renew_min_and_max(td->thrconn, tj->dbt, csi);
+        goto retry_split_chunk;
+      }
+
+    }
+    if (!g_strcmp0(csi->chunk_step->string_step.str_max,csi->chunk_step->string_step.str_cur)){
+      // MAX == CUR
+      goto process;
+    }
+    if (i>0){
+      trace("Thread %d: I-Chunk 2: Cloning into ['%s','%s'] ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur, csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
+      struct chunk_step_item *new_csi=split_string_chunk_step(csi);
+      _where=get_where_from_csi(new_csi);
+      remaining_rows=get_rows_from_explain(td->thrconn, tj->dbt, _where, new_csi->field);
+      new_csi->chunk_step->string_step.rows_in_explain=remaining_rows;
+      trace("Thread %d: I-Chunk 2: Exe CSI ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max);
+      trace("Thread %d: I-Chunk 2: New CSI ['%s','%s'] with estimated rows: %d", td->thread_id, new_csi->chunk_step->string_step.str_min, new_csi->chunk_step->string_step.str_max, new_csi->chunk_step->string_step.rows_in_explain);
+      g_async_queue_push(tj->dbt->chunks_queue, new_csi);
+//      g_mutex_lock(tj->dbt->chunks_mutex);
+//      tj->dbt->chunks=g_list_prepend(tj->dbt->chunks,new_csi);
+//      g_mutex_unlock(tj->dbt->chunks_mutex);
+
+    }else{
+      trace("Thread %d: I-Chunk 0: do not spliting", td->thread_id);
+    
+    }
+    }
+  }else{
+    csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
+    trace("Thread %d: I-Chunk 0: do not spliting %s | %s | %s | %d | %d", td->thread_id, csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_cur,csi->chunk_step->string_step.str_max,
+      cs->string_step.step, cs->string_step.rows_in_explain);
+  
+  }
+*/
+execute_string_chunk:
+  // Let's process the chunk
+
+//  g_mutex_unlock(csi->mutex);
+
 // Stage 1: Update min and max if needed
 
-  g_mutex_lock(csi->mutex);
+//  g_mutex_lock(csi->mutex);
 //  if (tj->status == COMPLETED)
 //    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
   csi->status = DUMPING_CHUNK;
+  g_mutex_lock(csi->chunk_step->string_step.cond_mutex);
+  trace("Thread %d: Signallinging cond", td->thread_id);
+  g_cond_signal(csi->chunk_step->string_step.cond);
+  g_mutex_unlock(csi->chunk_step->string_step.cond_mutex);
+//  gboolean c_min=TRUE, c_max=TRUE;
 
-  gboolean c_min=TRUE, c_max=TRUE;
-
-  if (!cs->string_step.is_step_fixed_length){  
-
-    if (cs->string_step.check_max /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->string_step.is_step_fixed_length){
-      trace("Thread %d: I-Chunk 1: Updating MAX", td->thread_id);
-      c_max=update_string_max(td->thrconn, tj->dbt, csi);
-      cs->string_step.check_max=FALSE;
-    }
-    if (cs->string_step.check_min /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->string_step.is_step_fixed_length){
-      c_min=update_string_min(td->thrconn, tj->dbt, csi);
-      cs->string_step.check_min=FALSE;
-    }
-    if (!c_min && !c_max){
-      trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
-      close_files(tj);
-      g_mutex_unlock(csi->mutex);
-      goto update_min;
-    }
-
-    if ( cs->string_step.rows_in_explain == 0){
-      GString *_where=get_where_from_csi(csi);
-      cs->string_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, _where, csi->field); 
-      trace("Thread %d: I-Chunk 1: We calculated rows %"G_GUINT64_FORMAT" for %s", td->thread_id, cs->string_step.rows_in_explain, _where->str);
-      g_string_free(_where, TRUE);
-    }
-  }
 
 
 // Stage 2: Setting cursor
@@ -560,6 +837,7 @@ retry:
         cs->string_step.type.unsign.cursor = cs->string_step.type.unsign.min + string_step_step - 1;*/
     trace("Thread %d: I-Chunk 2: cs->string_step.type.unsign.cursor:", td->thread_id);
     update_where_on_string_step(csi);
+    trace("Thread %d: I-Chunk 1: Calculating rows", td->thread_id);
     guint64 rows = check_row_count?
                    get_rows_from_count  (td->thrconn, tj->dbt, csi->where):
                    get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
@@ -722,6 +1000,14 @@ update_min:
 
 //  g_message("Thread %d: I-Chunk 5: string_step.type.sign.cursor: %"G_GINT64_FORMAT"  | string_step.type.sign.min %"G_GINT64_FORMAT"  | cs->string_step.type.sign.max : %"G_GINT64_FORMAT" | cs->string_step.step %ld", td->thread_id, cs->string_step.type.sign.cursor, cs->string_step.type.sign.min, cs->string_step.type.sign.max, cs->string_step.step);
 
+
+//  trace("Thread %d: I-Chunk 5: string_step current min %s", td->thread_id, csi->chunk_step->string_step.str_min);
+//  set_next_min(td->thrconn, tj->dbt, csi);
+//  trace("Thread %d: I-Chunk 5: string_step next min %s", td->thread_id, csi->chunk_step->string_step.str_min);
+
+
+
+
 //end_process:
 
   if (csi->position==0)
@@ -741,34 +1027,6 @@ void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi){
   union chunk_step *cs = csi->chunk_step;
 //  gboolean multicolumn_process=FALSE;
 
-/*
-  if (csi->next==NULL && csi->multicolumn){
-    if (csi->position == 0){
-      
-    
-    
-    }else{
-      g_string_set_size(csi->where,0);
-      update_string_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->string_step.is_unsigned, csi->chunk_step->string_step.type, FALSE);
-      guint64 rows = check_row_count?
-                   get_rows_from_count(td->thrconn, dbt, NULL): 
-                   get_rows_from_explain(td->thrconn, dbt, csi->where, csi->field);
-
-
-//    determine_if_we_can_go_deeper_in_string_chunk_step_item(csi,rows);
-
-      if (rows > csi->chunk_step->string_step.min_chunk_step_size ){
-        struct chunk_step_item *next_csi = initialize_chunk_step_item(td->thrconn, dbt, csi->position + 1, csi->where);
-        if (next_csi && next_csi->chunk_type!=NONE){
-          csi->next=next_csi;
-          multicolumn_process=TRUE;
-        }
-      }
-    }
-  }
-*/
-
-
 
   // First step, we need this to process the one time prefix
   g_string_set_size(tj->where,0);
@@ -786,20 +1044,6 @@ void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi){
   g_mutex_lock(csi->mutex);
     // Remaining unsigned steps
 //g_message("cs->string_step.type.unsign.min: %"G_GUINT64_FORMAT" | cs->string_step.type.unsign.max: %"G_GUINT64_FORMAT, cs->string_step.type.unsign.min, cs->string_step.type.unsign.max);
-    while ( 
-FALSE
-        //              (  cs->string_step.is_unsigned && cs->string_step.type.unsign.min <= cs->string_step.type.unsign.max )
-//           || ( !cs->string_step.is_unsigned && cs->string_step.type.sign.min   <= cs->string_step.type.sign.max   )
-          ){
-      g_mutex_unlock(csi->mutex);
-      g_string_set_size(tj->where,0);
-      if (process_string_chunk_step(tj, csi)){
-        g_message("Thread %d: Job has been cacelled",td->thread_id);
-        return;
-      }
-      g_atomic_int_inc(dbt->chunks_completed);
-      g_mutex_lock(csi->mutex);
-    }
 
   if (csi->position==0)
     cs->string_step.estimated_remaining_steps=0;
@@ -808,7 +1052,7 @@ FALSE
 
 }
 
-void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field){
+void update_string_where_on_gstring(GString *where, gboolean include_null, GString *prefix, gchar * field, gchar *str_min, gchar *str_max){
   if (prefix && prefix->len>0){
 //    g_message("update_string_where_on_gstring:: Prefix: %s", prefix->str);
     g_string_append_printf(where,"(%s AND ",
@@ -819,22 +1063,14 @@ void update_string_where_on_gstring(GString *where, gboolean include_null, GStri
     g_string_append_printf(where,"(%s%s%s IS NULL OR", identifier_quote_character_str, field, identifier_quote_character_str);
   }
   g_string_append(where,"(");
-  /*
-      t.sign.min = type.sign.min;
-      if (!use_cursor)
-        t.sign.cursor = type.sign.max;
-      else
-        t.sign.cursor = type.sign.cursor;
-      if (t.sign.min == t.sign.cursor){
-                g_string_append_printf(where,"%s%s%s = %"G_GINT64_FORMAT,
-                          identifier_quote_character_str, field, identifier_quote_character_str, t.sign.cursor);
-      }else{
-                g_string_append_printf(where,"%"G_GINT64_FORMAT" <= %s%s%s AND %s%s%s <= %"G_GINT64_FORMAT,
-                          t.sign.min,
-                          identifier_quote_character_str, field, identifier_quote_character_str, identifier_quote_character_str, field, identifier_quote_character_str,
-                          t.sign.cursor);
-      }
-  */
+
+  if (!g_strcmp0(str_min,str_max))
+    g_string_append_printf(where, "%s%s%s LIKE '%s%%'",identifier_quote_character_str, field, identifier_quote_character_str, str_min);
+  else
+    g_string_append_printf(where, "(%s%s%s >= '%s' AND %s%s%s <= '%s') OR %s%s%s LIKE '%s%%'",
+        identifier_quote_character_str, field, identifier_quote_character_str, str_min, 
+        identifier_quote_character_str, field, identifier_quote_character_str, str_max,
+        identifier_quote_character_str, field, identifier_quote_character_str, str_max);
   if (include_null)
     g_string_append(where,")");
   g_string_append(where,")");
@@ -845,7 +1081,7 @@ void update_string_where_on_gstring(GString *where, gboolean include_null, GStri
 
 void update_where_on_string_step(struct chunk_step_item * csi){
   g_string_set_size(csi->where,0);
-  update_string_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field);
+  update_string_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_cur);
 }
 
 void determine_if_we_can_go_deeper_in_string_chunk_step_item( struct chunk_step_item * csi, guint64 rows){

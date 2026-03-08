@@ -459,6 +459,7 @@ gboolean new_db_table(struct db_table **d, MYSQL *conn, struct configuration *co
     dbt->load_data_suffix=NULL;
     dbt->insert_statement=NULL;
     dbt->chunks_mutex=g_mutex_new();
+    dbt->write_mutex=g_mutex_new();
     dbt->chunks_queue=g_async_queue_new();
     dbt->chunks_completed=g_new(int,1);
     *(dbt->chunks_completed)=0;
