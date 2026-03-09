@@ -659,6 +659,33 @@ retry_split_chunk:
 //  csi->chunk_step->string_step.str_prev_cur=NULL;
 
   trace("Thread %d: I-Chunk 0: Initiaing process of CSI ['%s','%s'] Est. Rows: %d", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, cs->string_step.rows_in_explain);
+  guint i=0;
+  struct chunk_step_item *new_csi=NULL;
+  if (max_items_per_string_chunk > 0){
+    csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_min;
+    if (!g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_max)){
+      goto execute_string_chunk;
+    }
+
+    for(i=0; max_items_per_string_chunk > i && csi->chunk_step->string_step.str_cur; i++){ 
+      set_next_cur(td->thrconn, tj->dbt, csi);
+    }
+    if (max_items_per_string_chunk==1 && !csi->chunk_step->string_step.str_cur ){
+      csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_max);
+    }
+    if (!csi->chunk_step->string_step.str_cur){
+      csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_max);
+    }else{
+      trace("Thread %d: I-Chunk 2: Cloning into ['%s','%s'] ['%s','%s']",
+          td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur,
+          csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
+      new_csi=split_string_chunk_step(csi);
+      trace("Thread %d: I-Chunk 2: Exe CSI ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max);
+      trace("Thread %d: I-Chunk 2: New CSI ['%s','%s'] with estimated rows: %d", td->thread_id, new_csi->chunk_step->string_step.str_min, new_csi->chunk_step->string_step.str_max, new_csi->chunk_step->string_step.rows_in_explain);
+      g_async_queue_push(tj->dbt->chunks_queue, new_csi);
+    }
+    goto execute_string_chunk;
+  }
 
   if (cs->string_step.step > cs->string_step.rows_in_explain){
     csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
@@ -667,7 +694,7 @@ retry_split_chunk:
 
   if (!g_strcmp0(csi->chunk_step->string_step.str_min,csi->chunk_step->string_step.str_max)){
     // str_min == str_max . Can I go deeper?
-    if (csi->chunk_step->string_step.left_length >= max_char_size ){
+    if (csi->chunk_step->string_step.left_length >= max_char_size && max_items_per_string_chunk > 1){
       csi->chunk_step->string_step.str_cur=csi->chunk_step->string_step.str_max;
       goto execute_string_chunk;
     } 
@@ -684,15 +711,15 @@ retry_split_chunk:
 
   trace("Thread %d: I-Chunk 0: Should be splited ['%s','%s'] Step %d < %d rows reported in explain", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, cs->string_step.step, cs->string_step.rows_in_explain);
   guint64 prev_rows_in_explain=0,rows_in_explain=0;
-  guint i=0;
-
-    
   csi->chunk_step->string_step.str_cur=g_strdup(csi->chunk_step->string_step.str_min);
+  i=0;
   do {
-    get_where_from_csi(csi);
-    trace("Thread %d: I-Chunk 0: Calculating rows from explain ['%s','%s']. Where: %s", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->where->str);
+    if (max_items_per_string_chunk > 1){
+      get_where_from_csi(csi);
+      trace("Thread %d: I-Chunk 0: Calculating rows from explain ['%s','%s']. Where: %s", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max, csi->where->str);
+      rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
+    }
     prev_rows_in_explain=rows_in_explain;
-    rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, csi->where, csi->field);
     set_next_cur(td->thrconn, tj->dbt, csi);
     i++;
 
@@ -717,7 +744,7 @@ retry_split_chunk:
   trace("Thread %d: I-Chunk 2: Cloning into ['%s','%s'] ['%s','%s']", 
       td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_prev_cur, 
       csi->chunk_step->string_step.str_cur, csi->chunk_step->string_step.str_max);
-  struct chunk_step_item *new_csi=split_string_chunk_step(csi);
+  new_csi=split_string_chunk_step(csi);
   get_where_from_csi(new_csi);
   new_csi->chunk_step->string_step.rows_in_explain=get_rows_from_explain(td->thrconn, tj->dbt, new_csi->where, new_csi->field);
   trace("Thread %d: I-Chunk 2: Exe CSI ['%s','%s']", td->thread_id, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_max);

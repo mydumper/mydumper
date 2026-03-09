@@ -323,7 +323,7 @@ static GOptionEntry chunks_entries[] = {
     {"max-char-size", 0, 0, G_OPTION_ARG_INT, &max_char_size,
       "When the primary key is an string, it will split up to this amount of character. Default: 2", NULL},
     {"max-items-per-string-chunk", 0, 0, G_OPTION_ARG_INT, &max_items_per_string_chunk,
-      "Limits the amount of string will be covered in a string chunk. Default: 5", NULL},
+      "Limits the amount of string will be covered in a string chunk. Default: 0 which means no limit, it will cut based on the information of the rows in the EXPLAIN", NULL},
     {"split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
       "Dump partitions into separate files. This option overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
