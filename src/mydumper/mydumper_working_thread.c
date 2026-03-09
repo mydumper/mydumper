@@ -357,6 +357,7 @@ void m_async_queue_push_conservative(GAsyncQueue *queue, struct job *element){
 
 void thd_JOB_DUMP(struct thread_data *td, struct job *job){
   struct table_job *tj = (struct table_job *)job->job_data;
+
   if (use_savepoints){
     if (td->table_name!=NULL){
       if (tj->dbt->table != td->table_name){
@@ -370,10 +371,12 @@ void thd_JOB_DUMP(struct thread_data *td, struct job *job){
     }
   }
   tj->td=td;
+
   tj->chunk_step_item->chunk_functions.process(tj, tj->chunk_step_item);
   g_mutex_lock(tj->dbt->chunks_mutex);
   tj->dbt->current_threads_running--;
   g_mutex_unlock(tj->dbt->chunks_mutex);
+
   free_table_job(tj);
   g_free(job);
 }

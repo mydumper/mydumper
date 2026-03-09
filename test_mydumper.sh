@@ -563,7 +563,7 @@ if [[ -n "$prepare_only"  ]]; then
   exit
 fi
 
-if [[ -n "$skip_dynamic"  ]]; then
+if [[ ! -n "$skip_dynamic"  ]]; then
   full_dynamic_tests
 fi
 
