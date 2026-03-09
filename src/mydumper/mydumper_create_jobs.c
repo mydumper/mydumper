@@ -280,9 +280,7 @@ void create_job_to_dump_chunk(struct db_table *dbt, char *partition, guint64 par
   struct table_job *tj = new_table_job(dbt, partition, part, csi);
   j->job_data=(void*) tj;
   j->type= dbt->is_transactional ? JOB_DUMP : JOB_DUMP_NON_INNODB;
-  trace("create_job_to_dump_chunk :: enquing %p", j);
   f(queue,j);
-  trace("create_job_to_dump_chunk :: done");
 }
 
 void create_job_defer(struct db_table *dbt, GAsyncQueue *queue){
