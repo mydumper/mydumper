@@ -459,10 +459,12 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_set_size(statement, 0);
 
   set_charset(statement, mr->row[2], mr->row[3]);
-  
-  g_string_append_printf(statement, "%s", mr->row[1]);
 
-  update_definer(statement, replace_definer_str, skip_definer);
+  GString *tmp_statement =  g_string_new(mr->row[1]);
+
+  update_definer(tmp_statement, replace_definer_str, skip_definer);
+
+  g_string_append_printf(statement, "%s", tmp_statement->str);
 
   g_string_append(statement, ";\n");
   restore_charset(statement);
@@ -520,6 +522,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
   /* There should never be more than one row */
   g_string_append(statement, mr->row[1]);
   update_definer(statement, replace_definer_str, skip_definer);
+
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {
     g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);

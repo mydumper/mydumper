@@ -54,3 +54,12 @@ BEGIN
 END ;;
 
 delimiter ;
+
+CREATE TABLE test (
+  id int auto_increment primary key,
+  data varchar(16) NOT NULL
+);
+
+CREATE  SQL SECURITY INVOKER VIEW `test_view` AS
+select * from specific_11.test ;
+

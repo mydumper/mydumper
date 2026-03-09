@@ -1,5 +1,5 @@
 #
-# Testing binary 16 primary key
+# Testing table with binary 16 column and without primary key and a view, with --default-character-set=utf8mb4
 #
 
 [mydumper]

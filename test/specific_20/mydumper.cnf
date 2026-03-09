@@ -1,5 +1,5 @@
 #
-# Testing binary 16 primary key
+# Testing char(5) primary key
 #
 
 [mydumper]

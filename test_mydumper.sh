@@ -95,13 +95,14 @@ export G_DEBUG=fatal-criticals
 > $mydumper_log
 > $myloader_log
 
-optstring_long="case:,rr-myloader,rr-mydumper,debug,prepare,directories:,retry:"
+optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,prepare,directories:,retry:"
 optstring_short="ce:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
 eval set -- "$opts"
 
+unset skip_dynamic
 unset prepare_only
 unset case_num
 unset case_repeat
@@ -158,6 +159,9 @@ do
   --directories)
     directories=$2
     shift 2;;
+  --skip-dynamic)
+    skip_dynamic=1
+    shift;;
   --prepare)
     prepare_only=1
     shift;;
@@ -296,7 +300,7 @@ test_case_dir (){
     done
     if (( $error > 0 )) && (( $iter > $retries ))
     then
-      mysqldump --all-databases > $mysqldumplog
+#      mysqldump --all-databases > $mysqldumplog
       echo "Error running: $mydumper ${mydumper_parameters}"
       #cat $tmp_mydumper_log
       mv $tmp_mydumper_log $mydumper_stor_dir
@@ -322,7 +326,7 @@ test_case_dir (){
     do
       # Import
       echo "Importing database: ${myloader_parameters}"
-      mysqldump --all-databases > $mysqldumplog
+#      mysqldump --all-databases > $mysqldumplog
       if (( $myloader_stream >= 1 ))
       then
         "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
@@ -559,7 +563,11 @@ if [[ -n "$prepare_only"  ]]; then
   exit
 fi
 
-full_dynamic_tests && full_test_global &&
+if [[ -n "$skip_dynamic"  ]]; then
+  full_dynamic_tests
+fi
+
+full_test_global &&
   finish
 
 #cat $mydumper_log

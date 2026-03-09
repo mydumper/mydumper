@@ -41,7 +41,7 @@ gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
 guint trx_tables=1;
 gboolean use_single_column=FALSE;
-gboolean disable_string_split=FALSE;
+gboolean split_string_pk=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
@@ -314,8 +314,8 @@ static GOptionEntry chunks_entries[] = {
       "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 
       "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
-    {"disable-string-split", 0, 0, G_OPTION_ARG_NONE, &disable_string_split,
-      "Disables the split of string primary keys", NULL},
+    {"split-string-pk", 0, 0, G_OPTION_ARG_NONE, &split_string_pk,
+      "Enables the split of string primary keys", NULL},
     {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Splitting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds", NULL},
     {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 

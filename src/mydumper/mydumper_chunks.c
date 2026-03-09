@@ -34,7 +34,7 @@
 #include "mydumper_create_jobs.h"
 
 extern guint64 min_integer_chunk_step_size;
-extern gboolean disable_string_split;
+extern gboolean split_string_pk;
 GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 GThread *chunk_builder=NULL;
@@ -203,15 +203,15 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
-      if (!disable_string_split){
-      trace("String type %d", position);
-      str_min = g_strdup(mr->row[2]);
-      str_max = g_strdup(mr->row[3]);
-      trace("String min: %s | max: %s | rows: %d", str_min, str_max, rows);
-      m_store_result_row_free(mr);
+      if (split_string_pk){
+        trace("String type %d", position);
+        str_min = g_strdup(mr->row[2]);
+        str_max = g_strdup(mr->row[3]);
+        trace("String min: %s | max: %s | rows: %d", str_min, str_max, rows);
+        m_store_result_row_free(mr);
 
-      guint64 _starting_chunk_step_size=dbt->starting_chunk_step_size;
-      if (dbt->starting_chunk_step_size == 0){
+        guint64 _starting_chunk_step_size=dbt->starting_chunk_step_size;
+        if (dbt->starting_chunk_step_size == 0){
           _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
                                              (rows/num_threads>dbt->max_chunk_step_size?
                                                dbt->max_chunk_step_size:
@@ -221,18 +221,17 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                                              rows/num_threads;
       }
 
-      if (position>0)
-        dbt->multicolumn=FALSE;
-      else
-        return new_string_step_item( TRUE, prefix, field, 0, dbt->is_fixed_length, 1, str_min, str_max, _starting_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
-      //  return new_none_chunk_step();
-      } else
-        return new_none_chunk_step();
+        if (position>0)
+          dbt->multicolumn=FALSE;
+        else
+          return new_string_step_item( TRUE, prefix, field, 0, dbt->is_fixed_length, 1, str_min, str_max, _starting_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
+      }
+      return new_none_chunk_step();
       break;
     default:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       m_store_result_row_free(mr);
-      g_message("It is NONE: default");
+      trace("It is NONE: default");
       if (position>0)
         dbt->multicolumn=FALSE;
       else
