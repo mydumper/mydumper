@@ -34,6 +34,8 @@
 #include "myloader_restore.h"
 #include "myloader_database.h"
 
+extern gboolean dry_run;
+
 struct statement * new_statement();
 guint64 max_transaction_size=DEFAULT_MAX_TRANSACTION_SIZE;
 gboolean skip_definer = FALSE;
@@ -195,6 +197,7 @@ void reconnect_connection_data(struct connection_data *cd){
 
 int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
 {
+  if (!dry_run){
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
   if (en) {
     if (is_schema)
@@ -224,6 +227,7 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
         return 1;
       }
     }
+  }
   }
   *query_counter=*query_counter+1;
   g_string_set_size(data, 0);
