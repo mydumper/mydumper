@@ -33,6 +33,7 @@ gchar *sql_mode= NULL;
 MYSQL *main_connection = NULL;
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
+gboolean dry_run=FALSE;
 GKeyFile *key_file = NULL;
 
 gchar *ignore_errors=NULL;
@@ -181,6 +182,8 @@ GOptionEntry common_entries[] = {
       "List of engines that will be used to split the create table statement into multiple stages if possible. Default: InnoDB,ROCKSDB", NULL},
     {"server-version", 0, 0, G_OPTION_ARG_STRING, &server_version_arg,
       "Set the server version avoid automatic detection", NULL},
+    {"dry-run", 0, 0, G_OPTION_ARG_NONE, &dry_run,
+      "In dry-run mode, it skips the connection to the database and the execution of any query", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
       "If option is used without parameters it will use Threads_running and the amount of threads", NULL},
