@@ -1535,6 +1535,24 @@ MYSQL_RES *m_store_result(MYSQL *conn, const gchar *query, void log_fun(const ch
   return result;
 }
 
+MYSQL_RES *m_store_result_free_query(MYSQL *conn, gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  va_start(args, fmt);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query, log_fun, NULL, fmt, args);
+  va_end(args);
+  g_free(query);
+  return result;
+}
+
+MYSQL_RES *m_store_result_gstring(MYSQL *conn, GString *query, void log_fun(const char *, ...) , const char *fmt, ...){
+  va_list args;
+  va_start(args, fmt);
+  MYSQL_RES *result = m_resultv(mysql_store_result, conn, query->str, log_fun, NULL, fmt, args);
+  va_end(args);
+  return result;
+}
+
+
 MYSQL_RES *m_use_result(MYSQL *conn, const gchar *query, void log_fun(const char *, ...) , const char *fmt, ...){
   va_list args;
   va_start(args, fmt);

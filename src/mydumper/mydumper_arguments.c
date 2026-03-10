@@ -29,8 +29,9 @@
 
 extern guint64 min_integer_chunk_step_size;
 extern guint64 max_integer_chunk_step_size;
-extern guint max_time_per_select;
-
+guint max_char_size=2;
+guint max_items_per_string_chunk=5;
+guint max_time_per_select=MAX_TIME_PER_QUERY;
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
@@ -40,6 +41,7 @@ gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
 guint trx_tables=1;
 gboolean use_single_column=FALSE;
+gboolean split_string_pk=FALSE;
 const gchar *table_engine_for_view_dependency=MEMORY;
 guint ftwrl_max_wait_time=60;
 guint ftwrl_timeout_retries=0;
@@ -312,10 +314,16 @@ static GOptionEntry chunks_entries[] = {
       "Maximum number of threads per table to use", NULL},
     {"use-single-column", 0, 0, G_OPTION_ARG_NONE, &use_single_column, 
       "It will ignore if the table has multiple columns and use only the first column to split the table", NULL},
+    {"split-string-pk", 0, 0, G_OPTION_ARG_NONE, &split_string_pk,
+      "Enables the split of string primary keys", NULL},
     {"rows", 'r', 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Splitting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds", NULL},
     {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "This set the MIN and MAX limit when even if --rows is 0", NULL},
+    {"max-char-size", 0, 0, G_OPTION_ARG_INT, &max_char_size,
+      "When the primary key is an string, it will split up to this amount of character. Default: 2", NULL},
+    {"max-items-per-string-chunk", 0, 0, G_OPTION_ARG_INT, &max_items_per_string_chunk,
+      "Limits the amount of string will be covered in a string chunk. Default: 0 which means no limit, it will cut based on the information of the rows in the EXPLAIN", NULL},
     {"split-partitions", 0, 0, G_OPTION_ARG_NONE, &split_partitions,
       "Dump partitions into separate files. This option overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};

@@ -1,5 +1,5 @@
 #
-# Testing --insert-ignore
+# Testing --tz-utc and TIME_ZONE output
 #
 
 [mydumper]

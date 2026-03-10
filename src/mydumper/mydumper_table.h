@@ -58,6 +58,7 @@ struct db_table {
   guint num_threads;
   GList *chunks;
   GMutex *chunks_mutex;
+  GMutex *write_mutex;
   GAsyncQueue *chunks_queue;
   GList *primary_key;
   gchar *primary_key_separated_by_comma;

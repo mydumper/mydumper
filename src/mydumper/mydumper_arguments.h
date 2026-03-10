@@ -29,4 +29,6 @@
 #define SQL "sql"
 #define DAT "dat"
 #define MEMORY "MEMORY"
+#define MAX_TIME_PER_QUERY 2
+
 GOptionContext * load_contex_entries();

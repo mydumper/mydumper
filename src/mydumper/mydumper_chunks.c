@@ -34,10 +34,29 @@
 #include "mydumper_create_jobs.h"
 
 extern guint64 min_integer_chunk_step_size;
-
+extern gboolean split_string_pk;
 GAsyncQueue *give_me_another_transactional_chunk_step_queue;
 GAsyncQueue *give_me_another_non_transactional_chunk_step_queue;
 GThread *chunk_builder=NULL;
+
+
+GString * get_where_from_csi(struct chunk_step_item * csi){
+  GString *where = NULL;
+  switch (csi->chunk_type){
+    case INTEGER:
+      where = g_string_new("");
+      update_integer_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
+      break;
+    case STRING:
+      where=csi->where;
+      g_string_set_size(where,0);
+      update_string_where_on_gstring(where, FALSE, csi->prefix, csi->field, csi->chunk_step->string_step.str_min, csi->chunk_step->string_step.str_cur);
+      break;
+    default:
+      break;
+  }
+  return where;
+}
 
 void initialize_chunk(){
   give_me_another_transactional_chunk_step_queue=g_async_queue_new();
@@ -110,6 +129,7 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 unmin, unmax;
   gint64 nmin, nmax;
+  gchar *str_min, *str_max;
 //    union chunk_step *cs = NULL;
   switch (fields[0].type) {
     case MYSQL_TYPE_TINY:
@@ -183,17 +203,35 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
-      trace("String type %d", position);
-      m_store_result_row_free(mr);
-      if (position>0)
-        dbt->multicolumn=FALSE;
-      else
-        return new_none_chunk_step();
+      if (split_string_pk){
+        trace("String type %d", position);
+        str_min = g_strdup(mr->row[2]);
+        str_max = g_strdup(mr->row[3]);
+        trace("String min: %s | max: %s | rows: %d", str_min, str_max, rows);
+        m_store_result_row_free(mr);
+
+        guint64 _starting_chunk_step_size=dbt->starting_chunk_step_size;
+        if (dbt->starting_chunk_step_size == 0){
+          _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
+                                             (rows/num_threads>dbt->max_chunk_step_size?
+                                               dbt->max_chunk_step_size:
+ //                                              rows/num_threads):
+                                               rows/num_threads):
+ //                                               rows/num_threads;
+                                             rows/num_threads;
+      }
+
+        if (position>0)
+          dbt->multicolumn=FALSE;
+        else
+          return new_string_step_item( TRUE, prefix, field, 0, dbt->is_fixed_length, 1, str_min, str_max, _starting_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
+      }
+      return new_none_chunk_step();
       break;
     default:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       m_store_result_row_free(mr);
-      g_message("It is NONE: default");
+      trace("It is NONE: default");
       if (position>0)
         dbt->multicolumn=FALSE;
       else
@@ -293,10 +331,12 @@ void set_chunk_strategy_for_dbt(MYSQL *conn, struct db_table *dbt){
   g_mutex_unlock(dbt->chunks_mutex);
 }
 
-gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list){
+static
+void get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct chunk_step_item **csi, struct MList *dbt_list, gboolean *are_there_jobs_defining, gboolean *are_string_tables_processing, gboolean *max_threads_per_table_reached){
   GList *iter=dbt_list->list;
   struct db_table *dbt;
-  gboolean are_there_jobs_defining=FALSE;
+  *are_there_jobs_defining=FALSE;
+  *are_string_tables_processing=FALSE;
   struct chunk_step_item *lcs;
 
   gboolean finish=FALSE;
@@ -317,7 +357,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
 //        g_message("Checking table: %s.%s DEFINING NOW", d->database->source_database, d->table);
           *dbt_pointer=iter->data;
           dbt->status = DEFINING;
-          are_there_jobs_defining=TRUE;
+          *are_there_jobs_defining=TRUE;
           g_mutex_unlock(dbt->chunks_mutex);
           finish=TRUE;
           goto next;
@@ -347,11 +387,13 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
 
         // if we reach the max limit of threads per table, we continue with next table
         if (dbt->max_threads_per_table <= dbt->current_threads_running){
+          *max_threads_per_table_reached=TRUE;
           g_mutex_unlock(dbt->chunks_mutex);
           goto next;
         }
 
         if (dbt->current_threads_running > current_max_threads_running ){
+          *max_threads_per_table_reached=TRUE;
           g_mutex_unlock(dbt->chunks_mutex);
           goto next;
         }
@@ -366,6 +408,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
           finish=TRUE;
           goto next;
         }else{
+          trace("get_next_dbt_and_chunk_step_item :: get null for %s", dbt->table);
           // If there is no more chunks on this table, we remove it from the list, and continue with the next table
           iter=iter->next;
           // Assign iter previous removing dbt from list is important as we might break the list
@@ -376,7 +419,7 @@ gboolean get_next_dbt_and_chunk_step_item(struct db_table **dbt_pointer,struct c
         }
       }else{
         g_mutex_unlock(dbt->chunks_mutex);
-        are_there_jobs_defining=TRUE;
+        *are_there_jobs_defining=TRUE;
       }
 next:
       iter=iter->next;
@@ -384,7 +427,6 @@ next:
     g_mutex_unlock(dbt_list->mutex);
 
   }
-  return are_there_jobs_defining;
 }
 
 static
@@ -410,7 +452,7 @@ void table_job_enqueue(struct table_queuing *q)
 {
   struct db_table *dbt;
   struct chunk_step_item *csi;
-  gboolean are_there_jobs_defining=FALSE;
+  gboolean are_there_jobs_defining=FALSE, are_string_tables_processing=FALSE, max_threads_per_table_reached=FALSE;
   g_message("Starting to enqueue %s tables", q->descr);
   for (;;) {
     g_async_queue_pop(q->request_chunk);
@@ -419,8 +461,8 @@ void table_job_enqueue(struct table_queuing *q)
     }
     dbt=NULL;
     csi=NULL;
-    are_there_jobs_defining=FALSE;
-    are_there_jobs_defining= get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_list);
+    max_threads_per_table_reached=FALSE;
+    get_next_dbt_and_chunk_step_item(&dbt, &csi, q->table_list, &are_there_jobs_defining, &are_string_tables_processing, &max_threads_per_table_reached);
 
     if (dbt!=NULL){
 
@@ -439,7 +481,7 @@ void table_job_enqueue(struct table_queuing *q)
           create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           }
           break;
-        case CHAR:
+        case STRING:
           create_job_to_dump_chunk(dbt, NULL, csi->part, csi, g_async_queue_push, q->queue);
           break;
         case PARTITION:
@@ -454,11 +496,16 @@ void table_job_enqueue(struct table_queuing *q)
         }
       }
     }else{
-      if (are_there_jobs_defining){
-//        g_debug("chunk_builder_thread: Are jobs defining... should we wait and try again later?");
+      if (are_there_jobs_defining || max_threads_per_table_reached){
+        trace("table_job_enqueue: Are jobs defining or Max threads reached, try again later?");
         g_async_queue_push(q->request_chunk, GINT_TO_POINTER(1));
         usleep(1);
         continue;
+      }
+      if (are_string_tables_processing){
+        g_async_queue_push(q->request_chunk, GINT_TO_POINTER(1));
+        usleep(1);
+        continue;      
       }
 //      g_debug("chunk_builder_thread: There were not job defined");
       break;
