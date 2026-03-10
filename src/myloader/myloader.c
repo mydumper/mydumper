@@ -131,6 +131,7 @@ gint compare_by_time(gconstpointer a, gconstpointer b){
 
 void initialize_directories(){
   char *current_dir=g_get_current_dir();
+  initialize_connection_socket_dir(current_dir);
   if (!input_directory) {
     if (stream){
       GDateTime * datetime = g_date_time_new_now_local();
@@ -326,7 +327,6 @@ void print_errors(){
 
 int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
-
   GError *error = NULL;
   GOptionContext *context;
 
