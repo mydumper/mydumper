@@ -18,6 +18,7 @@
 #define _connection_h
 #include <mysql.h>
 
+void initialize_connection_socket_dir(gchar *current_dir);
 void initialize_connection(const gchar *app);
 void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
 void m_connect(MYSQL *conn);

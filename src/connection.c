@@ -135,6 +135,12 @@ void initialize_connection(const gchar *app){
   set_names_statement=set_names_statement_template(set_names_in_conn_by_default);
 }
 
+void initialize_connection_socket_dir(gchar *current_dir){
+  if (socket_path && socket_path[0]!='/'){
+    gchar *tmp_socket_path=socket_path;
+    socket_path=g_strdup_printf("%s/%s", current_dir, tmp_socket_path);
+  }
+}
 
 GOptionGroup * load_connection_entries(GOptionContext *context){
   GOptionGroup *connection_group =
