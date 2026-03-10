@@ -1,8 +1,8 @@
 #
-# Testing --no-schema
+# Testing --no-schemas
 #
 
 [mydumper]
 database=specific_23
 outputdir=/tmp/data
-no-schema
+no-schemas
