@@ -52,6 +52,15 @@ jobs:
           tags: mydumper/mydumper-builder-el9:latest
           labels: mydumper/mydumper-builder-el9:latest
 
+      - name: Build and push Docker image el10
+        uses: docker/build-push-action@v4
+        with:
+          context: docker/el10
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: mydumper/mydumper-builder-el10:latest
+          labels: mydumper/mydumper-builder-el10:latest
+
       - name: Build and push Docker image bionic
         uses: docker/build-push-action@v4
         with:
@@ -70,15 +79,6 @@ jobs:
           tags: mydumper/mydumper-builder-bullseye:latest
           labels: mydumper/mydumper-builder-bullseye:latest
 
-      - name: Build and push Docker image buster
-        uses: docker/build-push-action@v4
-        with:
-          context: docker/buster
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: mydumper/mydumper-builder-buster:latest
-          labels: mydumper/mydumper-builder-buster:latest
-
       - name: Build and push Docker image focal
         uses: docker/build-push-action@v4
         with:
@@ -96,3 +96,22 @@ jobs:
           push: true
           tags: mydumper/mydumper-builder-jammy:latest
           labels: mydumper/mydumper-builder-jammy:latest
+
+      - name: Build and push Docker image trixie
+        uses: docker/build-push-action@v4
+        with:
+          context: docker/trixie
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: mydumper/mydumper-builder-trixie:latest
+          labels: mydumper/mydumper-builder-trixie:latest
+
+      - name: Build and push Docker image noble
+        uses: docker/build-push-action@v4
+        with:
+          context: docker/noble
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: mydumper/mydumper-builder-noble:latest
+          labels: mydumper/mydumper-builder-noble:latest
+
