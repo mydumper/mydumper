@@ -1,4 +1,4 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL April 2027 (ESM until 2032).
 FROM cimg/base:current-22.04 as builder
 
 ARG DEBIAN_FRONTEND=noninteractive

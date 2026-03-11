@@ -1,4 +1,4 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL April 2029 (ESM until 2034)
 FROM ubuntu:noble as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
@@ -26,13 +26,15 @@ RUN \
 RUN \
   wget https://r.mariadb.com/downloads/mariadb_repo_setup -O /tmp/mariadb_repo_setup
 
+#RUN \
+#  . /etc/os-release && \
+#  curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
+#  gpg --import /tmp/fresh.asc && \
+#  rm -f /usr/share/keyrings/mysql-apt-config.gpg && \
+#  gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C && \
 RUN \
   . /etc/os-release && \
-  curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
-  gpg --import /tmp/fresh.asc && \
-  rm -f /usr/share/keyrings/mysql-apt-config.gpg && \
-  gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C && \
   curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb https://repo.mysql.com/mysql-apt-config.deb && \
   sudo dpkg -i /tmp/mysql-apt-config.deb && \
-  rm -v /tmp/mysql-apt-config.deb /tmp/fresh.asc && \
+  rm -v /tmp/mysql-apt-config.deb && \
   sudo apt-get update

@@ -20,5 +20,5 @@ RUN \
 
 RUN \
   yum -y install https://repo.mysql.com/mysql84-community-release-el8.rpm && \
-  rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2023 && \
+  rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2025 && \
   yum clean all
