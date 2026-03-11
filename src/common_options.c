@@ -34,6 +34,7 @@ MYSQL *main_connection = NULL;
 gboolean no_schemas = FALSE;
 gboolean no_data = FALSE;
 gboolean dry_run=FALSE;
+gboolean lower_names_checksum=FALSE;
 GKeyFile *key_file = NULL;
 
 gchar *ignore_errors=NULL;
@@ -184,6 +185,8 @@ GOptionEntry common_entries[] = {
       "Set the server version avoid automatic detection", NULL},
     {"dry-run", 0, 0, G_OPTION_ARG_NONE, &dry_run,
       "In dry-run mode, it skips the connection to the database and the execution of any query", NULL},
+    {"lower-names-checksum", 0, 0, G_OPTION_ARG_NONE, &lower_names_checksum,
+      "Adds LOWER to queries that get the structure checksum, which is useful if lower_case_table_names differs from source and target", NULL},
     {"throttle", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Expects a string like Threads_running=10. It will check the SHOW GLOBAL STATUS and if it is higher, it will increase the sleep time between SELECT. "
       "If option is used without parameters it will use Threads_running and the amount of threads", NULL},
