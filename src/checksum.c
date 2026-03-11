@@ -16,8 +16,6 @@
 #include <glib.h>
 #include "common.h"
 
-extern gboolean lower_names_checksum;
-
 static
 char *generic_checksum(MYSQL *conn, const gchar *query_template, ...){
   va_list args;
@@ -44,8 +42,6 @@ char * checksum_table(MYSQL *conn, char *database, char *table){
 
 char * checksum_table_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      lower_names_checksum?
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(LOWER(column_name), ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';":
       "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 
       0, database, table);
 }
@@ -70,8 +66,6 @@ char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, cha
 
 char * checksum_view_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      lower_names_checksum?
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,LOWER(TABLE_SCHEMA),'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';":
       "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",
       0, database, table);
 }
@@ -83,10 +77,9 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
 }
 
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
+  g_message("db.table: %s %s", database, table);
   return generic_checksum(conn, 
-      lower_names_checksum?
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(LOWER(TABLE_NAME),LOWER(INDEX_NAME),SEQ_IN_INDEX,LOWER(COLUMN_NAME)) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A":
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A",
+      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A",
       0, database, table);
 }
 
