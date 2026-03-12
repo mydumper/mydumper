@@ -1,4 +1,7 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using Debian's GCC image, pinned to latest LTS
+# End of Life End of LTS  End of ELTS
+# 2026-06-10	2028-06-30	2033-06-30
+# Reference: https://www.debian.org/releases/
 FROM debian:bookworm as builder
 
 ARG DEBIAN_FRONTEND=noninteractive

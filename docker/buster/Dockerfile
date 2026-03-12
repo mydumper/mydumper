@@ -1,4 +1,7 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using Debian's GCC image, pinned to latest LTS
+# End of Life	End of LTS	End of ELTS
+# 2022-09-10  2024-06-30  2029-06-30
+# Reference: https://www.debian.org/releases/
 FROM debian:buster as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
