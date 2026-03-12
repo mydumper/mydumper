@@ -1034,6 +1034,7 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
       break;
     case LOCK_ALL:
       send_lock_all_tables(conn);
+      release_global_lock_function = &send_unlock_tables;
       break;
     case AUTO:
       determine_ddl_lock_function(&second_conn, &acquire_global_lock_function,&release_global_lock_function, &acquire_ddl_lock_function, &release_ddl_lock_function, &release_binlog_function);
