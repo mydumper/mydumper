@@ -84,14 +84,16 @@ gint comp(gconstpointer a, gconstpointer b){
 
 // Functions that will be executed
 
-void identity_function(GString *str, gchar * row, gulong* length,  struct function_pointer *fp){
+gboolean identity_function(GString *str, gchar * row, gulong* length,  struct function_pointer *fp){
   (void) str; 
   (void) row;
   (void) fp;
   (void) length;
+  return TRUE;
 }
 
-void random_basic_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp, void (*random_funtion)(gchar *, guint) ){
+gboolean random_basic_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp, void (*random_funtion)(gchar *, guint) ){
+
   gchar *new_r=NULL;
   guint max_length=0;
   if (fp && fp->memory && row){
@@ -99,7 +101,7 @@ void random_basic_function(GString *str, gchar *row, gulong* length, struct func
     if (new_r){
       *length=strlen(new_r);
       g_string_assign(str,new_r);
-      return;
+      return TRUE;
     }
   }
   gchar*_key=NULL;
@@ -140,8 +142,11 @@ retry2:
       }
 
       *length=str->len;
+    }else{
+      return FALSE;
     }
   }
+  return TRUE;
 }
 
 void m_random_int(gchar *r, guint len){
@@ -151,8 +156,8 @@ void m_random_int(gchar *r, guint len){
     g_snprintf(r, len + 1,   "%u", g_random_int());
 }
 
-void random_int_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp){
-  random_basic_function(str, row, length,fp,&m_random_int);
+gboolean random_int_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp){
+  return random_basic_function(str, row, length,fp,&m_random_int);
 }
 
 void m_random_string(char *str, guint size){
@@ -168,8 +173,8 @@ void m_random_string(char *str, guint size){
   }
 }
 
-void random_string_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp){
-  random_basic_function(str,row,length,fp,&m_random_string);
+gboolean random_string_function(GString *str, gchar *row, gulong* length, struct function_pointer *fp){
+  return random_basic_function(str,row,length,fp,&m_random_string);
 }
 
 void m_random_uuid(char *str, guint size){
@@ -195,8 +200,8 @@ const char charset[] = "0123456789abcdef";
 #endif
 }
 
-void random_uuid_function(GString *str, gchar *row,gulong* length, struct function_pointer *fp){
-  random_basic_function(str,row,length,fp,&m_random_uuid);
+gboolean random_uuid_function(GString *str, gchar *row,gulong* length, struct function_pointer *fp){
+  return random_basic_function(str,row,length,fp,&m_random_uuid);
 }
 
 gboolean apply_format_item(GString *str, gchar *row, struct format_item *fi){
@@ -254,7 +259,7 @@ gboolean apply_format_item(GString *str, gchar *row, struct format_item *fi){
 }
 
 
-void random_format_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
+gboolean random_format_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
   // max_len is ignored in this case
   (void) max_len;
   GList *l=fp->parse;
@@ -273,9 +278,10 @@ void random_format_function(GString *str, gchar *row, gulong* max_len, struct fu
       d=d->next;
     }
   } 
+  return TRUE;
 }
 
-void regex_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
+gboolean regex_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
   pcre2_code *tre=NULL;
   GList *l=fp->parse;
   //GString *new_r= g_string_new(*r);
@@ -299,62 +305,84 @@ void regex_function(GString *str, gchar *row, gulong* max_len, struct function_p
   }
   *max_len=str->len;
 //  g_message("new_r->str: %s",new_r->str );
+  return TRUE;
 }
 
-void apply_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
+gboolean apply_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
   if (g_list_length(fp->parse)==2){
     g_string_printf(str,"%s%s%s",(gchar *) fp->parse->data, row, (gchar *) fp->parse->next->data);
   }else
     g_string_printf(str,"%s%s", (gchar *) fp->parse->data, row);
   *max_len=str->len;
+  return TRUE;
 }
 
-void constant_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
+gboolean constant_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
   (void)row;
   g_string_assign(str, fp->parse->data);
   *max_len=str->len;
+  return TRUE;
 }
 //
 // Function parsers
 //
 
+static
+gchar* read_word(gchar *buffer, gchar *val){
+  guint i=0;
+  while(*val != '\0' && *val != ' '){
+    buffer[i]=*val;
+    val++;
+    i++;
+  }
+  buffer[i]='\0';
+  return val;
+}
+
 void parse_basic(struct function_pointer * fp, gchar *val){
   char buffer[256];
-  guint i;
+//  guint i;
   while (*val != '\0'){
     while(*val == ' ')
       val++;
-    i=0;
+/*    i=0;
     while(*val != '\0' && *val != ' '){
       buffer[i]=*val;
       val++;
       i++;
     }
-    buffer[i]='\0';
+    buffer[i]='\0';*/
+    val=read_word(buffer,val);
     if (g_str_has_prefix(buffer,"WITH_MEM")){
       fp->memory=g_hash_table_new ( g_str_hash, g_str_equal );
     }else if (g_str_has_prefix(buffer,"REPLACE_NULL")){
       fp->replace_null=TRUE;
       val++;
-      i=0;
+/*      i=0;
       while(*val != '\0' && *val != ' '){
         buffer[i]=*val;
         val++;
         i++;
       }
       buffer[i]='\0';
+      */
+      val=read_word(buffer,val);
       fp->null_max_length=atoi(buffer);
+      if (!fp->null_max_length)
+        m_error("REPLACE_NULL receives an integer value as paramter that limits the max length of the integer value");
     }else if (g_str_has_prefix(buffer,"UNIQUE")){
       fp->unique=TRUE;
     }else if (g_str_has_prefix(buffer,"MAX_LENGTH")){
       val++;
-      i=0;
+/*      i=0;
       while(*val != '\0' && *val != ' '){
         buffer[i]=*val;
         val++;
         i++;
       }
       buffer[i]='\0';
+      */
+      val=read_word(buffer,val);
       fp->max_length=atoi(buffer);
     }
   }
