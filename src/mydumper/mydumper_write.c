@@ -632,7 +632,7 @@ void write_sql_column_into_string( MYSQL *conn, gchar *column, MYSQL_FIELD field
 static
 void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * column_i, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD , gulong ,struct thread_data_buffers), GList *anonymized_function_list, gchar * terminated_by){
   struct function_pointer * f=anonymized_function_list?anonymized_function_list->data:NULL;
-//  gchar *column=NULL;
+  gchar *column=column_i;
   gulong rlength=length;
   g_string_set_size(buffers.column,0);
   g_string_set_size(buffers.column_mask,0);
@@ -641,21 +641,22 @@ void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * column_i, 
   if (f){
     while (f){
       if (f->is_pre){
-
-      // apply and constant as they alter the data
-        write_column_into_string( conn, column_i, field, rlength, buffers);
-        trace("Buffer.column initial: %s with column_i: %s", buffers.column->str, column_i);
+        // apply and constant as they alter the data
+        write_column_into_string( conn, column, field, rlength, buffers);
+        trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
         f->function(buffers.column_mask, buffers.column->str, &rlength, f);
         trace("Buffer.column_mask changed: %s", buffers.column_mask->str);
-//      g_string_printf(buffers.column,"%s",column);
         g_string_assign(buffers.column,buffers.column_mask->str);      
         trace("Buffer.column final: %s", buffers.column->str);
       }else{
-        f->function(buffers.column_mask, column_i, &rlength, f);
-        write_column_into_string( conn, buffers.column_mask->str, field, buffers.column_mask->len /*rlength*/, buffers);
+        if (f->function(buffers.column_mask, column, &rlength, f))
+          write_column_into_string( conn, buffers.column_mask->str, field, buffers.column_mask->len, buffers);
+        else
+          write_column_into_string( conn, NULL, field, 0, buffers);
       }
       anonymized_function_list=anonymized_function_list->next;
       f=anonymized_function_list?anonymized_function_list->data:NULL;
+      column=buffers.column->str;
     }
   }else{
     write_column_into_string( conn, column_i, field, rlength, buffers);
