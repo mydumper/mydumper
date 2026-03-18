@@ -201,7 +201,7 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
       trace("Length is %d", len2);
       for (j=0; j < len2; j++){
         trace("Reviewing %s in %s",keys[j], groups[i]);
-        if (keys[j][0]== '`'){// && keys[j][strlen(keys[j])-1]=='`'){
+        if (keys[j][0]== '`' && g_strstr_len(keys[j]+1,-1,"`")){// && keys[j][strlen(keys[j])-1]=='`'){
           // keys contains a masquerade column
           if (init_function_pointer){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
