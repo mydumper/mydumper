@@ -295,7 +295,7 @@ struct chunk_step_item *get_next_string_chunk(struct db_table *dbt){
           g_async_queue_push(dbt->chunks_queue, csi);
         goto end;
       }
-      if (csi->status==COMPLETED && csi->status==DUMPING_CHUNK){
+      if (csi->status==COMPLETED || csi->status==DUMPING_CHUNK){
         goto end;
       }
       
