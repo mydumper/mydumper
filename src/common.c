@@ -198,16 +198,18 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
     if (g_str_has_prefix(groups[i],"`") && g_strstr_len(groups[i],strlen(groups[i]),"`.`") &&  g_str_has_suffix(groups[i],"`")){
       ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
+      trace("Length is %d", len2);
       for (j=0; j < len2; j++){
-        if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
+        trace("Reviewing %s in %s",keys[j], groups[i]);
+        if (keys[j][0]== '`' && g_strstr_len(keys[j]+1,-1,"`")){// && keys[j][strlen(keys[j])-1]=='`'){
           // keys contains a masquerade column
           if (init_function_pointer){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             struct function_pointer *fp = init_function_pointer(value);
-            gchar *column_key=g_strndup(keys[j]+1,strlen(keys[j])-2);
+            gchar *column_key=g_strndup(keys[j]+1,g_strstr_len(keys[j]+1,-1,"`")-keys[j]-1);
             GList *column_key_list = g_hash_table_lookup(ht, column_key);
             column_key_list=g_list_append(column_key_list,fp);
-            trace("Inserting function into %s in %s", groups[i], keys[j]);
+            trace("Inserting function into %s in %s", groups[i], column_key);
             g_hash_table_insert(ht,column_key, column_key_list);
 					}
         }else{

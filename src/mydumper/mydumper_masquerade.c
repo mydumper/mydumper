@@ -323,6 +323,17 @@ gboolean constant_function(GString *str, gchar *row, gulong* max_len, struct fun
   *max_len=str->len;
   return TRUE;
 }
+
+gboolean null_function(GString *str, gchar *row, gulong* max_len, struct function_pointer *fp){
+  (void)row;
+  (void)str;
+  (void)max_len;
+  (void)fp;
+  g_string_set_size(str, 0); 
+  *max_len=0;
+  return FALSE;
+}
+
 //
 // Function parsers
 //
@@ -634,6 +645,9 @@ fun_ptr get_function_pointer_for (gchar *function_char){
 
   if (g_str_has_prefix(function_char,"regex"))
     return &regex_function;
+
+  if (g_str_has_prefix(function_char,"null"))
+    return &null_function;
 
   // TODO: more functions needs to be added.
   if (!g_strcmp0(function_char,""))

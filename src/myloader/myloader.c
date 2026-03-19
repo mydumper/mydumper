@@ -106,9 +106,9 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
 static
 void detect_group_replication_transaction_size_limit(MYSQL * conn) {
   guint64 _max_transaction_size=0;
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@group_replication_transaction_size_limit / 1024 / 1024",m_message, m_message, "Using default transaction limit", NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'",m_message, m_message, "Using default transaction limit", NULL);
   if (mr->row)
-    _max_transaction_size=strtoll(mr->row[0], NULL, 10);
+    _max_transaction_size=strtoll(mr->row[0], NULL, 10)/1024/1024;
   max_transaction_size=_max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
   m_store_result_row_free(mr);
 }
