@@ -373,12 +373,10 @@ int main(int argc, char *argv[]) {
   // Only auto-scale if user hasn't explicitly set these values (default is 4)
   guint cpu_count = g_get_num_processors();
   if (max_threads_for_schema_creation == 4 && cpu_count > 4) {
-    guint auto_schema_threads = cpu_count > 8 ? 8 : cpu_count;
-    max_threads_for_schema_creation = auto_schema_threads;
+    max_threads_for_schema_creation = cpu_count;
   }
   if (max_threads_for_index_creation == 4 && cpu_count > 4) {
-    guint auto_index_threads = cpu_count > 8 ? 8 : cpu_count;
-    max_threads_for_index_creation = auto_index_threads;
+    max_threads_for_index_creation = cpu_count;
   }
 
   check_num_threads();
@@ -703,4 +701,3 @@ int main(int argc, char *argv[]) {
 
   return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
