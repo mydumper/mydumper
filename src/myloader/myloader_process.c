@@ -678,6 +678,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
+          const gchar *table_name_for_eval = database_table[1];
           struct database *_database=get_database(database_table[0],database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
          
@@ -686,6 +687,16 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
             trace("real_table_name= %s", value);
             real_table_name= newline_unprotect(value);
             g_free(value);
+            if (real_table_name != NULL)
+              table_name_for_eval = real_table_name;
+          }
+          if (!eval_table(_database->source_database, (gchar *)table_name_for_eval, _conf->table_list_mutex)){
+            trace("Skipping metadata entry for `%s`.`%s` due to table filters", _database->source_database, table_name_for_eval);
+            if (real_table_name) {
+              g_free(real_table_name);
+              real_table_name = NULL;
+            }
+            continue;
           }
           append_new_db_table(&dbt, _database, real_table_name, database_table[1]);//, real_table_name);//,0,NULL);
 //          if (real_table_name) g_free(real_table_name);

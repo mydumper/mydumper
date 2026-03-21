@@ -459,6 +459,7 @@ gboolean sig_triggered(void * user_data, int signal) {
   }
   inform_restore_job_running();
   create_index_shutdown_job(conf);
+  restore_job_finish();
   message("Writing resume.partial file");
   gchar *filename;
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");
