@@ -37,7 +37,7 @@ gint schema_job_cmp(gconstpointer _a, gconstpointer _b, gpointer user_data){
    struct schema_job *a= ((struct schema_job *) _a);
    struct schema_job *b= ((struct schema_job *) _b);
    (void)user_data;
-   return a->type > b->type;
+   return (a->type > b->type) - (a->type < b->type);
 }
 
 struct schema_job * new_schema_job(enum schema_job_type type, struct restore_job *rj, struct database *use_database){

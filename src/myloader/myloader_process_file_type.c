@@ -42,6 +42,8 @@ guint amount_of_files=0;
 
 void initialize_process_file_type(struct configuration *c){
   process_file_type_conf=c;
+  if (!stream && g_file_test("metadata.partial.0", G_FILE_TEST_IS_REGULAR))
+    process_file_type_num_threads = 1;
   process_file_type_queue = g_async_queue_new();
   process_file_type_workers = g_new(GThread *, process_file_type_num_threads);
   guint n=0;
@@ -69,8 +71,9 @@ gint file_type_cmp (gconstpointer _a, gconstpointer _b, gpointer user_data){
    struct filetype_item *a= (struct filetype_item *) _a;
    struct filetype_item * b = (struct filetype_item *)_b;
    (void)user_data;
-   trace("comparing %s > %s = %d",ft2str(a->file_type),ft2str(b->file_type), a->file_type > b->file_type);
-   return a->file_type > b->file_type;
+   gint result = (a->file_type > b->file_type) - (a->file_type < b->file_type);
+   trace("comparing %s <> %s = %d",ft2str(a->file_type),ft2str(b->file_type), result);
+   return result;
 }
 
 void file_type_push( enum file_type ft, gchar *filename){

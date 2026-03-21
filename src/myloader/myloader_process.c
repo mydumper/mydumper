@@ -45,6 +45,7 @@ GMutex *fifo_table_mutex=NULL;
 struct configuration *_conf;
 extern gboolean schema_sequence_fix;
 GAsyncQueue *partial_metadata_queue = NULL;
+static GRecMutex *metadata_process_mutex = NULL;
 
 // Decompression throttle: limit concurrent decompressor processes
 static GCond *decompress_cond = NULL;
@@ -54,6 +55,8 @@ static guint max_decompressors = 0;
 
 void initialize_process(struct configuration *c){
   partial_metadata_queue=g_async_queue_new();
+  metadata_process_mutex = g_new0(GRecMutex, 1);
+  g_rec_mutex_init(metadata_process_mutex);
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
   replication_statements->start_replica=NULL;
@@ -568,13 +571,16 @@ gboolean first_metadata_processed=FALSE;
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context, gboolean is_global)
 {
   set_thread_name("MDT");
+  g_rec_mutex_lock(metadata_process_mutex);
 
   gchar *path = g_build_filename(directory, file, NULL);
   trace("Reading metadata: %s", path);
   GKeyFile * kf = load_config_file(path);
   g_free(path);
-  if (kf==NULL)
+  if (kf==NULL){
+    g_rec_mutex_unlock(metadata_process_mutex);
     g_error("Global metadata file processing was not possible");
+  }
 
   guint j=0;
   gchar *value=NULL;
@@ -645,6 +651,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   }else{
     if (!first_metadata_processed){
       g_async_queue_push(partial_metadata_queue,file);
+      g_rec_mutex_unlock(metadata_process_mutex);
       return;
     }
     m_remove(directory, file);
@@ -657,9 +664,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
     refresh_set_session_from_hash(set_session,set_session_hash);
   }
-
-  if (!stream)
-    release_directory_metadata_lock();
 
   for (j= 0; j < length; j++) {
     gchar *group= newline_unprotect(groups[j]);
@@ -736,6 +740,11 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   file=g_async_queue_try_pop(partial_metadata_queue);
   if (file)
     process_metadata_global_filename(file, local_context, FALSE);
+
+  if (!stream && is_global)
+    release_directory_metadata_lock();
+
+  g_rec_mutex_unlock(metadata_process_mutex);
 
 }
 
@@ -842,4 +851,3 @@ gboolean process_data_filename(char * filename){
 	}
   return TRUE;
 }
-
