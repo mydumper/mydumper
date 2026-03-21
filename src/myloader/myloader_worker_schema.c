@@ -143,6 +143,7 @@ void set_table_schema_state_to_created (struct configuration *conf){
       g_cond_broadcast(dbt->schema_cond);
     }
     table_unlock(dbt);
+    enqueue_table_if_ready(conf, dbt);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);

@@ -85,6 +85,12 @@ static void enqueue_table_if_ready_locked(struct configuration *conf, struct db_
   }
 }
 
+void enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt){
+  table_lock(dbt);
+  enqueue_table_if_ready_locked(conf, dbt);
+  table_unlock(dbt);
+}
+
 gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_job ** rj){
   gboolean giveup = TRUE;
   struct restore_job *job = NULL;
@@ -119,6 +125,11 @@ gboolean give_me_next_data_job_conf(struct configuration *conf, struct restore_j
       return FALSE;  // giveup = FALSE, we have a job
     }
     table_unlock(dbt);
+  }
+
+  if (!all_jobs_are_enqueued){
+    *rj = NULL;
+    return FALSE;
   }
 
   // Fallback: O(n) scan of table list

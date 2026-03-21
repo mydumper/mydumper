@@ -35,6 +35,7 @@
 #include "myloader_arguments.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_worker_schema.h"
 
 
@@ -857,6 +858,7 @@ gboolean process_data_filename(char * filename){
     dbt->restore_job_list=g_list_prepend(dbt->restore_job_list, rj);
     dbt->restore_job_list_sorted = FALSE;
     table_unlock(dbt);
+    enqueue_table_if_ready(_conf, dbt);
 	}else{
     g_warning("Ignoring file %s on `%s`.`%s`",filename, dbt->database->source_database, dbt->table_filename);
 	}
