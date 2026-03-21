@@ -187,12 +187,30 @@ void wait_restore_threads_to_close(){
 }
 
 void reconnect_connection_data(struct connection_data *cd){
-  mysql_close(cd->thrconn);
+  if (cd->thrconn != NULL)
+    mysql_close(cd->thrconn);
   cd->thrconn=mysql_init(NULL);
   m_connect(cd->thrconn);
   cd->connection_id=mysql_thread_id(cd->thrconn);
   execute_use(cd);
   execute_gstring(cd->thrconn, set_session);
+}
+
+gboolean release_idle_connection_if_possible(){
+  struct connection_data *cd = g_async_queue_try_pop(connection_pool);
+  if (cd == NULL)
+    return FALSE;
+
+  if (cd->thrconn != NULL) {
+    trace("Closing idle connection: %ld", cd->connection_id);
+    mysql_close(cd->thrconn);
+    cd->thrconn = NULL;
+    cd->connection_id = 0;
+    cd->current_database = NULL;
+  }
+
+  g_async_queue_push(connection_pool, cd);
+  return TRUE;
 }
 
 int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
@@ -235,6 +253,13 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 }
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
+  if (cd->thrconn == NULL) {
+    cd->thrconn = mysql_init(NULL);
+    m_connect(cd->thrconn);
+    cd->connection_id = mysql_thread_id(cd->thrconn);
+    cd->current_database = NULL;
+    execute_gstring(cd->thrconn, set_session);
+  }
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->connection_id);
   if (mysql_ping(cd->thrconn)) {
     g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->connection_id);
