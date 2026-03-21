@@ -467,7 +467,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     return FALSE;
   }
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
   append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
@@ -521,7 +521,7 @@ gboolean process_table_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     dbt=get_table(_database->database_name_in_filename, table_name);
     if (dbt){
       dbt->schema_checksum=NULL;
@@ -768,7 +768,7 @@ gboolean process_schema_view_filename(gchar *filename) {
   }
   _database=get_database(database,database);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out(1)",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
   struct db_table *dbt=NULL;
@@ -791,7 +791,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   _database=get_database(database,database);
   if (table_name != NULL){ 
 	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-      g_warning("File %s has been filter out(1)",filename);
+      trace("File %s has been filtered out by table selection", filename);
       return FALSE; 
     }
 		append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
@@ -833,7 +833,7 @@ gboolean process_data_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     return FALSE;
   }
 
