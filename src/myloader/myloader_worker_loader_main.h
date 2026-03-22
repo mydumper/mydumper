@@ -56,5 +56,6 @@ void data_control_queue_push(enum data_control_type current_ft);
 
 struct restore_job * request_next_data_job();
 void wake_data_threads();
+void enqueue_table_if_ready(struct configuration *conf, struct db_table *dbt);
 
 #endif

@@ -29,6 +29,58 @@
 
 GAsyncQueue *metadata_sync_queue=NULL;
 
+static gboolean filename_matches_selected_tables(const gchar *filename){
+  if (tables == NULL || filename == NULL)
+    return FALSE;
+
+  gchar *database = NULL;
+  gchar *table = NULL;
+
+  if (m_filename_has_suffix(filename, "-schema-view.sql")){
+    get_database_table_from_file(filename, "-schema-view", &database, &table);
+  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql")){
+    get_database_table_from_file(filename, "-schema-sequence", &database, &table);
+  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql")){
+    get_database_table_from_file(filename, "-schema-triggers", &database, &table);
+  } else if (m_filename_has_suffix(filename, "-schema-post.sql")){
+    get_database_table_from_file(filename, "-schema-post", &database, &table);
+  } else if (m_filename_has_suffix(filename, "-schema.sql")){
+    get_database_table_from_file(filename, "-schema", &database, &table);
+  } else if (m_filename_has_suffix(filename, ".sql")){
+    gchar **split = g_strsplit(filename, ".", 4);
+    if (g_strv_length(split) >= 2){
+      database = g_strdup(split[0]);
+      table = g_strdup(split[1]);
+    }
+    g_strfreev(split);
+  }
+
+  gboolean match = FALSE;
+  if (database != NULL && table != NULL)
+    match = is_table_in_list(database, table, tables);
+
+  g_free(database);
+  g_free(table);
+  return match;
+}
+
+static gboolean should_queue_filename(const gchar *filename){
+  if (filename == NULL)
+    return FALSE;
+
+  if (!strcmp(filename, "metadata"))
+    return FALSE;
+
+  if (tables == NULL)
+    return TRUE;
+
+  if (!strcmp(filename, "all-schema-create-tablespace.sql")) {
+    return TRUE;
+  }
+
+  return filename_matches_selected_tables(filename);
+}
+
 void initialize_directory(){
   metadata_sync_queue=g_async_queue_new();
 }
@@ -82,11 +134,11 @@ void *process_directory(struct configuration *conf){
   }else{
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
-      if (strcmp(filename, "metadata"))
+      if (should_queue_filename(filename))
         process_filename_push(filename);
     }
+    g_dir_close(dir);
   }
   process_filename_queue_end();
   return NULL;
 }
-

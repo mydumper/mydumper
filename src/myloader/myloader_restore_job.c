@@ -28,6 +28,7 @@
 #include "myloader_restore.h"
 #include "myloader_global.h"
 #include "myloader_common.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_control_job.h"
 #include "myloader_worker_loader.h"
 #include "myloader_worker_index.h"
@@ -332,6 +333,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
       dbt->schema_state=CREATED;
       g_cond_broadcast(dbt->schema_cond);
       table_unlock(dbt);
+      enqueue_table_if_ready(td->conf, dbt);
       free_schema_restore_job(rj->data.srj);
       break;
     case JOB_RESTORE_FILENAME:
@@ -391,6 +393,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             dbt->schema_state= CREATED;
             g_cond_broadcast(dbt->schema_cond);
             table_unlock(dbt);
+            enqueue_table_if_ready(td->conf, dbt);
           }
 
           if ( rj->data.srj->object == CREATE_DATABASE)
@@ -459,6 +462,7 @@ gboolean sig_triggered(void * user_data, int signal) {
   }
   inform_restore_job_running();
   create_index_shutdown_job(conf);
+  restore_job_finish();
   message("Writing resume.partial file");
   gchar *filename;
   gchar *p=g_strdup("resume.partial"),*p2=g_strdup("resume");

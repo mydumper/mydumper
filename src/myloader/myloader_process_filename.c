@@ -45,7 +45,7 @@ GMutex *exec_process_id_mutex = NULL;
 GMutex *start_process_filename_thread=NULL;
 struct configuration *process_filename_conf = NULL;
 guint process_filename_num_threads=4;
-GThread *process_filename_thread=NULL;
+GThread **process_filename_threads=NULL;
 
 
 void *process_filename_worker(void *data);
@@ -61,8 +61,20 @@ void initialize_process_filename (struct configuration *c){
   if (stream)
     g_mutex_unlock(start_process_filename_thread);
   process_filename_queue_ended=FALSE;
-  process_filename_thread =
+  if (stream){
+    process_filename_num_threads = 1;
+  }else{
+    guint cpu_count = g_get_num_processors();
+    process_filename_num_threads = cpu_count > 4 ? 4 : cpu_count;
+    if (process_filename_num_threads < 1)
+      process_filename_num_threads = 1;
+  }
+  process_filename_threads = g_new(GThread *, process_filename_num_threads);
+  guint n=0;
+  for (n = 0; n < process_filename_num_threads; n++) {
+    process_filename_threads[n] =
       m_thread_new("myloader_process_filename",(GThreadFunc)process_filename_worker, NULL, "Intermediate worker could not be created");
+  }
   initialize_process_file_type(c);
   initialize_worker_loader_main(c);
 }
@@ -78,11 +90,20 @@ void process_filename_push(const gchar *filename){
 void process_filename_queue_end(){
   if (!stream)
     g_mutex_unlock(start_process_filename_thread);
-  gchar *e=g_strdup("END");
-  process_filename_push(e);
+  guint n=0;
+  for (n = 0; n < process_filename_num_threads; n++) {
+    gchar *e=g_strdup("END");
+    process_filename_push(e);
+  }
   message("Intermediate queue: Sending END job");
-  g_thread_join(process_filename_thread);
+  for (n = 0; n < process_filename_num_threads; n++) {
+    g_thread_join(process_filename_threads[n]);
+  }
+  g_free(process_filename_threads);
+  process_filename_threads=NULL;
+  file_type_push(FILENAME_ENDED, g_strdup("END"));
   message("Intermediate thread: SHUTDOWN");
+  wait_file_type_to_complete();
   process_filename_queue_ended=TRUE;
 }
 
@@ -187,19 +208,10 @@ void *process_filename_worker(void *data){
     ft = get_file_type(iflnm->filename);
     trace("process_filename_queue -> %s (%u)", iflnm->filename, iflnm->iterations);
     if ( ft == FILENAME_ENDED ){
-//      if (g_async_queue_length(process_filename_queue)>0){
-//        file_type_push(ft, iflnm->filename);
-//        continue;
-//      }
-      file_type_push(ft, iflnm->filename);
-      iflnm=NULL;
       break;
     }
     file_type_push(ft, iflnm->filename);
   } while (iflnm != NULL);
   g_message("Process filename ended");
-  wait_file_type_to_complete();
-//  refresh_table_list(process_filename_conf);
   return NULL;
 }
-

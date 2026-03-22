@@ -54,11 +54,13 @@ gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
   struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
   g_free(a_key);
   g_free(b_key);
-  return a_val->rows < b_val->rows;
+  return (a_val->rows > b_val->rows) - (a_val->rows < b_val->rows);
 }
 
 gint compare_dbt_short(gconstpointer a, gconstpointer b){
-  return ((struct db_table *)a)->rows < ((struct db_table *)b)->rows;
+  guint64 rows_a = ((struct db_table *)a)->rows;
+  guint64 rows_b = ((struct db_table *)b)->rows;
+  return (rows_a > rows_b) - (rows_a < rows_b);
 }
 
 struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename){
@@ -176,4 +178,3 @@ void free_table_hash(GHashTable *table_hash){
   } 
   g_mutex_unlock(__conf->table_hash_mutex);
 }
-

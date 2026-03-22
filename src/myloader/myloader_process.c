@@ -35,6 +35,7 @@
 #include "myloader_arguments.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_worker_schema.h"
 
 
@@ -45,6 +46,7 @@ GMutex *fifo_table_mutex=NULL;
 struct configuration *_conf;
 extern gboolean schema_sequence_fix;
 GAsyncQueue *partial_metadata_queue = NULL;
+static GRecMutex *metadata_process_mutex = NULL;
 
 // Decompression throttle: limit concurrent decompressor processes
 static GCond *decompress_cond = NULL;
@@ -54,6 +56,8 @@ static guint max_decompressors = 0;
 
 void initialize_process(struct configuration *c){
   partial_metadata_queue=g_async_queue_new();
+  metadata_process_mutex = g_new0(GRecMutex, 1);
+  g_rec_mutex_init(metadata_process_mutex);
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
   replication_statements->start_replica=NULL;
@@ -464,7 +468,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     return FALSE;
   }
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
   append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
@@ -518,7 +522,7 @@ gboolean process_table_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     dbt=get_table(_database->database_name_in_filename, table_name);
     if (dbt){
       dbt->schema_checksum=NULL;
@@ -568,13 +572,16 @@ gboolean first_metadata_processed=FALSE;
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context, gboolean is_global)
 {
   set_thread_name("MDT");
+  g_rec_mutex_lock(metadata_process_mutex);
 
   gchar *path = g_build_filename(directory, file, NULL);
   trace("Reading metadata: %s", path);
   GKeyFile * kf = load_config_file(path);
   g_free(path);
-  if (kf==NULL)
+  if (kf==NULL){
+    g_rec_mutex_unlock(metadata_process_mutex);
     g_error("Global metadata file processing was not possible");
+  }
 
   guint j=0;
   gchar *value=NULL;
@@ -645,6 +652,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   }else{
     if (!first_metadata_processed){
       g_async_queue_push(partial_metadata_queue,file);
+      g_rec_mutex_unlock(metadata_process_mutex);
       return;
     }
     m_remove(directory, file);
@@ -657,9 +665,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
     refresh_set_session_from_hash(set_session,set_session_hash);
   }
-
-  if (!stream)
-    release_directory_metadata_lock();
 
   for (j= 0; j < length; j++) {
     gchar *group= newline_unprotect(groups[j]);
@@ -674,6 +679,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
+          const gchar *table_name_for_eval = database_table[1];
           struct database *_database=get_database(database_table[0],database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
          
@@ -682,6 +688,16 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
             trace("real_table_name= %s", value);
             real_table_name= newline_unprotect(value);
             g_free(value);
+            if (real_table_name != NULL)
+              table_name_for_eval = real_table_name;
+          }
+          if (!eval_table(_database->source_database, (gchar *)table_name_for_eval, _conf->table_list_mutex)){
+            trace("Skipping metadata entry for `%s`.`%s` due to table filters", _database->source_database, table_name_for_eval);
+            if (real_table_name) {
+              g_free(real_table_name);
+              real_table_name = NULL;
+            }
+            continue;
           }
           append_new_db_table(&dbt, _database, real_table_name, database_table[1]);//, real_table_name);//,0,NULL);
 //          if (real_table_name) g_free(real_table_name);
@@ -737,6 +753,11 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   if (file)
     process_metadata_global_filename(file, local_context, FALSE);
 
+  if (!stream && is_global)
+    release_directory_metadata_lock();
+
+  g_rec_mutex_unlock(metadata_process_mutex);
+
 }
 
 gboolean process_schema_view_filename(gchar *filename) {
@@ -748,7 +769,7 @@ gboolean process_schema_view_filename(gchar *filename) {
   }
   _database=get_database(database,database);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out(1)",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
   struct db_table *dbt=NULL;
@@ -771,7 +792,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   _database=get_database(database,database);
   if (table_name != NULL){ 
 	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-      g_warning("File %s has been filter out(1)",filename);
+      trace("File %s has been filtered out by table selection", filename);
       return FALSE; 
     }
 		append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
@@ -813,7 +834,7 @@ gboolean process_data_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     return FALSE;
   }
 
@@ -837,9 +858,9 @@ gboolean process_data_filename(char * filename){
     dbt->restore_job_list=g_list_prepend(dbt->restore_job_list, rj);
     dbt->restore_job_list_sorted = FALSE;
     table_unlock(dbt);
+    enqueue_table_if_ready(_conf, dbt);
 	}else{
     g_warning("Ignoring file %s on `%s`.`%s`",filename, dbt->database->source_database, dbt->table_filename);
 	}
   return TRUE;
 }
-
