@@ -368,22 +368,86 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
   return g_str_has_suffix(str, suffix);
 }
 
-gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
-  if (table_name == NULL)
-    g_error("Table name is null on eval_table()");
-  g_mutex_lock(mutex);
+static gboolean eval_table_filters_unlocked(char *db_name, char *table_name){
   if ( tables ){
     if (!is_table_in_list( db_name, table_name, tables)){
-      g_mutex_unlock(mutex);
       return FALSE;
     }
   }
   if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
-    g_mutex_unlock(mutex);
     return FALSE;
   }
+  return TRUE;
+}
+
+static gboolean get_database_table_from_filename_for_filter(const gchar *filename, gchar **database, gchar **table){
+  *database = NULL;
+  *table = NULL;
+
+  if (filename == NULL)
+    return FALSE;
+
+  if (m_filename_has_suffix(filename, "-schema-view.sql")){
+    get_database_table_from_file(filename, "-schema-view", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql")){
+    get_database_table_from_file(filename, "-schema-sequence", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql")){
+    get_database_table_from_file(filename, "-schema-triggers", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-post.sql")){
+    get_database_table_from_file(filename, "-schema-post", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema.sql")){
+    get_database_table_from_file(filename, "-schema", database, table);
+  } else if (m_filename_has_suffix(filename, ".sql") || m_filename_has_suffix(filename, ".dat")){
+    gchar **split = g_strsplit(filename, ".", 4);
+    if (g_strv_length(split) >= 2){
+      *database = g_strdup(split[0]);
+      *table = g_strdup(split[1]);
+    }
+    g_strfreev(split);
+  }
+
+  return *database != NULL && *table != NULL;
+}
+
+gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
+  gboolean matched = FALSE;
+
+  if (table_name == NULL)
+    g_error("Table name is null on eval_table()");
+
+  g_mutex_lock(mutex);
+  matched = eval_table_filters_unlocked(db_name, table_name);
   g_mutex_unlock(mutex);
+
+  if (!matched)
+    return FALSE;
+
   return eval_regex(db_name, table_name);
+}
+
+gboolean should_queue_filename(const gchar *filename, GMutex *mutex){
+  gchar *database = NULL;
+  gchar *table = NULL;
+  gboolean matched = TRUE;
+
+  if (filename == NULL)
+    return FALSE;
+
+  if (!strcmp(filename, "metadata"))
+    return FALSE;
+
+  if (!strcmp(filename, "all-schema-create-tablespace.sql"))
+    return TRUE;
+
+  if (tables == NULL && tables_skiplist_file == NULL && regex_list == NULL)
+    return TRUE;
+
+  if (get_database_table_from_filename_for_filter(filename, &database, &table))
+    matched = eval_table(database, table, mutex);
+
+  g_free(database);
+  g_free(table);
+  return matched;
 }
 /*
 enum file_type get_file_type (const char * filename){

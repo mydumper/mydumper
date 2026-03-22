@@ -21,6 +21,7 @@
 #include <stdio.h> 
 //enum file_type get_file_type (const char * filename);
 gboolean eval_table( char *db_name, char * table_name, GMutex * mutex);
+gboolean should_queue_filename(const gchar *filename, GMutex *mutex);
 void get_database_table_from_file(const gchar *filename,const char *sufix,gchar **database,gchar **table);
 int process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, struct db_table *dbt, gboolean split_indexes);
 void finish_alter_table(GString * alter_table_statement);
