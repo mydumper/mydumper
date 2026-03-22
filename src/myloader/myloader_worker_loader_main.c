@@ -296,6 +296,9 @@ void *worker_loader_main_thread(struct configuration *conf){
           }
           */
         }else{
+          if (all_jobs_are_enqueued) {
+            release_idle_connection_if_possible();
+          }
           trace("Thread will be waiting | all_jobs_are_enqueued: %d | giveup: %d", all_jobs_are_enqueued, giveup);
           g_mutex_lock(threads_waiting_mutex);
           if (threads_waiting<_num_threads)
