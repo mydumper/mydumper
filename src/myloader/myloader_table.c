@@ -52,15 +52,29 @@ gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash){
   gchar *b_key=build_dbt_key(((struct db_table *)b)->database->target_database,((struct db_table *)b)->table_filename);
   struct db_table * a_val=g_hash_table_lookup(table_hash,a_key);
   struct db_table * b_val=g_hash_table_lookup(table_hash,b_key);
+  gint cmp = 0;
   g_free(a_key);
   g_free(b_key);
-  return (a_val->rows > b_val->rows) - (a_val->rows < b_val->rows);
+  if (a_val->rows > b_val->rows){
+    cmp = -1;
+  }else if (a_val->rows < b_val->rows){
+    cmp = 1;
+  }else{
+    cmp = g_strcmp0(a_val->table_filename, b_val->table_filename);
+  }
+  return cmp;
 }
 
 gint compare_dbt_short(gconstpointer a, gconstpointer b){
-  guint64 rows_a = ((struct db_table *)a)->rows;
-  guint64 rows_b = ((struct db_table *)b)->rows;
-  return (rows_a > rows_b) - (rows_a < rows_b);
+  const struct db_table *dbt_a = a;
+  const struct db_table *dbt_b = b;
+  if (dbt_a->rows > dbt_b->rows){
+    return -1;
+  }
+  if (dbt_a->rows < dbt_b->rows){
+    return 1;
+  }
+  return g_strcmp0(dbt_a->table_filename, dbt_b->table_filename);
 }
 
 struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename){

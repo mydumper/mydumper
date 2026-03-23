@@ -42,8 +42,10 @@ guint amount_of_files=0;
 
 void initialize_process_file_type(struct configuration *c){
   process_file_type_conf=c;
-  if (!stream && g_file_test("metadata.partial.0", G_FILE_TEST_IS_REGULAR))
+  gchar *metadata_partial_path = g_build_filename(directory, "metadata.partial.0", NULL);
+  if (!stream && g_file_test(metadata_partial_path, G_FILE_TEST_IS_REGULAR))
     process_file_type_num_threads = 1;
+  g_free(metadata_partial_path);
   process_file_type_queue = g_async_queue_new();
   process_file_type_workers = g_new(GThread *, process_file_type_num_threads);
   guint n=0;
