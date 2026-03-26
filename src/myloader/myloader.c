@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
   if (!kill_at_once){
     m_thread_new("myloader_signal",signal_thread, &conf, "Signal thread could not be created");
   }
-
+  initilize_checksum();
   MYSQL *conn;
   conn = mysql_init(NULL);
   m_connect(conn);
@@ -590,6 +590,7 @@ int main(int argc, char *argv[]) {
   struct db_table *dbt;
   while (tl != NULL){
     dbt=tl->data;
+    g_message("DBT checksums: %s %s", dbt->database->target_database, dbt->source_table_name);
     checksum_ok&=checksum_dbt(dbt->database->target_database, dbt->source_table_name, dbt->is_view, &dbt->checksum, conn);
     tl=tl->next;
   }

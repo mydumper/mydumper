@@ -35,16 +35,16 @@ gboolean skip_event_checksums=FALSE;
 
 GOptionEntry common_checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
-      "Dump checksums for all elements", NULL},
+      "Enables checksums for all elements", NULL},
      {"data-checksums", 0, 0, G_OPTION_ARG_NONE, &data_checksums,
-      "Dump table checksums with the data", NULL},
+      "Disables table checksums with the data", NULL},
     {"schema-checksums", 0, 0, G_OPTION_ARG_NONE, &schema_checksums,
-      "Dump schema, table, indexes and view creation checksums. "
+      "Enables schema, table, indexes and view creation checksums. "
       "(Defaults to on; use --no-schema-checksums to disable)", NULL},
     {"no-schema-checksums", 0, G_OPTION_FLAG_REVERSE, G_OPTION_ARG_NONE, &schema_checksums,
-      "Disable schema, table and view creation checksums", NULL},
+      "Disables schema, table and view creation checksums", NULL},
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
-      "Dump triggers, functions and routines checksums.", NULL}, 
+      "Enables triggers, functions and routines checksums.", NULL}, 
     {"skip-database-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_database_checksums,
       "Disables checksums over the schema of the database", NULL},
     {"skip-data-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_data_checksums,
@@ -62,6 +62,16 @@ GOptionEntry common_checksum_entries[] = {
     {"skip-event-checksums", 0, 0, G_OPTION_ARG_NONE, &skip_event_checksums,
       "Disables checksums over the events.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+
+void initilize_checksum(){
+  if (dump_checksums){
+    data_checksums = TRUE;
+    schema_checksums = TRUE;
+    routine_checksums = TRUE;
+  }
+  if (data_checksums && skip_data_checksums )
+    m_error("Incompatible settings data checksums are enable and disable at the same time.");
+}
 
 
 static
@@ -125,7 +135,6 @@ char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
 }
 
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
-  g_message("db.table: %s %s", database, table);
   return generic_checksum(conn, 
       "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A",
       0, database, table);

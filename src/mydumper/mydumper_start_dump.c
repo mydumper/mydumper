@@ -89,6 +89,7 @@ void initialize_start_dump(){
   all_dbts=g_hash_table_new(g_str_hash, g_str_equal);
   initialize_table();
   initialize_working_thread();
+  initilize_checksum();
 //	initialize_conf_per_table(&conf_per_table);
   conf_per_table=g_hash_table_new(g_str_hash, g_str_equal);
   // until we have an unique option on lock types we need to ensure this

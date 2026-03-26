@@ -123,16 +123,6 @@ void initialize_working_thread(){
 
   initialize_jobs();
   initialize_chunk();
-
-  if (dump_checksums){
-    data_checksums = TRUE;
-    schema_checksums = TRUE;
-    routine_checksums = TRUE;
-  }
-  if (data_checksums && skip_data_checksums )
-    m_error("Incompatible settings data checksums are enable and disable at the same time.");
-
-
 }
 
 void start_working_thread(struct configuration *conf ){

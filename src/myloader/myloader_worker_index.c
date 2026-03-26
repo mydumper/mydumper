@@ -56,7 +56,6 @@ gboolean process_index(struct thread_data * td){
   struct db_table *dbt=job->data.restore_job->dbt;
   trace("index_queue -> %s: %s.%s", rjtype2str(job->data.restore_job->type), dbt->database->target_database, dbt->table_filename);
   dbt->start_index_time=g_date_time_new_now_local();
-  g_message("restoring index: %s.%s", dbt->database->source_database, dbt->table_filename);
   process_job(td, job, NULL);
   dbt->finish_time=g_date_time_new_now_local();
   table_lock(dbt);
