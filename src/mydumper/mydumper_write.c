@@ -348,40 +348,13 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
   }
 }
-/*
-static
-void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
-  gchar *database=dbt->database->source_database;
-  gchar *table=dbt->table;
-
-  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
-  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
-  g_free(k);
-  struct function_pointer ** anonymized_function_list=NULL;
-
-  if (ht){
-    anonymized_function_list = g_new0(struct function_pointer *, num_fields);
-    guint i = 0;
-    struct function_pointer *fp=NULL;
-    for (i = 0; i < num_fields; ++i) {
-      fp=(struct function_pointer*)g_hash_table_lookup(ht,fields[i].name);
-      if (fp != NULL){
-        g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, fields[i].name);
-        anonymized_function_list[i]=fp;
-      }else{
-        anonymized_function_list[i]=&identity_function_pointer;
-      }
-    }
-    dbt->anonymized_function=anonymized_function_list;
-  }
-}
-*/
 
 static
 void set_anonymized_function_hash(struct db_table * dbt){
   // It is correct to use backticks in this case, as we are using the config file, not the identifier_quote_character:
   gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->source_database,dbt->table);
-  dbt->anonymized_function = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
+  GHashTable *local_conf_per_table=g_hash_table_lookup(conf_per_table,ANONYMIZED_FUNCTION);
+  dbt->anonymized_function = local_conf_per_table?g_hash_table_lookup(local_conf_per_table,k):NULL;
   g_free(k);
 }
 

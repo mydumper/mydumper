@@ -567,7 +567,7 @@ void refresh_table_list(struct configuration *conf){
   refresh_table_list_without_table_hash_lock(conf, TRUE);
   g_mutex_unlock(conf->table_hash_mutex);
 }
-
+/*
 static inline gboolean
 checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
                   const char *info_templ, const char *message, const char *_db, const char *_table)
@@ -592,22 +592,14 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
   return TRUE;
 }
 
-gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
+static
+gboolean checksum_dbt_template(gchar *target_database, gchar *source_table_name, gchar *dbt_checksum,  MYSQL *conn,
                            const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  const char *checksum= fun(conn, dbt->database->target_database, dbt->source_table_name);
+  const char *checksum= fun(conn, target_database, source_table_name);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, dbt->database->target_database, dbt->source_table_name);
-}
-
-gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
-                                const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
-{
-  const char *checksum= fun(conn, _db, NULL);
-  return checksum_template(dbt_checksum, checksum,
-                    "%s mismatch found for %s: got %s, expecting %s",
-                    "%s confirmed for %s", message, _db, NULL);
+                    "%s confirmed for %s.%s", message, target_database, source_table_name);
 }
 
 gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
@@ -615,28 +607,29 @@ gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
   gboolean checksum_ok=TRUE;
   if (checksum_mode != CHECKSUM_SKIP){
     if (!no_schemas){
-      if (dbt->schema_checksum!=NULL){
+      if (dbt->checksum.schema!=NULL){
         if (dbt->is_view)
-          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
                                 "View checksum", checksum_view_structure);
         else
-          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
                                 "Structure checksum", checksum_table_structure);
       }
-      if (dbt->indexes_checksum!=NULL)
-        checksum_ok&=checksum_dbt_template(dbt, dbt->indexes_checksum, conn,
+      if (dbt->checksum.index!=NULL)
+        checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.index, conn,
                               "Schema index checksum", checksum_table_indexes);
     }
-    if (dbt->triggers_checksum!=NULL && !skip_triggers)
-      checksum_ok&=checksum_dbt_template(dbt, dbt->triggers_checksum, conn,
+    if (dbt->checksum.trigger!=NULL && !skip_triggers)
+      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.trigger, conn,
                             "Trigger checksum", checksum_trigger_structure);
 
-    if (dbt->data_checksum!=NULL && !no_data)
-      checksum_ok&=checksum_dbt_template(dbt, dbt->data_checksum, conn,
+    if (dbt->checksum.data!=NULL && !no_data)
+      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.data, conn,
                             "Data checksum", checksum_table);
   }
   return checksum_ok;
 }
+*/
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
   return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);

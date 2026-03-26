@@ -328,6 +328,7 @@ static GOptionEntry chunks_entries[] = {
       "Dump partitions into separate files. This option overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
+/* Moved to checksum.c
 static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
       "Dump checksums for all elements", NULL},
@@ -340,6 +341,7 @@ static GOptionEntry checksum_entries[] = {
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
       "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+*/
 
 static GOptionEntry filter_entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &source_db,
@@ -477,7 +479,8 @@ GOptionContext * load_contex_entries(){
   g_option_context_add_group(context, chunks_group);
 
   GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
-  g_option_group_add_entries(checksum_group, checksum_entries);
+  g_option_group_add_entries(checksum_group, common_checksum_entries);
+//  g_option_group_add_entries(checksum_group, checksum_entries);
   g_option_context_add_group(context, checksum_group);
 
   GOptionGroup *objects_group=g_option_group_new("objects", "Objects Options", "Objects Options", NULL, NULL);

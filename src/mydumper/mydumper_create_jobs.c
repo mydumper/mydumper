@@ -105,14 +105,13 @@ void create_job_to_dump_tablespaces(){
 }
 
 static
-void create_database_related_job(struct database *database, enum job_type type, const gchar *suffix, gboolean checksum_filename) {
+void create_database_related_job(struct database *database, enum job_type type, const gchar *suffix) {
   struct job *j = g_new0(struct job, 1);
   struct database_job *dj = g_new0(struct database_job, 1);
   j->job_data = (void *)dj;
   dj->database = database;
   j->type = type;
   dj->filename = build_schema_filename(database->database_name_in_filename, suffix);
-  dj->checksum_filename = checksum_filename;
   g_async_queue_push(local_conf->schema_queue, j);
   return;
 }
@@ -124,17 +123,15 @@ void create_job_to_dump_table_schema(struct db_table *dbt) {
   sj->dbt = dbt;
   j->type = JOB_SCHEMA;
   sj->filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema");
-  sj->checksum_filename=schema_checksums;
-  sj->checksum_index_filename=schema_checksums;
   g_async_queue_push(local_conf->schema_queue, j);
 }
 
 void create_job_to_dump_schema(struct database *database) {
-  create_database_related_job(database, JOB_CREATE_DATABASE, "schema-create", schema_checksums);
+  create_database_related_job(database, JOB_CREATE_DATABASE, "schema-create");
 }
 
 void create_job_to_dump_post(struct database *database) {
-  create_database_related_job(database, JOB_SCHEMA_POST, "schema-post", routine_checksums);
+  create_database_related_job(database, JOB_SCHEMA_POST, "schema-post");
 }
 
 //
@@ -155,7 +152,6 @@ void create_job_to_dump_triggers(MYSQL *conn, struct db_table *dbt) {
       t->type = JOB_TRIGGERS;
       st->dbt = dbt;
       st->filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-triggers");
-      st->checksum_filename=routine_checksums;
       g_async_queue_push(local_conf->post_data_queue, t);
     }
     mysql_free_result(result);
@@ -169,7 +165,6 @@ void create_job_to_dump_schema_triggers(struct database *database) {
   t->type = JOB_SCHEMA_TRIGGERS;
   st->database = database;
   st->filename = build_schema_filename(database->database_name_in_filename, "schema-triggers");
-  st->checksum_filename=routine_checksums;
   g_async_queue_push(local_conf->post_data_queue, t);
 }
 
@@ -182,7 +177,6 @@ void create_job_to_dump_view(struct db_table *dbt) {
   j->type = JOB_VIEW;
   vj->tmp_table_filename  = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema");
   vj->view_filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-view");
-  vj->checksum_filename = schema_checksums;
   g_async_queue_push(local_conf->post_data_queue, j);
   return;
 }
@@ -194,7 +188,6 @@ void create_job_to_dump_sequence(struct db_table *dbt) {
   sj->dbt = dbt;
   j->type = JOB_SEQUENCE;
   sj->filename = build_schema_table_filename(dbt->database->database_name_in_filename, dbt->table_filename, "schema-sequence");
-  sj->checksum_filename=schema_checksums;
   g_async_queue_push(local_conf->post_data_queue, j);
   return;
 }

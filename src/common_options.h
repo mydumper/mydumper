@@ -48,7 +48,7 @@ extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
 extern GOptionEntry common_entries[];
 extern GOptionEntry pmm_entries[]; 
-
+extern GOptionEntry common_checksum_entries[];
 #ifndef _src_common_options_h
 #define _src_common_options_h
 struct replication_settings{

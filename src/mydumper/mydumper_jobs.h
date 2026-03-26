@@ -35,14 +35,11 @@ struct schema_metadata_job {
 struct schema_job {
   struct db_table *dbt;
   char *filename;
-  gboolean checksum_filename;
-  gboolean checksum_index_filename;
 };
 
 struct sequence_job {
   struct db_table *dbt;
   char *filename;
-  gboolean checksum_filename;
 };
 
 struct table_checksum_job {
@@ -57,14 +54,12 @@ struct create_tablespace_job{
 struct database_job {
   struct database *database;
   char *filename;
-  gboolean checksum_filename;
 };
 
 struct view_job {
   struct db_table *dbt;
   char *tmp_table_filename;
   char *view_filename;
-  gboolean checksum_filename;
 };
 
 #endif
