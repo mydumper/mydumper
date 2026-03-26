@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
   g_message("Using %s as FIFO directory and %s as LOAD DATA temporary directory, please remove them if restoration fails", fifo_directory, load_data_tmp_directory);
 
   start_pmm_thread((void *)&conf);
-
+  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
@@ -463,7 +463,7 @@ int main(int argc, char *argv[]) {
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
   }
 //	initialize_conf_per_table(&conf_per_table);
-  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+//  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
