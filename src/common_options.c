@@ -204,3 +204,4 @@ GOptionEntry pmm_entries[] = {
     {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
       "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+

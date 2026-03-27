@@ -212,6 +212,6 @@ void *process_filename_worker(void *data){
     }
     file_type_push(ft, iflnm->filename);
   } while (iflnm != NULL);
-  g_message("Process filename ended");
+  trace("Process filename ended");
   return NULL;
 }

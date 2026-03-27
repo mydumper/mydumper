@@ -54,7 +54,7 @@ void initialize_jobs(){
 }
 
 static
-gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
+gchar * get_checksum(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
   gchar *checksum=fun(conn, database->source_database, table);
   if (!checksum)
     checksum = g_strdup("0");
@@ -147,14 +147,14 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   g_string_free(statement, TRUE);
   m_store_result_row_free(mr);
 
-  if (schema_checksums)
-    database->schema_checksum = write_checksum_into_file(conn, database, NULL, checksum_database_defaults);
+  if (!database->checksum.skip_schema)
+    database->checksum.schema = get_checksum(conn, database, NULL, checksum_database_defaults);
   return;
 }
 
 static
 void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
-                      char *filename, gboolean checksum_filename, gboolean checksum_index_filename) {
+                      char *filename) {
   int outfile;
   char *query = NULL;
   outfile = m_open(&filename,"w");
@@ -234,11 +234,11 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   g_string_free(alter_table_constraint_statement, TRUE);
   g_string_free(create_table_statement, TRUE);
 
-  if (checksum_filename)
-    dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
+  if (!dbt->checksum.skip_schema)
+    dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_table_structure);
   
-  if (checksum_index_filename)
-    dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
+  if (!dbt->checksum.skip_index)
+    dbt->checksum.index=get_checksum(conn, dbt->database, dbt->table, checksum_table_indexes);
 
 end:
   execute_set_names(conn, set_names_in_conn_by_default);
@@ -303,7 +303,7 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
 }
 
 static
-void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
+void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *dbt, char *filename) {
   int outfile;
   char *query = NULL;
 
@@ -330,12 +330,12 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   m_close(0, outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
-  if (checksum_filename)
-    dbt->triggers_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_trigger_structure);
+  if (!dbt->checksum.skip_trigger)
+    dbt->checksum.trigger=get_checksum(conn, dbt->database, dbt->table, checksum_trigger_structure);
   return;
 }
 
-void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
+void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename) {
   int outfile = m_open(&filename,"w");
 
   if (!outfile) {
@@ -353,14 +353,14 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
     write_triggers_definition_into_file(conn, result, database, database->source_database, outfile);
     mysql_free_result(result);
     m_close(0, outfile, filename, 1, NULL);
-    if (checksum_filename)
-      database->triggers_checksum=write_checksum_into_file(conn, database, NULL, checksum_trigger_structure_from_database);
+    if (!database->checksum.skip_trigger)
+      database->checksum.trigger=get_checksum(conn, database, NULL, checksum_trigger_structure_from_database);
   }
   return;
 }
 
 static
-void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename, gboolean checksum_filename) {
+void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename) {
   int outfile;
   char *query = NULL;
   MYSQL_ROW row;
@@ -477,13 +477,13 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_free(statement, TRUE);
   m_store_result_row_free(mr);
 
-  if (checksum_filename)
-    dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_view_structure);
+  if (!dbt->checksum.skip_schema)
+    dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_view_structure);
   return;
 }
 
 static
-void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
+void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename) {
   int outfile;
   char *query = NULL;
   GString *statement = g_string_sized_new(statement_size);
@@ -545,8 +545,8 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     }
     m_close(0, outfile, filename, 1, dbt);
     // Table checksum should cover the basics, but doesn't checksum the current sequence position
-    if (checksum_filename)
-      write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
+    if (!dbt->checksum.skip_schema)
+      get_checksum(conn, dbt->database, dbt->table, checksum_table_structure);
   }
   m_store_result_row_free(mr);
   g_string_free(statement, TRUE);
@@ -557,7 +557,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 // TODO: We need to split it in 3 functions 
 
 static
-void write_routines_definition_into_file(MYSQL *conn, struct database *database, gboolean checksum_filename, int outfile) {
+void write_routines_definition_into_file(MYSQL *conn, struct database *database, int outfile) {
   gchar *query = NULL;
   guint charcol=0,collcol=0;
   MYSQL_ROW row;
@@ -609,8 +609,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       mysql_free_result(result);
     } // for (guint r= 0; r < nroutines; r++)
 
-    if (checksum_filename)
-     database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
+    if (!database->checksum.skip_routine)
+     database->checksum.routine=get_checksum(conn, database, NULL, checksum_process_structure);
 }
 
 
@@ -667,7 +667,7 @@ void write_events_definition_into_file(MYSQL *conn, struct database *database, i
 
 
 static
-void write_post_into_file(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
+void write_post_into_file(MYSQL *conn, struct database *database, char *filename) {
   int outfile;
 
   outfile = m_open(&filename,"w");
@@ -691,11 +691,11 @@ void write_post_into_file(MYSQL *conn, struct database *database, char *filename
   // get routines
   if (dump_routines) {
     g_assert(nroutines > 0);
-    write_routines_definition_into_file(conn, database, checksum_filename, outfile);
-    if (checksum_filename){
-     database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
-     database->events_checksum=write_checksum_into_file(conn, database, NULL, checksum_events_structure_from_database);
-    }
+    write_routines_definition_into_file(conn, database, outfile);
+    if (!database->checksum.skip_routine)
+     database->checksum.routine=get_checksum(conn, database, NULL, checksum_process_structure);
+    if (!database->checksum.skip_event)
+     database->checksum.event=get_checksum(conn, database, NULL, checksum_events_structure_from_database);
       
   }
 
@@ -763,7 +763,7 @@ void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
   struct database_job * tj = (struct database_job *)job->job_data;
   g_message("Thread %d: dumping Store Procedures, Functions and Events for %s%s%s", td->thread_id,
             identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
-  write_post_into_file(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  write_post_into_file(td->thrconn, tj->database, tj->filename);
   free_database_job(tj);
   g_free(job);
 }
@@ -773,7 +773,7 @@ void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job){
   struct database_job * tj = (struct database_job *)job->job_data;
   g_message("Thread %d: dumping triggers for %s%s%s", td->thread_id,
             identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
-  write_triggers_definition_into_file_from_database(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  write_triggers_definition_into_file_from_database(td->thrconn, tj->database, tj->filename);
   free_database_job(tj);
   g_free(job);
 }
@@ -785,7 +785,7 @@ void do_JOB_VIEW(struct thread_data *td, struct job *job){
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
 
   write_view_definition_into_file(td->thrconn, tj->dbt, tj->tmp_table_filename,
-                 tj->view_filename, tj->checksum_filename);
+                 tj->view_filename);
   g_free(job);
 }
 
@@ -794,8 +794,7 @@ void do_JOB_SEQUENCE(struct thread_data *td, struct job *job){
   g_message("Thread %d dumping sequence for %s%s%s.%s%s%s", td->thread_id,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_sequence_definition_into_file(td->thrconn, tj->dbt, tj->filename,
-                 tj->checksum_filename);
+  write_sequence_definition_into_file(td->thrconn, tj->dbt, tj->filename);
 //  free_sequence_job(sj);
   g_free(job);
 }
@@ -805,7 +804,7 @@ void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   g_message("Thread %d: dumping schema for %s%s%s.%s%s%s", td->thread_id,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_table_definition_into_file(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename, tj->checksum_index_filename);
+  write_table_definition_into_file(td->thrconn, tj->dbt, tj->filename);
   free_schema_job(tj);
   g_free(job);
 }
@@ -815,7 +814,7 @@ void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   g_message("Thread %d: dumping triggers for %s%s%s.%s%s%s", td->thread_id,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_triggers_definition_into_file_from_dbt(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename);
+  write_triggers_definition_into_file_from_dbt(td->thrconn, tj->dbt, tj->filename);
   free_schema_job(tj);
   g_free(job);
 }
@@ -828,7 +827,7 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   if (use_savepoints) 
     m_query_critical(td->thrconn, "SAVEPOINT mydumper", "Savepoint failed");
   
-  tj->dbt->data_checksum=write_checksum_into_file(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
+  tj->dbt->checksum.data=get_checksum(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
 
   if (use_savepoints)
       m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed");

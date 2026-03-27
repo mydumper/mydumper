@@ -22,14 +22,7 @@ extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
 
-enum checksum_modes {
-  CHECKSUM_SKIP= 0,
-  CHECKSUM_WARN,
-  CHECKSUM_FAIL
-};
-
 extern gboolean disable_redo_log;
-extern enum checksum_modes checksum_mode;
 extern enum purge_mode purge_mode;
 extern GString *set_global;
 extern GString *set_global_back;
@@ -99,7 +92,7 @@ extern gchar *checksum_str;
 extern gboolean no_stream;
 extern gchar *ignore_errors;
 extern gboolean kill_at_once;
-extern struct configuration_per_table conf_per_table;
+extern GHashTable *conf_per_table;
 extern guint source_control_command;
 extern struct replication_settings replica_data;
 extern struct replication_settings source_data;

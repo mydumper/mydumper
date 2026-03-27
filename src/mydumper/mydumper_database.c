@@ -51,12 +51,40 @@ struct database * new_database(MYSQL *conn, char *database_name){
   _database->source_database_escaped = escape_string(conn,_database->source_database);
 //  _database->already_dumped = already_dumped;
 //  _database->ad_mutex=g_mutex_new();
-  _database->schema_checksum=NULL;
-  _database->post_checksum=NULL;
-  _database->triggers_checksum=NULL;
-  _database->events_checksum=NULL;
-  _database->dump_triggers= !is_regex_being_used() && tables_list == NULL && g_hash_table_size(conf_per_table.all_object_to_export)==0;
+  _database->checksum.schema=NULL;
+  _database->checksum.routine=NULL;
+  _database->checksum.trigger=NULL;
+  _database->checksum.event=NULL;
+  gchar * any_table_config_file_dbt_key = build_config_file_dbt_key(_database->source_database,"");
+  GHashTable *cpt = g_hash_table_lookup(conf_per_table,SKIP_DATABASE_CHECKSUMS);
+  gboolean c=FALSE;
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_schema = c?c:skip_database_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_ROUTINE_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_routine=c?c:skip_routine_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_TRIGGER_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_trigger=c?c:skip_trigger_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_EVENT_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_event=c?c:skip_event_checksums;
+
+  _database->dump_triggers= !is_regex_being_used() && tables_list == NULL && !g_hash_table_lookup(conf_per_table, OBJECT_TO_EXPORT);
   g_hash_table_insert(database_hash, _database->source_database,_database);
+  g_free(any_table_config_file_dbt_key);
   return _database;
 }
 
@@ -87,16 +115,10 @@ void write_list_of_database_on_disk(FILE *mdfile, GList *keys){
   for (GList *it= keys; it; it= g_list_next(it)) {
     _database= (struct database *) g_hash_table_lookup(database_hash, it->data);
     g_assert(_database);
-    if (_database->schema_checksum != NULL || _database->post_checksum != NULL || _database->triggers_checksum)
-      fprintf(mdfile, "\n[%c%s%c]\n", q, _database->source_database, q);
-    if (_database->schema_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "schema_checksum", _database->schema_checksum);
-    if (_database->post_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "post_checksum", _database->post_checksum);
-    if (_database->events_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "events_checksum", _database->events_checksum);
-    if (_database->triggers_checksum != NULL)
-      fprintf(mdfile, "%s = %s\n", "triggers_checksum", _database->triggers_checksum);
+    if (!should_write_database_checksum(&_database->checksum))
+      continue;
+    fprintf(mdfile, "\n[%c%s%c]\n", q, _database->source_database, q);
+    write_database_checksum(mdfile, &_database->checksum);
   }
 }
 

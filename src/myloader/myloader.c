@@ -60,7 +60,6 @@ gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
-enum checksum_modes checksum_mode= CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
@@ -91,7 +90,8 @@ extern guint optimize_keys_batchsize;
 
 const char DIRECTORY[] = "import";
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+//struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+GHashTable *conf_per_table=NULL;
 GHashTable * set_session_hash=NULL;
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
@@ -433,7 +433,7 @@ int main(int argc, char *argv[]) {
   g_message("Using %s as FIFO directory and %s as LOAD DATA temporary directory, please remove them if restoration fails", fifo_directory, load_data_tmp_directory);
 
   start_pmm_thread((void *)&conf);
-
+  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
@@ -447,7 +447,7 @@ int main(int argc, char *argv[]) {
   if (!kill_at_once){
     m_thread_new("myloader_signal",signal_thread, &conf, "Signal thread could not be created");
   }
-
+  initilize_checksum();
   MYSQL *conn;
   conn = mysql_init(NULL);
   m_connect(conn);
@@ -462,8 +462,9 @@ int main(int argc, char *argv[]) {
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
   }
-	initialize_conf_per_table(&conf_per_table);
-  load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
+//	initialize_conf_per_table(&conf_per_table);
+//  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
 
@@ -583,32 +584,24 @@ int main(int argc, char *argv[]) {
 
   if (disable_redo_log)
     m_query_critical(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", "ENABLE INNODB REDO LOG failed");
-
+  trace("Starting checksums");
   gboolean checksum_ok=TRUE;
   tl=conf.table_list;
+  struct db_table *dbt;
   while (tl != NULL){
-    checksum_ok&=checksum_dbt(tl->data, conn);
+    dbt=tl->data;
+    g_message("DBT checksums: %s %s", dbt->database->target_database, dbt->source_table_name);
+    checksum_ok&=checksum_dbt(dbt->database->target_database, dbt->source_table_name, dbt->is_view, &dbt->checksum, conn);
     tl=tl->next;
   }
-
+  trace("DBT checksums done");
   if (checksum_mode != CHECKSUM_SKIP) {
     GHashTableIter iter;
     gchar *lkey;
     g_hash_table_iter_init(&iter, database_hash);
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
-      if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->target_database, d->schema_checksum, conn,
-                                  "Schema create checksum", checksum_database_defaults);
-      if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->target_database, d->post_checksum, conn,
-                                  "Post checksum", checksum_process_structure);
-      if (d->events_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->target_database, d->events_checksum, conn,
-                                  "Events checksum", checksum_events_structure_from_database);
-      if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->target_database, d->triggers_checksum, conn,
-                                  "Triggers checksum", checksum_trigger_structure_from_database);
+      checksum_ok&=checksum_database(d->target_database, &d->checksum, conn);
     }
   }
   wait_restore_threads_to_close();
@@ -647,7 +640,6 @@ int main(int argc, char *argv[]) {
     g_message("Sending start replica");
     execute_replication_commands(conn,replication_statements->start_replica->str);
   }
-
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);
   g_async_queue_unref(conf.retry_queue);

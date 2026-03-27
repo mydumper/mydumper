@@ -132,7 +132,7 @@ struct connection_data *new_connection_data(MYSQL *thrconn){
   cd->ready=g_async_queue_new();
   cd->queue=NULL;
   cd->in_use=g_mutex_new();
-  g_message("Executing set session");
+  trace("Executing set session");
   execute_gstring(cd->thrconn, set_session);
   g_async_queue_push(connection_pool,cd);
   return cd;

@@ -39,6 +39,7 @@ void initialize_database(){
     database_db=get_database(g_strdup(target_db), g_strdup(target_db));
 }
 
+static
 struct database * new_database(gchar *database, gchar *filename){
   struct database * _database = g_new(struct database, 1);
   _database->source_database=database;
@@ -48,10 +49,37 @@ struct database * new_database(gchar *database, gchar *filename){
   _database->sequence_queue= g_async_queue_new();
   _database->table_queue=g_async_queue_new();
   _database->schema_state=target_db?CREATED:NOT_FOUND;
-  _database->schema_checksum=NULL;
-  _database->post_checksum=NULL;
-  _database->triggers_checksum=NULL;
-  _database->events_checksum=NULL;
+  _database->checksum.schema=NULL;
+  _database->checksum.routine=NULL;
+  _database->checksum.trigger=NULL;
+  _database->checksum.event=NULL;
+  gchar * any_table_config_file_dbt_key = build_config_file_dbt_key(_database->source_database,"");
+  GHashTable *cpt = g_hash_table_lookup(conf_per_table,SKIP_DATABASE_CHECKSUMS);
+  gboolean c=FALSE;
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_schema = c?c:skip_database_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_ROUTINE_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_routine=c?c:skip_routine_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_TRIGGER_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_trigger=c?c:skip_trigger_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_EVENT_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_event=c?c:skip_event_checksums;
+  g_free(any_table_config_file_dbt_key);
   return _database;
 }
 

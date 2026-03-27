@@ -48,10 +48,7 @@ struct db_table {
   GDateTime * start_index_time;
   GDateTime * finish_time;
   gint remaining_jobs;
-  gchar *data_checksum;
-  gchar *schema_checksum;
-  gchar *indexes_checksum;
-  gchar *triggers_checksum;
+  struct table_level_checksum checksum;
   gboolean is_view;
   gboolean is_sequence;
   // O(1) ready queue flag: prevents duplicate enqueuing
@@ -60,7 +57,7 @@ struct db_table {
 
 struct db_table * get_table(gchar *database_name_in_filename , gchar * table_filename);
 void free_table_hash(GHashTable *table_hash);
-gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename);
+gboolean append_new_db_table( struct db_table **p_dbt, struct database *_database, gchar *source_table_name, gchar *table_filename, gboolean is_view);
 gint compare_dbt(gconstpointer a, gconstpointer b, gpointer table_hash);
 gint compare_dbt_short(gconstpointer a, gconstpointer b);
 void initialize_table(struct configuration *c);

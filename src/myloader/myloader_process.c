@@ -435,10 +435,10 @@ void process_database_filename(char * filename) {
   
   if (!eval_regex(_database->source_database, NULL)){
     g_warning("Skipping database: `%s`",_database->source_database);
-    _database->schema_checksum = NULL;
-    _database->post_checksum = NULL;
-    _database->triggers_checksum = NULL;
-    _database->events_checksum = NULL;
+    _database->checksum.schema = NULL;
+    _database->checksum.routine = NULL;
+    _database->checksum.trigger = NULL;
+    _database->checksum.event = NULL;
     return;
   }
 
@@ -471,7 +471,7 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
-  append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
+  append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//, 0, NULL);
   dbt->is_sequence= TRUE;
   dbt->schema_state= NOT_CREATED;
 /*  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
@@ -525,15 +525,15 @@ gboolean process_table_filename(char * filename){
     trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     dbt=get_table(_database->database_name_in_filename, table_name);
     if (dbt){
-      dbt->schema_checksum=NULL;
-      dbt->triggers_checksum=NULL;
-      dbt->indexes_checksum=NULL;
-      dbt->data_checksum=NULL;
+      dbt->checksum.schema=NULL;
+      dbt->checksum.trigger=NULL;
+      dbt->checksum.index=NULL;
+      dbt->checksum.data=NULL;
     }
     return FALSE;
   }
 
-  append_new_db_table(&dbt, _database, NULL, table_name);//,0,NULL);
+  append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//,0,NULL);
   if (dbt->schema_state<NOT_CREATED){
     dbt->schema_state=NOT_CREATED;
   }else{
@@ -694,23 +694,24 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
           if (!eval_table(_database->source_database, (gchar *)table_name_for_eval, _conf->table_list_mutex)){
             trace("Skipping metadata entry for `%s`.`%s` due to table filters", _database->source_database, table_name_for_eval);
             if (real_table_name) {
-              g_free(real_table_name);
+             g_free(real_table_name);
               real_table_name = NULL;
             }
             continue;
           }
-          append_new_db_table(&dbt, _database, real_table_name, database_table[1]);//, real_table_name);//,0,NULL);
+          value=get_value(kf,groups[j],"is_view");
+          append_new_db_table(&dbt, _database, real_table_name, database_table[1], value && g_ascii_strtoull(value,NULL, 10) == 1 );//, real_table_name);//,0,NULL);
 //          if (real_table_name) g_free(real_table_name);
   //        if (table_filename) g_free(table_filename);
           real_table_name=NULL;
-          dbt->data_checksum=    dbt->object_to_import.no_data   ?NULL:get_value(kf,groups[j],"data_checksum");
-          dbt->schema_checksum=  dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"schema_checksum");
-          dbt->indexes_checksum= dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"indexes_checksum");
-          dbt->triggers_checksum=dbt->object_to_import.no_trigger?NULL:get_value(kf,groups[j],"triggers_checksum");
-          value=get_value(kf,groups[j],"is_view");
+          dbt->checksum.data=   get_value(kf,groups[j],"data_checksum");
+          dbt->checksum.schema= get_value(kf,groups[j],"schema_checksum");
+          dbt->checksum.index=  get_value(kf,groups[j],"indexes_checksum");
+          dbt->checksum.trigger=get_value(kf,groups[j],"triggers_checksum");
+/*          value=get_value(kf,groups[j],"is_view");
           if (value != NULL && g_strcmp0(value,"1")==0){
             dbt->is_view=TRUE;
-          }
+          } */
           if (value) g_free(value);
           value=get_value(kf, groups[j], "is_sequence");
           if (value != NULL && g_strcmp0(value, "1") == 0){
@@ -718,22 +719,22 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
             ++sequences;
           }
           if (value) g_free(value);
-          if (get_value(kf,groups[j],"rows")){
-            dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+          if (get_value(kf,groups[j],ROWS)){
+            dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],ROWS),NULL, 10);
           }
           if (value) g_free(value);
-          if (get_value(kf,groups[j],"is_view")){
+/*          if (get_value(kf,groups[j],"is_view")){
             dbt->is_view=g_ascii_strtoull(get_value(kf,groups[j],"is_view"),NULL, 10);
-          }
+          }*/
         }
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *database=get_database(database_table[0],database_table[0]);
-          database->schema_checksum=  get_value(kf,groups[j],"schema_checksum");
-          database->post_checksum=    get_value(kf,groups[j],"post_checksum");
-          database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
-          database->events_checksum=  get_value(kf,groups[j],"events_checksum");
+          database->checksum.schema=  get_value(kf,groups[j],"schema_checksum");
+          database->checksum.routine= get_value(kf,groups[j],"post_checksum");
+          database->checksum.trigger= get_value(kf,groups[j],"triggers_checksum");
+          database->checksum.event=   get_value(kf,groups[j],"events_checksum");
         }
       }
     }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
@@ -773,8 +774,9 @@ gboolean process_schema_view_filename(gchar *filename) {
     return FALSE;
   }
   struct db_table *dbt=NULL;
-  append_new_db_table(&dbt,_database, NULL, table_name);//,0, NULL);
-  dbt->is_view=TRUE;
+  append_new_db_table(&dbt,_database, NULL, table_name, TRUE);//,0, NULL);
+//  dbt->is_view=TRUE;
+//  dbt->checksum.skip_schema=  schema_checksums?skip_view_checksums:TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, VIEW);
   g_async_queue_push(_conf->view_queue, new_control_job(JOB_RESTORE,rj,_database));
   return TRUE;
@@ -795,7 +797,7 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
       trace("File %s has been filtered out by table selection", filename);
       return FALSE; 
     }
-		append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
+		append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//, 0, NULL);
   }
   if ( object == TRIGGER || dbt==NULL || !dbt->object_to_import.no_trigger){
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, object); //TRIGGER or POST
@@ -839,7 +841,7 @@ gboolean process_data_filename(char * filename){
   }
 
   struct db_table *dbt=NULL;
-  if (append_new_db_table(&dbt, _database, NULL, table_name)){
+  if (append_new_db_table(&dbt, _database, NULL, table_name, FALSE)){
     if (!has_been_defined_a_target_database()){
       gchar *schema_filename=common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
       if (g_file_test(schema_filename,G_FILE_TEST_EXISTS)){

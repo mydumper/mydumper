@@ -45,10 +45,6 @@ gboolean dump_routines = FALSE;
 gboolean no_dump_views = FALSE;
 gboolean views_as_tables=FALSE;
 gboolean no_dump_sequences = FALSE;
-gboolean dump_checksums = FALSE;
-gboolean data_checksums = FALSE;
-gboolean schema_checksums = TRUE;  // Issue #1975: Enable schema checksums by default
-gboolean routine_checksums = FALSE;
 gboolean exit_if_broken_table_found = FALSE;
 int build_empty_files = 0;
 
@@ -127,12 +123,6 @@ void initialize_working_thread(){
 
   initialize_jobs();
   initialize_chunk();
-
-  if (dump_checksums){
-    data_checksums = TRUE;
-    schema_checksums = TRUE;
-    routine_checksums = TRUE;
-  }
 }
 
 void start_working_thread(struct configuration *conf ){
@@ -886,7 +876,7 @@ void new_table_to_dump(MYSQL *conn, struct configuration *conf, gboolean is_view
     }
     if (!no_data && !dbt->object_to_export.no_data) {
       if (ecol != NULL && g_ascii_strcasecmp("MRG_MYISAM",ecol)) {
-        if (data_checksums && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
+        if (!dbt->checksum.skip_data && !( get_major() == 5 && get_secondary() == 7 && dbt->has_json_fields ) ){
           create_job_to_dump_checksum(dbt);
         }
         if (trx_tables ||

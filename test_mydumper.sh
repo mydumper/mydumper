@@ -246,7 +246,7 @@ test_case_dir (){
   myloader_clean_database="${DIR}/clean_databases.sql"
 
   mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
-  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user                --defaults-extra-file=${myloader_default_extra_file}"
+  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user --checksum-all --defaults-extra-file=${myloader_default_extra_file}"
 
   mydumper_execute=0;
   if [ -f $mydumper_default_extra_file ]
