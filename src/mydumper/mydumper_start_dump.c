@@ -183,11 +183,9 @@ void determine_columns_on_show_processlist( MYSQL_FIELD *fields, guint num_field
 }
 
 void *monitor_ftwrl_thread (void *thread_id){
-  MYSQL *conn;
+  MYSQL *conn=create_connection();
   MYSQL_RES *res = NULL;
   gboolean ftwrl_found_in_processlist = FALSE;
-  conn = mysql_init(NULL);
-  m_connect(conn);
   gchar *query=NULL;
   while (!ftwrl_completed){
     if (ftwrl_found_in_processlist == TRUE) {
