@@ -182,12 +182,21 @@ void determine_columns_on_show_processlist( MYSQL_FIELD *fields, guint num_field
   }
 }
 
-void *monitor_ftwrl_thread (void *thread_id){
+static
+MYSQL *create_connection() {
   MYSQL *conn;
+  conn = mysql_init(NULL);
+
+  m_connect(conn);//, db_items!=NULL?db_items[0]:db);
+
+  execute_gstring(conn, set_session);
+  return conn;
+}
+
+void *monitor_ftwrl_thread (void *thread_id){
+  MYSQL *conn=create_connection();
   MYSQL_RES *res = NULL;
   gboolean ftwrl_found_in_processlist = FALSE;
-  conn = mysql_init(NULL);
-  m_connect(conn);
   gchar *query=NULL;
   while (!ftwrl_completed){
     if (ftwrl_found_in_processlist == TRUE) {
@@ -310,17 +319,6 @@ GHashTable * mydumper_initialize_hash_of_session_variables(){
   GHashTable * set_session_hash=initialize_hash_of_session_variables();
   set_session_hash_insert(set_session_hash, "information_schema_stats_expiry", g_strdup("0 /*!80003"));
   return set_session_hash;
-}
-
-static
-MYSQL *create_connection() {
-  MYSQL *conn;
-  conn = mysql_init(NULL);
-
-  m_connect(conn);//, db_items!=NULL?db_items[0]:db);
-
-  execute_gstring(conn, set_session);
-  return conn;
 }
 
 static
