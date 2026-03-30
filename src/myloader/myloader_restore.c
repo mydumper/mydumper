@@ -258,7 +258,8 @@ gboolean release_idle_connection_if_possible(){
   return TRUE;
 }
 
-int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
+static
+int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
 {
   if (!dry_run){
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
@@ -285,9 +286,9 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
       g_free(mysql_errno_text);
     }
     if (is_schema)
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
     else{
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
     }
 
     if ( mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn))){
@@ -344,9 +345,9 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
           g_free(mysql_errno_text);
         }
         if (is_schema)
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
         else{
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
         }
         errors++;
         return 1;
@@ -452,6 +453,7 @@ int m_commit_and_start_transaction(struct connection_data *cd, guint* query_coun
   return 0;
 }
 
+static
 int restore_insert(struct connection_data *cd, struct thread_data*td,
                   GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
@@ -501,7 +503,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
         transaction_size=0;
       }
       transaction_size+=new_insert->len;
-      tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
+      tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
       g_usleep(throttle_time);
       table_lock(dbt);
       dbt->rows_inserted+=current_rows;
@@ -590,7 +592,7 @@ void *restore_thread(MYSQL *thrconn){
         }
         g_async_queue_push(cd->queue->result,ir);
       }else{
-        ir->result=restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter);
+        ir->result=restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0); //current_offset_line);
         if (ir->result>0){
           ir->error=g_strdup(mysql_error(cd->thrconn));
           ir->error_number=mysql_errno(cd->thrconn);
@@ -1037,7 +1039,7 @@ int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboo
     gchar** line=g_strsplit(data->str, ";\n", -1);
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i])>2){
-          assign_statement(ir, td, td->dbt, line[i], 0, is_schema, OTHER);
+          assign_statement(ir, td, td->dbt, line[i], i, is_schema, OTHER);
           if(ir->error)
             g_free(ir->error);
           ir->error=NULL;

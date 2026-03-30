@@ -569,15 +569,14 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
 // Stage 1: Update min and max if needed
 
   g_mutex_lock(csi->mutex);
-//  if (tj->status == COMPLETED)
-//    m_critical("Thread %d: Trying to process COMPLETED chunk",td->thread_id);
+
   csi->status = DUMPING_CHUNK;
 
   gboolean c_min=TRUE, c_max=TRUE;
 
-  if (!cs->integer_step.is_step_fixed_length){  
+  if (!cs->integer_step.is_step_fixed_length){
 
-    if (cs->integer_step.check_max /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
+    if (cs->integer_step.check_max){
       trace("Thread %d: I-Chunk 1: Updating MAX", td->thread_id);
       if (cs->integer_step.is_unsigned)
         trace("Thread %d: I-Chunk 1: Updating MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
@@ -590,7 +589,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
         trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
       cs->integer_step.check_max=FALSE;
     }
-    if (cs->integer_step.check_min /*&& tj->dbt->max_chunk_step_size!=0*/ && !cs->integer_step.is_step_fixed_length){
+    if (cs->integer_step.check_min){
       if (cs->integer_step.is_unsigned)
         trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
       else
@@ -605,7 +604,7 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     if (!c_min && !c_max){
       trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
       if (csi->position==0)
-        close_files(tj);
+        close_table_job_files(tj);
       g_mutex_unlock(csi->mutex);
       goto update_min;
     }
@@ -618,10 +617,11 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
     }
   }
 
+// Stage 2: Setting the step size if multicolumn pk is found
 
-// Stage 2: Setting cursor
   if (tj->dbt->multicolumn && csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
     guint64 integer_step_step=cs->integer_step.step;
+    // We are recalculating the step 
 retry:
   // We are setting cursor to build the WHERE clause for the EXPLAIN
     if (cs->integer_step.is_unsigned){
@@ -679,6 +679,10 @@ retry:
     }
   }
 
+trace("Thread %d: I-Chunk 2-3: step %lld ", td->thread_id, cs->integer_step.step);
+
+
+// Stage 3: Setting cursor based on the step size
   if (cs->integer_step.is_unsigned){
 
     if (cs->integer_step.step > cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min + 1 )
@@ -687,7 +691,7 @@ retry:
       cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.min + cs->integer_step.step - 1;
 
     if (cs->integer_step.type.unsign.cursor < cs->integer_step.type.unsign.min)
-      g_error("Thread %d: integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT"  | cs->integer_step.type.unsign.max : %"G_GUINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
+      g_error("Thread %d: I-Chunk 3: integer_step.type.unsign.cursor: %"G_GUINT64_FORMAT"  | integer_step.type.unsign.min %"G_GUINT64_FORMAT"  | cs->integer_step.type.unsign.max : %"G_GUINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.unsign.cursor, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max, cs->integer_step.step);
 
     g_assert(cs->integer_step.type.unsign.cursor >= cs->integer_step.type.unsign.min);
 
@@ -700,7 +704,7 @@ retry:
       cs->integer_step.type.sign.cursor = cs->integer_step.type.sign.min + cs->integer_step.step - 1;
 
     if (cs->integer_step.type.sign.cursor < cs->integer_step.type.sign.min)
-      g_error("Thread %d: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+      g_error("Thread %d: I-Chunk 3: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %"G_GUINT64_FORMAT, td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
 
     g_assert(cs->integer_step.type.sign.cursor >= cs->integer_step.type.sign.min);
 
@@ -710,7 +714,7 @@ retry:
 
   if (csi->next !=NULL && csi->status==UNSPLITTABLE){
     // Could be possible that in previous iteration on a multicolumn table, the status changed ot UNSPLITTABLE, but on next iteration could be possible
-    // to splittable, that is why we need to change back to ASSIGNED
+    // to be splittable, that is why we need to change back to ASSIGNED
     csi->status=ASSIGNED; 
   }
 
@@ -718,19 +722,19 @@ retry:
 
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
 
-// Step 3: Executing query and writing data
+// Step 4: Executing query and writing data
   update_where_on_integer_step(csi);
   if (csi->prefix)
-    trace("Thread %d: I-Chunk 3: PREFIX: %s WHERE: %s", td->thread_id, csi->prefix->str, csi->where->str);
+    trace("Thread %d: I-Chunk 4: PREFIX: %s WHERE: %s", td->thread_id, csi->prefix->str, csi->where->str);
   else
-    trace("Thread %d: I-Chunk 3: WHERE: %s", td->thread_id, csi->where->str); 
+    trace("Thread %d: I-Chunk 4: WHERE: %s", td->thread_id, csi->where->str); 
 
   if (csi->next !=NULL){
-    trace("Thread %d: I-Chunk 3: going down", td->thread_id);
+    trace("Thread %d: I-Chunk 4: going down", td->thread_id);
     // Multi column
     if (csi->next->needs_refresh)
       if (!refresh_integer_min_max(td->thrconn, tj->dbt, csi->next)){
-        trace("Thread %d: I-Chunk 3: No min and max found", td->thread_id);
+        trace("Thread %d: I-Chunk 4: No min and max found", td->thread_id);
         goto update_min;
       }
 
@@ -739,16 +743,19 @@ retry:
   }else{
     g_string_set_size(tj->where,0);
     g_string_append(tj->where, csi->where->str);
-    trace("Thread %d: I-Chunk 3: WHERE in TJ: %s", td->thread_id, tj->where->str);
-    if (cs->integer_step.is_step_fixed_length) {
+    trace("Thread %d: I-Chunk 4: WHERE in TJ: %s", td->thread_id, tj->where->str);
+    
+    if (cs->integer_step.is_step_fixed_length){
       if (cs->integer_step.is_unsigned)
         tj->part= cs->integer_step.type.unsign.min / cs->integer_step.step + 1;
       else
-        tj->part= cs->integer_step.type.sign.min   / cs->integer_step.step + 1;      
-      close_files(tj);
+        tj->part= cs->integer_step.type.sign.min   / cs->integer_step.step + 1;
+      trace("Thread %d: I-Chunk 4: part updated to %d | %d | %d", td->thread_id, tj->part, cs->integer_step.type.sign.min, cs->integer_step.step);
+      close_table_job_files(tj);
       write_table_job_into_file(tj);
-    }else if (is_last(csi)) {
-      trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
+    }else 
+    if (is_last(csi)) {
+      trace("Thread %d: I-Chunk 4: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
       write_table_job_into_file(tj);
     }else{
       // Perf: Use g_get_monotonic_time() instead of GDateTime to eliminate allocations
@@ -757,7 +764,7 @@ retry:
       write_table_job_into_file(tj);
       gint64 to_time = g_get_monotonic_time();
 
-// Step 3.1: Updating Step length
+// Step 4.1: Updating Step length
       // g_get_monotonic_time is in microseconds, that is why we need to divide by G_TIME_SPAN_SECOND, as we compare in seconds
       GTimeSpan diff = (to_time - from_time) / G_TIME_SPAN_SECOND;  // Zero allocation, same precision
       g_mutex_lock(csi->mutex);
@@ -778,11 +785,11 @@ retry:
         cs->integer_step.rows_in_explain=0;
       if (diff>0 && tj->num_rows_of_last_run>0){
         cs->integer_step.step=tj->num_rows_of_last_run*max_time_per_select/diff;
-        trace("Thread %d: I-Chunk 3: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->source_database, tj->dbt->table, cs->integer_step.step, tj->num_rows_of_last_run, diff);
+        trace("Thread %d: I-Chunk 4: Step size on `%s`.`%s` is %ld  ( %ld %ld)", td->thread_id, tj->dbt->database->source_database, tj->dbt->table, cs->integer_step.step, tj->num_rows_of_last_run, diff);
       }else{
         cs->integer_step.step*=2;
         cs->integer_step.check_min=TRUE;
-        trace("Thread %d: I-Chunk 3: During last query we get zero rows, duplicating the step size to %ld", td->thread_id, cs->integer_step.step);
+        trace("Thread %d: I-Chunk 4: During last query we get zero rows, duplicating the step size to %ld", td->thread_id, cs->integer_step.step);
       }
 
 
@@ -821,15 +828,20 @@ update_min:
     }else
       cs->integer_step.type.sign.min=cs->integer_step.type.sign.cursor+1;
   }
-  guint64 tmpstep = csi->chunk_step->integer_step.is_unsigned?
-                    csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min:
-         gint64_abs(  csi->chunk_step->integer_step.type.sign.max -   csi->chunk_step->integer_step.type.sign.min);
-  tmpstep++;
 
-  trace("Thread %d: I-Chunk 5: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld | tmpstep: %d", td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step, tmpstep);
-  cs->integer_step.step=cs->integer_step.step>tmpstep?tmpstep:cs->integer_step.step;
 
-//  g_message("Thread %d: I-Chunk 5: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld", td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step);
+  // Step 6: Updating step again
+  
+  if (!cs->integer_step.is_step_fixed_length){
+    guint64 tmpstep = csi->chunk_step->integer_step.is_unsigned?
+                      csi->chunk_step->integer_step.type.unsign.max - csi->chunk_step->integer_step.type.unsign.min:
+           gint64_abs(  csi->chunk_step->integer_step.type.sign.max -   csi->chunk_step->integer_step.type.sign.min);
+    tmpstep++;
+
+    trace("Thread %d: I-Chunk 5: integer_step.type.sign.cursor: %"G_GINT64_FORMAT"  | integer_step.type.sign.min %"G_GINT64_FORMAT"  | cs->integer_step.type.sign.max : %"G_GINT64_FORMAT" | cs->integer_step.step %ld | tmpstep: %d", td->thread_id, cs->integer_step.type.sign.cursor, cs->integer_step.type.sign.min, cs->integer_step.type.sign.max, cs->integer_step.step, tmpstep);
+    cs->integer_step.step=cs->integer_step.step>tmpstep?tmpstep:cs->integer_step.step;
+
+  }
 
 //end_process:
 
@@ -848,36 +860,6 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
   struct thread_data *td = tj->td;
   struct db_table *dbt = tj->dbt;
   union chunk_step *cs = csi->chunk_step;
-//  gboolean multicolumn_process=FALSE;
-
-/*
-  if (csi->next==NULL && csi->multicolumn){
-    if (csi->position == 0){
-      
-    
-    
-    }else{
-      g_string_set_size(csi->where,0);
-      update_integer_where_on_gstring(csi->where, csi->include_null, csi->prefix, csi->field, csi->chunk_step->integer_step.is_unsigned, csi->chunk_step->integer_step.type, FALSE);
-      guint64 rows = check_row_count?
-                   get_rows_from_count(td->thrconn, dbt, NULL): 
-                   get_rows_from_explain(td->thrconn, dbt, csi->where, csi->field);
-
-
-//    determine_if_we_can_go_deeper(csi,rows);
-
-      if (rows > csi->chunk_step->integer_step.min_chunk_step_size ){
-        struct chunk_step_item *next_csi = initialize_chunk_step_item(td->thrconn, dbt, csi->position + 1, csi->where);
-        if (next_csi && next_csi->chunk_type!=NONE){
-          csi->next=next_csi;
-          multicolumn_process=TRUE;
-        }
-      }
-    }
-  }
-*/
-
-
 
   // First step, we need this to process the one time prefix
   g_string_set_size(tj->where,0);
@@ -900,42 +882,38 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
     return;
   }
   g_atomic_int_inc(dbt->chunks_completed);
-//  if (csi->prefix)
-//    g_free(csi->prefix);
-//  csi->prefix=NULL;
+
   csi->include_null=FALSE;
 
   // Processing the remaining steps
   g_mutex_lock(csi->mutex);
-    // Remaining unsigned steps
-//g_message("cs->integer_step.type.unsign.min: %"G_GUINT64_FORMAT" | cs->integer_step.type.unsign.max: %"G_GUINT64_FORMAT, cs->integer_step.type.unsign.min, cs->integer_step.type.unsign.max);
-    while ( 
-              (  cs->integer_step.is_unsigned && cs->integer_step.type.unsign.min <= cs->integer_step.type.unsign.max )
-           || ( !cs->integer_step.is_unsigned && cs->integer_step.type.sign.min   <= cs->integer_step.type.sign.max   )
-          ){
-      g_mutex_unlock(csi->mutex);
-      g_string_set_size(tj->where,0);
-      if (process_integer_chunk_step(tj, csi)){
-        if (machine_log_json_enabled()) {
-          gchar *thread_id = g_strdup_printf("%u", td->thread_id);
-          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
-                            "MESSAGE", "dump job cancelled",
-                            "EVENT", "dump_job",
-                            "PHASE", "dump_data",
-                            "STATUS", "cancelled",
-                            "THREAD_ID", thread_id,
-                            "DB", dbt->database->source_database,
-                            "TABLE", dbt->table,
-                            NULL);
-          g_free(thread_id);
-        } else {
-          g_message("Thread %d: Job has been cacelled",td->thread_id);
-        }
-        return;
+  while ( 
+            (  cs->integer_step.is_unsigned && cs->integer_step.type.unsign.min <= cs->integer_step.type.unsign.max )
+         || ( !cs->integer_step.is_unsigned && cs->integer_step.type.sign.min   <= cs->integer_step.type.sign.max   )
+        ){
+    g_mutex_unlock(csi->mutex);
+    g_string_set_size(tj->where,0);
+    if (process_integer_chunk_step(tj, csi)){
+      if (machine_log_json_enabled()) {
+        gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "dump job cancelled",
+                          "EVENT", "dump_job",
+                          "PHASE", "dump_data",
+                          "STATUS", "cancelled",
+                          "THREAD_ID", thread_id,
+                          "DB", dbt->database->source_database,
+                          "TABLE", dbt->table,
+                          NULL);
+        g_free(thread_id);
+      } else {
+        g_message("Thread %d: Job has been cacelled",td->thread_id);
       }
-      g_atomic_int_inc(dbt->chunks_completed);
-      g_mutex_lock(csi->mutex);
+      return;
     }
+    g_atomic_int_inc(dbt->chunks_completed);
+    g_mutex_lock(csi->mutex);
+  }
 
   if (csi->position==0)
     cs->integer_step.estimated_remaining_steps=0;

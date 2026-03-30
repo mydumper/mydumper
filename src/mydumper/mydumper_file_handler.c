@@ -186,7 +186,7 @@ int m_open_file(char **filename, const char *type ){
 
 int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt){
   if (file >= 0){
-    trace("Closing file(%d): %s", file, filename);
+    trace("Thread %d: Closing file(%d): %s of size: %"G_GUINT64_FORMAT, thread_id, file, filename, size);
     int r=close(file);
     if (size > 0){
       if (exec_command)  exec_queue_push(dbt, g_strdup(filename));
@@ -301,9 +301,8 @@ int m_open_pipe(gchar **filename, const char *type){
 
 int m_close_pipe(guint thread_id, int file, gchar *filename, guint64 size, struct db_table * dbt){
   release_pid();
-  (void)file;
-  (void)thread_id;
   g_mutex_lock(fifo_table_mutex);
+  trace("Thread %d: Closing pipe(%d): %s of size: %"G_GUINT64_FORMAT, thread_id, file, filename, size);
   struct fifo *f=g_hash_table_lookup(fifo_hash,filename);
   g_mutex_unlock(fifo_table_mutex);
   if (f){
@@ -312,7 +311,7 @@ int m_close_pipe(guint thread_id, int file, gchar *filename, guint64 size, struc
     close_file_queue_push(f);
     return 0;
   }else{
-    g_warning("pipe %s not closed", filename);
+    g_warning("Thread %d: pipe %s not closed", thread_id, filename);
   }
   return 1;
 }

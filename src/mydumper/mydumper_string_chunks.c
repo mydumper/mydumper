@@ -950,7 +950,7 @@ retry:
     trace("Thread %d: I-Chunk 3: WHERE in TJ: %s", td->thread_id, tj->where->str);
     if (cs->string_step.is_step_fixed_length) {
       // tj->part= cs->string_step.type.sign.min   / cs->string_step.step + 1;      
-      close_files(tj);
+      close_table_job_files(tj);
       write_table_job_into_file(tj);
     }else if (is_last(csi)) {
       trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
