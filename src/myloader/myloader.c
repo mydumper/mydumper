@@ -539,7 +539,7 @@ int main(int argc, char *argv[]) {
 
   start_connection_pool();
   if (disable_redo_log){
-    if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
+    if ((get_major() > 8) || (get_major() == 8 && (get_secondary() > 0 || get_revision() > 20))){
       g_message("Disabling redologs");
       m_query_critical(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", "DISABLE INNODB REDO LOG failed");
     }else{
