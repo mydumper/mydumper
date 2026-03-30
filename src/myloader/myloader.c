@@ -602,7 +602,7 @@ int main(int argc, char *argv[]) {
 
   start_connection_pool();
   if (disable_redo_log){
-    if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
+    if ((get_major() > 8) || (get_major() == 8 && (get_secondary() > 0 || get_revision() > 20))){
       if (machine_log_json_enabled()) {
         machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
                           "MESSAGE", "Disabling redologs",

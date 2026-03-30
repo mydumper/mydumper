@@ -565,7 +565,9 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
               execute_drop_database(td, rj->data.srj->database->target_database);
           }
 
-          if ( restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL :rj->data.srj->database ) > 0 ) {
+          if ( (rj->data.srj->statement
+                ? restore_data_in_gstring(td, rj->data.srj->statement, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL : rj->data.srj->database)
+                : restore_data_from_file(td, rj->filename, TRUE, rj->data.srj->object == CREATE_DATABASE ? NULL : rj->data.srj->database) ) > 0 ) {
             increse_object_error(rj->data.srj->object);
             if (machine_log_json) {
               gchar *thread_id = g_strdup_printf("%u", td->thread_id);

@@ -204,7 +204,7 @@ static GOptionEntry entries[] = {
       "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
       "which is the default value and used if no parameter is given", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-      "Log file name to use, by default stdout is used", NULL},
+      "Log file name to use, by default stderr is used", NULL},
     {"disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."

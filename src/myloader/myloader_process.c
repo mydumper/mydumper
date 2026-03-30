@@ -385,7 +385,7 @@ gchar * get_database_name_from_filename(const gchar *filename){
 }
 
 static
-gchar * get_database_name_from_content(gchar *filename){
+gchar * get_database_name_from_content(gchar *filename, GString **out_content){
   FILE *infile;
 //  enum data_file_type is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -405,6 +405,10 @@ gchar * get_database_name_from_content(gchar *filename){
           gchar** create= g_strsplit(data->str, identifier_quote_character_str, 3);
           target_database=g_strdup(create[1]);
           g_strfreev(create);
+          // Capture the content so the schema worker can execute from memory
+          // (avoids re-reading the file, which in stream mode may already be deleted).
+          if (out_content)
+            *out_content = g_string_new_len(data->str, data->len);
           break;
         }else{
           g_string_set_size(data,0);
@@ -418,11 +422,13 @@ gchar * get_database_name_from_content(gchar *filename){
 
 void process_database_filename(char * filename) {
   gchar *db_kname,*db_vname;
+  GString *db_content=NULL;
   db_vname=db_kname=get_database_name_from_filename(filename);
 
   if (db_kname!=NULL){
     if (g_str_has_prefix(db_kname,"mydumper_"))
-      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL),
+                                              &db_content);
     if(!db_vname)
       m_critical("It was not possible to process db content in file: %s",filename);
   }else{
@@ -432,24 +438,26 @@ void process_database_filename(char * filename) {
   trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *_database = get_database(db_kname, db_vname);
 
-  
+
   if (!eval_regex(_database->source_database, NULL)){
     g_warning("Skipping database: `%s`",_database->source_database);
     _database->checksum.schema = NULL;
     _database->checksum.routine = NULL;
     _database->checksum.trigger = NULL;
     _database->checksum.event = NULL;
+    if (db_content) g_string_free(db_content, TRUE);
     return;
   }
 
   if (!has_been_defined_a_target_database()){
     _database->schema_state=NOT_CREATED;
 //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
-    schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE, NULL );
+    schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, db_content, CREATE_DATABASE, NULL );
 //    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
 //    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
   }else{
     _database->schema_state=CREATED;
+    if (db_content) g_string_free(db_content, TRUE);
   }
 }
 

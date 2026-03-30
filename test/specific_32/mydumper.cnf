@@ -1,0 +1,10 @@
+#
+# Testing stream mode with a database name that triggers mydumper_ filename
+# renaming (contains a dot). Verifies the schema-create file content is
+# available to the schema worker even after myl_open() deletes the file.
+#
+
+[mydumper]
+database=db.dot
+outputdir=/tmp/data
+stream=1
