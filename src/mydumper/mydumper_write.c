@@ -71,15 +71,17 @@ gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
 
-
+static
 gboolean update_files_on_table_job(struct table_job *tj)
 {
   if (tj->rows->file < 0){
+    g_assert(tj->rows->filename==NULL);    
     tj->rows->filename = build_rows_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
     trace("Thread %d: Filename assigned(%d): %s", tj->td->thread_id, tj->rows->file, tj->rows->filename);
 
     if (tj->sql){
+      g_assert(tj->sql->filename==NULL);
       tj->sql->filename =build_sql_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
       tj->sql->file = m_open(&(tj->sql->filename),"w");
       trace("Thread %d: Filename assigned: %s", tj->td->thread_id, tj->sql->filename);
@@ -715,16 +717,17 @@ void flush_dbt_rows(struct thread_data *td){
   }
 }
 
+static
 void close_file(struct table_job * tj, struct table_job_file *tjf){
   if (tjf->file >= 0){
-    m_close(tj->td->thread_id, tjf->file, tjf->filename, 1, tj->dbt);
+    m_close(tj->td->thread_id, tjf->file, tjf->filename, tj->filesize, tj->dbt);
     tjf->file=-1;
     g_free(tjf->filename);
     tjf->filename=NULL;
   }
 }
 
-void close_files(struct table_job * tj){
+void close_table_job_files(struct table_job * tj){
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -735,11 +738,16 @@ void close_files(struct table_job * tj){
       break;
   }
   close_file(tj, tj->rows);
+
+  tj->filesize=0;
+  tj->st_in_file=0;
+
+  tj->num_rows_of_last_run=0;
 }
 
 static
 void reopen_files(struct table_job * tj){
-  close_files(tj);
+  close_table_job_files(tj);
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -884,8 +892,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         initialize_sql_statement(tj->td->thread_data_buffers.statement);
         g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       }
-      tj->st_in_file = 0;
-      tj->filesize = 0;			
 		}
 		//
 		// write row to buffer
