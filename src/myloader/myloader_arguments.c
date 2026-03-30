@@ -142,7 +142,7 @@ static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
      "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stdout is used", NULL},
+     "Log file name to use, by default stderr is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
      "Directory where the FIFO files will be created when needed. Default: temporary directoy will be created", NULL},
     {"load-data-tmp-dir", 0, 0, G_OPTION_ARG_FILENAME, &load_data_tmp_directory,
