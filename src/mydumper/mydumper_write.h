@@ -31,7 +31,7 @@ void initialize_config_on_string(GString *output);
 void finalize_write();
 void write_table_job_into_file(struct table_job *tj);
 gboolean write_data(int file, GString *data);
-void close_files(struct table_job * tj);
+void close_table_job_files(struct table_job * tj);
 
 // Thread-local row batching: accumulates rows locally, flushes every 10K rows
 // update_dbt_rows_batched: Thread-local batching (call during processing)

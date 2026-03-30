@@ -230,12 +230,9 @@ struct table_job * new_table_job(struct db_table *dbt, char *partition, guint64 
     tj->sql->file = -1;
     tj->sql->filename = NULL;
   }
-  tj->exec_out_filename = NULL;
   tj->dbt=dbt;
   tj->st_in_file=0;
   tj->filesize=0;
-//  tj->char_chunk_part=char_chunk;
-  tj->child_process=0;
   tj->where=g_string_new("");
   tj->num_rows_of_last_run=0;
   update_estimated_remaining_chunks_on_dbt(tj->dbt);
