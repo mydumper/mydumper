@@ -25,3 +25,5 @@ struct filetype_item{
 void initialize_process_file_type(struct configuration *c);
 void file_type_push( enum file_type ft, gchar *filename);
 void wait_file_type_to_complete();
+guint myloader_summary_get_files(void);
+guint64 myloader_summary_get_bytes(void);

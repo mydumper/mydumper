@@ -38,18 +38,149 @@ static GAsyncQueue *available_pids=NULL;
 static GHashTable *fifo_hash=NULL;
 static GMutex *fifo_table_mutex=NULL;
 static GMutex *pipe_creation=NULL;
+static GMutex *dump_summary_mutex=NULL;
+static guint dump_summary_files=0;
+static guint64 dump_summary_bytes=0;
+static guint dump_summary_retries=0;
+static guint dump_summary_skipped=0;
+static guint dump_summary_tables=0;
 // Multiple close_file_threads for parallel fsync (improved throughput on high-latency storage)
 // Use 4 threads as a conservative default (original was 1)
 #define NUM_CLOSE_FILE_THREADS 4
 static GThread *cft[NUM_CLOSE_FILE_THREADS] = {NULL};
 static guint open_pipe=0;
 static gboolean is_pipe=FALSE;
+
+static void ensure_dump_summary_mutex(void){
+  if (dump_summary_mutex == NULL){
+    dump_summary_mutex = g_mutex_new();
+  }
+}
+
+static void reset_dump_summary(void){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_files = 0;
+  dump_summary_bytes = 0;
+  dump_summary_retries = 0;
+  dump_summary_skipped = 0;
+  dump_summary_tables = 0;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_note_file_created(void){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_files++;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_note_file_removed(void){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  if (dump_summary_files > 0) {
+    dump_summary_files--;
+  }
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_add_bytes(guint64 bytes){
+  if (bytes == 0) {
+    return;
+  }
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_bytes += bytes;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_note_retry(void){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_retries++;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_note_skipped(void){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_skipped++;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_set_tables(guint tables_count){
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  dump_summary_tables = tables_count;
+  g_mutex_unlock(dump_summary_mutex);
+}
+
+void dump_summary_note_external_file_size(FILE *file){
+  long position = 0;
+
+  if (file == NULL) {
+    return;
+  }
+
+  position = ftell(file);
+  if (position > 0) {
+    dump_summary_add_bytes((guint64)position);
+  }
+}
+
+guint dump_summary_get_files(void){
+  guint files = 0;
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  files = dump_summary_files;
+  g_mutex_unlock(dump_summary_mutex);
+  return files;
+}
+
+guint64 dump_summary_get_bytes(void){
+  guint64 bytes = 0;
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  bytes = dump_summary_bytes;
+  g_mutex_unlock(dump_summary_mutex);
+  return bytes;
+}
+
+guint dump_summary_get_retries(void){
+  guint retries = 0;
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  retries = dump_summary_retries;
+  g_mutex_unlock(dump_summary_mutex);
+  return retries;
+}
+
+guint dump_summary_get_skipped(void){
+  guint skipped = 0;
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  skipped = dump_summary_skipped;
+  g_mutex_unlock(dump_summary_mutex);
+  return skipped;
+}
+
+guint dump_summary_get_tables(void){
+  guint tables_count = 0;
+  ensure_dump_summary_mutex();
+  g_mutex_lock(dump_summary_mutex);
+  tables_count = dump_summary_tables;
+  g_mutex_unlock(dump_summary_mutex);
+  return tables_count;
+}
+
 // FILE open/close without pipe
 int m_open_file(char **filename, const char *type ){
   (void) type;
   int fd=open(*filename, O_CREAT|O_WRONLY|O_TRUNC, 0660 );
   if (fd<0)
     m_critical("Couldn't open file(%s): %s", *filename, strerror(errno));
+  else
+    dump_summary_note_file_created();
   return fd;
 }
 
@@ -65,6 +196,7 @@ int m_close_file(guint thread_id, int file, gchar *filename, guint64 size, struc
         if (remove(filename)) {
           g_warning("Thread %d: Failed to remove empty file : %s", thread_id, filename);
         }else{
+          dump_summary_note_file_removed();
           g_debug("Thread %d: File removed: %s", thread_id, filename);
         }
       }
@@ -146,6 +278,7 @@ int m_open_pipe(gchar **filename, const char *type){
   if (!f->fdout){
     g_error("opening file: %s", new_filename);
   }
+  dump_summary_note_file_created();
   g_async_queue_pop(available_pids);
   f->queue = g_async_queue_new();
   f->filename=g_strdup(*filename);
@@ -192,6 +325,7 @@ void final_step_close_file(guint thread_id, gchar *filename, struct fifo *f, flo
     if (remove(f->stdout_filename)) {
       g_warning("Thread %d: Failed to remove empty file : %s", thread_id, f->stdout_filename);
     }else{
+      dump_summary_note_file_removed();
       g_debug("Thread %d: File removed: %s", thread_id, filename);
     }
   }
@@ -248,6 +382,7 @@ void set_pipe_backup(){
 }
 
 void initialize_file_handler(){
+  reset_dump_summary();
   if (!is_pipe){
     m_open  = &m_open_file;
     m_close = &m_close_file;
@@ -280,5 +415,3 @@ struct filename_queue_element * new_filename_queue_element(struct db_table *dbt,
   sf->done=done;
   return sf;
 }
-
-

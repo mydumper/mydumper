@@ -37,6 +37,7 @@
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_file_handler.h"
+#include "../logging.h"
 
 const char DIRECTORY[] = "export";
 
@@ -191,6 +192,8 @@ int main(int argc, char *argv[]) {
 
   GError *error = NULL;
   GOptionContext *context;
+  gint64 process_started_at = g_get_monotonic_time();
+  gint exit_code = EXIT_SUCCESS;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
@@ -204,6 +207,10 @@ int main(int argc, char *argv[]) {
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
+  }
+
+  if (machine_log_json) {
+    configure_log_output(debug ? 4U : verbose);
   }
 
   // Loading the defaults file:
@@ -296,7 +303,35 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-  g_message("MyDumper backup version: %s", VERSION);
+  if (machine_log_json) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "effective dump configuration loaded",
+                     "EVENT", "process_config",
+                     "PHASE", "startup",
+                     "STATUS", "started",
+                     "MODE", "dump",
+                     "OUTPUT_DIRECTORY", output_directory != NULL ? output_directory : "",
+                     "THREADS", threads_text,
+                     "STREAM", stream ? "true" : "false",
+                     "LOGFILE", logfile != NULL ? logfile : "",
+                     "SOURCE_DB", source_db != NULL ? source_db : "",
+                     "TABLES_LIST", tables_list != NULL ? tables_list : "",
+                     NULL);
+    g_free(threads_text);
+  }
+
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "MyDumper backup version",
+                      "EVENT", "process_version",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "VERSION", VERSION,
+                      NULL);
+  } else {
+    g_message("MyDumper backup version: %s", VERSION);
+  }
 
   // Startmodifying file in disk, creating objects and backup
 
@@ -320,11 +355,8 @@ int main(int argc, char *argv[]) {
 
   free_set_names();
 
-  if (logoutfile) {
-    fclose(logoutfile);
-  }
-
   g_option_context_free(context);
+  gchar *summary_output_directory = output_directory != NULL ? g_strdup(output_directory) : g_strdup("");
   g_free(output_directory);
 //  g_strfreev(tables);
 
@@ -332,6 +364,48 @@ int main(int argc, char *argv[]) {
 
   if (key_file)  g_key_file_free(key_file);
 //  g_strfreev(argv);
-  exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
+  exit_code = errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  if (machine_log_json) {
+    gchar *duration_ms = g_strdup_printf("%" G_GINT64_FORMAT,
+                                         (g_get_monotonic_time() - process_started_at) / 1000);
+    gchar *errors_text = g_strdup_printf("%u", errors);
+    gchar *warnings_text = g_strdup_printf("%u", machine_log_warning_count_get());
+    gchar *tables_text = g_strdup_printf("%u", dump_summary_get_tables());
+    gchar *files_text = g_strdup_printf("%u", dump_summary_get_files());
+    gchar *bytes_text = g_strdup_printf("%" G_GUINT64_FORMAT, dump_summary_get_bytes());
+    gchar *retries_text = g_strdup_printf("%u", dump_summary_get_retries());
+    gchar *skipped_text = g_strdup_printf("%u", dump_summary_get_skipped());
+    gchar *exit_code_text = g_strdup_printf("%d", exit_code);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump completed",
+                     "EVENT", "dump_completed",
+                     "PHASE", "dump_finish",
+                     "STATUS", "finished",
+                     "MODE", "dump",
+                     "OUTPUT_DIRECTORY", summary_output_directory,
+                     "DURATION_MS", duration_ms,
+                     "TABLES", tables_text,
+                     "FILES", files_text,
+                     "BYTES", bytes_text,
+                     "ERRORS", errors_text,
+                     "WARNINGS", warnings_text,
+                     "RETRIES", retries_text,
+                     "SKIPPED", skipped_text,
+                     "EXIT_CODE", exit_code_text,
+                     NULL);
+    g_free(duration_ms);
+    g_free(errors_text);
+    g_free(warnings_text);
+    g_free(tables_text);
+    g_free(files_text);
+    g_free(bytes_text);
+    g_free(retries_text);
+    g_free(skipped_text);
+    g_free(exit_code_text);
+  }
+  if (logoutfile) {
+    fclose(logoutfile);
+  }
+  g_free(summary_output_directory);
+  exit(exit_code);
 }
-

@@ -37,6 +37,7 @@
 #include "myloader_pmm.h"
 #include "myloader_restore_job.h"
 #include "myloader_process_filename.h"
+#include "myloader_process_file_type.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
@@ -46,6 +47,7 @@
 #include "myloader_control_job.h"
 #include "myloader_database.h"
 #include "myloader_worker_loader_main.h"
+#include "../logging.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -329,6 +331,8 @@ int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
   GError *error = NULL;
   GOptionContext *context;
+  gint64 process_started_at = g_get_monotonic_time();
+  gint exit_code = EXIT_SUCCESS;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
@@ -342,6 +346,10 @@ int main(int argc, char *argv[]) {
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
+  }
+
+  if (machine_log_json) {
+    configure_log_output(debug ? 4U : verbose);
   }
 
   // Loading the defaults file:
@@ -404,12 +412,57 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-  g_message("MyDumper restore version: %s", VERSION);
+  if (machine_log_json) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    gchar *max_threads_text = g_strdup_printf("%u", max_threads_per_table);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "effective restore configuration loaded",
+                     "EVENT", "process_config",
+                     "PHASE", "startup",
+                     "STATUS", "started",
+                     "MODE", "restore",
+                     "INPUT_DIRECTORY", input_directory != NULL ? input_directory : "",
+                     "THREADS", threads_text,
+                     "MAX_THREADS_PER_TABLE", max_threads_text,
+                     "STREAM", stream ? "true" : "false",
+                     "LOGFILE", logfile != NULL ? logfile : "",
+                     "SOURCE_DB", source_db != NULL ? source_db : "",
+                     "TARGET_DB", target_db != NULL ? target_db : "",
+                     NULL);
+    g_free(threads_text);
+    g_free(max_threads_text);
+  }
 
-  if (num_threads > max_threads_per_table)
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "MyDumper restore version",
+                      "EVENT", "process_version",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "VERSION", VERSION,
+                      NULL);
+  } else {
+    g_message("MyDumper restore version: %s", VERSION);
+  }
+
+  if (machine_log_json_enabled()) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    gchar *max_threads_text = g_strdup_printf("%u", max_threads_per_table);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Using loader threads",
+                      "EVENT", "loader_threads",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "THREADS", threads_text,
+                      "MAX_THREADS_PER_TABLE", max_threads_text,
+                      NULL);
+    g_free(max_threads_text);
+    g_free(threads_text);
+  } else if (num_threads > max_threads_per_table) {
     g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
-  else
+  } else {
     g_message("Using %u loader threads", num_threads);
+  }
 
   // Starts modifying file in disk, creating objects and restore
 
@@ -533,22 +586,60 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_global);
 
   if (replication_statements->start_replica_until){
-    g_message("Sending start replica until");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending start replica until",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "start_replica_until",
+                        NULL);
+    } else {
+      g_message("Sending start replica until");
+    }
     execute_replication_commands(conn,replication_statements->start_replica_until->str);
   }
 
   start_connection_pool();
   if (disable_redo_log){
     if ((get_major() > 8) || (get_major() == 8 && (get_secondary() > 0 || get_revision() > 20))){
-      g_message("Disabling redologs");
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Disabling redologs",
+                          "EVENT", "redo_log",
+                          "PHASE", "startup",
+                          "STATUS", "started",
+                          "ACTION", "disable",
+                          NULL);
+      } else {
+        g_message("Disabling redologs");
+      }
       m_query_critical(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", "DISABLE INNODB REDO LOG failed");
     }else{
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-  g_message("start_database");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "start_database",
+                      "EVENT", "restore_phase",
+                      "PHASE", "start_database",
+                      "STATUS", "started",
+                      NULL);
+  } else {
+    g_message("start_database");
+  }
   start_database(t);
-  g_message("start_worker_schema");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "start_worker_schema",
+                      "EVENT", "restore_phase",
+                      "PHASE", "start_worker_schema",
+                      "STATUS", "started",
+                      NULL);
+  } else {
+    g_message("start_worker_schema");
+  }
   start_worker_schema();
   initialize_loader_threads(&conf);
 
@@ -586,11 +677,23 @@ int main(int argc, char *argv[]) {
     m_query_critical(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", "ENABLE INNODB REDO LOG failed");
   trace("Starting checksums");
   gboolean checksum_ok=TRUE;
+  if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "checksum verification started",
+                      "EVENT", "checksum_run",
+                      "PHASE", "checksum",
+                      "STATUS", "started",
+                      "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                              checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                      NULL);
+  }
   tl=conf.table_list;
   struct db_table *dbt;
   while (tl != NULL){
     dbt=tl->data;
-    g_message("DBT checksums: %s %s", dbt->database->target_database, dbt->source_table_name);
+    if (!machine_log_json_enabled()) {
+      g_message("DBT checksums: %s %s", dbt->database->target_database, dbt->source_table_name);
+    }
     checksum_ok&=checksum_dbt(dbt->database->target_database, dbt->source_table_name, dbt->is_view, &dbt->checksum, conn);
     tl=tl->next;
   }
@@ -607,37 +710,111 @@ int main(int argc, char *argv[]) {
   wait_restore_threads_to_close();
 
   if (!checksum_ok){
+    if (machine_log_json) {
+      machine_log_event(G_LOG_DOMAIN,
+                        checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,
+                        "MESSAGE", "checksum verification failed",
+                        "EVENT", "checksum_run",
+                        "PHASE", "checksum",
+                        "STATUS", "failed",
+                        "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                                checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                        "RETRYABLE", "false",
+                        "FATAL", checksum_mode == CHECKSUM_FAIL ? "true" : "false",
+                        NULL);
+    }
     if (checksum_mode==CHECKSUM_WARN)
       g_warning("Checksum failed");
     else
       g_error("Checksum failed");
+  } else if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "checksum verification finished",
+                      "EVENT", "checksum_run",
+                      "PHASE", "checksum",
+                      "STATUS", "finished",
+                      "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                              checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                      NULL);
   }
 
   if (stream && no_delete == FALSE ){ //&& input_directory == NULL){
 //    m_remove(directory,"metadata");
 //    m_remove(directory, "metadata.header");
-    if (g_rmdir(directory) < 0)
-        g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
+    if (g_rmdir(directory) < 0) {
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                          "MESSAGE", "Restore directory not removed",
+                          "EVENT", "cleanup_directory",
+                          "PHASE", "shutdown",
+                          "STATUS", "failed",
+                          "INPUT_DIRECTORY", directory,
+                          "FATAL", "false",
+                          "RETRYABLE", "false",
+                          NULL);
+      }
+      g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
+    }
   }
 
 
   if (replication_statements->reset_replica){
-    g_message("Sending reset replica");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending reset replica",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "reset_replica",
+                        NULL);
+    } else {
+      g_message("Sending reset replica");
+    }
     execute_replication_commands(conn,replication_statements->reset_replica->str);
   }
 
   if (replication_statements->change_replication_source){
-    g_message("Sending change replication source");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending change replication source",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "change_replication_source",
+                        NULL);
+    } else {
+      g_message("Sending change replication source");
+    }
     execute_replication_commands(conn,replication_statements->change_replication_source->str);
   }
 
   if (replication_statements->gtid_purge){
-    g_message("Sending GTID Purge");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending GTID Purge",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "gtid_purge",
+                        NULL);
+    } else {
+      g_message("Sending GTID Purge");
+    }
     execute_replication_commands(conn,replication_statements->gtid_purge->str);
   }
 
   if (replication_statements->start_replica){
-    g_message("Sending start replica");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending start replica",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "start_replica",
+                        NULL);
+    } else {
+      g_message("Sending start replica");
+    }
     execute_replication_commands(conn,replication_statements->start_replica->str);
   }
   g_async_queue_unref(conf.database_queue);
@@ -653,6 +830,13 @@ int main(int argc, char *argv[]) {
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
+  gchar *summary_input_directory = directory != NULL ? g_strdup(directory) : g_strdup("");
+  guint summary_tables = g_hash_table_size(conf.table_hash);
+  guint summary_files = myloader_summary_get_files();
+  guint64 summary_bytes = myloader_summary_get_bytes();
+  guint64 summary_warnings = (guint64)machine_log_warning_count_get() + (guint64)detailed_errors.data_warnings;
+  guint summary_retries = detailed_errors.retries;
+  guint summary_skipped = detailed_errors.skip_errors;
   g_free(directory);
   free_loader_threads();
 
@@ -685,11 +869,52 @@ int main(int argc, char *argv[]) {
   if (key_file)  g_key_file_free(key_file);
   g_remove(fifo_directory);
   g_remove(load_data_tmp_directory);
-  g_message("Restore completed");
+  exit_code = errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  if (machine_log_json) {
+    gchar *duration_ms = g_strdup_printf("%" G_GINT64_FORMAT,
+                                         (g_get_monotonic_time() - process_started_at) / 1000);
+    gchar *errors_text = g_strdup_printf("%u", errors);
+    gchar *warnings_text = g_strdup_printf("%" G_GUINT64_FORMAT, summary_warnings);
+    gchar *tables_text = g_strdup_printf("%u", summary_tables);
+    gchar *files_text = g_strdup_printf("%u", summary_files);
+    gchar *bytes_text = g_strdup_printf("%" G_GUINT64_FORMAT, summary_bytes);
+    gchar *retries_text = g_strdup_printf("%u", summary_retries);
+    gchar *skipped_text = g_strdup_printf("%u", summary_skipped);
+    gchar *exit_code_text = g_strdup_printf("%d", exit_code);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "restore completed",
+                     "EVENT", "restore_completed",
+                     "PHASE", "restore_finish",
+                     "STATUS", "finished",
+                     "MODE", "restore",
+                     "INPUT_DIRECTORY", summary_input_directory,
+                     "DURATION_MS", duration_ms,
+                     "TABLES", tables_text,
+                     "FILES", files_text,
+                     "BYTES", bytes_text,
+                     "ERRORS", errors_text,
+                     "WARNINGS", warnings_text,
+                     "RETRIES", retries_text,
+                     "SKIPPED", skipped_text,
+                     "EXIT_CODE", exit_code_text,
+                     NULL);
+    g_free(duration_ms);
+    g_free(errors_text);
+    g_free(warnings_text);
+    g_free(tables_text);
+    g_free(files_text);
+    g_free(bytes_text);
+    g_free(retries_text);
+    g_free(skipped_text);
+    g_free(exit_code_text);
+  } else {
+    g_message("Restore completed");
+  }
+  g_free(summary_input_directory);
 
   if (logoutfile) {
     fclose(logoutfile);
   }
 
-  return errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  return exit_code;
 }

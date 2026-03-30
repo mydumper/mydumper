@@ -65,6 +65,11 @@ void set_verbose(guint verbosity) {
   }
 
   free_log_handlers();
+  configure_log_output(verbosity);
+
+  if (machine_log_json) {
+    return;
+  }
 
   switch (verbosity) {
   case 0:

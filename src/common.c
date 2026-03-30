@@ -29,6 +29,7 @@
 #include "config.h"
 #include "connection.h"
 #include "common_options.h"
+#include "logging.h"
 //#include "mydumper_global.h"
 
 extern gboolean help;
@@ -803,7 +804,29 @@ void print_version(const gchar *program){
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
 #endif
-    g_print("%s\n", str->str);
+    if (machine_log_json_enabled()){
+      gchar *escaped_program = g_strescape(program, NULL);
+      gchar *escaped_library = g_strescape(DB_LIBRARY, NULL);
+      gchar *escaped_mysql_version = g_strescape(MYSQL_VERSION_STR, NULL);
+      g_print("{\"schema_version\":\"1\",\"event_version\":\"1\",\"kind\":\"event\",\"event\":\"version\",\"phase\":\"startup\",\"status\":\"started\",\"tool\":\"%s\",\"program\":\"%s\",\"version\":\"%s\",\"db_library\":\"%s\",\"db_library_version\":\"%s\",\"ssl\":%s}\n",
+              escaped_program != NULL ? escaped_program : "",
+              escaped_program != NULL ? escaped_program : "",
+              VERSION,
+              escaped_library != NULL ? escaped_library : "",
+              escaped_mysql_version != NULL ? escaped_mysql_version : "",
+#ifdef WITH_SSL
+              "true"
+#else
+              "false"
+#endif
+      );
+      g_free(escaped_program);
+      g_free(escaped_library);
+      g_free(escaped_mysql_version);
+    }else{
+      g_print("%s\n", str->str);
+    }
+    g_string_free(str, TRUE);
 }
 
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -868,36 +891,106 @@ void check_num_threads()
   }
 }
 
-void m_message(const char *fmt, ...){
-  va_list    args;
+static void emit_runtime_log_event(GLogLevelFlags level, const gchar *event,
+                                   const gchar *status, const gchar *source_api,
+                                   const gchar *message) {
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", event,
+                    "PHASE", "runtime",
+                    "STATUS", status,
+                    "SOURCE_API", source_api,
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+}
+
+void runtime_message(const char *fmt, ...){
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
-  g_message("%s",c);
+  c = g_strdup_vprintf(fmt, args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_MESSAGE, "process_notice", "progress",
+                           "runtime_message", c);
+  } else {
+    g_message("%s", c);
+  }
+  g_free(c);
+}
+
+void m_message(const char *fmt, ...){
+  va_list args;
+  gchar *c = NULL;
+
+  va_start(args, fmt);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_MESSAGE, "process_notice", "progress",
+                           "m_message", c);
+  } else {
+    g_message("%s",c);
+  }
   g_free(c);
 }
 
 void m_warning(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
-  g_warning("%s",c);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_WARNING, "process_warning", "warning",
+                           "m_warning", c);
+  } else {
+    g_warning("%s",c);
+  }
   g_free(c);
 }
 
 void m_critical(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
   execute_gstring(main_connection, set_global_back);
-  g_critical("%s",c);
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_CRITICAL, "process_error", "failed",
+                           "m_critical", c);
+  } else {
+    g_critical("%s",c);
+  }
+  g_free(c);
   exit(EXIT_FAILURE);
 }
 
 void m_error(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
   execute_gstring(main_connection, set_global_back);
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_ERROR, "process_error", "failed",
+                           "m_error", c);
+    g_free(c);
+    exit(EXIT_FAILURE);
+  }
   g_error("%s", c); // g_error exits program
 }
 
@@ -1184,6 +1277,16 @@ extern gboolean debug;
 
 static __thread char __name_buf[32];
 static __thread char *__thread_name= NULL;
+
+const char *get_thread_name(void)
+{
+  return __thread_name;
+}
+
+gboolean machine_log_json_enabled(void)
+{
+  return machine_log_json;
+}
 
 void set_thread_name(const char *format, ...)
 {
@@ -1473,11 +1576,37 @@ gboolean should_ignore_error_code(guint error_code) {
 static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (fmt && log_fun_1){
     gchar *c=g_strdup_vprintf(fmt,args);
-    if (log_fun_2 && should_ignore_error_code(mysql_errno(conn)))
-      log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-    else{
-      if (mysql_errno(conn)){
-        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+    guint mysql_error_code = mysql_errno(conn);
+    gboolean ignored_error = log_fun_2 && should_ignore_error_code(mysql_error_code);
+    if (machine_log_json_enabled() && mysql_error_code != 0){
+      GLogLevelFlags level = G_LOG_LEVEL_MESSAGE;
+      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_error_code);
+      gboolean retryable = mysql_error_code == 1205 || mysql_error_code == 1213 ||
+                           mysql_error_code == 2006 || mysql_error_code == 2013;
+      if (ignored_error || log_fun_1 == m_warning)
+        level = G_LOG_LEVEL_WARNING;
+      else if (log_fun_1 == m_error)
+        level = G_LOG_LEVEL_ERROR;
+      else if (log_fun_1 == m_critical)
+        level = G_LOG_LEVEL_CRITICAL;
+      machine_log_event(G_LOG_DOMAIN, level,
+                       "MESSAGE", c,
+                       "EVENT", "mysql_operation",
+                       "PHASE", "mysql",
+                       "STATUS", "failed",
+                       "MYSQL_ERRNO", mysql_errno_text,
+                       "SQLSTATE", mysql_sqlstate(conn),
+                       "RETRYABLE", retryable ? "true" : "false",
+                       "FATAL", (!ignored_error && log_fun_1 != m_message) ? "true" : "false",
+                       NULL);
+      if (!ignored_error && log_fun_1 != m_message)
+        errors++;
+      g_free(mysql_errno_text);
+    } else if (ignored_error) {
+      log_fun_2("%s - ERROR %d: %s",c, mysql_error_code, mysql_error(conn));
+    } else{
+      if (mysql_error_code){
+        log_fun_1("%s - ERROR %d: %s",c, mysql_error_code, mysql_error(conn));
         if (log_fun_1 != m_message)
           errors++; 
       }else
@@ -1689,5 +1818,3 @@ void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key,
   r = g_hash_table_lookup(ht, any_table_key);
   return r;
 }
-
-

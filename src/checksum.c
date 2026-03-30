@@ -16,6 +16,7 @@
 #include <glib.h>
 #include "common.h"
 #include "checksum.h"
+#include "logging.h"
 
 enum checksum_modes checksum_mode= CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 
@@ -166,11 +167,44 @@ void write_database_checksum(FILE *mdfile, struct database_level_checksum *datab
 }
 
 static inline gboolean
+emit_checksum_event(GLogLevelFlags level, const char *status, const char *scope,
+                    const char *checksum_type, const char *_db, const char *_table,
+                    const char *expected_checksum, const char *actual_checksum)
+{
+  if (!machine_log_json_enabled()) {
+    return TRUE;
+  }
+
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", "checksum verification",
+                    "EVENT", "checksum_check",
+                    "PHASE", "checksum",
+                    "STATUS", status,
+                    "SCOPE", scope,
+                    "CHECKSUM_TYPE", checksum_type,
+                    "DB", _db != NULL ? _db : "",
+                    "TABLE", _table != NULL ? _table : "",
+                    "EXPECTED_CHECKSUM", expected_checksum != NULL ? expected_checksum : "",
+                    "ACTUAL_CHECKSUM", actual_checksum != NULL ? actual_checksum : "",
+                    "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                            checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                    "RETRYABLE", "false",
+                    "FATAL", level == G_LOG_LEVEL_CRITICAL ? "true" : "false",
+                    NULL);
+  return TRUE;
+}
+
+static inline gboolean
 checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
-                  const char *info_templ, const char *message, const char *_db, const char *_table)
+                  const char *info_templ, const char *message, const char *_db, const char *_table,
+                  const char *scope, const char *checksum_type)
 {
   g_assert(checksum_mode != CHECKSUM_SKIP);
+  emit_checksum_event(G_LOG_LEVEL_MESSAGE, "started", scope, checksum_type, _db, _table,
+                      dbt_checksum, checksum);
   if (dbt_checksum && checksum && g_ascii_strcasecmp(dbt_checksum, checksum)) {
+    emit_checksum_event(checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,
+                        "failed", scope, checksum_type, _db, _table, dbt_checksum, checksum);
     if (_table) {
       if (checksum_mode == CHECKSUM_WARN)
         g_warning(err_templ, message, _db, _table, checksum, dbt_checksum);
@@ -184,6 +218,8 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
     }
     return FALSE;
   } else {
+    emit_checksum_event(G_LOG_LEVEL_MESSAGE, "finished", scope, checksum_type, _db, _table,
+                        dbt_checksum, checksum);
     g_message(info_templ, message, _db, _table);
   }
   return TRUE;
@@ -191,42 +227,46 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
 
 static
 gboolean checksum_database_template(gchar *target_database, gchar *source_checksum,  MYSQL *conn,
-                                const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
+                                const gchar *message, const gchar *checksum_type,
+                                gchar* fun(MYSQL *,gchar *,gchar *))
 {
   const char *target_checksum= fun(conn, target_database, NULL);
   return checksum_template(source_checksum, target_checksum,
                     "%s mismatch found for %s: got %s, expecting %s",
-                    "%s confirmed for %s", message, target_database, NULL);
+                    "%s confirmed for %s", message, target_database, NULL,
+                    "database", checksum_type);
 }
 
 gboolean checksum_database(gchar *target_database, struct database_level_checksum *database_checksum, MYSQL *conn){
   gboolean checksum_ok=TRUE;
   if ( !database_checksum->skip_schema && database_checksum->schema)
     checksum_ok&=checksum_database_template(target_database, database_checksum->schema, conn,
-                              "Schema create checksum", checksum_database_defaults);
+                              "Schema create checksum", "database_schema", checksum_database_defaults);
   if ( !database_checksum->skip_routine && database_checksum->routine)
     checksum_ok&=checksum_database_template(target_database, database_checksum->routine, conn,
-                              "Post checksum", checksum_process_structure);
+                              "Post checksum", "database_post", checksum_process_structure);
   if ( !database_checksum->skip_event && database_checksum->event)
     checksum_ok&=checksum_database_template(target_database, database_checksum->event, conn,
-                              "Events checksum", checksum_events_structure_from_database);
+                              "Events checksum", "database_events", checksum_events_structure_from_database);
   if ( !database_checksum->skip_trigger && database_checksum->trigger)
     checksum_ok&=checksum_database_template(target_database, database_checksum->trigger, conn,
-                              "Triggers checksum", checksum_trigger_structure_from_database);
+                              "Triggers checksum", "database_triggers", checksum_trigger_structure_from_database);
   return checksum_ok;
 }
 
 
 static
 gboolean checksum_dbt_template(gchar *target_database, gchar *source_table_name, gchar *dbt_checksum,  MYSQL *conn,
-                           const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
+                           const gchar *message, const gchar *checksum_type,
+                           gchar* fun(MYSQL *,gchar *,gchar *))
 {
   trace("checksum_dbt_template:: %s %s", target_database, source_table_name);
   const char *checksum= fun(conn, target_database, source_table_name);
   trace("checksum_dbt_template:: function executed: %s %s", target_database, source_table_name);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, target_database, source_table_name);
+                    "%s confirmed for %s.%s", message, target_database, source_table_name,
+                    "table", checksum_type);
 }
 
 gboolean checksum_dbt(gchar *target_database, gchar *source_table_name, gboolean is_view, struct table_level_checksum *table_checksum,  MYSQL *conn)
@@ -236,23 +276,22 @@ gboolean checksum_dbt(gchar *target_database, gchar *source_table_name, gboolean
     if ( !table_checksum->skip_schema && table_checksum->schema){
       if (is_view)
         checksum_ok&=checksum_dbt_template(target_database, source_table_name, table_checksum->schema, conn,
-                              "View checksum", checksum_view_structure);
+                              "View checksum", "view_schema", checksum_view_structure);
       else
         checksum_ok&=checksum_dbt_template(target_database, source_table_name, table_checksum->schema, conn,
-                              "Structure checksum", checksum_table_structure);
+                              "Structure checksum", "table_schema", checksum_table_structure);
     }
     if ( !table_checksum->skip_index && table_checksum->index)
       checksum_ok&=checksum_dbt_template(target_database, source_table_name, table_checksum->index, conn,
-                            "Schema index checksum", checksum_table_indexes);
+                            "Schema index checksum", "table_indexes", checksum_table_indexes);
     
     if ( !table_checksum->skip_trigger && table_checksum->trigger)
       checksum_ok&=checksum_dbt_template(target_database, source_table_name, table_checksum->trigger, conn,
-                            "Trigger checksum", checksum_trigger_structure);
+                            "Trigger checksum", "table_triggers", checksum_trigger_structure);
 
     if ( !table_checksum->skip_data && table_checksum->data)
       checksum_ok&=checksum_dbt_template(target_database, source_table_name, table_checksum->data, conn,
-                            "Data checksum", checksum_table);
+                            "Data checksum", "table_data", checksum_table);
   }
   return checksum_ok;
 }
-

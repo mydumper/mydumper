@@ -42,6 +42,7 @@ guint num_threads= 4;
 guint verbose = 2;
 gboolean debug = FALSE;
 gboolean program_version = FALSE;
+gboolean machine_log_json = FALSE;
 
 gchar *tables_list = NULL;
 gchar *tables_skiplist_file = NULL;
@@ -170,6 +171,8 @@ GOptionEntry common_entries[] = {
     {"debug", 0, 0, G_OPTION_ARG_NONE, &debug, 
       "Turn on debugging output "
       "(automatically sets verbosity to 3)", NULL},
+    {"machine-log-json", 0, 0, G_OPTION_ARG_NONE, &machine_log_json,
+      "Emit runtime logs as JSON lines for machine consumption", NULL},
     {"ignore-errors", 0, 0, G_OPTION_ARG_CALLBACK, &common_arguments_callback,
       "Not increment error count and Warning instead of Critical in case of any of the comma-separated error number list", NULL},
     {"defaults-file", 0, 0, G_OPTION_ARG_FILENAME, &defaults_file,
@@ -204,4 +207,3 @@ GOptionEntry pmm_entries[] = {
     {"pmm-resolution", 0, 0, G_OPTION_ARG_STRING, &pmm_resolution,
       "which default will be high", NULL },
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
-

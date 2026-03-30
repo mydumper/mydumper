@@ -22,6 +22,7 @@
 #include "myloader_database.h"
 #include "myloader_restore_job.h"
 #include "myloader_restore.h"
+#include "../logging.h"
 
 GHashTable *database_hash=NULL;
 static GMutex *database_hash_mutex = NULL;
@@ -111,6 +112,22 @@ gboolean execute_use(struct connection_data *cd){
     }
     g_free(query);
   }else{
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+      gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "Not able to switch database",
+                        "EVENT", "database_switch",
+                        "PHASE", "restore_schema",
+                        "STATUS", "failed",
+                        "THREAD_ID", thread_id,
+                        "CONNECTION_ID", connection_id,
+                        "RETRYABLE", "false",
+                        "FATAL", "false",
+                        NULL);
+      g_free(thread_id);
+      g_free(connection_id);
+    }
     g_warning("Thread %ld with connection %ld: Not able to switch database",cd->thread_id, cd->connection_id);
   }
   return FALSE;
@@ -159,4 +176,3 @@ void start_database(struct thread_data *td){
     database_db->schema_state=CREATED;
   }
 }
-
