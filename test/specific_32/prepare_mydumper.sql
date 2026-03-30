@@ -1,0 +1,11 @@
+DROP DATABASE IF EXISTS `db.dot`;
+CREATE DATABASE `db.dot`;
+
+USE `db.dot`;
+
+CREATE TABLE t1 (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  val VARCHAR(100)
+);
+
+INSERT INTO t1 (val) VALUES ('a'), ('b'), ('c');
