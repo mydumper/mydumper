@@ -882,7 +882,21 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
   // First step, we need this to process the one time prefix
   g_string_set_size(tj->where,0);
   if (process_integer_chunk_step(tj, csi)){
-    g_message("Thread %d: Job has been cacelled",td->thread_id);
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "dump job cancelled",
+                        "EVENT", "dump_job",
+                        "PHASE", "dump_data",
+                        "STATUS", "cancelled",
+                        "THREAD_ID", thread_id,
+                        "DB", dbt->database->source_database,
+                        "TABLE", dbt->table,
+                        NULL);
+      g_free(thread_id);
+    } else {
+      g_message("Thread %d: Job has been cacelled",td->thread_id);
+    }
     return;
   }
   g_atomic_int_inc(dbt->chunks_completed);
@@ -902,7 +916,21 @@ void process_integer_chunk(struct table_job *tj, struct chunk_step_item *csi){
       g_mutex_unlock(csi->mutex);
       g_string_set_size(tj->where,0);
       if (process_integer_chunk_step(tj, csi)){
-        g_message("Thread %d: Job has been cacelled",td->thread_id);
+        if (machine_log_json_enabled()) {
+          gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                            "MESSAGE", "dump job cancelled",
+                            "EVENT", "dump_job",
+                            "PHASE", "dump_data",
+                            "STATUS", "cancelled",
+                            "THREAD_ID", thread_id,
+                            "DB", dbt->database->source_database,
+                            "TABLE", dbt->table,
+                            NULL);
+          g_free(thread_id);
+        } else {
+          g_message("Thread %d: Job has been cacelled",td->thread_id);
+        }
         return;
       }
       g_atomic_int_inc(dbt->chunks_completed);

@@ -39,9 +39,44 @@ guint process_file_type_num_threads=4;
 GThread ** process_file_type_workers;
 void *process_file_type_worker(void *data);
 guint amount_of_files=0;
+static GMutex *restore_summary_mutex=NULL;
+static guint64 restore_summary_bytes=0;
+
+static void reset_restore_summary(void){
+  if (restore_summary_mutex == NULL){
+    restore_summary_mutex = g_mutex_new();
+  }
+  g_mutex_lock(restore_summary_mutex);
+  restore_summary_bytes = 0;
+  g_mutex_unlock(restore_summary_mutex);
+  g_atomic_int_set(&amount_of_files, 0);
+}
+
+static void note_restore_summary_file(const gchar *filename){
+  GStatBuf statbuf = {0};
+  gchar *path = NULL;
+
+  if (restore_summary_mutex == NULL){
+    restore_summary_mutex = g_mutex_new();
+  }
+
+  if (filename == NULL) {
+    return;
+  }
+
+  g_atomic_int_inc(&amount_of_files);
+  path = g_path_is_absolute(filename) ? g_strdup(filename) : g_build_filename(directory, filename, NULL);
+  if (path != NULL && g_stat(path, &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+    g_mutex_lock(restore_summary_mutex);
+    restore_summary_bytes += (guint64)statbuf.st_size;
+    g_mutex_unlock(restore_summary_mutex);
+  }
+  g_free(path);
+}
 
 void initialize_process_file_type(struct configuration *c){
   process_file_type_conf=c;
+  reset_restore_summary();
   gchar *metadata_partial_path = g_build_filename(directory, "metadata.partial.0", NULL);
   if (!stream && g_file_test(metadata_partial_path, G_FILE_TEST_IS_REGULAR))
     process_file_type_num_threads = 1;
@@ -80,7 +115,9 @@ gint file_type_cmp (gconstpointer _a, gconstpointer _b, gpointer user_data){
 
 void file_type_push( enum file_type ft, gchar *filename){
   trace("process_file_type_queue <- %s (%s)", filename, ft2str(ft));
-  g_atomic_int_inc(&amount_of_files);
+  if (ft != FILENAME_ENDED) {
+    note_restore_summary_file(filename);
+  }
   g_async_queue_push_sorted(process_file_type_queue, file_type_new(filename, ft), &file_type_cmp, NULL);
 }
 
@@ -171,4 +208,21 @@ void wait_file_type_to_complete(){
   trace("wait_file_type_to_complete :: All threads joined");
   schema_ended();
   trace("wait_file_type_to_complete :: Completed");
+}
+
+guint myloader_summary_get_files(void){
+  return (guint)g_atomic_int_get(&amount_of_files);
+}
+
+guint64 myloader_summary_get_bytes(void){
+  guint64 bytes = 0;
+
+  if (restore_summary_mutex == NULL){
+    return 0;
+  }
+
+  g_mutex_lock(restore_summary_mutex);
+  bytes = restore_summary_bytes;
+  g_mutex_unlock(restore_summary_mutex);
+  return bytes;
 }

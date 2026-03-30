@@ -196,11 +196,14 @@ void m_error(const char *fmt, ...);
 void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void m_message(const char *fmt, ...);
+void runtime_message(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
+const char *get_thread_name(void);
+gboolean machine_log_json_enabled(void);
 
 void print_int(const char*_key, int val);
 void print_string(const char*_key, const char *val);
@@ -219,7 +222,7 @@ extern void trace(const char *format, ...);
   if (debug) \
     trace(__VA_ARGS__); \
   else \
-    g_message(__VA_ARGS__);
+    runtime_message(__VA_ARGS__);
 
 #define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
 #define key_strcmp ((int (*)(const void *, const void *)) &strcmp)

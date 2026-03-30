@@ -38,6 +38,7 @@
 #include "mydumper_global.h"
 #include "mydumper_create_jobs.h"
 #include "mydumper_file_handler.h"
+#include "../logging.h"
 
 /* Program options */
 gchar *tidb_snapshot = NULL;
@@ -97,9 +98,22 @@ void initialize_start_dump(){
     trx_tables=TRUE;
 
   // clarify binlog coordinates with --trx-tables
-  if (trx_tables)
-    g_warning("Using --trx-tables options, binlog coordinates will not be "
-              "accurate if you are writing to non transactional tables.");
+  if (trx_tables) {
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "Using --trx-tables options, binlog coordinates will not be accurate if you are writing to non transactional tables.",
+                        "EVENT", "consistency_mode",
+                        "PHASE", "startup",
+                        "STATUS", "warning",
+                        "MODE", "trx_tables",
+                        "FATAL", "false",
+                        "RETRYABLE", "false",
+                        NULL);
+    } else {
+      g_warning("Using --trx-tables options, binlog coordinates will not be "
+                "accurate if you are writing to non transactional tables.");
+    }
+  }
 
   if (source_db){
     db_items=g_strsplit(source_db,",",0);
@@ -119,7 +133,18 @@ gboolean is_disk_space_ok(guint val){
     const double available = (double)(buffer.f_bfree * buffer.f_frsize) / 1024 / 1024;
     return available > val;
   }else{
-    g_warning("Disk space check failed");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "Disk space check failed",
+                        "EVENT", "disk_space_check",
+                        "PHASE", "startup",
+                        "STATUS", "failed",
+                        "FATAL", "false",
+                        "RETRYABLE", "true",
+                        NULL);
+    } else {
+      g_warning("Disk space check failed");
+    }
   }
   return TRUE;
 }
@@ -139,13 +164,37 @@ void *monitor_disk_space_thread (void *queue){
     current_state = previous_state ? is_disk_space_ok(pause_at) : is_disk_space_ok(resume_at);
     if (previous_state != current_state){
       if (!current_state){
-        g_warning("Pausing backup disk space lower than %dMB. You need to free up to %dMB to resume",pause_at,resume_at);
+        if (machine_log_json_enabled()) {
+          gchar *pause_text = g_strdup_printf("%d", pause_at);
+          gchar *resume_text = g_strdup_printf("%d", resume_at);
+          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                            "MESSAGE", "Pausing backup due to low disk space",
+                            "EVENT", "disk_space_pause",
+                            "PHASE", "dump_data",
+                            "STATUS", "started",
+                            "PAUSE_AT_MB", pause_text,
+                            "RESUME_AT_MB", resume_text,
+                            NULL);
+          g_free(pause_text);
+          g_free(resume_text);
+        } else {
+          g_warning("Pausing backup disk space lower than %dMB. You need to free up to %dMB to resume",pause_at,resume_at);
+        }
         for(i=0;i<num_threads;i++){
           g_mutex_lock(_pause_mutex_per_thread[i]);
           g_async_queue_push(queue,_pause_mutex_per_thread[i]);
         }
       }else{
-        g_warning("Resuming backup");
+        if (machine_log_json_enabled()) {
+          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                            "MESSAGE", "Resuming backup",
+                            "EVENT", "disk_space_pause",
+                            "PHASE", "dump_data",
+                            "STATUS", "finished",
+                            NULL);
+        } else {
+          g_warning("Resuming backup");
+        }
         for(i=0;i<num_threads;i++){
           g_mutex_unlock(_pause_mutex_per_thread[i]);
         }
@@ -251,7 +300,17 @@ gboolean sig_triggered(void * user_data, int signal) {
     GAsyncQueue *queue = ((struct configuration *)user_data)->pause_resume;
     if (!daemon_mode){
       char *datetimestr=m_date_time_new_now_local();
-      fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
+      if (machine_log_json) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                         "MESSAGE", "Ctrl+c detected; waiting for confirmation",
+                         "EVENT", "dump_signal_prompt",
+                         "PHASE", "signal",
+                         "STATUS", "started",
+                         "TIMESTAMP_TEXT", datetimestr,
+                         NULL);
+      } else {
+        fprintf(stdout, "%s: Ctrl+c detected! Are you sure you want to cancel(Y/N)?", datetimestr);
+      }
       g_free(datetimestr);
       for(i=0;i<num_threads;i++){
         g_mutex_lock(pause_mutex_per_thread[i]);
@@ -264,7 +323,17 @@ gboolean sig_triggered(void * user_data, int signal) {
         }while (c=='\n');
         if ( c == 'N' || c == 'n'){
           datetimestr=m_date_time_new_now_local();
-          fprintf(stdout, "%s: Resuming backup\n", datetimestr);
+          if (machine_log_json) {
+            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                             "MESSAGE", "backup resumed after confirmation",
+                             "EVENT", "dump_signal_resume",
+                             "PHASE", "signal",
+                             "STATUS", "finished",
+                             "TIMESTAMP_TEXT", datetimestr,
+                             NULL);
+          } else {
+            fprintf(stdout, "%s: Resuming backup\n", datetimestr);
+          }
           g_free(datetimestr);
           for(i=0;i<num_threads;i++)
             g_mutex_unlock(pause_mutex_per_thread[i]);
@@ -273,7 +342,17 @@ gboolean sig_triggered(void * user_data, int signal) {
         }
         if ( c == 'Y' || c == 'y'){
           datetimestr=m_date_time_new_now_local();
-          fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
+          if (machine_log_json) {
+            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                             "MESSAGE", "backup cancelled after confirmation",
+                             "EVENT", "dump_signal_cancel",
+                             "PHASE", "signal",
+                             "STATUS", "cancelled",
+                             "TIMESTAMP_TEXT", datetimestr,
+                             NULL);
+          } else {
+            fprintf(stdout, "%s: Backup cancelled\n", datetimestr);
+          }
           g_free(datetimestr);
           shutdown_triggered = TRUE;
           for(i=0;i<num_threads;i++)
@@ -513,6 +592,7 @@ void long_query_wait(MYSQL *conn){
                      longquery);
         }
         longquery_retries--;
+        dump_summary_note_retry();
         g_warning("There are queries in PROCESSLIST running longer than "
                        "%us, retrying in %u seconds (%u left).",
                        longquery, longquery_retry_interval, longquery_retries);
@@ -800,7 +880,16 @@ void send_lock_all_tables(MYSQL *conn){
   if (g_list_length(tables_lock) > 0) {
   // Try three times to get the lock, this is in case of tmp tables
   // disappearing
-    g_message("Initialing Lock All tables");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Initialing Lock All tables",
+                        "EVENT", "lock_all_tables",
+                        "PHASE", "lock_all_tables",
+                        "STATUS", "started",
+                        NULL);
+    } else {
+      g_message("Initialing Lock All tables");
+    }
     while (g_list_length(tables_lock) > 0 && !success && retry < 4 ) {
       g_string_set_size(query,0);
       g_string_append(query, "LOCK TABLE ");
@@ -828,13 +917,36 @@ void send_lock_all_tables(MYSQL *conn){
         success = 1;
       }
       retry += 1;
+      if (!success && g_list_length(tables_lock) > 0 && retry < 4) {
+        dump_summary_note_retry();
+      }
     }
     if (!success) {
       m_critical("Lock all tables fail: %s", mysql_error(conn));
     }
-    g_message("Lock All tables completed");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Lock All tables completed",
+                        "EVENT", "lock_all_tables",
+                        "PHASE", "lock_all_tables",
+                        "STATUS", "finished",
+                        NULL);
+    } else {
+      g_message("Lock All tables completed");
+    }
   }else{
-    g_warning("No table found to lock");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "No table found to lock",
+                        "EVENT", "lock_all_tables",
+                        "PHASE", "lock_all_tables",
+                        "STATUS", "cancelled",
+                        "FATAL", "false",
+                        "RETRYABLE", "false",
+                        NULL);
+    } else {
+      g_warning("No table found to lock");
+    }
 //    exit(EXIT_FAILURE);
   }
   mysql_free_result(res);
@@ -851,7 +963,17 @@ void m_stop_replica(MYSQL *conn) {
     rest=m_store_result(conn, "SELECT @@default_master_connection", m_warning, "Variable @@default_master_connection not found", NULL);
     if (rest != NULL && mysql_num_rows(rest)) {
       mysql_free_result(rest);
-      g_message("Multisource slave detected.");
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Multisource slave detected.",
+                          "EVENT", "replication_topology",
+                          "PHASE", "replication",
+                          "STATUS", "detected",
+                          "MODE", "multisource",
+                          NULL);
+      } else {
+        g_message("Multisource slave detected.");
+      }
       isms = 1;
     }
   }
@@ -866,7 +988,17 @@ void m_stop_replica(MYSQL *conn) {
   if (!slave || mysql_num_rows(slave) == 0){
     goto cleanup;
   }
-  g_message("Stopping replica");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Stopping replica",
+                      "EVENT", "replication_command",
+                      "PHASE", "replication",
+                      "STATUS", "started",
+                      "COMMAND", "stop_replica",
+                      NULL);
+  } else {
+    g_message("Stopping replica");
+  }
   replica_stopped=!m_query_warning(conn, stop_replica_sql_thread, "Not able to stop replica",NULL);
   if (source_control_command==AWS){
     discard_mysql_output(conn);
@@ -905,7 +1037,19 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   }
 
   check_num_threads();
-  g_message("Using %u dumper threads", num_threads);
+  if (machine_log_json_enabled()) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Using dumper threads",
+                      "EVENT", "dumper_threads",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "THREADS", threads_text,
+                      NULL);
+    g_free(threads_text);
+  } else {
+    g_message("Using %u dumper threads", num_threads);
+  }
 
   initialize_start_dump();
   initialize_common();
@@ -961,6 +1105,8 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   mdfile = g_fopen(metadata_partial_filename, "a");
   if (!mdfile) {
     m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
+  } else {
+    dump_summary_note_file_created();
   }
 
   // Initilizing NOT UPDATED TABLES feature 
@@ -969,6 +1115,8 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
     nufile = g_fopen(u, "w");
     if (!nufile) {
       m_critical("Couldn't write not_updated_tables file (%d)", errno);
+    } else {
+      dump_summary_note_file_created();
     }
     get_not_updated(conn, nufile);
   }
@@ -986,7 +1134,17 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   char *datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   g_date_time_unref(datetime);
   fprintf(mdfile, "# Started dump at: %s\n", datetimestr);
-  g_message("Started dump at: %s", datetimestr);
+  if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump started",
+                     "EVENT", "dump_started",
+                     "PHASE", "dump_start",
+                     "STATUS", "started",
+                     "STARTED_AT", datetimestr,
+                     NULL);
+  } else {
+    g_message("Started dump at: %s", datetimestr);
+  }
   g_free(datetimestr);
 
   /* Write dump config into beginning of metadata, stream this first */
@@ -1004,12 +1162,15 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
     if (exec_command)
       g_error("--exec and --stream are not comptabile, use --exec-per-thread instead as file extension is needed to stream the out file");
     initialize_stream();
+    dump_summary_note_external_file_size(mdfile);
     fclose(mdfile);
     stream_queue_push(NULL, g_strdup(metadata_partial_filename));
     metadata_partial_filename= g_strdup_printf("%s/metadata.partial", dump_directory);
     mdfile= g_fopen(metadata_partial_filename, "w");
     if (!mdfile) {
       m_critical("Couldn't create metadata file %s (%s)", metadata_partial_filename, strerror(errno));
+    } else {
+      dump_summary_note_file_created();
     }
   }
 
@@ -1054,12 +1215,30 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   }
 
   if (acquire_ddl_lock_function != NULL) {
-    g_message("Acquiring DDL lock");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Acquiring DDL lock",
+                        "EVENT", "lock",
+                        "PHASE", "ddl_lock",
+                        "STATUS", "started",
+                        NULL);
+    } else {
+      g_message("Acquiring DDL lock");
+    }
     acquire_ddl_lock_function(second_conn);
   }
 
   if (acquire_global_lock_function != NULL) {
-    g_message("Acquiring Global lock");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Acquiring Global lock",
+                        "EVENT", "lock",
+                        "PHASE", "global_lock",
+                        "STATUS", "started",
+                        NULL);
+    } else {
+      g_message("Acquiring Global lock");
+    }
     acquire_global_lock_function(conn);
   }
 
@@ -1194,22 +1373,60 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
       m_error("There are differences in the binlog position at the beginning of the backup and after syncing threads, so we cannot guarantee the backup to be consistent. Stopping backup due to the use of SAFE_NO_LOCK.");
     }
   }else{
-    g_message("Backup will be consistent");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Backup will be consistent",
+                        "EVENT", "backup_consistency",
+                        "PHASE", "startup",
+                        "STATUS", "finished",
+                        "CONSISTENT", "true",
+                        NULL);
+    } else {
+      g_message("Backup will be consistent");
+    }
   }
 
   // IMPORTANT: At this point, all the threads are in sync
 
   if (trx_tables) {
     // Releasing locks as user instructed that all tables are transactional
-    g_message("Transactions started, unlocking tables");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Transactions started, unlocking tables",
+                        "EVENT", "table_unlock",
+                        "PHASE", "startup",
+                        "STATUS", "finished",
+                        NULL);
+    } else {
+      g_message("Transactions started, unlocking tables");
+    }
     if (release_binlog_function != NULL){
-      g_message("Releasing binlog lock");
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Releasing binlog lock",
+                          "EVENT", "binlog_lock",
+                          "PHASE", "startup",
+                          "STATUS", "finished",
+                          NULL);
+      } else {
+        g_message("Releasing binlog lock");
+      }
       release_binlog_function(second_conn);
     }
     if (release_global_lock_function)
       release_global_lock_function(conn);
     if (is_mysql_like() && replica_stopped){
-      g_message("Starting replica");
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Starting replica",
+                          "EVENT", "replication_command",
+                          "PHASE", "replication",
+                          "STATUS", "finished",
+                          "COMMAND", "start_replica",
+                          NULL);
+      } else {
+        g_message("Starting replica");
+      }
       m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
       if (source_control_command==AWS){
@@ -1222,7 +1439,16 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   // Every time a schema job is created a counter increases
   // Every time that a schema jobs is completed, the counter decreases
   // When the counter reaches to 0, it releases conf->db_ready 
-  g_message("Waiting database finish");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Waiting database finish",
+                      "EVENT", "dump_phase",
+                      "PHASE", "wait_database_finish",
+                      "STATUS", "progress",
+                      NULL);
+  } else {
+    g_message("Waiting database finish");
+  }
   g_async_queue_pop(conf->db_ready);
 
   // At this point all schema jobs are completed
@@ -1243,7 +1469,16 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   // at this point initial jobs has been completed
   // which means that all schema jobs has been created 
   // we are able to send the JOB_SHUTDOWN to schema_queue
-  g_message("Shutdown schema jobs");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Shutdown schema jobs",
+                      "EVENT", "dump_phase",
+                      "PHASE", "shutdown_schema_jobs",
+                      "STATUS", "started",
+                      NULL);
+  } else {
+    g_message("Shutdown schema jobs");
+  }
   for (n = 0; n < num_threads; n++) {
     struct job *j = g_new0(struct job, 1);
     j->type = JOB_SHUTDOWN;
@@ -1266,18 +1501,55 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
       g_async_queue_pop(conf->unlock_tables);
     }
     if (release_binlog_function != NULL){
-      g_message("Releasing binlog lock");
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Releasing binlog lock",
+                          "EVENT", "binlog_lock",
+                          "PHASE", "shutdown",
+                          "STATUS", "finished",
+                          NULL);
+      } else {
+        g_message("Releasing binlog lock");
+      }
       release_binlog_function(second_conn);
     }
-    g_message("Non-InnoDB dump complete, releasing global locks");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Non-InnoDB dump complete, releasing global locks",
+                        "EVENT", "global_lock",
+                        "PHASE", "shutdown",
+                        "STATUS", "started",
+                        NULL);
+    } else {
+      g_message("Non-InnoDB dump complete, releasing global locks");
+    }
     if (release_global_lock_function)
       release_global_lock_function(conn);
-    g_message("Global locks released");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Global locks released",
+                        "EVENT", "global_lock",
+                        "PHASE", "shutdown",
+                        "STATUS", "finished",
+                        NULL);
+    } else {
+      g_message("Global locks released");
+    }
   }
 
   // At this point, we can start the replica if it was stopped
   if (is_mysql_like() && replica_stopped){
-    g_message("Starting replica");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Starting replica",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "finished",
+                        "COMMAND", "start_replica",
+                        NULL);
+    } else {
+      g_message("Starting replica");
+    }
     m_query_warning(conn, start_replica_sql_thread, "Not able to start replica", NULL);
 
     if (source_control_command==AWS){
@@ -1303,25 +1575,68 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
 
   // Releasing DDL lock if possible
   if (release_ddl_lock_function != NULL) {
-    g_message("Releasing DDL lock");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Releasing DDL lock",
+                        "EVENT", "ddl_lock",
+                        "PHASE", "shutdown",
+                        "STATUS", "finished",
+                        NULL);
+    } else {
+      g_message("Releasing DDL lock");
+    }
     release_ddl_lock_function(second_conn);
   }
 
-  g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf->initial_queue),
-            g_async_queue_length(conf->schema_queue),
-            g_async_queue_length(conf->non_transactional.queue) + g_async_queue_length(conf->non_transactional.defer),
-            g_async_queue_length(conf->transactional.queue) + g_async_queue_length(conf->transactional.defer),
-            g_async_queue_length(conf->post_data_queue));
+  if (machine_log_json_enabled()) {
+    gchar *initial_q = g_strdup_printf("%d", g_async_queue_length(conf->initial_queue));
+    gchar *schema_q = g_strdup_printf("%d", g_async_queue_length(conf->schema_queue));
+    gchar *non_trx_q = g_strdup_printf("%d", g_async_queue_length(conf->non_transactional.queue) + g_async_queue_length(conf->non_transactional.defer));
+    gchar *trx_q = g_strdup_printf("%d", g_async_queue_length(conf->transactional.queue) + g_async_queue_length(conf->transactional.defer));
+    gchar *post_q = g_strdup_printf("%d", g_async_queue_length(conf->post_data_queue));
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Queue count",
+                      "EVENT", "queue_counts",
+                      "PHASE", "shutdown",
+                      "STATUS", "finished",
+                      "INITIAL_QUEUE", initial_q,
+                      "SCHEMA_QUEUE", schema_q,
+                      "NON_TRANSACTIONAL_QUEUE", non_trx_q,
+                      "TRANSACTIONAL_QUEUE", trx_q,
+                      "POST_DATA_QUEUE", post_q,
+                      NULL);
+    g_free(initial_q);
+    g_free(schema_q);
+    g_free(non_trx_q);
+    g_free(trx_q);
+    g_free(post_q);
+  } else {
+    g_message("Queue count: %d %d %d %d %d", g_async_queue_length(conf->initial_queue),
+              g_async_queue_length(conf->schema_queue),
+              g_async_queue_length(conf->non_transactional.queue) + g_async_queue_length(conf->non_transactional.defer),
+              g_async_queue_length(conf->transactional.queue) + g_async_queue_length(conf->transactional.defer),
+              g_async_queue_length(conf->post_data_queue));
+  }
 
   // Closing main connection
   if (conn != second_conn)
     mysql_close(second_conn);
   execute_gstring(main_connection, set_global_back);
   mysql_close(conn);
-  g_message("Main connection closed");  
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Main connection closed",
+                      "EVENT", "connection",
+                      "PHASE", "shutdown",
+                      "STATUS", "finished",
+                      NULL);
+  } else {
+    g_message("Main connection closed");
+  }
 
   // There are scenarios where we need to wait files to flush to disk  
   wait_close_files();
+  dump_summary_set_tables(g_hash_table_size(all_dbts));
 
   GList *keys= g_hash_table_get_keys(all_dbts);
   // Skip sorting when --skip-metadata-sorting is specified
@@ -1370,9 +1685,12 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   datetimestr=g_date_time_format(datetime,"\%Y-\%m-\%d \%H:\%M:\%S");
   g_date_time_unref(datetime);
   fprintf(mdfile, "# Finished dump at: %s\n", datetimestr);
+  dump_summary_note_external_file_size(mdfile);
   fclose(mdfile);
-  if (updated_since > 0)
+  if (updated_since > 0) {
+    dump_summary_note_external_file_size(nufile);
     fclose(nufile);
+  }
 
   if (g_rename(metadata_partial_filename, metadata_filename))
     m_critical("We were not able to rename metadata file");
@@ -1398,7 +1716,17 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   g_hash_table_unref(all_dbts);
   g_free(metadata_partial_filename);
   g_free(metadata_filename);
-  g_message("Finished dump at: %s", datetimestr);
+  if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump finished",
+                     "EVENT", "dump_finished",
+                     "PHASE", "dump_finish",
+                     "STATUS", "finished",
+                     "FINISHED_AT", datetimestr,
+                     NULL);
+  } else {
+    g_message("Finished dump at: %s", datetimestr);
+  }
   g_free(datetimestr);
 
   if (sthread!=NULL)
@@ -1437,4 +1765,3 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
   free_regex();
   free_common();
 }
-

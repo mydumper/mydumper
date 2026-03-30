@@ -25,6 +25,7 @@
 #include "myloader_worker_index.h"
 #include "myloader_database.h"
 #include "myloader_worker_loader_main.h"
+#include "../logging.h"
 
 GThread **threads = NULL;
 struct thread_data *loader_td = NULL;
@@ -108,14 +109,38 @@ void *loader_thread(struct thread_data *td) {
   g_async_queue_push(conf->ready, GINT_TO_POINTER(1));
 
   set_thread_name("T%02u", td->thread_id);
-  g_message("L-Thread %u: Starting import", td->thread_id);
+  if (machine_log_json_enabled()) {
+    gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "loader thread starting import",
+                      "EVENT", "loader_thread",
+                      "PHASE", "restore_data",
+                      "STATUS", "started",
+                      "THREAD_ID", thread_id,
+                      NULL);
+    g_free(thread_id);
+  } else {
+    g_message("L-Thread %u: Starting import", td->thread_id);
+  }
   while (cont){
     data_control_queue_push(REQUEST_DATA_JOB);
     cont=process_loader(td);
   }
 //  process_loader_thread(td);
   enqueue_indexes_if_possible(td->conf);
-  g_message("L-Thread %u: ending", td->thread_id);
+  if (machine_log_json_enabled()) {
+    gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "loader thread ending",
+                      "EVENT", "loader_thread",
+                      "PHASE", "restore_data",
+                      "STATUS", "finished",
+                      "THREAD_ID", thread_id,
+                      NULL);
+    g_free(thread_id);
+  } else {
+    g_message("L-Thread %u: ending", td->thread_id);
+  }
   return NULL;
 }
 
@@ -135,14 +160,40 @@ void inform_restore_job_running(){
     for (n = 0; n < num_threads; n++) {
       sum+=loader_td[n].status == STARTED ? 1 : 0;
     }
-    fprintf(stdout, "Printing remaining loader threads every %d seconds", RESTORE_JOB_RUNNING_INTERVAL);
+    if (machine_log_json) {
+      gchar *interval = g_strdup_printf("%d", RESTORE_JOB_RUNNING_INTERVAL);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                       "MESSAGE", "tracking remaining loader threads during shutdown",
+                       "EVENT", "restore_shutdown_wait",
+                       "PHASE", "shutdown",
+                       "STATUS", "started",
+                       "INTERVAL_SECONDS", interval,
+                       NULL);
+      g_free(interval);
+    } else {
+      fprintf(stdout, "Printing remaining loader threads every %d seconds", RESTORE_JOB_RUNNING_INTERVAL);
+    }
     while (sum>0){
       if (prev_sum != sum){
-        fprintf(stdout, "\nThere are %d loader thread still working", sum);
-        fflush(stdout);
+        if (machine_log_json) {
+          gchar *active_threads = g_strdup_printf("%u", sum);
+          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                           "MESSAGE", "loader threads still active during shutdown",
+                           "EVENT", "restore_shutdown_wait",
+                           "PHASE", "shutdown",
+                           "STATUS", "progress",
+                           "ACTIVE_THREADS", active_threads,
+                           NULL);
+          g_free(active_threads);
+        } else {
+          fprintf(stdout, "\nThere are %d loader thread still working", sum);
+          fflush(stdout);
+        }
       }else{
-        fprintf(stdout, ".");
-        fflush(stdout);
+        if (!machine_log_json) {
+          fprintf(stdout, ".");
+          fflush(stdout);
+        }
       }
       sleep(RESTORE_JOB_RUNNING_INTERVAL);
       prev_sum=sum;
@@ -151,7 +202,17 @@ void inform_restore_job_running(){
         sum+=loader_td[n].status == STARTED ? 1 : 0;
       }
     }
-    fprintf(stdout, "\nAll loader thread had finished\n");
+    if (machine_log_json) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                       "MESSAGE", "all loader threads finished during shutdown",
+                       "EVENT", "restore_shutdown_wait",
+                       "PHASE", "shutdown",
+                       "STATUS", "finished",
+                       "ACTIVE_THREADS", "0",
+                       NULL);
+    } else {
+      fprintf(stdout, "\nAll loader thread had finished\n");
+    }
   }
 }
 
@@ -160,6 +221,3 @@ void free_loader_threads(){
   g_free(loader_td);
   g_free(threads);
 }
-
-
-

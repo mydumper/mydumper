@@ -23,6 +23,7 @@
 #include "myloader_worker_loader_main.h"
 #include "myloader_global.h"
 #include "myloader_database.h"
+#include "../logging.h"
 
 GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
@@ -113,7 +114,21 @@ void start_optimize_keys_all_tables(){
 
 static
 gboolean create_index_job(struct configuration *conf, struct db_table * dbt, guint tdid){
-  message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->target_database, dbt->table_filename);
+  if (machine_log_json_enabled()) {
+    gchar *thread_id = g_strdup_printf("%u", tdid);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "index job enqueued",
+                      "EVENT", "index_job",
+                      "PHASE", "restore_index",
+                      "STATUS", "started",
+                      "THREAD_ID", thread_id,
+                      "DB", dbt->database->target_database,
+                      "TABLE", dbt->table_filename,
+                      NULL);
+    g_free(thread_id);
+  } else {
+    message("Thread %d: Enqueuing index for table: %s.%s", tdid, dbt->database->target_database, dbt->table_filename);
+  }
   struct restore_job *rj = new_schema_restore_job(g_strdup("index"),JOB_RESTORE_STRING, dbt, dbt->database,dbt->indexes, INDEXES);
   trace("index_queue <- %s: %s.%s", rjtype2str(rj->type), dbt->database->target_database, dbt->table_filename);
   g_async_queue_push(conf->index_queue, new_control_job(JOB_RESTORE,rj,dbt->database));

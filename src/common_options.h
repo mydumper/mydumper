@@ -43,6 +43,7 @@ extern guint throttle_value;
 extern guint throttle_time;
 extern gchar *pmm_resolution;
 extern gchar *pmm_path;
+extern gboolean machine_log_json;
 
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
