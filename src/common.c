@@ -232,26 +232,58 @@ void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * cpt, struct fu
             }
             g_hash_table_insert(local_cpt, g_strdup(groups[i]), g_strdup(value));
           }
-          if (g_strcmp0(keys[j],COLUMNS_ON_SELECT_REPLACE) == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            gchar **value_list=g_strsplit(value,",`",0);
-            guint ii=0;
-            GHashTable *column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-            for(ii=0; ii< g_strv_length(value_list);ii++){
-              gchar **kv=g_strsplit(value_list[ii],":",2);
-              if (ii>0)
-                g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
-              else
-                g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
-              g_strfreev(kv);
+          if (g_str_has_prefix(keys[j],COLUMNS_ON_SELECT_REPLACE)){
+            GHashTable *column_replace_hash=NULL; 
+            if (g_strcmp0(keys[j],COLUMNS_ON_SELECT_REPLACE) == 0){
+              value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+              gchar **value_list=g_strsplit(value,",`",0);
+              guint ii=0;
+
+              local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+              if (local_cpt){
+                column_replace_hash=g_hash_table_lookup(local_cpt,groups[i]);
+                if (!column_replace_hash)
+                  column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+              }else
+                column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+
+              for(ii=0; ii< g_strv_length(value_list);ii++){
+                gchar **kv=g_strsplit(value_list[ii],":",2);
+                if (ii>0)
+                  g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
+                else
+                  g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
+                g_strfreev(kv);
+              }
+              local_cpt=g_hash_table_lookup(cpt, keys[j]);
+              if (!local_cpt){
+                local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+                g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
+              }
+              g_hash_table_insert(local_cpt, g_strdup(groups[i]), column_replace_hash);
+              g_strfreev(value_list);
+            }else{
+              if (keys[j][25]=='_' && keys[j][26]=='`' && keys[j][strlen(keys[j])-1]=='`'){
+                local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+                if (local_cpt){
+                  column_replace_hash=g_hash_table_lookup(local_cpt,groups[i]);
+                  if (!column_replace_hash)
+                    column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+                }else
+                  column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+                value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+                g_hash_table_insert(column_replace_hash, g_strdup(&(keys[j][26])), g_strdup(value));
+
+                local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+                if (!local_cpt){
+                  local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+                  g_hash_table_insert(cpt, g_strdup(COLUMNS_ON_SELECT_REPLACE), local_cpt);
+                }
+                g_hash_table_insert(local_cpt, g_strdup(groups[i]), column_replace_hash);
+
+              }  
+            
             }
-            local_cpt=g_hash_table_lookup(cpt, keys[j]);
-            if (!local_cpt){
-              local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
-              g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
-            }
-            g_hash_table_insert(local_cpt, g_strdup(groups[i]), column_replace_hash);
-            g_strfreev(value_list);
           }
 
           if (g_strcmp0(keys[j],PARTITION_REGEX) == 0){
