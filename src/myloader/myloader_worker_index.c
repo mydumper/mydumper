@@ -23,12 +23,14 @@
 #include "myloader_worker_loader_main.h"
 #include "myloader_global.h"
 #include "myloader_database.h"
+#include "myloader_restore.h"
 #include "../logging.h"
 
 GAsyncQueue * optimize_keys_all_tables_queue=NULL;
 GThread **index_threads = NULL;
 struct thread_data *index_td = NULL;
 static GMutex *init_connection_mutex=NULL;
+#define INDEX_IDLE_WAIT_USEC G_USEC_PER_SEC
 void *worker_index_thread(struct thread_data *td);
 
 void initialize_worker_index(struct configuration *conf){
@@ -46,7 +48,13 @@ void initialize_worker_index(struct configuration *conf){
 }
 
 gboolean process_index(struct thread_data * td){
-  struct control_job *job=g_async_queue_pop(td->conf->index_queue);
+  /* Let idle index workers periodically drop pooled DB sessions while they wait
+   * for more index jobs or the final shutdown signal. */
+  struct control_job *job=g_async_queue_timeout_pop(td->conf->index_queue, INDEX_IDLE_WAIT_USEC);
+  if (job == NULL) {
+    release_idle_connection_if_possible();
+    return TRUE;
+  }
   if (job->type==JOB_SHUTDOWN)
   {
     trace("index_queue -> %s", jtype2str(job->type));
