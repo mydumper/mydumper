@@ -97,7 +97,16 @@ struct chunk_step_item * new_none_chunk_step(){
   return csi;
 }
 
+double log_base(double base, double x) {
+    return log(x) / log(base); // Cambio de base: ln(x) / ln(base)
+}
+
 struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_table *dbt, guint position, guint64 rows, GString *prefix) {
+
+  // We do not support more that 2 levels of multi column pk
+  if (position>=2)
+    return NULL;
+
   struct chunk_step_item * csi=NULL;
 
   gchar *field=g_list_nth_data(dbt->primary_key, position);
@@ -115,41 +124,38 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
   g_free(query);
 
   if (!mr->res || !mr->row){
-    m_store_result_row_free(mr);
-    return new_none_chunk_step();
+    goto cleanup;
   }
 
   /* Check if all values are NULL */
   if (mr->row[0] == NULL){
-    m_store_result_row_free(mr);
     g_message("It is NONE with row == NULL");
-    return new_none_chunk_step();
+    goto cleanup;
   }
+
   MYSQL_FIELD *fields = mysql_fetch_fields(mr->res);
   /* Support just bigger INTs for now, very dumb, no verify approach */
   guint64 unmin, unmax;
   gint64 nmin, nmax;
   gchar *str_min, *str_max;
-//    union chunk_step *cs = NULL;
+
   switch (fields[0].type) {
     case MYSQL_TYPE_TINY:
     case MYSQL_TYPE_SHORT:
     case MYSQL_TYPE_LONG:
     case MYSQL_TYPE_LONGLONG:
     case MYSQL_TYPE_INT24:
-      trace("Integer PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
       unmin = strtoull(mr->row[0], NULL, 10);
       unmax = strtoull(mr->row[1], NULL, 10);
       nmin  = strtoll (mr->row[0], NULL, 10);
       nmax  = strtoll (mr->row[1], NULL, 10);
 
       gboolean unsign = fields[0].flags & UNSIGNED_FLAG;
-      guint64 diff_btwn_max_min = unsign ? gint64_abs(unmax-unmin) : gint64_abs(nmax-nmin); 
+      guint64 gap_btwn_min_max = unsign ? gint64_abs(unmax-unmin) : gint64_abs(nmax-nmin); 
 
-      m_store_result_row_free(mr);
-
-      // If !(diff_btwn_max_min > min_chunk_step_size), then there is no need to split the table.
-      if ( diff_btwn_max_min > dbt->min_chunk_step_size){
+      // If !(gap_btwn_min_max > min_chunk_step_size), then there is no need to split the table.
+      if ( gap_btwn_min_max > dbt->min_chunk_step_size){
+        trace("Integer PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
         union type type;
 
         if (unsign){
@@ -162,24 +168,32 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
           type.sign.max=nmax;
         }
         guint64 _starting_chunk_step_size=0;
-        guint percentage_of_fragmentation = diff_btwn_max_min / rows;
-        trace("percentage_of_fragmentation of `%s`.`%s` %f", dbt->database->source_database, dbt->table, log(percentage_of_fragmentation ));
+        float data_distribution = (float) rows / gap_btwn_min_max;
+
+        double base = dbt->max_threads_per_table, argumento = gap_btwn_min_max;
+        double resultado = log_base(base, argumento);
+
+        trace("data_distribution of `%s`.`%s` %f %d %d %f %f %f %f", dbt->database->source_database, dbt->table, data_distribution, gap_btwn_min_max, rows, log2(gap_btwn_min_max), pow( gap_btwn_min_max , 1.0 / dbt->max_threads_per_table), resultado , gap_btwn_min_max/(pow(2,dbt->max_threads_per_table)-1));
         if (dbt->starting_chunk_step_size == 0){
 
           _starting_chunk_step_size= dbt->max_chunk_step_size!=0 ?
-                                             (rows/num_threads>dbt->max_chunk_step_size?
+                                             ( rows / dbt->max_threads_per_table > dbt->max_chunk_step_size ?
                                                dbt->max_chunk_step_size:
  //                                              rows/num_threads):
-                                               rows/((log(percentage_of_fragmentation )+1)*num_threads)):
+                                               gap_btwn_min_max/(pow(2,dbt->max_threads_per_table)-1)):
+//                                             rows/((log(percentage_of_fragmentation )+1)*num_threads)):
  //                                               rows/num_threads;
-                                             rows/((log(percentage_of_fragmentation )+1)*num_threads);
-          if (dbt->max_chunk_step_size==0)
-//            max_chunk_step_size=rows/num_threads;
-            max_chunk_step_size=diff_btwn_max_min/((log(percentage_of_fragmentation )+1)*num_threads);
+                                               gap_btwn_min_max/(pow(2,dbt->max_threads_per_table)-1);
+  //                                             rows/((log(percentage_of_fragmentation )+1)*num_threads);
+
+//          if (dbt->max_chunk_step_size==0)
+            max_chunk_step_size=rows/num_threads;
+//            max_chunk_step_size=gap_btwn_min_max/((log(percentage_of_fragmentation )+1)*num_threads);
         }
         if (_starting_chunk_step_size < dbt->min_chunk_step_size)
           _starting_chunk_step_size=dbt->min_chunk_step_size;
 
+        trace("starting_chunk_step_size: `%s`.`%s` %d", dbt->database->source_database, dbt->table, _starting_chunk_step_size);
         g_assert(_starting_chunk_step_size>0);
 
         csi = new_integer_step_item( TRUE, prefix, field, unsign, type, 0, dbt->is_fixed_length, _starting_chunk_step_size, dbt->min_chunk_step_size, dbt->max_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
@@ -191,24 +205,25 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
             csi->chunk_step->integer_step.type.sign.min=(csi->chunk_step->integer_step.type.sign.min/csi->chunk_step->integer_step.step)*csi->chunk_step->integer_step.step;
           }
         }
-
-        return csi;
-      }else{
-        if (position==0){
-          trace("Integer PK on `%s`.`%s` performing full table scan",dbt->database->source_database, dbt->table);
-          return new_none_chunk_step();
-        }
+      
       }
       break;
     case MYSQL_TYPE_STRING:
     case MYSQL_TYPE_VAR_STRING:
+
+      if (position>0){
+        // We do not support a second level of string column pk
+        trace("Disabling multicolum on `%s`.`%s`",dbt->database->source_database, dbt->table);
+        dbt->multicolumn=FALSE;
+        goto cleanup;
+      }
+
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
       if (split_string_pk){
-        trace("String type %d", position);
+        trace("String PK found on `%s`.`%s`",dbt->database->source_database, dbt->table);
         str_min = g_strdup(mr->row[2]);
         str_max = g_strdup(mr->row[3]);
         trace("String min: %s | max: %s | rows: %d", str_min, str_max, rows);
-        m_store_result_row_free(mr);
 
         guint64 _starting_chunk_step_size=dbt->starting_chunk_step_size;
         if (dbt->starting_chunk_step_size == 0){
@@ -221,25 +236,23 @@ struct chunk_step_item * initialize_chunk_step_item (MYSQL *conn, struct db_tabl
                                              rows/num_threads;
       }
 
-        if (position>0)
-          dbt->multicolumn=FALSE;
-        else
-          return new_string_step_item( TRUE, prefix, field, 0, dbt->is_fixed_length, 1, str_min, str_max, _starting_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
+        csi=new_string_step_item( TRUE, prefix, field, 0, dbt->is_fixed_length, 1, str_min, str_max, _starting_chunk_step_size, 0, FALSE, FALSE, NULL, position, dbt->multicolumn, rows);
       }
-      return new_none_chunk_step();
       break;
     default:
       // If primary key has multiple columns and just the first column is integer, we disable the multicolumn logic
-      m_store_result_row_free(mr);
       trace("It is NONE: default");
       if (position>0)
         dbt->multicolumn=FALSE;
-      else
-        return new_none_chunk_step();
       break;
   }
-
-  return NULL;
+cleanup:
+  if (!csi && position==0){
+    trace("Performing full table scan: `%s`.`%s`",dbt->database->source_database, dbt->table);
+    csi=new_none_chunk_step();
+  }
+  m_store_result_row_free(mr);
+  return csi;
 }
 
 

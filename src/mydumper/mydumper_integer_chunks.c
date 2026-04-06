@@ -38,7 +38,7 @@
 #include "mydumper_integer_chunks.h"
 #include "mydumper_common.h"
 
-
+extern guint max_split_of_step_in_integer_chunk;
 guint64 min_integer_chunk_step_size=0;
 guint64 max_integer_chunk_step_size=0;
 
@@ -617,13 +617,14 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       g_string_free(_where, TRUE);
     }
   }
-
+  trace("Thread %d: I-Chunk 1: step %d rows %d", td->thread_id, cs->integer_step.step, cs->integer_step.rows_in_explain);
 
 // Stage 2: Setting cursor
   if (tj->dbt->multicolumn && csi->multicolumn && csi->next == NULL && !cs->integer_step.is_step_fixed_length){
     guint64 integer_step_step=cs->integer_step.step;
+    guint local_max_split_of_step_in_integer_chunk=0;
 retry:
-  // We are setting cursor to build the WHERE clause for the EXPLAIN
+    // We are setting cursor to build the WHERE clause for the EXPLAIN which can change the step size
     if (cs->integer_step.is_unsigned){
       if (integer_step_step > cs->integer_step.type.unsign.max - cs->integer_step.type.unsign.min + 1 )
         cs->integer_step.type.unsign.cursor = cs->integer_step.type.unsign.max;
@@ -651,13 +652,15 @@ retry:
 
     if (integer_step_step>1){
       // rows / num_threads > integer_step_step
-      if (rows > tj->dbt->min_chunk_step_size && ( rows > cs->integer_step.step || (tj->num_rows_of_last_run>0 &&rows/100 > tj->num_rows_of_last_run))){
+      if (rows > tj->dbt->min_chunk_step_size && ( rows > cs->integer_step.step || (tj->num_rows_of_last_run > 0 &&rows/100 > tj->num_rows_of_last_run))){
         trace("Thread %d: I-Chunk 2: integer_step.step>1 then retrying", td->thread_id);
         integer_step_step=integer_step_step/2;
-        goto retry;
+        local_max_split_of_step_in_integer_chunk++;
+        if (max_split_of_step_in_integer_chunk == 0 || local_max_split_of_step_in_integer_chunk <= max_split_of_step_in_integer_chunk)
+          goto retry;
       }
-      trace("Thread %d: I-Chunk 2: integer_step.step>1 not retrying as rows %lld <=  step %lld and integer_step_step: %lld", td->thread_id, rows, cs->integer_step.step, integer_step_step);
-      cs->integer_step.step=integer_step_step;
+      trace("Thread %d: I-Chunk 2: integer_step.step>1 not retrying as rows %lld <=  step %lld and integer_step_step: %lld or max_split_of_step_in_integer_chunk reached to %d of %d", td->thread_id, rows, cs->integer_step.step, integer_step_step, local_max_split_of_step_in_integer_chunk, max_split_of_step_in_integer_chunk);
+//      cs->integer_step.step=integer_step_step;
     }else{
       // at this poing cs->integer_step.step == 1 always
       cs->integer_step.step=1;
