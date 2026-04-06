@@ -24,6 +24,7 @@
 #include "config.h"
 #include "connection.h"
 #include "common.h"
+#include "logging.h"
 
 char *hostname = NULL;
 char *username = NULL;
@@ -318,6 +319,24 @@ void m_connect(MYSQL *conn){
   configure_connection(conn);
   if (!mysql_real_connect(conn, hostname, username, password, default_connection_database?default_connection_database:"INFORMATION_SCHEMA", port,
                           socket_path, 0)) {
+    if (machine_log_json_enabled()) {
+      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(conn));
+      gchar *port_text = g_strdup_printf("%u", port);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
+                       "MESSAGE", "Error connection to database",
+                       "EVENT", "mysql_connect",
+                       "PHASE", "startup",
+                       "STATUS", "failed",
+                       "MYSQL_ERRNO", mysql_errno_text,
+                       "SQLSTATE", mysql_sqlstate(conn),
+                       "RETRYABLE", "true",
+                       "FATAL", "true",
+                       "HOST", hostname != NULL ? hostname : "",
+                       "PORT", port_text,
+                       NULL);
+      g_free(mysql_errno_text);
+      g_free(port_text);
+    }
     m_critical("Error connection to database: %s", mysql_error(conn));
   }
   print_connection_details_once();
@@ -351,4 +370,3 @@ void ask_password(){
     password = passwordPrompt();
   }
 }
-

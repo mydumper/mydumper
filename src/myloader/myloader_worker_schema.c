@@ -172,6 +172,7 @@ gboolean process_schema(struct thread_data * td){
     case SCHEMA_TABLE_JOB:
       if (process_restore_job(td, schema_job->restore_job)){
         trace("retry_queue <- %s", schema_job_type2str(schema_job->type));
+        g_atomic_int_inc(&(detailed_errors.retries));
         g_async_queue_push(retry_queue, schema_job);
       }
       wake_data_threads();

@@ -85,24 +85,23 @@ struct table_job_file{
 // first number : used when rows is used
 // second number : when load data is used
 struct table_job {
+  struct thread_data *td;
+  struct db_table *dbt;
+  struct chunk_step_item *chunk_step_item;
+
   char *partition;
+
   guint64 part;
   guint sub_part;
+
   GString *where;
-  struct chunk_step_item *chunk_step_item;
-  struct db_table *dbt;
-//  gchar *sql_filename;
-//  int sql_file;
-//  gchar *dat_filename;
-//  int dat_file;
+
+  // File related variables
   struct table_job_file *sql;
   struct table_job_file *rows;
-  gchar *exec_out_filename;
   float filesize;
   guint st_in_file;
-  int child_process;
-  int char_chunk_part;
-  struct thread_data *td;
+
   guint64 num_rows_of_last_run;
 };
 

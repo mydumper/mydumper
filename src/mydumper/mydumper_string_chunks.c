@@ -950,7 +950,7 @@ retry:
     trace("Thread %d: I-Chunk 3: WHERE in TJ: %s", td->thread_id, tj->where->str);
     if (cs->string_step.is_step_fixed_length) {
       // tj->part= cs->string_step.type.sign.min   / cs->string_step.step + 1;      
-      close_files(tj);
+      close_table_job_files(tj);
       write_table_job_into_file(tj);
     }else if (is_last(csi)) {
       trace("Thread %d: I-Chunk 3: Last chunk on `%s`.`%s` no need to calculate anything else after finish", td->thread_id, tj->dbt->database->source_database, tj->dbt->table);
@@ -1058,7 +1058,21 @@ void process_string_chunk(struct table_job *tj, struct chunk_step_item *csi){
   // First step, we need this to process the one time prefix
   g_string_set_size(tj->where,0);
   if (process_string_chunk_step(tj, csi)){
-    g_message("Thread %d: Job has been cacelled",td->thread_id);
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "dump job cancelled",
+                        "EVENT", "dump_job",
+                        "PHASE", "dump_data",
+                        "STATUS", "cancelled",
+                        "THREAD_ID", thread_id,
+                        "DB", dbt->database->source_database,
+                        "TABLE", dbt->table,
+                        NULL);
+      g_free(thread_id);
+    } else {
+      g_message("Thread %d: Job has been cacelled",td->thread_id);
+    }
     return;
   }
   g_atomic_int_inc(dbt->chunks_completed);
