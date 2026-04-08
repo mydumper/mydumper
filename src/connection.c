@@ -36,7 +36,7 @@ char *protocol_str = NULL;
 enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
 static gint print_connection_details=1;
 gboolean local_infile = FALSE;
-gchar * default_connection_database=NULL;
+const gchar * default_connection_database=INFORMATION_SCHEMA;
 
 #ifdef WITH_SSL
 char *key=NULL;
@@ -317,7 +317,7 @@ void print_connection_details_once(){
 
 void m_connect(MYSQL *conn){
   configure_connection(conn);
-  if (!mysql_real_connect(conn, hostname, username, password, default_connection_database?default_connection_database:"INFORMATION_SCHEMA", port,
+  if (!mysql_real_connect(conn, hostname, username, password, default_connection_database, port,
                           socket_path, 0)) {
     if (machine_log_json_enabled()) {
       gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(conn));
@@ -369,4 +369,27 @@ void ask_password(){
   if (sizeof(password) == 0 || (password == NULL && askPassword)) {
     password = passwordPrompt();
   }
+}
+
+void print_connection_help(){
+  print_string("host", hostname);
+  print_string("user", username);
+  print_string("password", password);
+  print_string("default-connection-database", default_connection_database); 
+  print_bool("ask-password",askPassword);
+  print_int("port",port,port==0);
+  print_string("socket",socket_path);
+  print_string("protocol", protocol_str);
+  print_bool("compress-protocol",compress_protocol);
+#ifdef WITH_SSL
+  print_bool("ssl",ssl);
+  print_string("ssl-mode",ssl_mode);
+  print_string("key",key);
+  print_string("cert", cert);
+  print_string("ca",ca);
+  print_string("capath",capath);
+  print_string("cipher",cipher);
+  print_string("tls-version",tls_version);
+#endif
+  print_bool("enable-cleartext-plugin",enable_cleartext_plugin);
 }

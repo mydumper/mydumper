@@ -33,6 +33,10 @@
 //#include "mydumper_global.h"
 
 extern gboolean help;
+extern gboolean dry_run;
+extern gchar *server_version_arg;
+extern gboolean program_version;
+extern guint verbose;
 
 guint optimize_keys_batchsize=0;
 guint errors=0;
@@ -42,7 +46,7 @@ GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
 extern gboolean dry_run;
-extern gchar **optimize_key_engines;
+extern GList* optimize_key_engines;
 guint throttle_time=0;
 guint throttle_max_usleep_limit=60000000;
 
@@ -683,10 +687,21 @@ void m_key_file_merge(GKeyFile *b, GKeyFile *a){
 
 }
 
+GList *m_glistsplit(const gchar * str){
+  gchar ** split_str=g_strsplit(str, ",", 0);
+  GList *l=NULL;
+  guint i=0;
+  while(split_str[i]){
+    l=g_list_prepend(l, split_str[i]);
+    i++;
+  }
+  return l;
+}
 
 void initialize_common_options(GOptionContext *context, const gchar *group){
-  if (!optimize_key_engines)
-    optimize_key_engines=g_strsplit("InnoDB,ROCKSDB", ",", 0);
+  if (!optimize_key_engines){
+    optimize_key_engines=m_glistsplit("InnoDB,ROCKSDB");
+  }
 
   if (defaults_file == NULL ){ 
     if ( g_file_test(DEFAULTS_FILE, G_FILE_TEST_EXISTS) ){
@@ -1348,15 +1363,15 @@ void trace(const char *format, ...)
 
 #define WIDTH 40
 
-void print_int(const char*_key, int val){
-  printf("%s%*s= %d\n",_key, WIDTH-(int)(strlen(_key)),"", val);
+void print_int(const char*_key, int val, gboolean comment){
+  printf("%s%s%*s= %d\n",comment?"# ":"",_key, WIDTH-(int)(strlen(_key))-(comment?2:0),"", val);
 }
 
 void print_string(const char*_key, const char *val){
   if (val)
     printf("%s%*s= %s\n",_key, WIDTH-(int)(strlen(_key)),"", val);
   else
-    printf("# %s%*s= ""\n",_key, WIDTH-(int)(strlen(_key)) -2,"");
+    printf("# %s%*s= \n",_key, WIDTH-(int)(strlen(_key)) -2,"");
 }
 
 void print_bool(const char*_key, gboolean val){
@@ -1366,18 +1381,38 @@ void print_bool(const char*_key, gboolean val){
     printf("# %s%*s= FALSE\n",_key, WIDTH-(int)(strlen(_key)) - 2 ,"");
 }
 
-void print_list(const char*_key, GList *list){
+void print_list(const char*_key, GList *list, gchar* f (void *)){
   if (list){
-    printf("%s%*s= \"%s\"", _key, WIDTH-(int)(strlen(_key)), "", (gchar *)(list->data));
+    printf("%s%*s= %s", _key, WIDTH-(int)(strlen(_key)), "", f?f(list->data):(gchar *)(list->data));
     list=list->next;
     while (list){
-      printf(",\"%s\"", (gchar*)(list->data));
+      printf(",%s", f?f(list->data):(gchar*)(list->data));
       list=list->next;
     }
     printf("\n");
   }else{
-    printf("# %s%*s= \"\"\n", _key, WIDTH-(int)(strlen(_key)) - 2, "");
+    printf("# %s%*s= \n", _key, WIDTH-(int)(strlen(_key)) - 2, "");
   }
+}
+
+gchar* gpointer_to_gchar(void *p){
+  return g_strdup_printf("%d",GPOINTER_TO_INT(p));
+}
+
+void print_common(){
+  print_int("threads",num_threads, FALSE);
+  print_bool("version",program_version);
+  print_bool("verbose",verbose);
+  print_bool("debug",debug);
+  print_bool("machine-log-json", machine_log_json);
+  print_list("ignore-errors", ignore_errors_list,gpointer_to_gchar);
+  print_string("defaults-file", defaults_file);
+  print_string("defaults-extra-file", defaults_extra_file);
+  print_string("source-control-command",sourcecontrolcommand2str(source_control_command));
+  print_list("optimize-keys-engines", optimize_key_engines, NULL);
+  print_string("server-version", server_version_arg);
+  print_bool("dry-run", dry_run);
+  print_string("throttle", throttle_variable?g_strdup_printf("%s=%d",throttle_variable,throttle_value):NULL);
 }
 
 void append_alter_table(GString * alter_table_statement, char *table){
@@ -1452,10 +1487,8 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
     engine_pos=g_strrstr(split_file[i],"ENGINE=");
     if (engine_pos){
       engine_pos+=7;
-      guint j=0;
-      for( j=0; j<g_strv_length(optimize_key_engines); j++)
-        if (g_str_has_prefix(engine_pos, optimize_key_engines[j]))
-          flag|=IS_TRX_TABLE;
+      if (g_list_find_custom(optimize_key_engines, engine_pos, (GCompareFunc)g_strcmp0))
+        flag|=IS_TRX_TABLE;
     }
   }
   g_string_replace(create_table_statement,",\n)","\n)", 0);
@@ -1534,57 +1567,6 @@ gchar *build_config_file_dbt_key(const gchar *a, const gchar *b){
   return g_strdup_printf("`%s`.`%s`", a, b);
 }
 
-/*
-gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
-  *error=NULL;
-  (void) data;
-  if (!strcmp(option_name,"--throttle")){
-    if (value){
-      gchar ** tp;
-      gchar ** tq=g_strsplit(value, ":", 2);
-      if (tq[1]){
-        throttle_max_usleep_limit=atoi(tq[0]);
-        tp=g_strsplit(tq[1], "=", 2);
-      }else{
-        tp=g_strsplit(value, "=", 2);
-      }
-      throttle_variable=g_strdup(tp[0]);
-      throttle_value = atoi(tp[1]);
-      g_strfreev(tq);
-      g_strfreev(tp);
-    }else{
-      throttle_variable=g_strdup("Threads_running");
-      throttle_value = 0;
-    }
-    return TRUE;
-  }
-  if (!strcmp(option_name, "--optimize-keys-engines")){
-    if (value){
-      optimize_key_engines = g_strsplit(value, ",", 0);
-      return TRUE;
-    }
-
-  } else if (!strcmp(option_name, "--source-control-command")){
-    if (!strcasecmp(value, "TRADITIONAL")) {
-      source_control_command=TRADITIONAL;
-      return TRUE;
-    }
-    if (!strcasecmp(value, "AWS")) {
-      source_control_command=AWS;
-      return TRUE;
-    }
-  } else if (!strcmp(option_name, "--ignore-errors")){
-    guint n=0;
-    gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
-    while(tmp_ignore_errors_list[n]!=NULL){
-      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
-      n++;
-    }
-    return TRUE;
-  }
-  return FALSE;
-}
-*/
 void discard_mysql_output(MYSQL *conn){
   MYSQL_RES *result = NULL;
   MYSQL_ROW row = NULL;

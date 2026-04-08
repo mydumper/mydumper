@@ -54,22 +54,25 @@ FOREIGN_KEY_CHECKS=0 /*!40114
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+max-threads-for-schema-creation=1
 
 [mydumper_mysql_8]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+max-threads-for-schema-creation=1
 
 [mydumper_mariadb_11]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+max-threads-for-schema-creation=1
 
 [mydumper_mariadb_12]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
-
+max-threads-for-schema-creation=1
 
 [mydumper_google_8]
 set-names=utf8mb4,utf8mb4
@@ -77,6 +80,7 @@ default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
 skip-ddl-locks=1
 table-engine-for-view-dependency=InnoDB
+max-threads-for-schema-creation=1
 
 #[`schema`.`table`]
 # where = column > 20
@@ -86,4 +90,5 @@ table-engine-for-view-dependency=InnoDB
 # columns_on_insert = qty,price
 # rows = 1000000
 # columns_on_select_replace=`country_id`:2*`country_id`,`country`:left(`country`,4)
-
+# columns_on_select_replace_`country_id` = 2*`country_id`
+# columns_on_select_replace_`country` = left(`country`,4)

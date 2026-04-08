@@ -37,13 +37,11 @@ gboolean drop_database = FALSE;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
-guint64 max_statement_size;
+guint64 max_statement_size=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!g_strcmp0(option_name, "--innodb-optimize-keys")) {
-    m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
-  }else if (!g_strcmp0(option_name, "--optimize-keys")) {
+  if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
     if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
@@ -99,12 +97,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
-  } else if (!g_strcmp0(option_name, "--overwrite-tables")){
-    m_error("Option --overwrite-tables has been deprecated. Use -o/--drop-table instead");
-    return FALSE;
-  } else if (!g_strcmp0(option_name, "--purge-mode")){
-    m_error("Option --purge-mode has been deprecated. Use -o/--drop-table instead");
-    return FALSE;
   } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
     overwrite_tables=TRUE;
     if (value){
@@ -187,8 +179,6 @@ static GOptionEntry threads_entries[] = {
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
-    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Option --innodb-optimize-keys is deprecated use --optimize-keys instead",NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Creates the table without the indexes unless SKIP is selected. "
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
@@ -197,8 +187,6 @@ static GOptionEntry execution_entries[] = {
       "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
       "Do not import table schemas and triggers ", NULL},
-    {"purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Option --purge-mode is deprecated use -o/--drop-table instead", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
@@ -209,15 +197,10 @@ static GOptionEntry execution_entries[] = {
       "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
       "If the option is not set, the default is set to: FAIL. "
       "If the option is used without a parameter, the default is: DROP.", NULL},
-    {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
-      "Option --overwrite-tables has been deprecated. Use -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
       "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
       "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
-    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
-      "Table recreation will be executed in series, one thread at a time. "
-      "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
       "It will receive the stream from STDIN and create the file in the disk before start processing. "
       "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "

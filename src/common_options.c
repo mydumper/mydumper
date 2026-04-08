@@ -60,7 +60,7 @@ const char *identifier_quote_character_str= "`";
 gboolean schema_sequence_fix = FALSE;
 guint max_threads_per_table= 4;
 
-guint source_control_command = TRADITIONAL;
+enum source_control_command source_control_command = TRADITIONAL;
 
 struct replication_settings source_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
 struct replication_settings replica_data={FALSE,FALSE,FALSE,FALSE,FALSE,FALSE,FALSE};
@@ -70,7 +70,7 @@ guint throttle_value=0;
 
 gchar *server_version_arg=NULL;
 
-gchar **optimize_key_engines=NULL;
+GList *optimize_key_engines=NULL;
 
 
 void parse_source_replica_options(const gchar *value, struct replication_settings *rep_set){
@@ -79,7 +79,7 @@ void parse_source_replica_options(const gchar *value, struct replication_setting
     gchar ** lp=g_strsplit(value, ",", 0);
     if (g_strv_length(lp)==1){
       guint64 _source_data;
-       if (g_ascii_string_to_unsigned(value, 10, 0, 256, &_source_data, NULL)){
+      if (g_ascii_string_to_unsigned(value, 10, 0, 256, &_source_data, NULL)){
         rep_set->exec_reset_replica=((_source_data) & (1<<(0)))>0;
         rep_set->exec_change_source=((_source_data) & (1<<(1)))>0;
         rep_set->exec_start_replica=((_source_data) & (1<<(2)))>0;
@@ -87,7 +87,7 @@ void parse_source_replica_options(const gchar *value, struct replication_setting
         rep_set->auto_position     =((_source_data) & (1<<(4)))>0;
         rep_set->exec_start_replica_until=((_source_data) & (1<<(5)))>0;
         return;
-       }
+      }
     }
     rep_set->exec_reset_replica=g_strv_contains((const char * const*)lp,"exec_reset_replica");
     rep_set->exec_change_source=g_strv_contains((const char * const*)lp,"exec_change_source");
@@ -97,6 +97,23 @@ void parse_source_replica_options(const gchar *value, struct replication_setting
     rep_set->exec_start_replica_until=g_strv_contains((const char * const*)lp,"exec_start_replica_until");
     g_strfreev(lp);
   }
+}
+
+GList *build_list_from_replica_options(struct replication_settings *rep_set){
+  GList *source_data_list=NULL;
+  if (rep_set->exec_reset_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_reset_replica"));
+  if (rep_set->exec_change_source)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_change_source"));
+  if (rep_set->exec_start_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica"));
+  if (rep_set->source_ssl)
+    source_data_list=g_list_append(source_data_list,g_strdup("enable_ssl"));
+  if (rep_set->auto_position)
+    source_data_list=g_list_append(source_data_list,g_strdup("use_auto_position"));
+  if (rep_set->exec_start_replica_until)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica_until"));
+  return source_data_list;
 }
 
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -123,7 +140,7 @@ gboolean common_arguments_callback(const gchar *option_name,const gchar *value, 
     return TRUE;
   } else if (!strcmp(option_name, "--optimize-keys-engines")){
     if (value){
-      optimize_key_engines = g_strsplit(value, ",", 0);
+      optimize_key_engines = m_glistsplit(value);
       return TRUE;
     }
 

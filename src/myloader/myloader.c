@@ -66,7 +66,6 @@ gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
 gboolean skip_post = FALSE;
-gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
 guint num_sequences = 0;
@@ -84,12 +83,15 @@ guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
+extern gboolean dry_run;
+extern gchar *server_version_arg;
 extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
-
+extern guint64 max_statement_size;
+extern GList *optimize_key_engines;
 const char DIRECTORY[] = "import";
 
 //struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
@@ -195,91 +197,92 @@ void show_dbt(void* _key, void* dbt, void *total){
   }
 
 void print_help(){
-    print_string("host", hostname);
-    print_string("user", username);
-    print_string("password", password);
-    print_bool("ask-password",askPassword);
-    print_int("port",port);
-    print_string("socket",socket_path);
-    print_string("protocol", protocol_str);
-    print_bool("compress-protocol",compress_protocol);
-#ifdef WITH_SSL
-    print_bool("ssl",ssl);
-    print_string("ssl-mode",ssl_mode);
-    print_string("key",key);
-    print_string("cert", cert);
-    print_string("ca",ca);
-    print_string("capath",capath);
-    print_string("cipher",cipher);
-    print_string("tls-version",tls_version);
-#endif
-    print_list("regex",regex_list);
-    print_string("source-db",source_db);
+  print_connection_help();
 
-    print_bool("skip-triggers",skip_triggers);
-    print_bool("skip-constraints",skip_constraints);
-    print_bool("skip-indexes",skip_indexes);
-    print_bool("skip-post",skip_post);
-    print_bool("no-data",no_data);
+  print_list("regex",regex_list, NULL);
+  print_string("source-db",source_db);
+  print_bool("skip-triggers",skip_triggers);
+  print_bool("skip-post",skip_post);
+  print_bool("skip-constraints",skip_constraints);
+  print_bool("skip-indexes",skip_indexes);
+  print_bool("no-data",no_data);
+  print_string("omit-from-file",tables_skiplist_file);
+  print_string("tables-list",tables_list);
 
-    print_string("omit-from-file",tables_skiplist_file);
-    print_string("tables-list",tables_list);
-    print_string("pmm-path",pmm_path);
-    print_string("pmm-resolution",pmm_resolution);
+  print_pmm_help();
 
-    if (enable_binlog)
-      print_bool("enable-binlog",enable_binlog);
-    if (!optimize_keys){
-      print_string("optimize-keys",SKIP);
-    }else if(optimize_keys_per_table){
-      print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
-    }else if(optimize_keys_all_tables){
-      print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
-    }else
-      print_string("optimize-keys",NULL);
-    print_int("optimize-keys-batchsize",optimize_keys_batchsize);
-    print_bool("no-schemas",no_schemas);
+  if (enable_binlog)
+    print_bool("enable-binlog",enable_binlog);
+  if (!optimize_keys){
+    print_string("optimize-keys",SKIP);
+  }else if(optimize_keys_per_table){
+    print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
+  }else if(optimize_keys_all_tables){
+    print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
+  }else
+  print_string("optimize-keys",NULL);
+  print_int("optimize-keys-batchsize",optimize_keys_batchsize, optimize_keys_batchsize==0);
+  print_bool("no-schemas",no_schemas);
+  print_bool("disable-redo-log",disable_redo_log);
+  print_string("checksum",checksum_str);
+  print_bool("drop-database",drop_database);
+  print_string("drop-table",purgemode2str(purge_mode));
+  print_bool("overwrite-unsafe",overwrite_unsafe);
+  print_int("retry-count",retry_count, overwrite_tables );
+  print_bool("stream",stream);
+  print_int("refresh-table-list-interval", refresh_table_list_interval, FALSE);
+  print_bool("skip-table-sorting", skip_table_sorting);
+  print_bool("set-gtid-purge",set_gtid_purge);
+  print_int("num-sequences",num_sequences, num_sequences==0);
 
-    print_bool("local-infile", local_infile);
-    print_bool("disable-redo-log",disable_redo_log);
-    print_string("checksum",checksum_str);
-    print_bool("overwrite-tables",overwrite_tables);
-    print_bool("overwrite-unsafe",overwrite_unsafe);
-    print_int("retry-count",retry_count);
-    print_bool("serialized-table-creation",serial_tbl_creation);
-    print_bool("stream",stream);
+  print_int("max-threads-per-table",max_threads_per_table, FALSE);
+  print_int("max-threads-for-index-creation",max_threads_for_index_creation, FALSE);
+  print_int("max-threads-for-post-actions",max_threads_for_post_creation, FALSE);
+  print_int("max-threads-for-schema-creation",max_threads_for_schema_creation, FALSE);
+  print_string("exec-per-thread",exec_per_thread);
+  print_string("exec-per-thread-extension",exec_per_thread_extension);
 
-    print_int("max-threads-per-table",max_threads_per_table);
-    print_int("max-threads-for-index-creation",max_threads_for_index_creation);
-    print_int("max-threads-for-post-actions",max_threads_for_post_creation);
-    print_int("max-threads-for-schema-creation",max_threads_for_schema_creation);
-    print_string("exec-per-thread",exec_per_thread);
-    print_string("exec-per-thread-extension",exec_per_thread_extension);
+  print_int("rows",rows, rows==0);
+  print_int("queries-per-transaction",commit_count, FALSE);
+  print_int("max-statement-size",max_statement_size,max_statement_size==0);
+  print_int("max-transaction-size",max_transaction_size, FALSE);
+  print_bool("append-if-not-exist",append_if_not_exist);
+  print_string("set-names",set_names_in_conn_by_default);
+  print_bool("skip-definer",skip_definer);
+  print_string("replace-definer",replace_definer);
+  print_list("ignore-set",ignore_set_list, NULL);
 
-    print_int("rows",rows);
-    print_int("queries-per-transaction",commit_count);
-    print_bool("append-if-not-exist",append_if_not_exist);
-    print_string("set-names",set_names_in_conn_by_default);
+  print_checksum_help();
 
-    print_bool("skip-definer",skip_definer);
-    print_string("replace-definer",replace_definer);
-    print_bool("help",help);
+  print_string("quote-character",identifier_quote_character_str);
+  print_bool("local-infile", local_infile);
 
-    print_string("directory",input_directory);
-    print_string("logfile",logfile);
-
-    print_string("database",target_db);
-    print_string("quote-character",identifier_quote_character_str);
-    print_bool("resume",resume);
-    print_int("threads",num_threads);
-    print_bool("version",program_version);
-    print_bool("verbose",verbose);
-    print_bool("debug",debug);
-    print_string("defaults-file",defaults_file);
-    print_string("defaults-extra-file",defaults_extra_file);
-    print_string("fifodir",fifo_directory);
-    print_string("load-data-tmp-directory",load_data_tmp_directory);
-    exit(EXIT_SUCCESS);
+  print_bool("help",help);
+  print_string("directory",input_directory);
+  print_string("logfile",logfile);
+  print_string("fifodir",fifo_directory);
+  print_string("load-data-tmp-directory",load_data_tmp_directory);
+  print_string("database",target_db);
+  print_bool("show-warnings",show_warnings);
+  print_bool("resume",resume);
+  print_bool("kill-at-once",kill_at_once);
+  print_bool("mysqldump",mysqldump);
+  GList *source_data_list=NULL;
+  if (source_data.exec_reset_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_reset_replica"));
+  if (source_data.exec_change_source)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_change_source"));
+  if (source_data.exec_start_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica"));
+  if (source_data.source_ssl)
+    source_data_list=g_list_append(source_data_list,g_strdup("enable_ssl"));
+  if (source_data.auto_position)
+    source_data_list=g_list_append(source_data_list,g_strdup("use_auto_position"));
+  if (source_data.exec_start_replica_until)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica_until"));
+  print_list("source-data", source_data_list, NULL);
+  print_common();
+  exit(EXIT_SUCCESS);
 }
 
 
@@ -554,9 +557,6 @@ int main(int argc, char *argv[]) {
 
   if (tables_list)
     tables = get_table_list(tables_list);
-
-  if (serial_tbl_creation)
-    max_threads_for_schema_creation=1;
 
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
