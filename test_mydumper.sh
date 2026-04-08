@@ -522,7 +522,7 @@ max-threads-for-index-creation=1
 max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
 directory=/tmp/data
-serialized-table-creation=1" > ${dynamic_myloader}
+max-threads-for-schema-creation=1" > ${dynamic_myloader}
               if [ "$keys" != "" ]
               then
                 echo $keys >> ${dynamic_myloader}
