@@ -1487,8 +1487,13 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
     engine_pos=g_strrstr(split_file[i],"ENGINE=");
     if (engine_pos){
       engine_pos+=7;
+      gchar *end_engine_pos= g_strstr_len(engine_pos,-1," ");
+      if (end_engine_pos)
+        end_engine_pos[0]='\0';
       if (g_list_find_custom(optimize_key_engines, engine_pos, (GCompareFunc)g_strcmp0))
         flag|=IS_TRX_TABLE;
+      if (end_engine_pos)
+        end_engine_pos[0]=' ';
     }
   }
   g_string_replace(create_table_statement,",\n)","\n)", 0);
