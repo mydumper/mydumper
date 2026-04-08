@@ -81,4 +81,5 @@ void write_database_checksum(FILE *mdfile, struct database_level_checksum *datab
 gboolean checksum_database(gchar *target_database, struct database_level_checksum *database_checksum, MYSQL *conn);
 gboolean checksum_dbt(gchar *target_database, gchar *source_table_name, gboolean is_view, struct table_level_checksum *table_checksum,  MYSQL *conn);
 void initilize_checksum();
+void print_checksum_help();
 #endif

@@ -99,3 +99,9 @@ void start_pmm_thread(void *conf){
     }
   }
 }
+
+void print_pmm_help(){
+  print_string("pmm-path",pmm_path);
+  print_string("pmm-resolution",pmm_resolution);
+}
+

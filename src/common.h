@@ -87,7 +87,7 @@ extern const gchar *show_replica_status;
 extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
 extern const gchar *change_replication_source;
-extern guint source_control_command;
+extern enum source_control_command source_control_command;
 extern guint throttle_max_usleep_limit;
 #ifndef _src_common_h
 #define _src_common_h
@@ -102,22 +102,6 @@ struct object_scope{
   gboolean no_index;
   gboolean no_constraint;
 };
-
-/*
-struct configuration_per_table{
-  GHashTable *all_anonymized_function;
-  GHashTable *all_where_per_table;
-  GHashTable *all_limit_per_table;
-  GHashTable *all_num_threads_per_table;
-  GHashTable *all_columns_on_select_per_table;
-  GHashTable *all_columns_on_select_replace_per_table;
-  GHashTable *all_columns_on_insert_per_table;
-  GHashTable *all_object_to_export;
-  GHashTable *all_object_to_import;
-  GHashTable *all_partition_regex_per_table;
-  GHashTable *all_rows_per_table;
-};
-*/
 
 struct M_ROW{
   MYSQL_RES *res;
@@ -160,9 +144,6 @@ void execute_gstring(MYSQL *conn, GString *ss);
 gchar *replace_escaped_strings(gchar *c);
 void escape_tab_with(gchar *to);
 void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
-//void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
-//void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
-//void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer());
 void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * conf_per_table, struct function_pointer * init_function_pointer());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
@@ -205,10 +186,11 @@ gchar *m_date_time_new_now_local();
 const char *get_thread_name(void);
 gboolean machine_log_json_enabled(void);
 
-void print_int(const char*_key, int val);
+void print_int(const char*_key, int val, gboolean comment);
 void print_string(const char*_key, const char *val);
 void print_bool(const char*_key, gboolean val);
-void print_list(const char*_key, GList *list);
+void print_list(const char*_key, GList *list, gchar* f (void *));
+void print_common();
 
 gchar *get_zstd_cmd();
 gchar *get_gzip_cmd();
@@ -240,7 +222,6 @@ extern guint g_get_num_processors (void);
 #endif
 char *show_warnings_if_possible(MYSQL *conn);
 int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);
-//void initialize_conf_per_table(struct configuration_per_table *cpt);
 void parse_object_scope(struct object_scope *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
 gchar *build_config_file_dbt_key(const gchar *a, const gchar *b);
@@ -266,3 +247,5 @@ void execute_set_names(MYSQL *conn, gchar *_set_names);
 gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
 void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision);
 void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key, gchar *any_table_key );
+GList *m_glistsplit(const gchar * str);
+

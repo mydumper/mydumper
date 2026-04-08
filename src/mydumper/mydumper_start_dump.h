@@ -36,6 +36,27 @@ enum sync_thread_lock_mode {
   SAFE_NO_LOCK
 };
 
+static inline
+const char * syncthreadlockmode2str(enum sync_thread_lock_mode stlm)
+{
+  switch (stlm) {
+    case AUTO:
+      return "AUTO";
+    case FTWRL:
+      return "FTWRL";
+    case LOCK_ALL:
+      return "LOCK_ALL";
+    case GTID:
+      return "GTID";
+    case NO_LOCK:
+      return "NO_LOCK";
+    case SAFE_NO_LOCK:
+      return "SAFE_NO_LOCK";
+  }
+  g_assert(0);
+  return 0;
+}
+
 struct MList{
   GList *list;
   GMutex *mutex;

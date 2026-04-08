@@ -42,9 +42,9 @@
 
 /* Program options */
 gchar *tidb_snapshot = NULL;
-int longquery = 60;
-int longquery_retries = 0;
-int longquery_retry_interval = 60;
+int long_query = 60;
+int long_query_retries = 0;
+int long_query_retry_interval = 60;
 int killqueries = 0;
 gboolean skip_ddl_locks= FALSE;
 gboolean no_backup_locks = FALSE;
@@ -551,7 +551,7 @@ static
 void long_query_wait(MYSQL *conn){
   char *p3=NULL;
   while (TRUE) {
-    int longquery_count = 0;
+    int long_query_count = 0;
     MYSQL_RES *res = m_store_result(conn,"SHOW PROCESSLIST", m_warning, "Could not check PROCESSLIST, no long query guard enabled");
     if (!res){
        break;
@@ -566,37 +566,37 @@ void long_query_wait(MYSQL *conn){
           continue;
         if (row[ucol] && !strcmp(row[ucol], "system user"))
           continue;
-        if (row[tcol] && atoi(row[tcol]) > longquery) {
+        if (row[tcol] && atoi(row[tcol]) > long_query) {
           if (killqueries) {
             if (m_query_warning(conn, p3 = g_strdup_printf("KILL %lu", atol(row[icol])), "Could not KILL slow query", NULL)){
-              longquery_count++;
+              long_query_count++;
             } else {
               g_warning("Killed a query that was running for %ss", row[tcol]);
             }
             g_free(p3);
           } else {
-            longquery_count++;
+            long_query_count++;
           }
         }
       }
       mysql_free_result(res);
-      if (longquery_count == 0)
+      if (long_query_count == 0)
         break;
       else {
-        if (longquery_retries == 0) {
+        if (long_query_retries == 0) {
           m_critical("There are queries in PROCESSLIST running longer than "
                      "%us, aborting dump,\n\t"
                      "use --long-query-guard to change the guard value, kill "
                      "queries (--kill-long-queries) or use \n\tdifferent "
                      "server for dump",
-                     longquery);
+                     long_query);
         }
-        longquery_retries--;
+        long_query_retries--;
         dump_summary_note_retry();
         g_warning("There are queries in PROCESSLIST running longer than "
                        "%us, retrying in %u seconds (%u left).",
-                       longquery, longquery_retry_interval, longquery_retries);
-        sleep(longquery_retry_interval);
+                       long_query, long_query_retry_interval, long_query_retries);
+        sleep(long_query_retry_interval);
       }
     }
   }

@@ -336,7 +336,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
 
       dbt->schema_state=CREATING;
       if ((!source_db || g_strcmp0(dbt->database->source_database,source_db)==0) && !no_schemas && !dbt->object_to_import.no_schema ){
-        if (serial_tbl_creation) g_mutex_lock(single_threaded_create_table);
+        if (max_threads_for_schema_creation==1) g_mutex_lock(single_threaded_create_table);
         if (machine_log_json) {
           gchar *thread_id = g_strdup_printf("%u", td->thread_id);
           machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
@@ -435,7 +435,7 @@ int process_restore_job(struct thread_data *td, struct restore_job *rj){
             }
           }
         }
-        if (serial_tbl_creation) g_mutex_unlock(single_threaded_create_table);
+        if (max_threads_for_schema_creation==1) g_mutex_unlock(single_threaded_create_table);
       }
       /* Signal waiting data workers that schema is ready */
       table_lock(dbt);

@@ -295,3 +295,21 @@ gboolean checksum_dbt(gchar *target_database, gchar *source_table_name, gboolean
   }
   return checksum_ok;
 }
+
+void print_checksum_help(){
+  print_bool("checksum-all",dump_checksums);
+  print_bool("data-checksums",data_checksums);
+  print_bool("schema-checksums",schema_checksums);
+  print_bool("no-schema-checksums",!schema_checksums);
+  print_bool("routine-checksums",routine_checksums);
+  print_bool("skip-database-checksums", skip_database_checksums);
+  print_bool("skip-data-checksums", skip_data_checksums);
+  print_bool("skip-table-checksums", skip_table_checksums);
+  print_bool("skip-index-checksums", skip_index_checksums);
+  print_bool("skip-view-checksums", skip_view_checksums);
+  print_bool("skip-trigger-checksums", skip_trigger_checksums);
+  print_bool("skip-routine-checksums", skip_routine_checksums);
+  print_bool("skip-event-checksums", skip_event_checksums);
+}
+
+

@@ -18,3 +18,4 @@
 void initialize_pmm();
 void start_pmm_thread(void *conf);
 void stop_pmm_thread();
+void print_pmm_help();
