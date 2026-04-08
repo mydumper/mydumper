@@ -312,6 +312,8 @@ test_case_dir (){
       #cat $tmp_mydumper_log
       mv $tmp_mydumper_log $mydumper_stor_dir
       backtrace
+      cat $mydumper_default_extra_file
+      cat $myloader_default_extra_file
       exit $error
     fi
   fi
@@ -380,6 +382,8 @@ test_case_dir (){
       mv $tmp_mydumper_log $mydumper_stor_dir
       mv $tmp_myloader_log $mydumper_stor_dir
       backtrace
+      cat $mydumper_default_extra_file
+      cat $myloader_default_extra_file
       exit $error
     fi
   fi
