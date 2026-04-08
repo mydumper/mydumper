@@ -472,7 +472,7 @@ prepare_database_in_directory dynamic
 
 for compress in "" "compress=GZIP" "compress=ZSTD";
 do
-  for format in "" "csv=1" "load-data=1"
+  for format in "" "format=CSV" "format=LOAD_DATA"
   do
     for rows in "" "rows=1000" "rows=10:100:10000"
     do
