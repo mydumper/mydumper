@@ -54,24 +54,32 @@ FOREIGN_KEY_CHECKS=0 /*!40114
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+
+[myloader_percona_8]
 max-threads-for-schema-creation=1
 
 [mydumper_mysql_8]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+
+[myloader_mysql_8]
 max-threads-for-schema-creation=1
 
 [mydumper_mariadb_11]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+
+[myloader_mariadb_11]
 max-threads-for-schema-creation=1
 
 [mydumper_mariadb_12]
 set-names=utf8mb4,utf8mb4
 default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
+
+[myloader_mariadb_12]
 max-threads-for-schema-creation=1
 
 [mydumper_google_8]
@@ -80,6 +88,8 @@ default-character-set=utf8mb4,utf8mb4
 load-data-character-set=binary
 skip-ddl-locks=1
 table-engine-for-view-dependency=InnoDB
+
+[myloader_google_8]
 max-threads-for-schema-creation=1
 
 #[`schema`.`table`]
