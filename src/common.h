@@ -24,10 +24,10 @@
 #define IS_ALTER_TABLE_PRESENT 8
 #define START_SLAVE "START SLAVE"
 #define START_SLAVE_SQL_THREAD "START SLAVE SQL_THREAD"
-#define CALL_START_REPLICATION "CALL mysql.rds_start_replication();"
+#define CALL_START_REPLICATION "CALL mysql.rds_start_replication()"
 #define STOP_SLAVE_SQL_THREAD "STOP SLAVE SQL_THREAD"
 #define STOP_SLAVE "STOP SLAVE"
-#define CALL_STOP_REPLICATION "CALL mysql.rds_stop_replication();"
+#define CALL_STOP_REPLICATION "CALL mysql.rds_stop_replication()"
 #define RESET_SLAVE "RESET SLAVE"
 #define CALL_RESET_EXTERNAL_MASTER "CALL mysql.rds_reset_external_master()"
 #define SHOW_SLAVE_STATUS "SHOW SLAVE STATUS"

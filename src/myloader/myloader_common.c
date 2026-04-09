@@ -156,8 +156,10 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   GString *traditional_change_source=g_string_new("");
   GString *aws_change_source=g_string_new("");
 
-  g_string_append(traditional_change_source,change_replication_source);
-  g_string_append(traditional_change_source," TO ");
+  if (change_replication_source){
+    g_string_append(traditional_change_source,change_replication_source);
+    g_string_append(traditional_change_source," TO ");
+  }
 
   gchar** group_name= g_strsplit(group, ".", 2);
   gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
