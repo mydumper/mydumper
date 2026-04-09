@@ -157,8 +157,10 @@ gboolean append_new_db_table( struct db_table **p_dbt, struct database *_databas
       dbt->is_sequence=FALSE;
       dbt->in_ready_queue=FALSE;
     }else{
-      if (is_view)
+      if (is_view){
+        dbt->is_view=TRUE;
         dbt->checksum.skip_schema=  schema_checksums?skip_view_checksums:TRUE;
+      }
       g_free(lkey);
     }
     g_mutex_unlock(__conf->table_hash_mutex);
