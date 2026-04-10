@@ -251,6 +251,9 @@ void detect_replica() {
     stop_replica=CALL_STOP_REPLICATION;
     stop_replica_sql_thread=CALL_STOP_REPLICATION;
     reset_replica=CALL_RESET_EXTERNAL_MASTER;
+    GString *str=g_string_sized_new(40);
+    g_string_printf(str,"CALL mysql.rds_set_external_%s",(get_major()>=8 && get_secondary()>0)?"source":"master");
+    change_replication_source=g_string_free(str,FALSE);
   }
 }
 
