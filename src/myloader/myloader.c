@@ -580,6 +580,7 @@ int main(int argc, char *argv[]) {
     wait_stream_to_process_metadata_header();
   }
 
+  set_session_hash_insert(set_session_hash,"AUTOCOMMIT",g_strdup("1"));
   remove_ignore_set_session_from_hash();
   refresh_set_session_from_hash(set_session,set_session_hash);
   refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
