@@ -268,10 +268,10 @@ void build_change_source_for_aws(GString *aws_change_source, struct replication_
 
   g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
 
-    if (_auto_position>0)
-    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d);\n", source_log_file, source_log_pos, _source_ssl);
-  else
+  if (_auto_position==1)
     g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
+  else
+    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d);\n", source_log_file, source_log_pos, _source_ssl);
 
   if (set_gtid_purge){
     if (! rs->gtid_purge)
