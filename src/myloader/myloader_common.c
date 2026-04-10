@@ -136,11 +136,34 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
   m_query_warning(conn, "COMMIT", "COMMIT failed");
   guint i;
   gchar** line=g_strsplit(statement, ";\n", -1);
+  MYSQL_RES *rest = NULL;
+  MYSQL_ROW row;
   for (i=0; i < g_strv_length(line);i++){
      if (strlen(line[i])>2){
        GString *str=g_string_new(line[i]);
        g_string_append_c(str,';');
-       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
+//       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
+
+       rest = m_store_result(conn, str->str, m_warning, "Sending replication command: %s", str->str);
+       if(rest){
+         while ((row = mysql_fetch_row(rest))){
+                g_message("%s", row[0]);
+        }
+         mysql_free_result(rest);
+         rest=NULL;
+       }
+       while (mysql_next_result(conn) == 0){
+         rest = mysql_store_result(conn);
+        if(rest){
+           while ((row = mysql_fetch_row(rest))){
+            g_message("%s", row[0]);
+          }
+           mysql_free_result(rest);
+           rest=NULL;
+         }
+
+       }
+
        g_string_free(str,TRUE);
      }
   }
