@@ -25,6 +25,7 @@
 #include "connection.h"
 #include "common.h"
 #include "logging.h"
+#include "server_detect.h"
 
 char *hostname = NULL;
 char *username = NULL;
@@ -292,6 +293,8 @@ void print_connection_details_once(){
 
   GString * print_body=g_string_sized_new(20);
 
+  g_string_append_printf(print_body,"\n\tProduct: %s", get_product_name());
+
   if (hostname)
     g_string_append_printf(print_body,"\n\tHost: %s", hostname);
 
@@ -339,7 +342,7 @@ void m_connect(MYSQL *conn){
     }
     m_critical("Error connection to database: %s", mysql_error(conn));
   }
-  print_connection_details_once();
+  //print_connection_details_once();
 
 //  if (set_names_statement)
     m_query_warning(conn, set_names_statement, "Not able to execute SET NAMES statement at connect", NULL);

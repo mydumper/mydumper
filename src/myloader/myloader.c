@@ -512,6 +512,7 @@ int main(int argc, char *argv[]) {
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   server_detect(conn);
+  void print_connection_details_once();
   set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){

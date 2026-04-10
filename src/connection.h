@@ -28,6 +28,6 @@ void hide_password(int argc, char *argv[]);
 void ask_password();
 void print_connection_help();
 GOptionGroup * load_connection_entries(GOptionContext *context);
-
+void print_connection_details_once();
 extern char *hostname;
 #endif
