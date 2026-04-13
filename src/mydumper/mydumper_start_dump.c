@@ -1700,7 +1700,6 @@ void start_dump(struct configuration *conf, GOptionContext *context) {
     if (exec_command!=NULL){
       wait_exec_command_to_finish();
     }else{
-      stream_queue_push(NULL, g_strdup(""));
       wait_stream_to_finish();
     }
     if (no_delete == FALSE && output_directory_str == NULL)
