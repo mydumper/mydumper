@@ -86,9 +86,11 @@ char *generic_checksum(MYSQL *conn, const gchar *query_template, ...){
   struct M_ROW *mr = m_store_result_single_row( conn, query, "Error dumping checksum (%s.%s)", database, table);
   g_free(query);
   char * r=NULL;
-  if (mr->row)
-    r=g_strdup_printf("%s",mr->row[column_number]);
-  m_store_result_row_free(mr);
+  if (mr){
+    if (mr->row)
+      r=g_strdup_printf("%s",mr->row[column_number]);
+    m_store_result_row_free(mr);
+  }
   va_end(args);
   return r;
 }
@@ -99,51 +101,54 @@ char * checksum_table(MYSQL *conn, char *database, char *table){
       1, database, table);
 }
 
+
+#define checksum_select_prefix "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(col) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ("
+
 char * checksum_table_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(CONCAT_WS(column_name, ordinal_position, data_type)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s';", 
+      checksum_select_prefix"SELECT CONCAT_WS(' ', column_name, ordinal_position, data_type) AS col, ordinal_position FROM information_schema.columns WHERE table_schema='%s' AND table_name='%s' ) AS a ORDER BY ordinal_position;",
       0, database, table);
 }
 
 char * checksum_process_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(replace(ROUTINE_DEFINITION,' ','')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s' order by ROUTINE_TYPE,ROUTINE_NAME", 
+        checksum_select_prefix"SELECT replace(ROUTINE_DEFINITION,' ','') AS col, ROUTINE_TYPE, ROUTINE_NAME FROM information_schema.routines WHERE ROUTINE_SCHEMA='%s') AS a ORDER BY ROUTINE_TYPE, ROUTINE_NAME",
       0, database, table);
 }
 
 char * checksum_trigger_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s';",
+      checksum_select_prefix"SELECT REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '') AS col FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s' AND EVENT_OBJECT_TABLE='%s') AS a;",
       0, database, table);
 }
 
 char * checksum_trigger_structure_from_database(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s';",
+      checksum_select_prefix"SELECT REPLACE(REPLACE(REPLACE(REPLACE(ACTION_STATEMENT, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '') AS col, trigger_name FROM information_schema.triggers WHERE EVENT_OBJECT_SCHEMA='%s') AS a ORDER BY trigger_name;",
       0, database, table);
 }
 
 char * checksum_view_structure(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s';",
+      checksum_select_prefix"SELECT REPLACE(VIEW_DEFINITION,TABLE_SCHEMA,'') AS col FROM information_schema.views WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s') AS a;",
       0, database, table);
 }
 
 char * checksum_database_defaults(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn,
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME)) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s' ;",
+      checksum_select_prefix"SELECT concat(DEFAULT_CHARACTER_SET_NAME,DEFAULT_COLLATION_NAME) AS col FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='%s') AS a;",
       0, database, table);
 }
 
 char * checksum_table_indexes(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn, 
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32( col ) AS UNSIGNED)), 10, 16)), 0) AS crc FROM ( SELECT CONCAT_WS(INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ORDER BY INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) A",
+      checksum_select_prefix"SELECT CONCAT_WS(' ', INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME) AS col, INDEX_NAME,SEQ_IN_INDEX,COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='%s' AND TABLE_NAME='%s' ) A ORDER BY col",
       0, database, table);
 }
 
 char * checksum_events_structure_from_database(MYSQL *conn, char *database, char *table){
   return generic_checksum(conn, 
-      "SELECT COALESCE(LOWER(CONV(BIT_XOR(CAST(CRC32(REPLACE(REPLACE(REPLACE(REPLACE(EVENT_DEFINITION, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '')) AS UNSIGNED)), 10, 16)), 0) AS crc FROM information_schema.events WHERE EVENT_SCHEMA='%s';",
+      checksum_select_prefix"SELECT REPLACE(REPLACE(REPLACE(REPLACE(EVENT_DEFINITION, CHAR(32), ''), CHAR(13), ''), CHAR(10), ''), CHAR(9), '') AS col, EVENT_NAME FROM information_schema.events WHERE EVENT_SCHEMA='%s') AS a ORDER BY EVENT_NAME;",
       0, database, table);
 }
 
