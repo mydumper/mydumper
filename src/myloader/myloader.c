@@ -599,7 +599,7 @@ int main(int argc, char *argv[]) {
     } else {
       g_message("Sending start replica until");
     }
-    execute_replication_commands(conn,replication_statements->start_replica_until->str, "Sending start replica until");
+    execute_replication_commands(conn,replication_statements->start_replica_until->str, "start replica until");
   }
 
   start_connection_pool();
@@ -772,7 +772,7 @@ int main(int argc, char *argv[]) {
     } else {
       g_message("Sending reset replica");
     }
-    execute_replication_commands(conn,replication_statements->reset_replica->str, "Sending reset replica");
+    execute_replication_commands(conn,replication_statements->reset_replica->str, "reset replica");
   }
 
   if (replication_statements->change_replication_source){
@@ -787,7 +787,7 @@ int main(int argc, char *argv[]) {
     } else {
       g_message("Sending change replication source");
     }
-    execute_replication_commands(conn,replication_statements->change_replication_source->str, "Sending change replication source");
+    execute_replication_commands(conn,replication_statements->change_replication_source->str, "change replication source");
   }
 
   if (replication_statements->gtid_purge){
@@ -802,7 +802,7 @@ int main(int argc, char *argv[]) {
     } else {
       g_message("Sending GTID Purge");
     }
-    execute_replication_commands(conn,replication_statements->gtid_purge->str, "Sending GTID Purge");
+    execute_replication_commands(conn,replication_statements->gtid_purge->str, "GTID Purge");
   }
 
   if (replication_statements->start_replica){
@@ -817,7 +817,7 @@ int main(int argc, char *argv[]) {
     } else {
       g_message("Sending start replica");
     }
-    execute_replication_commands(conn,replication_statements->start_replica->str, "Sending start replica");
+    execute_replication_commands(conn,replication_statements->start_replica->str, "start replica");
   }
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);
