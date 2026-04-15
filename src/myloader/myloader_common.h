@@ -43,6 +43,6 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix);
 void initialize_thread_data(struct thread_data*td, struct configuration *conf, enum thread_states status, guint thread_id, struct db_table *dbt);
 gboolean is_in_ignore_set_list(gchar *haystack);
 void remove_ignore_set_session_from_hash();
-void execute_replication_commands(MYSQL *conn, gchar *statement);
+void execute_replication_commands(MYSQL *conn, gchar *statement, const gchar *message);
 gboolean should_ignore_set_statement(GString *data);
 #endif
