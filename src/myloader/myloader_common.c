@@ -132,7 +132,7 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
 
 //g_list_free_full(change_master_parameter_list, g_free);
 
-void execute_replication_commands(MYSQL *conn, gchar *statement){
+void execute_replication_commands(MYSQL *conn, gchar *statement, const gchar *message){
   m_query_warning(conn, "COMMIT", "COMMIT failed");
   guint i;
   gchar** line=g_strsplit(statement, ";\n", -1);
@@ -144,7 +144,7 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
        g_string_append_c(str,';');
 //       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
 
-       rest = m_store_result(conn, str->str, m_warning, "Sending replication command: %s", str->str);
+       rest = m_store_result(conn, str->str, m_warning, "Sending replication command: %s", message);
        if(rest){
          while ((row = mysql_fetch_row(rest))){
                 g_message("%s", row[0]);
