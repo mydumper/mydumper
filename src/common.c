@@ -204,7 +204,6 @@ void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * cpt, struct fu
     if (g_str_has_prefix(groups[i],"`") && g_strstr_len(groups[i],strlen(groups[i]),"`.`") &&  g_str_has_suffix(groups[i],"`")){
       ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
-      trace("Length is %d", len2);
       for (j=0; j < len2; j++){
         trace("Reviewing %s in %s",keys[j], groups[i]);
         if (keys[j][0]== '`' && g_strstr_len(keys[j]+1,-1,"`")){// && keys[j][strlen(keys[j])-1]=='`'){
