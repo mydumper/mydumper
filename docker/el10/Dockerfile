@@ -1,4 +1,8 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using AlmaLinux 10
+# Full Support: Expected to last 5 years from release, typically until 2030.
+# Maintenance Support: Expected to last until approximately 2035.
+# Extended Life Cycle Support (ELS): Projected until roughly 2038. 
+
 FROM almalinux:10 as builder
 
 ARG DEBIAN_FRONTEND=noninteractive
