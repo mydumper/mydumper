@@ -25,10 +25,11 @@ RUN \
   . /etc/os-release && \
   curl --fail --location --show-error --silent --output /tmp/mysql-apt-config.deb https://repo.mysql.com/mysql-apt-config.deb && \
   sudo dpkg -i /tmp/mysql-apt-config.deb && \
-  rm -v /tmp/mysql-apt-config.deb /tmp/fresh.asc && \
+  rm -v /tmp/mysql-apt-config.deb && \
   sudo apt-get update
 
-#   curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
+#  curl -fsSL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0xB7B3B788A8D3785C" -o /tmp/fresh.asc && \
 #  sudo gpg --import /tmp/fresh.asc && \
 #  sudo rm -f /usr/share/keyrings/mysql-apt-config.gpg && \
 #  sudo gpg --output /usr/share/keyrings/mysql-apt-config.gpg --export BCA43417C3B485DD128EC6D4B7B3B788A8D3785C && \
+#  rm -v /tmp/fresh.asc && \
