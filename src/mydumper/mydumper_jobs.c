@@ -296,7 +296,7 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   GString *alter_table_constraint_statement=g_string_sized_new(statement_size);
   GString *create_table_statement=g_string_sized_new(statement_size);
   int flag = global_process_create_table_statement(statement->str, create_table_statement, alter_table_statement, alter_table_constraint_statement, dbt->table, TRUE);
-  if ( !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode!=NO_LOCK){
+  if ( !dbt->is_view && !(flag & IS_TRX_TABLE) && trx_tables && sync_thread_lock_mode!=NO_LOCK){
     m_critical("Non transactional table found: `%s`.`%s` on a consistent backup attempt. Restart backup using --trx-tables=0 to indicate that you have non transactional tables.", dbt->database->source_database, dbt->table);
   }
 
@@ -521,13 +521,13 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
 //  escaped_name[strlen(escaped_name)]='\0';
 //  m_replace_char_with_char(identifier_quote_character, fields_escaped_by?*fields_escaped_by:'\\', escaped_name, strlen(escaped_name));
   m_escape_char_with_char(identifier_quote_character, (fields_escaped_by?*fields_escaped_by:(identifier_quote_character==BACKTICK?BACKTICK:'\\')), escaped_name, strlen(escaped_name));
-  g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, escaped_name, identifier_quote_character);
+  g_string_append_printf(statement, "%c%s%c %s", identifier_quote_character, escaped_name, identifier_quote_character, row[1]);
   g_free(escaped_name);
   while ((row = mysql_fetch_row(result))) {
     g_string_append(statement, ",\n");
     escaped_name=escape_string(conn, row[0]);
     m_escape_char_with_char(identifier_quote_character, (fields_escaped_by?*fields_escaped_by:(identifier_quote_character==BACKTICK?BACKTICK:'\\')), escaped_name, strlen(escaped_name));
-    g_string_append_printf(statement, "%c%s%c int", identifier_quote_character, escaped_name, identifier_quote_character);
+    g_string_append_printf(statement, "%c%s%c %s", identifier_quote_character, escaped_name, identifier_quote_character, row[1]);
     g_free(escaped_name);
   }
   g_string_append(statement, "\n) ENGINE=");
@@ -551,64 +551,68 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_set_size(statement, 0);
 
   // real view
-  query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->source_database, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
-  struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping view (%s.%s)", dbt->database->source_database, dbt->table);
-  g_free(query);
-  if (!mr->res || !mr->row){
+  if (view_filename){
+    query = g_strdup_printf("SHOW CREATE VIEW %c%s%c.%c%s%c", identifier_quote_character, dbt->database->source_database, identifier_quote_character, identifier_quote_character, dbt->table, identifier_quote_character);
+    struct M_ROW *mr = m_store_result_single_row(conn, query, "Error dumping view (%s.%s)", dbt->database->source_database, dbt->table);
+    g_free(query);
+    if (!mr->res || !mr->row){
+      m_store_result_row_free(mr);
+      return;
+    }
+
+    outfile = m_open(&view_filename,"w");
+    if (!outfile) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                           "dump_view", "create_view", "failed",
+                           dbt->database->source_database, dbt->table, view_filename, errno);
+       g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->source_database,
+                 errno);
+      errors++;
+      return;
+    }
+
+    initialize_sql_statement(statement);
+    g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
+    g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
+
+    if (!write_data(outfile, statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view preamble",
+                           "dump_view", "create_view", "failed",
+                           dbt->database->source_database, dbt->table, view_filename, errno);
+      g_critical("Could not write schema data for %s.%s", dbt->database->source_database, dbt->table);
+      errors++;
+      return;
+    }
+
+    g_string_set_size(statement, 0);
+
+    set_charset(statement, mr->row[2], mr->row[3]);
+
+    GString *tmp_statement =  g_string_new(mr->row[1]);
+
+    update_definer(tmp_statement, replace_definer_str, skip_definer);
+
+    g_string_append_printf(statement, "%s", tmp_statement->str);
+    g_string_free(tmp_statement, TRUE);
+
+    g_string_append(statement, ";\n");
+    restore_charset(statement);
+    if (!write_data(outfile, statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view definition",
+                           "dump_view", "create_view", "failed",
+                           dbt->database->source_database, dbt->table, view_filename, errno);
+      g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
+      errors++;
+    }
+
+    m_close(0, outfile, view_filename, 1, dbt);
+
+    if (!dbt->checksum.skip_schema)
+      dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_view_structure);
     m_store_result_row_free(mr);
-    return;
   }
-
-  outfile = m_open(&view_filename,"w");
-  if (!outfile) {
-    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
-                         "dump_view", "create_view", "failed",
-                         dbt->database->source_database, dbt->table, view_filename, errno);
-    g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->source_database,
-               errno);
-    errors++;
-    return;
-  }
-
-  initialize_sql_statement(statement);
-  g_string_append_printf(statement, "DROP TABLE IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
-  g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
-
-  if (!write_data(outfile, statement)) {
-    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view preamble",
-                         "dump_view", "create_view", "failed",
-                         dbt->database->source_database, dbt->table, view_filename, errno);
-    g_critical("Could not write schema data for %s.%s", dbt->database->source_database, dbt->table);
-    errors++;
-    return;
-  }
-
-  g_string_set_size(statement, 0);
-
-  set_charset(statement, mr->row[2], mr->row[3]);
-
-  GString *tmp_statement =  g_string_new(mr->row[1]);
-
-  update_definer(tmp_statement, replace_definer_str, skip_definer);
-
-  g_string_append_printf(statement, "%s", tmp_statement->str);
-
-  g_string_append(statement, ";\n");
-  restore_charset(statement);
-  if (!write_data(outfile, statement)) {
-    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view definition",
-                         "dump_view", "create_view", "failed",
-                         dbt->database->source_database, dbt->table, view_filename, errno);
-    g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
-    errors++;
-  }
-
-  m_close(0, outfile, view_filename, 1, dbt);
   g_string_free(statement, TRUE);
-  m_store_result_row_free(mr);
 
-  if (!dbt->checksum.skip_schema)
-    dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_view_structure);
   return;
 }
 
