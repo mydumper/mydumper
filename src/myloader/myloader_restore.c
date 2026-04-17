@@ -33,6 +33,7 @@
 #include "myloader_process.h"
 #include "myloader_restore.h"
 #include "myloader_database.h"
+#include "../logging.h"
 
 extern gboolean dry_run;
 
@@ -56,6 +57,50 @@ struct load_data_sync {
   GCond *cond;
   gboolean ready;  /* TRUE when .dat file has been received */
 };
+
+static void emit_restore_file_event(GLogLevelFlags level, const gchar *message,
+                                    const gchar *event, const gchar *phase,
+                                    const gchar *status, struct thread_data *td,
+                                    struct connection_data *cd,
+                                    const gchar *filename, guint line_from,
+                                    guint line_to, gint error_code) {
+  gchar *thread_id = NULL;
+  gchar *connection_id = NULL;
+  gchar *line_from_text = NULL;
+  gchar *line_to_text = NULL;
+  gchar *error_text = NULL;
+
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  thread_id = td != NULL ? g_strdup_printf("%u", td->thread_id) : NULL;
+  connection_id = cd != NULL ? g_strdup_printf("%ld", cd->connection_id) : NULL;
+  line_from_text = line_from > 0 ? g_strdup_printf("%u", line_from) : NULL;
+  line_to_text = line_to > 0 ? g_strdup_printf("%u", line_to) : NULL;
+  error_text = error_code > 0 ? g_strdup_printf("%d", error_code) : NULL;
+
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", event,
+                    "PHASE", phase,
+                    "STATUS", status,
+                    "THREAD_ID", thread_id != NULL ? thread_id : "",
+                    "CONNECTION_ID", connection_id != NULL ? connection_id : "",
+                    "FILENAME", filename != NULL ? filename : "",
+                    "LINE_FROM", line_from_text != NULL ? line_from_text : "",
+                    "LINE_TO", line_to_text != NULL ? line_to_text : "",
+                    "ERROR_CODE", error_text != NULL ? error_text : "",
+                    "RETRYABLE", "false",
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+
+  g_free(thread_id);
+  g_free(connection_id);
+  g_free(line_from_text);
+  g_free(line_to_text);
+  g_free(error_text);
+}
 
 void *restore_thread(MYSQL *thrconn);
 struct statement release_connection_statement = {0, 0, NULL, NULL, CLOSE, FALSE, NULL, 0, NULL, NULL};
@@ -132,7 +177,7 @@ struct connection_data *new_connection_data(MYSQL *thrconn){
   cd->ready=g_async_queue_new();
   cd->queue=NULL;
   cd->in_use=g_mutex_new();
-  g_message("Executing set session");
+  trace("Executing set session");
   execute_gstring(cd->thrconn, set_session);
   g_async_queue_push(connection_pool,cd);
   return cd;
@@ -187,7 +232,8 @@ void wait_restore_threads_to_close(){
 }
 
 void reconnect_connection_data(struct connection_data *cd){
-  mysql_close(cd->thrconn);
+  if (cd->thrconn != NULL)
+    mysql_close(cd->thrconn);
   cd->thrconn=mysql_init(NULL);
   m_connect(cd->thrconn);
   cd->connection_id=mysql_thread_id(cd->thrconn);
@@ -195,21 +241,80 @@ void reconnect_connection_data(struct connection_data *cd){
   execute_gstring(cd->thrconn, set_session);
 }
 
-int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter)
+gboolean release_idle_connection_if_possible(){
+  struct connection_data *cd = g_async_queue_try_pop(connection_pool);
+  if (cd == NULL)
+    return FALSE;
+
+  if (cd->thrconn != NULL) {
+    trace("Closing idle connection: %ld", cd->connection_id);
+    mysql_close(cd->thrconn);
+    cd->thrconn = NULL;
+    cd->connection_id = 0;
+    cd->current_database = NULL;
+  }
+
+  g_async_queue_push(connection_pool, cd);
+  return TRUE;
+}
+
+static
+int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *data, gboolean is_schema, guint *query_counter, guint offset_line, guint current_offset_line)
 {
   if (!dry_run){
   guint en=mysql_real_query(cd->thrconn, data->str, data->len);
   if (en) {
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+      gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "restore statement failed",
+                        "EVENT", "restore_sql",
+                        "PHASE", is_schema ? "restore_schema" : "restore_data",
+                        "STATUS", "failed",
+                        "THREAD_ID", thread_id,
+                        "CONNECTION_ID", connection_id,
+                        "MYSQL_ERRNO", mysql_errno_text,
+                        "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                        "STATEMENT", data->str,
+                        "RETRYABLE", "true",
+                        "FATAL", "false",
+                        NULL);
+      g_free(thread_id);
+      g_free(connection_id);
+      g_free(mysql_errno_text);
+    }
     if (is_schema)
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
     else{
-      g_warning("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+      g_warning("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
     }
 
     if ( mysql_errno(cd->thrconn) != 0 && !should_ignore_error_code(mysql_errno(cd->thrconn))){
       if (mysql_ping(cd->thrconn)) {
         reconnect_connection_data(cd);
         if (!is_schema && commit_count > 1) {
+          if (machine_log_json_enabled()) {
+            gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+            gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+            gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+            machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
+                              "MESSAGE", "restore connection lost",
+                              "EVENT", "restore_sql",
+                              "PHASE", "restore_data",
+                              "STATUS", "failed",
+                              "THREAD_ID", thread_id,
+                              "CONNECTION_ID", connection_id,
+                              "MYSQL_ERRNO", mysql_errno_text,
+                              "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                              "RETRYABLE", "false",
+                              "FATAL", "true",
+                              NULL);
+            g_free(thread_id);
+            g_free(connection_id);
+            g_free(mysql_errno_text);
+          }
           g_critical("Thread %ld using connection %ld - ERROR %d: Lost connection error. %s", cd->thread_id, cd->connection_id,  mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
           errors++;
           return 2;
@@ -218,10 +323,31 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 
       g_atomic_int_inc(&(detailed_errors.retries));
       if (mysql_real_query(cd->thrconn, data->str, data->len)) {
+        if (machine_log_json_enabled()) {
+          gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+          gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+          gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(cd->thrconn));
+          machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
+                            "MESSAGE", "restore retry failed",
+                            "EVENT", "restore_sql",
+                            "PHASE", is_schema ? "restore_schema" : "restore_data",
+                            "STATUS", "failed",
+                            "THREAD_ID", thread_id,
+                            "CONNECTION_ID", connection_id,
+                            "MYSQL_ERRNO", mysql_errno_text,
+                            "SQLSTATE", mysql_sqlstate(cd->thrconn),
+                            "STATEMENT", data->str,
+                            "RETRYABLE", "false",
+                            "FATAL", "true",
+                            NULL);
+          g_free(thread_id);
+          g_free(connection_id);
+          g_free(mysql_errno_text);
+        }
         if (is_schema)
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s\n%s", cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn), data->str);
+          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s\n%s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn), data->str);
         else{
-          g_critical("Thread %ld using connection %ld - ERROR %d: %s"    , cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), mysql_error(cd->thrconn));
+          g_critical("Thread %ld using connection %ld - ERROR %d: Error occurs between lines: %d and %d: %s",cd->thread_id, cd->connection_id, mysql_errno(cd->thrconn), offset_line, current_offset_line, mysql_error(cd->thrconn));
         }
         errors++;
         return 1;
@@ -235,10 +361,47 @@ int restore_data_in_gstring_by_statement(struct connection_data *cd, GString *da
 }
 
 void setup_connection(struct connection_data *cd, struct thread_data *td, struct io_restore_result *io_restore_result , gboolean start_transaction, struct database *use_database, GString *header){
+  if (cd->thrconn == NULL) {
+    cd->thrconn = mysql_init(NULL);
+    m_connect(cd->thrconn);
+    cd->connection_id = mysql_thread_id(cd->thrconn);
+    cd->current_database = NULL;
+    execute_gstring(cd->thrconn, set_session);
+  }
   trace("Thread %d: Connection %ld granted", td->thread_id, cd->connection_id);
   if (mysql_ping(cd->thrconn)) {
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%d", td->thread_id);
+      gchar *connection_id = g_strdup_printf("%ld", cd->connection_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "connection failed",
+                        "EVENT", "restore_connection",
+                        "PHASE", "restore_data",
+                        "STATUS", "failed",
+                        "THREAD_ID", thread_id,
+                        "CONNECTION_ID", connection_id,
+                        "RETRYABLE", "true",
+                        "FATAL", "false",
+                        NULL);
+      g_free(thread_id);
+      g_free(connection_id);
+    }
     g_warning("Thread %d: Connection %ld failed", td->thread_id, cd->connection_id);
     reconnect_connection_data(cd);
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%d", td->thread_id);
+      gchar *connection_id = g_strdup_printf("%ld", cd->connection_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "new connection established",
+                        "EVENT", "restore_connection",
+                        "PHASE", "restore_data",
+                        "STATUS", "finished",
+                        "THREAD_ID", thread_id,
+                        "CONNECTION_ID", connection_id,
+                        NULL);
+      g_free(thread_id);
+      g_free(connection_id);
+    }
     g_warning("Thread %d: New connection %ld established", td->thread_id, cd->connection_id);
   }
   cd->thread_id=td->thread_id;
@@ -290,6 +453,7 @@ int m_commit_and_start_transaction(struct connection_data *cd, guint* query_coun
   return 0;
 }
 
+static
 int restore_insert(struct connection_data *cd, struct thread_data*td,
                   GString *data, guint *query_counter, guint offset_line, struct db_table *dbt)
 {
@@ -339,7 +503,7 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
         transaction_size=0;
       }
       transaction_size+=new_insert->len;
-      tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter);
+      tr=restore_data_in_gstring_by_statement(cd, new_insert, FALSE, query_counter, offset_line, current_offset_line);
       g_usleep(throttle_time);
       table_lock(dbt);
       dbt->rows_inserted+=current_rows;
@@ -350,9 +514,19 @@ int restore_insert(struct connection_data *cd, struct thread_data*td,
       }
 
       if (tr > 0){
+        emit_restore_file_event(G_LOG_LEVEL_CRITICAL,
+                                "split insert failed",
+                                "restore_insert", "restore_data", "failed",
+                                td, cd, NULL, offset_line, current_offset_line,
+                                mysql_errno(cd->thrconn));
         g_error("Thread %d with connection %ld: Error occurs between lines: %d and %d in a splited INSERT: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line,mysql_error(cd->thrconn));
       }
       if (mysql_warning_count(cd->thrconn)){
+        emit_restore_file_event(G_LOG_LEVEL_WARNING,
+                                "insert warnings found",
+                                "restore_insert", "restore_data", "warning",
+                                td, cd, NULL, offset_line, current_offset_line,
+                                mysql_warning_count(cd->thrconn));
         g_warning("Thread %d with connection %ld: Warnings found during INSERT between lines: %d and %d: %s",td->thread_id, cd->connection_id, offset_line,current_offset_line, show_warnings_if_possible(cd->thrconn));
         detailed_errors.data_warnings+=mysql_warning_count(cd->thrconn);
       }
@@ -395,6 +569,11 @@ void *restore_thread(MYSQL *thrconn){
         if (ir->result>0){
           ir->error=g_strdup(mysql_error(cd->thrconn));
           ir->error_number=mysql_errno(cd->thrconn);
+          emit_restore_file_event(max_errors && errors > max_errors ? G_LOG_LEVEL_CRITICAL : G_LOG_LEVEL_CRITICAL,
+                                  "restore statement processing failed",
+                                  "restore_statement", ir->filename == NULL ? "restore_data" : "restore_file",
+                                  "failed", ir->td, cd, ir->filename, ir->preline, 0,
+                                  mysql_errno(cd->thrconn));
           // FIXME: CLI option for max_errors (and AUTO for --identifier-quote-character), test
           // TODO: max_errrors is not being used at the moment
     	    if (max_errors && errors > max_errors) {
@@ -413,7 +592,7 @@ void *restore_thread(MYSQL *thrconn){
         }
         g_async_queue_push(cd->queue->result,ir);
       }else{
-        ir->result=restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter);
+        ir->result=restore_data_in_gstring_by_statement(cd, ir->buffer, ir->is_schema, &query_counter, ir->preline, 0); //current_offset_line);
         if (ir->result>0){
           ir->error=g_strdup(mysql_error(cd->thrconn));
           ir->error_number=mysql_errno(cd->thrconn);
@@ -571,6 +750,9 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
   g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
 
   if (!infile) {
+    emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot open restore file",
+                            "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                            "failed", td, NULL, filename, 0, 0, errno);
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return 1;
@@ -601,10 +783,16 @@ int restore_data_from_mysqldump_file(struct thread_data *td, const char *filenam
         g_string_set_size(data, 0);
         preline=line+1;
         if (ir->result>0){
+          emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "restore file processing failed",
+                                  "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                                  "failed", td, cd, filename, preline, line, ir->error_number);
           g_critical("(1)Error occurs processing file %s",filename);
         }
       }
     } else {
+      emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "error reading restore file",
+                              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                              "failed", td, cd, filename, line, 0, errno);
       g_critical("error reading file %s (%d)", filename, errno);
       errors++;
       return errno;
@@ -646,6 +834,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
   g_log_set_always_fatal(G_LOG_LEVEL_ERROR|G_LOG_LEVEL_CRITICAL);
 
   if (!infile) {
+    emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot open restore file",
+                            "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                            "failed", td, NULL, filename, 0, 0, errno);
     g_critical("cannot open file %s (%d)", filename, errno);
     errors++;
     return 1;
@@ -726,6 +917,9 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
               load_data_fifo_filename=new_load_data_fifo_filename;
             }
             if (mkfifo(load_data_fifo_filename,0666)){
+              emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "cannot create named pipe",
+                                      "restore_fifo", "restore_data_file", "failed",
+                                      td, cd, load_data_fifo_filename, 0, 0, errno);
               g_critical("cannot create named pipe %s (%d)", load_data_fifo_filename, errno);
             }
             //load_data_child_pid = 
@@ -787,14 +981,21 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
         }
 
         r|= ir->result;
-        if (ir->result>0)
+        if (ir->result>0) {
+          emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "restore file processing failed",
+                                  "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                                  "failed", td, cd, filename, preline, line, ir->error_number);
           g_critical("(1)Error occurs processing file %s",filename);
+        }
 
 STMT_IGNORED:
         g_string_set_size(data, 0);
         preline=line+1;
       }
     } else {
+      emit_restore_file_event(G_LOG_LEVEL_CRITICAL, "error reading restore file",
+                              "restore_file", is_schema ? "restore_schema_file" : "restore_data_file",
+                              "failed", td, cd, filename, line, 0, errno);
       g_critical("error reading file %s (%d)", filename, errno);
       errors++;
       return errno;
@@ -838,7 +1039,7 @@ int restore_data_in_gstring_extended(struct thread_data *td, GString *data, gboo
     gchar** line=g_strsplit(data->str, ";\n", -1);
     for (i=0; i < (int)g_strv_length(line);i++){
        if (strlen(line[i])>2){
-          assign_statement(ir, td, td->dbt, line[i], 0, is_schema, OTHER);
+          assign_statement(ir, td, td->dbt, line[i], i, is_schema, OTHER);
           if(ir->error)
             g_free(ir->error);
           ir->error=NULL;

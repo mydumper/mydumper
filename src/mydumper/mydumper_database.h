@@ -21,17 +21,11 @@ struct database {
   gchar *source_database;
   gchar *source_database_escaped;
   gchar *database_name_in_filename;
-//  GMutex *ad_mutex;
-//  gboolean already_dumped;
-  gchar *schema_checksum;
-  gchar *post_checksum;
-  gchar *triggers_checksum;
-  gchar *events_checksum;
+  struct database_level_checksum checksum;
   gboolean dump_triggers;
 };
 
 void initialize_database();
-//struct database * new_database(MYSQL *conn, char *database_name, gboolean already_dumped);
 struct database * get_database(MYSQL *conn, char *database_name, gboolean create_job);
 void free_databases();
 void write_database_on_disk(FILE *mdfile);

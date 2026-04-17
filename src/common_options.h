@@ -15,13 +15,27 @@
     Authors:        Andrew Hutchings, MariaDB Foundation (andrew at mariadb dot org)
 */
 
-
+#ifndef _src_common_options_h
+#define _src_common_options_h
 
 
 #define BACKTICK '`'
 #define DOUBLE_QUOTE '"'
-#define TRADITIONAL 0
-#define AWS 1
+
+enum source_control_command { TRADITIONAL, AWS};
+
+static inline
+const char * sourcecontrolcommand2str(enum source_control_command pm)
+{
+  switch (pm) {
+    case TRADITIONAL:
+      return "TRADITIONAL";
+    case AWS:
+      return "AWS";
+  }
+  g_assert(0);
+  return 0;
+}
 
 extern char identifier_quote_character;
 extern const char *identifier_quote_character_str;
@@ -43,14 +57,14 @@ extern guint throttle_value;
 extern guint throttle_time;
 extern gchar *pmm_resolution;
 extern gchar *pmm_path;
+extern gboolean machine_log_json;
 
 extern GOptionEntry common_filter_entries[];
 extern GOptionEntry common_connection_entries[];
 extern GOptionEntry common_entries[];
 extern GOptionEntry pmm_entries[]; 
+extern GOptionEntry common_checksum_entries[];
 
-#ifndef _src_common_options_h
-#define _src_common_options_h
 struct replication_settings{
   gboolean enabled;
   gboolean exec_start_replica;
@@ -63,3 +77,5 @@ struct replication_settings{
 #endif
 
 gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error);
+GList *build_list_from_replica_options(struct replication_settings *rep_set);
+

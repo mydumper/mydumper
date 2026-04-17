@@ -26,6 +26,7 @@
 #include "myloader_process.h"
 #include "myloader_common.h"
 #include "myloader_global.h"
+#include "../logging.h"
 
 GAsyncQueue *metadata_sync_queue=NULL;
 
@@ -40,7 +41,16 @@ void wait_directory_to_process_metadata(){
 
 void release_directory_metadata_lock(){
   g_async_queue_push(metadata_sync_queue,GINT_TO_POINTER(1));
-  g_message("metadata pushed");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "metadata pushed",
+                      "EVENT", "metadata_ready",
+                      "PHASE", "startup",
+                      "STATUS", "finished",
+                      NULL);
+  } else {
+    g_message("metadata pushed");
+  }
 }
 
 void *process_directory(struct configuration *conf){
@@ -56,10 +66,32 @@ void *process_directory(struct configuration *conf){
     // metadata needs to be processed at the begining, that is why we are pushing into the queue
     // before reading the whole directory and excluding it after.
     process_filename_push(g_strdup("metadata"));
-  }else
+  }else {
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_ERROR,
+                        "MESSAGE", "metadata file was not found",
+                        "EVENT", "metadata_ready",
+                        "PHASE", "startup",
+                        "STATUS", "failed",
+                        "FILENAME", "metadata",
+                        "FATAL", "true",
+                        "RETRYABLE", "false",
+                        NULL);
+    }
     g_error("metadata file was not found");
+  }
   if (resume){
-    g_message("Using resume file");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Using resume file",
+                        "EVENT", "resume_file",
+                        "PHASE", "startup",
+                        "STATUS", "started",
+                        "FILENAME", "resume",
+                        NULL);
+    } else {
+      g_message("Using resume file");
+    }
     FILE *file = g_fopen("resume", "r");
     GString *data=g_string_sized_new(256);
     gboolean eof = FALSE;
@@ -82,11 +114,11 @@ void *process_directory(struct configuration *conf){
   }else{
     GDir *dir = g_dir_open(directory, 0, &error);
     while ((filename = g_dir_read_name(dir))){
-      if (strcmp(filename, "metadata"))
+      if (should_queue_filename(filename, conf->table_list_mutex))
         process_filename_push(filename);
     }
+    g_dir_close(dir);
   }
   process_filename_queue_end();
   return NULL;
 }
-

@@ -1,4 +1,7 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# CentOS 7
+# RHEL 7 (End of Maintenance): June 30, 2024. Normal updates ceased.
+# RHEL 7 ELS (Extended Support): Available for the 7.9 release until May 31, 2029.
+
 FROM centos:7 as builder
 
 ARG DEBIAN_FRONTEND=noninteractive

@@ -246,7 +246,7 @@ test_case_dir (){
   myloader_clean_database="${DIR}/clean_databases.sql"
 
   mydumper_parameters="$log_level --logfile $tmp_mydumper_log --user $mysql_user --checksum-all --defaults-extra-file=${mydumper_default_extra_file}"
-  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user                --defaults-extra-file=${myloader_default_extra_file}"
+  myloader_parameters="$log_level --logfile $tmp_myloader_log --user $mysql_user --checksum-all --checksum=fail --defaults-extra-file=${myloader_default_extra_file}"
 
   mydumper_execute=0;
   if [ -f $mydumper_default_extra_file ]
@@ -312,6 +312,8 @@ test_case_dir (){
       #cat $tmp_mydumper_log
       mv $tmp_mydumper_log $mydumper_stor_dir
       backtrace
+      cat $mydumper_default_extra_file
+      cat $myloader_default_extra_file
       exit $error
     fi
   fi
@@ -380,6 +382,8 @@ test_case_dir (){
       mv $tmp_mydumper_log $mydumper_stor_dir
       mv $tmp_myloader_log $mydumper_stor_dir
       backtrace
+      cat $mydumper_default_extra_file
+      cat $myloader_default_extra_file
       exit $error
     fi
   fi
@@ -468,7 +472,7 @@ prepare_database_in_directory dynamic
 
 for compress in "" "compress=GZIP" "compress=ZSTD";
 do
-  for format in "" "csv=1" "load-data=1"
+  for format in "" "format=CSV" "format=LOAD_DATA"
   do
     for rows in "" "rows=1000" "rows=10:100:10000"
     do
@@ -522,7 +526,7 @@ max-threads-for-index-creation=1
 max-threads-for-post-actions=1
 fifodir=/tmp/fifodir
 directory=/tmp/data
-serialized-table-creation=1" > ${dynamic_myloader}
+max-threads-for-schema-creation=1" > ${dynamic_myloader}
               if [ "$keys" != "" ]
               then
                 echo $keys >> ${dynamic_myloader}

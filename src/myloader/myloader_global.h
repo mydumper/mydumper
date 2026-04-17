@@ -22,14 +22,7 @@ extern gboolean program_version;
 extern guint verbose;
 extern gboolean debug;
 
-enum checksum_modes {
-  CHECKSUM_SKIP= 0,
-  CHECKSUM_WARN,
-  CHECKSUM_FAIL
-};
-
 extern gboolean disable_redo_log;
-extern enum checksum_modes checksum_mode;
 extern enum purge_mode purge_mode;
 extern GString *set_global;
 extern GString *set_global_back;
@@ -52,7 +45,6 @@ extern gboolean no_delete;
 extern gboolean overwrite_tables;
 extern gboolean overwrite_unsafe;
 extern gboolean resume;
-extern gboolean serial_tbl_creation;
 extern gboolean shutdown_triggered;
 extern gboolean skip_definer;
 extern gchar *replace_definer;
@@ -64,8 +56,6 @@ extern gboolean stream;
 extern gchar *compress_extension;
 extern gchar *target_db;
 extern gchar *directory;
-extern gchar *pmm_path;
-extern gchar *pmm_resolution ;
 extern gchar *source_db;
 extern gchar *tables_skiplist_file;
 extern GHashTable *database_hash;
@@ -92,15 +82,13 @@ extern gchar *exec_per_thread;
 extern gchar *exec_per_thread_extension;
 extern gchar **exec_per_thread_cmd;
 
-//extern guint index_threads_counter;
 extern GMutex *index_mutex;
 extern gchar *optimize_keys_str;
 extern gchar *checksum_str;
 extern gboolean no_stream;
 extern gchar *ignore_errors;
 extern gboolean kill_at_once;
-extern struct configuration_per_table conf_per_table;
-extern guint source_control_command;
+extern GHashTable *conf_per_table;
 extern struct replication_settings replica_data;
 extern struct replication_settings source_data;
 extern gboolean set_gtid_purge;

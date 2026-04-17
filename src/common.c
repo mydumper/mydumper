@@ -29,9 +29,14 @@
 #include "config.h"
 #include "connection.h"
 #include "common_options.h"
+#include "logging.h"
 //#include "mydumper_global.h"
 
 extern gboolean help;
+extern gboolean dry_run;
+extern gchar *server_version_arg;
+extern gboolean program_version;
+extern guint verbose;
 
 guint optimize_keys_batchsize=0;
 guint errors=0;
@@ -41,7 +46,7 @@ GAsyncQueue *stream_queue = NULL;
 gboolean use_defer= FALSE;
 gboolean check_row_count= FALSE;
 extern gboolean dry_run;
-extern gchar **optimize_key_engines;
+extern GList* optimize_key_engines;
 guint throttle_time=0;
 guint throttle_max_usleep_limit=60000000;
 
@@ -185,7 +190,7 @@ void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const 
 }
 
 //struct function_pointer * init_function_pointer(gchar *value);
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * cpt, struct function_pointer * init_function_pointer(gchar*))
+void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * cpt, struct function_pointer * init_function_pointer(gchar*))
 {
   gsize len=0,len2=0;
   gchar **groups=g_key_file_get_groups(kf,&len);
@@ -194,81 +199,137 @@ void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_ta
   guint i=0,j=0;
   gchar *value=NULL;
   gchar **keys=NULL;
+  GHashTable * local_cpt=NULL;
   for (i=0; i < len; i++){
     if (g_str_has_prefix(groups[i],"`") && g_strstr_len(groups[i],strlen(groups[i]),"`.`") &&  g_str_has_suffix(groups[i],"`")){
       ht=g_hash_table_new_full ( g_str_hash, g_str_equal, g_free, NULL );
       keys=g_key_file_get_keys(kf,groups[i], &len2, &error);
       for (j=0; j < len2; j++){
-        if (keys[j][0]== '`' && keys[j][strlen(keys[j])-1]=='`'){
+        trace("Reviewing %s in %s",keys[j], groups[i]);
+        if (keys[j][0]== '`' && g_strstr_len(keys[j]+1,-1,"`")){// && keys[j][strlen(keys[j])-1]=='`'){
           // keys contains a masquerade column
           if (init_function_pointer){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             struct function_pointer *fp = init_function_pointer(value);
-            gchar *column_key=g_strndup(keys[j]+1,strlen(keys[j])-2);
+            gchar *column_key=g_strndup(keys[j]+1,g_strstr_len(keys[j]+1,-1,"`")-keys[j]-1);
             GList *column_key_list = g_hash_table_lookup(ht, column_key);
             column_key_list=g_list_append(column_key_list,fp);
-            trace("Inserting function into %s in %s", groups[i], keys[j]);
+            trace("Inserting function into %s in %s", groups[i], column_key);
             g_hash_table_insert(ht,column_key, column_key_list);
 					}
         }else{
-          if (g_strcmp0(keys[j],"where") == 0){
+          if ((g_strcmp0(keys[j],WHERE) == 0) ||
+              (g_strcmp0(keys[j],LIMIT) == 0) ||
+              (g_strcmp0(keys[j],NUM_THREADS) == 0) ||
+              (g_strcmp0(keys[j],COLUMNS_ON_SELECT) == 0) ||
+              (g_strcmp0(keys[j],COLUMNS_ON_INSERT) == 0) ||
+              (g_strcmp0(keys[j],OBJECT_TO_EXPORT) == 0) ||
+              (g_strcmp0(keys[j],OBJECT_TO_IMPORT) == 0) ||
+              (g_strcmp0(keys[j],ROWS) == 0)
+             ){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_where_per_table, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"limit") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_limit_per_table, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"num_threads") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_num_threads_per_table, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"columns_on_select") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_columns_on_select_per_table, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"columns_on_select_replace") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            gchar **value_list=g_strsplit(value,",`",0);
-            guint ii=0;
-            GHashTable *column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
-            for(ii=0; ii< g_strv_length(value_list);ii++){
-              gchar **kv=g_strsplit(value_list[ii],":",2);
-              if (ii>0)
-                g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
-              else
-                g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
-              g_strfreev(kv);
+            local_cpt=g_hash_table_lookup(cpt, keys[j]);
+            if (!local_cpt){
+              local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+              g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
             }
-            g_hash_table_insert(cpt->all_columns_on_select_replace_per_table, g_strdup(groups[i]), column_replace_hash);
-            g_strfreev(value_list);
+            g_hash_table_insert(local_cpt, g_strdup(groups[i]), g_strdup(value));
           }
-          if (g_strcmp0(keys[j],"columns_on_insert") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_columns_on_insert_per_table, g_strdup(groups[i]), g_strdup(value));
+          if (g_str_has_prefix(keys[j],COLUMNS_ON_SELECT_REPLACE)){
+            GHashTable *column_replace_hash=NULL; 
+            if (g_strcmp0(keys[j],COLUMNS_ON_SELECT_REPLACE) == 0){
+              value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+              gchar **value_list=g_strsplit(value,",`",0);
+              guint ii=0;
+
+              local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+              if (local_cpt){
+                column_replace_hash=g_hash_table_lookup(local_cpt,groups[i]);
+                if (!column_replace_hash)
+                  column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+              }else
+                column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+
+              for(ii=0; ii< g_strv_length(value_list);ii++){
+                gchar **kv=g_strsplit(value_list[ii],":",2);
+                if (ii>0)
+                  g_hash_table_insert(column_replace_hash, g_strdup_printf("%c%s",'`',kv[0]), g_strdup(kv[1]));
+                else
+                  g_hash_table_insert(column_replace_hash, g_strdup(kv[0]), g_strdup(kv[1]));
+                g_strfreev(kv);
+              }
+              local_cpt=g_hash_table_lookup(cpt, keys[j]);
+              if (!local_cpt){
+                local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+                g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
+              }
+              g_hash_table_insert(local_cpt, g_strdup(groups[i]), column_replace_hash);
+              g_strfreev(value_list);
+            }else{
+              if (keys[j][25]=='_' && keys[j][26]=='`' && keys[j][strlen(keys[j])-1]=='`'){
+                local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+                if (local_cpt){
+                  column_replace_hash=g_hash_table_lookup(local_cpt,groups[i]);
+                  if (!column_replace_hash)
+                    column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+                }else
+                  column_replace_hash=g_hash_table_new ( g_str_hash, g_str_equal );
+                value = g_key_file_get_value(kf,groups[i],keys[j],&error);
+                g_hash_table_insert(column_replace_hash, g_strdup(&(keys[j][26])), g_strdup(value));
+
+                local_cpt=g_hash_table_lookup(cpt, COLUMNS_ON_SELECT_REPLACE);
+                if (!local_cpt){
+                  local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+                  g_hash_table_insert(cpt, g_strdup(COLUMNS_ON_SELECT_REPLACE), local_cpt);
+                }
+                g_hash_table_insert(local_cpt, g_strdup(groups[i]), column_replace_hash);
+
+              }  
+            
+            }
           }
-          if (g_strcmp0(keys[j],"object_to_export") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_object_to_export, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"object_to_import") == 0){
-            value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_object_to_import, g_strdup(groups[i]), g_strdup(value));
-          }
-          if (g_strcmp0(keys[j],"partition_regex") == 0){
+
+          if (g_strcmp0(keys[j],PARTITION_REGEX) == 0){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
             pcre2_code *r=NULL; 
             init_regex( &r, value);
-            g_hash_table_insert(cpt->all_partition_regex_per_table, g_strdup(groups[i]), r);
+            local_cpt=g_hash_table_lookup(cpt, keys[j]);
+            if (!local_cpt){
+              local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+              g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
+            }
+            g_hash_table_insert(local_cpt, g_strdup(groups[i]), r);
           }
-          if (g_strcmp0(keys[j],"rows") == 0){
+
+          if ((g_strcmp0(keys[j],SKIP_INDEX_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_DATABASE_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_VIEW_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_TABLE_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_INDEX_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_DATA_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_TRIGGER_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_ROUTINE_CHECKSUMS) == 0) ||
+              (g_strcmp0(keys[j],SKIP_EVENT_CHECKSUMS) == 0)
+                ){
             value = g_key_file_get_value(kf,groups[i],keys[j],&error);
-            g_hash_table_insert(cpt->all_rows_per_table, g_strdup(groups[i]), g_strdup(value));
+
+            local_cpt=g_hash_table_lookup(cpt, keys[j]);
+            if (!local_cpt){
+              local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+              g_hash_table_insert(cpt, g_strdup(keys[j]), local_cpt);
+            }
+            g_hash_table_insert(local_cpt, g_strdup(groups[i]), GINT_TO_POINTER(g_ascii_strtoull(value,NULL, 10)!=0));
           }
+
 
         }
       }
-      g_hash_table_insert(cpt->all_anonymized_function,g_strdup(groups[i]),ht);
+      local_cpt=g_hash_table_lookup(cpt, ANONYMIZED_FUNCTION);
+      if (!local_cpt){
+        local_cpt=g_hash_table_new ( g_str_hash, g_str_equal );
+        g_hash_table_insert(cpt, g_strdup(ANONYMIZED_FUNCTION), local_cpt);
+      }
+      g_hash_table_insert(local_cpt, g_strdup(groups[i]), ht);
     }
   }
   g_strfreev(groups);
@@ -625,10 +686,21 @@ void m_key_file_merge(GKeyFile *b, GKeyFile *a){
 
 }
 
+GList *m_glistsplit(const gchar * str){
+  gchar ** split_str=g_strsplit(str, ",", 0);
+  GList *l=NULL;
+  guint i=0;
+  while(split_str[i]){
+    l=g_list_prepend(l, split_str[i]);
+    i++;
+  }
+  return l;
+}
 
 void initialize_common_options(GOptionContext *context, const gchar *group){
-  if (!optimize_key_engines)
-    optimize_key_engines=g_strsplit("InnoDB,ROCKSDB", ",", 0);
+  if (!optimize_key_engines){
+    optimize_key_engines=m_glistsplit("InnoDB,ROCKSDB");
+  }
 
   if (defaults_file == NULL ){ 
     if ( g_file_test(DEFAULTS_FILE, G_FILE_TEST_EXISTS) ){
@@ -778,7 +850,29 @@ void print_version(const gchar *program){
 #ifdef WITH_SSL
     g_string_append(str," with SSL support");
 #endif
-    g_print("%s\n", str->str);
+    if (machine_log_json_enabled()){
+      gchar *escaped_program = g_strescape(program, NULL);
+      gchar *escaped_library = g_strescape(DB_LIBRARY, NULL);
+      gchar *escaped_mysql_version = g_strescape(MYSQL_VERSION_STR, NULL);
+      g_print("{\"schema_version\":\"1\",\"event_version\":\"1\",\"kind\":\"event\",\"event\":\"version\",\"phase\":\"startup\",\"status\":\"started\",\"tool\":\"%s\",\"program\":\"%s\",\"version\":\"%s\",\"db_library\":\"%s\",\"db_library_version\":\"%s\",\"ssl\":%s}\n",
+              escaped_program != NULL ? escaped_program : "",
+              escaped_program != NULL ? escaped_program : "",
+              VERSION,
+              escaped_library != NULL ? escaped_library : "",
+              escaped_mysql_version != NULL ? escaped_mysql_version : "",
+#ifdef WITH_SSL
+              "true"
+#else
+              "false"
+#endif
+      );
+      g_free(escaped_program);
+      g_free(escaped_library);
+      g_free(escaped_mysql_version);
+    }else{
+      g_print("%s\n", str->str);
+    }
+    g_string_free(str, TRUE);
 }
 
 gboolean stream_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
@@ -843,36 +937,106 @@ void check_num_threads()
   }
 }
 
-void m_message(const char *fmt, ...){
-  va_list    args;
+static void emit_runtime_log_event(GLogLevelFlags level, const gchar *event,
+                                   const gchar *status, const gchar *source_api,
+                                   const gchar *message) {
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", event,
+                    "PHASE", "runtime",
+                    "STATUS", status,
+                    "SOURCE_API", source_api,
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+}
+
+void runtime_message(const char *fmt, ...){
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
-  g_message("%s",c);
+  c = g_strdup_vprintf(fmt, args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_MESSAGE, "process_notice", "progress",
+                           "runtime_message", c);
+  } else {
+    g_message("%s", c);
+  }
+  g_free(c);
+}
+
+void m_message(const char *fmt, ...){
+  va_list args;
+  gchar *c = NULL;
+
+  va_start(args, fmt);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_MESSAGE, "process_notice", "progress",
+                           "m_message", c);
+  } else {
+    g_message("%s",c);
+  }
   g_free(c);
 }
 
 void m_warning(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
-  g_warning("%s",c);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
+
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_WARNING, "process_warning", "warning",
+                           "m_warning", c);
+  } else {
+    g_warning("%s",c);
+  }
   g_free(c);
 }
 
 void m_critical(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
   execute_gstring(main_connection, set_global_back);
-  g_critical("%s",c);
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_CRITICAL, "process_error", "failed",
+                           "m_critical", c);
+  } else {
+    g_critical("%s",c);
+  }
+  g_free(c);
   exit(EXIT_FAILURE);
 }
 
 void m_error(const char *fmt, ...){
-  va_list    args;
+  va_list args;
+  gchar *c = NULL;
+
   va_start(args, fmt);
-  gchar *c=g_strdup_vprintf(fmt,args);
+  c = g_strdup_vprintf(fmt,args);
+  va_end(args);
   execute_gstring(main_connection, set_global_back);
+  if (machine_log_json_enabled()) {
+    emit_runtime_log_event(G_LOG_LEVEL_ERROR, "process_error", "failed",
+                           "m_error", c);
+    g_free(c);
+    exit(EXIT_FAILURE);
+  }
   g_error("%s", c); // g_error exits program
 }
 
@@ -1160,6 +1324,16 @@ extern gboolean debug;
 static __thread char __name_buf[32];
 static __thread char *__thread_name= NULL;
 
+const char *get_thread_name(void)
+{
+  return __thread_name;
+}
+
+gboolean machine_log_json_enabled(void)
+{
+  return machine_log_json;
+}
+
 void set_thread_name(const char *format, ...)
 {
   va_list args;
@@ -1188,15 +1362,15 @@ void trace(const char *format, ...)
 
 #define WIDTH 40
 
-void print_int(const char*_key, int val){
-  printf("%s%*s= %d\n",_key, WIDTH-(int)(strlen(_key)),"", val);
+void print_int(const char*_key, int val, gboolean comment){
+  printf("%s%s%*s= %d\n",comment?"# ":"",_key, WIDTH-(int)(strlen(_key))-(comment?2:0),"", val);
 }
 
 void print_string(const char*_key, const char *val){
   if (val)
     printf("%s%*s= %s\n",_key, WIDTH-(int)(strlen(_key)),"", val);
   else
-    printf("# %s%*s= ""\n",_key, WIDTH-(int)(strlen(_key)) -2,"");
+    printf("# %s%*s= \n",_key, WIDTH-(int)(strlen(_key)) -2,"");
 }
 
 void print_bool(const char*_key, gboolean val){
@@ -1206,18 +1380,38 @@ void print_bool(const char*_key, gboolean val){
     printf("# %s%*s= FALSE\n",_key, WIDTH-(int)(strlen(_key)) - 2 ,"");
 }
 
-void print_list(const char*_key, GList *list){
+void print_list(const char*_key, GList *list, gchar* f (void *)){
   if (list){
-    printf("%s%*s= \"%s\"", _key, WIDTH-(int)(strlen(_key)), "", (gchar *)(list->data));
+    printf("%s%*s= %s", _key, WIDTH-(int)(strlen(_key)), "", f?f(list->data):(gchar *)(list->data));
     list=list->next;
     while (list){
-      printf(",\"%s\"", (gchar*)(list->data));
+      printf(",%s", f?f(list->data):(gchar*)(list->data));
       list=list->next;
     }
     printf("\n");
   }else{
-    printf("# %s%*s= \"\"\n", _key, WIDTH-(int)(strlen(_key)) - 2, "");
+    printf("# %s%*s= \n", _key, WIDTH-(int)(strlen(_key)) - 2, "");
   }
+}
+
+gchar* gpointer_to_gchar(void *p){
+  return g_strdup_printf("%d",GPOINTER_TO_INT(p));
+}
+
+void print_common(){
+  print_int("threads",num_threads, FALSE);
+  print_bool("version",program_version);
+  print_bool("verbose",verbose);
+  print_bool("debug",debug);
+  print_bool("machine-log-json", machine_log_json);
+  print_list("ignore-errors", ignore_errors_list,gpointer_to_gchar);
+  print_string("defaults-file", defaults_file);
+  print_string("defaults-extra-file", defaults_extra_file);
+  print_string("source-control-command",sourcecontrolcommand2str(source_control_command));
+  print_list("optimize-keys-engines", optimize_key_engines, NULL);
+  print_string("server-version", server_version_arg);
+  print_bool("dry-run", dry_run);
+  print_string("throttle", throttle_variable?g_strdup_printf("%s=%d",throttle_variable,throttle_value):NULL);
 }
 
 void append_alter_table(GString * alter_table_statement, char *table){
@@ -1292,10 +1486,13 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
     engine_pos=g_strrstr(split_file[i],"ENGINE=");
     if (engine_pos){
       engine_pos+=7;
-      guint j=0;
-      for( j=0; j<g_strv_length(optimize_key_engines); j++)
-        if (g_str_has_prefix(engine_pos, optimize_key_engines[j]))
-          flag|=IS_TRX_TABLE;
+      gchar *end_engine_pos= g_strstr_len(engine_pos,-1," ");
+      if (end_engine_pos)
+        end_engine_pos[0]='\0';
+      if (g_list_find_custom(optimize_key_engines, engine_pos, (GCompareFunc)g_strcmp0))
+        flag|=IS_TRX_TABLE;
+      if (end_engine_pos)
+        end_engine_pos[0]=' ';
     }
   }
   g_string_replace(create_table_statement,",\n)","\n)", 0);
@@ -1304,6 +1501,7 @@ int global_process_create_table_statement (gchar * statement, GString *create_ta
   return flag;
 }
 
+/*
 void initialize_conf_per_table(struct configuration_per_table *cpt){
   cpt->all_anonymized_function=g_hash_table_new ( g_str_hash, g_str_equal );
   cpt->all_where_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
@@ -1321,6 +1519,7 @@ void initialize_conf_per_table(struct configuration_per_table *cpt){
 
   cpt->all_rows_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
 }
+*/
 
 gboolean str_list_has_str(gchar ** str_list, const gchar* str){
   guint i=0;
@@ -1372,57 +1571,6 @@ gchar *build_config_file_dbt_key(const gchar *a, const gchar *b){
   return g_strdup_printf("`%s`.`%s`", a, b);
 }
 
-/*
-gboolean common_arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
-  *error=NULL;
-  (void) data;
-  if (!strcmp(option_name,"--throttle")){
-    if (value){
-      gchar ** tp;
-      gchar ** tq=g_strsplit(value, ":", 2);
-      if (tq[1]){
-        throttle_max_usleep_limit=atoi(tq[0]);
-        tp=g_strsplit(tq[1], "=", 2);
-      }else{
-        tp=g_strsplit(value, "=", 2);
-      }
-      throttle_variable=g_strdup(tp[0]);
-      throttle_value = atoi(tp[1]);
-      g_strfreev(tq);
-      g_strfreev(tp);
-    }else{
-      throttle_variable=g_strdup("Threads_running");
-      throttle_value = 0;
-    }
-    return TRUE;
-  }
-  if (!strcmp(option_name, "--optimize-keys-engines")){
-    if (value){
-      optimize_key_engines = g_strsplit(value, ",", 0);
-      return TRUE;
-    }
-
-  } else if (!strcmp(option_name, "--source-control-command")){
-    if (!strcasecmp(value, "TRADITIONAL")) {
-      source_control_command=TRADITIONAL;
-      return TRUE;
-    }
-    if (!strcasecmp(value, "AWS")) {
-      source_control_command=AWS;
-      return TRUE;
-    }
-  } else if (!strcmp(option_name, "--ignore-errors")){
-    guint n=0;
-    gchar **tmp_ignore_errors_list = g_strsplit(value, ",", 0);
-    while(tmp_ignore_errors_list[n]!=NULL){
-      ignore_errors_list=g_list_append(ignore_errors_list,GINT_TO_POINTER(atoi(tmp_ignore_errors_list[n])));
-      n++;
-    }
-    return TRUE;
-  }
-  return FALSE;
-}
-*/
 void discard_mysql_output(MYSQL *conn){
   MYSQL_RES *result = NULL;
   MYSQL_ROW row = NULL;
@@ -1446,11 +1594,37 @@ gboolean should_ignore_error_code(guint error_code) {
 static void m_log(MYSQL *conn, void log_fun_1(const char *, ...), void log_fun_2(const char *, ...), const char *fmt, va_list args){
   if (fmt && log_fun_1){
     gchar *c=g_strdup_vprintf(fmt,args);
-    if (log_fun_2 && should_ignore_error_code(mysql_errno(conn)))
-      log_fun_2("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
-    else{
-      if (mysql_errno(conn)){
-        log_fun_1("%s - ERROR %d: %s",c, mysql_errno(conn), mysql_error(conn));
+    guint mysql_error_code = mysql_errno(conn);
+    gboolean ignored_error = log_fun_2 && should_ignore_error_code(mysql_error_code);
+    if (machine_log_json_enabled() && mysql_error_code != 0){
+      GLogLevelFlags level = G_LOG_LEVEL_MESSAGE;
+      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_error_code);
+      gboolean retryable = mysql_error_code == 1205 || mysql_error_code == 1213 ||
+                           mysql_error_code == 2006 || mysql_error_code == 2013;
+      if (ignored_error || log_fun_1 == m_warning)
+        level = G_LOG_LEVEL_WARNING;
+      else if (log_fun_1 == m_error)
+        level = G_LOG_LEVEL_ERROR;
+      else if (log_fun_1 == m_critical)
+        level = G_LOG_LEVEL_CRITICAL;
+      machine_log_event(G_LOG_DOMAIN, level,
+                       "MESSAGE", c,
+                       "EVENT", "mysql_operation",
+                       "PHASE", "mysql",
+                       "STATUS", "failed",
+                       "MYSQL_ERRNO", mysql_errno_text,
+                       "SQLSTATE", mysql_sqlstate(conn),
+                       "RETRYABLE", retryable ? "true" : "false",
+                       "FATAL", (!ignored_error && log_fun_1 != m_message) ? "true" : "false",
+                       NULL);
+      if (!ignored_error && log_fun_1 != m_message)
+        errors++;
+      g_free(mysql_errno_text);
+    } else if (ignored_error) {
+      log_fun_2("%s - ERROR %d: %s",c, mysql_error_code, mysql_error(conn));
+    } else{
+      if (mysql_error_code){
+        log_fun_1("%s - ERROR %d: %s",c, mysql_error_code, mysql_error(conn));
         if (log_fun_1 != m_message)
           errors++; 
       }else
@@ -1651,4 +1825,14 @@ void *monitor_throttling_thread (void *queue){
   }
 
   return NULL;
+}
+
+void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key, gchar *any_table_key ){
+  if (!ht) return NULL;
+  void * r = g_hash_table_lookup(ht, db_table_key);
+  if (r) return r;
+  r = g_hash_table_lookup(ht, any_db_key);
+  if (r) return r;
+  r = g_hash_table_lookup(ht, any_table_key);
+  return r;
 }

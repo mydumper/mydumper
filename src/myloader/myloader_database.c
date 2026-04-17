@@ -22,6 +22,7 @@
 #include "myloader_database.h"
 #include "myloader_restore_job.h"
 #include "myloader_restore.h"
+#include "../logging.h"
 
 GHashTable *database_hash=NULL;
 static GMutex *database_hash_mutex = NULL;
@@ -39,6 +40,7 @@ void initialize_database(){
     database_db=get_database(g_strdup(target_db), g_strdup(target_db));
 }
 
+static
 struct database * new_database(gchar *database, gchar *filename){
   struct database * _database = g_new(struct database, 1);
   _database->source_database=database;
@@ -48,10 +50,37 @@ struct database * new_database(gchar *database, gchar *filename){
   _database->sequence_queue= g_async_queue_new();
   _database->table_queue=g_async_queue_new();
   _database->schema_state=target_db?CREATED:NOT_FOUND;
-  _database->schema_checksum=NULL;
-  _database->post_checksum=NULL;
-  _database->triggers_checksum=NULL;
-  _database->events_checksum=NULL;
+  _database->checksum.schema=NULL;
+  _database->checksum.routine=NULL;
+  _database->checksum.trigger=NULL;
+  _database->checksum.event=NULL;
+  gchar * any_table_config_file_dbt_key = build_config_file_dbt_key(_database->source_database,"");
+  GHashTable *cpt = g_hash_table_lookup(conf_per_table,SKIP_DATABASE_CHECKSUMS);
+  gboolean c=FALSE;
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_schema = c?c:skip_database_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_ROUTINE_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_routine=c?c:skip_routine_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_TRIGGER_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_trigger=c?c:skip_trigger_checksums;
+  cpt = g_hash_table_lookup(conf_per_table,SKIP_EVENT_CHECKSUMS);
+  if (cpt)
+    c=GPOINTER_TO_INT(g_hash_table_lookup(cpt, any_table_config_file_dbt_key));
+  else
+    c=FALSE;
+  _database->checksum.skip_event=c?c:skip_event_checksums;
+  g_free(any_table_config_file_dbt_key);
   return _database;
 }
 
@@ -83,6 +112,22 @@ gboolean execute_use(struct connection_data *cd){
     }
     g_free(query);
   }else{
+    if (machine_log_json_enabled()) {
+      gchar *thread_id = g_strdup_printf("%lu", cd->thread_id);
+      gchar *connection_id = g_strdup_printf("%lu", cd->connection_id);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "Not able to switch database",
+                        "EVENT", "database_switch",
+                        "PHASE", "restore_schema",
+                        "STATUS", "failed",
+                        "THREAD_ID", thread_id,
+                        "CONNECTION_ID", connection_id,
+                        "RETRYABLE", "false",
+                        "FATAL", "false",
+                        NULL);
+      g_free(thread_id);
+      g_free(connection_id);
+    }
     g_warning("Thread %ld with connection %ld: Not able to switch database",cd->thread_id, cd->connection_id);
   }
   return FALSE;
@@ -131,4 +176,3 @@ void start_database(struct thread_data *td){
     database_db->schema_state=CREATED;
   }
 }
-

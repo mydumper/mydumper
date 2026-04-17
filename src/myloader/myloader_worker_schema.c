@@ -37,7 +37,7 @@ gint schema_job_cmp(gconstpointer _a, gconstpointer _b, gpointer user_data){
    struct schema_job *a= ((struct schema_job *) _a);
    struct schema_job *b= ((struct schema_job *) _b);
    (void)user_data;
-   return a->type > b->type;
+   return (a->type > b->type) - (a->type < b->type);
 }
 
 struct schema_job * new_schema_job(enum schema_job_type type, struct restore_job *rj, struct database *use_database){
@@ -143,6 +143,7 @@ void set_table_schema_state_to_created (struct configuration *conf){
       g_cond_broadcast(dbt->schema_cond);
     }
     table_unlock(dbt);
+    enqueue_table_if_ready(conf, dbt);
     iter=iter->next;
   }
   g_mutex_unlock(conf->table_list_mutex);
@@ -171,6 +172,7 @@ gboolean process_schema(struct thread_data * td){
     case SCHEMA_TABLE_JOB:
       if (process_restore_job(td, schema_job->restore_job)){
         trace("retry_queue <- %s", schema_job_type2str(schema_job->type));
+        g_atomic_int_inc(&(detailed_errors.retries));
         g_async_queue_push(retry_queue, schema_job);
       }
       wake_data_threads();

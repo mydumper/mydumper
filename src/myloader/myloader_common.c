@@ -132,15 +132,38 @@ gchar *get_value(GKeyFile * kf,gchar *group, const gchar *_key){
 
 //g_list_free_full(change_master_parameter_list, g_free);
 
-void execute_replication_commands(MYSQL *conn, gchar *statement){
+void execute_replication_commands(MYSQL *conn, gchar *statement, const gchar *message){
   m_query_warning(conn, "COMMIT", "COMMIT failed");
   guint i;
   gchar** line=g_strsplit(statement, ";\n", -1);
+  MYSQL_RES *rest = NULL;
+  MYSQL_ROW row;
   for (i=0; i < g_strv_length(line);i++){
      if (strlen(line[i])>2){
        GString *str=g_string_new(line[i]);
        g_string_append_c(str,';');
-       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
+//       m_query_warning(conn, str->str, "Sending replication command: %s", str->str);
+
+       rest = m_store_result(conn, str->str, m_warning, "Sending replication command: %s", message);
+       if(rest){
+         while ((row = mysql_fetch_row(rest))){
+                g_message("%s", row[0]);
+        }
+         mysql_free_result(rest);
+         rest=NULL;
+       }
+       while (mysql_next_result(conn) == 0){
+         rest = mysql_store_result(conn);
+        if(rest){
+           while ((row = mysql_fetch_row(rest))){
+            g_message("%s", row[0]);
+          }
+           mysql_free_result(rest);
+           rest=NULL;
+         }
+
+       }
+
        g_string_free(str,TRUE);
      }
   }
@@ -148,16 +171,133 @@ void execute_replication_commands(MYSQL *conn, gchar *statement){
   m_query_warning(conn, "START TRANSACTION", "START TRANSACTION failed");
 }
 
+
+void build_change_source_for_traditional(GString *traditional_change_source, struct replication_statements *rs,
+  gboolean _source_ssl,
+  gchar *source_host,
+  guint source_port,
+  gchar *source_user,
+  gchar *source_password ,
+  gchar *source_log_file,
+  guint64 source_log_pos,
+  gint _auto_position,
+  gchar *source_gtid,
+  gboolean _exec_reset_replica,
+  gchar *channel_name,
+  GString *other_parameters
+ ){
+
+  g_string_append(traditional_change_source,change_replication_source);
+  g_string_append(traditional_change_source," TO ");
+  g_string_append_printf(traditional_change_source, "SOURCE_PORT = %d", source_port);
+  if (source_host)
+    g_string_append_printf(traditional_change_source, ", SOURCE_HOST = %s", source_host);
+  if (source_user)
+    g_string_append_printf(traditional_change_source, ", SOURCE_USER = %s", source_user);
+  if (source_password)
+    g_string_append_printf(traditional_change_source, ", SOURCE_PASSWORD = %s", source_password);
+  if (source_log_file)
+    g_string_append_printf(traditional_change_source, ", SOURCE_LOG_FILE = %s", source_log_file);
+  if (source_log_pos>0)
+    g_string_append_printf(traditional_change_source, ", SOURCE_LOG_POS = %"G_GINT64_FORMAT, source_log_pos);
+  if (other_parameters)
+    g_string_append(traditional_change_source, other_parameters->str);
+
+
+  if (_source_ssl)
+    g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
+
+  if (_auto_position>=0)
+    g_string_append_printf(traditional_change_source, "SOURCE_AUTO_POSITION = %d", _auto_position);
+
+  if (!for_channel_incompatibility){
+    g_string_append(traditional_change_source," FOR CHANNEL '");
+    if (channel_name!=NULL)
+      g_string_append(traditional_change_source,channel_name);
+    g_string_append(traditional_change_source,"';\n");
+  }
+
+
+  if (set_gtid_purge){
+    if (! rs->gtid_purge)
+      rs->gtid_purge=g_string_new("");
+    if (get_product()==SERVER_TYPE_MARIADB)
+      g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_slave_pos=%s;\n", reset_replica, source_gtid);
+    else
+    g_string_append_printf(rs->gtid_purge, "%s;\nSET GLOBAL gtid_purged=%s;\n", reset_replica, source_gtid);
+  }
+
+
+  if (_exec_reset_replica){
+    if (!rs->reset_replica)
+      rs->reset_replica=g_string_new("");
+
+    g_string_append(rs->reset_replica,stop_replica);
+    g_string_append(rs->reset_replica,";\n");
+
+    g_string_append(rs->reset_replica,reset_replica);
+    if (source_control_command == TRADITIONAL){
+      g_string_append(rs->reset_replica," ");
+      if (_exec_reset_replica>1)
+        g_string_append(rs->reset_replica,"ALL ");
+      if (channel_name!=NULL)
+        g_string_append_printf(rs->reset_replica,"FOR CHANNEL '%s'", channel_name);
+    }
+    g_string_append(rs->reset_replica,";\n");
+  }
+
+}
+
+
+void build_change_source_for_aws(GString *aws_change_source, struct replication_statements *rs,
+      gboolean _source_ssl,
+  gchar *source_host,
+  guint source_port,
+  gchar *source_user,
+  gchar *source_password ,
+  gchar *source_log_file,
+  guint64 source_log_pos,
+  gint _auto_position,
+    gchar *source_gtid
+    ){
+
+  g_string_append(aws_change_source,change_replication_source);
+
+  if (_auto_position>0)
+    g_string_append(aws_change_source,"_with_auto_position");
+
+  g_string_append_printf(aws_change_source,"( %s, %d, %s, %s, ", source_host, source_port, source_user, source_password );
+
+  if (_auto_position==1)
+    g_string_append_printf(aws_change_source,"%d, 0);\n", _source_ssl);
+  else
+    g_string_append_printf(aws_change_source,"%s, %"G_GINT64_FORMAT", %d);\n", source_log_file, source_log_pos, _source_ssl);
+
+  if (set_gtid_purge){
+    if (! rs->gtid_purge)
+      rs->gtid_purge=g_string_new("");
+    g_string_append_printf(rs->gtid_purge, "CALL mysql.rds_gtid_purged (%s);\n", source_gtid);
+  }
+
+}
+
+
+
+
 void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs, struct replication_settings *rep_set){
   gchar *val=NULL;
   guint i=0;
   gsize len=0;
   GError *error = NULL;
-  GString *traditional_change_source=g_string_new("");
-  GString *aws_change_source=g_string_new("");
-
-  g_string_append(traditional_change_source,change_replication_source);
-  g_string_append(traditional_change_source," TO ");
+//  GString *traditional_change_source=g_string_new("");
+//  GString *aws_change_source=g_string_new("");
+  GString *other_parameters=g_string_new("");
+  /*
+  if (change_replication_source){
+    g_string_append(traditional_change_source,change_replication_source);
+    g_string_append(traditional_change_source," TO ");
+  }
+  */
 
   gchar** group_name= g_strsplit(group, ".", 2);
   gchar* channel_name=g_strv_length(group_name)>1? group_name[1]:NULL;
@@ -172,8 +312,8 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   gchar *source_password = NULL;
   gchar *source_log_file= NULL;
   guint64 source_log_pos=0;
-  gboolean first=TRUE;
   gchar *source_gtid=NULL;
+
   for (i=0; i < len; i++){
     if (!(g_strcmp0(keys[i], "myloader_exec_reset_slave") && g_strcmp0(keys[i], "myloader_exec_reset_replica") )){
       _exec_reset_replica=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
@@ -188,39 +328,26 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
     } else if(!g_ascii_strcasecmp(keys[i], "channel_name")){
       channel_name=g_key_file_get_value(kf,group,keys[i],&error);
     } else {
-      if (first){
-        first=FALSE;
-      }else{
-        g_string_append_printf(traditional_change_source,", ");
-      }
       if (!g_ascii_strcasecmp(keys[i], "SOURCE_AUTO_POSITION")){
         _auto_position=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
-//        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], auto_position);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_SSL")){
         _source_ssl=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10)>0;
-//        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], source_ssl);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_HOST")){
         source_host=g_key_file_get_value(kf,group,keys[i],&error);
-        g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], source_host);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_PORT")){
         source_port=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
-        g_string_append_printf(traditional_change_source, "%s = %d", (gchar *) keys[i], source_port);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_USER")){
         source_user=g_key_file_get_value(kf,group,keys[i],&error);
-        g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], source_user);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_PASSWORD")){
         source_password=g_key_file_get_value(kf,group,keys[i],&error);
-        g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], source_password);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_LOG_FILE")){
         source_log_file=g_key_file_get_value(kf,group,keys[i],&error);
-        g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], source_log_file);
       } else if (!g_ascii_strcasecmp(keys[i], "SOURCE_LOG_POS")){
         source_log_pos=g_ascii_strtoull(g_key_file_get_value(kf,group,keys[i],&error), NULL, 10);
-        g_string_append_printf(traditional_change_source, "%s = %"G_GINT64_FORMAT, (gchar *) keys[i], source_log_pos);
       } else {
         val=g_key_file_get_value(kf,group,keys[i],&error);
         if (val != NULL)
-          g_string_append_printf(traditional_change_source, "%s = %s", (gchar *) keys[i], val);
+          g_string_append_printf(other_parameters, ", %s = %s", (gchar *) keys[i], val);
       }
     }
   }
@@ -238,7 +365,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
          || ( _exec_start_replica_until == 0 )
       );
 
-  if (_source_ssl)
+/*  if (_source_ssl)
     g_string_append_printf(traditional_change_source, "SOURCE_SSL = %d", _source_ssl);
 
   if (_auto_position>=0){
@@ -262,6 +389,12 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
       g_string_append(traditional_change_source,channel_name);
     g_string_append(traditional_change_source,"';\n");
   }
+
+*/
+
+
+
+
   if (set_gtid_purge){
     if (! rs->gtid_purge)
       rs->gtid_purge=g_string_new("");
@@ -316,15 +449,30 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
       g_string_append(rs->start_replica_until,channel_name);
     g_string_append(rs->start_replica_until,"';\n");
   }
+
 // SQL_AFTER_GTIDS
   if (_exec_change_source){
     if (! rs->change_replication_source)
       rs->change_replication_source=g_string_new("");
+
     if (source_control_command == TRADITIONAL){
+      build_change_source_for_traditional(rs->change_replication_source, rs,
+        _source_ssl,source_host,source_port,source_user,source_password ,source_log_file,
+        source_log_pos, _auto_position,source_gtid,
+        _exec_reset_replica, channel_name, other_parameters);
+    }else{ // AWS
+      build_change_source_for_aws( rs->change_replication_source, rs,
+        _source_ssl,source_host,source_port,source_user,source_password ,source_log_file,
+        source_log_pos, _auto_position,source_gtid);
+    }
+
+
+/*    if (source_control_command == TRADITIONAL){
       g_string_append(rs->change_replication_source,traditional_change_source->str);
     }else{
       g_string_append(rs->change_replication_source,aws_change_source->str);
     }
+    */
   }
 
   if (_exec_start_replica){
@@ -337,7 +485,7 @@ void change_master(GKeyFile * kf,gchar *group, struct replication_statements *rs
   if (source_control_command == TRADITIONAL)
     g_message("Change master will be executed for channel: %s", channel_name!=NULL?channel_name:"default channel");
   
-  g_string_free(traditional_change_source,TRUE);
+//  g_string_free(traditional_change_source,TRUE);
 }
 
 gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
@@ -368,22 +516,86 @@ gboolean m_filename_has_suffix(gchar const *str, gchar const *suffix){
   return g_str_has_suffix(str, suffix);
 }
 
-gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
-  if (table_name == NULL)
-    g_error("Table name is null on eval_table()");
-  g_mutex_lock(mutex);
+static gboolean eval_table_filters_unlocked(char *db_name, char *table_name){
   if ( tables ){
     if (!is_table_in_list( db_name, table_name, tables)){
-      g_mutex_unlock(mutex);
       return FALSE;
     }
   }
   if ( tables_skiplist_file && check_skiplist(db_name, table_name )){
-    g_mutex_unlock(mutex);
     return FALSE;
   }
+  return TRUE;
+}
+
+static gboolean get_database_table_from_filename_for_filter(const gchar *filename, gchar **database, gchar **table){
+  *database = NULL;
+  *table = NULL;
+
+  if (filename == NULL)
+    return FALSE;
+
+  if (m_filename_has_suffix(filename, "-schema-view.sql")){
+    get_database_table_from_file(filename, "-schema-view", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-sequence.sql")){
+    get_database_table_from_file(filename, "-schema-sequence", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-triggers.sql")){
+    get_database_table_from_file(filename, "-schema-triggers", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema-post.sql")){
+    get_database_table_from_file(filename, "-schema-post", database, table);
+  } else if (m_filename_has_suffix(filename, "-schema.sql")){
+    get_database_table_from_file(filename, "-schema", database, table);
+  } else if (m_filename_has_suffix(filename, ".sql") || m_filename_has_suffix(filename, ".dat")){
+    gchar **split = g_strsplit(filename, ".", 4);
+    if (g_strv_length(split) >= 2){
+      *database = g_strdup(split[0]);
+      *table = g_strdup(split[1]);
+    }
+    g_strfreev(split);
+  }
+
+  return *database != NULL && *table != NULL;
+}
+
+gboolean eval_table( char *db_name, char * table_name, GMutex * mutex){
+  gboolean matched = FALSE;
+
+  if (table_name == NULL)
+    g_error("Table name is null on eval_table()");
+
+  g_mutex_lock(mutex);
+  matched = eval_table_filters_unlocked(db_name, table_name);
   g_mutex_unlock(mutex);
+
+  if (!matched)
+    return FALSE;
+
   return eval_regex(db_name, table_name);
+}
+
+gboolean should_queue_filename(const gchar *filename, GMutex *mutex){
+  gchar *database = NULL;
+  gchar *table = NULL;
+  gboolean matched = TRUE;
+
+  if (filename == NULL)
+    return FALSE;
+
+  if (!strcmp(filename, "metadata"))
+    return FALSE;
+
+  if (!strcmp(filename, "all-schema-create-tablespace.sql"))
+    return TRUE;
+
+  if (tables == NULL && tables_skiplist_file == NULL && regex_list == NULL)
+    return TRUE;
+
+  if (get_database_table_from_filename_for_filter(filename, &database, &table))
+    matched = eval_table(database, table, mutex);
+
+  g_free(database);
+  g_free(table);
+  return matched;
 }
 /*
 enum file_type get_file_type (const char * filename){
@@ -503,7 +715,7 @@ void refresh_table_list(struct configuration *conf){
   refresh_table_list_without_table_hash_lock(conf, TRUE);
   g_mutex_unlock(conf->table_hash_mutex);
 }
-
+/*
 static inline gboolean
 checksum_template(const char *dbt_checksum, const char *checksum, const char *err_templ,
                   const char *info_templ, const char *message, const char *_db, const char *_table)
@@ -528,22 +740,14 @@ checksum_template(const char *dbt_checksum, const char *checksum, const char *er
   return TRUE;
 }
 
-gboolean checksum_dbt_template(struct db_table *dbt, gchar *dbt_checksum,  MYSQL *conn,
+static
+gboolean checksum_dbt_template(gchar *target_database, gchar *source_table_name, gchar *dbt_checksum,  MYSQL *conn,
                            const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
 {
-  const char *checksum= fun(conn, dbt->database->target_database, dbt->source_table_name);
+  const char *checksum= fun(conn, target_database, source_table_name);
   return checksum_template(dbt_checksum, checksum,
                     "%s mismatch found for %s.%s: got %s, expecting %s",
-                    "%s confirmed for %s.%s", message, dbt->database->target_database, dbt->source_table_name);
-}
-
-gboolean checksum_database_template(gchar *_db, gchar *dbt_checksum,  MYSQL *conn,
-                                const gchar *message, gchar* fun(MYSQL *,gchar *,gchar *))
-{
-  const char *checksum= fun(conn, _db, NULL);
-  return checksum_template(dbt_checksum, checksum,
-                    "%s mismatch found for %s: got %s, expecting %s",
-                    "%s confirmed for %s", message, _db, NULL);
+                    "%s confirmed for %s.%s", message, target_database, source_table_name);
 }
 
 gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
@@ -551,28 +755,29 @@ gboolean checksum_dbt(struct db_table *dbt,  MYSQL *conn)
   gboolean checksum_ok=TRUE;
   if (checksum_mode != CHECKSUM_SKIP){
     if (!no_schemas){
-      if (dbt->schema_checksum!=NULL){
+      if (dbt->checksum.schema!=NULL){
         if (dbt->is_view)
-          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
                                 "View checksum", checksum_view_structure);
         else
-          checksum_ok&=checksum_dbt_template(dbt, dbt->schema_checksum, conn,
+          checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.schema, conn,
                                 "Structure checksum", checksum_table_structure);
       }
-      if (dbt->indexes_checksum!=NULL)
-        checksum_ok&=checksum_dbt_template(dbt, dbt->indexes_checksum, conn,
+      if (dbt->checksum.index!=NULL)
+        checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.index, conn,
                               "Schema index checksum", checksum_table_indexes);
     }
-    if (dbt->triggers_checksum!=NULL && !skip_triggers)
-      checksum_ok&=checksum_dbt_template(dbt, dbt->triggers_checksum, conn,
+    if (dbt->checksum.trigger!=NULL && !skip_triggers)
+      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.trigger, conn,
                             "Trigger checksum", checksum_trigger_structure);
 
-    if (dbt->data_checksum!=NULL && !no_data)
-      checksum_ok&=checksum_dbt_template(dbt, dbt->data_checksum, conn,
+    if (dbt->checksum.data!=NULL && !no_data)
+      checksum_ok&=checksum_dbt_template(dbt->database->target_database, dbt->source_table_name, dbt->checksum.data, conn,
                             "Data checksum", checksum_table);
   }
   return checksum_ok;
 }
+*/
 
 gboolean has_exec_per_thread_extension(const gchar *filename){
   return exec_per_thread_extension!=NULL && g_str_has_suffix(filename, exec_per_thread_extension);

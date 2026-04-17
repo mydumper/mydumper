@@ -24,6 +24,8 @@
 #include "config.h"
 #include "connection.h"
 #include "common.h"
+#include "logging.h"
+#include "server_detect.h"
 
 char *hostname = NULL;
 char *username = NULL;
@@ -35,7 +37,7 @@ char *protocol_str = NULL;
 enum mysql_protocol_type protocol=MYSQL_PROTOCOL_DEFAULT;
 static gint print_connection_details=1;
 gboolean local_infile = FALSE;
-gchar * default_connection_database=NULL;
+const gchar * default_connection_database=INFORMATION_SCHEMA;
 
 #ifdef WITH_SSL
 char *key=NULL;
@@ -291,6 +293,8 @@ void print_connection_details_once(){
 
   GString * print_body=g_string_sized_new(20);
 
+  g_string_append_printf(print_body,"\n\tProduct: %s", get_product_name());
+
   if (hostname)
     g_string_append_printf(print_body,"\n\tHost: %s", hostname);
 
@@ -316,11 +320,29 @@ void print_connection_details_once(){
 
 void m_connect(MYSQL *conn){
   configure_connection(conn);
-  if (!mysql_real_connect(conn, hostname, username, password, default_connection_database?default_connection_database:"INFORMATION_SCHEMA", port,
+  if (!mysql_real_connect(conn, hostname, username, password, default_connection_database, port,
                           socket_path, 0)) {
+    if (machine_log_json_enabled()) {
+      gchar *mysql_errno_text = g_strdup_printf("%u", mysql_errno(conn));
+      gchar *port_text = g_strdup_printf("%u", port);
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_CRITICAL,
+                       "MESSAGE", "Error connection to database",
+                       "EVENT", "mysql_connect",
+                       "PHASE", "startup",
+                       "STATUS", "failed",
+                       "MYSQL_ERRNO", mysql_errno_text,
+                       "SQLSTATE", mysql_sqlstate(conn),
+                       "RETRYABLE", "true",
+                       "FATAL", "true",
+                       "HOST", hostname != NULL ? hostname : "",
+                       "PORT", port_text,
+                       NULL);
+      g_free(mysql_errno_text);
+      g_free(port_text);
+    }
     m_critical("Error connection to database: %s", mysql_error(conn));
   }
-  print_connection_details_once();
+  //print_connection_details_once();
 
 //  if (set_names_statement)
     m_query_warning(conn, set_names_statement, "Not able to execute SET NAMES statement at connect", NULL);
@@ -352,3 +374,25 @@ void ask_password(){
   }
 }
 
+void print_connection_help(){
+  print_string("host", hostname);
+  print_string("user", username);
+  print_string("password", password);
+  print_string("default-connection-database", default_connection_database); 
+  print_bool("ask-password",askPassword);
+  print_int("port",port,port==0);
+  print_string("socket",socket_path);
+  print_string("protocol", protocol_str);
+  print_bool("compress-protocol",compress_protocol);
+#ifdef WITH_SSL
+  print_bool("ssl",ssl);
+  print_string("ssl-mode",ssl_mode);
+  print_string("key",key);
+  print_string("cert", cert);
+  print_string("ca",ca);
+  print_string("capath",capath);
+  print_string("cipher",cipher);
+  print_string("tls-version",tls_version);
+#endif
+  print_bool("enable-cleartext-plugin",enable_cleartext_plugin);
+}

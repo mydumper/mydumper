@@ -33,6 +33,7 @@
 #include "mydumper_masquerade.h"
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
+#include "mydumper_file_handler.h"
 
 /* Some earlier versions of MySQL do not yet define MYSQL_TYPE_JSON */
 #ifndef MYSQL_TYPE_JSON
@@ -71,15 +72,46 @@ gboolean insert_ignore = FALSE;
 gboolean replace = FALSE;
 gboolean hex_blob = FALSE;
 
+static void emit_dump_write_event(GLogLevelFlags level, const gchar *message,
+                                  const gchar *status, struct table_job *tj,
+                                  const gchar *filename, gint saved_errno) {
+  gchar *thread_id = NULL;
+  gchar *errno_text = NULL;
 
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  thread_id = tj != NULL ? g_strdup_printf("%u", tj->td->thread_id) : NULL;
+  errno_text = saved_errno > 0 ? g_strdup_printf("%d", saved_errno) : NULL;
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", "dump_data_file",
+                    "PHASE", "dump_data",
+                    "STATUS", status,
+                    "THREAD_ID", thread_id != NULL ? thread_id : "",
+                    "DB", tj != NULL ? tj->dbt->database->source_database : "",
+                    "TABLE", tj != NULL ? tj->dbt->table : "",
+                    "FILENAME", filename != NULL ? filename : "",
+                    "ERROR_CODE", errno_text != NULL ? errno_text : "",
+                    "RETRYABLE", "false",
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+  g_free(thread_id);
+  g_free(errno_text);
+}
+
+static
 gboolean update_files_on_table_job(struct table_job *tj)
 {
   if (tj->rows->file < 0){
+    g_assert(tj->rows->filename==NULL);    
     tj->rows->filename = build_rows_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
     tj->rows->file = m_open(&(tj->rows->filename),"w");
     trace("Thread %d: Filename assigned(%d): %s", tj->td->thread_id, tj->rows->file, tj->rows->filename);
 
     if (tj->sql){
+      g_assert(tj->sql->filename==NULL);
       tj->sql->filename =build_sql_filename(tj->dbt->database->database_name_in_filename, tj->dbt->table_filename, tj->part, tj->sub_part);
       tj->sql->file = m_open(&(tj->sql->filename),"w");
       trace("Thread %d: Filename assigned: %s", tj->td->thread_id, tj->sql->filename);
@@ -98,11 +130,35 @@ void message_dumping_data_short(struct table_job *tj){
   g_mutex_lock(non_transactional_table->mutex);
   guint non_transactional_table_size = non_transactional_table->count;
   g_mutex_unlock(non_transactional_table->mutex);
+  if (machine_log_json) {
+    gchar *thread_id = g_strdup_printf("%u", tj->td->thread_id);
+    gchar *progress_pct = g_strdup_printf("%" G_GINT64_FORMAT,
+                                          tj->dbt->rows_total != 0 ? 100 * tj->dbt->rows / tj->dbt->rows_total : 0);
+    gchar *tables_remaining = g_strdup_printf("%u", non_transactional_table_size + transactional_table_size);
+    gchar *tables_total = g_strdup_printf("%u", g_hash_table_size(all_dbts));
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump table progress",
+                     "EVENT", "dump_table_progress",
+                     "PHASE", "dump_data",
+                     "STATUS", "progress",
+                     "THREAD_ID", thread_id,
+                     "DB", masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                     "TABLE", masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                     "PROGRESS_PCT", progress_pct,
+                     "TABLES_REMAINING", tables_remaining,
+                     "TABLES_TOTAL", tables_total,
+                     NULL);
+    g_free(thread_id);
+    g_free(progress_pct);
+    g_free(tables_remaining);
+    g_free(tables_total);
+    return;
+  }
   g_message("Thread %d: %s%s%s.%s%s%s [ %"G_GINT64_FORMAT"%% ] | Tables: %u/%u",
-                    tj->td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str,
-                    tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, non_transactional_table_size+transactional_table_size, g_hash_table_size(all_dbts));
+            tj->td->thread_id,
+            identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+            identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str,
+            tj->dbt->rows_total!=0?100*tj->dbt->rows/tj->dbt->rows_total:0, non_transactional_table_size+transactional_table_size, g_hash_table_size(all_dbts));
 }
 
 static
@@ -114,6 +170,38 @@ void message_dumping_data_long(struct table_job *tj){
   g_mutex_lock(non_transactional_table->mutex);
   guint non_transactional_table_size = non_transactional_table->count;
   g_mutex_unlock(non_transactional_table->mutex);
+  if (machine_log_json) {
+    gchar *thread_id = g_strdup_printf("%u", tj->td->thread_id);
+    gchar *progress_pct = g_strdup_printf("%" G_GINT64_FORMAT,
+                                          tj->dbt->rows_total != 0 ? 100 * tj->dbt->rows / tj->dbt->rows_total : 0);
+    gchar *rows_done = g_strdup_printf("%" G_GUINT64_FORMAT, tj->dbt->rows);
+    gchar *rows_total = g_strdup_printf("%" G_GUINT64_FORMAT,
+                                        tj->dbt->rows_total < tj->dbt->rows ? tj->dbt->rows : tj->dbt->rows_total);
+    gchar *tables_remaining = g_strdup_printf("%u", non_transactional_table_size + transactional_table_size);
+    gchar *tables_total = g_strdup_printf("%u", g_hash_table_size(all_dbts));
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump table progress",
+                     "EVENT", "dump_table_progress",
+                     "PHASE", "dump_data",
+                     "STATUS", "progress",
+                     "THREAD_ID", thread_id,
+                     "DB", masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                     "TABLE", masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                     "FILENAME", tj->rows->filename,
+                     "PROGRESS_PCT", progress_pct,
+                     "ROWS_DONE", rows_done,
+                     "ROWS_TOTAL", rows_total,
+                     "TABLES_REMAINING", tables_remaining,
+                     "TABLES_TOTAL", tables_total,
+                     NULL);
+    g_free(thread_id);
+    g_free(progress_pct);
+    g_free(rows_done);
+    g_free(rows_total);
+    g_free(tables_remaining);
+    g_free(tables_total);
+    return;
+  }
   g_message("Thread %d: dumping data from %s%s%s.%s%s%s%s%s%s%s%s%s%s%s%s%s into %s | Completed: %"G_GINT64_FORMAT"%% (%"G_GUINT64_FORMAT"/%"G_GUINT64_FORMAT") | Remaining tables: %u / %u",
                     tj->td->thread_id,
                     identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str, 
@@ -140,6 +228,15 @@ void initialize_write(){
   if (starting_chunk_step_size > 0 && chunk_filesize > 0) {
 //    chunk_filesize = 0;
 //    g_warning("--chunk-filesize disabled by --rows option");
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "chunking by rows and filesize",
+                        "EVENT", "dump_config",
+                        "PHASE", "startup",
+                        "STATUS", "warning",
+                        "FATAL", "false",
+                        NULL);
+    }
     g_warning("We are going to chunk by row and by filesize when possible");
   }
 
@@ -348,40 +445,13 @@ void append_columns (GString *statement, MYSQL_FIELD *fields, guint num_fields){
 
   }
 }
-/*
-static
-void set_anonymized_function_list(struct db_table * dbt, MYSQL_FIELD *fields, guint num_fields){
-  gchar *database=dbt->database->source_database;
-  gchar *table=dbt->table;
-
-  gchar * k = g_strdup_printf("`%s`.`%s`",database,table);
-  GHashTable *ht = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
-  g_free(k);
-  struct function_pointer ** anonymized_function_list=NULL;
-
-  if (ht){
-    anonymized_function_list = g_new0(struct function_pointer *, num_fields);
-    guint i = 0;
-    struct function_pointer *fp=NULL;
-    for (i = 0; i < num_fields; ++i) {
-      fp=(struct function_pointer*)g_hash_table_lookup(ht,fields[i].name);
-      if (fp != NULL){
-        g_message("Masquerade function found on `%s`.`%s`.`%s`", database, table, fields[i].name);
-        anonymized_function_list[i]=fp;
-      }else{
-        anonymized_function_list[i]=&identity_function_pointer;
-      }
-    }
-    dbt->anonymized_function=anonymized_function_list;
-  }
-}
-*/
 
 static
 void set_anonymized_function_hash(struct db_table * dbt){
   // It is correct to use backticks in this case, as we are using the config file, not the identifier_quote_character:
   gchar * k = g_strdup_printf("`%s`.`%s`",dbt->database->source_database,dbt->table);
-  dbt->anonymized_function = g_hash_table_lookup(conf_per_table.all_anonymized_function,k);
+  GHashTable *local_conf_per_table=g_hash_table_lookup(conf_per_table,ANONYMIZED_FUNCTION);
+  dbt->anonymized_function = local_conf_per_table?g_hash_table_lookup(local_conf_per_table,k):NULL;
   g_free(k);
 }
 
@@ -432,6 +502,7 @@ gboolean real_write_data(int file, float *filesize, GString *data) {
     written += r;
   }
   *filesize+=written;
+  dump_summary_add_bytes((guint64)written);
   return TRUE;
 }
 
@@ -550,6 +621,8 @@ void write_load_data_statement(struct table_job * tj){
   initialize_sql_statement(statement);
   g_string_append_printf(statement, "%s%s%s", LOAD_DATA_PREFIX, basename, tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
+    emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "could not write load data statement",
+                          "failed", tj, tj->sql->filename, errno);
     g_critical("Could not write out data for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
   }
 }
@@ -560,12 +633,16 @@ void write_clickhouse_statement(struct table_job * tj){
   initialize_sql_statement(statement);
   g_string_append_printf(statement, "%s INTO %s%s%s FROM INFILE '%s' FORMAT MySQLDump;", insert_statement, identifier_quote_character_str, tj->dbt->table, identifier_quote_character_str, basename); // , tj->dbt->load_data_suffix->str);
   if (!write_data(tj->sql->file, statement)) {
+    emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "could not write clickhouse statement",
+                          "failed", tj, tj->sql->filename, errno);
     g_critical("Could not write out data for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
   }
 }
 
 gboolean write_header(struct table_job * tj){
   if (tj->dbt->load_data_header && !write_data(tj->rows->file, tj->dbt->load_data_header)) {
+    emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "could not write data header",
+                          "failed", tj, tj->rows->filename, errno);
     g_critical("Could not write header for %s.%s", tj->dbt->database->source_database, tj->dbt->table);
     return FALSE;
   }
@@ -632,30 +709,55 @@ void write_sql_column_into_string( MYSQL *conn, gchar *column, MYSQL_FIELD field
 static
 void write_column_into_string_with_terminated_by(MYSQL *conn, gchar * column_i, MYSQL_FIELD field, gulong length, struct thread_data_buffers buffers, void write_column_into_string(MYSQL *, gchar *, MYSQL_FIELD , gulong ,struct thread_data_buffers), GList *anonymized_function_list, gchar * terminated_by){
   struct function_pointer * f=anonymized_function_list?anonymized_function_list->data:NULL;
-//  gchar *column=NULL;
+  gchar *column=column_i;
   gulong rlength=length;
   g_string_set_size(buffers.column,0);
   g_string_set_size(buffers.column_mask,0);
+
 //  if (row)
 //    column=row;
   if (f){
+    if (f->is_pre){
+      // apply and constant as they alter the data
+      write_column_into_string( conn, column, field, rlength, buffers);
+      trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
+      f->function(buffers.column_mask, buffers.column->str, &rlength, f);
+      trace("Buffer.column_mask changed: %s", buffers.column_mask->str);
+      g_string_assign(buffers.column,buffers.column_mask->str);
+      trace("Buffer.column final: %s", buffers.column->str);
+    }else{
+      trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
+      if (f->function(buffers.column_mask, column, &rlength, f))
+        write_column_into_string( conn, buffers.column_mask->str, field, buffers.column_mask->len, buffers);
+      else
+        write_column_into_string( conn, NULL, field, 0, buffers);
+      trace("Buffer.column final: %s and Buffer.column_mask: %s", buffers.column->str, buffers.column_mask->str);
+    }
+  
+    anonymized_function_list=anonymized_function_list->next;
+    f=anonymized_function_list?anonymized_function_list->data:NULL;
+    column=buffers.column->str;
     while (f){
       if (f->is_pre){
-
-      // apply and constant as they alter the data
-        write_column_into_string( conn, column_i, field, rlength, buffers);
-        trace("Buffer.column initial: %s with column_i: %s", buffers.column->str, column_i);
+        // apply and constant as they alter the data
+        trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
         f->function(buffers.column_mask, buffers.column->str, &rlength, f);
         trace("Buffer.column_mask changed: %s", buffers.column_mask->str);
-//      g_string_printf(buffers.column,"%s",column);
         g_string_assign(buffers.column,buffers.column_mask->str);      
         trace("Buffer.column final: %s", buffers.column->str);
       }else{
-        f->function(buffers.column_mask, column_i, &rlength, f);
-        write_column_into_string( conn, buffers.column_mask->str, field, buffers.column_mask->len /*rlength*/, buffers);
+        trace("Buffer.column initial: %s with column: %s", buffers.column->str, column);
+        if (f->function(buffers.column_mask, buffers.column->str, &rlength, f))
+          g_string_assign(buffers.column,buffers.column_mask->str);
+        else{
+          g_string_set_size(buffers.column,0);
+          write_column_into_string( conn, NULL, field, 0, buffers);
+        }
+        trace("Buffer.column final: %s and Buffer.column_mask: %s", buffers.column->str, buffers.column_mask->str);
       }
       anonymized_function_list=anonymized_function_list->next;
       f=anonymized_function_list?anonymized_function_list->data:NULL;
+      column=buffers.column->str;
     }
   }else{
     write_column_into_string( conn, column_i, field, rlength, buffers);
@@ -717,16 +819,17 @@ void flush_dbt_rows(struct thread_data *td){
   }
 }
 
+static
 void close_file(struct table_job * tj, struct table_job_file *tjf){
   if (tjf->file >= 0){
-    m_close(tj->td->thread_id, tjf->file, tjf->filename, 1, tj->dbt);
+    m_close(tj->td->thread_id, tjf->file, tjf->filename, tj->filesize, tj->dbt);
     tjf->file=-1;
     g_free(tjf->filename);
     tjf->filename=NULL;
   }
 }
 
-void close_files(struct table_job * tj){
+void close_table_job_files(struct table_job * tj){
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -737,11 +840,16 @@ void close_files(struct table_job * tj){
       break;
   }
   close_file(tj, tj->rows);
+
+  tj->filesize=0;
+  tj->st_in_file=0;
+
+  tj->num_rows_of_last_run=0;
 }
 
 static
 void reopen_files(struct table_job * tj){
-  close_files(tj);
+  close_table_job_files(tj);
   switch (output_format){
     case LOAD_DATA:
     case CSV:
@@ -848,11 +956,15 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
       if (num_rows_st == 0) {
         g_string_append(tj->td->thread_data_buffers.statement, tj->td->thread_data_buffers.row->str);
         g_string_set_size(tj->td->thread_data_buffers.row, 0);
+        emit_dump_write_event(G_LOG_LEVEL_WARNING, "row exceeded statement size",
+                              "warning", tj, tj->rows->filename, 0);
         g_warning("Row bigger than statement_size for %s.%s", dbt->database->source_database,
                 dbt->table);
       }
       g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
       if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
+        emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "failed to write chunk statement",
+                              "failed", tj, tj->rows->filename, errno);
         g_critical("Fail to write on %s", tj->rows->filename);
         return;
       }
@@ -886,8 +998,6 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
         initialize_sql_statement(tj->td->thread_data_buffers.statement);
         g_string_append(tj->td->thread_data_buffers.statement, dbt->insert_statement->str);
       }
-      tj->st_in_file = 0;
-      tj->filesize = 0;			
 		}
 		//
 		// write row to buffer
@@ -906,6 +1016,8 @@ void write_result_into_file(MYSQL *conn, MYSQL_RES *result, struct table_job * t
     if (output_format == SQL_INSERT || output_format == CLICKHOUSE)
 			g_string_append(tj->td->thread_data_buffers.statement, statement_terminated_by);
     if (!write_statement(tj->rows->file, &(tj->filesize), tj->td->thread_data_buffers.statement, dbt)) {
+      emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "failed to write final chunk statement",
+                            "failed", tj, tj->rows->filename, errno);
       g_critical("Fail to write on %s", tj->rows->filename);
       return;
     }
@@ -946,6 +1058,8 @@ void write_table_job_into_file(struct table_job * tj){
 
   if (!result){
     if (!it_is_a_consistent_backup){
+      emit_dump_write_event(G_LOG_LEVEL_WARNING, "failed to execute dump query",
+                            "failed", tj, tj->rows != NULL ? tj->rows->filename : NULL, 0);
       g_warning("Thread %d: Error dumping table (%s.%s) data: %s\nQuery: %s", tj->td->thread_id, tj->dbt->database->source_database, tj->dbt->table,
                 mysql_error(conn), query);
 
@@ -953,6 +1067,9 @@ void write_table_job_into_file(struct table_job * tj){
         m_connect(tj->td->thrconn);
         execute_gstring(tj->td->thrconn, set_session);
       }
+      dump_summary_note_retry();
+      emit_dump_write_event(G_LOG_LEVEL_WARNING, "retrying failed dump query",
+                            "progress", tj, tj->rows != NULL ? tj->rows->filename : NULL, 0);
       g_warning("Thread %d: Retrying last failed executed statement", tj->td->thread_id);
 
       result = m_use_result(conn, query, NULL, "Failed to execute query on second try", NULL);
@@ -966,11 +1083,15 @@ void write_table_job_into_file(struct table_job * tj){
   write_result_into_file(conn, result, tj);
 
   if (mysql_errno(conn)) {
+    emit_dump_write_event(G_LOG_LEVEL_CRITICAL, "could not read table data during dump",
+                          "failed", tj, tj->rows->filename, mysql_errno(conn));
     g_critical("Thread %d: Could not read data from %s.%s to write on %s at byte %.0f: %s", tj->td->thread_id, tj->dbt->database->source_database, tj->dbt->table, tj->rows->filename, tj->filesize,
                mysql_error(conn));
     errors++;
     if (mysql_ping(tj->td->thrconn)) {
       if (!it_is_a_consistent_backup){
+        emit_dump_write_event(G_LOG_LEVEL_WARNING, "reconnecting dump thread after read error",
+                              "progress", tj, tj->rows->filename, 0);
         g_warning("Thread %d: Reconnecting due errors", tj->td->thread_id);
         m_connect(tj->td->thrconn);
         execute_gstring(tj->td->thrconn, set_session);
@@ -985,4 +1106,3 @@ cleanup:
     mysql_free_result(result);
   }
 }
-

@@ -26,10 +26,7 @@ struct database {
   GAsyncQueue *sequence_queue;
   GAsyncQueue *table_queue;
   GMutex * mutex; // TODO: use g_mutex_init() instead of g_mutex_new()
-  gchar *schema_checksum;
-  gchar *post_checksum;
-  gchar *triggers_checksum;
-  gchar *events_checksum;
+  struct database_level_checksum checksum;
 };
 
 void initialize_database();

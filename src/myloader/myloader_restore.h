@@ -42,3 +42,4 @@ int restore_data_from_mydumper_file(struct thread_data *td, const char *filename
 void release_load_data_as_it_is_close( gchar * filename );
 void close_restore_thread();
 void wait_restore_threads_to_close();
+gboolean release_idle_connection_if_possible();

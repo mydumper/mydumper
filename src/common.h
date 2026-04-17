@@ -24,10 +24,10 @@
 #define IS_ALTER_TABLE_PRESENT 8
 #define START_SLAVE "START SLAVE"
 #define START_SLAVE_SQL_THREAD "START SLAVE SQL_THREAD"
-#define CALL_START_REPLICATION "CALL mysql.rds_start_replication();"
+#define CALL_START_REPLICATION "CALL mysql.rds_start_replication()"
 #define STOP_SLAVE_SQL_THREAD "STOP SLAVE SQL_THREAD"
 #define STOP_SLAVE "STOP SLAVE"
-#define CALL_STOP_REPLICATION "CALL mysql.rds_stop_replication();"
+#define CALL_STOP_REPLICATION "CALL mysql.rds_stop_replication()"
 #define RESET_SLAVE "RESET SLAVE"
 #define CALL_RESET_EXTERNAL_MASTER "CALL mysql.rds_reset_external_master()"
 #define SHOW_SLAVE_STATUS "SHOW SLAVE STATUS"
@@ -55,6 +55,27 @@
 #define AS_BINARY "AS BINARY)"
 #define BINARY_CHARSET "binary"
 #define AUTO_CHARSET "auto"
+#define ANONYMIZED_FUNCTION "anonymized_function"
+#define OBJECT_TO_EXPORT "object_to_export"
+#define OBJECT_TO_IMPORT "object_to_import"
+#define LIMIT "limit"
+#define WHERE "where"
+#define ROWS "rows"
+#define NUM_THREADS "num_threads"
+#define COLUMNS_ON_SELECT         "columns_on_select"
+#define COLUMNS_ON_SELECT_REPLACE "columns_on_select_replace"
+#define COLUMNS_ON_INSERT "columns_on_insert"
+#define PARTITION_REGEX "partition_regex"
+
+#define SKIP_INDEX_CHECKSUMS "skip-index-checksums"
+#define SKIP_TABLE_CHECKSUMS "skip-table-checksums"
+#define SKIP_VIEW_CHECKSUMS "skip-view-checksums"
+#define SKIP_TRIGGER_CHECKSUMS "skip-trigger-checksums"
+#define SKIP_DATA_CHECKSUMS "skip-data-checksums"
+#define SKIP_DATABASE_CHECKSUMS "skip-database-checksums"
+#define SKIP_ROUTINE_CHECKSUMS "skip-routine-checksums"
+#define SKIP_EVENT_CHECKSUMS "skip-event-checksums"
+
 extern GList *ignore_errors_list;
 extern GHashTable *ignore_errors_set;
 extern const gchar *start_replica;
@@ -66,7 +87,7 @@ extern const gchar *show_replica_status;
 extern const gchar *show_all_replicas_status;
 extern const gchar *show_binary_log_status;
 extern const gchar *change_replication_source;
-extern guint source_control_command;
+extern enum source_control_command source_control_command;
 extern guint throttle_max_usleep_limit;
 #ifndef _src_common_h
 #define _src_common_h
@@ -82,20 +103,6 @@ struct object_scope{
   gboolean no_constraint;
 };
 
-struct configuration_per_table{
-  GHashTable *all_anonymized_function;
-  GHashTable *all_where_per_table;
-  GHashTable *all_limit_per_table;
-  GHashTable *all_num_threads_per_table;
-  GHashTable *all_columns_on_select_per_table;
-  GHashTable *all_columns_on_select_replace_per_table;
-  GHashTable *all_columns_on_insert_per_table;
-  GHashTable *all_object_to_export;
-  GHashTable *all_object_to_import;
-  GHashTable *all_partition_regex_per_table;
-  GHashTable *all_rows_per_table;
-};
-
 struct M_ROW{
   MYSQL_RES *res;
   MYSQL_ROW row;
@@ -105,7 +112,7 @@ struct M_ROW{
 #define STREAM_BUFFER_SIZE_NO_STREAM 100
 #define DEFAULTS_FILE "/etc/mydumper.cnf"
 struct function_pointer;
-typedef void (*fun_ptr)(GString *,gchar*,gulong*, struct function_pointer*);
+typedef gboolean (*fun_ptr)(GString *,gchar*,gulong*, struct function_pointer*);
 
 struct function_pointer{
   // use when writing
@@ -137,9 +144,7 @@ void execute_gstring(MYSQL *conn, GString *ss);
 gchar *replace_escaped_strings(gchar *c);
 void escape_tab_with(gchar *to);
 void load_hash_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar * group_variables);
-//void load_anonymized_functions_from_key_file(GKeyFile *kf, GHashTable *all_anonymized_function, fun_ptr get_function_pointer_for());
-//void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, fun_ptr get_function_pointer_for());
-void load_per_table_info_from_key_file(GKeyFile *kf, struct configuration_per_table * conf_per_table, struct function_pointer * init_function_pointer());
+void load_per_table_info_from_key_file(GKeyFile *kf, GHashTable * conf_per_table, struct function_pointer * init_function_pointer());
 void refresh_set_session_from_hash(GString *ss, GHashTable * set_session_hash);
 void refresh_set_global_from_hash(GString *ss, GString *sr, GHashTable * set_global_hash);
 gboolean is_table_in_list(gchar *database, gchar *table, gchar **tl);
@@ -172,16 +177,20 @@ void m_error(const char *fmt, ...);
 void m_critical(const char *fmt, ...);
 void m_warning(const char *fmt, ...);
 void m_message(const char *fmt, ...);
+void runtime_message(const char *fmt, ...);
 void load_hash_of_all_variables_perproduct_from_key_file(GKeyFile *kf, GHashTable * set_session_hash, const gchar *str);
 GRecMutex * g_rec_mutex_new();
 gboolean read_data(FILE *file, GString *data, gboolean *eof, guint *line);
 gboolean should_ignore_error_code(guint error_code);
 gchar *m_date_time_new_now_local();
+const char *get_thread_name(void);
+gboolean machine_log_json_enabled(void);
 
-void print_int(const char*_key, int val);
+void print_int(const char*_key, int val, gboolean comment);
 void print_string(const char*_key, const char *val);
 void print_bool(const char*_key, gboolean val);
-void print_list(const char*_key, GList *list);
+void print_list(const char*_key, GList *list, gchar* f (void *));
+void print_common();
 
 gchar *get_zstd_cmd();
 gchar *get_gzip_cmd();
@@ -195,7 +204,7 @@ extern void trace(const char *format, ...);
   if (debug) \
     trace(__VA_ARGS__); \
   else \
-    g_message(__VA_ARGS__);
+    runtime_message(__VA_ARGS__);
 
 #define array_elements(A) ((guint) (sizeof(A)/sizeof(A[0])))
 #define key_strcmp ((int (*)(const void *, const void *)) &strcmp)
@@ -213,7 +222,6 @@ extern guint g_get_num_processors (void);
 #endif
 char *show_warnings_if_possible(MYSQL *conn);
 int global_process_create_table_statement (gchar * statement, GString *create_table_statement, GString *alter_table_statement, GString *alter_table_constraint_statement, gchar *real_table, gboolean split_indexes);
-void initialize_conf_per_table(struct configuration_per_table *cpt);
 void parse_object_scope(struct object_scope *object_to_export,gchar *val);
 gchar *build_dbt_key(gchar *a, gchar *b);
 gchar *build_config_file_dbt_key(const gchar *a, const gchar *b);
@@ -238,3 +246,6 @@ gchar *set_names_statement_template(gchar *_set_names);
 void execute_set_names(MYSQL *conn, gchar *_set_names);
 gchar * common_build_schema_table_filename(gchar *_directory, char *database, char *table, const char *suffix);
 void load_options_for_product_from_key_file(GKeyFile *kf, GOptionContext *context, const gchar *app, int major, int secondary, int revision);
+void * m_coalesce_hash(GHashTable * ht, gchar * db_table_key, gchar* any_db_key, gchar *any_table_key );
+GList *m_glistsplit(const gchar * str);
+

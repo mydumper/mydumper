@@ -1,4 +1,8 @@
-# Using Debian's GCC image, pinned to latest LTS, scheduled to EOL on Jun'26.
+# Using AlmaLinux 8
+# Full Support End: May 31, 2024 (No new functionality/hardware enablement).
+# Maintenance Support Ends: May 31, 2029 (Security updates only).
+# Extended Life Cycle Support (ELS): June 1, 2029 – May 31, 2032. 
+
 FROM almalinux:8 as builder
 
 ARG DEBIAN_FRONTEND=noninteractive

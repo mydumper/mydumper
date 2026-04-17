@@ -37,6 +37,7 @@
 #include "mydumper_global.h"
 #include "mydumper_arguments.h"
 #include "mydumper_file_handler.h"
+#include "../logging.h"
 
 const char DIRECTORY[] = "export";
 
@@ -56,6 +57,19 @@ gboolean skip_metadata_sorting = FALSE;
 // For daemon mode
 gboolean shutdown_triggered = FALSE;
 
+extern gboolean split_string_pk;
+extern gboolean use_single_column;
+extern guint max_time_per_select;
+extern guint64 min_integer_chunk_step_size;
+extern guint64 max_integer_chunk_step_size;
+extern guint max_split_of_step_in_integer_chunk;
+extern guint max_items_per_string_chunk;
+extern guint max_char_size;
+extern gchar *table_engine_for_view_dependency;
+extern gchar *load_data_character_set;
+extern guint ftwrl_timeout_retries;
+extern guint ftwrl_max_wait_time;
+
 void parse_disk_limits(){
   gchar ** strsplit = g_strsplit(disk_limits,":",3);
   if (g_strv_length(strsplit)!=2){
@@ -65,112 +79,115 @@ void parse_disk_limits(){
 }
 
 void print_help(){
-    print_string("host", hostname);
-    print_string("user", username);
-    print_string("password", password);
-    print_bool("ask-password",askPassword);
-    print_int("port",port);
-    print_string("socket",socket_path);
-    print_string("protocol", protocol_str);
-    print_bool("compress-protocol",compress_protocol);
-#ifdef WITH_SSL
-    print_bool("ssl",ssl);
-    print_string("ssl-mode",ssl_mode);
-    print_string("key",key);
-    print_string("cert", cert);
-    print_string("ca",ca);
-    print_string("capath",capath);
-    print_string("cipher",cipher);
-    print_string("tls-version",tls_version);
-#endif
-    print_list("regex",regex_list);
-    print_string("database",source_db);
-    print_string("ignore-engines",ignore_engines_str);
-    print_string("where",where_option);
-    print_int("updated-since",updated_since);
-    print_string("partition-regex",partition_regex);
-    print_string("omit-from-file",tables_skiplist_file);
-    print_string("tables-list",tables_list);
-    print_string("tidb-snapshot",tidb_snapshot);
-    print_bool("use-savepoints",use_savepoints);
-    print_bool("no-backup-locks",no_backup_locks);
-    print_int("trx-tables",trx_tables);
-    print_bool("skip-ddl-locks",skip_ddl_locks);
-    print_string("pmm-path",pmm_path);
-    print_string("pmm-resolution",pmm_resolution);
-    print_int("exec-threads",num_exec_threads);
-    print_string("exec",exec_command);
-    print_string("exec-per-thread",exec_per_thread);
-    print_string("exec-per-thread-extension",exec_per_thread_extension);
-    print_int("long-query-retries",longquery_retries);
-    print_int("long-query-retry-interval",longquery_retry_interval);
-    print_int("long-query-guard",longquery);
-    print_bool("kill-long-queries",killqueries);
-    print_int("max-threads-per-table",max_threads_per_table);
-//    print_string("char-deep",);
-//    print_string("char-chunk",);
-    print_string("rows",g_strdup_printf("%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT,min_chunk_step_size, starting_chunk_step_size, max_chunk_step_size));
-    print_bool("split-partitions",split_partitions);
-    print_bool("checksum-all",dump_checksums);
-    print_bool("data-checksums",data_checksums);
-    print_bool("schema-checksums",schema_checksums);
-    print_bool("routine-checksums",routine_checksums);
-    print_bool("no-schemas",no_schemas);
-    print_bool("all-tablespaces",dump_tablespaces);
-    print_bool("no-data",no_data);
-    print_bool("triggers",dump_triggers);
-    print_bool("events",dump_events);
-    print_bool("routines",dump_routines);
-    print_bool("views-as-tables",views_as_tables);
-    print_bool("no-views",no_dump_views);
-    print_bool("load-data",load_data);
-    print_bool("csv",csv);
-    print_bool("clickhouse",clickhouse);
-    print_bool("include-header",include_header);
-    print_string("fields-terminated-by",fields_terminated_by_ld);
-    print_string("fields-enclosed-by",fields_enclosed_by_ld);
-    print_string("fields-escaped-by",fields_escaped_by);
-    print_string("lines-starting-by",lines_starting_by_ld);
-    print_string("lines-terminated-by",lines_terminated_by_ld);
-    print_string("statement-terminated-by",statement_terminated_by_ld);
-    print_bool("insert-ignore",insert_ignore);
-    print_bool("replace",replace);
-    print_bool("complete-insert",complete_insert);
-    print_bool("hex-blob",hex_blob);
-    print_bool("skip-definer",skip_definer);
-    print_string("replace-definer",replace_definer);
-    print_int("statement-size",statement_size);
-    print_bool("tz-utc",skip_tz);
-    print_bool("skip-tz-utc",skip_tz);
-    print_string("set-names", set_names_in_conn_by_default || set_names_in_conn_for_sct ? g_strdup_printf("%s,%s",set_names_in_conn_for_sct,set_names_in_conn_by_default):NULL);
-    print_string("default-character-set", set_names_in_file_by_default || set_names_in_file_for_sct ? g_strdup_printf("%s,%s",set_names_in_file_for_sct,set_names_in_file_by_default):NULL);
-    print_int("chunk-filesize",chunk_filesize);
-    print_bool("exit-if-broken-table-found",exit_if_broken_table_found);
-    print_bool("build-empty-files",build_empty_files);
-    print_bool("no-check-generated-fields",ignore_generated_fields);
-    print_bool("order-by-primary",order_by_primary_key);
-    print_bool("compact",compact);
-    print_bool("compress",compress_method!=NULL);
-    print_bool("use-defer",use_defer);
-    print_bool("check-row-count",check_row_count);
-    print_bool("daemon",daemon_mode);
-    print_int("snapshot-interval",snapshot_interval);
-    print_int("snapshot-count",snapshot_count);
-    print_bool("help",help);
-    print_string("outputdir",output_directory);
-    print_bool("clear",clear_dumpdir);
-    print_bool("dirty",dirty_dumpdir);
-    print_bool("merge",merge_dumpdir);
-    print_bool("stream",stream);
-    print_string("logfile",logfile);
-    print_string("disk-limits",disk_limits);
-    print_int("threads",num_threads);
-    print_bool("version",program_version);
-    print_bool("verbose",verbose);
-    print_bool("debug",debug);
-    print_string("defaults-file",defaults_file);
-    print_string("defaults-extra-file",defaults_extra_file);
-    exit(EXIT_SUCCESS);
+  print_connection_help();
+
+  print_list("regex",regex_list, NULL);
+  print_string("database",source_db);
+  print_string("ignore-engines",ignore_engines_str);
+  print_string("where",where_option);
+  print_int("updated-since",updated_since, updated_since==0);
+  print_string("partition-regex",partition_regex);
+  print_string("omit-from-file",tables_skiplist_file);
+  print_string("tables-list",tables_list);
+
+  print_string("tidb-snapshot",tidb_snapshot);
+  print_string("sync-thread-lock-mode",syncthreadlockmode2str(sync_thread_lock_mode));
+  print_bool("use-savepoints",use_savepoints);
+  print_bool("no-backup-locks",no_backup_locks);
+  print_int("trx-tables",trx_tables, FALSE);
+  print_bool("no-trx-tables",trx_tables==0);
+  print_bool("skip-ddl-locks",skip_ddl_locks);
+
+  print_pmm_help();
+
+  print_int("exec-threads",num_exec_threads, exec_command == NULL );
+  print_string("exec",exec_command);
+  print_string("exec-per-thread",exec_per_thread);
+  print_string("exec-per-thread-extension",exec_per_thread_extension);
+
+  print_int("long-query-retries",long_query_retries, long_query_retries==0 );
+  print_int("long-query-retry-interval",long_query_retry_interval, long_query_retry_interval==0);
+  print_int("long-query-guard",long_query, long_query==0);
+  print_bool("kill-long-queries",killqueries);
+
+  print_int("max-time-per-select", max_time_per_select, FALSE);
+  print_int("max-threads-per-table", max_threads_per_table, FALSE);
+  print_bool("use-single-column", use_single_column);
+  print_bool("split-string-pk", split_string_pk);
+  print_string("rows",g_strdup_printf("%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT,min_chunk_step_size, starting_chunk_step_size, max_chunk_step_size));
+  print_string("rows-hard",g_strdup_printf("%"G_GUINT64_FORMAT":%"G_GUINT64_FORMAT,min_integer_chunk_step_size, max_integer_chunk_step_size));
+  print_int("max-split-of-step-in-integer-chunk", max_split_of_step_in_integer_chunk, FALSE);
+  print_int("max-char-size", max_char_size, FALSE);
+  print_int("max-items-per-string-chunk", max_items_per_string_chunk, FALSE);
+  print_bool("split-partitions",split_partitions);
+
+  print_checksum_help();
+
+  print_bool("no-schemas",no_schemas);
+  print_bool("all-tablespaces",dump_tablespaces);
+  print_bool("no-data",no_data);
+  print_bool("triggers",dump_triggers);
+  print_bool("events",dump_events);
+  print_bool("routines",dump_routines);
+  print_bool("skip-constraints",skip_constraints);
+  print_bool("skip-indexes",skip_indexes);
+  print_bool("skip-metadata-sorting",skip_metadata_sorting);
+  print_bool("views-as-tables",views_as_tables);
+  print_bool("no-views",no_dump_views);
+
+  print_string("format", outputformat2str(output_format));
+  print_bool("include-header",include_header);
+  print_string("fields-terminated-by",fields_terminated_by_ld);
+  print_string("fields-enclosed-by",fields_enclosed_by_ld);
+  print_string("fields-escaped-by",fields_escaped_by);
+  print_string("lines-starting-by",lines_starting_by_ld);
+  print_string("lines-terminated-by",lines_terminated_by_ld);
+  print_string("statement-terminated-by",statement_terminated_by_ld);
+  print_bool("insert-ignore",insert_ignore);
+  print_bool("replace",replace);
+  print_bool("complete-insert",complete_insert);
+  print_bool("hex-blob",hex_blob);
+  print_bool("skip-definer",skip_definer);
+  print_string("replace-definer",replace_definer);
+  print_int("statement-size",statement_size, FALSE);
+  print_bool("tz-utc",skip_tz);
+  print_bool("skip-tz-utc",skip_tz);
+  print_string("set-names", set_names_in_conn_by_default || set_names_in_conn_for_sct ? g_strdup_printf("%s,%s",set_names_in_conn_for_sct,set_names_in_conn_by_default):NULL);
+  print_string("default-character-set", set_names_in_file_by_default || set_names_in_file_for_sct ? g_strdup_printf("%s,%s",set_names_in_file_for_sct,set_names_in_file_by_default):NULL);
+  print_string("load-data-character-set", load_data_character_set);
+  print_string("table-engine-for-view-dependency",table_engine_for_view_dependency);
+
+  print_int("chunk-filesize",chunk_filesize, chunk_filesize==0);
+  print_bool("exit-if-broken-table-found",exit_if_broken_table_found);
+  print_bool("build-empty-files",build_empty_files);
+  print_bool("no-check-generated-fields",ignore_generated_fields);
+  print_bool("bulk-metadata-prefetch",bulk_metadata_prefetch);
+  print_bool("order-by-primary",order_by_primary_key);
+  print_bool("compact",compact);
+  print_bool("compress",compress_method!=NULL);
+  print_bool("use-defer",use_defer);
+  print_bool("check-row-count",check_row_count);
+
+  print_bool("daemon",daemon_mode);
+  print_int("snapshot-interval",snapshot_interval, !daemon_mode);
+  print_int("snapshot-count",snapshot_count, !daemon_mode);
+
+  print_bool("help",help);
+  print_string("outputdir",output_directory);
+  print_bool("clear",clear_dumpdir);
+  print_bool("dirty",dirty_dumpdir);
+  print_bool("merge",merge_dumpdir);
+  print_bool("stream",stream);
+  print_string("logfile",logfile);
+  print_string("disk-limits",disk_limits);
+  print_bool("masquerade-filename", masquerade_filename);
+  print_int("ftwrl-max-wait-time", ftwrl_max_wait_time, FALSE);
+  print_int("ftwrl-timeout-retries", ftwrl_timeout_retries, ftwrl_timeout_retries==0);
+  print_list("replica-data", build_list_from_replica_options(&replica_data), NULL);
+  print_list("source-data", build_list_from_replica_options(&source_data), NULL);
+
+  print_common();
+  exit(EXIT_SUCCESS);
 }
 
 void initialize_directories(){
@@ -191,6 +208,8 @@ int main(int argc, char *argv[]) {
 
   GError *error = NULL;
   GOptionContext *context;
+  gint64 process_started_at = g_get_monotonic_time();
+  gint exit_code = EXIT_SUCCESS;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
@@ -204,6 +223,10 @@ int main(int argc, char *argv[]) {
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
+  }
+
+  if (machine_log_json) {
+    configure_log_output(debug ? 4U : verbose);
   }
 
   // Loading the defaults file:
@@ -296,7 +319,35 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-  g_message("MyDumper backup version: %s", VERSION);
+  if (machine_log_json) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "effective dump configuration loaded",
+                     "EVENT", "process_config",
+                     "PHASE", "startup",
+                     "STATUS", "started",
+                     "MODE", "dump",
+                     "OUTPUT_DIRECTORY", output_directory != NULL ? output_directory : "",
+                     "THREADS", threads_text,
+                     "STREAM", stream ? "true" : "false",
+                     "LOGFILE", logfile != NULL ? logfile : "",
+                     "SOURCE_DB", source_db != NULL ? source_db : "",
+                     "TABLES_LIST", tables_list != NULL ? tables_list : "",
+                     NULL);
+    g_free(threads_text);
+  }
+
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "MyDumper backup version",
+                      "EVENT", "process_version",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "VERSION", VERSION,
+                      NULL);
+  } else {
+    g_message("MyDumper backup version: %s", VERSION);
+  }
 
   // Startmodifying file in disk, creating objects and backup
 
@@ -320,11 +371,8 @@ int main(int argc, char *argv[]) {
 
   free_set_names();
 
-  if (logoutfile) {
-    fclose(logoutfile);
-  }
-
   g_option_context_free(context);
+  gchar *summary_output_directory = output_directory != NULL ? g_strdup(output_directory) : g_strdup("");
   g_free(output_directory);
 //  g_strfreev(tables);
 
@@ -332,6 +380,48 @@ int main(int argc, char *argv[]) {
 
   if (key_file)  g_key_file_free(key_file);
 //  g_strfreev(argv);
-  exit(errors ? EXIT_FAILURE : EXIT_SUCCESS);
+  exit_code = errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  if (machine_log_json) {
+    gchar *duration_ms = g_strdup_printf("%" G_GINT64_FORMAT,
+                                         (g_get_monotonic_time() - process_started_at) / 1000);
+    gchar *errors_text = g_strdup_printf("%u", errors);
+    gchar *warnings_text = g_strdup_printf("%u", machine_log_warning_count_get());
+    gchar *tables_text = g_strdup_printf("%u", dump_summary_get_tables());
+    gchar *files_text = g_strdup_printf("%u", dump_summary_get_files());
+    gchar *bytes_text = g_strdup_printf("%" G_GUINT64_FORMAT, dump_summary_get_bytes());
+    gchar *retries_text = g_strdup_printf("%u", dump_summary_get_retries());
+    gchar *skipped_text = g_strdup_printf("%u", dump_summary_get_skipped());
+    gchar *exit_code_text = g_strdup_printf("%d", exit_code);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "dump completed",
+                     "EVENT", "dump_completed",
+                     "PHASE", "dump_finish",
+                     "STATUS", "finished",
+                     "MODE", "dump",
+                     "OUTPUT_DIRECTORY", summary_output_directory,
+                     "DURATION_MS", duration_ms,
+                     "TABLES", tables_text,
+                     "FILES", files_text,
+                     "BYTES", bytes_text,
+                     "ERRORS", errors_text,
+                     "WARNINGS", warnings_text,
+                     "RETRIES", retries_text,
+                     "SKIPPED", skipped_text,
+                     "EXIT_CODE", exit_code_text,
+                     NULL);
+    g_free(duration_ms);
+    g_free(errors_text);
+    g_free(warnings_text);
+    g_free(tables_text);
+    g_free(files_text);
+    g_free(bytes_text);
+    g_free(retries_text);
+    g_free(skipped_text);
+    g_free(exit_code_text);
+  }
+  if (logoutfile) {
+    fclose(logoutfile);
+  }
+  g_free(summary_output_directory);
+  exit(exit_code);
 }
-

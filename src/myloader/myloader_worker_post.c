@@ -20,6 +20,7 @@
 #include "myloader_common.h"
 #include "myloader_global.h"
 #include "myloader_restore_job.h"
+#include "../logging.h"
 
 GThread **post_threads = NULL;
 struct thread_data *post_td = NULL;
@@ -71,7 +72,19 @@ void *worker_post_thread(struct thread_data *td) {
   struct control_job *job = NULL;
 
   set_thread_name("T%02u", td->thread_id);
-  g_message("Thread %u: Starting post import task over table", td->thread_id);
+  if (machine_log_json_enabled()) {
+    gchar *thread_id = g_strdup_printf("%u", td->thread_id);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "starting post import task over table",
+                      "EVENT", "post_worker",
+                      "PHASE", "post_import",
+                      "STATUS", "started",
+                      "THREAD_ID", thread_id,
+                      NULL);
+    g_free(thread_id);
+  } else {
+    g_message("Thread %u: Starting post import task over table", td->thread_id);
+  }
   cont=TRUE;
   while (cont){
     job = (struct control_job *)g_async_queue_pop(conf->post_table_queue);

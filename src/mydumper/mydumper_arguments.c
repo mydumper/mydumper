@@ -29,14 +29,15 @@
 
 extern guint64 min_integer_chunk_step_size;
 extern guint64 max_integer_chunk_step_size;
+guint max_split_of_step_in_integer_chunk=0;
 guint max_char_size=2;
 guint max_items_per_string_chunk=5;
-guint max_time_per_select=MAX_TIME_PER_QUERY;
+guint max_time_per_select=MAX_TIME_PER_SELECT;
 enum sync_thread_lock_mode sync_thread_lock_mode=AUTO;
 const gchar *compress_method=NULL;
 gboolean split_integer_tables=TRUE;
 const gchar *rows_file_extension=SQL;
-guint output_format=SQL_INSERT;
+enum output_format output_format=SQL_INSERT;
 gchar *output_directory_str = NULL;
 gboolean masquerade_filename=FALSE;
 guint trx_tables=1;
@@ -78,6 +79,8 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
     return FALSE;
   }
   if (!g_strcmp0(option_name,"--no-trx-tables")){
+    if (value)
+      m_error("--no-trx-tables doesn't accept any argument");
     trx_tables=0;
     return TRUE;
   }
@@ -119,18 +122,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       return TRUE;
     }
   }
-  if (!g_strcmp0(option_name,"--trx-consistency-only")){
-    m_critical("--trx-consistency-only is deprecated use --trx-tables instead");
-  }
-  if (!g_strcmp0(option_name,"--less-locking")){
-    m_critical("--less-locking is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise");
-  }
-  if (!g_strcmp0(option_name,"--lock-all-tables")){
-    m_critical("--lock-all-tables is deprecated use --sync-thread-lock-mode instead");
-  }
-  if (!g_strcmp0(option_name,"--no-locks")){
-    m_critical("--no-locks is deprecated use --sync-thread-lock-mode instead");
-  }
   if (!g_strcmp0(option_name,"--sync-thread-lock-mode")){
     if (!g_ascii_strcasecmp(value,"AUTO")){
       sync_thread_lock_mode=AUTO;
@@ -156,9 +147,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       sync_thread_lock_mode=SAFE_NO_LOCK;
       return TRUE;
     }
-  }
-  if (!g_strcmp0(option_name,"--success-on-1146")){
-    m_critical("--success-on-1146 is deprecated use --ignore-errors instead");
   }
 
   if (!g_strcmp0(option_name,"--default-character-set")){
@@ -204,7 +192,7 @@ static GOptionEntry entries[] = {
       "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
       "which is the default value and used if no parameter is given", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-      "Log file name to use, by default stdout is used", NULL},
+      "Log file name to use, by default stderr is used", NULL},
     {"disk-limits", 0, 0, G_OPTION_ARG_STRING, &disk_limits,
       "Set the limit to pause and resume if determines there is no enough disk space."
       "Accepts values like: '<resume>:<pause>' in MB."
@@ -225,8 +213,6 @@ static GOptionEntry extra_entries[] = {
       "Split data files into pieces of this size in MB. Useful for myloader multi-threading.", NULL},
     {"exit-if-broken-table-found", 0, 0, G_OPTION_ARG_NONE, &exit_if_broken_table_found,
       "Exits if a broken table has been found", NULL},
-    {"success-on-1146", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
-      "This option is deprecated use --ignore-errors instead", NULL},
     {"build-empty-files", 'e', 0, G_OPTION_ARG_NONE, &build_empty_files,
       "Build dump files even if no data available from table", NULL},
     { "no-check-generated-fields", 0, 0, G_OPTION_ARG_NONE, &ignore_generated_fields,
@@ -250,11 +236,6 @@ static GOptionEntry extra_entries[] = {
 static GOptionEntry lock_entries[] = {
     {"tidb-snapshot", 'z', 0, G_OPTION_ARG_STRING, &tidb_snapshot,
       "Snapshot to use for TiDB", NULL},
-    {"no-locks", 'k', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This option is deprecated use --sync-thread-lock-mode instead",
-     NULL},
-    {"lock-all-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This option is deprecated use --sync-thread-lock-mode instead", NULL},
     {"sync-thread-lock-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "There are 4 modes that can be use to sync: SAFE_NO_LOCK, FTWRL, LOCK_ALL and GTID. "
       "If you don't need a consistent backup, use: NO_LOCK. More info https://mydumper.github.io/mydumper/docs/html/locks.html. "
@@ -263,13 +244,9 @@ static GOptionEntry lock_entries[] = {
       "Use savepoints to reduce metadata locking issues, needs SUPER privilege", NULL},
     {"no-backup-locks", 0, 0, G_OPTION_ARG_NONE, &no_backup_locks,
       "Do not use Percona backup locks", NULL},
-    {"less-locking", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This option is deprecated and its behaviour is the default which is useful if you don't have transaction tables. Use --trx-tables otherwise", NULL},
-    {"trx-consistency-only", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "This option is deprecated use --trx-tables instead", NULL},
     {"trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "The backup process changes, if we know that we are exporting transactional tables only", NULL},
-    {"no-trx-tables", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
+    {"no-trx-tables", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Indicates that some or all are not transactional tables. "
       "Locks will take longer to be released, as it needs to determine which tables are not transactional and export them before releasing global lock", NULL},
     {"skip-ddl-locks", 0, 0, G_OPTION_ARG_NONE, &skip_ddl_locks, 
@@ -277,11 +254,11 @@ static GOptionEntry lock_entries[] = {
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
 static GOptionEntry query_running_entries[] = {
-    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &longquery_retries,
+    {"long-query-retries", 0, 0, G_OPTION_ARG_INT, &long_query_retries,
       "Retry checking for long queries, default 0 (do not retry)", NULL},
-    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &longquery_retry_interval,
+    {"long-query-retry-interval", 0, 0, G_OPTION_ARG_INT, &long_query_retry_interval,
       "Time to wait before retrying the long query check in seconds, default 60", NULL},
-    {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &longquery,
+    {"long-query-guard", 'l', 0, G_OPTION_ARG_INT, &long_query,
       "Set long query timer in seconds, default 60", NULL},
     {"kill-long-queries", 'K', 0, G_OPTION_ARG_NONE, &killqueries,
       "Kill long running queries (instead of aborting)", NULL},
@@ -320,6 +297,8 @@ static GOptionEntry chunks_entries[] = {
       "Splitting tables into chunks of this many rows. It can be MIN:START_AT:MAX. MAX can be 0 which means that there is no limit. It will double the chunk size if query takes less than 1 second and half of the size if it is more than 2 seconds", NULL},
     {"rows-hard", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback, 
       "This set the MIN and MAX limit when even if --rows is 0", NULL},
+    {"max-split-of-step-in-integer-chunk", 0, 0, G_OPTION_ARG_INT, &max_split_of_step_in_integer_chunk,
+      "Limits the amount of times a step in the integer chunk will be split. Default: 0 which means no limit, it will cut based on the information of the rows in the EXPLAIN", NULL},
     {"max-char-size", 0, 0, G_OPTION_ARG_INT, &max_char_size,
       "When the primary key is an string, it will split up to this amount of character. Default: 2", NULL},
     {"max-items-per-string-chunk", 0, 0, G_OPTION_ARG_INT, &max_items_per_string_chunk,
@@ -328,6 +307,7 @@ static GOptionEntry chunks_entries[] = {
       "Dump partitions into separate files. This option overrides the --rows option for partitioned tables.", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
 
+/* Moved to checksum.c
 static GOptionEntry checksum_entries[] = {
     {"checksum-all", 'M', 0, G_OPTION_ARG_NONE, &dump_checksums,
       "Dump checksums for all elements", NULL},
@@ -340,6 +320,7 @@ static GOptionEntry checksum_entries[] = {
     {"routine-checksums", 0, 0, G_OPTION_ARG_NONE, &routine_checksums,
       "Dump triggers, functions and routines checksums", NULL},
     {NULL, 0, 0, G_OPTION_ARG_NONE, NULL, NULL, NULL}};
+*/
 
 static GOptionEntry filter_entries[] = {
     {"database", 'B', 0, G_OPTION_ARG_STRING, &source_db,
@@ -382,17 +363,11 @@ static GOptionEntry objects_entries[] = {
 
 
 static GOptionEntry statement_entries[] = {
-    {"load-data", 0, 0, G_OPTION_ARG_NONE, &load_data,
-      "Instead of creating INSERT INTO statements, it creates LOAD DATA statements and .dat files. "
-      "This option will be deprecated on future releases use --format", NULL },
-    {"csv", 0, 0, G_OPTION_ARG_NONE, &csv,
-      "Automatically enables --load-data and set variables to export in CSV format. "
-      "This option will be deprecated on future releases use --format", NULL },
     {"format", 0, 0, G_OPTION_ARG_CALLBACK, &arguments_callback,
       "Set the output format which can be INSERT, LOAD_DATA, CSV or CLICKHOUSE. "
       "Default: INSERT", NULL },
     {"include-header", 0, 0, G_OPTION_ARG_NONE, &include_header, 
-      "When --load-data or --csv is used, it will include the header with the column name", NULL},
+      "When --format is CSV or LOAD_DATA, it will include the header with the column name", NULL},
     {"fields-terminated-by", 0, 0, G_OPTION_ARG_STRING, &fields_terminated_by_ld,
       "Defines the character that is written between fields", NULL },
     {"fields-enclosed-by", 0, 0, G_OPTION_ARG_STRING, &fields_enclosed_by_ld,
@@ -401,11 +376,11 @@ static GOptionEntry statement_entries[] = {
       "Single character that is going to be used to escape characters in the"
       "LOAD DATA statement, default: '\\' ", NULL },
     {"lines-starting-by", 0, 0, G_OPTION_ARG_STRING, &lines_starting_by_ld,
-      "Adds the string at the beginning of each row. When --load-data is used "
+      "Adds the string at the beginning of each row. When --format is LOAD_DATA or CSV, "
       "it is added to the LOAD DATA statement. It affects INSERT INTO statements "
       "also when it is used.", NULL },
     {"lines-terminated-by", 0, 0, G_OPTION_ARG_STRING, &lines_terminated_by_ld,
-      "Adds the string at the end of each row. When --load-data is used it is "
+      "Adds the string at the end of each row. When --format is LOAD_DATA or CSV, "
       "added to the LOAD DATA statement. It affects INSERT INTO statements "
       "also when it is used.", NULL },
     {"statement-terminated-by", 0, 0, G_OPTION_ARG_STRING, &statement_terminated_by_ld,
@@ -477,7 +452,8 @@ GOptionContext * load_contex_entries(){
   g_option_context_add_group(context, chunks_group);
 
   GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
-  g_option_group_add_entries(checksum_group, checksum_entries);
+  g_option_group_add_entries(checksum_group, common_checksum_entries);
+//  g_option_group_add_entries(checksum_group, checksum_entries);
   g_option_context_add_group(context, checksum_group);
 
   GOptionGroup *objects_group=g_option_group_new("objects", "Objects Options", "Objects Options", NULL, NULL);

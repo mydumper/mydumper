@@ -153,9 +153,6 @@ void *process_stream(void *data){
   // Perf: Zero-allocation final timing
   total_diff = (g_get_monotonic_time() - total_start_time) / G_TIME_SPAN_SECOND;
   g_message("All data transferred was %" G_GINT64_FORMAT " at a rate of %" G_GINT64_FORMAT " MB/s",total_size,total_diff!=0?total_size/1024/1024/total_diff:total_size/1024/1024);
-  metadata_partial_writer_alive = FALSE;
-  metadata_partial_queue_push(GINT_TO_POINTER(1));
-  g_thread_join(metadata_partial_writer_thread);
   return NULL;
 }
 
@@ -247,5 +244,29 @@ void initialize_stream(){
 }
 
 void wait_stream_to_finish(){
-  g_thread_join(stream_thread);
+  /*
+   * Shutdown ordering matters:
+   * - metadata_partial_writer may call stream_queue_push(), which (by default)
+   *   waits for an ACK from process_stream.
+   * - If we stop process_stream first (by sending the empty-filename sentinel),
+   *   metadata_partial_writer can deadlock waiting for an ACK that will never come.
+   *
+   * So: stop + join metadata writer first, then stop + join stream thread.
+   */
+  if (metadata_partial_writer_thread != NULL) {
+    metadata_partial_writer_alive = FALSE;
+    if (metadata_partial_queue != NULL) {
+      /* Wake up g_async_queue_timeout_pop() */
+      g_async_queue_push(metadata_partial_queue, GINT_TO_POINTER(1));
+    }
+    g_thread_join(metadata_partial_writer_thread);
+    metadata_partial_writer_thread = NULL;
+  }
+
+  if (stream_thread != NULL) {
+    /* Tell process_stream() to exit */
+    stream_queue_push(NULL, g_strdup(""));
+    g_thread_join(stream_thread);
+    stream_thread = NULL;
+  }
 }

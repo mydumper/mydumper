@@ -18,28 +18,16 @@
 #define _connection_h
 #include <mysql.h>
 
+#define INFORMATION_SCHEMA "INFORMATION_SCHEMA"
+
 void initialize_connection_socket_dir(gchar *current_dir);
 void initialize_connection(const gchar *app);
 void set_connection_defaults_file_and_group(gchar *cdf, const gchar *group);
 void m_connect(MYSQL *conn);
 void hide_password(int argc, char *argv[]);
 void ask_password();
+void print_connection_help();
 GOptionGroup * load_connection_entries(GOptionContext *context);
-
+void print_connection_details_once();
 extern char *hostname;
-extern char *username;
-extern char *password;
-extern gboolean askPassword;
-extern char *socket_path;
-extern guint port;
-extern char *tls_version; 
-extern char *capath;
-extern char *key;
-extern char *cert;
-extern char *ca;
-extern gboolean ssl;
-extern gchar *ssl_mode;
-extern char *cipher;
-extern gboolean compress_protocol;
-extern char *protocol_str;
 #endif

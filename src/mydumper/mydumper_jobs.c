@@ -29,6 +29,7 @@
 #include "mydumper_write.h"
 #include "mydumper_global.h"
 #include "mydumper_working_thread.h"
+#include "../logging.h"
 
 /* Program options */
 gboolean dump_triggers = FALSE;
@@ -38,6 +39,59 @@ gboolean skip_definer = FALSE;
 gchar *replace_definer = NULL;
 static gchar * replace_definer_str = NULL;
 
+static void emit_dump_object_job_event(GLogLevelFlags level, const gchar *message,
+                                       const gchar *event, const gchar *phase,
+                                       const gchar *status, guint thread_id,
+                                       const gchar *db, const gchar *table,
+                                       const gchar *filename) {
+  gchar *thread_id_text = NULL;
+
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  thread_id_text = g_strdup_printf("%u", thread_id);
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", event,
+                    "PHASE", phase,
+                    "STATUS", status,
+                    "THREAD_ID", thread_id_text,
+                    "DB", db != NULL ? db : "",
+                    "TABLE", table != NULL ? table : "",
+                    "FILENAME", filename != NULL ? filename : "",
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+  g_free(thread_id_text);
+}
+
+static void emit_dump_file_event(GLogLevelFlags level, const gchar *message,
+                                 const gchar *event, const gchar *phase,
+                                 const gchar *status, const gchar *db,
+                                 const gchar *table, const gchar *filename,
+                                 gint saved_errno) {
+  gchar *errno_text = NULL;
+
+  if (!machine_log_json_enabled()) {
+    return;
+  }
+
+  errno_text = g_strdup_printf("%d", saved_errno);
+  machine_log_event(G_LOG_DOMAIN, level,
+                    "MESSAGE", message,
+                    "EVENT", event,
+                    "PHASE", phase,
+                    "STATUS", status,
+                    "DB", db != NULL ? db : "",
+                    "TABLE", table != NULL ? table : "",
+                    "FILENAME", filename != NULL ? filename : "",
+                    "ERROR_CODE", errno_text,
+                    "RETRYABLE", "false",
+                    "FATAL", (level & (G_LOG_LEVEL_ERROR | G_LOG_LEVEL_CRITICAL)) != 0U ? "true" : "false",
+                    NULL);
+  g_free(errno_text);
+}
+
 extern gchar *table_engine_for_view_dependency;
 extern gchar *case_sensitive_prefix;
 extern gchar *case_sensitive_suffix;
@@ -46,15 +100,25 @@ int (*m_open)(char **filename, const char *);
 
 void initialize_jobs(){
   initialize_database();
-  if (ignore_generated_fields)
+  if (ignore_generated_fields) {
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                        "MESSAGE", "generated field queries will be skipped",
+                        "EVENT", "dump_config",
+                        "PHASE", "startup",
+                        "STATUS", "warning",
+                        "FATAL", "false",
+                        NULL);
+    }
     g_warning("Queries related to generated fields are not going to be executed. It will lead to restoration issues if you have generated columns");
+  }
 
   if (replace_definer)
     replace_definer_str=g_strdup_printf("DEFINER=%s",replace_definer);
 }
 
 static
-gchar * write_checksum_into_file(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
+gchar * get_checksum(MYSQL *conn, struct database *database, char *table, gchar *fun(MYSQL *,gchar *,gchar *)) {
   gchar *checksum=fun(conn, database->source_database, table);
   if (!checksum)
     checksum = g_strdup("0");
@@ -78,6 +142,9 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   MYSQL_ROW row;
   int outfile = m_open(&filename,"w");
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_file", "write_tablespace", "failed",
+                         NULL, NULL, filename, errno);
     g_critical("Error: Could not create output file %s (%d)",
                filename, errno);
     errors++;
@@ -85,6 +152,9 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   }
   query=get_tablespace_query();
   if (query == NULL ){
+    emit_dump_file_event(G_LOG_LEVEL_WARNING, "tablespace not supported on server version",
+                         "dump_tablespace", "write_tablespace", "cancelled",
+                         NULL, NULL, filename, 0);
     g_warning("Tablespace requested, but not possible due to server version not supported");
     return;
   }
@@ -99,6 +169,9 @@ void write_tablespace_definition_into_file(MYSQL *conn,char *filename){
   while ((row = mysql_fetch_row(result))) {
     g_string_append_printf(statement, "CREATE TABLESPACE %c%s%c ADD DATAFILE '%s' FILE_BLOCK_SIZE = %s ENGINE=INNODB;\n", identifier_quote_character, row[0], identifier_quote_character, row[1], row[2]);
     if (!write_data(outfile, statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write tablespace data",
+                           "dump_tablespace", "write_tablespace", "failed",
+                           NULL, row[0], filename, errno);
       g_critical("Could not write tablespace data for %s", row[0]);
       errors++;
       return;
@@ -115,6 +188,9 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   outfile = m_open(&filename,"w");
 
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_schema", "create_database_schema", "failed",
+                         database->source_database, NULL, filename, errno);
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->source_database,
                filename, errno);
     errors++;
@@ -133,6 +209,9 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
 
   /* There should never be more than one row */
   if (!mr->row || !strstr(mr->row[1], identifier_quote_character_str)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "identifier quote not found in create database output",
+                         "dump_schema", "create_database_schema", "failed",
+                         database->source_database, NULL, filename, 0);
     g_critical("Identifier quote [%s] not found when fetching %s",
                identifier_quote_character_str, database->source_database);
     errors++;
@@ -140,6 +219,9 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   g_string_append(statement, mr->row[1]);
   g_string_append(statement, ";\n");
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write create database",
+                         "dump_schema", "create_database_schema", "failed",
+                         database->source_database, NULL, filename, errno);
     g_critical("Could not write create database for %s", database->source_database);
     errors++;
   }
@@ -147,19 +229,22 @@ void write_schema_definition_into_file(MYSQL *conn, struct database *database, c
   g_string_free(statement, TRUE);
   m_store_result_row_free(mr);
 
-  if (schema_checksums)
-    database->schema_checksum = write_checksum_into_file(conn, database, NULL, checksum_database_defaults);
+  if (!database->checksum.skip_schema)
+    database->checksum.schema = get_checksum(conn, database, NULL, checksum_database_defaults);
   return;
 }
 
 static
 void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
-                      char *filename, gboolean checksum_filename, gboolean checksum_index_filename) {
+                      char *filename) {
   int outfile;
   char *query = NULL;
   outfile = m_open(&filename,"w");
 
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_schema", "create_table_schema", "failed",
+                         dbt->database->source_database, dbt->table, filename, errno);
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->source_database,
                filename, errno);
     errors++;
@@ -178,6 +263,9 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
 
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write schema header",
+                         "dump_schema", "create_table_schema", "failed",
+                         dbt->database->source_database, dbt->table, filename, errno);
     g_critical("Could not write schema data for %s.%s", dbt->database->source_database, dbt->table);
     errors++;
     return;
@@ -214,6 +302,9 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
 
   if (skip_indexes || skip_constraints){
     if (!write_data(outfile, create_table_statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write table schema",
+                           "dump_schema", "create_table_schema", "failed",
+                           dbt->database->source_database, dbt->table, filename, errno);
       g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
       errors++;
     }
@@ -224,6 +315,9 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   }else{
 
     if (!write_data(outfile, statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write table schema",
+                           "dump_schema", "create_table_schema", "failed",
+                           dbt->database->source_database, dbt->table, filename, errno);
       g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
       errors++;
     }
@@ -234,11 +328,11 @@ void write_table_definition_into_file(MYSQL *conn, struct db_table *dbt,
   g_string_free(alter_table_constraint_statement, TRUE);
   g_string_free(create_table_statement, TRUE);
 
-  if (checksum_filename)
-    dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
+  if (!dbt->checksum.skip_schema)
+    dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_table_structure);
   
-  if (checksum_index_filename)
-    dbt->indexes_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_indexes);
+  if (!dbt->checksum.skip_index)
+    dbt->checksum.index=get_checksum(conn, dbt->database, dbt->table, checksum_table_indexes);
 
 end:
   execute_set_names(conn, set_names_in_conn_by_default);
@@ -256,6 +350,9 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
   initialize_sql_statement(statement);
 
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write triggers header",
+                         "dump_triggers", "create_triggers", "failed",
+                         database->source_database, NULL, NULL, errno);
     g_critical("Could not write triggers for %s", message);
     errors++;
     return;
@@ -264,6 +361,9 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
   while ((row = mysql_fetch_row(result))) {
     set_charset(statement, row[8], row[9]);
     if (!write_data(outfile, statement)) {
+      emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write triggers data",
+                           "dump_triggers", "create_triggers", "failed",
+                           database->source_database, row[0], NULL, errno);
       g_critical("Could not write triggers data for %s", message);
       errors++;
       return;
@@ -289,6 +389,9 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
       g_string_append(statement, ";\n");
       restore_charset(statement);
       if (!write_data(outfile, statement)) {
+        emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write trigger definition",
+                             "dump_triggers", "create_triggers", "failed",
+                             database->source_database, row[0], NULL, errno);
         g_critical("Could not write triggers data for %s", message);
         errors++;
         return;
@@ -303,13 +406,16 @@ void write_triggers_definition_into_file(MYSQL *conn, MYSQL_RES *result, struct 
 }
 
 static
-void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
+void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *dbt, char *filename) {
   int outfile;
   char *query = NULL;
 
   outfile = m_open(&filename,"w");
 
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_triggers", "create_triggers", "failed",
+                         dbt->database->source_database, dbt->table, filename, errno);
     g_critical("Error: DB: %s Could not create output file %s (%d)", dbt->database->source_database,
                filename, errno);
     errors++;
@@ -330,15 +436,18 @@ void write_triggers_definition_into_file_from_dbt(MYSQL *conn, struct db_table *
   m_close(0, outfile, filename, 1, dbt);
   if (result)
     mysql_free_result(result);
-  if (checksum_filename)
-    dbt->triggers_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_trigger_structure);
+  if (!dbt->checksum.skip_trigger)
+    dbt->checksum.trigger=get_checksum(conn, dbt->database, dbt->table, checksum_trigger_structure);
   return;
 }
 
-void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
+void write_triggers_definition_into_file_from_database(MYSQL *conn, struct database *database, char *filename) {
   int outfile = m_open(&filename,"w");
 
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_triggers", "create_triggers", "failed",
+                         database->source_database, NULL, filename, errno);
     g_critical("Error: DB: %s Could not create output file %s (%d)", database->source_database,
                filename, errno);
     errors++;
@@ -353,14 +462,14 @@ void write_triggers_definition_into_file_from_database(MYSQL *conn, struct datab
     write_triggers_definition_into_file(conn, result, database, database->source_database, outfile);
     mysql_free_result(result);
     m_close(0, outfile, filename, 1, NULL);
-    if (checksum_filename)
-      database->triggers_checksum=write_checksum_into_file(conn, database, NULL, checksum_trigger_structure_from_database);
+    if (!database->checksum.skip_trigger)
+      database->checksum.trigger=get_checksum(conn, database, NULL, checksum_trigger_structure_from_database);
   }
   return;
 }
 
 static
-void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename, gboolean checksum_filename) {
+void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tmp_table_filename, char *view_filename) {
   int outfile;
   char *query = NULL;
   MYSQL_ROW row;
@@ -368,6 +477,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   initialize_sql_statement(statement);
 
   if (mysql_select_db(conn, dbt->database->source_database)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not select database",
+                         "dump_view", "create_view", "failed",
+                         dbt->database->source_database, dbt->table, view_filename, 0);
     g_critical("Could not select database: %s (%s)", dbt->database->source_database,
               mysql_error(conn));
     errors++;
@@ -376,6 +488,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
 
   outfile = m_open(&tmp_table_filename,"w");
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_view", "create_view_dependency_table", "failed",
+                         dbt->database->source_database, dbt->table, tmp_table_filename, errno);
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->source_database,
                errno);
     errors++;
@@ -383,6 +498,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   }
 
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view dependency schema",
+                         "dump_view", "create_view_dependency_table", "failed",
+                         dbt->database->source_database, dbt->table, tmp_table_filename, errno);
     g_critical("Could not write schema data for %s.%s", dbt->database->source_database, dbt->table);
     errors++;
     return;
@@ -422,6 +540,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
     mysql_free_result(result);
 
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view dependency table",
+                         "dump_view", "create_view_dependency_table", "failed",
+                         dbt->database->source_database, dbt->table, tmp_table_filename, errno);
     g_critical("Could not write view schema for %s.%s", dbt->database->source_database, dbt->table);
     errors++;
   }
@@ -440,6 +561,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
 
   outfile = m_open(&view_filename,"w");
   if (!outfile) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not create output file",
+                         "dump_view", "create_view", "failed",
+                         dbt->database->source_database, dbt->table, view_filename, errno);
     g_critical("Error: DB: %s Could not create output file (%d)", dbt->database->source_database,
                errno);
     errors++;
@@ -451,6 +575,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_append_printf(statement, "DROP VIEW IF EXISTS %c%s%c;\n", identifier_quote_character, dbt->table, identifier_quote_character);
 
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view preamble",
+                         "dump_view", "create_view", "failed",
+                         dbt->database->source_database, dbt->table, view_filename, errno);
     g_critical("Could not write schema data for %s.%s", dbt->database->source_database, dbt->table);
     errors++;
     return;
@@ -469,6 +596,9 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_append(statement, ";\n");
   restore_charset(statement);
   if (!write_data(outfile, statement)) {
+    emit_dump_file_event(G_LOG_LEVEL_CRITICAL, "could not write view definition",
+                         "dump_view", "create_view", "failed",
+                         dbt->database->source_database, dbt->table, view_filename, errno);
     g_critical("Could not write schema for %s.%s", dbt->database->source_database, dbt->table);
     errors++;
   }
@@ -477,13 +607,13 @@ void write_view_definition_into_file(MYSQL *conn, struct db_table *dbt, char *tm
   g_string_free(statement, TRUE);
   m_store_result_row_free(mr);
 
-  if (checksum_filename)
-    dbt->schema_checksum=write_checksum_into_file(conn, dbt->database, dbt->table, checksum_view_structure);
+  if (!dbt->checksum.skip_schema)
+    dbt->checksum.schema=get_checksum(conn, dbt->database, dbt->table, checksum_view_structure);
   return;
 }
 
 static
-void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename, gboolean checksum_filename) {
+void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char *filename) {
   int outfile;
   char *query = NULL;
   GString *statement = g_string_sized_new(statement_size);
@@ -545,8 +675,8 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
     }
     m_close(0, outfile, filename, 1, dbt);
     // Table checksum should cover the basics, but doesn't checksum the current sequence position
-    if (checksum_filename)
-      write_checksum_into_file(conn, dbt->database, dbt->table, checksum_table_structure);
+    if (!dbt->checksum.skip_schema)
+      get_checksum(conn, dbt->database, dbt->table, checksum_table_structure);
   }
   m_store_result_row_free(mr);
   g_string_free(statement, TRUE);
@@ -557,7 +687,7 @@ void write_sequence_definition_into_file(MYSQL *conn, struct db_table *dbt, char
 // TODO: We need to split it in 3 functions 
 
 static
-void write_routines_definition_into_file(MYSQL *conn, struct database *database, gboolean checksum_filename, int outfile) {
+void write_routines_definition_into_file(MYSQL *conn, struct database *database, int outfile) {
   gchar *query = NULL;
   guint charcol=0,collcol=0;
   MYSQL_ROW row;
@@ -609,8 +739,8 @@ void write_routines_definition_into_file(MYSQL *conn, struct database *database,
       mysql_free_result(result);
     } // for (guint r= 0; r < nroutines; r++)
 
-    if (checksum_filename)
-     database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
+    if (!database->checksum.skip_routine)
+     database->checksum.routine=get_checksum(conn, database, NULL, checksum_process_structure);
 }
 
 
@@ -667,7 +797,7 @@ void write_events_definition_into_file(MYSQL *conn, struct database *database, i
 
 
 static
-void write_post_into_file(MYSQL *conn, struct database *database, char *filename, gboolean checksum_filename) {
+void write_post_into_file(MYSQL *conn, struct database *database, char *filename) {
   int outfile;
 
   outfile = m_open(&filename,"w");
@@ -691,11 +821,11 @@ void write_post_into_file(MYSQL *conn, struct database *database, char *filename
   // get routines
   if (dump_routines) {
     g_assert(nroutines > 0);
-    write_routines_definition_into_file(conn, database, checksum_filename, outfile);
-    if (checksum_filename){
-     database->post_checksum=write_checksum_into_file(conn, database, NULL, checksum_process_structure);
-     database->events_checksum=write_checksum_into_file(conn, database, NULL, checksum_events_structure_from_database);
-    }
+    write_routines_definition_into_file(conn, database, outfile);
+    if (!database->checksum.skip_routine)
+     database->checksum.routine=get_checksum(conn, database, NULL, checksum_process_structure);
+    if (!database->checksum.skip_event)
+     database->checksum.event=get_checksum(conn, database, NULL, checksum_events_structure_from_database);
       
   }
 
@@ -744,8 +874,15 @@ void free_table_checksum_job(struct table_checksum_job*tcj){
 
 void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
   struct database_job * dj = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping schema create for %s%s%s", td->thread_id,
-            identifier_quote_character_str, masquerade_filename?dj->database->database_name_in_filename:dj->database->source_database, identifier_quote_character_str);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping schema create",
+                               "dump_schema", "create_database_schema", "started",
+                               td->thread_id, masquerade_filename ? dj->database->database_name_in_filename : dj->database->source_database,
+                               NULL, dj->filename);
+  } else {
+    g_message("Thread %d: dumping schema create for %s%s%s", td->thread_id,
+              identifier_quote_character_str, masquerade_filename?dj->database->database_name_in_filename:dj->database->source_database, identifier_quote_character_str);
+  }
   write_schema_definition_into_file(td->thrconn, dj->database, dj->filename);
   free_database_job(dj);
   g_free(job);
@@ -753,7 +890,13 @@ void do_JOB_CREATE_DATABASE(struct thread_data *td, struct job *job){
 
 void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
   struct create_tablespace_job * ctj = (struct create_tablespace_job *)job->job_data;
-  g_message("Thread %d: dumping create tablespace if any", td->thread_id);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping create tablespace",
+                               "dump_tablespace", "write_tablespace", "started",
+                               td->thread_id, NULL, NULL, ctj->filename);
+  } else {
+    g_message("Thread %d: dumping create tablespace if any", td->thread_id);
+  }
   write_tablespace_definition_into_file(td->thrconn, ctj->filename);
   free_create_tablespace_job(ctj);
   g_free(job);
@@ -761,9 +904,16 @@ void do_JOB_CREATE_TABLESPACE(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
   struct database_job * tj = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping Store Procedures, Functions and Events for %s%s%s", td->thread_id,
-            identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
-  write_post_into_file(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping post schema objects",
+                               "dump_post", "create_post_schema", "started",
+                               td->thread_id, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database,
+                               NULL, tj->filename);
+  } else {
+    g_message("Thread %d: dumping Store Procedures, Functions and Events for %s%s%s", td->thread_id,
+              identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
+  }
+  write_post_into_file(td->thrconn, tj->database, tj->filename);
   free_database_job(tj);
   g_free(job);
 }
@@ -771,64 +921,115 @@ void do_JOB_SCHEMA_POST(struct thread_data *td, struct job *job){
 
 void do_JOB_SCHEMA_TRIGGERS(struct thread_data *td, struct job *job){
   struct database_job * tj = (struct database_job *)job->job_data;
-  g_message("Thread %d: dumping triggers for %s%s%s", td->thread_id,
-            identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
-  write_triggers_definition_into_file_from_database(td->thrconn, tj->database, tj->filename, tj->checksum_filename);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping database triggers",
+                               "dump_triggers", "create_triggers", "started",
+                               td->thread_id, masquerade_filename ? tj->database->database_name_in_filename : tj->database->source_database,
+                               NULL, tj->filename);
+  } else {
+    g_message("Thread %d: dumping triggers for %s%s%s", td->thread_id,
+              identifier_quote_character_str, masquerade_filename?tj->database->database_name_in_filename:tj->database->source_database, identifier_quote_character_str);
+  }
+  write_triggers_definition_into_file_from_database(td->thrconn, tj->database, tj->filename);
   free_database_job(tj);
   g_free(job);
 }
 
 void do_JOB_VIEW(struct thread_data *td, struct job *job){
   struct view_job * tj = (struct view_job *)job->job_data;
-  g_message("Thread %d: dumping view for %s%s%s.%s%s%s", td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping view",
+                               "dump_view", "create_view", "started",
+                               td->thread_id,
+                               masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                               masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                               tj->view_filename);
+  } else {
+    g_message("Thread %d: dumping view for %s%s%s.%s%s%s", td->thread_id,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  }
 
   write_view_definition_into_file(td->thrconn, tj->dbt, tj->tmp_table_filename,
-                 tj->view_filename, tj->checksum_filename);
+                 tj->view_filename);
   g_free(job);
 }
 
 void do_JOB_SEQUENCE(struct thread_data *td, struct job *job){
   struct sequence_job * tj = (struct sequence_job *)job->job_data;
-  g_message("Thread %d dumping sequence for %s%s%s.%s%s%s", td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_sequence_definition_into_file(td->thrconn, tj->dbt, tj->filename,
-                 tj->checksum_filename);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping sequence",
+                               "dump_sequence", "create_sequence", "started",
+                               td->thread_id,
+                               masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                               masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                               tj->filename);
+  } else {
+    g_message("Thread %d dumping sequence for %s%s%s.%s%s%s", td->thread_id,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  }
+  write_sequence_definition_into_file(td->thrconn, tj->dbt, tj->filename);
 //  free_sequence_job(sj);
   g_free(job);
 }
 
 void do_JOB_SCHEMA(struct thread_data *td, struct job *job){
   struct schema_job *tj = (struct schema_job *)job->job_data;
-  g_message("Thread %d: dumping schema for %s%s%s.%s%s%s", td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_table_definition_into_file(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename, tj->checksum_index_filename);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping schema",
+                               "dump_schema", "create_table_schema", "started",
+                               td->thread_id,
+                               masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                               masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                               tj->filename);
+  } else {
+    g_message("Thread %d: dumping schema for %s%s%s.%s%s%s", td->thread_id,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  }
+  write_table_definition_into_file(td->thrconn, tj->dbt, tj->filename);
   free_schema_job(tj);
   g_free(job);
 }
 
 void do_JOB_TRIGGERS(struct thread_data *td, struct job *job){
   struct schema_job * tj = (struct schema_job *)job->job_data;
-  g_message("Thread %d: dumping triggers for %s%s%s.%s%s%s", td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
-  write_triggers_definition_into_file_from_dbt(td->thrconn, tj->dbt, tj->filename, tj->checksum_filename);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping table triggers",
+                               "dump_triggers", "create_triggers", "started",
+                               td->thread_id,
+                               masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                               masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                               tj->filename);
+  } else {
+    g_message("Thread %d: dumping triggers for %s%s%s.%s%s%s", td->thread_id,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  }
+  write_triggers_definition_into_file_from_dbt(td->thrconn, tj->dbt, tj->filename);
   free_schema_job(tj);
   g_free(job);
 }
 
 void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   struct table_checksum_job *tj = (struct table_checksum_job *)job->job_data;
-  g_message("Thread %d: dumping checksum for %s%s%s.%s%s%s", td->thread_id,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
-                    identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  if (machine_log_json_enabled()) {
+    emit_dump_object_job_event(G_LOG_LEVEL_MESSAGE, "dumping checksum",
+                               "checksum_check", "checksum", "started",
+                               td->thread_id,
+                               masquerade_filename ? tj->dbt->database->database_name_in_filename : tj->dbt->database->source_database,
+                               masquerade_filename ? tj->dbt->table_filename : tj->dbt->table,
+                               tj->filename);
+  } else {
+    g_message("Thread %d: dumping checksum for %s%s%s.%s%s%s", td->thread_id,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->database->database_name_in_filename:tj->dbt->database->source_database, identifier_quote_character_str,
+                      identifier_quote_character_str, masquerade_filename?tj->dbt->table_filename:tj->dbt->table, identifier_quote_character_str);
+  }
   if (use_savepoints) 
     m_query_critical(td->thrconn, "SAVEPOINT mydumper", "Savepoint failed");
   
-  tj->dbt->data_checksum=write_checksum_into_file(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
+  tj->dbt->checksum.data=get_checksum(td->thrconn, tj->dbt->database, tj->dbt->table, checksum_table);
 
   if (use_savepoints)
       m_query_critical(td->thrconn, "ROLLBACK TO SAVEPOINT mydumper", "Rollback to savepoint failed");
@@ -836,4 +1037,3 @@ void do_JOB_CHECKSUM(struct thread_data *td, struct job *job){
   free_table_checksum_job(tj);
   g_free(job);
 }
-

@@ -35,6 +35,7 @@
 #include "myloader_arguments.h"
 #include "myloader_database.h"
 #include "myloader_directory.h"
+#include "myloader_worker_loader_main.h"
 #include "myloader_worker_schema.h"
 
 
@@ -45,6 +46,7 @@ GMutex *fifo_table_mutex=NULL;
 struct configuration *_conf;
 extern gboolean schema_sequence_fix;
 GAsyncQueue *partial_metadata_queue = NULL;
+static GRecMutex *metadata_process_mutex = NULL;
 
 // Decompression throttle: limit concurrent decompressor processes
 static GCond *decompress_cond = NULL;
@@ -54,6 +56,8 @@ static guint max_decompressors = 0;
 
 void initialize_process(struct configuration *c){
   partial_metadata_queue=g_async_queue_new();
+  metadata_process_mutex = g_new0(GRecMutex, 1);
+  g_rec_mutex_init(metadata_process_mutex);
   replication_statements=g_new(struct replication_statements,1);
   replication_statements->reset_replica=NULL;
   replication_statements->start_replica=NULL;
@@ -71,7 +75,7 @@ void initialize_process(struct configuration *c){
   max_decompressors = num_threads;
   if (max_decompressors > 32) max_decompressors = 32;
   if (max_decompressors < 4) max_decompressors = 4;
-  max_decompressors=max_decompressors;
+  active_decompressors=max_decompressors+1;
 }
 
 // Release a decompressor slot
@@ -381,7 +385,7 @@ gchar * get_database_name_from_filename(const gchar *filename){
 }
 
 static
-gchar * get_database_name_from_content(gchar *filename){
+gchar * get_database_name_from_content(gchar *filename, GString **out_content){
   FILE *infile;
 //  enum data_file_type is_compressed = FALSE;
   gboolean eof = FALSE;
@@ -401,6 +405,10 @@ gchar * get_database_name_from_content(gchar *filename){
           gchar** create= g_strsplit(data->str, identifier_quote_character_str, 3);
           target_database=g_strdup(create[1]);
           g_strfreev(create);
+          // Capture the content so the schema worker can execute from memory
+          // (avoids re-reading the file, which in stream mode may already be deleted).
+          if (out_content)
+            *out_content = g_string_new_len(data->str, data->len);
           break;
         }else{
           g_string_set_size(data,0);
@@ -414,11 +422,13 @@ gchar * get_database_name_from_content(gchar *filename){
 
 void process_database_filename(char * filename) {
   gchar *db_kname,*db_vname;
+  GString *db_content=NULL;
   db_vname=db_kname=get_database_name_from_filename(filename);
 
   if (db_kname!=NULL){
     if (g_str_has_prefix(db_kname,"mydumper_"))
-      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL));
+      db_vname=get_database_name_from_content(g_build_filename(directory,filename,NULL),
+                                              &db_content);
     if(!db_vname)
       m_critical("It was not possible to process db content in file: %s",filename);
   }else{
@@ -428,24 +438,26 @@ void process_database_filename(char * filename) {
   trace("Adding database: %s -> %s", db_kname, db_vname);
   struct database *_database = get_database(db_kname, db_vname);
 
-  
+
   if (!eval_regex(_database->source_database, NULL)){
     g_warning("Skipping database: `%s`",_database->source_database);
-    _database->schema_checksum = NULL;
-    _database->post_checksum = NULL;
-    _database->triggers_checksum = NULL;
-    _database->events_checksum = NULL;
+    _database->checksum.schema = NULL;
+    _database->checksum.routine = NULL;
+    _database->checksum.trigger = NULL;
+    _database->checksum.event = NULL;
+    if (db_content) g_string_free(db_content, TRUE);
     return;
   }
 
   if (!has_been_defined_a_target_database()){
     _database->schema_state=NOT_CREATED;
 //    struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE);
-    schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, CREATE_DATABASE, NULL );
+    schema_push(SCHEMA_CREATE_JOB, filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, db_content, CREATE_DATABASE, NULL );
 //    schema_push( gchar * filename, enum restore_job_type type, struct db_table * dbt, struct database * database, GString * statement, enum restore_job_statement_type object, enum control_job_type type, struct database *use_database )
 //    g_async_queue_push(conf->database_queue, new_control_job(JOB_RESTORE,rj,NULL));
   }else{
     _database->schema_state=CREATED;
+    if (db_content) g_string_free(db_content, TRUE);
   }
 }
 
@@ -464,10 +476,10 @@ gboolean process_schema_sequence_filename(gchar *filename) {
     return FALSE;
   }
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
-  append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
+  append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//, 0, NULL);
   dbt->is_sequence= TRUE;
   dbt->schema_state= NOT_CREATED;
 /*  struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, SEQUENCE );
@@ -518,18 +530,18 @@ gboolean process_table_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     dbt=get_table(_database->database_name_in_filename, table_name);
     if (dbt){
-      dbt->schema_checksum=NULL;
-      dbt->triggers_checksum=NULL;
-      dbt->indexes_checksum=NULL;
-      dbt->data_checksum=NULL;
+      dbt->checksum.schema=NULL;
+      dbt->checksum.trigger=NULL;
+      dbt->checksum.index=NULL;
+      dbt->checksum.data=NULL;
     }
     return FALSE;
   }
 
-  append_new_db_table(&dbt, _database, NULL, table_name);//,0,NULL);
+  append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//,0,NULL);
   if (dbt->schema_state<NOT_CREATED){
     dbt->schema_state=NOT_CREATED;
   }else{
@@ -568,13 +580,16 @@ gboolean first_metadata_processed=FALSE;
 void process_metadata_global_filename(gchar *file, GOptionContext * local_context, gboolean is_global)
 {
   set_thread_name("MDT");
+  g_rec_mutex_lock(metadata_process_mutex);
 
   gchar *path = g_build_filename(directory, file, NULL);
   trace("Reading metadata: %s", path);
   GKeyFile * kf = load_config_file(path);
   g_free(path);
-  if (kf==NULL)
+  if (kf==NULL){
+    g_rec_mutex_unlock(metadata_process_mutex);
     g_error("Global metadata file processing was not possible");
+  }
 
   guint j=0;
   gchar *value=NULL;
@@ -645,6 +660,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   }else{
     if (!first_metadata_processed){
       g_async_queue_push(partial_metadata_queue,file);
+      g_rec_mutex_unlock(metadata_process_mutex);
       return;
     }
     m_remove(directory, file);
@@ -657,9 +673,6 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
     load_hash_of_all_variables_perproduct_from_key_file(kf,set_session_hash,"myloader_session_variables");
     refresh_set_session_from_hash(set_session,set_session_hash);
   }
-
-  if (!stream)
-    release_directory_metadata_lock();
 
   for (j= 0; j < length; j++) {
     gchar *group= newline_unprotect(groups[j]);
@@ -674,6 +687,7 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
       if (database_table[1] != NULL){
         database_table[1][strlen(database_table[1])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
+          const gchar *table_name_for_eval = database_table[1];
           struct database *_database=get_database(database_table[0],database_table[0]);
 //          gchar *table_filename=g_strdup(database_table[1]);
          
@@ -682,19 +696,30 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
             trace("real_table_name= %s", value);
             real_table_name= newline_unprotect(value);
             g_free(value);
+            if (real_table_name != NULL)
+              table_name_for_eval = real_table_name;
           }
-          append_new_db_table(&dbt, _database, real_table_name, database_table[1]);//, real_table_name);//,0,NULL);
+          if (!eval_table(_database->source_database, (gchar *)table_name_for_eval, _conf->table_list_mutex)){
+            trace("Skipping metadata entry for `%s`.`%s` due to table filters", _database->source_database, table_name_for_eval);
+            if (real_table_name) {
+             g_free(real_table_name);
+              real_table_name = NULL;
+            }
+            continue;
+          }
+          value=get_value(kf,groups[j],"is_view");
+          append_new_db_table(&dbt, _database, real_table_name, database_table[1], value && g_ascii_strtoull(value,NULL, 10) == 1 );//, real_table_name);//,0,NULL);
 //          if (real_table_name) g_free(real_table_name);
   //        if (table_filename) g_free(table_filename);
           real_table_name=NULL;
-          dbt->data_checksum=    dbt->object_to_import.no_data   ?NULL:get_value(kf,groups[j],"data_checksum");
-          dbt->schema_checksum=  dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"schema_checksum");
-          dbt->indexes_checksum= dbt->object_to_import.no_schema ?NULL:get_value(kf,groups[j],"indexes_checksum");
-          dbt->triggers_checksum=dbt->object_to_import.no_trigger?NULL:get_value(kf,groups[j],"triggers_checksum");
-          value=get_value(kf,groups[j],"is_view");
+          dbt->checksum.data=   get_value(kf,groups[j],"data_checksum");
+          dbt->checksum.schema= get_value(kf,groups[j],"schema_checksum");
+          dbt->checksum.index=  get_value(kf,groups[j],"indexes_checksum");
+          dbt->checksum.trigger=get_value(kf,groups[j],"triggers_checksum");
+/*          value=get_value(kf,groups[j],"is_view");
           if (value != NULL && g_strcmp0(value,"1")==0){
             dbt->is_view=TRUE;
-          }
+          } */
           if (value) g_free(value);
           value=get_value(kf, groups[j], "is_sequence");
           if (value != NULL && g_strcmp0(value, "1") == 0){
@@ -702,22 +727,22 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
             ++sequences;
           }
           if (value) g_free(value);
-          if (get_value(kf,groups[j],"rows")){
-            dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],"rows"),NULL, 10);
+          if (get_value(kf,groups[j],ROWS)){
+            dbt->rows=g_ascii_strtoull(get_value(kf,groups[j],ROWS),NULL, 10);
           }
           if (value) g_free(value);
-          if (get_value(kf,groups[j],"is_view")){
+/*          if (get_value(kf,groups[j],"is_view")){
             dbt->is_view=g_ascii_strtoull(get_value(kf,groups[j],"is_view"),NULL, 10);
-          }
+          }*/
         }
       } else {
         database_table[0][strlen(database_table[0])-1]='\0';
         if (!source_db || g_strcmp0(database_table[0],source_db)==0){
           struct database *database=get_database(database_table[0],database_table[0]);
-          database->schema_checksum=  get_value(kf,groups[j],"schema_checksum");
-          database->post_checksum=    get_value(kf,groups[j],"post_checksum");
-          database->triggers_checksum=get_value(kf,groups[j],"triggers_checksum");
-          database->events_checksum=  get_value(kf,groups[j],"events_checksum");
+          database->checksum.schema=  get_value(kf,groups[j],"schema_checksum");
+          database->checksum.routine= get_value(kf,groups[j],"post_checksum");
+          database->checksum.trigger= get_value(kf,groups[j],"triggers_checksum");
+          database->checksum.event=   get_value(kf,groups[j],"events_checksum");
         }
       }
     }else if (g_strstr_len(group,6,"master") || g_strstr_len(group,6,"source")){
@@ -737,6 +762,11 @@ void process_metadata_global_filename(gchar *file, GOptionContext * local_contex
   if (file)
     process_metadata_global_filename(file, local_context, FALSE);
 
+  if (!stream && is_global)
+    release_directory_metadata_lock();
+
+  g_rec_mutex_unlock(metadata_process_mutex);
+
 }
 
 gboolean process_schema_view_filename(gchar *filename) {
@@ -748,12 +778,13 @@ gboolean process_schema_view_filename(gchar *filename) {
   }
   _database=get_database(database,database);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("File %s has been filter out(1)",filename);
+    trace("File %s has been filtered out by table selection", filename);
     return FALSE;
   }
   struct db_table *dbt=NULL;
-  append_new_db_table(&dbt,_database, NULL, table_name);//,0, NULL);
-  dbt->is_view=TRUE;
+  append_new_db_table(&dbt,_database, NULL, table_name, TRUE);//,0, NULL);
+//  dbt->is_view=TRUE;
+//  dbt->checksum.skip_schema=  schema_checksums?skip_view_checksums:TRUE;
   struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, dbt, _database, NULL, VIEW);
   g_async_queue_push(_conf->view_queue, new_control_job(JOB_RESTORE,rj,_database));
   return TRUE;
@@ -771,10 +802,10 @@ gboolean process_schema_post_filename(gchar *filename, enum restore_job_statemen
   _database=get_database(database,database);
   if (table_name != NULL){ 
 	  if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-      g_warning("File %s has been filter out(1)",filename);
+      trace("File %s has been filtered out by table selection", filename);
       return FALSE; 
     }
-		append_new_db_table(&dbt, _database, NULL, table_name);//, 0, NULL);
+		append_new_db_table(&dbt, _database, NULL, table_name, FALSE);//, 0, NULL);
   }
   if ( object == TRIGGER || dbt==NULL || !dbt->object_to_import.no_trigger){
     struct restore_job *rj = new_schema_restore_job(filename, JOB_RESTORE_SCHEMA_FILENAME, NULL, _database, NULL, object); //TRIGGER or POST
@@ -813,12 +844,12 @@ gboolean process_data_filename(char * filename){
 
   struct database *_database=get_database(db_name,db_name);
   if (!eval_table(_database->source_database, table_name, _conf->table_list_mutex)){
-    g_warning("Skipping table: `%s`.`%s`",_database->source_database, table_name);
+    trace("Skipping table: `%s`.`%s`", _database->source_database, table_name);
     return FALSE;
   }
 
   struct db_table *dbt=NULL;
-  if (append_new_db_table(&dbt, _database, NULL, table_name)){
+  if (append_new_db_table(&dbt, _database, NULL, table_name, FALSE)){
     if (!has_been_defined_a_target_database()){
       gchar *schema_filename=common_build_schema_table_filename(directory, _database->target_database, table_name, "schema");
       if (g_file_test(schema_filename,G_FILE_TEST_EXISTS)){
@@ -837,9 +868,9 @@ gboolean process_data_filename(char * filename){
     dbt->restore_job_list=g_list_prepend(dbt->restore_job_list, rj);
     dbt->restore_job_list_sorted = FALSE;
     table_unlock(dbt);
+    enqueue_table_if_ready(_conf, dbt);
 	}else{
     g_warning("Ignoring file %s on `%s`.`%s`",filename, dbt->database->source_database, dbt->table_filename);
 	}
   return TRUE;
 }
-

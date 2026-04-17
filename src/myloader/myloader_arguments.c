@@ -37,13 +37,11 @@ gboolean drop_database = FALSE;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
-guint64 max_statement_size;
+guint64 max_statement_size=0;
 
 gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointer data, GError **error){
   *error=NULL;
-  if (!g_strcmp0(option_name, "--innodb-optimize-keys")) {
-    m_critical("Option --innodb-optimize-keys is deprecated use --optimize-keys instead");
-  }else if (!g_strcmp0(option_name, "--optimize-keys")) {
+  if (!g_strcmp0(option_name, "--optimize-keys")) {
     optimize_keys_str=g_strdup(value);
     if (value==NULL || !g_strcmp0(value,"1")){
       optimize_keys_per_table = TRUE;
@@ -99,12 +97,6 @@ gboolean arguments_callback(const gchar *option_name,const gchar *value, gpointe
       ignore_set_list=g_list_prepend(ignore_set_list,g_strdup_printf("%s",ignore_set_items[i]));
     g_strfreev(ignore_set_items);
     return TRUE;
-  } else if (!g_strcmp0(option_name, "--overwrite-tables")){
-    m_error("Option --overwrite-tables has been deprecated. Use -o/--drop-table instead");
-    return FALSE;
-  } else if (!g_strcmp0(option_name, "--purge-mode")){
-    m_error("Option --purge-mode has been deprecated. Use -o/--drop-table instead");
-    return FALSE;
   } else if (!g_strcmp0(option_name, "--drop-table") || !g_strcmp0(option_name, "-o")){
     overwrite_tables=TRUE;
     if (value){
@@ -142,7 +134,7 @@ static GOptionEntry entries[] = {
     {"directory", 'd', 0, G_OPTION_ARG_STRING, &input_directory,
      "Directory of the dump to import", NULL},
     {"logfile", 'L', 0, G_OPTION_ARG_FILENAME, &logfile,
-     "Log file name to use, by default stdout is used", NULL},
+     "Log file name to use, by default stderr is used", NULL},
     {"fifodir", 0, 0, G_OPTION_ARG_FILENAME, &fifo_directory,
      "Directory where the FIFO files will be created when needed. Default: temporary directoy will be created", NULL},
     {"load-data-tmp-dir", 0, 0, G_OPTION_ARG_FILENAME, &load_data_tmp_directory,
@@ -177,7 +169,7 @@ static GOptionEntry threads_entries[] = {
     {"max-threads-for-post-actions", 0, 0, G_OPTION_ARG_INT,&max_threads_for_post_creation,
       "Maximum number of threads for post action like: constraints, procedure, views and triggers, default 1", NULL},
     {"max-threads-for-schema-creation", 0, 0, G_OPTION_ARG_INT, &max_threads_for_schema_creation,
-      "Maximum number of threads for schema creation. When this is set to 1, is the same than --serialized-table-creation, default 4", NULL},
+      "Maximum number of threads for schema creation, default 4", NULL},
     {"exec-per-thread",0, 0, G_OPTION_ARG_STRING, &exec_per_thread,
       "Set the command that will receive by STDIN from the input file and write in the STDOUT", NULL},
     {"exec-per-thread-extension",0, 0, G_OPTION_ARG_STRING, &exec_per_thread_extension,
@@ -187,8 +179,6 @@ static GOptionEntry threads_entries[] = {
 static GOptionEntry execution_entries[] = {
     {"enable-binlog", 'e', G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "This option is discouraged. Use [myloader_session_variables] in the --defaults-file or --defaults-extra-file instead", NULL},
-    {"innodb-optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Option --innodb-optimize-keys is deprecated use --optimize-keys instead",NULL},
     {"optimize-keys", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
       "Creates the table without the indexes unless SKIP is selected. "
       "It will add the indexes right after completing the table restoration by default or after importing all the tables. "
@@ -197,8 +187,6 @@ static GOptionEntry execution_entries[] = {
       "Limits the amount of indexes per ALTER TABLE statement that adds the indexes, defaults: 0 (unlimited)", NULL},
     {"no-schema", 0, 0, G_OPTION_ARG_NONE, &no_schemas, 
       "Do not import table schemas and triggers ", NULL},
-    {"purge-mode", 0, 0, G_OPTION_ARG_CALLBACK , &arguments_callback,
-      "Option --purge-mode is deprecated use -o/--drop-table instead", NULL },
     { "disable-redo-log", 0, 0, G_OPTION_ARG_NONE, &disable_redo_log,
       "Disables the REDO_LOG and enables it after, doesn't check initial status", NULL },
     {"checksum", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &arguments_callback,
@@ -209,15 +197,10 @@ static GOptionEntry execution_entries[] = {
       "Executes or simulates a DROP TABLE if the table already exists. The drop modes can be: FAIL, NONE, DROP, TRUNCATE and DELETE. "
       "If the option is not set, the default is set to: FAIL. "
       "If the option is used without a parameter, the default is: DROP.", NULL},
-    {"overwrite-tables", 0, 0, G_OPTION_ARG_NONE, &overwrite_tables,
-      "Option --overwrite-tables has been deprecated. Use -o/--drop-table instead.", NULL},
     {"overwrite-unsafe", 0, 0, G_OPTION_ARG_NONE, &overwrite_unsafe,
       "Same as --overwrite-tables but starts data load as soon as possible. May cause InnoDB deadlocks for foreign keys.", NULL},
     {"retry-count", 0, 0, G_OPTION_ARG_INT, &retry_count,
       "Lock wait timeout exceeded retry count, default 10 (currently only for DROP TABLE)", NULL},
-    {"serialized-table-creation",0, 0, G_OPTION_ARG_NONE, &serial_tbl_creation,
-      "Table recreation will be executed in series, one thread at a time. "
-      "This means --max-threads-for-schema-creation=1. This option will be removed in future releases",NULL},
     {"stream", 0, G_OPTION_FLAG_OPTIONAL_ARG, G_OPTION_ARG_CALLBACK , &stream_arguments_callback,
       "It will receive the stream from STDIN and create the file in the disk before start processing. "
       "Accepts NO_STREAM, NO_DELETE, NO_STREAM_AND_NO_DELETE, UNPACK and TRADITIONAL "
@@ -304,6 +287,9 @@ GOptionContext * load_contex_entries(){
   g_option_group_add_entries(statement_group, statement_entries);
   g_option_context_add_group(context, statement_group);
 
+  GOptionGroup *checksum_group=g_option_group_new("checksum", "Checksum Options", "Checksum Options", NULL, NULL);
+  g_option_group_add_entries(checksum_group, common_checksum_entries);
+  g_option_context_add_group(context, checksum_group);
 
   GOptionGroup *load_from_metadata_group=g_option_group_new("load_from_metadata", "Load from metadata Options", "Load from metadata Options", NULL, NULL);
   g_option_group_add_entries(load_from_metadata_group, load_from_metadata_entries);

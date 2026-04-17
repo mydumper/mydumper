@@ -37,6 +37,7 @@
 #include "myloader_pmm.h"
 #include "myloader_restore_job.h"
 #include "myloader_process_filename.h"
+#include "myloader_process_file_type.h"
 #include "myloader_arguments.h"
 #include "myloader_global.h"
 #include "myloader_worker_index.h"
@@ -46,6 +47,7 @@
 #include "myloader_control_job.h"
 #include "myloader_database.h"
 #include "myloader_worker_loader_main.h"
+#include "../logging.h"
 
 guint commit_count = 1000;
 gchar *input_directory = NULL;
@@ -60,12 +62,10 @@ gboolean optimize_keys_all_tables = FALSE;
 gboolean kill_at_once = FALSE;
 gboolean enable_binlog = FALSE;
 gboolean disable_redo_log = FALSE;
-enum checksum_modes checksum_mode= CHECKSUM_WARN;  // Issue #1975: Warn by default instead of fail
 gboolean skip_triggers = FALSE;
 gboolean skip_constraints = FALSE;
 gboolean skip_indexes = FALSE;
 gboolean skip_post = FALSE;
-gboolean serial_tbl_creation = FALSE;
 gboolean resume = FALSE;
 guint rows = 0;
 guint num_sequences = 0;
@@ -83,15 +83,19 @@ guint retry_count= 10;
 gboolean stream = FALSE;
 gboolean no_delete = FALSE;
 
+extern gboolean dry_run;
+extern gchar *server_version_arg;
 extern GHashTable *database_hash;
 extern gboolean shutdown_triggered;
 extern gboolean local_infile;
 extern guint64 max_transaction_size;
 extern guint optimize_keys_batchsize;
-
+extern guint64 max_statement_size;
+extern GList *optimize_key_engines;
 const char DIRECTORY[] = "import";
 
-struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+//struct configuration_per_table conf_per_table = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+GHashTable *conf_per_table=NULL;
 GHashTable * set_session_hash=NULL;
 
 GHashTable * myloader_initialize_hash_of_session_variables(){
@@ -106,9 +110,9 @@ GHashTable * myloader_initialize_hash_of_session_variables(){
 static
 void detect_group_replication_transaction_size_limit(MYSQL * conn) {
   guint64 _max_transaction_size=0;
-  struct M_ROW *mr = m_store_result_row(conn, "SELECT @@group_replication_transaction_size_limit / 1024 / 1024",m_message, m_message, "Using default transaction limit", NULL);
+  struct M_ROW *mr = m_store_result_row(conn, "SHOW GLOBAL VARIABLES LIKE 'group_replication_transaction_size_limit'",m_message, m_message, "Using default transaction limit", NULL);
   if (mr->row)
-    _max_transaction_size=strtoll(mr->row[0], NULL, 10);
+    _max_transaction_size=strtoll(mr->row[0], NULL, 10)/1024/1024;
   max_transaction_size=_max_transaction_size > max_transaction_size ? _max_transaction_size : max_transaction_size;
   m_store_result_row_free(mr);
 }
@@ -193,91 +197,92 @@ void show_dbt(void* _key, void* dbt, void *total){
   }
 
 void print_help(){
-    print_string("host", hostname);
-    print_string("user", username);
-    print_string("password", password);
-    print_bool("ask-password",askPassword);
-    print_int("port",port);
-    print_string("socket",socket_path);
-    print_string("protocol", protocol_str);
-    print_bool("compress-protocol",compress_protocol);
-#ifdef WITH_SSL
-    print_bool("ssl",ssl);
-    print_string("ssl-mode",ssl_mode);
-    print_string("key",key);
-    print_string("cert", cert);
-    print_string("ca",ca);
-    print_string("capath",capath);
-    print_string("cipher",cipher);
-    print_string("tls-version",tls_version);
-#endif
-    print_list("regex",regex_list);
-    print_string("source-db",source_db);
+  print_connection_help();
 
-    print_bool("skip-triggers",skip_triggers);
-    print_bool("skip-constraints",skip_constraints);
-    print_bool("skip-indexes",skip_indexes);
-    print_bool("skip-post",skip_post);
-    print_bool("no-data",no_data);
+  print_list("regex",regex_list, NULL);
+  print_string("source-db",source_db);
+  print_bool("skip-triggers",skip_triggers);
+  print_bool("skip-post",skip_post);
+  print_bool("skip-constraints",skip_constraints);
+  print_bool("skip-indexes",skip_indexes);
+  print_bool("no-data",no_data);
+  print_string("omit-from-file",tables_skiplist_file);
+  print_string("tables-list",tables_list);
 
-    print_string("omit-from-file",tables_skiplist_file);
-    print_string("tables-list",tables_list);
-    print_string("pmm-path",pmm_path);
-    print_string("pmm-resolution",pmm_resolution);
+  print_pmm_help();
 
-    if (enable_binlog)
-      print_bool("enable-binlog",enable_binlog);
-    if (!optimize_keys){
-      print_string("optimize-keys",SKIP);
-    }else if(optimize_keys_per_table){
-      print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
-    }else if(optimize_keys_all_tables){
-      print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
-    }else
-      print_string("optimize-keys",NULL);
-    print_int("optimize-keys-batchsize",optimize_keys_batchsize);
-    print_bool("no-schemas",no_schemas);
+  if (enable_binlog)
+    print_bool("enable-binlog",enable_binlog);
+  if (!optimize_keys){
+    print_string("optimize-keys",SKIP);
+  }else if(optimize_keys_per_table){
+    print_string("optimize-keys",AFTER_IMPORT_PER_TABLE);
+  }else if(optimize_keys_all_tables){
+    print_string("optimize-keys",AFTER_IMPORT_ALL_TABLES);
+  }else
+  print_string("optimize-keys",NULL);
+  print_int("optimize-keys-batchsize",optimize_keys_batchsize, optimize_keys_batchsize==0);
+  print_bool("no-schemas",no_schemas);
+  print_bool("disable-redo-log",disable_redo_log);
+  print_string("checksum",checksum_str);
+  print_bool("drop-database",drop_database);
+  print_string("drop-table",purgemode2str(purge_mode));
+  print_bool("overwrite-unsafe",overwrite_unsafe);
+  print_int("retry-count",retry_count, overwrite_tables );
+  print_bool("stream",stream);
+  print_int("refresh-table-list-interval", refresh_table_list_interval, FALSE);
+  print_bool("skip-table-sorting", skip_table_sorting);
+  print_bool("set-gtid-purge",set_gtid_purge);
+  print_int("num-sequences",num_sequences, num_sequences==0);
 
-    print_bool("local-infile", local_infile);
-    print_bool("disable-redo-log",disable_redo_log);
-    print_string("checksum",checksum_str);
-    print_bool("overwrite-tables",overwrite_tables);
-    print_bool("overwrite-unsafe",overwrite_unsafe);
-    print_int("retry-count",retry_count);
-    print_bool("serialized-table-creation",serial_tbl_creation);
-    print_bool("stream",stream);
+  print_int("max-threads-per-table",max_threads_per_table, FALSE);
+  print_int("max-threads-for-index-creation",max_threads_for_index_creation, FALSE);
+  print_int("max-threads-for-post-actions",max_threads_for_post_creation, FALSE);
+  print_int("max-threads-for-schema-creation",max_threads_for_schema_creation, FALSE);
+  print_string("exec-per-thread",exec_per_thread);
+  print_string("exec-per-thread-extension",exec_per_thread_extension);
 
-    print_int("max-threads-per-table",max_threads_per_table);
-    print_int("max-threads-for-index-creation",max_threads_for_index_creation);
-    print_int("max-threads-for-post-actions",max_threads_for_post_creation);
-    print_int("max-threads-for-schema-creation",max_threads_for_schema_creation);
-    print_string("exec-per-thread",exec_per_thread);
-    print_string("exec-per-thread-extension",exec_per_thread_extension);
+  print_int("rows",rows, rows==0);
+  print_int("queries-per-transaction",commit_count, FALSE);
+  print_int("max-statement-size",max_statement_size,max_statement_size==0);
+  print_int("max-transaction-size",max_transaction_size, FALSE);
+  print_bool("append-if-not-exist",append_if_not_exist);
+  print_string("set-names",set_names_in_conn_by_default);
+  print_bool("skip-definer",skip_definer);
+  print_string("replace-definer",replace_definer);
+  print_list("ignore-set",ignore_set_list, NULL);
 
-    print_int("rows",rows);
-    print_int("queries-per-transaction",commit_count);
-    print_bool("append-if-not-exist",append_if_not_exist);
-    print_string("set-names",set_names_in_conn_by_default);
+  print_checksum_help();
 
-    print_bool("skip-definer",skip_definer);
-    print_string("replace-definer",replace_definer);
-    print_bool("help",help);
+  print_string("quote-character",identifier_quote_character_str);
+  print_bool("local-infile", local_infile);
 
-    print_string("directory",input_directory);
-    print_string("logfile",logfile);
-
-    print_string("database",target_db);
-    print_string("quote-character",identifier_quote_character_str);
-    print_bool("resume",resume);
-    print_int("threads",num_threads);
-    print_bool("version",program_version);
-    print_bool("verbose",verbose);
-    print_bool("debug",debug);
-    print_string("defaults-file",defaults_file);
-    print_string("defaults-extra-file",defaults_extra_file);
-    print_string("fifodir",fifo_directory);
-    print_string("load-data-tmp-directory",load_data_tmp_directory);
-    exit(EXIT_SUCCESS);
+  print_bool("help",help);
+  print_string("directory",input_directory);
+  print_string("logfile",logfile);
+  print_string("fifodir",fifo_directory);
+  print_string("load-data-tmp-directory",load_data_tmp_directory);
+  print_string("database",target_db);
+  print_bool("show-warnings",show_warnings);
+  print_bool("resume",resume);
+  print_bool("kill-at-once",kill_at_once);
+  print_bool("mysqldump",mysqldump);
+  GList *source_data_list=NULL;
+  if (source_data.exec_reset_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_reset_replica"));
+  if (source_data.exec_change_source)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_change_source"));
+  if (source_data.exec_start_replica)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica"));
+  if (source_data.source_ssl)
+    source_data_list=g_list_append(source_data_list,g_strdup("enable_ssl"));
+  if (source_data.auto_position)
+    source_data_list=g_list_append(source_data_list,g_strdup("use_auto_position"));
+  if (source_data.exec_start_replica_until)
+    source_data_list=g_list_append(source_data_list,g_strdup("exec_start_replica_until"));
+  print_list("source-data", source_data_list, NULL);
+  print_common();
+  exit(EXIT_SUCCESS);
 }
 
 
@@ -329,6 +334,8 @@ int main(int argc, char *argv[]) {
   struct configuration conf = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 0, NULL};
   GError *error = NULL;
   GOptionContext *context;
+  gint64 process_started_at = g_get_monotonic_time();
+  gint exit_code = EXIT_SUCCESS;
 
   setlocale(LC_ALL, "");
   g_thread_init(NULL);
@@ -342,6 +349,10 @@ int main(int argc, char *argv[]) {
   int tmpargc=argc;
   if (!g_option_context_parse(context, &tmpargc, &tmpargv, &error)) {
     m_critical("option parsing failed: %s, try --help\n", error->message);
+  }
+
+  if (machine_log_json) {
+    configure_log_output(debug ? 4U : verbose);
   }
 
   // Loading the defaults file:
@@ -373,12 +384,10 @@ int main(int argc, char *argv[]) {
   // Only auto-scale if user hasn't explicitly set these values (default is 4)
   guint cpu_count = g_get_num_processors();
   if (max_threads_for_schema_creation == 4 && cpu_count > 4) {
-    guint auto_schema_threads = cpu_count > 8 ? 8 : cpu_count;
-    max_threads_for_schema_creation = auto_schema_threads;
+    max_threads_for_schema_creation = cpu_count;
   }
   if (max_threads_for_index_creation == 4 && cpu_count > 4) {
-    guint auto_index_threads = cpu_count > 8 ? 8 : cpu_count;
-    max_threads_for_index_creation = auto_index_threads;
+    max_threads_for_index_creation = cpu_count;
   }
 
   check_num_threads();
@@ -406,12 +415,57 @@ int main(int argc, char *argv[]) {
 
   set_verbose(verbose);
 
-  g_message("MyDumper restore version: %s", VERSION);
+  if (machine_log_json) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    gchar *max_threads_text = g_strdup_printf("%u", max_threads_per_table);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "effective restore configuration loaded",
+                     "EVENT", "process_config",
+                     "PHASE", "startup",
+                     "STATUS", "started",
+                     "MODE", "restore",
+                     "INPUT_DIRECTORY", input_directory != NULL ? input_directory : "",
+                     "THREADS", threads_text,
+                     "MAX_THREADS_PER_TABLE", max_threads_text,
+                     "STREAM", stream ? "true" : "false",
+                     "LOGFILE", logfile != NULL ? logfile : "",
+                     "SOURCE_DB", source_db != NULL ? source_db : "",
+                     "TARGET_DB", target_db != NULL ? target_db : "",
+                     NULL);
+    g_free(threads_text);
+    g_free(max_threads_text);
+  }
 
-  if (num_threads > max_threads_per_table)
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "MyDumper restore version",
+                      "EVENT", "process_version",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "VERSION", VERSION,
+                      NULL);
+  } else {
+    g_message("MyDumper restore version: %s", VERSION);
+  }
+
+  if (machine_log_json_enabled()) {
+    gchar *threads_text = g_strdup_printf("%u", num_threads);
+    gchar *max_threads_text = g_strdup_printf("%u", max_threads_per_table);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "Using loader threads",
+                      "EVENT", "loader_threads",
+                      "PHASE", "startup",
+                      "STATUS", "started",
+                      "THREADS", threads_text,
+                      "MAX_THREADS_PER_TABLE", max_threads_text,
+                      NULL);
+    g_free(max_threads_text);
+    g_free(threads_text);
+  } else if (num_threads > max_threads_per_table) {
     g_message("Using %u loader threads (%u per table)", num_threads, max_threads_per_table);
-  else
+  } else {
     g_message("Using %u loader threads", num_threads);
+  }
 
   // Starts modifying file in disk, creating objects and restore
 
@@ -435,7 +489,7 @@ int main(int argc, char *argv[]) {
   g_message("Using %s as FIFO directory and %s as LOAD DATA temporary directory, please remove them if restoration fails", fifo_directory, load_data_tmp_directory);
 
   start_pmm_thread((void *)&conf);
-
+  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
   g_chdir(directory);
   /* Process list of tables to omit if specified */
   if (tables_skiplist_file)
@@ -449,7 +503,7 @@ int main(int argc, char *argv[]) {
   if (!kill_at_once){
     m_thread_new("myloader_signal",signal_thread, &conf, "Signal thread could not be created");
   }
-
+  initilize_checksum();
   MYSQL *conn;
   conn = mysql_init(NULL);
   m_connect(conn);
@@ -458,14 +512,16 @@ int main(int argc, char *argv[]) {
   set_global = g_string_new(NULL);
   set_global_back = g_string_new(NULL);
   server_detect(conn);
+  void print_connection_details_once();
   set_session_hash = myloader_initialize_hash_of_session_variables();
   GHashTable * set_global_hash = g_hash_table_new ( g_str_hash, g_str_equal );
   if (key_file != NULL ){
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_global_hash,"myloader_global_variables");
     load_hash_of_all_variables_perproduct_from_key_file(key_file,set_session_hash,"myloader_session_variables");
   }
-	initialize_conf_per_table(&conf_per_table);
-  load_per_table_info_from_key_file(key_file, &conf_per_table, NULL );
+//	initialize_conf_per_table(&conf_per_table);
+//  conf_per_table=g_hash_table_new ( g_str_hash, g_str_equal );
+  load_per_table_info_from_key_file(key_file, conf_per_table, NULL );
   if (max_transaction_size == DEFAULT_MAX_TRANSACTION_SIZE)
     detect_group_replication_transaction_size_limit(conn);
 
@@ -503,9 +559,6 @@ int main(int argc, char *argv[]) {
   if (tables_list)
     tables = get_table_list(tables_list);
 
-  if (serial_tbl_creation)
-    max_threads_for_schema_creation=1;
-
   /* TODO: if conf is singleton it must be accessed as global variable */
   initialize_worker_schema(&conf);
   initialize_worker_index(&conf);
@@ -527,6 +580,7 @@ int main(int argc, char *argv[]) {
     wait_stream_to_process_metadata_header();
   }
 
+  set_session_hash_insert(set_session_hash,"AUTOCOMMIT",g_strdup("1"));
   remove_ignore_set_session_from_hash();
   refresh_set_session_from_hash(set_session,set_session_hash);
   refresh_set_global_from_hash(set_global,set_global_back, set_global_hash);
@@ -534,22 +588,60 @@ int main(int argc, char *argv[]) {
   execute_gstring(conn, set_global);
 
   if (replication_statements->start_replica_until){
-    g_message("Sending start replica until");
-    execute_replication_commands(conn,replication_statements->start_replica_until->str);
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending start replica until",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "start_replica_until",
+                        NULL);
+    } else {
+      g_message("Sending start replica until");
+    }
+    execute_replication_commands(conn,replication_statements->start_replica_until->str, "start replica until");
   }
 
   start_connection_pool();
   if (disable_redo_log){
-    if ((get_major() == 8) && (get_secondary() == 0) && (get_revision() > 21)){
-      g_message("Disabling redologs");
+    if ((get_major() > 8) || (get_major() == 8 && (get_secondary() > 0 || get_revision() > 20))){
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                          "MESSAGE", "Disabling redologs",
+                          "EVENT", "redo_log",
+                          "PHASE", "startup",
+                          "STATUS", "started",
+                          "ACTION", "disable",
+                          NULL);
+      } else {
+        g_message("Disabling redologs");
+      }
       m_query_critical(conn, "ALTER INSTANCE DISABLE INNODB REDO_LOG", "DISABLE INNODB REDO LOG failed");
     }else{
       m_error("Disabling redologs is not supported for version %d.%d.%d", get_major(), get_secondary(), get_revision());
     }
   }
-  g_message("start_database");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "start_database",
+                      "EVENT", "restore_phase",
+                      "PHASE", "start_database",
+                      "STATUS", "started",
+                      NULL);
+  } else {
+    g_message("start_database");
+  }
   start_database(t);
-  g_message("start_worker_schema");
+  if (machine_log_json_enabled()) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "start_worker_schema",
+                      "EVENT", "restore_phase",
+                      "PHASE", "start_worker_schema",
+                      "STATUS", "started",
+                      NULL);
+  } else {
+    g_message("start_worker_schema");
+  }
   start_worker_schema();
   initialize_loader_threads(&conf);
 
@@ -585,71 +677,148 @@ int main(int argc, char *argv[]) {
 
   if (disable_redo_log)
     m_query_critical(conn, "ALTER INSTANCE ENABLE INNODB REDO_LOG", "ENABLE INNODB REDO LOG failed");
-
+  trace("Starting checksums");
   gboolean checksum_ok=TRUE;
+  if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "checksum verification started",
+                      "EVENT", "checksum_run",
+                      "PHASE", "checksum",
+                      "STATUS", "started",
+                      "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                              checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                      NULL);
+  }
   tl=conf.table_list;
+  struct db_table *dbt;
   while (tl != NULL){
-    checksum_ok&=checksum_dbt(tl->data, conn);
+    dbt=tl->data;
+    if (!machine_log_json_enabled()) {
+      g_message("DBT checksums: %s %s", dbt->database->target_database, dbt->source_table_name);
+    }
+    checksum_ok&=checksum_dbt(dbt->database->target_database, dbt->source_table_name, dbt->is_view, &dbt->checksum, conn);
     tl=tl->next;
   }
-
+  trace("DBT checksums done");
   if (checksum_mode != CHECKSUM_SKIP) {
     GHashTableIter iter;
     gchar *lkey;
     g_hash_table_iter_init(&iter, database_hash);
     struct database *d= NULL;
     while (g_hash_table_iter_next(&iter, (gpointer *) &lkey, (gpointer *) &d)) {
-      if (d->schema_checksum != NULL && !no_schemas)
-        checksum_ok&=checksum_database_template(d->target_database, d->schema_checksum, conn,
-                                  "Schema create checksum", checksum_database_defaults);
-      if (d->post_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->target_database, d->post_checksum, conn,
-                                  "Post checksum", checksum_process_structure);
-      if (d->events_checksum != NULL && !skip_post)
-        checksum_ok&=checksum_database_template(d->target_database, d->events_checksum, conn,
-                                  "Events checksum", checksum_events_structure_from_database);
-      if (d->triggers_checksum != NULL && !skip_triggers)
-        checksum_ok&=checksum_database_template(d->target_database, d->triggers_checksum, conn,
-                                  "Triggers checksum", checksum_trigger_structure_from_database);
+      checksum_ok&=checksum_database(d->target_database, &d->checksum, conn);
     }
   }
   wait_restore_threads_to_close();
 
   if (!checksum_ok){
+    if (machine_log_json) {
+      machine_log_event(G_LOG_DOMAIN,
+                        checksum_mode == CHECKSUM_WARN ? G_LOG_LEVEL_WARNING : G_LOG_LEVEL_CRITICAL,
+                        "MESSAGE", "checksum verification failed",
+                        "EVENT", "checksum_run",
+                        "PHASE", "checksum",
+                        "STATUS", "failed",
+                        "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                                checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                        "RETRYABLE", "false",
+                        "FATAL", checksum_mode == CHECKSUM_FAIL ? "true" : "false",
+                        NULL);
+    }
     if (checksum_mode==CHECKSUM_WARN)
       g_warning("Checksum failed");
     else
       g_error("Checksum failed");
+  } else if (machine_log_json) {
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                      "MESSAGE", "checksum verification finished",
+                      "EVENT", "checksum_run",
+                      "PHASE", "checksum",
+                      "STATUS", "finished",
+                      "MODE", checksum_mode == CHECKSUM_FAIL ? "fail" :
+                              checksum_mode == CHECKSUM_WARN ? "warn" : "skip",
+                      NULL);
   }
 
   if (stream && no_delete == FALSE ){ //&& input_directory == NULL){
 //    m_remove(directory,"metadata");
 //    m_remove(directory, "metadata.header");
-    if (g_rmdir(directory) < 0)
-        g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
+    if (g_rmdir(directory) < 0) {
+      if (machine_log_json_enabled()) {
+        machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                          "MESSAGE", "Restore directory not removed",
+                          "EVENT", "cleanup_directory",
+                          "PHASE", "shutdown",
+                          "STATUS", "failed",
+                          "INPUT_DIRECTORY", directory,
+                          "FATAL", "false",
+                          "RETRYABLE", "false",
+                          NULL);
+      }
+      g_warning("Restore directory not removed: %s (%s)", directory, strerror(errno));
+    }
   }
 
 
   if (replication_statements->reset_replica){
-    g_message("Sending reset replica");
-    execute_replication_commands(conn,replication_statements->reset_replica->str);
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending reset replica",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "reset_replica",
+                        NULL);
+    } else {
+      g_message("Sending reset replica");
+    }
+    execute_replication_commands(conn,replication_statements->reset_replica->str, "reset replica");
   }
 
   if (replication_statements->change_replication_source){
-    g_message("Sending change replication source");
-    execute_replication_commands(conn,replication_statements->change_replication_source->str);
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending change replication source",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "change_replication_source",
+                        NULL);
+    } else {
+      g_message("Sending change replication source");
+    }
+    execute_replication_commands(conn,replication_statements->change_replication_source->str, "change replication source");
   }
 
   if (replication_statements->gtid_purge){
-    g_message("Sending GTID Purge");
-    execute_replication_commands(conn,replication_statements->gtid_purge->str);
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending GTID Purge",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "gtid_purge",
+                        NULL);
+    } else {
+      g_message("Sending GTID Purge");
+    }
+    execute_replication_commands(conn,replication_statements->gtid_purge->str, "GTID Purge");
   }
 
   if (replication_statements->start_replica){
-    g_message("Sending start replica");
-    execute_replication_commands(conn,replication_statements->start_replica->str);
+    if (machine_log_json_enabled()) {
+      machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                        "MESSAGE", "Sending start replica",
+                        "EVENT", "replication_command",
+                        "PHASE", "replication",
+                        "STATUS", "started",
+                        "COMMAND", "start_replica",
+                        NULL);
+    } else {
+      g_message("Sending start replica");
+    }
+    execute_replication_commands(conn,replication_statements->start_replica->str, "start replica");
   }
-
   g_async_queue_unref(conf.database_queue);
   g_async_queue_unref(conf.table_queue);
   g_async_queue_unref(conf.retry_queue);
@@ -663,6 +832,13 @@ int main(int argc, char *argv[]) {
   mysql_close(conn);
   mysql_thread_end();
   mysql_library_end();
+  gchar *summary_input_directory = directory != NULL ? g_strdup(directory) : g_strdup("");
+  guint summary_tables = g_hash_table_size(conf.table_hash);
+  guint summary_files = myloader_summary_get_files();
+  guint64 summary_bytes = myloader_summary_get_bytes();
+  guint64 summary_warnings = (guint64)machine_log_warning_count_get() + (guint64)detailed_errors.data_warnings;
+  guint summary_retries = detailed_errors.retries;
+  guint summary_skipped = detailed_errors.skip_errors;
   g_free(directory);
   free_loader_threads();
 
@@ -695,12 +871,52 @@ int main(int argc, char *argv[]) {
   if (key_file)  g_key_file_free(key_file);
   g_remove(fifo_directory);
   g_remove(load_data_tmp_directory);
-  g_message("Restore completed");
+  exit_code = errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  if (machine_log_json) {
+    gchar *duration_ms = g_strdup_printf("%" G_GINT64_FORMAT,
+                                         (g_get_monotonic_time() - process_started_at) / 1000);
+    gchar *errors_text = g_strdup_printf("%u", errors);
+    gchar *warnings_text = g_strdup_printf("%" G_GUINT64_FORMAT, summary_warnings);
+    gchar *tables_text = g_strdup_printf("%u", summary_tables);
+    gchar *files_text = g_strdup_printf("%u", summary_files);
+    gchar *bytes_text = g_strdup_printf("%" G_GUINT64_FORMAT, summary_bytes);
+    gchar *retries_text = g_strdup_printf("%u", summary_retries);
+    gchar *skipped_text = g_strdup_printf("%u", summary_skipped);
+    gchar *exit_code_text = g_strdup_printf("%d", exit_code);
+    machine_log_event(G_LOG_DOMAIN, G_LOG_LEVEL_MESSAGE,
+                     "MESSAGE", "restore completed",
+                     "EVENT", "restore_completed",
+                     "PHASE", "restore_finish",
+                     "STATUS", "finished",
+                     "MODE", "restore",
+                     "INPUT_DIRECTORY", summary_input_directory,
+                     "DURATION_MS", duration_ms,
+                     "TABLES", tables_text,
+                     "FILES", files_text,
+                     "BYTES", bytes_text,
+                     "ERRORS", errors_text,
+                     "WARNINGS", warnings_text,
+                     "RETRIES", retries_text,
+                     "SKIPPED", skipped_text,
+                     "EXIT_CODE", exit_code_text,
+                     NULL);
+    g_free(duration_ms);
+    g_free(errors_text);
+    g_free(warnings_text);
+    g_free(tables_text);
+    g_free(files_text);
+    g_free(bytes_text);
+    g_free(retries_text);
+    g_free(skipped_text);
+    g_free(exit_code_text);
+  } else {
+    g_message("Restore completed");
+  }
+  g_free(summary_input_directory);
 
   if (logoutfile) {
     fclose(logoutfile);
   }
 
-  return errors ? EXIT_FAILURE : EXIT_SUCCESS;
+  return exit_code;
 }
-

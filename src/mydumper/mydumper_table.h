@@ -64,10 +64,7 @@ struct db_table {
   gchar *primary_key_separated_by_comma;
   gboolean multicolumn;
   gint * chunks_completed;
-  gchar *data_checksum;
-  gchar *schema_checksum;
-  gchar *indexes_checksum;
-  gchar *triggers_checksum;
+  struct table_level_checksum checksum;
   guint chunk_filesize;
   gboolean split_integer_tables;
   guint64 min_chunk_step_size;
