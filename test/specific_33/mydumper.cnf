@@ -1,0 +1,10 @@
+#
+# Testing --views-as-tables
+#
+
+[mydumper]
+outputdir=/tmp/data
+views-as-tables=1
+database=sakila
+trx-tables=0
+table-engine-for-view-dependency=InnoDB
