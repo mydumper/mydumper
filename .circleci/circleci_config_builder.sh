@@ -493,6 +493,7 @@ cat <<EOF
     - when:
         condition: << parameters.test >>
         steps:
+        - run: bash ./test_mydumper.sh -c 34:50 --skip-dynamic -d SSL
         - run: bash ./test_mydumper.sh -d SSL
     - store_artifacts:
         path: /tmp/stream.sql

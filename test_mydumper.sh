@@ -96,7 +96,7 @@ export G_DEBUG=fatal-criticals
 > $myloader_log
 
 optstring_long="case:,rr-myloader,rr-mydumper,debug,skip-dynamic,skip-backup,prepare,directories:,retry:"
-optstring_short="ce:LDd"
+optstring_short="c:,e:LDd"
 
 opts=$(getopt -o "${optstring_short}" --long "${optstring_long}" --name "$0" -- "$@") ||
     exit $?
@@ -274,7 +274,7 @@ test_case_dir (){
 
   if (( ${mydumper_execute} > 0 ))
   then
-    while (( $iter <= $retries ))
+    while (( $iter <= $retries )) && (( $error == 0 ))
     do
       
       # Prepare
@@ -303,7 +303,7 @@ test_case_dir (){
       fi
       iter=$(( $iter + 1 ))
     done
-    if (( $error > 0 )) && (( $iter > $retries ))
+    if (( $error > 0 )) # && (( $iter > $retries ))
     then
       if [[ ! -n "$skip_backup"  ]]; then
         mysqldump --all-databases > $mysqldumplog
@@ -337,7 +337,7 @@ test_case_dir (){
   if (( ${myloader_execute} > 0 ))
   then
     iter=1
-    while (( $iter <= $retries ))
+    while (( $iter <= $retries )) && (( $error == 0 ))
     do
       # Import
       echo "Importing database: ${myloader_parameters}"
@@ -349,7 +349,6 @@ test_case_dir (){
         "${time2[@]}" $myloader ${myloader_parameters} < /tmp/stream.sql
       else
         "${time2[@]}" $myloader ${myloader_parameters} 
-        error=$?
       fi
       error=$?
       cat $tmp_myloader_log >> $myloader_log
@@ -369,7 +368,7 @@ test_case_dir (){
 
       iter=$(( $iter + 1 ))
     done
-    if (( $error > 0 )) && (( $iter > $retries ))
+    if (( $error > 0 )) # && (( $iter > $retries ))
     then
       mkdir -p $mydumper_stor_dir
       if [[ ! -n "$skip_backup"  ]]; then
@@ -401,6 +400,7 @@ do_case()
     fi
     return
   fi
+  echo "do case $@"
   if [[ -n "$case_num"  ]]
   then
     number=$( echo "$2" | cut -d'_' -f2 )
@@ -443,12 +443,12 @@ full_test_global(){
     local_case_max=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -n | tail -1)
     local_case_min=$(find test -maxdepth 1 -mindepth 1 -name "${t}_*" -type d | sort -t '_' -k 2 -n | cut -d'_' -f2 | sort -r -n | tail -1)
 
-    if (( $case_max < $local_case_max ))
+    if [ -n "$case_max" ] && (( $case_max < $local_case_max ))
     then
       local_case_max=$case_max
     fi
 
-    if (( $case_min > $local_case_min ))
+    if [ -n "$case_min" ] && (( $case_min > $local_case_min ))
     then
       local_case_min=$case_min
     fi

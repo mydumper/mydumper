@@ -1,0 +1,8 @@
+#
+# Testing multiple executing on integer pk which was a case where it caused inconsistencies
+#
+
+[mydumper]
+database=specific_34
+outputdir=/tmp/data
+rows=2:2:1

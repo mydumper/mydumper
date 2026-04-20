@@ -21,9 +21,3 @@ CREATE TABLE person (
   PRIMARY KEY  (person_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-DELIMITER ;;
-CREATE TRIGGER `ins_actor` AFTER INSERT ON `actor` FOR EACH ROW BEGIN
-    INSERT INTO person (first_name, last_name)
-        VALUES (new.first_name, new.last_name);
-  END;;
-DELIMITER ;

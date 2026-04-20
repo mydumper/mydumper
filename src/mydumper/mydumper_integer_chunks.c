@@ -583,10 +583,17 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       else
         trace("Thread %d: I-Chunk 1: Updating MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
       c_max=update_integer_max(td->thrconn, tj->dbt, csi);
-      if (cs->integer_step.is_unsigned)
-        trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
-      else
-        trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
+      if (c_max){
+        if (cs->integer_step.is_unsigned)
+          trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+        else
+          trace("Thread %d: I-Chunk 1: New MAX: %ld", td->thread_id, cs->integer_step.type.sign.max);
+      }else{
+        if (cs->integer_step.is_unsigned)
+          trace("Thread %d: I-Chunk 1: No new MAX found, keeping: %ld", td->thread_id, cs->integer_step.type.unsign.max);
+        else
+          trace("Thread %d: I-Chunk 1: No new MAX found, keeping: %ld", td->thread_id, cs->integer_step.type.sign.max);
+      }
       cs->integer_step.check_max=FALSE;
     }
     if (cs->integer_step.check_min){
@@ -595,18 +602,29 @@ guint process_integer_chunk_step(struct table_job *tj, struct chunk_step_item *c
       else
         trace("Thread %d: I-Chunk 1: Updating MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
       c_min=update_integer_min(td->thrconn, tj->dbt, csi);
-      if (cs->integer_step.is_unsigned)
-        trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
-      else
-        trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
+      if (c_min){
+        if (cs->integer_step.is_unsigned)
+          trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+        else
+          trace("Thread %d: I-Chunk 1: New MIN: %ld", td->thread_id, cs->integer_step.type.sign.min);
+      }else{
+        if (cs->integer_step.is_unsigned)
+          trace("Thread %d: I-Chunk 1: No new MIN found, keeping: %ld", td->thread_id, cs->integer_step.type.unsign.min);
+        else
+          trace("Thread %d: I-Chunk 1: No new MIN found, keeping: %ld", td->thread_id, cs->integer_step.type.sign.min);
+      }
       cs->integer_step.check_min=FALSE;
     }
     if (!c_min && !c_max){
-      trace("Thread %d: I-Chunk 1: both min and max doesn't exists", td->thread_id);
+      trace("Thread %d: I-Chunk 1: both min and max doesn't exists. No need to continue with this job", td->thread_id);
+      if (cs->integer_step.is_unsigned){
+        cs->integer_step.type.unsign.min=cs->integer_step.type.unsign.max+1;
+      }else{
+        cs->integer_step.type.sign.min=cs->integer_step.type.sign.max+1;
+      }
       if (csi->position==0)
         close_table_job_files(tj);
-      g_mutex_unlock(csi->mutex);
-      goto update_min;
+      goto end_process;
     }
 
     if ( cs->integer_step.rows_in_explain == 0){
@@ -845,7 +863,7 @@ update_min:
 
   }
 
-//end_process:
+end_process:
 
   if (csi->position==0)
     csi->multicolumn=tj->dbt->multicolumn;
